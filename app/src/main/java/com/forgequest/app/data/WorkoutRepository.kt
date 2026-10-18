@@ -363,6 +363,15 @@ class WorkoutRepository(private val db: AppDatabase) {
         recomputeRecords(set.exerciseId)
     }
 
+    /** Moves a finished workout to another day (logged late, or on the wrong day); times shift with it. */
+    suspend fun moveSession(sessionId: Long, epochDay: Long) = db.withTransaction {
+        val s = sessions.byId(sessionId) ?: return@withTransaction
+        val shift = (epochDay - s.epochDay) * 86_400_000L
+        sessions.update(s.copy(epochDay = epochDay, startedAt = s.startedAt + shift, finishedAt = s.finishedAt?.plus(shift)))
+        // Records depend on order, so replay them for everything this workout touched.
+        sessions.sets(sessionId).map { it.exerciseId }.distinct().forEach { recomputeRecords(it) }
+    }
+
     suspend fun deleteSession(sessionId: Long) = db.withTransaction {
         val affected = sessions.sets(sessionId).map { it.exerciseId }.distinct()
         sessions.deleteSetsOf(sessionId)

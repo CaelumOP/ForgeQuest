@@ -892,4 +892,5 @@
     <string name="plan_from_youtube_hint">ينسخ نص جاهز. الصقه في تطبيق Gemini مع روابط الفيديو، وبعدين الصق الـ JSON هنا.</string>
     <string name="plan_prompt_copied">تم نسخ النص</string>
     <string name="onb_groq_hint">تبغى محادثة أسرع؟ أضف مفتاح Groq مجاني بعدين من حسابي.</string>
+    <string name="hist_change_date">غيّر التاريخ</string>
 </resources>

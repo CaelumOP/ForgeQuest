@@ -795,4 +795,5 @@
     <string name="plan_from_youtube_hint">Copies a prompt. Paste it into the Gemini app with the video links, then paste the JSON here.</string>
     <string name="plan_prompt_copied">Prompt copied</string>
     <string name="onb_groq_hint">Want even faster chat? Add a free Groq key later in Profile.</string>
+    <string name="hist_change_date">Change date</string>
 </resources>
