@@ -1,5 +1,11 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.pluralStringResource
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -109,12 +115,12 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         pending.value = null
         viewModelScope.launch {
             app.workouts.applyPlan(draft, source)
-            message.value = "Plan switched to ${draft.name}"
+            message.value = app.str(R.string.plan_switched_to, draft.name)
         }
     }
 
     fun parsePasted(text: String) {
-        busy.value = "Reading your plan…"
+        busy.value = app.str(R.string.plan_reading)
         viewModelScope.launch {
             try {
                 pending.value = app.coach.parsePlanText(text)
@@ -131,21 +137,21 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
 
     fun deleteItem(item: PlanItemEntity, name: String) = viewModelScope.launch {
         app.workouts.deletePlanItem(item.id)
-        undo.value = "Removed $name" to { app.workouts.restorePlanItem(item) }
+        undo.value = app.str(R.string.food_removed, name) to { app.workouts.restorePlanItem(item) }
     }
 
     fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
     fun addItem(dayId: Long, exerciseId: String) = viewModelScope.launch { app.workouts.addPlanItem(dayId, exerciseId) }
     fun setRest(day: PlanDayEntity, rest: Boolean) = viewModelScope.launch {
-        app.workouts.updatePlanDay(day.copy(isRest = rest, title = if (rest) "Rest day" else if (day.title == "Rest day") "Workout" else day.title))
+        app.workouts.updatePlanDay(day.copy(isRest = rest, title = if (rest) app.str(R.string.today_rest_day) else if (day.title == app.str(R.string.today_rest_day) || day.title == "Rest day") app.str(R.string.plan_workout) else day.title))
     }
     val allPlans: StateFlow<List<PlanEntity>> = app.workouts.allPlans.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    fun activate(plan: PlanEntity) = viewModelScope.launch { app.workouts.activatePlan(plan.id); message.value = "Switched to ${plan.name}" }
-    fun deletePlan(plan: PlanEntity) = viewModelScope.launch { app.workouts.deletePlan(plan.id); message.value = "Deleted ${plan.name}" }
+    fun activate(plan: PlanEntity) = viewModelScope.launch { app.workouts.activatePlan(plan.id); message.value = app.str(R.string.plan_switched, plan.name) }
+    fun deletePlan(plan: PlanEntity) = viewModelScope.launch { app.workouts.deletePlan(plan.id); message.value = app.str(R.string.lib_deleted, plan.name) }
     fun move(item: PlanItemEntity, delta: Int) = viewModelScope.launch { app.workouts.movePlanItem(item, delta) }
     fun swapDays(planId: Long, a: Int, b: Int) = viewModelScope.launch {
         app.workouts.swapPlanDays(planId, a, b)
-        message.value = "${Dates.dayName(a)} and ${Dates.dayName(b)} swapped"
+        message.value = app.str(R.string.plan_days_swapped, Dates.dayName(a), Dates.dayName(b))
     }
     fun rename(day: PlanDayEntity, title: String) = viewModelScope.launch { app.workouts.updatePlanDay(day.copy(title = title)) }
     fun createExercise(name: String, kind: ExerciseKind, muscle: Muscle, dayId: Long) = viewModelScope.launch {
@@ -180,9 +186,10 @@ fun PlanEditorScreen(nav: NavHostController) {
     androidx.compose.runtime.LaunchedEffect(message) {
         message?.let { snackbar.showSnackbar(it); vm.message.value = null }
     }
+    val undoLabel = stringResource(R.string.action_undo)
     androidx.compose.runtime.LaunchedEffect(undo) {
         undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = "Undo", duration = androidx.compose.material3.SnackbarDuration.Short)
+            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = androidx.compose.material3.SnackbarDuration.Short)
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
         }
     }
@@ -192,20 +199,20 @@ fun PlanEditorScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.textPrimary) }
+            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Column(Modifier.weight(1f)) {
-                Text("Your plan", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                Text(s.plan?.plan?.name ?: "No plan", style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.plan_your_plan), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(s.plan?.plan?.name ?: stringResource(R.string.plan_no_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             FitCard(padding = PaddingValues(vertical = 8.dp)) {
-                ActionRow(Icons.Rounded.ViewList, "Switch to a ready-made plan", "Hemo foundation, full body, push/pull/legs") { templates = true }
+                ActionRow(Icons.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_hint)) { templates = true }
                 if (allPlans.size > 1) {
-                    ActionRow(Icons.Rounded.History, "Previous plans", "Go back to a plan you used before. Nothing is lost when you apply a new one.") { previous = true }
+                    ActionRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_hint)) { previous = true }
                 }
-                ActionRow(Icons.Rounded.ContentPaste, "Paste a plan", "From notes, a message or a Google Doc. AI turns it into your schedule.") { paste = true }
-                ActionRow(Icons.Rounded.Description, "Import from Google Docs", "Pulls your newest doc named \"Workout Plan\". Set up in Profile → Google Drive.") {
+                ActionRow(Icons.Rounded.ContentPaste, stringResource(R.string.plan_paste), stringResource(R.string.plan_paste_hint)) { paste = true }
+                ActionRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_import_docs_hint)) {
                     nav.navigate(com.forgequest.app.ui.Routes.PROFILE)
                 }
             }
@@ -234,14 +241,14 @@ fun PlanEditorScreen(nav: NavHostController) {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(Dates.dayName(selectedDay), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                                Icon(Icons.Rounded.SwapHoriz, contentDescription = "Move to another day", tint = c.textSecondary, modifier = Modifier.padding(start = 4.dp).size(16.dp))
+                                Icon(Icons.Rounded.SwapHoriz, contentDescription = stringResource(R.string.cd_move_day), tint = c.textSecondary, modifier = Modifier.padding(start = 4.dp).size(16.dp))
                             }
                             Text(
                                 day.day.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary,
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = !day.day.isRest) { renaming = true },
                             )
                         }
-                        Text("Rest day", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                        Text(stringResource(R.string.today_rest_day), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                         Spacer(Modifier.width(8.dp))
                         Switch(
                             checked = day.day.isRest,
@@ -260,16 +267,16 @@ fun PlanEditorScreen(nav: NavHostController) {
                                 Column(Modifier.weight(1f)) {
                                     Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                                     Text(
-                                        "${item.block}${if (item.circuit) " · circuit" else ""} · ${if (item.circuit) "${item.sets} rounds × " else ""}${item.prescription(ex?.kind, s.settings.weightUnit)} · rest ${item.restSeconds}s",
+                                        listOfNotNull(item.block.ifBlank { null }, if (item.circuit) pluralStringResource(R.plurals.plan_circuit_rounds, item.sets, item.sets) else null, item.prescription(ex?.kind, s.settings.weightUnit), stringResource(R.string.plan_rest_seconds, item.restSeconds)).joinToString(" · "),
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                     )
                                 }
-                                IconButton(onClick = { vm.deleteItem(item, ex?.name ?: item.exerciseId) }) { Icon(Icons.Rounded.Delete, contentDescription = "Remove", tint = c.textSecondary) }
+                                IconButton(onClick = { vm.deleteItem(item, ex?.name ?: item.exerciseId) }) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary) }
                             }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    TonalPill("Add exercise", onClick = { picker = true }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
+                    TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = true }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -279,7 +286,7 @@ fun PlanEditorScreen(nav: NavHostController) {
 
     if (picker && day != null) {
         ExercisePickerSheet(
-            title = "Add to ${Dates.dayName(selectedDay)}",
+            title = stringResource(R.string.plan_add_to_day, Dates.dayName(selectedDay)),
             library = library,
             onPick = { vm.addItem(day.day.id, it.id); picker = false },
             onCreate = { n, k, m -> vm.createExercise(n, k, m, day.day.id); picker = false },
@@ -302,7 +309,7 @@ fun PlanEditorScreen(nav: NavHostController) {
     if (templates) {
         ModalBottomSheet(onDismissRequest = { templates = false }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-                Text("Ready-made plans", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.plan_ready_made_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
                 StarterPlans.all.forEach { plan ->
                     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(18.dp)).background(c.cardHigh).clickable { templates = false; vm.preview(plan) }.padding(16.dp)) {
@@ -319,8 +326,8 @@ fun PlanEditorScreen(nav: NavHostController) {
         var toDelete by remember { mutableStateOf<PlanEntity?>(null) }
         ModalBottomSheet(onDismissRequest = { previous = false }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-                Text("Previous plans", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                Text("Tap one to make it your plan again.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(stringResource(R.string.plan_previous), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.plan_previous_tap), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(12.dp))
                 allPlans.forEach { plan ->
                     Row(
@@ -332,15 +339,15 @@ fun PlanEditorScreen(nav: NavHostController) {
                             Text(plan.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                             Text(
                                 listOf(
-                                    when (plan.source) { "coach" -> "From the coach"; "docs" -> "From Google Docs"; "starter" -> "Ready-made"; else -> "Built by you" },
+                                    when (plan.source) { "coach" -> stringResource(R.string.plan_src_coach); "docs" -> stringResource(R.string.plan_src_docs); "starter" -> stringResource(R.string.plan_src_starter); else -> stringResource(R.string.plan_src_you) },
                                     java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(plan.createdAt)),
-                                    if (plan.active) "current" else null,
+                                    if (plan.active) stringResource(R.string.plan_current) else null,
                                 ).filterNotNull().joinToString(" · "),
                                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                             )
                         }
                         if (!plan.active) {
-                            IconButton(onClick = { toDelete = plan }) { Icon(Icons.Rounded.Delete, contentDescription = "Delete plan", tint = c.textSecondary) }
+                            IconButton(onClick = { toDelete = plan }) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.cd_delete_plan), tint = c.textSecondary) }
                         }
                     }
                 }
@@ -350,10 +357,10 @@ fun PlanEditorScreen(nav: NavHostController) {
             AlertDialog(
                 onDismissRequest = { toDelete = null },
                 containerColor = c.card,
-                title = { Text("Delete ${plan.name}?", color = c.textPrimary) },
-                text = { Text("The schedule is removed. Workouts you did under it stay in your history.", color = c.textSecondary) },
-                confirmButton = { TextButton(onClick = { vm.deletePlan(plan); toDelete = null }) { Text("Delete", color = c.coral) } },
-                dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Cancel", color = c.textSecondary) } },
+                title = { Text(stringResource(R.string.food_delete_title, plan.name), color = c.textPrimary) },
+                text = { Text(stringResource(R.string.plan_delete_body), color = c.textSecondary) },
+                confirmButton = { TextButton(onClick = { vm.deletePlan(plan); toDelete = null }) { Text(stringResource(R.string.action_delete), color = c.coral) } },
+                dismissButton = { TextButton(onClick = { toDelete = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
             )
         }
     }
@@ -362,10 +369,10 @@ fun PlanEditorScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { moveDay = false },
             containerColor = c.card,
-            title = { Text("Move ${Dates.dayName(selectedDay)}'s workout", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.plan_move_title, Dates.dayName(selectedDay)), color = c.textPrimary) },
             text = {
                 Column {
-                    Text("Pick the day to swap with. Whatever is on that day moves here.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.plan_move_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
                     (1..7).filter { it != selectedDay }.forEach { dow ->
                         val target = s.plan.day(dow)
@@ -374,13 +381,13 @@ fun PlanEditorScreen(nav: NavHostController) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(Dates.dayName(dow), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                            Text(if (target == null || target.day.isRest) "Rest" else target.day.title, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                            Text(if (target == null || target.day.isRest) stringResource(R.string.live_rest) else target.day.title, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         }
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { moveDay = false }) { Text("Cancel", color = c.textSecondary) } },
+            dismissButton = { TextButton(onClick = { moveDay = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 
@@ -389,18 +396,18 @@ fun PlanEditorScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { paste = false },
             containerColor = c.card,
-            title = { Text("Paste a plan", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.plan_paste), color = c.textPrimary) },
             text = {
                 OutlinedTextField(
                     value = text, onValueChange = { text = it },
-                    placeholder = { Text("Monday: push-ups 3x10, dips 3x8…") },
+                    placeholder = { Text(stringResource(R.string.plan_paste_hint_text)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                 )
             },
-            confirmButton = { TextButton(onClick = { paste = false; vm.parsePasted(text) }, enabled = text.isNotBlank()) { Text("Read plan", color = c.teal) } },
-            dismissButton = { TextButton(onClick = { paste = false }) { Text("Cancel", color = c.textSecondary) } },
+            confirmButton = { TextButton(onClick = { paste = false; vm.parsePasted(text) }, enabled = text.isNotBlank()) { Text(stringResource(R.string.plan_read), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { paste = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 
@@ -415,16 +422,17 @@ fun PlanEditorScreen(nav: NavHostController) {
 
     if (renaming && day != null) {
         var title by remember { mutableStateOf(day.day.title) }
+        val workoutLabel = stringResource(R.string.plan_workout)
         AlertDialog(
             onDismissRequest = { renaming = false },
             containerColor = c.card,
-            title = { Text("Day name", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.plan_day_name), color = c.textPrimary) },
             text = {
                 OutlinedTextField(value = title, onValueChange = { title = it.take(40) }, singleLine = true, shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary))
             },
-            confirmButton = { TextButton(onClick = { vm.rename(day.day, title.trim().ifEmpty { "Workout" }); renaming = false }) { Text("Save", color = c.teal) } },
-            dismissButton = { TextButton(onClick = { renaming = false }) { Text("Cancel", color = c.textSecondary) } },
+            confirmButton = { TextButton(onClick = { vm.rename(day.day, title.trim().ifEmpty { workoutLabel }); renaming = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { renaming = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 }
@@ -461,34 +469,34 @@ private fun ItemEditorSheet(
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
             Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(16.dp))
-            EditorRow(if (draft.circuit) "Rounds" else "Sets", draft.sets.toFloat(), { draft = draft.copy(sets = it.toInt()) }, step = 1f, min = 1f, max = 10f)
+            EditorRow(if (draft.circuit) stringResource(R.string.plan_rounds) else stringResource(R.string.live_sets), draft.sets.toFloat(), { draft = draft.copy(sets = it.toInt()) }, step = 1f, min = 1f, max = 10f)
             if (kind == ExerciseKind.HOLD) {
-                EditorRow("Hold", (draft.seconds ?: 30).toFloat(), { draft = draft.copy(seconds = it.toInt()) }, step = 5f, min = 5f, max = 3600f, unit = "s")
+                EditorRow(stringResource(R.string.kind_hold), (draft.seconds ?: 30).toFloat(), { draft = draft.copy(seconds = it.toInt()) }, step = 5f, min = 5f, max = 3600f, unit = "s")
             } else {
                 val minReps = draft.repsMin ?: 10
                 val maxReps = draft.repsMax ?: minReps
-                EditorRow("Reps (min)", minReps.toFloat(), { v -> draft = draft.copy(repsMin = v.toInt(), repsMax = draft.repsMax?.coerceAtLeast(v.toInt())) }, step = 1f, min = 1f, max = 999f)
-                EditorRow("Reps (max)", maxReps.toFloat(), { v -> draft = draft.copy(repsMax = v.toInt().coerceAtLeast(minReps)) }, step = 1f, min = minReps.toFloat(), max = 999f)
+                EditorRow(stringResource(R.string.plan_reps_min), minReps.toFloat(), { v -> draft = draft.copy(repsMin = v.toInt(), repsMax = draft.repsMax?.coerceAtLeast(v.toInt())) }, step = 1f, min = 1f, max = 999f)
+                EditorRow(stringResource(R.string.plan_reps_max), maxReps.toFloat(), { v -> draft = draft.copy(repsMax = v.toInt().coerceAtLeast(minReps)) }, step = 1f, min = minReps.toFloat(), max = 999f)
             }
             if (kind == ExerciseKind.WEIGHTED) {
-                EditorRow("Weight", unit.fromKg(draft.weightKg ?: 0f), { draft = draft.copy(weightKg = unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f), unit = unit.label, decimals = 1)
+                EditorRow(stringResource(R.string.stepper_weight), unit.fromKg(draft.weightKg ?: 0f), { draft = draft.copy(weightKg = unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f), unit = unit.label, decimals = 1)
             }
-            EditorRow("Rest", draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = "s")
+            EditorRow(stringResource(R.string.live_rest), draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = "s")
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Part of a circuit", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    Text("Done round by round with the other circuit exercises in \"${draft.block}\"", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.plan_part_circuit), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    Text(stringResource(R.string.plan_circuit_hint, draft.block), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Switch(checked = draft.circuit, onCheckedChange = { draft = draft.copy(circuit = it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Order", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                TonalPill("Move up", onClick = { onMove(-1) }, icon = Icons.Rounded.ArrowUpward, tint = if (canMoveUp) c.textPrimary else c.textSecondary)
-                TonalPill("Move down", onClick = { onMove(1) }, icon = Icons.Rounded.ArrowDownward, tint = if (canMoveDown) c.textPrimary else c.textSecondary)
+                Text(stringResource(R.string.plan_order), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                TonalPill(stringResource(R.string.plan_move_up), onClick = { onMove(-1) }, icon = Icons.Rounded.ArrowUpward, tint = if (canMoveUp) c.textPrimary else c.textSecondary)
+                TonalPill(stringResource(R.string.plan_move_down), onClick = { onMove(1) }, icon = Icons.Rounded.ArrowDownward, tint = if (canMoveDown) c.textPrimary else c.textSecondary)
             }
             Spacer(Modifier.height(16.dp))
-            PillButton("Save", onClick = { onSave(draft) }, modifier = Modifier.fillMaxWidth())
+            PillButton(stringResource(R.string.action_save), onClick = { onSave(draft) }, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -520,7 +528,7 @@ fun PlanPreviewSheet(draft: PlanDraft, exercises: Map<String, ExerciseEntity>, o
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Text(Dates.dayName(d.dayOfWeek).take(3), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.width(44.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(if (d.isRest || d.items.isEmpty()) "Rest" else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                        Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                         if (!d.isRest && d.items.isNotEmpty()) {
                             Text(
                                 d.items.joinToString(", ") { exercises[it.exerciseId]?.name ?: it.name ?: it.exerciseId },
@@ -531,9 +539,9 @@ fun PlanPreviewSheet(draft: PlanDraft, exercises: Map<String, ExerciseEntity>, o
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Text("This replaces your current plan. Your workout history stays.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Text(stringResource(R.string.plan_replaces), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             Spacer(Modifier.height(12.dp))
-            PillButton("Use this plan", onClick = onApply, modifier = Modifier.fillMaxWidth())
+            PillButton(stringResource(R.string.plan_use_this), onClick = onApply, modifier = Modifier.fillMaxWidth())
         }
     }
 }

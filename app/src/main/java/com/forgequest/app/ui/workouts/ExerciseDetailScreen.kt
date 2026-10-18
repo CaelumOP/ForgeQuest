@@ -1,5 +1,9 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,26 +80,27 @@ class ExerciseDetailViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val message = MutableStateFlow<String?>(null)
     fun setVideo(id: String, url: String) = viewModelScope.launch {
-        if (!app.workouts.setVideoUrl(id, url)) message.value = "That isn't a web link. Paste something starting with https://"
+        if (!app.workouts.setVideoUrl(id, url)) message.value = app.str(R.string.detail_bad_link)
     }
 }
 
 private data class Metric(val label: String, val unit: String, val value: (List<SetEntity>, ExerciseKind) -> Float)
 
+@Composable
 private fun metricsFor(kind: ExerciseKind, wu: WeightUnit = WeightUnit.KG): List<Metric> = when (kind) {
     ExerciseKind.REPS -> listOf(
-        Metric("Max reps", "reps") { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },
-        Metric("Total reps", "reps") { s, _ -> s.sumOf { it.reps ?: 0 }.toFloat() },
+        Metric(stringResource(R.string.metric_max_reps), stringResource(R.string.unit_reps)) { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },
+        Metric(stringResource(R.string.metric_total_reps), stringResource(R.string.unit_reps)) { s, _ -> s.sumOf { it.reps ?: 0 }.toFloat() },
     )
     ExerciseKind.HOLD -> listOf(
-        Metric("Max hold", "s") { s, _ -> (s.maxOfOrNull { it.seconds ?: 0 } ?: 0).toFloat() },
-        Metric("Total time", "s") { s, _ -> s.sumOf { it.seconds ?: 0 }.toFloat() },
+        Metric(stringResource(R.string.metric_max_hold), stringResource(R.string.unit_s)) { s, _ -> (s.maxOfOrNull { it.seconds ?: 0 } ?: 0).toFloat() },
+        Metric(stringResource(R.string.metric_total_time), stringResource(R.string.unit_s)) { s, _ -> s.sumOf { it.seconds ?: 0 }.toFloat() },
     )
     ExerciseKind.WEIGHTED -> listOf(
-        Metric("Best set", "${wu.label} est. 1RM") { s, k -> wu.fromKg(s.maxOfOrNull { Records.score(k, it.reps, it.seconds, it.weightKg) } ?: 0f) },
-        Metric("Max weight", wu.label) { s, _ -> wu.fromKg(s.maxOfOrNull { it.weightKg ?: 0f } ?: 0f) },
-        Metric("Volume", wu.label) { s, _ -> wu.fromKg(s.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat()) },
-        Metric("Max reps", "reps") { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },
+        Metric(stringResource(R.string.metric_best_set), stringResource(R.string.metric_est_1rm, wu.label)) { s, k -> wu.fromKg(s.maxOfOrNull { Records.score(k, it.reps, it.seconds, it.weightKg) } ?: 0f) },
+        Metric(stringResource(R.string.metric_max_weight), wu.label) { s, _ -> wu.fromKg(s.maxOfOrNull { it.weightKg ?: 0f } ?: 0f) },
+        Metric(stringResource(R.string.metric_volume), wu.label) { s, _ -> wu.fromKg(s.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat()) },
+        Metric(stringResource(R.string.metric_max_reps), stringResource(R.string.unit_reps)) { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },
     )
 }
 
@@ -125,7 +130,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.textPrimary) }
+            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Text(ex?.name ?: exerciseId, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Column(Modifier.padding(horizontal = 16.dp)) {
@@ -136,18 +141,18 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             )
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PillButton("Watch form", onClick = { openFormVideo(context, ex) }, icon = Icons.Rounded.PlayArrow, container = c.blueTrack, content = c.blue)
-                TonalPill(if (ex?.videoUrl.isNullOrBlank()) "Add video link" else "Change link", onClick = { editLink = true }, icon = Icons.Rounded.Link)
+                PillButton(stringResource(R.string.cd_watch_form), onClick = { openFormVideo(context, ex) }, icon = Icons.Rounded.PlayArrow, container = c.blueTrack, content = c.blue)
+                TonalPill(if (ex?.videoUrl.isNullOrBlank()) stringResource(R.string.detail_add_link) else stringResource(R.string.detail_change_link), onClick = { editLink = true }, icon = Icons.Rounded.Link)
             }
             Spacer(Modifier.height(16.dp))
             FitCard {
-                Text("Progress", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(stringResource(R.string.detail_progress), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Spacer(Modifier.height(10.dp))
                 SegmentedTabs(metrics.map { it.label }, metricIndex.coerceIn(0, metrics.lastIndex), { metricIndex = it })
                 Spacer(Modifier.height(16.dp))
                 if (points.size < 2) {
                     Text(
-                        if (points.isEmpty()) "Log this exercise to start your chart." else "One more session and your trend line appears.",
+                        if (points.isEmpty()) stringResource(R.string.detail_chart_empty) else stringResource(R.string.detail_chart_one),
                         style = MaterialTheme.typography.bodyMedium,
                         color = c.textSecondary,
                         modifier = Modifier.padding(vertical = 24.dp),
@@ -157,13 +162,13 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                 }
                 points.maxOrNull()?.let {
                     Spacer(Modifier.height(8.dp))
-                    Text("Best: ${"%.0f".format(it)} ${metric.unit}", style = MaterialTheme.typography.labelLarge, color = c.gold)
+                    Text(stringResource(R.string.detail_best, "%.0f".format(it), metric.unit), style = MaterialTheme.typography.labelLarge, color = c.gold)
                 }
             }
             Spacer(Modifier.height(12.dp))
             if (history.isNotEmpty()) {
                 FitCard {
-                    Text("History", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.detail_history), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     history.reversed().take(20).forEach { (session, sets) ->
                         Spacer(Modifier.height(4.dp))
                         Row(
@@ -171,7 +176,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern("EEE, MMM d")),
+                                LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern(stringResource(R.string.detail_date_pattern))),
                                 style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.weight(0.45f),
                             )
                             Text(
@@ -198,10 +203,10 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
         AlertDialog(
             onDismissRequest = { editLink = false },
             containerColor = c.card,
-            title = { Text("Form video link", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.detail_link_title), color = c.textPrimary) },
             text = {
                 Column {
-                    Text("Paste a YouTube link for this exercise. Leave empty to search YouTube instead.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.detail_link_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = url, onValueChange = { url = it }, singleLine = true, shape = RoundedCornerShape(16.dp),
@@ -209,8 +214,8 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = { vm.setVideo(exerciseId, url); editLink = false }) { Text("Save", color = c.teal) } },
-            dismissButton = { TextButton(onClick = { editLink = false }) { Text("Cancel", color = c.textSecondary) } },
+            confirmButton = { TextButton(onClick = { vm.setVideo(exerciseId, url); editLink = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { editLink = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 }

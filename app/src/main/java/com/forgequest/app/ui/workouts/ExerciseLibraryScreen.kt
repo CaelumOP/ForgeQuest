@@ -1,5 +1,12 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.R
+import com.forgequest.app.ui.localLabel
+
+import androidx.compose.ui.res.pluralStringResource
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -73,15 +80,15 @@ class ExerciseLibraryViewModel(val app: AppContainer) : ViewModel() {
 
     fun loadUsage(id: String) = viewModelScope.launch { usage.value = app.workouts.usage(id) }
 
-    fun save(ex: ExerciseEntity) = viewModelScope.launch { app.workouts.updateExercise(ex); message.value = "Saved ${ex.name}" }
+    fun save(ex: ExerciseEntity) = viewModelScope.launch { app.workouts.updateExercise(ex); message.value = app.str(R.string.lib_saved, ex.name) }
 
     fun merge(from: ExerciseEntity, into: ExerciseEntity) = viewModelScope.launch {
         app.workouts.mergeExercise(from.id, into.id)
-        message.value = "${from.name} merged into ${into.name}"
+        message.value = app.str(R.string.lib_merged, from.name, into.name)
     }
 
     fun delete(ex: ExerciseEntity) = viewModelScope.launch {
-        message.value = if (app.workouts.deleteExercise(ex.id)) "Deleted ${ex.name}" else "${ex.name} is still used. Merge it into another exercise instead."
+        message.value = if (app.workouts.deleteExercise(ex.id)) app.str(R.string.lib_deleted, ex.name) else app.str(R.string.lib_still_used, ex.name)
     }
 }
 
@@ -109,14 +116,14 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.textPrimary) }
+            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Column(Modifier.weight(1f)) {
-                Text("Exercise library", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                Text("${library.count { it.custom }} custom · ${library.count { !it.custom }} built in", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(stringResource(R.string.profile_exercise_library), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.lib_counts, library.count { it.custom }, library.count { !it.custom }), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
         OutlinedTextField(
-            value = query, onValueChange = { query = it }, placeholder = { Text("Search") },
+            value = query, onValueChange = { query = it }, placeholder = { Text(stringResource(R.string.lib_search)) },
             leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) }, singleLine = true, shape = RoundedCornerShape(50),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
@@ -126,17 +133,17 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         )
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)) {
             if (custom.isNotEmpty()) {
-                item { Text("Your exercises", style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) }
+                item { Text(stringResource(R.string.lib_yours), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) }
                 items(custom, key = { it.id }) { ex -> LibraryRow(ex, onClick = { editing = ex }) }
             } else if (query.isBlank()) {
                 item {
                     Text(
-                        "Nothing custom yet. Exercises you create in a workout or the plan editor, and ones the coach invents, show up here.",
+                        stringResource(R.string.lib_none_custom),
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp),
                     )
                 }
             }
-            item { Text("Built in", style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) }
+            item { Text(stringResource(R.string.lib_built_in), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) }
             items(builtIn, key = { it.id }) { ex -> LibraryRow(ex, onClick = { nav.navigate(Routes.exercise(ex.id)) }) }
         }
     }
@@ -147,37 +154,37 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         var muscle by remember(ex.id) { mutableStateOf(ex.primary.firstOrNull() ?: Muscle.CHEST) }
         ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { editing = null }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-                Text("Edit exercise", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.lib_edit), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 usage?.let { u ->
                     Text(
-                        "Used in ${u.sets} logged set${if (u.sets == 1) "" else "s"} and ${u.planItems} plan item${if (u.planItems == 1) "" else "s"}",
+                        stringResource(R.string.lib_usage, pluralStringResource(R.plurals.lib_logged_sets, u.sets, u.sets), pluralStringResource(R.plurals.lib_plan_items, u.planItems, u.planItems)),
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
                 Spacer(Modifier.height(14.dp))
                 OutlinedTextField(
-                    value = name, onValueChange = { name = it.take(40) }, label = { Text("Name") }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                    value = name, onValueChange = { name = it.take(40) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
-                Text("Measured in", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Text(stringResource(R.string.picker_measured_in), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExerciseKind.entries.forEach { k -> ChoiceChip(k.label(), kind == k, { kind = k }) }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("Main muscle", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Text(stringResource(R.string.picker_main_muscle), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Muscle.entries.forEach { m -> ChoiceChip(m.label, muscle == m, { muscle = m }) }
+                    Muscle.entries.forEach { m -> ChoiceChip(m.localLabel(), muscle == m, { muscle = m }) }
                 }
                 Spacer(Modifier.height(18.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalPill("Merge into…", onClick = { merging = ex; editing = null })
-                    TonalPill("Delete", onClick = { confirmDelete = ex; editing = null }, tint = c.coral)
+                    TonalPill(stringResource(R.string.lib_merge_into), onClick = { merging = ex; editing = null })
+                    TonalPill(stringResource(R.string.action_delete), onClick = { confirmDelete = ex; editing = null }, tint = c.coral)
                     Spacer(Modifier.weight(1f))
-                    PillButton("Save", onClick = {
+                    PillButton(stringResource(R.string.action_save), onClick = {
                         vm.save(ex.copy(name = name.trim().ifBlank { ex.name }, kind = kind, primary = listOf(muscle) + ex.primary.filter { it != muscle }.take(1)))
                         editing = null
                     })
@@ -188,7 +195,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
 
     merging?.let { from ->
         ExercisePickerSheet(
-            title = "Merge ${from.name} into…",
+            title = stringResource(R.string.lib_merge_title, from.name),
             library = library.filter { it.id != from.id },
             onPick = { into -> vm.merge(from, into); merging = null },
             onCreate = { _, _, _ -> merging = null },
@@ -200,10 +207,10 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             containerColor = c.card,
-            title = { Text("Delete ${ex.name}?", color = c.textPrimary) },
-            text = { Text("Only possible when no workout or plan uses it. Otherwise merge it into another exercise so your history stays intact.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { vm.delete(ex); confirmDelete = null }) { Text("Delete", color = c.coral) } },
-            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel", color = c.textSecondary) } },
+            title = { Text(stringResource(R.string.food_delete_title, ex.name), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.lib_delete_body), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { vm.delete(ex); confirmDelete = null }) { Text(stringResource(R.string.action_delete), color = c.coral) } },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 }
@@ -222,7 +229,7 @@ private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit) {
         if (ex.custom) {
             Spacer(Modifier.width(8.dp))
             Box(Modifier.clip(RoundedCornerShape(50)).background(c.purpleTrack).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                Text("Custom", style = MaterialTheme.typography.labelSmall, color = c.purple)
+                Text(stringResource(R.string.lib_custom), style = MaterialTheme.typography.labelSmall, color = c.purple)
             }
         }
     }
