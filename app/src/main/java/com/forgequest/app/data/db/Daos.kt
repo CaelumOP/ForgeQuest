@@ -204,6 +204,15 @@ interface FoodDao {
     @Query("SELECT * FROM meals ORDER BY loggedAt")
     suspend fun allMeals(): List<MealEntity>
 
+    @Query("SELECT COUNT(*) FROM meals")
+    fun observeMealCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM meals WHERE photoPath IS NOT NULL AND foodId IS NULL")
+    fun observeScannedCount(): Flow<Int>
+
+    @Query("SELECT * FROM foods")
+    suspend fun allFoods(): List<FoodEntity>
+
     @Insert
     suspend fun insertMeals(meals: List<MealEntity>)
 

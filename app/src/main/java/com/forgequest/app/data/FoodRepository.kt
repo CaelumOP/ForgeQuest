@@ -135,6 +135,21 @@ class FoodRepository(
         return sample
     }
 
+    /** Deletes one photo file, e.g. after a retake or a failed scan. */
+    suspend fun discardPhoto(path: String?) = withContext(Dispatchers.IO) { path?.let { File(it).takeIf { f -> f.parentFile?.name == "photos" }?.delete() } }
+
+    /**
+     * Removes photo files no food or meal refers to any more (retakes, failed scans, deleted meals).
+     * Files younger than an hour are left alone in case a scan is still in progress.
+     */
+    suspend fun deleteOrphanPhotos() = withContext(Dispatchers.IO) {
+        val dir = File(context.filesDir, "photos")
+        if (!dir.isDirectory) return@withContext
+        val referenced = (dao.allFoods().mapNotNull { it.photoPath } + dao.allMeals().mapNotNull { it.photoPath }).toSet()
+        val cutoff = System.currentTimeMillis() - 60 * 60 * 1000
+        dir.listFiles().orEmpty().filter { it.absolutePath !in referenced && it.lastModified() < cutoff }.forEach { it.delete() }
+    }
+
     // ------------------------------------------------------------ AI scan
 
     suspend fun scan(photoPath: String): FoodScan {

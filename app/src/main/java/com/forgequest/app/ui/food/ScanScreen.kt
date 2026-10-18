@@ -152,7 +152,16 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun retake() { state.value = ScanState.Camera }
+    fun retake() {
+        val photo = when (val s = state.value) {
+            is ScanState.Analyzing -> s.photo
+            is ScanState.Result -> s.photo
+            is ScanState.Failed -> s.photo
+            ScanState.Camera -> null
+        }
+        state.value = ScanState.Camera
+        viewModelScope.launch { app.food.discardPhoto(photo) }
+    }
 
     fun log(photo: String, name: String, category: FoodCategory, kcal: Int, protein: Float, saveToFoods: Boolean, pin: Boolean) {
         viewModelScope.launch {

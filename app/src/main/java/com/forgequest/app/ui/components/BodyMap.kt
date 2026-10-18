@@ -5,6 +5,8 @@ import android.graphics.Region
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -125,8 +127,10 @@ fun MuscleRecoveryMap(
     var selected by remember { mutableStateOf<Muscle?>(null) }
     val c = Fit.colors
 
+    val summary = if (recovery.isEmpty()) "Muscle recovery map. All muscles fresh."
+    else "Muscle recovery map. Recovering: " + recovery.entries.sortedByDescending { it.value.fatigue }.joinToString(", ") { "${it.key.label} ready in ${it.value.hoursUntilReady} hours" }
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = summary }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Front" to art?.front, "Back" to art?.back).forEach { (label, view) ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.fillMaxWidth().aspectRatio(0.5f)) {

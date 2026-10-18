@@ -1,6 +1,10 @@
 package com.forgequest.app.ui.workouts
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -176,19 +180,23 @@ fun WorkoutsScreen(nav: NavHostController) {
 private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int) -> Unit) {
     val c = Fit.colors
     val today = Dates.todayDayOfWeek()
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         (1..7).forEach { dow ->
             val isSel = dow == selected
             val rest = days.firstOrNull { it.day.dayOfWeek == dow }?.day?.isRest ?: true
             Column(
-                Modifier.clip(RoundedCornerShape(16.dp)).background(if (isSel) c.teal else c.card).clickable { onSelect(dow) }
-                    .padding(vertical = 10.dp).width(42.dp),
+                Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(if (isSel) c.teal else c.card)
+                    .selectable(selected = isSel, role = Role.Tab) { onSelect(dow) }
+                    .semantics { contentDescription = Dates.dayName(dow) + if (rest) ", rest" else ", training" }
+                    .padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     Dates.dayName(dow).take(3),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (isSel) c.onTeal else if (dow == today) c.teal else c.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(6.dp))
                 Box(

@@ -11,6 +11,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -462,7 +464,8 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
     val bg by animateColorAsState(if (selected) c.tealTrack else c.card, label = "bg")
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(bg)
-            .combinedClickable(onClick = onToggle, onLongClick = onEdit)
+            .combinedClickable(onClick = onToggle, onLongClick = onEdit, onClickLabel = if (selected) "deselect" else "select", onLongClickLabel = "edit")
+            .semantics { this.selected = selected }
             .padding(start = 12.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

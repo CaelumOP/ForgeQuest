@@ -170,7 +170,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                         ) {
                             Text(
                                 LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern("EEE, MMM d")),
-                                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.width(110.dp),
+                                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.weight(0.45f),
                             )
                             Text(
                                 sets.joinToString("  ") { set ->
@@ -180,7 +180,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                                         ExerciseKind.REPS -> "${set.reps}"
                                     }
                                 },
-                                style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(0.55f),
                             )
                             if (sets.any { it.isPr }) PrTag()
                         }

@@ -41,6 +41,7 @@ class ForgeQuestApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.appScope.launch { container.workouts.seedLibrary() }
+        container.appScope.launch { runCatching { container.food.deleteOrphanPhotos() } }
         DriveSyncWorker.schedule(this)
     }
 }

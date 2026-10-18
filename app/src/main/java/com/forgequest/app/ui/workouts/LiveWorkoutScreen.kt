@@ -10,6 +10,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -404,10 +408,12 @@ private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
     val color by animateColorAsState(if (checked) c.teal else c.cardHigh, label = "fill")
     val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
     Box(
-        Modifier.size(44.dp).clip(RoundedCornerShape(corner)).background(color).clickable(onClick = onToggle),
+        Modifier.size(44.dp).clip(RoundedCornerShape(corner)).background(color)
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
+            .semantics { contentDescription = "Set done" },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.Check, contentDescription = if (checked) "Done" else "Mark done", tint = c.onTeal, modifier = Modifier.size(24.dp).scale(checkScale))
+        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp).scale(checkScale))
     }
 }
 

@@ -4,6 +4,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -139,9 +143,9 @@ fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(50),
+        modifier = modifier.semantics { this.selected = selected },
         color = if (selected) accent else c.cardHigh,
         contentColor = if (selected) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary,
-        modifier = modifier,
     ) {
         Text(
             text,
@@ -171,7 +175,7 @@ fun SegmentedTabs(
             val isSel = i == selected
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (isSel) c.teal else Color.Transparent)
-                    .clickable { onSelect(i) }.padding(vertical = 9.dp),
+                    .selectable(selected = isSel, role = Role.Tab) { onSelect(i) }.padding(vertical = 9.dp, horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -181,6 +185,8 @@ fun SegmentedTabs(
                         color = if (isSel) c.onTeal else c.textPrimary,
                         maxLines = 1,
                         softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     if (i in dots) {
                         Spacer(Modifier.width(3.dp))
@@ -211,12 +217,12 @@ fun Stepper(
         modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onMinus), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Remove, contentDescription = "Less", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onMinus, role = Role.Button), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Remove, contentDescription = "Decrease, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
         Box(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
-                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick) else it }
+                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = "type a value") else it }
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -229,8 +235,8 @@ fun Stepper(
                 maxLines = 1,
             )
         }
-        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onPlus), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = "More", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onPlus, role = Role.Button), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Add, contentDescription = "Increase, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
     }
 }

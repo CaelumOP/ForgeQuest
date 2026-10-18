@@ -1,6 +1,10 @@
 package com.forgequest.app.ui.workouts
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -205,14 +209,17 @@ fun PlanEditorScreen(nav: NavHostController) {
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 (1..7).forEach { dow ->
                     val sel = dow == selectedDay
                     Box(
-                        Modifier.clip(RoundedCornerShape(14.dp)).background(if (sel) c.teal else c.card).clickable { selectedDay = dow }.padding(vertical = 10.dp).width(42.dp),
+                        Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (sel) c.teal else c.card)
+                            .selectable(selected = sel, role = Role.Tab) { selectedDay = dow }
+                            .semantics { contentDescription = Dates.dayName(dow) }
+                            .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(Dates.dayName(dow).take(3), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary)
+                        Text(Dates.dayName(dow).take(3), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
