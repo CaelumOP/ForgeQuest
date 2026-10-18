@@ -103,6 +103,12 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
     val weightPoints = s.weights.map { TrendPoint(it.epochDay, it.kg) }
     val weightAvg = Trends.movingAverage(weightPoints)
     val proteinWeeks = Trends.proteinDaysPerWeek(s.nutritionByDay.map { it.epochDay to it.protein }, s.settings.proteinGoal, 12, today)
+    // Average carbs per logged day, by week; only shown when carbs tracking is on.
+    val carbWeeks: List<Int> = (11 downTo 0).map { back ->
+        val ws = Dates.weekStart(today) - 7L * back
+        val days = s.nutritionByDay.filter { it.epochDay in ws..ws + 6 && it.carbs > 0f }
+        if (days.isEmpty()) 0 else (days.sumOf { it.carbs.toDouble() } / days.size).toInt()
+    }
     val lifetime = Trends.lifetime(s.sessions, s.doneSets)
     val workoutDaysInRange = workoutDays.count { it >= from }
 
@@ -256,6 +262,11 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
         val pts = d.inRange(d.weightAvg).ifEmpty { d.weightAvg.takeLast(2) }
         val diff = unit.fromKg(pts.last().value - pts.first().value)
         tiles += Tile(stringResource(R.string.progress_tile_weight), unit.number(pts.last().value), if (abs(diff) < 0.15f) stringResource(R.string.progress_holding) else "${if (diff > 0) "+" else "−"}${"%.1f".format(Locale.US, abs(diff))}", false, pts.takeLast(12).map { it.value }, c.chartWeight)
+    }
+    if (s.settings.trackCarbs && d.carbWeeks.any { it > 0 }) {
+        val now = d.carbWeeks.last(); val goal = s.settings.carbsGoal
+        val onGoal = goal > 0 && now > 0 && abs(now - goal) <= goal / 10
+        tiles += Tile(stringResource(R.string.progress_tile_carbs), stringResource(R.string.progress_carbs_avg, now, goal), if (onGoal) stringResource(R.string.progress_on_target) else null, onGoal, d.carbWeeks.map { it.toFloat() }, c.purple)
     }
     if (d.proteinWeeks.any { it > 0 }) {
         val now = d.proteinWeeks.last(); val before = d.proteinWeeks.getOrNull(d.proteinWeeks.lastIndex - 1) ?: 0

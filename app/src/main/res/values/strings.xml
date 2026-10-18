@@ -748,6 +748,8 @@
     <string name="progress_tile_weight">Body weight · 7-day avg</string>
     <string name="progress_tile_protein">Protein · days on goal</string>
     <string name="progress_tile_workouts">Workouts · per week</string>
+    <string name="progress_tile_carbs">Carbs · daily average</string>
+    <string name="progress_carbs_avg">%1$d / %2$d g</string>
     <string name="progress_of_seven">%1$d of 7</string>
     <string name="progress_holding">holding</string>
     <string name="progress_on_target">on target</string>
