@@ -258,7 +258,7 @@ class CoachRepository(
         if (replyLanguage == "Arabic") append(" Keep exercise names in English in parentheses the first time, and write numbers as Western digits (0-9).")
     }
 
-    private fun planSchemaInstructions(): String {
+    fun planSchemaInstructions(): String {
         val ids = ExerciseCatalog.all.joinToString(", ") { it.id }
         return """
             Plan JSON shape: {"name": string, "description": string, "days": [{"dayOfWeek": 1-7 (1 = Monday), "title": string, "isRest": boolean, "note": string,
@@ -275,7 +275,7 @@ class CoachRepository(
      * What the coach knows about the user: goals, this week, plan, recovery, recent sessions, 4-week trends,
      * records, nutrition, badges and remembered facts. Lists are capped so the whole thing stays around 1,000 tokens.
      */
-    private suspend fun progressSummary(): String {
+    suspend fun progressSummary(): String {
         val snap = progress.snapshot.first()
         val s = snap.settings
         val today = Dates.today()

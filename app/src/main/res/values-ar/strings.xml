@@ -1009,4 +1009,26 @@
     <string name="tour_6_b">اختياري: اربط Fitbit عبر Health Connect لتحصل على التعافي والنوم والإجهاد يوميًا، وتعرف متى تضغط ومتى تخفف.</string>
     <string name="tour_7_t">ارتقِ</string>
     <string name="tour_7_b">اجمع نقاط الخبرة، واصعد بالرتب، وافتح الأوسمة، وتابع تقدمك وتعافي عضلاتك مع الوقت.</string>
+    <string name="bridge_title">ربط تطبيق Gemini</string>
+    <string name="bridge_hint">متقدم: أتمتة Gemini تقرأ \"ForgeQuest data\" في Drive مرتين يوميًا وتكتب \"ForgeQuest from Gemini\".</string>
+    <string name="bridge_wrote">كُتبت البيانات %1$s</string>
+    <string name="bridge_never_wrote">لم تُكتب البيانات بعد</string>
+    <string name="bridge_read">قُرئ الرد %1$s</string>
+    <string name="bridge_never_read">لا يوجد رد بعد</string>
+    <string name="bridge_issues">تعذّرت قراءة: %1$s. راجع تنسيق الأمر.</string>
+    <string name="bridge_sync">زامن الآن</string>
+    <string name="bridge_copy_prompt">انسخ الأمر</string>
+    <string name="bridge_prompt_copied">تم نسخ الأمر. الصقه في إجراء مجدول في Gemini.</string>
+    <string name="bridge_copy_data">انسخ البيانات</string>
+    <string name="bridge_data_copied">تم نسخ البيانات. الصقها في Gemini مع الأمر.</string>
+    <string name="bridge_paste">الصق الرد</string>
+    <string name="bridge_paste_title">الصق رد Gemini</string>
+    <string name="bridge_paste_apply">طبّق</string>
+    <string name="bridge_syncing">جارٍ المزامنة مع Gemini…</string>
+    <string name="bridge_no_reply">تم تحديث البيانات. لا يوجد رد جديد من Gemini بعد.</string>
+    <string name="bridge_read_ok">تمت قراءة رد Gemini.</string>
+    <string name="bridge_read_issues">قُرئ رد Gemini، لكن تعذّرت قراءة: %1$s</string>
+    <string name="bridge_home_title">من Gemini</string>
+    <string name="bridge_week_title">**التحليل الأسبوعي من Gemini**</string>
+    <string name="bridge_plan_card">Gemini يقترح أسبوعًا جديدًا. استعرضه وطبّقه إذا كان مناسبًا.</string>
 </resources>

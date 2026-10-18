@@ -64,9 +64,11 @@ class DriveSync(
     /** Backup only touches the app's own hidden folder. Reading the person's documents is a separate, opt-in grant. */
     private val backupScope = Scope("https://www.googleapis.com/auth/drive.appdata")
     private val docsScope = Scope("https://www.googleapis.com/auth/drive.readonly")
+    /** Gemini bridge: create and update the app's own "ForgeQuest data" Doc. */
+    private val fileScope = Scope("https://www.googleapis.com/auth/drive.file")
 
-    suspend fun authorize(withDocs: Boolean = false): DriveAuth {
-        val scopes = if (withDocs) listOf(backupScope, docsScope) else listOf(backupScope)
+    suspend fun authorize(withDocs: Boolean = false, bridge: Boolean = false): DriveAuth {
+        val scopes = listOfNotNull(backupScope, docsScope.takeIf { withDocs || bridge }, fileScope.takeIf { bridge })
         val request = AuthorizationRequest.builder().setRequestedScopes(scopes).build()
         val result = try {
             Identity.getAuthorizationClient(context).authorize(request).await()
@@ -92,7 +94,7 @@ class DriveSync(
     }
 
     /** Silent token for background work; null when the user has to approve something first. */
-    suspend fun silentToken(withDocs: Boolean = false): String? = com.forgequest.app.data.suspendRunCatching { (authorize(withDocs) as? DriveAuth.Token)?.accessToken }.getOrNull()
+    suspend fun silentToken(withDocs: Boolean = false, bridge: Boolean = false): String? = com.forgequest.app.data.suspendRunCatching { (authorize(withDocs, bridge) as? DriveAuth.Token)?.accessToken }.getOrNull()
 
     suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
         val body = call(token, Request.Builder().url("$API/about?fields=user(emailAddress)").get())
@@ -153,6 +155,37 @@ class DriveSync(
     suspend fun applyDocPlan(doc: DocPlan) {
         workouts.applyPlan(doc.plan, "docs")
         settings.update { it.copy(lastDocImportModified = doc.modifiedAt) }
+    }
+
+    // ------------------------------------------------------------ Gemini bridge
+
+    /** Creates the named Google Doc from plain text, or replaces the text of [fileId]. Returns the doc's id. */
+    suspend fun upsertTextDoc(token: String, name: String, text: String, fileId: String?): String = withContext(Dispatchers.IO) {
+        if (fileId != null) {
+            try {
+                call(token, Request.Builder().url("$UPLOAD/files/$fileId?uploadType=media").patch(text.toRequestBody("text/plain; charset=UTF-8".toMediaType())))
+                return@withContext fileId
+            } catch (e: DriveError.Http) {
+                // Deleted or no longer ours: make a new one below.
+            }
+        }
+        val metadata = """{"name":"$name","mimeType":"application/vnd.google-apps.document"}"""
+        val multipart = MultipartBody.Builder().setType("multipart/related".toMediaType())
+            .addPart(metadata.toRequestBody("application/json; charset=UTF-8".toMediaType()))
+            .addPart(text.toRequestBody("text/plain; charset=UTF-8".toMediaType()))
+            .build()
+        val body = call(token, Request.Builder().url("$UPLOAD/files?uploadType=multipart&fields=id").post(multipart))
+        json.parseToJsonElement(body).jsonObject["id"]!!.jsonPrimitive.content
+    }
+
+    /** Text and modified time of the person's newest Doc named [name], or null if none is newer than [sinceMillis]. */
+    suspend fun newestDoc(token: String, name: String, sinceMillis: Long): Pair<String, Long>? = withContext(Dispatchers.IO) {
+        val q = "mimeType='application/vnd.google-apps.document' and name='$name' and trashed=false and 'me' in owners"
+        val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime)"
+        val doc = json.parseToJsonElement(call(token, Request.Builder().url(url).get())).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject ?: return@withContext null
+        val modified = doc["modifiedTime"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it).toEpochMilli() } ?: 0L
+        if (modified <= sinceMillis) return@withContext null
+        call(token, Request.Builder().url("$API/files/${doc["id"]!!.jsonPrimitive.content}/export?mimeType=text/plain").get()) to modified
     }
 
     private fun call(token: String, builder: Request.Builder): String {

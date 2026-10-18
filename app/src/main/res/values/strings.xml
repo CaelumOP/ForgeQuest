@@ -912,4 +912,26 @@
     <string name="tour_6_b">Optional: connect a Fitbit through Health Connect for daily recovery, sleep and strain, and know when to push or ease off.</string>
     <string name="tour_7_t">Level up</string>
     <string name="tour_7_b">Earn XP, climb ranks, unlock badges, and watch your progress and muscle recovery over time.</string>
+    <string name="bridge_title">Gemini app bridge</string>
+    <string name="bridge_hint">Advanced: your Gemini automation reads \"ForgeQuest data\" in Drive twice a day and writes \"ForgeQuest from Gemini\" back.</string>
+    <string name="bridge_wrote">Data written %1$s</string>
+    <string name="bridge_never_wrote">Data not written yet</string>
+    <string name="bridge_read">reply read %1$s</string>
+    <string name="bridge_never_read">no reply yet</string>
+    <string name="bridge_issues">Couldn\'t read: %1$s. Check the prompt\'s format.</string>
+    <string name="bridge_sync">Sync now</string>
+    <string name="bridge_copy_prompt">Copy prompt</string>
+    <string name="bridge_prompt_copied">Prompt copied. Paste it into a Gemini scheduled action.</string>
+    <string name="bridge_copy_data">Copy data</string>
+    <string name="bridge_data_copied">Data copied. Paste it into Gemini with the prompt.</string>
+    <string name="bridge_paste">Paste reply</string>
+    <string name="bridge_paste_title">Paste Gemini\'s reply</string>
+    <string name="bridge_paste_apply">Apply</string>
+    <string name="bridge_syncing">Syncing with Gemini…</string>
+    <string name="bridge_no_reply">Data updated. No new reply from Gemini yet.</string>
+    <string name="bridge_read_ok">Read Gemini\'s reply.</string>
+    <string name="bridge_read_issues">Read Gemini\'s reply, but couldn\'t read: %1$s</string>
+    <string name="bridge_home_title">From Gemini</string>
+    <string name="bridge_week_title">**Weekly analysis from Gemini**</string>
+    <string name="bridge_plan_card">Gemini suggests a new week. Preview it, and apply it if it looks right.</string>
 </resources>
