@@ -1,5 +1,9 @@
 package com.forgequest.app.ui.onboarding
 
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -112,13 +116,15 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
             val result = app.gemini.discoverModels(key)
             state.update { s ->
                 result.fold(
-                    onSuccess = { s.copy(checkingKey = false, keyOk = true, keyMessage = "Key works. AI features are ready.") },
-                    onFailure = { e -> s.copy(checkingKey = false, keyOk = false, keyMessage = (e as? AiError)?.userMessage ?: "Couldn't check the key.") },
+                    onSuccess = { s.copy(checkingKey = false, keyOk = true, keyMessage = app.str(R.string.onb_key_works)) },
+                    onFailure = { e -> s.copy(checkingKey = false, keyOk = false, keyMessage = (e as? AiError)?.userMessage ?: app.str(R.string.onb_key_check_failed)) },
                 )
             }
             result.getOrNull()?.let { models -> app.models.save(models) }
         }
     }
+
+    private val emptyPlan by lazy { PlanDraft(app.str(R.string.onb_my_plan), app.str(R.string.onb_my_plan_desc), (1..7).map { PlanDraftDay(it, app.str(R.string.today_rest_day), isRest = true) }) }
 
     fun finish() {
         val s = state.value
@@ -137,9 +143,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     companion object {
         const val LAST_STEP = 3
         fun suggestedProtein(kg: Float) = ((kg * 1.8f) / 5f).roundToInt() * 5
-        fun suggestedKcal(kg: Float) = ((kg * 33f) / 50f).roundToInt() * 50
-        val emptyPlan = PlanDraft("My plan", "Build it day by day.", (1..7).map { PlanDraftDay(it, "Rest day", isRest = true) })
-    }
+        fun suggestedKcal(kg: Float) = ((kg * 33f) / 50f).roundToInt() * 50    }
 }
 
 @Composable
@@ -174,11 +178,11 @@ fun OnboardingScreen() {
             }
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (s.step > 0) TextButton(onClick = vm::back) { Text("Back", color = c.textSecondary) }
+            if (s.step > 0) TextButton(onClick = vm::back) { Text(stringResource(R.string.action_back), color = c.textSecondary) }
             Spacer(Modifier.weight(1f))
             when {
-                s.step < OnboardingViewModel.LAST_STEP -> PillButton("Continue", onClick = vm::next, enabled = s.step != 0 || s.name.isNotBlank())
-                else -> PillButton(if (s.keyOk) "Let's go" else "Skip for now", onClick = vm::finish)
+                s.step < OnboardingViewModel.LAST_STEP -> PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = s.step != 0 || s.name.isNotBlank())
+                else -> PillButton(if (s.keyOk) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_skip), onClick = vm::finish)
             }
         }
     }
@@ -207,11 +211,11 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 @Composable
 private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
     val c = Fit.colors
-    Title("Welcome to ForgeQuest", "Train, eat well and watch yourself level up. First, what should we call you?")
+    Title(stringResource(R.string.onb_welcome_title), stringResource(R.string.onb_welcome_body))
     OutlinedTextField(
         value = s.name,
         onValueChange = { v -> vm.update { it.copy(name = v.take(24)) } },
-        label = { Text("Your name") },
+        label = { Text(stringResource(R.string.onb_your_name)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
         shape = RoundedCornerShape(16.dp),
@@ -219,29 +223,29 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(28.dp))
-    Text("Body for the muscle map", style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+    Text(stringResource(R.string.onb_body_for_map), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
     Spacer(Modifier.height(10.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ChoiceChip("Male", s.bodyType == BodyType.MALE, { vm.update { it.copy(bodyType = BodyType.MALE) } })
-        ChoiceChip("Female", s.bodyType == BodyType.FEMALE, { vm.update { it.copy(bodyType = BodyType.FEMALE) } })
+        ChoiceChip(stringResource(R.string.body_male), s.bodyType == BodyType.MALE, { vm.update { it.copy(bodyType = BodyType.MALE) } })
+        ChoiceChip(stringResource(R.string.body_female), s.bodyType == BodyType.FEMALE, { vm.update { it.copy(bodyType = BodyType.FEMALE) } })
     }
 }
 
 @Composable
 private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
-    Title("Your body & goals", "We suggest goals from your weight. Adjust them any time in Profile.")
+    Title(stringResource(R.string.onb_goals_title), stringResource(R.string.onb_goals_body))
     Row(Modifier.padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ChoiceChip("Kilograms", s.unit == WeightUnit.KG, { vm.update { it.copy(unit = WeightUnit.KG) } })
-        ChoiceChip("Pounds", s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })
+        ChoiceChip(stringResource(R.string.unit_kilograms), s.unit == WeightUnit.KG, { vm.update { it.copy(unit = WeightUnit.KG) } })
+        ChoiceChip(stringResource(R.string.unit_pounds), s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })
     }
-    GoalRow("Body weight", s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = if (s.unit == WeightUnit.KG) 0.5f else 1f, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
-    GoalRow("Daily protein", s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = "g")
-    GoalRow("Daily calories", s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
+    GoalRow(stringResource(R.string.weight_body), s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = if (s.unit == WeightUnit.KG) 0.5f else 1f, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
+    GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = "g")
+    GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
     Spacer(Modifier.height(4.dp))
-    Text("Tap a number to type it.", style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
+    Text(stringResource(R.string.onb_tap_number), style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
     Spacer(Modifier.height(8.dp))
     Text(
-        "Protein suggestion: about 1.8 g per kg of body weight, a common target for building muscle.",
+        stringResource(R.string.onb_protein_hint),
         style = MaterialTheme.typography.bodySmall,
         color = Fit.colors.textSecondary,
     )
@@ -262,8 +266,8 @@ private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step
 @Composable
 private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     val c = Fit.colors
-    Title("Pick a starting plan", "You can edit it, ask the coach to change it, or import your own later.")
-    val options = StarterPlans.all.map { it.name to it.description } + ("Start empty" to "No plan yet. Add your own exercises day by day.")
+    Title(stringResource(R.string.onb_plan_title), stringResource(R.string.onb_plan_body))
+    val options = StarterPlans.all.map { it.name to it.description } + (stringResource(R.string.onb_start_empty) to stringResource(R.string.onb_start_empty_desc))
     options.forEachIndexed { index, (name, desc) ->
         val selected = s.planIndex == index
         Row(
@@ -296,17 +300,17 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconCircle(Icons.Rounded.AutoAwesome, c.blue, c.blueTrack)
         Spacer(Modifier.width(12.dp))
-        Text("Optional", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+        Text(stringResource(R.string.onb_optional), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
     }
     Spacer(Modifier.height(16.dp))
     Title(
-        "Turn on AI features",
-        "The meal scanner and coach run on Google Gemini. A personal key is free and takes about a minute.",
+        stringResource(R.string.onb_ai_title),
+        stringResource(R.string.onb_ai_body),
     )
     listOf(
-        "Open Google AI Studio and sign in with your Google account.",
-        "Tap \"Create API key\", then copy it.",
-        "Paste it below.",
+        stringResource(R.string.onb_ai_step1),
+        stringResource(R.string.onb_ai_step2),
+        stringResource(R.string.onb_ai_step3),
     ).forEachIndexed { i, step ->
         Row(Modifier.padding(bottom = 10.dp), verticalAlignment = Alignment.Top) {
             Box(Modifier.size(24.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {
@@ -318,7 +322,7 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
     }
     Spacer(Modifier.height(8.dp))
     PillButton(
-        "Get a free key",
+        stringResource(R.string.onb_get_key),
         onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) },
         icon = Icons.Rounded.OpenInNew,
         container = c.blueTrack,
@@ -328,7 +332,7 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
     OutlinedTextField(
         value = s.apiKey,
         onValueChange = { v -> vm.update { it.copy(apiKey = v.trim(), keyOk = false, keyMessage = null) } },
-        label = { Text("Gemini API key") },
+        label = { Text(stringResource(R.string.onb_key_label)) },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         shape = RoundedCornerShape(16.dp),
@@ -338,7 +342,7 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
     Spacer(Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         PillButton(
-            if (s.checkingKey) "Checking…" else "Check key",
+            if (s.checkingKey) stringResource(R.string.onb_checking) else stringResource(R.string.onb_check_key),
             onClick = vm::checkKey,
             enabled = s.apiKey.isNotBlank() && !s.checkingKey,
         )
@@ -349,7 +353,7 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
     }
     Spacer(Modifier.height(12.dp))
     Text(
-        "Your key stays encrypted on this phone. Meal photos and your training data are sent to Google Gemini under it; free keys let Google use them to improve its models.",
+        stringResource(R.string.onb_privacy),
         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
     )
 }
