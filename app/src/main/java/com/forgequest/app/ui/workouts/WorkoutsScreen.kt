@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.pluralStringResource
@@ -258,7 +259,7 @@ private fun DayCard(
         blocks.forEach { (block, items) ->
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(block, style = MaterialTheme.typography.labelLarge, color = c.teal)
+                Text(blockLabel(block), style = MaterialTheme.typography.labelLarge, color = c.teal)
                 if (items.first().circuit) {
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.Rounded.Repeat, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))

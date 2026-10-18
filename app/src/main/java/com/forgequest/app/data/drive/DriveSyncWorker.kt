@@ -1,5 +1,7 @@
 package com.forgequest.app.data.drive
 
+import com.forgequest.app.R
+
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -31,7 +33,7 @@ class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
                     app.db.chat().insert(
                         ChatEntity(
                             role = "coach",
-                            text = "Your Google Doc **${doc.docName}** changed. Here's the new week it describes. Preview it, and apply it when you're ready.",
+                            text = app.str(R.string.drive_doc_changed, doc.docName),
                             planJson = PlanJson.encode(doc.plan),
                             createdAt = System.currentTimeMillis(),
                         )

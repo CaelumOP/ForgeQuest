@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.pluralStringResource
@@ -267,7 +268,7 @@ fun PlanEditorScreen(nav: NavHostController) {
                                 Column(Modifier.weight(1f)) {
                                     Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                                     Text(
-                                        listOfNotNull(item.block.ifBlank { null }, if (item.circuit) pluralStringResource(R.plurals.plan_circuit_rounds, item.sets, item.sets) else null, item.prescription(ex?.kind, s.settings.weightUnit), stringResource(R.string.plan_rest_seconds, item.restSeconds)).joinToString(" · "),
+                                        listOfNotNull(item.block.ifBlank { null }?.let { blockLabel(it) }, if (item.circuit) pluralStringResource(R.plurals.plan_circuit_rounds, item.sets, item.sets) else null, item.prescription(ex?.kind, s.settings.weightUnit), stringResource(R.string.plan_rest_seconds, item.restSeconds)).joinToString(" · "),
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                     )
                                 }
@@ -471,7 +472,7 @@ private fun ItemEditorSheet(
             Spacer(Modifier.height(16.dp))
             EditorRow(if (draft.circuit) stringResource(R.string.plan_rounds) else stringResource(R.string.live_sets), draft.sets.toFloat(), { draft = draft.copy(sets = it.toInt()) }, step = 1f, min = 1f, max = 10f)
             if (kind == ExerciseKind.HOLD) {
-                EditorRow(stringResource(R.string.kind_hold), (draft.seconds ?: 30).toFloat(), { draft = draft.copy(seconds = it.toInt()) }, step = 5f, min = 5f, max = 3600f, unit = "s")
+                EditorRow(stringResource(R.string.kind_hold), (draft.seconds ?: 30).toFloat(), { draft = draft.copy(seconds = it.toInt()) }, step = 5f, min = 5f, max = 3600f, unit = stringResource(R.string.unit_s))
             } else {
                 val minReps = draft.repsMin ?: 10
                 val maxReps = draft.repsMax ?: minReps
@@ -481,7 +482,7 @@ private fun ItemEditorSheet(
             if (kind == ExerciseKind.WEIGHTED) {
                 EditorRow(stringResource(R.string.stepper_weight), unit.fromKg(draft.weightKg ?: 0f), { draft = draft.copy(weightKg = unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f), unit = unit.label, decimals = 1)
             }
-            EditorRow(stringResource(R.string.live_rest), draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = "s")
+            EditorRow(stringResource(R.string.live_rest), draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = stringResource(R.string.unit_s))
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.plan_part_circuit), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)

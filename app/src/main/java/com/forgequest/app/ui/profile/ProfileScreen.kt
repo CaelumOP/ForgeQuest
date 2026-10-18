@@ -465,8 +465,8 @@ fun ProfileScreen(nav: NavHostController) {
                 Text(stringResource(R.string.profile_goals), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             }
             Spacer(Modifier.height(12.dp))
-            SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = "g")
-            SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
+            SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
+            SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
             val planDays = s.plan?.trainingDays?.size ?: 0
             val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -805,8 +805,8 @@ fun ProfileScreen(nav: NavHostController) {
                 Column {
                     Text(stringResource(R.string.hand_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
-                    SettingStepper(stringResource(R.string.hand_length), length, { length = it }, step = 0.5f, min = 10f, max = 28f, unit = "cm", decimals = 1)
-                    SettingStepper(stringResource(R.string.hand_palm), palm, { palm = it }, step = 0.5f, min = 5f, max = 14f, unit = "cm", decimals = 1)
+                    SettingStepper(stringResource(R.string.hand_length), length, { length = it }, step = 0.5f, min = 10f, max = 28f, unit = stringResource(R.string.unit_cm), decimals = 1)
+                    SettingStepper(stringResource(R.string.hand_palm), palm, { palm = it }, step = 0.5f, min = 5f, max = 14f, unit = stringResource(R.string.unit_cm), decimals = 1)
                 }
             },
             confirmButton = { TextButton(onClick = { vm.setHand(length, palm); handDialog = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },

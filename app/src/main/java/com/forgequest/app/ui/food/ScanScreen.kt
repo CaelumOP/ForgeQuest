@@ -458,7 +458,7 @@ private fun ResultSheet(
     editingGrams?.let { index ->
         val item = items[index]
         NumberEntryDialog(
-            title = stringResource(R.string.scan_grams_title, item.name), initial = item.grams.toFloat().coerceAtLeast(1f), unit = "g", decimals = 0, min = 1f, max = 3000f,
+            title = stringResource(R.string.scan_grams_title, item.name), initial = item.grams.toFloat().coerceAtLeast(1f), unit = stringResource(R.string.unit_g), decimals = 0, min = 1f, max = 3000f,
             onDismiss = { editingGrams = null },
             onConfirm = { grams ->
                 // Scale calories and protein with the weight so a corrected portion stays consistent.

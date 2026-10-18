@@ -239,8 +239,8 @@ private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
         ChoiceChip(stringResource(R.string.unit_pounds), s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })
     }
     GoalRow(stringResource(R.string.weight_body), s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = if (s.unit == WeightUnit.KG) 0.5f else 1f, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
-    GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = "g")
-    GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
+    GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
+    GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
     Spacer(Modifier.height(4.dp))
     Text(stringResource(R.string.onb_tap_number), style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
     Spacer(Modifier.height(8.dp))

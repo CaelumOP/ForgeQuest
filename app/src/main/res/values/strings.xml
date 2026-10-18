@@ -687,4 +687,28 @@
     <string name="plan_move_down">Move down</string>
     <string name="plan_replaces">This replaces your current plan. Your workout history stays.</string>
     <string name="plan_use_this">Use this plan</string>
+    <string name="notif_rest_channel">Rest timer</string>
+    <string name="notif_rest_channel_desc">Countdown between sets while a workout is open</string>
+    <string name="notif_reminder_channel">Workout reminders</string>
+    <string name="notif_reminder_channel_desc">A nudge on planned training days</string>
+    <string name="notif_next">Next: %1$s</string>
+    <string name="notif_next_set">Next set when the timer ends</string>
+    <string name="notif_rest_over">Rest over</string>
+    <string name="notif_back_to">Back to %1$s</string>
+    <string name="notif_back_to_it">Back to it</string>
+    <string name="notif_reminder_title">Today: %1$s</string>
+    <plurals name="notif_reminder_body">
+        <item quantity="one">%1$d exercise on the plan. Tap to start.</item>
+        <item quantity="other">%1$d exercises on the plan. Tap to start.</item>
+    </plurals>
+    <string name="drive_doc_changed">Your Google Doc **%1$s** changed. Here\'s the new week it describes. Preview it, and apply it when you\'re ready.</string>
+    <string name="quick_workout_title">Quick workout</string>
+    <string name="rx_reps_n">%1$d reps</string>
+    <string name="unit_g">g</string>
+    <string name="unit_kcal">kcal</string>
+    <string name="unit_cm">cm</string>
+    <string name="block_warm_up">Warm-up</string>
+    <string name="block_core">Core</string>
+    <string name="block_main">Main</string>
+    <string name="block_legs">Legs</string>
 </resources>

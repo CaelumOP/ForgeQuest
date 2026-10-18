@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.pluralStringResource
@@ -313,7 +314,7 @@ private fun CircuitCard(
     val c = Fit.colors
     FitCard(padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(g.block, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Text(blockLabel(g.block), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Rounded.Repeat, contentDescription = null, tint = c.teal, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
@@ -408,7 +409,7 @@ private fun SetRow(
             when (kind) {
                 ExerciseKind.HOLD -> NumberStepper(
                     (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
-                    unit = "s", title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp,
+                    unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp,
                 )
                 ExerciseKind.REPS -> NumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,

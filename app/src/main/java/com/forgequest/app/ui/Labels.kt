@@ -126,3 +126,13 @@ fun com.forgequest.app.data.backup.BackupFile.localSummary(): String {
     val date = made.format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM))
     return stringResource(R.string.backup_summary, parts.joinToString(stringResource(R.string.list_separator)), date)
 }
+
+/** Block names from the starter plans ("Warm-up", "Core", "Main", "Legs") in the app language; others as typed. */
+@Composable
+fun blockLabel(block: String): String = when (block) {
+    "Warm-up" -> stringResource(R.string.block_warm_up)
+    "Core" -> stringResource(R.string.block_core)
+    "Main" -> stringResource(R.string.block_main)
+    "Legs" -> stringResource(R.string.block_legs)
+    else -> block
+}
