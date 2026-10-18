@@ -903,7 +903,7 @@
     <string name="food_g_carbs">%1$d غ كارب</string>
     <string name="profile_track_carbs">تتبّع الكارب</string>
     <string name="profile_daily_carbs">الكارب اليومي</string>
-    <string name="profile_carbs_suggested">المقترح %1$d غ: السعرات الباقية بعد البروتين وحصة دهون 25%%</string>
+    <string name="profile_carbs_suggested">المقترح %1$d غ: السعرات الباقية بعد البروتين وحصة دهون %2$d%%</string>
     <string name="profile_use">استخدم</string>
     <string name="settings_section_body">جسمك</string>
     <string name="settings_section_goals">الأهداف</string>
@@ -914,6 +914,9 @@
     <string name="profile_about_you">عنك</string>
     <string name="profile_about_you_hint">يحدد اقتراح السعرات وشكل الجسم في خريطة العضلات</string>
     <string name="profile_daily_targets">الأهداف اليومية</string>
-    <string name="goals_protein_suggested">المقترح %1$d غ: 1.8 غ لكل كغ من وزنك</string>
+    <string name="goals_protein_suggested">المقترح %1$d غ بمعدل %2$s غ لكل كغ من وزنك</string>
     <string name="profile_backup_file">ملف النسخة الاحتياطية</string>
+    <string name="profile_protein_per_kg">البروتين لكل كغ</string>
+    <string name="unit_g_per_kg">غ/كغ</string>
+    <string name="profile_fat_share">حصة الدهون من السعرات</string>
 </resources>

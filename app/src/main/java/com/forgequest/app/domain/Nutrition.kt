@@ -4,8 +4,12 @@ import kotlin.math.roundToInt
 
 /** Daily calorie and protein suggestions. Protein follows body weight; calories need height, age and sex too. */
 object Nutrition {
-    /** About 1.8 g per kg, a common muscle-building target, rounded to 5 g. */
-    fun suggestedProtein(kg: Float): Int = ((kg * 1.8f) / 5f).roundToInt() * 5
+    /** [perKg] grams per kg (1.8 by default, a common muscle-building target), rounded to 5 g. */
+    fun suggestedProtein(kg: Float, perKg: Float = 1.8f): Int = ((kg * perKg) / 5f).roundToInt() * 5
+
+    /** Calories left after protein (4 kcal/g) and a [fatPct] share for fat, as grams of carbs (4 kcal/g), rounded to 5 g. */
+    fun suggestedCarbs(kcal: Int, proteinG: Int, fatPct: Int = 25): Int =
+        (((kcal * (1f - fatPct / 100f)) - proteinG * 4f) / 4f / 5f).roundToInt().coerceAtLeast(4) * 5
 
     /**
      * Mifflin-St Jeor resting energy times an activity factor from planned training days, rounded to 50 kcal.

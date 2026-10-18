@@ -148,6 +148,10 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { it.copy(heightCm = heightCm ?: it.heightCm, birthYear = birthYear ?: it.birthYear) }
     }
 
+    fun setRatios(perKg: Float? = null, fatPct: Int? = null) = viewModelScope.launch {
+        app.settings.update { it.copy(proteinPerKg = perKg ?: it.proteinPerKg, fatSharePct = fatPct ?: it.fatSharePct) }
+    }
+
     fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
     }
@@ -571,9 +575,10 @@ fun ProfileScreen(nav: NavHostController) {
                 }
             }
             SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
-            s.latestWeight?.let { kg -> Nutrition.suggestedProtein(kg) }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
+            SettingStepper(stringResource(R.string.profile_protein_per_kg), settings.proteinPerKg, { vm.setRatios(perKg = it) }, step = 0.1f, min = 1.2f, max = 2.5f, unit = stringResource(R.string.unit_g_per_kg), decimals = 1)
+            s.latestWeight?.let { kg -> Nutrition.suggestedProtein(kg, settings.proteinPerKg) }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.goals_protein_suggested, suggestedProtein), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.goals_protein_suggested, suggestedProtein, "%.1f".format(settings.proteinPerKg)), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))
                     TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(protein = suggestedProtein) })
                 }
@@ -585,11 +590,12 @@ fun ProfileScreen(nav: NavHostController) {
             }
             if (settings.trackCarbs) {
                 SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
-                // Calories left after protein (4 kcal/g) and a 25 % fat share, as grams of carbs (4 kcal/g).
-                val suggested = (((settings.kcalGoal * 0.75f) - settings.proteinGoal * 4f) / 4f / 5f).roundToInt().coerceAtLeast(4) * 5
+                // The person picks the fat share, so low-carb and high-carb styles are one stepper away.
+                SettingStepper(stringResource(R.string.profile_fat_share), settings.fatSharePct.toFloat(), { vm.setRatios(fatPct = it.toInt()) }, step = 5f, min = 15f, max = 40f, unit = "%")
+                val suggested = Nutrition.suggestedCarbs(settings.kcalGoal, settings.proteinGoal, settings.fatSharePct)
                 if (suggested != settings.carbsGoal) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.profile_carbs_suggested, suggested), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.profile_carbs_suggested, suggested, settings.fatSharePct), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
                         TonalPill(stringResource(R.string.goals_use), onClick = { vm.setCarbs(goal = suggested) })
                     }

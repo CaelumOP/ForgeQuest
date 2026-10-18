@@ -806,7 +806,7 @@
     <string name="food_g_carbs">%1$d g carbs</string>
     <string name="profile_track_carbs">Track carbs</string>
     <string name="profile_daily_carbs">Daily carbs</string>
-    <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a 25%% fat share</string>
+    <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a %2$d%% fat share</string>
     <string name="profile_use">Use</string>
     <string name="settings_section_body">Your body</string>
     <string name="settings_section_goals">Goals</string>
@@ -817,6 +817,9 @@
     <string name="profile_about_you">About you</string>
     <string name="profile_about_you_hint">Sets your calorie suggestion and the body on the muscle map</string>
     <string name="profile_daily_targets">Daily targets</string>
-    <string name="goals_protein_suggested">Suggested %1$d g: 1.8 g per kg of body weight</string>
+    <string name="goals_protein_suggested">Suggested %1$d g at %2$s g per kg of body weight</string>
     <string name="profile_backup_file">Backup file</string>
+    <string name="profile_protein_per_kg">Protein per kg</string>
+    <string name="unit_g_per_kg">g/kg</string>
+    <string name="profile_fat_share">Fat share of calories</string>
 </resources>
