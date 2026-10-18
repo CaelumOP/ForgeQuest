@@ -43,7 +43,8 @@ enum class StrainBand { LIGHT, MODERATE, HIGH, ALL_OUT }
  * - HRV as ln RMSSD with a 7-day rolling average against the person's own baseline, ignoring changes smaller than
  *   the "smallest worthwhile change" (AIS HRV guidelines; Plews & Buchheit).
  * - Sleep performance = hours slept ÷ hours needed, need = base + strain + sleep debt − naps (Whoop).
- * - Strain = Edwards TRIMP on heart-rate-reserve zones, on a 0–21 curve that gets harder to climb (Whoop's scale).
+ * - Strain = Banister TRIMP (every minute above resting, weighted exponentially by heart-rate reserve), on a 0–21
+ *   curve that gets harder to climb (Whoop's scale). Walking counts a little, hard work a lot.
  */
 object Readiness {
     private const val JOIN_GAP_SECONDS = 3 * 3600L
@@ -163,11 +164,26 @@ object Readiness {
         return zones
     }
 
-    /** 0–21: Edwards TRIMP (zone minutes × 1–5) on a curve that gets harder to climb. An hour of hard work lands around 14–15. */
-    fun strain(zoneMinutes: DoubleArray): Double {
-        val load = zoneMinutes.withIndex().sumOf { (i, m) -> m * (i + 1) }
-        return 21 * (1 - exp(-load / 200))
+    /**
+     * Banister TRIMP: minutes × heart-rate reserve × 0.64·e^(1.92·reserve) (0.86·e^(1.67·reserve) for women). A quiet
+     * day with some walking lands near 90, an hour of hard training adds about 140.
+     */
+    fun trimp(samples: List<Pair<Instant, Long>>, hrMax: Int, hrRest: Double, female: Boolean = false): Double {
+        val reserve = (hrMax - hrRest).coerceAtLeast(40.0)
+        val (a, b) = if (female) 0.86 to 1.67 else 0.64 to 1.92
+        val sorted = samples.sortedBy { it.first }
+        var load = 0.0
+        for (i in sorted.indices) {
+            val next = sorted.getOrNull(i + 1)?.first ?: break
+            val minutes = minOf(30L, next.epochSecond - sorted[i].first.epochSecond).coerceAtLeast(0) / 60.0
+            val r = ((sorted[i].second - hrRest) / reserve).coerceIn(0.0, 1.0)
+            load += minutes * r * a * exp(b * r)
+        }
+        return load
     }
+
+    /** 0–21 on a curve that gets harder to climb: a normal day about 8–10, a hard training day 15–17. */
+    fun strainFromLoad(load: Double): Double = 21 * (1 - exp(-load / 150))
 
     fun band(strain: Double): StrainBand = when {
         strain >= 18 -> StrainBand.ALL_OUT
@@ -176,11 +192,13 @@ object Readiness {
         else -> StrainBand.LIGHT
     }
 
-    /** Today's strain target from recovery, like Whoop's strain coach. */
-    fun strainTarget(recovery: Int): ClosedFloatingPointRange<Double> = when (recoveryZone(recovery)) {
-        2 -> 14.0..18.0
-        1 -> 10.0..14.0
-        else -> 4.0..10.0
+    /** Today's strain target, matching the call so "go lighter" never comes with a hard target. */
+    fun strainTarget(recovery: Int): ClosedFloatingPointRange<Double> = when (call(recovery)) {
+        DayCall.PEAK -> 15.0..18.0
+        DayCall.READY -> 13.0..16.0
+        DayCall.STEADY -> 10.0..13.0
+        DayCall.EASE_OFF -> 7.0..10.0
+        DayCall.RECOVER -> 4.0..7.0
     }
 
     fun median(values: List<Double>): Double? = values.sorted().let { if (it.isEmpty()) null else if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2 }

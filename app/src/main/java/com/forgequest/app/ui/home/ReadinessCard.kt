@@ -166,7 +166,13 @@ private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit) {
         Spacer(Modifier.height(14.dp))
         Text(stringResource(title), style = MaterialTheme.typography.headlineSmall, color = recColor)
         Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
+        // The numbers behind the call, in the person's own terms.
+        val why = buildList {
+            d.hrv?.let { h -> add(d.hrvUsual?.let { stringResource(R.string.ready_hrv, h.toInt(), it.toInt()) } ?: stringResource(R.string.ready_hrv_only, h.toInt())) }
+            d.rhr?.let { r -> add(d.rhrUsual?.let { stringResource(R.string.ready_rhr, r.toInt(), it.toInt()) } ?: stringResource(R.string.ready_rhr_only, r.toInt())) }
+        }
+        if (why.isNotEmpty()) Text(why.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         Text(
             stringResource(R.string.ready_target, target.start.toInt(), target.endInclusive.toInt()) + " · " + stringResource(R.string.ready_need_tonight, hm(d.sleepNeedTonight)),
             style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
@@ -175,7 +181,9 @@ private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text(stringResource(R.string.ready_learning, d.baselineNights, Readiness.MIN_BASELINE_DAYS), style = MaterialTheme.typography.bodySmall, color = c.gold)
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
+        Text(stringResource(R.string.ready_tap_hint), style = MaterialTheme.typography.labelSmall, color = c.textSecondary.copy(alpha = 0.7f))
+        Spacer(Modifier.height(2.dp))
         // Only the good mornings get a tap: people often miss feeling groggy but always notice feeling great.
         TextButton(onClick = { onFeltGreat(!d.feltGreat) }) {
             Icon(Icons.Rounded.Bolt, contentDescription = null, tint = if (d.feltGreat) c.gold else c.textSecondary, modifier = Modifier.size(18.dp))

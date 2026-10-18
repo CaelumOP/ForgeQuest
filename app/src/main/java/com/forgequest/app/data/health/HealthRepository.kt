@@ -172,12 +172,14 @@ class HealthRepository(private val context: Context, private val settings: Setti
             val d = today.minusDays(back)
             val start = d.atStartOfDay(zone).toInstant()
             val end = if (back == 0L) now else d.plusDays(1).atStartOfDay(zone).toInstant()
-            val zones = suspendRunCatching {
-                Readiness.zoneMinutes(read(client, HeartRateRecord::class, start, end).flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }, hrMax, rest30)
-            }.getOrDefault(DoubleArray(5))
-            d to zones
+            val female = s.bodyType == com.forgequest.app.data.prefs.BodyType.FEMALE
+            val result = suspendRunCatching {
+                val samples = read(client, HeartRateRecord::class, start, end).flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }
+                Readiness.zoneMinutes(samples, hrMax, rest30) to Readiness.trimp(samples, hrMax, rest30, female)
+            }.getOrDefault(DoubleArray(5) to 0.0)
+            d to result
         }
-        fun strainOf(d: LocalDate) = strainByDay[d]?.let(Readiness::strain) ?: 0.0
+        fun strainOf(d: LocalDate) = Readiness.strainFromLoad(strainByDay[d]?.second ?: 0.0)
 
         fun asleepBefore(d: LocalDate) = (3L downTo 1L).map { nightOf(d.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }
         fun needFor(d: LocalDate) = Readiness.sleepNeed(strainOf(d.minusDays(1)), asleepBefore(d), sleepDays[d.minusDays(1)]?.napMin ?: 0)
@@ -214,10 +216,9 @@ class HealthRepository(private val context: Context, private val settings: Setti
 
         val night = nightOf(day)
         // The day runs from waking to the next sleep, so strain after midnight still adds to it.
-        val zonesSinceWake = (0L..java.time.temporal.ChronoUnit.DAYS.between(day, today)).fold(DoubleArray(5)) { acc, back ->
-            val z = strainByDay[day.plusDays(back)] ?: DoubleArray(5); DoubleArray(5) { acc[it] + z[it] }
-        }
-        val strain = Readiness.strain(zonesSinceWake)
+        val sinceWake = (0L..java.time.temporal.ChronoUnit.DAYS.between(day, today)).mapNotNull { strainByDay[day.plusDays(it)] }
+        val zonesSinceWake = DoubleArray(5) { i -> sinceWake.sumOf { it.first[i] } }
+        val strain = Readiness.strainFromLoad(sinceWake.sumOf { it.second })
         val perf = perfFor(day)
         val dao = db.readiness()
         val felt = dao.get(day.toEpochDay())?.feltGreat ?: false

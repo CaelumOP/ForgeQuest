@@ -976,7 +976,7 @@
     <string name="ready_c_kcal">السعرات المحروقة</string>
     <string name="ready_zones">مناطق النبض اليوم</string>
     <string name="ready_minutes">%1$d د</string>
-    <string name="ready_strain_explain">الوقت في مناطق النبض، والمناطق الأصعب تحسب أكثر، على مقياس 0–21 يصعب الصعود فيه. خفيف أقل من 10، متوسط 10–13، عالي 14–17، أقصى جهد 18+.</string>
+    <string name="ready_strain_explain">كل دقيقة يشتغل فيها قلبك فوق نبض الراحة تُحسب، والدقائق الأصعب أكثر بكثير، على مقياس 0–21 يصعب الصعود فيه. خفيف أقل من 10، متوسط 10–13، عالي 14–17، أقصى جهد 18+.</string>
     <string name="band_light">خفيف</string>
     <string name="band_moderate">متوسط</string>
     <string name="band_high">عالي</string>
@@ -984,4 +984,5 @@
     <string name="ready_not_now">ليس الآن</string>
     <string name="profile_health_title">جاهزية Fitbit</string>
     <string name="profile_health_hint">التعافي والنوم والإجهاد في الرئيسية من Health Connect. اختياري.</string>
+    <string name="ready_tap_hint">اضغط على أي دائرة للتفاصيل</string>
 </resources>
