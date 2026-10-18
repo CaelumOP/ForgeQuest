@@ -37,6 +37,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.ShowChart
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Close
@@ -628,6 +629,14 @@ fun ProfileScreen(nav: NavHostController) {
                 Switch(settings.biometricLock && canLock, { vm.setLock(it) }, enabled = canLock, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
         }
+        Spacer(Modifier.height(12.dp))
+
+        // Progress
+        SettingsRow(
+            Icons.Rounded.ShowChart, c.teal, c.tealTrack,
+            stringResource(R.string.profile_progress_title),
+            stringResource(R.string.profile_progress_hint),
+        ) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
         Spacer(Modifier.height(12.dp))
 
         // Exercise library

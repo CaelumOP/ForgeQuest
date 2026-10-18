@@ -63,11 +63,13 @@ import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ConcentricRings
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.Sparkline
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.PillButton
@@ -111,7 +113,7 @@ fun HomeScreen(nav: NavHostController) {
     Column(
         Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
     ) {
-        Header(s, onRankClick = { nav.goToTab(Routes.PROFILE) })
+        Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(8.dp))
         NutritionRings(s)
         Spacer(Modifier.height(16.dp))
@@ -134,6 +136,8 @@ fun HomeScreen(nav: NavHostController) {
         }
 
         StreakCard(s.streak)
+        Spacer(Modifier.height(12.dp))
+        ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(12.dp))
 
         val today = s.plan?.day(Dates.todayDayOfWeek())
@@ -266,6 +270,32 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
             Modifier.weight(1f),
             onClick = onWeight,
         )
+    }
+}
+
+/** The hook into the Progress screen: this month's workouts with a little trend, Whoop-style. */
+@Composable
+private fun ProgressCard(s: ProgressSnapshot, onOpen: () -> Unit) {
+    val c = Fit.colors
+    if (s.sessions.isEmpty()) return
+    val today = Dates.today()
+    val weekly = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 8, today)
+    val monthWorkouts = s.sessions.count { it.epochDay > today - 30 }
+    val sessionDays = s.sessions.associate { it.id to it.epochDay }
+    val monthRecords = s.doneSets.count { it.isPr && (sessionDays[it.sessionId] ?: 0L) > today - 30 }
+    FitCard(onClick = onOpen, padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.home_progress_card), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Text(
+                    "$monthWorkouts ${stringResource(R.string.progress_total_workouts)} · $monthRecords ${stringResource(R.string.progress_total_records)}",
+                    style = MaterialTheme.typography.titleSmall, color = c.textPrimary,
+                )
+                Text(stringResource(R.string.home_progress_open), style = MaterialTheme.typography.labelMedium, color = c.chartGain)
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(Modifier.width(110.dp)) { Sparkline(weekly.map { it.toFloat() }, c.chartStrength) }
+        }
     }
 }
 

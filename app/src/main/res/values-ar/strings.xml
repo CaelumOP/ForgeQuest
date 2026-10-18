@@ -828,4 +828,48 @@
     <string name="coach_model_flash_hint">%1$s · أبطأ، وحده المجاني اليومي قليل</string>
     <string name="coach_model_pro">Pro · الأعمق</string>
     <string name="coach_model_pro_hint">%1$s · قد ياخذ دقيقة، وغالبًا بدون حصة مجانية</string>
+    <!-- Progress -->
+    <string name="progress_title">التقدّم</string>
+    <string name="progress_subtitle">كل رقم مع اتجاهه</string>
+    <string name="progress_range_1m">شهر</string>
+    <string name="progress_range_3m">3 أشهر</string>
+    <string name="progress_range_6m">6 أشهر</string>
+    <string name="progress_range_1y">سنة</string>
+    <string name="progress_range_all">الكل</string>
+    <string name="progress_load">حِمل التدريب</string>
+    <string name="progress_load_hint">هذا الأسبوع مقارنةً بمتوسط آخر 12 أسبوعًا</string>
+    <plurals name="progress_sets_this_week"><item quantity="zero">لا مجموعات هذا الأسبوع</item><item quantity="one">مجموعة واحدة هذا الأسبوع</item><item quantity="two">مجموعتان هذا الأسبوع</item><item quantity="few">%d مجموعات هذا الأسبوع</item><item quantity="many">%d مجموعة هذا الأسبوع</item><item quantity="other">%d مجموعة هذا الأسبوع</item></plurals>
+    <string name="progress_vs_last_week">%1$s عن الأسبوع الماضي</string>
+    <string name="progress_first_week">أسبوعك الأول</string>
+    <string name="progress_tile_best">%1$s · أفضل مجموعة</string>
+    <string name="progress_tile_weight">الوزن · متوسط 7 أيام</string>
+    <string name="progress_tile_protein">البروتين · أيام على الهدف</string>
+    <string name="progress_tile_workouts">التمارين · أسبوعيًا</string>
+    <string name="progress_of_seven">%1$d من 7</string>
+    <string name="progress_holding">ثابت</string>
+    <string name="progress_on_target">على الهدف</string>
+    <string name="progress_strength">القوة</string>
+    <string name="progress_strength_hint">أفضل مجموعة في كل جلسة · النقاط الذهبية أرقام قياسية · الخط المتقطع أعلى ما وصلت إليه · اسحب للقراءة</string>
+    <string name="progress_weight_hint">إدخالات يومية مع خط متوسط 7 أيام · اسحب للقراءة</string>
+    <string name="progress_consistency">الانتظام</string>
+    <plurals name="progress_workout_days"><item quantity="zero">لا أيام تمرين في هذه الفترة</item><item quantity="one">يوم تمرين واحد في هذه الفترة</item><item quantity="two">يوما تمرين في هذه الفترة</item><item quantity="few">%d أيام تمرين في هذه الفترة</item><item quantity="many">%d يوم تمرين في هذه الفترة</item><item quantity="other">%d يوم تمرين في هذه الفترة</item></plurals>
+    <string name="progress_legend_rest">راحة</string>
+    <string name="progress_legend_workout">تمرين</string>
+    <string name="progress_legend_record">يوم رقم قياسي</string>
+    <string name="progress_then_now">قبل والآن</string>
+    <string name="progress_then_now_hint">بداية هذه الفترة → اليوم</string>
+    <string name="progress_per_week">%1$d / أسبوع</string>
+    <string name="progress_all_time">منذ البداية</string>
+    <string name="progress_total_workouts">تمرينًا</string>
+    <string name="progress_total_reps">تكرارًا</string>
+    <string name="progress_total_hours">تدريب</string>
+    <string name="progress_total_records">رقمًا قياسيًا</string>
+    <string name="progress_total_lifted">مرفوعة</string>
+    <string name="progress_empty_title">تبدأ رسومك بعد أول تمرين</string>
+    <string name="progress_empty_body">أنهِ جلسة واحدة وستمتلئ هذه الصفحة باتجاهاتك وأرقامك القياسية وانتظامك.</string>
+    <string name="progress_need_more">جلستان من %1$s ويظهر الخط.</string>
+    <string name="home_progress_card">هذا الشهر</string>
+    <string name="home_progress_open">شاهد تقدّمك</string>
+    <string name="profile_progress_title">التقدّم</string>
+    <string name="profile_progress_hint">الاتجاهات والأرقام القياسية والانتظام عبر الأشهر</string>
 </resources>
