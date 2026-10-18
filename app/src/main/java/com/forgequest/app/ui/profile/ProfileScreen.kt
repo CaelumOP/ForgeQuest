@@ -16,6 +16,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.rounded.MonitorHeart
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
@@ -411,6 +413,25 @@ fun ProfileScreen(nav: NavHostController) {
     }
     LaunchedEffect(consent) { consent?.let { consentLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) } }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::previewImport) }
+    // Health Connect test: ask for read access, then save a report of what the phone actually holds.
+    val probe = remember { com.forgequest.app.data.health.HealthProbe(context) }
+    val hcScope = rememberCoroutineScope()
+    val hcSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) hcScope.launch {
+            val msg = try {
+                val text = probe.report()
+                context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { it.write(text) }
+                context.getString(R.string.hc_saved)
+            } catch (e: Exception) {
+                if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+                context.getString(R.string.hc_failed, e.message ?: e.javaClass.simpleName)
+            }
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    val hcPerms = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) {
+        hcSave.launch("forgequest-health-connect.json")
+    }
     val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTo) }
     LaunchedEffect(shareUri) {
         shareUri?.let { uri ->
@@ -829,6 +850,17 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         SettingsSection(stringResource(R.string.settings_section_more))
+
+        // Health Connect test
+        SettingsRow(Icons.Rounded.MonitorHeart, c.coral, c.coralTrack, stringResource(R.string.hc_test_title), stringResource(R.string.hc_test_hint)) {
+            when (probe.status()) {
+                androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE -> hcPerms.launch(probe.permissions)
+                androidx.health.connect.client.HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED ->
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata")))
+                else -> android.widget.Toast.makeText(context, context.getString(R.string.hc_unavailable), android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+        Spacer(Modifier.height(12.dp))
 
         // Progress
         SettingsRow(

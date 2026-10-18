@@ -17,7 +17,7 @@ val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPasswor
 
 android {
     namespace = "com.forgequest.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.forgequest.app"
@@ -108,6 +108,9 @@ dependencies {
 
     implementation("androidx.datastore:datastore-preferences:1.1.2")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.health.connect:connect-client:1.1.0")
+    // Health Connect swaps in Guava's empty ListenableFuture stub; CameraX needs the real class.
+    implementation("com.google.guava:guava:33.3.1-android")
 
     val camerax = "1.4.1"
     implementation("androidx.camera:camera-core:$camerax")
