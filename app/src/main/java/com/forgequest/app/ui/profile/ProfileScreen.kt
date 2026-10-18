@@ -294,6 +294,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun syncBridge() = withDrive(app.str(R.string.bridge_syncing), bridge = true) { token ->
+        // The same sign-in connects Drive backup too, so one tap sets up both.
+        if (app.settings.current().driveEmail.isBlank()) {
+            val email = app.drive.accountEmail(token)
+            app.settings.update { it.copy(driveEmail = email.ifBlank { app.str(R.string.drive_connected) }) }
+        }
         val reply = app.bridge.sync(token)
         message.value = when {
             reply == null -> app.str(R.string.bridge_no_reply)

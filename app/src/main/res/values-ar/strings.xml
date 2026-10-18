@@ -318,7 +318,7 @@
     <string name="drive_err_not_configured">Google Drive مو مجهّز لهذي النسخة من التطبيق بعد.</string>
     <string name="drive_err_needs_consent">اربط Google Drive من حسابي أول.</string>
     <string name="drive_err_offline">ما فيه اتصال بالإنترنت.</string>
-    <string name="drive_err_no_doc">ما لقينا ملف Google Doc اسمه فيه \"Workout Plan\" في الدرايف.</string>
+    <string name="drive_err_no_doc">أنشأنا \"ForgeQuest plan\" في Google Drive. افتحه في Google Docs واكتب خطتك الأسبوعية أو الصقها، ثم استورد مرة ثانية.</string>
     <string name="drive_err_no_backup">ما فيه نسخة احتياطية في Google Drive بعد.</string>
     <string name="drive_err_http">Google Drive رجّع خطأ (%1$d). جرّب لاحقًا.</string>
     <string name="scan_portion_small">صغيرة</string>
@@ -456,7 +456,7 @@
     <string name="backup_restoring">نسترجع…</string>
     <string name="backup_restored_from">تم الاسترجاع من %1$s</string>
     <string name="backup_restore_failed">ما قدرنا نسترجع هذه النسخة.</string>
-    <string name="drive_reading_doc">نقرأ ملف Workout Plan…</string>
+    <string name="drive_reading_doc">جارٍ قراءة مستند ForgeQuest plan…</string>
     <string name="drive_imported">تم استيراد %1$s</string>
     <string name="backup_share_subject">نسخة احتياطية من ForgeQuest</string>
     <string name="backup_share_title">احفظ نسختك الاحتياطية</string>
@@ -528,8 +528,8 @@
     <string name="drive_stop_docs">أوقف قراءة Docs</string>
     <string name="action_restore">استرجاع</string>
     <string name="drive_disconnect">افصل</string>
-    <string name="drive_docs_on_hint">ياخذ نسخة يوميًا لحاله. وأحدث ملف Google Doc اسمه \"Workout Plan\" ينفحص يوميًا بعد؛ التغييرات تطلع في تبويب المدرب عشان تطبقها.</string>
-    <string name="drive_docs_off_hint">ياخذ نسخة يوميًا لحاله. استيراد خطة من Google Docs يطلب إذن منفصل لقراءة الدرايف، وتقدر توقفه أي وقت.</string>
+    <string name="drive_docs_on_hint">يأخذ نسخة احتياطية يوميًا تلقائيًا. ومستند \"ForgeQuest plan\" يُفحص يوميًا؛ التغييرات تظهر في المدرب لتطبّقها.</string>
+    <string name="drive_docs_off_hint">يأخذ نسخة احتياطية يوميًا تلقائيًا. التطبيق يشوف نسخته الاحتياطية والمستندات اللي ينشئها فقط، وما يشوف ملفاتك الثانية.</string>
     <string name="profile_credits">الشكر</string>
     <string name="profile_credits_body">روتين الأساس من Hemo Calisthenics. رسومات التشريح من react-native-body-highlighter (MIT).</string>
     <string name="profile_hemo_youtube">Hemo Calisthenics على يوتيوب</string>
@@ -1034,4 +1034,6 @@
     <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول في Google. إذا قائمة الحسابات تقفل فورًا، فالتطبيق غير مسجّل في Drive بعد (README › Google Drive).</string>
     <string name="hc_check_ok">Health Connect يعمل: %1$d من %2$d أنواع بيانات فيها قراءات (%3$s).</string>
     <string name="hc_check_empty">Health Connect يعمل، لكن ما فيه بيانات في آخر 14 يومًا. تأكد أن Google Health يشارك مع Health Connect.</string>
+    <string name="drive_plan_doc_template">اكتب خطتك الأسبوعية أو الصقها تحت هذا السطر بأي شكل: قائمة أيام وتمارين، أو JSON للخطة. ForgeQuest يقرأ هذا المستند لما تضغط استيراد الخطة من Docs.\n\n</string>
+    <string name="bridge_reply_placeholder">أتمتة Gemini تكتب ردها هنا. ForgeQuest يقرأ هذا المستند؛ لا تغيّر اسمه.</string>
 </resources>

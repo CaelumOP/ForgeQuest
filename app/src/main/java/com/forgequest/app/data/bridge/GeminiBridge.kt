@@ -66,7 +66,9 @@ class GeminiBridge(
         val s = settings.current()
         val id = drive.upsertTextDoc(token, BridgeFormat.DATA_DOC, dataText(), s.bridgeDataId.ifBlank { null })
         settings.update { it.copy(bridgeDataId = id, bridgeLastWrite = System.currentTimeMillis()) }
-        val doc = drive.newestDoc(token, BridgeFormat.REPLY_DOC, s.bridgeLastReplyModified) ?: return null
+        val doc = drive.newestDoc(token, BridgeFormat.REPLY_DOC, s.bridgeLastReplyModified, context.getString(R.string.bridge_reply_placeholder)) ?: return null
+        // The placeholder the app wrote itself isn't a reply.
+        if (!doc.first.contains(BridgeFormat.HEADER)) { settings.update { it.copy(bridgeLastReplyModified = doc.second) }; return null }
         val reply = BridgeFormat.parse(doc.first)
         apply(reply)
         settings.update { it.copy(bridgeLastReplyModified = doc.second) }

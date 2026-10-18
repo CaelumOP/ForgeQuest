@@ -273,7 +273,7 @@
     <string name="drive_err_not_configured">Google Drive isn\'t set up for this copy of the app yet.</string>
     <string name="drive_err_needs_consent">Connect Google Drive in Profile first.</string>
     <string name="drive_err_offline">No internet connection.</string>
-    <string name="drive_err_no_doc">No Google Doc with \"Workout Plan\" in its name was found in your Drive.</string>
+    <string name="drive_err_no_doc">Created \"ForgeQuest plan\" in your Google Drive. Open it in Google Docs, write or paste your weekly plan, then import again.</string>
     <string name="drive_err_no_backup">No backup found in your Google Drive yet.</string>
     <string name="drive_err_http">Google Drive returned an error (%1$d). Try again later.</string>
     <string name="scan_portion_small">Small</string>
@@ -391,7 +391,7 @@
     <string name="backup_restoring">Restoring…</string>
     <string name="backup_restored_from">Restored from %1$s</string>
     <string name="backup_restore_failed">Couldn\'t restore that backup.</string>
-    <string name="drive_reading_doc">Reading your Workout Plan doc…</string>
+    <string name="drive_reading_doc">Reading your ForgeQuest plan doc…</string>
     <string name="drive_imported">Imported %1$s</string>
     <string name="backup_share_subject">ForgeQuest backup</string>
     <string name="backup_share_title">Save your backup</string>
@@ -463,8 +463,8 @@
     <string name="drive_stop_docs">Stop reading Docs</string>
     <string name="action_restore">Restore</string>
     <string name="drive_disconnect">Disconnect</string>
-    <string name="drive_docs_on_hint">Backs up daily on its own. Your newest Google Doc named \"Workout Plan\" is checked daily too; changes appear in the Coach tab for you to apply.</string>
-    <string name="drive_docs_off_hint">Backs up daily on its own. Importing a plan from Google Docs asks separately for permission to read your Drive; you can turn that off any time.</string>
+    <string name="drive_docs_on_hint">Backs up daily on its own. Your \"ForgeQuest plan\" Doc is checked daily too; changes appear in the Coach tab for you to apply.</string>
+    <string name="drive_docs_off_hint">Backs up daily on its own. The app only sees its own backup and the Docs it creates, never your other files.</string>
     <string name="profile_credits">Credits</string>
     <string name="profile_credits_body">Foundation routine by Hemo Calisthenics. Anatomy art from react-native-body-highlighter (MIT).</string>
     <string name="profile_hemo_youtube">Hemo Calisthenics on YouTube</string>
@@ -937,4 +937,6 @@
     <string name="drive_signin_cancelled">Google sign-in didn\'t finish. If the account list closes straight away, Drive isn\'t registered for this app yet (README › Google Drive).</string>
     <string name="hc_check_ok">Health Connect works: %1$d of %2$d data types have readings (%3$s).</string>
     <string name="hc_check_empty">Health Connect works, but nothing was recorded in the last 14 days. Check that Google Health shares with Health Connect.</string>
+    <string name="drive_plan_doc_template">Write or paste your weekly plan below this line, in any form: a list of days and exercises, or plan JSON. ForgeQuest reads this document when you tap Import plan from Docs.\n\n</string>
+    <string name="bridge_reply_placeholder">Your Gemini automation writes its reply here. ForgeQuest reads this document; keep its name.</string>
 </resources>
