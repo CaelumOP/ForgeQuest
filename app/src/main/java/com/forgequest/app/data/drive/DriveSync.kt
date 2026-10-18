@@ -57,8 +57,8 @@ class DriveSync(
     private val workouts: WorkoutRepository,
     private val coach: CoachRepository,
     private val backups: BackupRepository,
+    private val http: OkHttpClient = OkHttpClient(),
 ) {
-    private val http = OkHttpClient()
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     /** Backup only touches the app's own hidden folder. Reading the person's documents is a separate, opt-in grant. */
@@ -92,7 +92,7 @@ class DriveSync(
     }
 
     /** Silent token for background work; null when the user has to approve something first. */
-    suspend fun silentToken(withDocs: Boolean = false): String? = runCatching { (authorize(withDocs) as? DriveAuth.Token)?.accessToken }.getOrNull()
+    suspend fun silentToken(withDocs: Boolean = false): String? = com.forgequest.app.data.suspendRunCatching { (authorize(withDocs) as? DriveAuth.Token)?.accessToken }.getOrNull()
 
     suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
         val body = call(token, Request.Builder().url("$API/about?fields=user(emailAddress)").get())

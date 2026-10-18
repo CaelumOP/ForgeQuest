@@ -17,6 +17,10 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -427,7 +431,7 @@ fun ProfileScreen(nav: NavHostController) {
                     IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.profile_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                        Text(stringResource(R.string.profile_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(stringResource(R.string.profile_setup_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                     PillButton(stringResource(R.string.profile_add_key), onClick = { keyDialog = true })
@@ -466,7 +470,7 @@ fun ProfileScreen(nav: NavHostController) {
             val owned = s.badges.associateBy { it.id }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_badges), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_badges), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_badges_unlocked, s.badges.size, Badges.all.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Text(stringResource(R.string.action_see_all), style = MaterialTheme.typography.labelLarge, color = c.teal)
@@ -490,7 +494,7 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.MonitorWeight, c.teal, c.tealTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.weight_body), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.weight_body), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(s.latestWeight?.let { settings.weightUnit.format(it) } ?: stringResource(R.string.profile_not_logged), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 }
                 TonalPill(stringResource(R.string.action_log), onClick = { weightDialog = true })
@@ -508,15 +512,15 @@ fun ProfileScreen(nav: NavHostController) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.TrackChanges, c.gold, c.goldTrack)
                 Spacer(Modifier.width(14.dp))
-                Text(stringResource(R.string.profile_goals), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(stringResource(R.string.profile_goals), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(12.dp))
             SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
             SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
             // The whole row toggles, not just the switch.
-            Row(Modifier.fillMaxWidth().clickable { vm.setCarbs(track = !settings.trackCarbs) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                Switch(settings.trackCarbs, { vm.setCarbs(track = it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                Switch(settings.trackCarbs, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
             if (settings.trackCarbs) {
                 SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
@@ -587,7 +591,7 @@ fun ProfileScreen(nav: NavHostController) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Palette, c.blue, c.blueTrack)
                 Spacer(Modifier.width(14.dp))
-                Text(stringResource(R.string.profile_appearance), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(stringResource(R.string.profile_appearance), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(14.dp))
             Text(stringResource(R.string.profile_theme), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
@@ -613,30 +617,30 @@ fun ProfileScreen(nav: NavHostController) {
             Text(stringResource(R.string.profile_weights), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
             Spacer(Modifier.height(6.dp))
             SegmentedTabs(listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)), if (settings.unit == "lb") 1 else 0, onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") })
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp).toggleable(settings.hapticsEnabled, role = Role.Switch) { vm.setHaptics(it) }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.profile_vibration), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                     Text(stringResource(R.string.profile_vibration_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
-                Switch(settings.hapticsEnabled, { vm.setHaptics(it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                Switch(settings.hapticsEnabled, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
         }
         Spacer(Modifier.height(12.dp))
 
         // Reminders
         FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.toggleable(settings.reminderHour >= 0, role = Role.Switch) { vm.setReminder(if (it) 18 else -1) }, verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_reminder), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_reminder), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(
                         if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off)
                         else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
-                Switch(settings.reminderHour >= 0, { vm.setReminder(if (it) 18 else -1) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                Switch(settings.reminderHour >= 0, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
             if (settings.reminderHour >= 0) {
                 var typingHour by remember { mutableStateOf(false) }
@@ -663,7 +667,7 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(
                         if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
                         else stringResource(R.string.profile_memory_hint),
@@ -696,11 +700,11 @@ fun ProfileScreen(nav: NavHostController) {
                     androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
                 ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.toggleable(settings.biometricLock && canLock, enabled = canLock, role = Role.Switch) { vm.setLock(it) }, verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Lock, c.coral, c.coralTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_app_lock), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_app_lock), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(
                         if (!canLock) stringResource(R.string.profile_lock_unavailable)
                         else if (settings.biometricLock) stringResource(R.string.profile_lock_on)
@@ -708,7 +712,7 @@ fun ProfileScreen(nav: NavHostController) {
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
-                Switch(settings.biometricLock && canLock, { vm.setLock(it) }, enabled = canLock, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                Switch(settings.biometricLock && canLock, null, enabled = canLock, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -741,7 +745,7 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_muscle_map), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_muscle_map), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_muscle_map_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
@@ -760,7 +764,7 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_your_data), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_your_data), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_your_data_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
@@ -780,7 +784,7 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Cloud, c.teal, c.tealTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.drive_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.drive_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(
                         when {
                             settings.driveEmail.isBlank() -> stringResource(R.string.drive_hint)
@@ -818,7 +822,7 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }

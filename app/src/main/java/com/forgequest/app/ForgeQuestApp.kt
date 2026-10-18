@@ -26,18 +26,20 @@ class AppContainer(context: Context) {
     val appContext: Context = context.applicationContext
     val db = AppDatabase.build(context)
     val settings = SettingsRepository(context)
-    val gemini = GeminiClient()
-    val groq = com.forgequest.app.data.ai.GroqClient()
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /** One connection pool and thread pool for every API; each client derives its own timeouts from it. */
+    private val http = okhttp3.OkHttpClient()
+    val gemini = GeminiClient(http)
+    val groq = com.forgequest.app.data.ai.GroqClient(http)
     val models = ModelStore(settings, gemini)
     val workouts = WorkoutRepository(db)
-    val progress = ProgressRepository(db, settings, workouts)
+    val progress = ProgressRepository(db, settings, workouts, appScope)
     val food = FoodRepository(context, db, settings, gemini, models)
     val coach = CoachRepository(db, settings, gemini, models, progress, workouts, groq)
     val backup = BackupRepository(context, db, settings, workouts)
-    val drive = DriveSync(context, settings, workouts, coach, backup)
+    val drive = DriveSync(context, settings, workouts, coach, backup, http)
     val haptics = Haptics(context)
     val notifier = Notifier(context)
-    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /** Strings for view models and workers, in the app's language. */
     fun str(@androidx.annotation.StringRes id: Int, vararg args: Any): String = appContext.getString(id, *args)
@@ -55,7 +57,7 @@ class ForgeQuestApp : Application() {
         AppText.init(this)
         container = AppContainer(this)
         container.appScope.launch { container.workouts.seedLibrary() }
-        container.appScope.launch { runCatching { container.food.deleteOrphanPhotos() } }
+        container.appScope.launch { com.forgequest.app.data.suspendRunCatching { container.food.deleteOrphanPhotos() } }
         container.appScope.launch { container.settings.settings.collect { container.haptics.enabled = it.hapticsEnabled } }
         DriveSyncWorker.schedule(this)
         container.appScope.launch { ReminderWorker.schedule(this@ForgeQuestApp, container.settings.current().reminderHour) }

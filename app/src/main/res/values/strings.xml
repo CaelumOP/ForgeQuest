@@ -806,6 +806,6 @@
     <string name="food_g_carbs">%1$d g carbs</string>
     <string name="profile_track_carbs">Track carbs</string>
     <string name="profile_daily_carbs">Daily carbs</string>
-    <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a 25% fat share</string>
+    <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a 25%% fat share</string>
     <string name="profile_use">Use</string>
 </resources>

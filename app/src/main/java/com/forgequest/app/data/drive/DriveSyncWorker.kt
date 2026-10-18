@@ -26,7 +26,7 @@ class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
             app.drive.backup(token)
             if (s.driveDocsEnabled && app.settings.apiKey.value.isNotBlank()) {
                 val docsToken = app.drive.silentToken(withDocs = true) ?: return Result.success()
-                runCatching { app.drive.fetchPlanDoc(docsToken, s.lastDocImportModified) }.getOrNull()?.let { doc ->
+                com.forgequest.app.data.suspendRunCatching { app.drive.fetchPlanDoc(docsToken, s.lastDocImportModified) }.getOrNull()?.let { doc ->
                     // Staged, not applied: the person reviews it in the Coach tab and taps Apply, so edits made
                     // in the app aren't overwritten by a doc change behind their back.
                     app.settings.update { it.copy(lastDocImportModified = doc.modifiedAt) }
@@ -43,6 +43,8 @@ class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
             Result.success()
         } catch (e: DriveError.Offline) {
             Result.retry()
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.success()
         }

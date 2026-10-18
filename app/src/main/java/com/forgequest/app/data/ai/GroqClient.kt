@@ -29,18 +29,17 @@ import java.util.concurrent.TimeUnit
  * Groq hardware answer in well under a second. Gemini keeps meal scans and plans, and stays on its native API
  * because that one gives us per-model thinking control and the model list we already rely on.
  */
-class GroqClient(
-    private val http: OkHttpClient = OkHttpClient.Builder()
+class GroqClient(base: OkHttpClient = OkHttpClient()) {
+    private val http: OkHttpClient = base.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         // Groq either answers in about a second or is in trouble; fall back to Gemini quickly.
         .readTimeout(12, TimeUnit.SECONDS)
-        .build(),
-) {
+        .build()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /** Fastest chat model this key can use: Llama 4 Scout-class first, then the 8B instant model. */
     suspend fun pickModel(apiKey: String): String = withContext(Dispatchers.IO) {
-        val ids = runCatching {
+        val ids = com.forgequest.app.data.suspendRunCatching {
             val body = execute(Request.Builder().url("$BASE/models").header("Authorization", "Bearer $apiKey").get().build())
             json.parseToJsonElement(body).jsonObject["data"]?.jsonArray.orEmpty().mapNotNull { it.jsonObject["id"]?.jsonPrimitive?.contentOrNull }
         }.getOrElse { if (it is AiError.InvalidKey) throw it else emptyList() }

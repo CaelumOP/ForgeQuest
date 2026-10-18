@@ -1,4 +1,4 @@
-package com.forgequest.app.data
+﻿package com.forgequest.app.data
 
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.BadgeEntity
@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.first
 
 data class DayNutrition(val epochDay: Long, val kcal: Int, val protein: Float, val carbs: Float = 0f)
@@ -51,6 +52,7 @@ class ProgressRepository(
     private val db: AppDatabase,
     private val settingsRepo: SettingsRepository,
     private val workouts: WorkoutRepository,
+    scope: kotlinx.coroutines.CoroutineScope,
 ) {
     private data class Raw(
         val sessions: List<SessionEntity>,
@@ -71,10 +73,14 @@ class ProgressRepository(
         db.food().observeScannedCount(),
     ) { (s, sets, ex), b, m, count, scanned -> Raw(s, sets, ex, b, m, count, scanned) }
 
-    /** Rebuilt on every change and off the main thread: with years of data this is real work. */
+    /**
+     * Rebuilt on every change and off the main thread: with years of data this is real work. Shared, so the
+     * screens on the back stack read one copy instead of each re-running the queries and the build.
+     */
     val snapshot: Flow<ProgressSnapshot> = combine(
         raw, settingsRepo.settings, workouts.activePlan, db.weights().observeAll(),
     ) { r, settings, plan, weights -> build(r, settings, plan, weights) }.flowOn(Dispatchers.Default)
+        .shareIn(scope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     private fun build(r: Raw, settings: Settings, plan: ActivePlan?, weights: List<WeightEntity>): ProgressSnapshot {
         val today = Dates.today()

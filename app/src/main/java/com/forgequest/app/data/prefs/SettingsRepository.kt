@@ -1,4 +1,4 @@
-package com.forgequest.app.data.prefs
+﻿package com.forgequest.app.data.prefs
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -62,7 +64,7 @@ data class Settings(
     /** Optional, for the calorie estimate. 0 means not given. */
     val heightCm: Float = 0f,
     val birthYear: Int = 0,
-    /** Carbs are off unless the person turns them on in Profile → Goals. */
+    /** Carbs are off unless the person turns them on in Profile â†’ Goals. */
     val trackCarbs: Boolean = false,
     val carbsGoal: Int = 250,
 ) {
@@ -106,7 +108,11 @@ class SettingsRepository(private val context: Context) {
         val carbsGoal = intPreferencesKey("carbs_goal")
     }
 
-    val settings: Flow<Settings> = context.dataStore.data.map { p -> p.toSettings() }
+    /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
+    val settings: Flow<Settings> = context.dataStore.data
+        .catch { e -> if (e is java.io.IOException) emit(androidx.datastore.preferences.core.emptyPreferences()) else throw e }
+        .map { p -> p.toSettings() }
+        .distinctUntilChanged()
 
     suspend fun current(): Settings = settings.first()
 

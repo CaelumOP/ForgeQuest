@@ -62,14 +62,13 @@ data class GeminiModels(val fast: String, val smart: String, val lite: String)
  * Direct calls to the Gemini REST API with the user's own key.
  * No mock results: every failure surfaces as an [AiError].
  */
-class GeminiClient(
-    private val http: OkHttpClient = OkHttpClient.Builder()
+class GeminiClient(base: OkHttpClient = OkHttpClient()) {
+    private val http: OkHttpClient = base.newBuilder()
         .connectTimeout(15, TimeUnit.SECONDS)
         // Quick calls (thinking off); thinking calls use [slowHttp].
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .build(),
-) {
+        .build()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val base = com.forgequest.app.BuildConfig.GEMINI_BASE
 
@@ -79,7 +78,7 @@ class GeminiClient(
      * [generate] then falls through to Flash on its own.
      */
     suspend fun discoverModels(apiKey: String): Result<GeminiModels> = withContext(Dispatchers.IO) {
-        runCatching {
+        com.forgequest.app.data.suspendRunCatching {
             val body = execute(Request.Builder().url("$base/models?pageSize=200").header("x-goog-api-key", apiKey).get().build())
             val models = json.parseToJsonElement(body).jsonObject["models"]?.jsonArray.orEmpty().mapNotNull { m ->
                 val o = m.jsonObject
@@ -229,7 +228,7 @@ class GeminiClient(
     suspend fun warmUp(apiKey: String) = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) return@withContext
         val started = SystemClock.elapsedRealtime()
-        runCatching {
+        com.forgequest.app.data.suspendRunCatching {
             http.newCall(Request.Builder().url("$base/models?pageSize=1").header("x-goog-api-key", apiKey).get().build()).execute().close()
             Log.i(TAG, "warm-up ${SystemClock.elapsedRealtime() - started} ms")
         }
