@@ -44,6 +44,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
@@ -139,7 +142,15 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
 
     fun save(food: FoodEntity) = viewModelScope.launch { app.food.saveFood(food) }
     fun delete(food: FoodEntity) = viewModelScope.launch { app.food.deleteFood(food.id); selection.update { it - food.id } }
-    fun deleteMeal(meal: MealEntity) = viewModelScope.launch { app.food.deleteMeal(meal.id) }
+    /** Deleted right away; [undo] puts it back with the same id. */
+    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+
+    fun deleteMeal(meal: MealEntity) = viewModelScope.launch {
+        app.food.deleteMeal(meal.id)
+        undo.value = "Removed ${meal.name}" to { app.food.restoreMeal(meal) }
+    }
+
+    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
 
     fun setPhotoFromUri(food: FoodEntity, uri: Uri) = viewModelScope.launch {
         runCatching { app.food.importPhoto(uri) }.onSuccess { app.food.saveFood(food.copy(photoPath = it)) }
@@ -166,7 +177,16 @@ fun FoodScreen(nav: NavHostController) {
     var editing by remember { mutableStateOf<FoodEntity?>(null) }
     var photoFor by remember { mutableStateOf<FoodEntity?>(null) }
 
+    val undo by vm.undo.collectAsState()
+    var confirmDeleteFood by remember { mutableStateOf<FoodEntity?>(null) }
+
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
+    LaunchedEffect(undo) {
+        undo?.let { (text, _) ->
+            val result = snackbar.showSnackbar(text, actionLabel = "Undo", duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
+        }
+    }
 
     val inCategory = foods.filter { it.category == category }
     val selectedFoods = foods.filter { it.id in selection }
@@ -250,7 +270,17 @@ fun FoodScreen(nav: NavHostController) {
     }
 
     editing?.let { food ->
-        FoodEditorSheet(food, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ vm.delete(food); editing = null }) else null, onDismiss = { editing = null })
+        FoodEditorSheet(food, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
+    }
+    confirmDeleteFood?.let { food ->
+        AlertDialog(
+            onDismissRequest = { confirmDeleteFood = null },
+            containerColor = c.card,
+            title = { Text("Delete ${food.name}?", color = c.textPrimary) },
+            text = { Text("It leaves your food list. Meals you already logged with it stay.", color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { vm.delete(food); confirmDeleteFood = null }) { Text("Delete", color = c.coral) } },
+            dismissButton = { TextButton(onClick = { confirmDeleteFood = null }) { Text("Cancel", color = c.textSecondary) } },
+        )
     }
     photoFor?.let { food ->
         PhotoSourceSheet(

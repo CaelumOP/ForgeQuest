@@ -42,6 +42,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -141,6 +143,7 @@ fun CoachScreen(nav: NavHostController) {
     var input by remember { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
     var preview by remember { mutableStateOf<ChatEntity?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size, sending) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size + 1) }
@@ -152,7 +155,7 @@ fun CoachScreen(nav: NavHostController) {
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = c.textSecondary) }
                 DropdownMenu(menu, { menu = false }, containerColor = c.cardHigh) {
-                    DropdownMenuItem(text = { Text("Clear conversation") }, onClick = { menu = false; vm.clear() })
+                    DropdownMenuItem(text = { Text("Clear conversation") }, onClick = { menu = false; confirmClear = true })
                 }
             }
         }
@@ -232,6 +235,17 @@ fun CoachScreen(nav: NavHostController) {
                 Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send", tint = if (canSend) c.onTeal else c.textSecondary)
             }
         }
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            containerColor = c.card,
+            title = { Text("Clear the conversation?", color = c.textPrimary) },
+            text = { Text("Messages and weekly check-ins are deleted. Plans you already applied stay.", color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { confirmClear = false; vm.clear() }) { Text("Clear", color = c.coral) } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel", color = c.textSecondary) } },
+        )
     }
 
     preview?.let { m ->

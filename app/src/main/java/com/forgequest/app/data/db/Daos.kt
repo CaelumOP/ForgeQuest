@@ -71,6 +71,10 @@ interface PlanDao {
     @Insert
     suspend fun insertItem(item: PlanItemEntity): Long
 
+    /** Puts a removed plan item back with its original id and position (undo). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreItem(item: PlanItemEntity)
+
     @Update
     suspend fun updateItem(item: PlanItemEntity)
 
@@ -187,6 +191,10 @@ interface FoodDao {
 
     @Insert
     suspend fun insertMeals(meals: List<MealEntity>)
+
+    /** Puts a deleted meal back with its original id (undo). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreMeal(meal: MealEntity)
 
     @Query("DELETE FROM meals WHERE id = :id")
     suspend fun deleteMeal(id: Long)

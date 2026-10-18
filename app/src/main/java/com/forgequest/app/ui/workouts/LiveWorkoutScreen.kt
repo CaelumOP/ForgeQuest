@@ -121,6 +121,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val c = Fit.colors
 
     var confirmExit by remember { mutableStateOf(false) }
+    var confirmFinish by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
@@ -188,12 +189,24 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             Box(Modifier.fillMaxWidth().background(c.background).navigationBarsPadding().padding(16.dp)) {
                 PillButton(
                     if (finishing) "Saving…" else "Finish workout",
-                    onClick = vm::finish,
+                    onClick = { if (sets.any { !it.done }) confirmFinish = true else vm.finish() },
                     enabled = doneCount > 0 && !finishing,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
+    }
+
+    if (confirmFinish) {
+        val left = sets.count { !it.done }
+        AlertDialog(
+            onDismissRequest = { confirmFinish = false },
+            containerColor = c.card,
+            title = { Text("Finish with $left set${if (left == 1) "" else "s"} unticked?", color = c.textPrimary) },
+            text = { Text("Only ticked sets are saved. The $left you didn't tick ${if (left == 1) "is" else "are"} dropped.", color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text("Finish", color = c.teal) } },
+            dismissButton = { TextButton(onClick = { confirmFinish = false }) { Text("Keep going", color = c.textSecondary) } },
+        )
     }
 
     if (confirmExit) {

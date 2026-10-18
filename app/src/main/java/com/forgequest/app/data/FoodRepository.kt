@@ -54,6 +54,7 @@ class FoodRepository(
     suspend fun saveFood(food: FoodEntity): Long = dao.upsertFood(food)
     suspend fun deleteFood(id: Long) = dao.deleteFood(id)
     suspend fun deleteMeal(id: Long) = dao.deleteMeal(id)
+    suspend fun restoreMeal(meal: MealEntity) = dao.restoreMeal(meal)
 
     suspend fun logFoods(selection: List<Pair<FoodEntity, Float>>) {
         val now = System.currentTimeMillis()

@@ -113,6 +113,7 @@ class WorkoutRepository(private val db: AppDatabase) {
 
     suspend fun updatePlanItem(item: PlanItemEntity) = plans.updateItem(item)
     suspend fun deletePlanItem(id: Long) = plans.deleteItem(id)
+    suspend fun restorePlanItem(item: PlanItemEntity) = plans.restoreItem(item)
     suspend fun updatePlanDay(day: PlanDayEntity) = plans.updateDay(day)
 
     suspend fun addPlanItem(dayId: Long, exerciseId: String) {

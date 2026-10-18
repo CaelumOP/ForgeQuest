@@ -116,7 +116,14 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun updateItem(item: PlanItemEntity) = viewModelScope.launch { app.workouts.updatePlanItem(item) }
-    fun deleteItem(id: Long) = viewModelScope.launch { app.workouts.deletePlanItem(id) }
+    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+
+    fun deleteItem(item: PlanItemEntity, name: String) = viewModelScope.launch {
+        app.workouts.deletePlanItem(item.id)
+        undo.value = "Removed $name" to { app.workouts.restorePlanItem(item) }
+    }
+
+    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
     fun addItem(dayId: Long, exerciseId: String) = viewModelScope.launch { app.workouts.addPlanItem(dayId, exerciseId) }
     fun setRest(day: PlanDayEntity, rest: Boolean) = viewModelScope.launch {
         app.workouts.updatePlanDay(day.copy(isRest = rest, title = if (rest) "Rest day" else if (day.title == "Rest day") "Workout" else day.title))
@@ -146,8 +153,16 @@ fun PlanEditorScreen(nav: NavHostController) {
     var paste by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
 
+    val undo by vm.undo.collectAsState()
+
     androidx.compose.runtime.LaunchedEffect(message) {
         message?.let { snackbar.showSnackbar(it); vm.message.value = null }
+    }
+    androidx.compose.runtime.LaunchedEffect(undo) {
+        undo?.let { (text, _) ->
+            val result = snackbar.showSnackbar(text, actionLabel = "Undo", duration = androidx.compose.material3.SnackbarDuration.Short)
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
+        }
     }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
@@ -212,7 +227,7 @@ fun PlanEditorScreen(nav: NavHostController) {
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                     )
                                 }
-                                IconButton(onClick = { vm.deleteItem(item.id) }) { Icon(Icons.Rounded.Delete, contentDescription = "Remove", tint = c.textSecondary) }
+                                IconButton(onClick = { vm.deleteItem(item, ex?.name ?: item.exerciseId) }) { Icon(Icons.Rounded.Delete, contentDescription = "Remove", tint = c.textSecondary) }
                             }
                         }
                     }
