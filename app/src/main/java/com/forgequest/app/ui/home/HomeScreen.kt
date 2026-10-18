@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
@@ -350,17 +351,20 @@ private fun TodayCard(
 ) {
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
+    val noPlan = day == null
     FitCard(onClick = onOpenPlan) {
         Text("Today's workout", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.blue, c.blueTrack)
+            if (noPlan && !hasOpenSession) IconCircle(Icons.Rounded.Edit, c.teal, c.tealTrack)
+            else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.blue, c.blueTrack)
             else IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
                         hasOpenSession -> "Workout in progress"
+                        noPlan -> "No plan yet"
                         isRest -> "Rest day"
                         else -> day!!.day.title
                     },
@@ -373,6 +377,7 @@ private fun TodayCard(
                     when {
                         hasOpenSession -> "Pick up where you left off"
                         doneToday -> "Done for today. Nice work."
+                        noPlan -> "Pick a starter plan, build your own, or ask the coach."
                         isRest -> day?.day?.note?.ifBlank { null } ?: "Recovery is part of training."
                         else -> "${exerciseNames.size} exercises · " + exerciseNames.take(3).joinToString(", ")
                     },
@@ -386,6 +391,7 @@ private fun TodayCard(
             when {
                 hasOpenSession -> PillButton("Resume", onClick = onStart)
                 doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
+                noPlan -> PillButton("Set up", onClick = onOpenPlan)
                 !isRest -> PillButton("Start", onClick = onStart)
             }
         }

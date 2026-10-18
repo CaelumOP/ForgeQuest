@@ -56,21 +56,25 @@ class FoodRepository(
     suspend fun deleteMeal(id: Long) = dao.deleteMeal(id)
     suspend fun restoreMeal(meal: MealEntity) = dao.restoreMeal(meal)
 
-    suspend fun logFoods(selection: List<Pair<FoodEntity, Float>>) {
+    suspend fun logFoods(selection: List<Pair<FoodEntity, Float>>, epochDay: Long = Dates.today()) {
         val now = System.currentTimeMillis()
         dao.insertMeals(selection.map { (food, qty) ->
             MealEntity(
-                epochDay = Dates.today(), loggedAt = now, name = food.name, category = food.category,
+                epochDay = epochDay, loggedAt = now, name = food.name, category = food.category,
                 kcal = (food.kcal * qty).toInt(), protein = food.protein * qty, quantity = qty,
                 photoPath = food.photoPath, foodId = food.id,
             )
         })
     }
 
-    suspend fun logScannedMeal(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String?) {
+    suspend fun logScannedMeal(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String?) =
+        logOnce(name, category, kcal, protein, photoPath, Dates.today())
+
+    /** One meal that isn't saved to the food list: a restaurant plate, a snack you won't repeat. */
+    suspend fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String? = null, epochDay: Long = Dates.today()) {
         dao.insertMeals(listOf(
             MealEntity(
-                epochDay = Dates.today(), loggedAt = System.currentTimeMillis(), name = name, category = category,
+                epochDay = epochDay, loggedAt = System.currentTimeMillis(), name = name.trim(), category = category,
                 kcal = kcal, protein = protein, photoPath = photoPath,
             )
         ))

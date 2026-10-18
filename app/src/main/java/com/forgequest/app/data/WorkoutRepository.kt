@@ -142,9 +142,17 @@ class WorkoutRepository(private val db: AppDatabase) {
         return id
     }
 
-    suspend fun setVideoUrl(exerciseId: String, url: String?) {
-        val ex = exercises.byId(exerciseId) ?: return
-        exercises.upsert(ex.copy(videoUrl = url?.trim()?.ifEmpty { null }))
+    /** Saves a form-video link. Returns false (and changes nothing) when it isn't a web address. */
+    suspend fun setVideoUrl(exerciseId: String, url: String?): Boolean {
+        val ex = exercises.byId(exerciseId) ?: return false
+        val clean = url?.trim()?.ifEmpty { null }
+        if (clean != null && !isWebUrl(clean)) return false
+        exercises.upsert(ex.copy(videoUrl = clean))
+        return true
+    }
+
+    companion object {
+        fun isWebUrl(s: String): Boolean = Regex("""^https?://[^\s/$.?#].[^\s]*$""", RegexOption.IGNORE_CASE).matches(s)
     }
 
     // ------------------------------------------------------------ Live session

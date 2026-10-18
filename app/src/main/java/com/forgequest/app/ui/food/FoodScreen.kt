@@ -33,6 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
@@ -94,6 +96,7 @@ import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -101,6 +104,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
@@ -108,13 +112,35 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalCoroutinesApi::class)
 class FoodViewModel(val app: AppContainer) : ViewModel() {
     val foods: StateFlow<List<FoodEntity>> = app.food.foods.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val meals: StateFlow<List<MealEntity>> = app.food.mealsOn(Dates.today()).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** The day being viewed and logged to. Follows the real date until the person steps away from today. */
+    val day = MutableStateFlow(Dates.today())
+    private var followToday = true
+    val meals: StateFlow<List<MealEntity>> = day.flatMapLatest { app.food.mealsOn(it) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val category = MutableStateFlow(app.food.categoryForNow())
 
     /** foodId → quantity for items ticked but not yet logged. */
     val selection = MutableStateFlow<Map<Long, Float>>(emptyMap())
     val message = MutableStateFlow<String?>(null)
+
+    /** Called whenever the screen is shown, so a tab left open overnight moves on to the new day. */
+    fun onShown() { if (followToday) day.value = Dates.today() }
+
+    fun shiftDay(delta: Int) {
+        val next = (day.value + delta).coerceAtMost(Dates.today())
+        day.value = next
+        followToday = next == Dates.today()
+        app.haptics.tick()
+    }
+
+    fun goToToday() { followToday = true; day.value = Dates.today() }
+
+    fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float) = viewModelScope.launch {
+        app.food.logOnce(name, category, kcal, protein, epochDay = day.value)
+        app.haptics.setDone()
+        app.progress.evaluateBadges()
+        message.value = "Logged $name"
+    }
 
     fun toggle(food: FoodEntity) {
         app.haptics.tick()
@@ -131,7 +157,7 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
         val picked = selection.value.mapNotNull { (id, q) -> foodsById[id]?.let { it to q } }
         if (picked.isEmpty()) return
         viewModelScope.launch {
-            app.food.logFoods(picked)
+            app.food.logFoods(picked, day.value)
             selection.value = emptyMap()
             app.haptics.setDone()
             val badges = app.progress.evaluateBadges()
@@ -178,7 +204,11 @@ fun FoodScreen(nav: NavHostController) {
     var photoFor by remember { mutableStateOf<FoodEntity?>(null) }
 
     val undo by vm.undo.collectAsState()
+    val day by vm.day.collectAsState()
     var confirmDeleteFood by remember { mutableStateOf<FoodEntity?>(null) }
+    var quickLog by remember { mutableStateOf(false) }
+    val isToday = day == Dates.today()
+    LaunchedEffect(Unit) { vm.onShown() }
 
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
     LaunchedEffect(undo) {
@@ -211,7 +241,11 @@ fun FoodScreen(nav: NavHostController) {
                     }
                 }
             }
-            snap?.let { s -> item { TodayTotals(s) } }
+            item {
+                DayPicker(day, isToday, onPrev = { vm.shiftDay(-1) }, onNext = { vm.shiftDay(1) }, onToday = vm::goToToday)
+            }
+            snap?.let { s -> item { DayTotals(s, day, meals) } }
+            if (isToday) snap?.let { s -> item { WeekCard(s) } }
             item {
                 val withSelection = FoodCategory.entries.indices.filter { i -> foods.any { it.category == FoodCategory.entries[i] && it.id in selection } }.toSet()
                 SegmentedTabs(
@@ -246,12 +280,16 @@ fun FoodScreen(nav: NavHostController) {
                     onEdit = { editing = food },
                 )
             }
-            if (meals.isNotEmpty()) {
-                item {
-                    Text("Logged today", style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.padding(top = 16.dp))
+            item {
+                Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (isToday) "Logged today" else "Logged that day", style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    TonalPill("Quick log", onClick = { quickLog = true }, icon = Icons.Rounded.Add)
                 }
-                items(meals, key = { "m${it.id}" }) { meal -> MealRow(meal, onDelete = { vm.deleteMeal(meal) }) }
             }
+            if (meals.isEmpty()) {
+                item { Text(if (isToday) "Nothing logged yet. Tick foods above, scan a plate, or quick-log a one-off meal." else "Nothing was logged on this day.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
+            }
+            items(meals, key = { "m${it.id}" }) { meal -> MealRow(meal, onDelete = { vm.deleteMeal(meal) }) }
         }
 
         AnimatedVisibility(
@@ -269,6 +307,9 @@ fun FoodScreen(nav: NavHostController) {
         }
     }
 
+    if (quickLog) {
+        QuickLogSheet(category, onLog = { n, cat, k, p -> vm.logOnce(n, cat, k, p); quickLog = false }, onDismiss = { quickLog = false })
+    }
     editing?.let { food ->
         FoodEditorSheet(food, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
     }
@@ -293,24 +334,122 @@ fun FoodScreen(nav: NavHostController) {
 }
 
 @Composable
-private fun TodayTotals(s: ProgressSnapshot) {
+private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: () -> Unit, onToday: () -> Unit) {
     val c = Fit.colors
-    val over = s.today.kcal > s.settings.kcalGoal
+    val date = LocalDate.ofEpochDay(day)
+    val label = when {
+        isToday -> "Today"
+        day == Dates.today() - 1 -> "Yesterday"
+        else -> date.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Previous day", tint = c.textPrimary) }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            if (!isToday) {
+                Text("Back to today", style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onToday).padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+        }
+        IconButton(onClick = onNext, enabled = !isToday) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Next day", tint = if (isToday) c.divider else c.textPrimary)
+        }
+    }
+}
+
+@Composable
+private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
+    val c = Fit.colors
+    val kcal = meals.sumOf { it.kcal }
+    val protein = meals.sumOf { it.protein.toDouble() }.toFloat()
+    val over = kcal > s.settings.kcalGoal
     FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
         Row {
             Column(Modifier.weight(1f)) {
-                Text("${s.today.protein.roundToInt()} / ${s.settings.proteinGoal} g", style = MaterialTheme.typography.titleSmall, color = c.teal)
+                Text("${protein.roundToInt()} / ${s.settings.proteinGoal} g", style = MaterialTheme.typography.titleSmall, color = c.teal)
                 Text("Protein", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
-                ProgressLine(s.today.protein / s.settings.proteinGoal.coerceAtLeast(1), c.teal, c.tealTrack, height = 5.dp)
+                ProgressLine(protein / s.settings.proteinGoal.coerceAtLeast(1), c.teal, c.tealTrack, height = 5.dp)
             }
             Spacer(Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("%,d / %,d".format(s.today.kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall, color = if (over) c.gold else c.blue)
+                Text("%,d / %,d".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall, color = if (over) c.gold else c.blue)
                 Text(if (over) "Calories · surplus" else "Calories", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
-                ProgressLine(s.today.kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
+                ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
             }
+        }
+    }
+}
+
+/** The last 7 days at a glance: one protein bar per day against the goal, and the averages. */
+@Composable
+private fun WeekCard(s: ProgressSnapshot) {
+    val c = Fit.colors
+    val today = Dates.today()
+    val days = (6 downTo 0).map { offset -> today - offset }
+    val byDay = s.nutritionByDay.associateBy { it.epochDay }
+    val logged = days.mapNotNull { byDay[it] }
+    if (logged.isEmpty()) return
+    val avgKcal = logged.sumOf { it.kcal } / logged.size
+    val avgProtein = (logged.sumOf { it.protein.toDouble() } / logged.size).roundToInt()
+    val hits = logged.count { it.protein >= s.settings.proteinGoal }
+    FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Last 7 days", style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                Text(
+                    "Avg ${"%,d".format(avgKcal)} kcal · $avgProtein g protein · goal hit $hits of ${logged.size} logged day${if (logged.size == 1) "" else "s"}",
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth().height(44.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+            days.forEach { d ->
+                val n = byDay[d]
+                val ratio = ((n?.protein ?: 0f) / s.settings.proteinGoal.coerceAtLeast(1)).coerceIn(0f, 1f)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(6.dp)).background(c.tealTrack), contentAlignment = Alignment.BottomCenter) {
+                        if (n != null) Box(Modifier.fillMaxWidth().height((32 * ratio).dp.coerceAtLeast(if (ratio > 0f) 3.dp else 0.dp)).background(if (n.protein >= s.settings.proteinGoal) c.teal else c.teal.copy(alpha = 0.55f)))
+                    }
+                    Text(Dates.shortDayLetters[Dates.dayOfWeek(d) - 1], style = MaterialTheme.typography.labelSmall, color = if (d == today) c.textPrimary else c.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuickLogSheet(initial: FoodCategory, onLog: (String, FoodCategory, Int, Float) -> Unit, onDismiss: () -> Unit) {
+    val c = Fit.colors
+    var name by remember { mutableStateOf("") }
+    var kcal by remember { mutableStateOf("") }
+    var protein by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(initial) }
+    val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
+    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+            Text("Quick log", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+            Text("A one-off meal. It counts for the day but isn't added to your food list.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(name, { name = it.take(48) }, label = { Text("What was it?") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text("Calories") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text("Protein (g)") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(14.dp))
+            SegmentedTabs(FoodCategory.entries.map { it.label }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
+            Spacer(Modifier.height(16.dp))
+            PillButton(
+                "Log it",
+                onClick = { onLog(name.trim(), category, kcal.toIntOrNull() ?: 0, protein.toFloatOrNull() ?: 0f) },
+                enabled = name.isNotBlank() && kcal.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

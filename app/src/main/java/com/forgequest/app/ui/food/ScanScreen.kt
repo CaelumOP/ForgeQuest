@@ -26,6 +26,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import com.forgequest.app.ui.components.TonalPill
+import android.content.Intent
+import com.forgequest.app.ui.components.NumberEntryDialog
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -91,6 +96,7 @@ import com.forgequest.app.data.FoodScan
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
+import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
@@ -118,6 +124,8 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
     val state = MutableStateFlow<ScanState>(ScanState.Camera)
     val hasKey: Boolean get() = app.settings.apiKey.value.isNotBlank()
     val logged = MutableStateFlow(false)
+    var loggedSummary: String? = null
+        private set
 
     fun analyzeBytes(bytes: ByteArray) = viewModelScope.launch {
         runCatching { app.food.savePhoto(bytes) }
@@ -152,8 +160,9 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             if (saveToFoods) {
                 app.food.saveFood(FoodEntity(name = name, category = category, kcal = kcal, protein = protein, serving = "1 plate", photoPath = photo, pinned = pin, createdAt = System.currentTimeMillis()))
             }
-            app.progress.evaluateBadges()
+            val badges = app.progress.evaluateBadges()
             app.haptics.celebrate()
+            loggedSummary = "Logged $name · $kcal kcal · ${protein.roundToInt()} g protein" + if (badges.isNotEmpty()) " · Badge: ${badges.first()}" else ""
             logged.value = true
         }
     }
@@ -165,7 +174,13 @@ fun ScanScreen(nav: NavHostController) {
     val state by vm.state.collectAsState()
     val logged by vm.logged.collectAsState()
 
-    LaunchedEffect(logged) { if (logged) nav.popBackStack() }
+    val snackbar = LocalSnackbar.current
+    LaunchedEffect(logged) {
+        if (logged) {
+            nav.popBackStack()
+            vm.loggedSummary?.let { snackbar.showSnackbar(it) }
+        }
+    }
     BackHandler { if (state is ScanState.Camera) nav.popBackStack() else vm.retake() }
 
     if (!vm.hasKey) {
@@ -217,8 +232,14 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
     var torch by remember { mutableStateOf(false) }
     var shooting by remember { mutableStateOf(false) }
+    var captureFailed by remember { mutableStateOf(false) }
+    val activity = context as? android.app.Activity
+    // After "Don't allow" the system refuses to ask again; the only way back is the app's settings page.
+    val askedBefore = remember { mutableStateOf(false) }
+    val permanentlyDenied = !granted && askedBefore.value && activity != null &&
+        !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
 
-    LaunchedEffect(Unit) { if (!granted) permission.launch(Manifest.permission.CAMERA) }
+    LaunchedEffect(Unit) { if (!granted) { askedBefore.value = true; permission.launch(Manifest.permission.CAMERA) } }
 
     Box(Modifier.fillMaxSize()) {
         if (granted) {
@@ -241,9 +262,23 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
             Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Camera access is off", style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Spacer(Modifier.height(8.dp))
-                Text("Allow the camera to scan meals, or pick a photo from your gallery.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center)
+                Text(
+                    if (permanentlyDenied) "Camera access was turned off for ForgeQuest. Turn it on in the app's settings, or pick a photo from your gallery."
+                    else "Allow the camera to scan meals, or pick a photo from your gallery.",
+                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center,
+                )
                 Spacer(Modifier.height(20.dp))
-                PillButton("Allow camera", onClick = { permission.launch(Manifest.permission.CAMERA) })
+                if (permanentlyDenied) {
+                    PillButton("Open app settings", onClick = {
+                        context.startActivity(
+                            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null)),
+                        )
+                    })
+                } else {
+                    PillButton("Allow camera", onClick = { askedBefore.value = true; permission.launch(Manifest.permission.CAMERA) })
+                }
+                Spacer(Modifier.height(10.dp))
+                TonalPill("Choose from gallery", onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, tint = Color.White)
             }
         }
 
@@ -264,8 +299,9 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "Fit the whole plate in frame. A hand or fork beside it helps with portions.",
-                style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
+                if (captureFailed) "The camera couldn't take that picture. Try again, or pick one from your gallery."
+                else "Fit the whole plate in frame. A hand or fork beside it helps with portions.",
+                style = MaterialTheme.typography.bodySmall, color = if (captureFailed) Fit.colors.coral else Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 40.dp),
             )
             Spacer(Modifier.height(20.dp))
@@ -297,6 +333,7 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
 
                                     override fun onError(exception: ImageCaptureException) {
                                         shooting = false
+                                        captureFailed = true
                                     }
                                 },
                             )
@@ -387,7 +424,10 @@ private fun ResultSheet(
     onLog: (String, FoodCategory, Int, Float, Boolean, Boolean) -> Unit,
 ) {
     val c = Fit.colors
+    var items by remember { mutableStateOf(scan.items) }
+    var dish by remember { mutableStateOf(scan.dish) }
     var included by remember { mutableStateOf(scan.items.indices.toSet()) }
+    var editingGrams by remember { mutableStateOf<Int?>(null) }
     var portion by remember { mutableStateOf(Portion.NORMAL) }
     var fat by remember { mutableStateOf(CookingFat.LIGHT) }
     var category by remember { mutableStateOf(defaultCategory) }
@@ -396,9 +436,25 @@ private fun ResultSheet(
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
 
-    val chosen = scan.items.filterIndexed { i, _ -> i in included }
+    val chosen = items.filterIndexed { i, _ -> i in included }
     val kcal = (chosen.sumOf { it.kcal } * portion.factor).roundToInt() + if (chosen.isEmpty()) 0 else fat.kcal
     val protein = chosen.sumOf { it.protein.toDouble() }.toFloat() * portion.factor
+
+    editingGrams?.let { index ->
+        val item = items[index]
+        NumberEntryDialog(
+            title = "${item.name}: how many grams?", initial = item.grams.toFloat().coerceAtLeast(1f), unit = "g", decimals = 0, min = 1f, max = 3000f,
+            onDismiss = { editingGrams = null },
+            onConfirm = { grams ->
+                // Scale calories and protein with the weight so a corrected portion stays consistent.
+                val factor = if (item.grams > 0) grams / item.grams else 1f
+                items = items.toMutableList().also {
+                    it[index] = item.copy(grams = grams.roundToInt(), kcal = (item.kcal * factor).roundToInt(), protein = item.protein * factor)
+                }
+                editingGrams = null
+            },
+        )
+    }
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(shown, enter = slideInVertically { it } + fadeIn(), modifier = Modifier.align(Alignment.BottomCenter)) {
@@ -409,7 +465,20 @@ private fun ResultSheet(
                 Box(Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).clip(CircleShape).background(c.divider))
                 Spacer(Modifier.height(14.dp))
                 Row(verticalAlignment = Alignment.Top) {
-                    Text(scan.dish, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f).padding(end = 12.dp))
+                    BasicTextField(
+                        value = dish,
+                        onValueChange = { dish = it.take(48).replace("\n", "") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleLarge.copy(color = c.textPrimary),
+                        cursorBrush = SolidColor(c.teal),
+                        modifier = Modifier.weight(1f).padding(end = 12.dp),
+                        decorationBox = { inner ->
+                            Column {
+                                inner()
+                                Text("Tap the name to change it", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                            }
+                        },
+                    )
                     Column(horizontalAlignment = Alignment.End) {
                         Text("$kcal kcal", style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.SemiBold)
                         Text("${protein.roundToInt()} g protein", style = MaterialTheme.typography.labelLarge, color = c.teal)
@@ -423,20 +492,25 @@ private fun ResultSheet(
                     Text(scan.note, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Spacer(Modifier.height(12.dp))
-                scan.items.forEachIndexed { i, item ->
+                items.forEachIndexed { i, item ->
                     val on = i in included
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp)).background(c.cardHigh)
-                            .clickable { included = if (on) included - i else included + i }.padding(horizontal = 12.dp, vertical = 10.dp),
+                            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.size(24.dp).clip(CircleShape).background(if (on) c.teal else c.card), contentAlignment = Alignment.Center) {
-                            if (on) Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(16.dp))
+                        Box(
+                            Modifier.size(36.dp).clip(CircleShape).clickable { included = if (on) included - i else included + i },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Box(Modifier.size(24.dp).clip(CircleShape).background(if (on) c.teal else c.card), contentAlignment = Alignment.Center) {
+                                if (on) Icon(Icons.Rounded.Check, contentDescription = if (on) "Included" else "Excluded", tint = c.onTeal, modifier = Modifier.size(16.dp))
+                            }
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f).padding(end = 12.dp).clip(RoundedCornerShape(8.dp)).clickable { editingGrams = i }.padding(vertical = 4.dp)) {
                             Text(item.name, style = MaterialTheme.typography.bodyMedium, color = if (on) c.textPrimary else c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            if (item.grams > 0) Text("about ${item.grams} g", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                            Text(if (item.grams > 0) "about ${item.grams} g · tap to correct" else "tap to set grams", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("${item.kcal} kcal", style = MaterialTheme.typography.labelLarge, color = if (on) c.blue else c.textSecondary)
@@ -473,7 +547,7 @@ private fun ResultSheet(
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PillButton("Retake", onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
-                    PillButton("Log meal", onClick = { onLog(scan.dish, category, kcal, protein, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
+                    PillButton("Log meal", onClick = { onLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
                 }
             }
         }
