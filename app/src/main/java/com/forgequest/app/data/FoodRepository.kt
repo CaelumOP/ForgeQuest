@@ -45,6 +45,7 @@ class FoodRepository(
     private val gemini: GeminiClient,
 ) {
     private val dao = db.food()
+    private companion object { const val MAX_EDGE = 1280 }
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     val foods: Flow<List<FoodEntity>> = dao.observeFoods()
@@ -100,17 +101,33 @@ class FoodRepository(
         file.absolutePath
     }
 
-    /** Saves camera JPEG bytes, downscaled to 1280 px and rotated upright. */
+    /**
+     * Saves camera or gallery JPEG bytes, downscaled to 1280 px and rotated upright.
+     * The image is subsampled while decoding, so a 48 MP photo never becomes a 190 MB bitmap in memory.
+     */
     suspend fun savePhoto(jpeg: ByteArray): String = withContext(Dispatchers.IO) {
-        val decoded = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size) ?: throw AiError.Unreadable("Couldn't read that photo.")
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw AiError.Unreadable("Couldn't read that photo.")
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, MAX_EDGE) }
+        val decoded = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, options) ?: throw AiError.Unreadable("Couldn't read that photo.")
         val rotation = runCatching { ExifInterface(jpeg.inputStream()).rotationDegrees }.getOrDefault(0)
-        val scale = minOf(1f, 1280f / maxOf(decoded.width, decoded.height))
+        val scale = minOf(1f, MAX_EDGE.toFloat() / maxOf(decoded.width, decoded.height))
         val matrix = Matrix().apply { postScale(scale, scale); postRotate(rotation.toFloat()) }
         val upright = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+        if (upright !== decoded) decoded.recycle()
         val dir = File(context.filesDir, "photos").apply { mkdirs() }
         val file = File(dir, "meal_${System.currentTimeMillis()}.jpg")
         file.outputStream().use { upright.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+        upright.recycle()
         file.absolutePath
+    }
+
+    /** Largest power-of-two subsampling that still leaves the longest edge at or above [maxEdge]. */
+    private fun sampleSize(width: Int, height: Int, maxEdge: Int): Int {
+        var sample = 1
+        while (maxOf(width, height) / (sample * 2) >= maxEdge) sample *= 2
+        return sample
     }
 
     // ------------------------------------------------------------ AI scan

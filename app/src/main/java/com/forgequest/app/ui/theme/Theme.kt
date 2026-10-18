@@ -66,6 +66,10 @@ val DarkFitColors = FitColors(
     isDark = true,
 )
 
+/**
+ * Light accents are deliberately deeper than the dark ones: they're used as text on white cards,
+ * and each one measures at least 4.5:1 there and on the pale "track" tints (WCAG AA for body text).
+ */
 val LightFitColors = FitColors(
     background = Color(0xFFF6F8FC),
     card = Color(0xFFFFFFFF),
@@ -73,16 +77,16 @@ val LightFitColors = FitColors(
     divider = Color(0xFFE1E5EA),
     textPrimary = Color(0xFF1F1F1F),
     textSecondary = Color(0xFF5F6368),
-    teal = Color(0xFF00897B),
+    teal = Color(0xFF00705F),
     tealTrack = Color(0xFFD5F0EB),
     onTeal = Color(0xFFFFFFFF),
-    blue = Color(0xFF1A73E8),
+    blue = Color(0xFF0B57D0),
     blueTrack = Color(0xFFDCE8FC),
-    gold = Color(0xFFE8A500),
+    gold = Color(0xFF8A6100),
     goldTrack = Color(0xFFFCEFC7),
-    coral = Color(0xFFE5675C),
+    coral = Color(0xFFB8372F),
     coralTrack = Color(0xFFFCE0DD),
-    purple = Color(0xFF9334E6),
+    purple = Color(0xFF7B2CBF),
     purpleTrack = Color(0xFFEFE1FC),
     muscleRest = Color(0xFFDCE1E8),
     bodyOutline = Color(0xFFB9C0C9),
