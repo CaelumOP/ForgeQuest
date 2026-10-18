@@ -1,0 +1,4 @@
+-keepattributes *Annotation*,InnerClasses,Signature
+-keep class com.forgequest.ai.domain.model.** { *; }
+-keep class com.forgequest.ai.data.local.entity.** { *; }
+-dontwarn com.google.errorprone.annotations.**

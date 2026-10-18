@@ -1,0 +1,111 @@
+package com.forgequest.app.data
+
+import com.forgequest.app.data.ai.GeminiClient
+import com.forgequest.app.data.plan.PlanJson
+import com.forgequest.app.data.seed.ExerciseCatalog
+import com.forgequest.app.data.seed.StarterPlans
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PlanJsonTest {
+    private val reply = """
+        Here's a simple **3-day** plan.
+
+        ```json
+        {"name": "Starter", "days": [
+          {"dayOfWeek": 1, "title": "Push", "items": [{"exerciseId": "push_up", "sets": 3, "repsMin": 10}]},
+          {"dayOfWeek": 2, "title": "Rest", "isRest": true},
+          {"dayOfWeek": 9, "title": "Bad day"}
+        ]}
+        ```
+    """.trimIndent()
+
+    @Test
+    fun extractsPlanAndDropsInvalidDays() {
+        val plan = PlanJson.extract(reply)!!
+        assertEquals("Starter", plan.name)
+        assertEquals(listOf(1, 2), plan.days.map { it.dayOfWeek })
+        assertEquals("push_up", plan.days[0].items[0].exerciseId)
+    }
+
+    @Test
+    fun stripLeavesOnlyTheProse() {
+        assertEquals("Here's a simple **3-day** plan.", PlanJson.strip(reply))
+    }
+
+    @Test
+    fun noBlockMeansNoPlan() {
+        assertNull(PlanJson.extract("Do more pull-ups."))
+        assertNull(PlanJson.extract("```json\n{\"name\": \"x\"}\n```"))
+    }
+
+    @Test
+    fun roundTrip() {
+        val plan = StarterPlans.hemoFoundation
+        assertEquals(plan, PlanJson.decode(PlanJson.encode(plan)))
+    }
+}
+
+class StarterPlanTest {
+    @Test
+    fun everyStarterExerciseExistsInTheLibrary() {
+        val ids = ExerciseCatalog.all.map { it.id }.toSet()
+        StarterPlans.all.flatMap { p -> p.days.flatMap { d -> d.items.map { it.exerciseId } } }.forEach { id ->
+            assertTrue("Missing exercise $id", id in ids)
+        }
+    }
+
+    @Test
+    fun hemoFoundationMatchesTheVideos() {
+        val plan = StarterPlans.hemoFoundation
+        assertEquals(setOf(1, 2, 3, 5, 6), plan.days.filter { !it.isRest }.map { it.dayOfWeek }.toSet())
+        val day1 = plan.days.first { it.dayOfWeek == 1 }
+        assertEquals(9, day1.items.size)
+        assertEquals("jumping_jacks", day1.items.first().exerciseId)
+        assertEquals(5, day1.items.first().sets)
+        assertTrue(day1.items.drop(1).all { it.circuit && it.sets == 3 })
+        assertEquals(30, day1.items.first { it.exerciseId == "incline_hollow_plank" }.seconds)
+    }
+
+    @Test
+    fun hemoExercisesLinkToTheirVideo() {
+        val byId = ExerciseCatalog.all.associateBy { it.id }
+        StarterPlans.hemoFoundation.days.flatMap { it.items }.forEach { item ->
+            assertTrue("${item.exerciseId} has no video", byId.getValue(item.exerciseId).videoUrl?.contains("youtube.com") == true)
+        }
+    }
+
+    @Test
+    fun catalogIdsAreUnique() {
+        assertEquals(ExerciseCatalog.all.size, ExerciseCatalog.all.map { it.id }.toSet().size)
+    }
+}
+
+class ModelPickTest {
+    private val client = GeminiClient()
+
+    // Real list returned for a free key on 2026-10-18 (trimmed).
+    private val models = listOf(
+        "gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest", "gemini-pro-latest", "gemini-3-flash-preview",
+        "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash",
+        "gemini-3.8-flash", "gemini-3.8-flash-tts", "embedding-001",
+    )
+
+    @Test
+    fun picksNewestFlash() {
+        assertEquals("gemini-3.8-flash", client.pickNewest(models, "flash"))
+    }
+
+    @Test
+    fun newerPreviewBeatsOldStable() {
+        assertEquals("gemini-3.1-pro-preview", client.pickNewest(models, "pro"))
+    }
+
+    @Test
+    fun stableWinsOnTheSameVersion() {
+        assertEquals("gemini-3.1-pro", client.pickNewest(listOf("gemini-3.1-pro-preview", "gemini-3.1-pro"), "pro"))
+        assertNull(client.pickNewest(listOf("gemini-flash-latest"), "pro"))
+    }
+}
