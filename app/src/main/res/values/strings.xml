@@ -822,4 +822,9 @@
     <string name="profile_protein_per_kg">Protein per kg</string>
     <string name="unit_g_per_kg">g/kg</string>
     <string name="profile_fat_share">Fat share of calories</string>
+    <string name="hc_test_title">Test Health Connect</string>
+    <string name="hc_test_hint">Reads the last 14 days from Fitbit, Google Health and other apps, and saves a report you can share</string>
+    <string name="hc_saved">Health Connect report saved</string>
+    <string name="hc_failed">Couldn\'t read Health Connect: %1$s</string>
+    <string name="hc_unavailable">Health Connect isn\'t available on this phone</string>
 </resources>
