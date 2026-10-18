@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import androidx.compose.material.icons.rounded.SaveAlt
 import com.forgequest.app.R
 import com.forgequest.app.ui.localTitle
 import com.forgequest.app.ui.localDescription
@@ -268,6 +269,21 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
+    /** Saves to a place the person picks (Downloads, Files, Drive) instead of only offering the share sheet. */
+    fun exportTo(uri: Uri) {
+        busy.value = app.str(R.string.backup_preparing)
+        viewModelScope.launch {
+            try {
+                app.backup.exportTo(uri)
+                message.value = app.str(R.string.backup_saved)
+            } catch (e: Exception) {
+                message.value = app.str(R.string.backup_create_failed)
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
     fun previewImport(uri: Uri) {
         busy.value = app.str(R.string.backup_reading_file)
         viewModelScope.launch {
@@ -358,6 +374,7 @@ fun ProfileScreen(nav: NavHostController) {
     }
     LaunchedEffect(consent) { consent?.let { consentLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) } }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::previewImport) }
+    val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTo) }
     LaunchedEffect(shareUri) {
         shareUri?.let { uri ->
             val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri)
@@ -658,7 +675,8 @@ fun ProfileScreen(nav: NavHostController) {
             }
             Spacer(Modifier.height(14.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PillButton(stringResource(R.string.profile_export), onClick = vm::exportData, icon = Icons.Rounded.Share)
+                PillButton(stringResource(R.string.profile_save_file), onClick = { saveLauncher.launch(vm.app.backup.exportFileName()) }, icon = Icons.Rounded.SaveAlt)
+                TonalPill(stringResource(R.string.profile_share_file), onClick = vm::exportData, icon = Icons.Rounded.Share)
                 TonalPill(stringResource(R.string.profile_import), onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
                 if (safetyCopies.isNotEmpty()) TonalPill(stringResource(R.string.profile_undo_restore), onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
             }

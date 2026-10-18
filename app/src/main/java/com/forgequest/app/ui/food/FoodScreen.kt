@@ -1,5 +1,8 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.components.ChoiceChip
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import com.forgequest.app.R
 import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.titleRes
@@ -122,6 +125,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalCoroutinesApi::class)
 class FoodViewModel(val app: AppContainer) : ViewModel() {
     val foods: StateFlow<List<FoodEntity>> = app.food.foods.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val recentOneOffs: StateFlow<List<MealEntity>> = app.db.food().observeRecentOneOffs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** The day being viewed and logged to. Follows the real date until the person steps away from today. */
     val day = MutableStateFlow(Dates.today())
     private var followToday = true
@@ -319,7 +323,8 @@ fun FoodScreen(nav: NavHostController) {
     }
 
     if (quickLog) {
-        QuickLogSheet(category, onLog = { n, cat, k, p -> vm.logOnce(n, cat, k, p); quickLog = false }, onDismiss = { quickLog = false })
+        val recentOneOffs by vm.recentOneOffs.collectAsState()
+        QuickLogSheet(category, recent = recentOneOffs, onLog = { n, cat, k, p -> vm.logOnce(n, cat, k, p); quickLog = false }, onDismiss = { quickLog = false })
     }
     editing?.let { food ->
         FoodEditorSheet(food, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
@@ -432,7 +437,7 @@ private fun WeekCard(s: ProgressSnapshot) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickLogSheet(initial: FoodCategory, onLog: (String, FoodCategory, Int, Float) -> Unit, onDismiss: () -> Unit) {
+private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, onLog: (String, FoodCategory, Int, Float) -> Unit, onDismiss: () -> Unit) {
     val c = Fit.colors
     var name by remember { mutableStateOf("") }
     var kcal by remember { mutableStateOf("") }
@@ -443,6 +448,19 @@ private fun QuickLogSheet(initial: FoodCategory, onLog: (String, FoodCategory, I
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
             Text(stringResource(R.string.food_quick_log), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Text(stringResource(R.string.food_quick_log_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            // Recent one-offs fill the form in one tap (MacroFactor and MyFitnessPal lead with recents).
+            if (recent.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.food_recent), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    recent.forEach { m ->
+                        ChoiceChip("${m.name} · ${m.kcal}", m.name == name, {
+                            name = m.name; kcal = m.kcal.toString(); protein = m.protein.toString().removeSuffix(".0")
+                        })
+                    }
+                }
+            }
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.food_what_was_it)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(10.dp))

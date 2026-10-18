@@ -711,4 +711,15 @@
     <string name="block_core">Core</string>
     <string name="block_main">Main</string>
     <string name="block_legs">Legs</string>
+    <string name="live_rest_minus">−15 s</string>
+    <string name="live_rest_plus">+15 s</string>
+    <string name="live_tick_all_finish">Tick all &amp; finish</string>
+    <string name="live_last_time">Last time: %1$s</string>
+    <string name="live_next_up">Next up: %1$s · %2$s</string>
+    <string name="home_center_protein">g protein</string>
+    <string name="home_center_kcal">%1$s kcal</string>
+    <string name="backup_saved">Backup saved</string>
+    <string name="profile_save_file">Save file</string>
+    <string name="profile_share_file">Share</string>
+    <string name="food_recent">Recent</string>
 </resources>

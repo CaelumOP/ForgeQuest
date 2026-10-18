@@ -560,7 +560,8 @@ private fun ResultSheet(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Clear of the gesture bar; the Log button sat under the home handle.
+                Row(Modifier.navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
                     PillButton(stringResource(R.string.scan_log_meal), onClick = { onLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
                 }

@@ -173,6 +173,14 @@ class BackupRepository(
         FileProvider.getUriForFile(context, "${context.packageName}.files", file)
     }
 
+    /** Writes a backup straight to a file the person chose in the system "Save as" screen. */
+    suspend fun exportTo(uri: Uri) = withContext(Dispatchers.IO) {
+        val text = encode(build())
+        context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { it.write(text) } ?: throw BackupError.CantOpen
+    }
+
+    fun exportFileName(): String = "forgequest-backup-${LocalDate.now().format(DateTimeFormatter.ISO_DATE)}.json"
+
     /** Reads a backup the person picked, without applying it. */
     suspend fun read(uri: Uri): BackupFile = withContext(Dispatchers.IO) {
         val text = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }

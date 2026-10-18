@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.ExpandMore
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.R
 
@@ -181,7 +183,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             }
             LazyColumn(
                 Modifier.weight(1f),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 160.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (rest != null) 260.dp else 160.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(groups, key = { g -> if (g is Group.Straight) "s${g.position}" else "c${(g as Group.Circuit).positions.first()}" }) { g ->
@@ -209,7 +211,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             AnimatedVisibility(rest != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
                 rest?.let { r ->
                     val left = ((r.endsAt - now) / 1000).coerceAtLeast(0)
-                    RestBar(left.toInt(), r.totalSeconds, onAdd = { vm.addRest(15) }, onSkip = vm::skipRest)
+                    RestBar(left.toInt(), r.totalSeconds, onAdd = { vm.addRest(15) }, onRemove = { if (left > 15) vm.addRest(-15) else vm.skipRest() }, onSkip = vm::skipRest)
                 }
             }
             Box(Modifier.fillMaxWidth().background(c.background).navigationBarsPadding().padding(16.dp)) {
@@ -231,7 +233,12 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             title = { Text(pluralStringResource(R.plurals.live_finish_unticked_title, left, left), color = c.textPrimary) },
             text = { Text(pluralStringResource(R.plurals.live_finish_unticked_body, left, left), color = c.textSecondary) },
             confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) } },
-            dismissButton = { TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) } },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
+                    TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
+                }
+            },
         )
     }
 
@@ -259,6 +266,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 picker = null
             },
             onDismiss = { picker = null },
+            initialMuscle = (mode as? PickerMode.Swap)?.let { m -> sets.firstOrNull { it.itemPosition == m.position }?.let { exercises[it.exerciseId]?.primary?.firstOrNull() } },
         )
     }
 }
@@ -278,6 +286,7 @@ private fun StraightCard(
     onDetail: () -> Unit,
 ) {
     val c = Fit.colors
+    val prev by vm.previous.collectAsState()
     var menu by remember { mutableStateOf(false) }
     FitCard(padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -298,7 +307,7 @@ private fun StraightCard(
         }
         Spacer(Modifier.height(4.dp))
         g.sets.forEach { set ->
-            SetRow(label = "${set.setIndex + 1}", sublabel = null, set = set, kind = ex?.kind ?: ExerciseKind.REPS, vm = vm)
+            SetRow(label = "${set.setIndex + 1}", sublabel = null, set = set, kind = ex?.kind ?: ExerciseKind.REPS, vm = vm, previous = prev[set.exerciseId]?.getOrNull(set.setIndex))
         }
     }
 }
@@ -321,6 +330,7 @@ private fun CircuitCard(
             Text(stringResource(R.string.live_circuit), style = MaterialTheme.typography.labelMedium, color = c.teal)
         }
         Text(stringResource(R.string.live_circuit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        val prev by vm.previous.collectAsState()
         g.rounds.forEachIndexed { r, round ->
             val roundDone = round.all { it.done }
             Spacer(Modifier.height(12.dp))
@@ -340,6 +350,7 @@ private fun CircuitCard(
                         kind = ex?.kind ?: ExerciseKind.REPS,
                         vm = vm,
                         onLabelClick = { menu = true },
+                        previous = prev[set.exerciseId]?.getOrNull(r),
                     )
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.cd_watch_form)) }, onClick = { menu = false; onVideo(ex) })
@@ -366,6 +377,7 @@ private fun SetRow(
     kind: ExerciseKind,
     vm: LiveWorkoutViewModel,
     onLabelClick: (() -> Unit)? = null,
+    previous: SetEntity? = null,
 ) {
     val c = Fit.colors
     val rowColor by animateColorAsState(if (set.done) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent, label = "row")
@@ -389,7 +401,19 @@ private fun SetRow(
             Modifier.weight(1f).let { if (onLabelClick != null) it.clip(RoundedCornerShape(8.dp)).clickable(onClick = onLabelClick) else it },
         ) {
             if (sublabel != null) {
-                Text(sublabel, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(sublabel, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (onLabelClick != null) Icon(Icons.Rounded.ExpandMore, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary, modifier = Modifier.size(18.dp))
+                }
+            }
+            if (previous != null) {
+                val unit by vm.unit.collectAsState()
+                val last = when (kind) {
+                    ExerciseKind.HOLD -> stringResource(R.string.rx_seconds, previous.seconds ?: 0)
+                    ExerciseKind.WEIGHTED -> "${previous.reps ?: 0} × ${unit.format(previous.weightKg ?: 0f)}"
+                    ExerciseKind.REPS -> "${previous.reps ?: 0}"
+                }
+                Text(stringResource(R.string.live_last_time, last), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (set.targetLabel.isNotBlank() && sublabel != null) {
@@ -474,6 +498,8 @@ private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
             .semantics { contentDescription = setDoneLabel },
         contentAlignment = Alignment.Center,
     ) {
+        // A faint check in the empty box says "tap to tick" before the first tap (Strong does the same).
+        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.textSecondary.copy(alpha = 0.45f), modifier = Modifier.size(22.dp).scale(1f - checkScale))
         Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp).scale(checkScale))
     }
 }
@@ -487,14 +513,15 @@ fun PrTag() {
 }
 
 @Composable
-private fun RestBar(secondsLeft: Int, total: Int, onAdd: () -> Unit, onSkip: () -> Unit) {
+private fun RestBar(secondsLeft: Int, total: Int, onAdd: () -> Unit, onRemove: () -> Unit, onSkip: () -> Unit) {
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary)
             Spacer(Modifier.width(10.dp))
             Text("%d:%02d".format(secondsLeft / 60, secondsLeft % 60), style = MaterialTheme.typography.titleLarge, color = c.blue, modifier = Modifier.weight(1f))
-            TextButton(onClick = onAdd) { Text("+15 s", color = c.textPrimary) }
+            TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary) }
+            TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary) }
             TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal) }
         }
         Spacer(Modifier.height(8.dp))
@@ -558,6 +585,17 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
                         Spacer(Modifier.width(10.dp))
                         Text(stringResource(R.string.live_badge_unlocked, title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                     }
+                }
+            }
+        }
+        // What comes next, so finishing points forward (Fitbod ends every workout with the next one).
+        sum.nextUp?.let { (dow, title) ->
+            Spacer(Modifier.height(12.dp))
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.live_next_up, com.forgequest.app.domain.Dates.dayName(dow), title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                 }
             }
         }

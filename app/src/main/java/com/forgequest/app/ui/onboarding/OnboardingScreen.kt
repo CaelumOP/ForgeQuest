@@ -1,5 +1,8 @@
 package com.forgequest.app.ui.onboarding
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.focusRequester
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.stringResource
@@ -212,6 +215,9 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
     val c = Fit.colors
     Title(stringResource(R.string.onb_welcome_title), stringResource(R.string.onb_welcome_body))
+    // Keyboard up on arrival: the first thing asked for is typing a name.
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     OutlinedTextField(
         value = s.name,
         onValueChange = { v -> vm.update { it.copy(name = v.take(24)) } },
@@ -220,7 +226,7 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
         shape = RoundedCornerShape(16.dp),
         colors = fieldColors(),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().focusRequester(focus),
     )
     Spacer(Modifier.height(28.dp))
     Text(stringResource(R.string.onb_body_for_map), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)

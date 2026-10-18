@@ -207,6 +207,10 @@ interface FoodDao {
     @Query("DELETE FROM foods WHERE id = :id")
     suspend fun deleteFood(id: Long)
 
+    /** The latest of each one-off meal (quick log or scan) by name, newest first, for one-tap relogging. */
+    @Query("SELECT * FROM meals WHERE id IN (SELECT MAX(id) FROM meals WHERE foodId IS NULL GROUP BY lower(name)) ORDER BY loggedAt DESC LIMIT 8")
+    fun observeRecentOneOffs(): Flow<List<MealEntity>>
+
     @Query("SELECT * FROM meals WHERE epochDay = :day ORDER BY loggedAt")
     fun observeMeals(day: Long): Flow<List<MealEntity>>
 

@@ -81,10 +81,12 @@ fun ExercisePickerSheet(
     onPick: (ExerciseEntity) -> Unit,
     onCreate: (String, ExerciseKind, Muscle) -> Unit,
     onDismiss: () -> Unit,
+    /** Swapping starts filtered to the same muscle, so similar exercises are on top (as in Hevy and Fitbod). */
+    initialMuscle: Muscle? = null,
 ) {
     val c = Fit.colors
     var query by remember { mutableStateOf("") }
-    var muscle by remember { mutableStateOf<Muscle?>(null) }
+    var muscle by remember { mutableStateOf(initialMuscle) }
     var creating by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 

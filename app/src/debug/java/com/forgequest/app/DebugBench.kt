@@ -33,6 +33,13 @@ class DebugBench : BroadcastReceiver() {
             try {
                 // `--es send "…"` posts a coach message as if typed (adb can't type Arabic).
                 intent.getStringExtra("send")?.let { app.coach.send(it); return@launch }
+                // `--ez reset true` wipes data and settings like a fresh install but keeps the stored Gemini key.
+                if (intent.getBooleanExtra("reset", false)) {
+                    app.db.clearAllTables()
+                    app.settings.update { com.forgequest.app.data.prefs.Settings() }
+                    Log.i(TAG, "reset done")
+                    return@launch
+                }
                 run(app, intent.getStringExtra("models"), intent.getStringExtra("prompt") ?: "How am I doing this week?", intent.getStringExtra("variants"), intent.getIntExtra("runs", 1))
             } catch (e: Throwable) {
                 Log.e(TAG, "bench failed", e)
