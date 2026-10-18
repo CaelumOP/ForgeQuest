@@ -10,6 +10,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.os.Build
@@ -307,7 +312,7 @@ private fun CircuitCard(
             Spacer(Modifier.width(4.dp))
             Text("Circuit", style = MaterialTheme.typography.labelMedium, color = c.teal)
         }
-        Text("One set of each, then repeat.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        Text("One set of each, then repeat. Long-press a set to add a note.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         g.rounds.forEachIndexed { r, round ->
             val roundDone = round.all { it.done }
             Spacer(Modifier.height(12.dp))
@@ -344,6 +349,7 @@ private fun CircuitCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SetRow(
     label: String?,
@@ -355,8 +361,14 @@ private fun SetRow(
 ) {
     val c = Fit.colors
     val rowColor by animateColorAsState(if (set.done) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent, label = "row")
+    var noteDialog by remember { mutableStateOf(false) }
+    if (noteDialog) {
+        SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
+    }
     Row(
-        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor).padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor)
+            .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = "add a note")
+            .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (label != null) {
@@ -379,6 +391,9 @@ private fun SetRow(
                     Spacer(Modifier.width(6.dp))
                     PrTag()
                 }
+            }
+            if (set.note.isNotBlank()) {
+                Text(set.note, style = MaterialTheme.typography.labelSmall, color = c.blue, maxLines = 2, overflow = TextOverflow.Ellipsis, fontStyle = FontStyle.Italic)
             }
         }
         Spacer(Modifier.width(6.dp))
@@ -408,6 +423,33 @@ private fun SetRow(
         Spacer(Modifier.width(6.dp))
         MorphCheck(set.done) { vm.toggle(set) }
     }
+}
+
+/** Long-press a set to jot something down: how it felt, a variation, a niggle. */
+@Composable
+fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    val c = Fit.colors
+    var text by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        title = { Text("Note for this set", color = c.textPrimary) },
+        text = {
+            OutlinedTextField(
+                value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                placeholder = { Text("Felt easy, add weight next time") },
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Save", color = c.teal) } },
+        dismissButton = {
+            Row {
+                if (initial.isNotBlank()) TextButton(onClick = { onSave("") }) { Text("Clear", color = c.coral) }
+                TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
+            }
+        },
+    )
 }
 
 /** Squircle that springs into a filled circle with a check when ticked. */

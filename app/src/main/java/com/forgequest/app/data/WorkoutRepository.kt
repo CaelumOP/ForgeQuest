@@ -182,6 +182,33 @@ class WorkoutRepository(private val db: AppDatabase) {
         return id
     }
 
+    data class ExerciseUsage(val sets: Int, val planItems: Int)
+
+    suspend fun usage(exerciseId: String) = ExerciseUsage(exercises.setCount(exerciseId), exercises.planItemCount(exerciseId))
+
+    suspend fun updateExercise(ex: ExerciseEntity) = exercises.upsert(ex)
+
+    /**
+     * Folds [fromId] into [toId]: every logged set and plan item moves over, the duplicate is removed and the
+     * target's records are re-checked. This is how "push_ups" invented by the coach becomes the real "push_up".
+     */
+    suspend fun mergeExercise(fromId: String, toId: String) = db.withTransaction {
+        if (fromId == toId || exercises.byId(toId) == null) return@withTransaction
+        exercises.repointSets(fromId, toId)
+        exercises.repointPlanItems(fromId, toId)
+        exercises.delete(fromId)
+        recomputeRecords(toId)
+    }
+
+    /** Deletes a custom exercise nothing refers to. Returns false if it's built in or still in use. */
+    suspend fun deleteExercise(exerciseId: String): Boolean = db.withTransaction {
+        val ex = exercises.byId(exerciseId) ?: return@withTransaction false
+        if (!ex.custom) return@withTransaction false
+        if (exercises.setCount(exerciseId) > 0 || exercises.planItemCount(exerciseId) > 0) return@withTransaction false
+        exercises.delete(exerciseId)
+        true
+    }
+
     /** Saves a form-video link. Returns false (and changes nothing) when it isn't a web address. */
     suspend fun setVideoUrl(exerciseId: String, url: String?): Boolean {
         val ex = exercises.byId(exerciseId) ?: return false

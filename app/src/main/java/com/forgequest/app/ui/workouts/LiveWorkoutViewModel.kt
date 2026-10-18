@@ -136,6 +136,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         viewModelScope.launch { repo.updateSet(updated) }
     }
 
+    fun setNote(set: SetEntity, note: String) = viewModelScope.launch { repo.updateSet(set.copy(note = note.trim().take(120))) }
+
     fun addSet(itemPosition: Int) = currentSession?.let { s -> viewModelScope.launch { repo.addSet(s.id, itemPosition) } }
 
     /** Adds one more round to every exercise in a circuit block. */

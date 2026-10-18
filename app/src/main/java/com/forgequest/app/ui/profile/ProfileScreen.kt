@@ -580,6 +580,14 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
+        // Exercise library
+        SettingsRow(
+            Icons.Rounded.FitnessCenter, c.teal, c.tealTrack,
+            "Exercise library",
+            "Rename, merge or delete exercises you or the coach created",
+        ) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
+        Spacer(Modifier.height(12.dp))
+
         // Hand + body
         SettingsRow(
             Icons.Rounded.PanTool, c.purple, c.purpleTrack,
