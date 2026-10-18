@@ -195,7 +195,7 @@ fun CoachScreen(nav: NavHostController) {
                         m,
                         plan = vm.planOf(m),
                         onPreview = { preview = m },
-                        onApply = { vm.apply(m) },
+                        onApply = { preview = m },
                     )
                 }
             }
@@ -331,11 +331,10 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalPill("Preview", onClick = onPreview)
                     if (m.planApplied) {
-                        PillButton("Applied", onClick = {}, icon = Icons.Rounded.Check, container = c.tealTrack, content = c.teal)
+                        PillButton("Applied", onClick = onPreview, icon = Icons.Rounded.Check, container = c.tealTrack, content = c.teal)
                     } else {
-                        PillButton("Apply plan", onClick = onApply)
+                        PillButton("Review and apply", onClick = onApply)
                     }
                 }
             }

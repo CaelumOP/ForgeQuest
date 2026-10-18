@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.forgequest.app.container
 import com.forgequest.app.data.db.ChatEntity
+import com.forgequest.app.data.plan.PlanJson
 import java.util.concurrent.TimeUnit
 
 /** Daily: back up to Drive and pull in an updated "Workout Plan" doc. Silent; skips if Drive isn't connected. */
@@ -23,11 +24,14 @@ class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
             app.drive.backup(token)
             if (app.settings.apiKey.value.isNotBlank()) {
                 runCatching { app.drive.fetchPlanDoc(token, s.lastDocImportModified) }.getOrNull()?.let { doc ->
-                    app.drive.applyDocPlan(doc)
+                    // Staged, not applied: the person reviews it in the Coach tab and taps Apply, so edits made
+                    // in the app aren't overwritten by a doc change behind their back.
+                    app.settings.update { it.copy(lastDocImportModified = doc.modifiedAt) }
                     app.db.chat().insert(
                         ChatEntity(
                             role = "coach",
-                            text = "I imported your updated **${doc.docName}** from Google Docs. Your new week is in the Workouts tab.",
+                            text = "Your Google Doc **${doc.docName}** changed. Here's the new week it describes. Preview it, and apply it when you're ready.",
+                            planJson = PlanJson.encode(doc.plan),
                             createdAt = System.currentTimeMillis(),
                         )
                     )

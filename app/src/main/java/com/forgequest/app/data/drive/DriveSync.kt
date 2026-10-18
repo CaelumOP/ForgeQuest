@@ -135,7 +135,8 @@ class DriveSync(
 
     /** Finds the newest "Workout Plan" Google Doc. Returns null when it hasn't changed since [sinceMillis]. */
     suspend fun fetchPlanDoc(token: String, sinceMillis: Long = 0): DocPlan? = withContext(Dispatchers.IO) {
-        val q = "mimeType='application/vnd.google-apps.document' and name contains 'Workout Plan' and trashed=false"
+        // Only the person's own docs: a file someone shares with them must never replace their plan.
+        val q = "mimeType='application/vnd.google-apps.document' and name contains 'Workout Plan' and trashed=false and 'me' in owners"
         val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,name,modifiedTime)"
         val body = call(token, Request.Builder().url(url).get())
         val doc = json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject ?: throw DriveError.NoDoc

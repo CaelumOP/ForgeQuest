@@ -89,6 +89,21 @@ interface PlanDao {
 
     @Query("UPDATE plans SET active = 1 WHERE id = :id")
     suspend fun activate(id: Long)
+
+    @Query("SELECT * FROM plans WHERE id = :id")
+    suspend fun byId(id: Long): PlanEntity?
+
+    @Query("DELETE FROM plan_items WHERE dayId IN (SELECT id FROM plan_days WHERE planId = :planId)")
+    suspend fun deleteItemsOfPlan(planId: Long)
+
+    @Query("DELETE FROM plan_days WHERE planId = :planId")
+    suspend fun deleteDaysOfPlan(planId: Long)
+
+    @Query("DELETE FROM plans WHERE id = :planId")
+    suspend fun deletePlan(planId: Long)
+
+    @Query("SELECT COUNT(*) FROM sessions WHERE planDayId IN (SELECT id FROM plan_days WHERE planId = :planId)")
+    suspend fun sessionsUsingPlan(planId: Long): Int
 }
 
 @Dao

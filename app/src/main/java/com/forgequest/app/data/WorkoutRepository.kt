@@ -111,6 +111,46 @@ class WorkoutRepository(private val db: AppDatabase) {
         planId
     }
 
+    /** Every plan ever applied, newest first. Switching back is instant; nothing is lost on Apply. */
+    val allPlans: Flow<List<PlanEntity>> = plans.observeAll()
+
+    suspend fun activatePlan(planId: Long) = db.withTransaction {
+        if (plans.byId(planId) == null) return@withTransaction
+        plans.deactivateAll()
+        plans.activate(planId)
+    }
+
+    /** Removes an inactive plan. Workouts done under it keep their sets; only the schedule goes. */
+    suspend fun deletePlan(planId: Long) = db.withTransaction {
+        val plan = plans.byId(planId) ?: return@withTransaction
+        if (plan.active) return@withTransaction
+        plans.deleteItemsOfPlan(planId)
+        plans.deleteDaysOfPlan(planId)
+        plans.deletePlan(planId)
+    }
+
+    /** Moves an exercise one step up (-1) or down (+1) within its day. */
+    suspend fun movePlanItem(item: PlanItemEntity, delta: Int) = db.withTransaction {
+        val items = plans.items(item.dayId).sortedBy { it.position }
+        val index = items.indexOfFirst { it.id == item.id }
+        val target = index + delta
+        if (index < 0 || target !in items.indices) return@withTransaction
+        val reordered = items.toMutableList().also { it.add(target, it.removeAt(index)) }
+        reordered.forEachIndexed { i, it -> if (it.position != i) plans.updateItem(it.copy(position = i)) }
+    }
+
+    /** Swaps two weekdays of the active plan, e.g. to make the week start on Saturday. */
+    suspend fun swapPlanDays(planId: Long, dayA: Int, dayB: Int) = db.withTransaction {
+        if (dayA == dayB) return@withTransaction
+        val days = plans.days(planId)
+        val a = days.firstOrNull { it.dayOfWeek == dayA } ?: return@withTransaction
+        val b = days.firstOrNull { it.dayOfWeek == dayB } ?: return@withTransaction
+        // Park A on an unused value so the (planId, dayOfWeek) pair never collides mid-swap.
+        plans.updateDay(a.copy(dayOfWeek = 0))
+        plans.updateDay(b.copy(dayOfWeek = dayA))
+        plans.updateDay(a.copy(dayOfWeek = dayB))
+    }
+
     suspend fun updatePlanItem(item: PlanItemEntity) = plans.updateItem(item)
     suspend fun deletePlanItem(id: Long) = plans.deleteItem(id)
     suspend fun restorePlanItem(item: PlanItemEntity) = plans.restoreItem(item)
