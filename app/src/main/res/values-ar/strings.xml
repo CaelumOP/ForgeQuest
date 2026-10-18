@@ -845,6 +845,8 @@
     <string name="progress_tile_weight">الوزن · متوسط 7 أيام</string>
     <string name="progress_tile_protein">البروتين · أيام على الهدف</string>
     <string name="progress_tile_workouts">التمارين · أسبوعيًا</string>
+    <string name="progress_tile_carbs">الكارب · المعدل اليومي</string>
+    <string name="progress_carbs_avg">⁦%1$d / %2$d⁩ غ</string>
     <string name="progress_of_seven">%1$d من 7</string>
     <string name="progress_holding">ثابت</string>
     <string name="progress_on_target">على الهدف</string>
