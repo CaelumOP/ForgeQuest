@@ -138,6 +138,9 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
 
     fun clear() = viewModelScope.launch { app.coach.clear() }
 
+    val settings = app.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    fun setModel(choice: String) = viewModelScope.launch { app.coach.setCoachModel(choice) }
+
     fun planOf(message: ChatEntity): PlanDraft? = message.planJson?.let(PlanJson::decode)
 }
 
@@ -178,6 +181,27 @@ fun CoachScreen(nav: NavHostController) {
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textSecondary) }
                 DropdownMenu(menu, { menu = false }, containerColor = c.cardHigh) {
+                    val s by vm.settings.collectAsState()
+                    val current = s?.coachModel ?: "auto"
+                    Text(stringResource(R.string.coach_model_header), style = MaterialTheme.typography.labelMedium, color = c.textSecondary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    listOf(
+                        Triple("auto", R.string.coach_model_auto, stringResource(R.string.coach_model_auto_hint)),
+                        Triple("lite", R.string.coach_model_lite, (s?.liteModel ?: "").ifBlank { stringResource(R.string.coach_model_lite_hint) }),
+                        Triple("flash", R.string.coach_model_flash, stringResource(R.string.coach_model_flash_hint, s?.fastModel.orEmpty())),
+                        Triple("pro", R.string.coach_model_pro, stringResource(R.string.coach_model_pro_hint, s?.smartModel.orEmpty())),
+                    ).forEach { (id, label, hint) ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(stringResource(label), color = c.textPrimary)
+                                    Text(hint, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                                }
+                            },
+                            leadingIcon = { Icon(Icons.Rounded.Check, contentDescription = null, tint = if (id == current) c.teal else androidx.compose.ui.graphics.Color.Transparent) },
+                            onClick = { menu = false; vm.setModel(id) },
+                        )
+                    }
+                    androidx.compose.material3.HorizontalDivider(color = c.divider)
                     DropdownMenuItem(text = { Text(stringResource(R.string.coach_clear)) }, onClick = { menu = false; confirmClear = true })
                 }
             }

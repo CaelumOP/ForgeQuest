@@ -175,8 +175,15 @@ class CoachRepository(
      */
     private suspend fun models(): List<String> {
         val m = models.current()
-        return listOf(m.lite, m.fast)
+        // The person can pin a model from the Coach menu; the others stay as fallbacks for quota or outages.
+        return when (settings.current().coachModel) {
+            "flash" -> listOf(m.fast, m.lite)
+            "pro" -> listOf(m.smart, m.fast, m.lite)
+            else -> listOf(m.lite, m.fast)
+        }
     }
+
+    suspend fun setCoachModel(choice: String) = settings.update { it.copy(coachModel = choice) }
 
     private fun wantsPlan(text: String) = PlanIntent.matches(text)
 

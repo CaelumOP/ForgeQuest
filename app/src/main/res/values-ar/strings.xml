@@ -819,4 +819,13 @@
     <string name="profile_save_file">احفظ ملف</string>
     <string name="profile_share_file">مشاركة</string>
     <string name="food_recent">الأخيرة</string>
+    <string name="coach_model_header">النموذج</string>
+    <string name="coach_model_auto">تلقائي</string>
+    <string name="coach_model_auto_hint">الأفضل. أسرع نموذج، مع بدائل إذا كان مشغول</string>
+    <string name="coach_model_lite">Flash-Lite · الأسرع</string>
+    <string name="coach_model_lite_hint">يرد خلال ثانية تقريبًا</string>
+    <string name="coach_model_flash">Flash · أذكى</string>
+    <string name="coach_model_flash_hint">%1$s · أبطأ، وحده المجاني اليومي قليل</string>
+    <string name="coach_model_pro">Pro · الأعمق</string>
+    <string name="coach_model_pro_hint">%1$s · قد ياخذ دقيقة، وغالبًا بدون حصة مجانية</string>
 </resources>

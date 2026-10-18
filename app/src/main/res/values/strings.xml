@@ -722,4 +722,13 @@
     <string name="profile_save_file">Save file</string>
     <string name="profile_share_file">Share</string>
     <string name="food_recent">Recent</string>
+    <string name="coach_model_header">Model</string>
+    <string name="coach_model_auto">Automatic</string>
+    <string name="coach_model_auto_hint">Recommended. Fastest model, with backups if it\'s busy</string>
+    <string name="coach_model_lite">Flash-Lite · fastest</string>
+    <string name="coach_model_lite_hint">Answers in about a second</string>
+    <string name="coach_model_flash">Flash · smarter</string>
+    <string name="coach_model_flash_hint">%1$s · slower, small free daily limit</string>
+    <string name="coach_model_pro">Pro · deepest</string>
+    <string name="coach_model_pro_hint">%1$s · can take a minute, often no free quota</string>
 </resources>

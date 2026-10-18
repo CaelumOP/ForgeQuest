@@ -42,6 +42,8 @@ data class Settings(
     val liteModel: String = "",
     /** When the model list was last read from Google; new models ship often, so it's refreshed weekly. */
     val modelsCheckedAt: Long = 0,
+    /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
+    val coachModel: String = "auto",
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
@@ -77,6 +79,7 @@ class SettingsRepository(private val context: Context) {
         val smartModel = stringPreferencesKey("smart_model")
         val liteModel = stringPreferencesKey("lite_model")
         val modelsCheckedAt = longPreferencesKey("models_checked_at")
+        val coachModel = stringPreferencesKey("coach_model")
         val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
@@ -107,6 +110,7 @@ class SettingsRepository(private val context: Context) {
         smartModel = this[K.smartModel] ?: "",
         liteModel = this[K.liteModel] ?: "",
         modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
+        coachModel = this[K.coachModel] ?: "auto",
         lastCheckinWeek = this[K.lastCheckin] ?: -1,
         driveEmail = this[K.driveEmail] ?: "",
         lastBackupAt = this[K.lastBackup] ?: 0,
@@ -135,6 +139,7 @@ class SettingsRepository(private val context: Context) {
             p[K.smartModel] = s.smartModel
             p[K.liteModel] = s.liteModel
             p[K.modelsCheckedAt] = s.modelsCheckedAt
+            p[K.coachModel] = s.coachModel
             p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
