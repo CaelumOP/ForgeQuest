@@ -62,6 +62,9 @@ data class Settings(
     /** Optional, for the calorie estimate. 0 means not given. */
     val heightCm: Float = 0f,
     val birthYear: Int = 0,
+    /** Carbs are off unless the person turns them on in Profile → Goals. */
+    val trackCarbs: Boolean = false,
+    val carbsGoal: Int = 250,
 ) {
     val weightUnit: WeightUnit
         get() = if (unit.equals("lb", ignoreCase = true)) WeightUnit.LB else WeightUnit.KG
@@ -99,6 +102,8 @@ class SettingsRepository(private val context: Context) {
         val biometric = booleanPreferencesKey("biometric_lock")
         val height = floatPreferencesKey("height_cm")
         val birthYear = intPreferencesKey("birth_year")
+        val trackCarbs = booleanPreferencesKey("track_carbs")
+        val carbsGoal = intPreferencesKey("carbs_goal")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -133,6 +138,8 @@ class SettingsRepository(private val context: Context) {
         biometricLock = this[K.biometric] ?: false,
         heightCm = this[K.height] ?: 0f,
         birthYear = this[K.birthYear] ?: 0,
+        trackCarbs = this[K.trackCarbs] ?: false,
+        carbsGoal = this[K.carbsGoal] ?: 250,
     )
 
     suspend fun update(transform: (Settings) -> Settings) {
@@ -165,6 +172,8 @@ class SettingsRepository(private val context: Context) {
             p[K.biometric] = s.biometricLock
             p[K.height] = s.heightCm
             p[K.birthYear] = s.birthYear
+            p[K.trackCarbs] = s.trackCarbs
+            p[K.carbsGoal] = s.carbsGoal
         }
     }
 

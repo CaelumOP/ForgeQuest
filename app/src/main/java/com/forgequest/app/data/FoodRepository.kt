@@ -30,6 +30,7 @@ data class ScanItem(
     val grams: Int = 0,
     val kcal: Int = 0,
     val protein: Float = 0f,
+    val carbs: Float = 0f,
 )
 
 @Serializable
@@ -64,21 +65,21 @@ class FoodRepository(
         dao.insertMeals(selection.map { (food, qty) ->
             MealEntity(
                 epochDay = epochDay, loggedAt = now, name = food.name, category = food.category,
-                kcal = (food.kcal * qty).toInt(), protein = food.protein * qty, quantity = qty,
+                kcal = (food.kcal * qty).toInt(), protein = food.protein * qty, quantity = qty, carbs = food.carbs * qty,
                 photoPath = food.photoPath, foodId = food.id,
             )
         })
     }
 
-    suspend fun logScannedMeal(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String?) =
-        logOnce(name, category, kcal, protein, photoPath, Dates.today())
+    suspend fun logScannedMeal(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String?, carbs: Float = 0f) =
+        logOnce(name, category, kcal, protein, photoPath, Dates.today(), carbs)
 
     /** One meal that isn't saved to the food list: a restaurant plate, a snack you won't repeat. */
-    suspend fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String? = null, epochDay: Long = Dates.today()) {
+    suspend fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String? = null, epochDay: Long = Dates.today(), carbs: Float = 0f) {
         dao.insertMeals(listOf(
             MealEntity(
                 epochDay = epochDay, loggedAt = System.currentTimeMillis(), name = name.trim(), category = category,
-                kcal = kcal, protein = protein, photoPath = photoPath,
+                kcal = kcal, protein = protein, photoPath = photoPath, carbs = carbs,
             )
         ))
     }
@@ -168,10 +169,10 @@ class FoodRepository(
         val system = """
             You estimate nutrition from meal photos for a fitness app. Be realistic, not optimistic.
             $handHint
-            List each distinct food separately with estimated cooked grams, kcal and grams of protein.
+            List each distinct food separately with estimated cooked grams, kcal, grams of protein and grams of carbohydrate.
             Include visible sauces and oil in the items. Use short, plain food names (e.g. "Grilled chicken", "White rice").
             If the photo shows no food, return an empty items list.
-            Reply ONLY with JSON: {"dish": string, "items": [{"name": string, "grams": int, "kcal": int, "protein": number}], "handVisible": boolean, "note": string}
+            Reply ONLY with JSON: {"dish": string, "items": [{"name": string, "grams": int, "kcal": int, "protein": number, "carbs": number}], "handVisible": boolean, "note": string}
             "note" is one short sentence about anything uncertain, or empty.
         """.trimIndent()
         val m = models.current()

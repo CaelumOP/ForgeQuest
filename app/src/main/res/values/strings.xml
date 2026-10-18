@@ -796,4 +796,14 @@
     <string name="plan_prompt_copied">Prompt copied</string>
     <string name="onb_groq_hint">Want even faster chat? Add a free Groq key later in Profile.</string>
     <string name="hist_change_date">Change date</string>
+    <string name="home_carbs_left">Carbs left</string>
+    <string name="food_carbs_of_goal">%1$d / %2$d g</string>
+    <string name="label_carbs">Carbs</string>
+    <string name="label_carbs_g">Carbs (g)</string>
+    <string name="food_week_carbs">" · %1$d g carbs"</string>
+    <string name="food_g_carbs">%1$d g carbs</string>
+    <string name="profile_track_carbs">Track carbs</string>
+    <string name="profile_daily_carbs">Daily carbs</string>
+    <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a 25% fat share</string>
+    <string name="profile_use">Use</string>
 </resources>

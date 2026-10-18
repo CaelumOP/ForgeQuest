@@ -169,11 +169,11 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
         viewModelScope.launch { app.food.discardPhoto(photo) }
     }
 
-    fun log(photo: String, name: String, category: FoodCategory, kcal: Int, protein: Float, saveToFoods: Boolean, pin: Boolean) {
+    fun log(photo: String, name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float, saveToFoods: Boolean, pin: Boolean) {
         viewModelScope.launch {
-            app.food.logScannedMeal(name, category, kcal, protein, photo)
+            app.food.logScannedMeal(name, category, kcal, protein, photo, carbs)
             if (saveToFoods) {
-                app.food.saveFood(FoodEntity(name = name, category = category, kcal = kcal, protein = protein, serving = app.str(R.string.scan_default_serving), photoPath = photo, pinned = pin, createdAt = System.currentTimeMillis()))
+                app.food.saveFood(FoodEntity(name = name, category = category, kcal = kcal, protein = protein, carbs = carbs, serving = app.str(R.string.scan_default_serving), photoPath = photo, pinned = pin, createdAt = System.currentTimeMillis()))
             }
             val badges = app.progress.evaluateBadges()
             app.haptics.celebrate()
@@ -208,8 +208,9 @@ fun ScanScreen(nav: NavHostController) {
             ScanState.Camera -> CameraView(onCaptured = vm::analyzeBytes, onPicked = vm::analyzeUri, onClose = { nav.popBackStack() })
             is ScanState.Analyzing -> FrozenPhoto(s.photo) { ScanningOverlay() }
             is ScanState.Result -> FrozenPhoto(s.photo) {
-                ResultSheet(s.scan, vm.app.food.categoryForNow(), onRetake = vm::retake) { name, cat, kcal, protein, save, pin ->
-                    vm.log(s.photo, name, cat, kcal, protein, save, pin)
+                val carbsOn = vm.app.settings.settings.collectAsState(initial = null).value?.trackCarbs == true
+                ResultSheet(s.scan, vm.app.food.categoryForNow(), carbsOn, onRetake = vm::retake) { name, cat, kcal, protein, carbs, save, pin ->
+                    vm.log(s.photo, name, cat, kcal, protein, carbs, save, pin)
                 }
             }
             is ScanState.Failed -> FrozenPhoto(s.photo) {
@@ -435,8 +436,9 @@ private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, o
 private fun ResultSheet(
     scan: FoodScan,
     defaultCategory: FoodCategory,
+    carbsOn: Boolean,
     onRetake: () -> Unit,
-    onLog: (String, FoodCategory, Int, Float, Boolean, Boolean) -> Unit,
+    onLog: (String, FoodCategory, Int, Float, Float, Boolean, Boolean) -> Unit,
 ) {
     val c = Fit.colors
     var items by remember { mutableStateOf(scan.items) }
@@ -454,6 +456,7 @@ private fun ResultSheet(
     val chosen = items.filterIndexed { i, _ -> i in included }
     val kcal = (chosen.sumOf { it.kcal } * portion.factor).roundToInt() + if (chosen.isEmpty()) 0 else fat.kcal
     val protein = chosen.sumOf { it.protein.toDouble() }.toFloat() * portion.factor
+    val carbs = chosen.sumOf { it.carbs.toDouble() }.toFloat() * portion.factor
 
     editingGrams?.let { index ->
         val item = items[index]
@@ -497,6 +500,7 @@ private fun ResultSheet(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(stringResource(R.string.food_kcal, kcal), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.SemiBold)
                         Text(stringResource(R.string.food_g_protein, protein.roundToInt()), style = MaterialTheme.typography.labelLarge, color = c.teal)
+                        if (carbsOn) Text(stringResource(R.string.food_g_carbs, carbs.roundToInt()), style = MaterialTheme.typography.labelLarge, color = c.purple)
                     }
                 }
                 if (scan.handVisible) {
@@ -563,7 +567,7 @@ private fun ResultSheet(
                 // Clear of the gesture bar; the Log button sat under the home handle.
                 Row(Modifier.navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
-                    PillButton(stringResource(R.string.scan_log_meal), onClick = { onLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
+                    PillButton(stringResource(R.string.scan_log_meal), onClick = { onLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, carbs, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
                 }
             }
         }

@@ -144,6 +144,10 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { it.copy(heightCm = heightCm ?: it.heightCm, birthYear = birthYear ?: it.birthYear) }
     }
 
+    fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
+        app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
+    }
+
     fun updateGoals(kcal: Int? = null, protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
         app.settings.update { s ->
             s.copy(
@@ -509,6 +513,22 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
             SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
             SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
+            // The whole row toggles, not just the switch.
+            Row(Modifier.fillMaxWidth().clickable { vm.setCarbs(track = !settings.trackCarbs) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                Switch(settings.trackCarbs, { vm.setCarbs(track = it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+            if (settings.trackCarbs) {
+                SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
+                // Calories left after protein (4 kcal/g) and a 25 % fat share, as grams of carbs (4 kcal/g).
+                val suggested = (((settings.kcalGoal * 0.75f) - settings.proteinGoal * 4f) / 4f / 5f).roundToInt().coerceAtLeast(4) * 5
+                if (suggested != settings.carbsGoal) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.profile_carbs_suggested, suggested), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.setCarbs(goal = suggested) }) { Text(stringResource(R.string.profile_use), color = c.teal) }
+                    }
+                }
+            }
             val planDays = s.plan?.trainingDays?.size ?: 0
             val thisYear = java.time.Year.now().value
             val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)

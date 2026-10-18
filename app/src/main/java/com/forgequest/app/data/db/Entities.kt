@@ -109,6 +109,7 @@ data class FoodEntity(
     val kcal: Int,
     val protein: Float,
     val serving: String = "",
+    val carbs: Float = 0f,
     val photoPath: String? = null,
     val pinned: Boolean = false,
     val createdAt: Long,
@@ -125,6 +126,7 @@ data class MealEntity(
     val kcal: Int,
     val protein: Float,
     val quantity: Float = 1f,
+    val carbs: Float = 0f,
     val photoPath: String? = null,
     val foodId: Long? = null,
 )

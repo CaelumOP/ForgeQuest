@@ -893,4 +893,14 @@
     <string name="plan_prompt_copied">تم نسخ النص</string>
     <string name="onb_groq_hint">تبغى محادثة أسرع؟ أضف مفتاح Groq مجاني بعدين من حسابي.</string>
     <string name="hist_change_date">غيّر التاريخ</string>
+    <string name="home_carbs_left">باقي كارب</string>
+    <string name="food_carbs_of_goal">⁦%1$d / %2$d⁩ غ</string>
+    <string name="label_carbs">كارب</string>
+    <string name="label_carbs_g">كارب (غ)</string>
+    <string name="food_week_carbs">" · %1$d غ كارب"</string>
+    <string name="food_g_carbs">%1$d غ كارب</string>
+    <string name="profile_track_carbs">تتبّع الكارب</string>
+    <string name="profile_daily_carbs">الكارب اليومي</string>
+    <string name="profile_carbs_suggested">المقترح %1$d غ: السعرات الباقية بعد البروتين وحصة دهون 25%</string>
+    <string name="profile_use">استخدم</string>
 </resources>

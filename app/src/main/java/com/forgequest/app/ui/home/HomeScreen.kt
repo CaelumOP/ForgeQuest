@@ -216,10 +216,15 @@ private fun NutritionRings(s: ProgressSnapshot) {
     val kcalColor = if (over) c.gold else c.blue
     val kcalTrack = if (over) c.goldTrack else c.blueTrack
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        val carbsOn = s.settings.trackCarbs
         ConcentricRings(
-            outer = RingSpec(s.today.protein / goalProtein, c.teal, c.tealTrack),
-            inner = RingSpec(s.today.kcal.toFloat() / goalKcal, kcalColor, kcalTrack),
+            rings = listOfNotNull(
+                RingSpec(s.today.protein / goalProtein, c.teal, c.tealTrack),
+                if (carbsOn) RingSpec(s.today.carbs / s.settings.carbsGoal.coerceAtLeast(1), c.purple, c.purpleTrack) else null,
+                RingSpec(s.today.kcal.toFloat() / goalKcal, kcalColor, kcalTrack),
+            ),
             size = 210.dp,
+            stroke = if (carbsOn) 13.dp else 16.dp,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Units under the numbers: without them "66 / 1,005" read like a score (Google Fit labels its ring centre too).
@@ -231,6 +236,7 @@ private fun NutritionRings(s: ProgressSnapshot) {
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             Legend(c.teal, stringResource(R.string.home_legend_protein))
+            if (s.settings.trackCarbs) Legend(c.purple, stringResource(R.string.label_carbs))
             Legend(kcalColor, stringResource(R.string.home_legend_calories))
         }
     }
@@ -257,6 +263,15 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
             c.teal,
             Modifier.weight(1f),
         )
+        if (s.settings.trackCarbs) {
+            val carbsLeft = (s.settings.carbsGoal - s.today.carbs).roundToInt()
+            StatColumn(
+                stringResource(R.string.home_protein_left_value, carbsLeft.coerceAtLeast(0)),
+                stringResource(R.string.home_carbs_left),
+                c.purple,
+                Modifier.weight(1f),
+            )
+        }
         StatColumn(
             "%,d".format(abs(kcalLeft)),
             if (kcalLeft >= 0) stringResource(R.string.home_cal_left) else stringResource(R.string.home_cal_surplus),

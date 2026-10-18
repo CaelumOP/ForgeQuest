@@ -149,8 +149,8 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
 
     fun goToToday() { followToday = true; day.value = Dates.today() }
 
-    fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float) = viewModelScope.launch {
-        app.food.logOnce(name, category, kcal, protein, epochDay = day.value)
+    fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float = 0f) = viewModelScope.launch {
+        app.food.logOnce(name, category, kcal, protein, epochDay = day.value, carbs = carbs)
         app.haptics.setDone()
         app.progress.evaluateBadges()
         message.value = app.str(R.string.food_logged_name, name)
@@ -324,10 +324,10 @@ fun FoodScreen(nav: NavHostController) {
 
     if (quickLog) {
         val recentOneOffs by vm.recentOneOffs.collectAsState()
-        QuickLogSheet(category, recent = recentOneOffs, onLog = { n, cat, k, p -> vm.logOnce(n, cat, k, p); quickLog = false }, onDismiss = { quickLog = false })
+        QuickLogSheet(category, recent = recentOneOffs, carbsOn = snap?.settings?.trackCarbs == true, onLog = { n, cat, k, p, cb -> vm.logOnce(n, cat, k, p, cb); quickLog = false }, onDismiss = { quickLog = false })
     }
     editing?.let { food ->
-        FoodEditorSheet(food, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
+        FoodEditorSheet(food, carbsOn = snap?.settings?.trackCarbs == true, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
     }
     confirmDeleteFood?.let { food ->
         AlertDialog(
@@ -394,6 +394,14 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
                 ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
             }
         }
+        if (s.settings.trackCarbs) {
+            val carbs = meals.sumOf { it.carbs.toDouble() }.toFloat()
+            Spacer(Modifier.height(12.dp))
+            Text(stringResource(R.string.food_carbs_of_goal, carbs.roundToInt(), s.settings.carbsGoal), style = MaterialTheme.typography.titleSmall, color = c.purple)
+            Text(stringResource(R.string.label_carbs), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+            Spacer(Modifier.height(6.dp))
+            ProgressLine(carbs / s.settings.carbsGoal.coerceAtLeast(1), c.purple, c.purpleTrack, height = 5.dp)
+        }
     }
 }
 
@@ -414,7 +422,8 @@ private fun WeekCard(s: ProgressSnapshot) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.food_last_7_days), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                 Text(
-                    pluralStringResource(R.plurals.food_week_summary, logged.size, "%,d".format(avgKcal), avgProtein, hits, logged.size),
+                    pluralStringResource(R.plurals.food_week_summary, logged.size, "%,d".format(avgKcal), avgProtein, hits, logged.size) +
+                        if (s.settings.trackCarbs) stringResource(R.string.food_week_carbs, (logged.sumOf { it.carbs.toDouble() } / logged.size).roundToInt()) else "",
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
             }
@@ -437,7 +446,8 @@ private fun WeekCard(s: ProgressSnapshot) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, onLog: (String, FoodCategory, Int, Float) -> Unit, onDismiss: () -> Unit) {
+private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbsOn: Boolean, onLog: (String, FoodCategory, Int, Float, Float) -> Unit, onDismiss: () -> Unit) {
+    var carbs by remember { mutableStateOf("") }
     val c = Fit.colors
     var name by remember { mutableStateOf("") }
     var kcal by remember { mutableStateOf("") }
@@ -456,7 +466,7 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, onLog
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     recent.forEach { m ->
                         ChoiceChip("${m.name} · ${m.kcal}", m.name == name, {
-                            name = m.name; kcal = m.kcal.toString(); protein = m.protein.toString().removeSuffix(".0")
+                            name = m.name; kcal = m.kcal.toString(); protein = m.protein.toString().removeSuffix(".0"); carbs = if (m.carbs > 0f) m.carbs.toString().removeSuffix(".0") else ""
                         })
                     }
                 }
@@ -470,12 +480,17 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, onLog
                 OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
             }
+            if (carbsOn) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(carbs, { carbs = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.label_carbs_g)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+            }
             Spacer(Modifier.height(14.dp))
             SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
             Spacer(Modifier.height(16.dp))
             PillButton(
                 stringResource(R.string.food_log_it),
-                onClick = { onLog(name.trim(), category, kcal.toIntOrNull() ?: 0, protein.toFloatOrNull() ?: 0f) },
+                onClick = { onLog(name.trim(), category, kcal.toIntOrNull() ?: 0, protein.toFloatOrNull() ?: 0f, carbs.toFloatOrNull() ?: 0f) },
                 enabled = name.isNotBlank() && kcal.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -600,7 +615,8 @@ private fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FoodEditorSheet(food: FoodEntity, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit) {
+private fun FoodEditorSheet(food: FoodEntity, carbsOn: Boolean, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit) {
+    var carbs by remember { mutableStateOf(if (food.carbs == 0f) "" else food.carbs.toString().removeSuffix(".0")) }
     val c = Fit.colors
     var name by remember { mutableStateOf(food.name) }
     var kcal by remember { mutableStateOf(if (food.kcal == 0) "" else food.kcal.toString()) }
@@ -621,6 +637,11 @@ private fun FoodEditorSheet(food: FoodEntity, onSave: (FoodEntity) -> Unit, onDe
                 OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
             }
+            if (carbsOn) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(carbs, { carbs = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.label_carbs_g)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+            }
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(serving, { serving = it.take(32) }, label = { Text(stringResource(R.string.food_serving_hint)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(14.dp))
@@ -636,7 +657,7 @@ private fun FoodEditorSheet(food: FoodEntity, onSave: (FoodEntity) -> Unit, onDe
                 PillButton(
                     stringResource(R.string.action_save),
                     onClick = {
-                        onSave(food.copy(name = name.trim(), kcal = kcal.toIntOrNull() ?: 0, protein = protein.toFloatOrNull() ?: 0f, serving = serving.trim(), category = category, pinned = pinned))
+                        onSave(food.copy(name = name.trim(), kcal = kcal.toIntOrNull() ?: 0, protein = protein.toFloatOrNull() ?: 0f, carbs = carbs.toFloatOrNull() ?: 0f, serving = serving.trim(), category = category, pinned = pinned))
                     },
                     enabled = name.isNotBlank() && kcal.isNotBlank(),
                 )

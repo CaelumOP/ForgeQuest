@@ -34,16 +34,27 @@ fun ConcentricRings(
     stroke: Dp = 16.dp,
     gap: Dp = 6.dp,
     center: @Composable () -> Unit = {},
+) = ConcentricRings(listOf(outer, inner), modifier, size, stroke, gap, center)
+
+/** Rings listed outer to inner. */
+@Composable
+fun ConcentricRings(
+    rings: List<RingSpec>,
+    modifier: Modifier = Modifier,
+    size: Dp = 220.dp,
+    stroke: Dp = 16.dp,
+    gap: Dp = 6.dp,
+    center: @Composable () -> Unit = {},
 ) {
-    val outerP by animateFloatAsState(outer.progress, spring(stiffness = Spring.StiffnessVeryLow), label = "outer")
-    val innerP by animateFloatAsState(inner.progress, spring(stiffness = Spring.StiffnessVeryLow), label = "inner")
+    val progress = rings.mapIndexed { i, r -> animateFloatAsState(r.progress, spring(stiffness = Spring.StiffnessVeryLow), label = "ring$i") }
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size)) {
             val s = stroke.toPx()
-            val outerRadius = this.size.minDimension / 2f - s / 2f
-            val innerRadius = outerRadius - s - gap.toPx()
-            drawRing(outerRadius, s, outerP, outer)
-            drawRing(innerRadius, s, innerP, inner)
+            var radius = this.size.minDimension / 2f - s / 2f
+            rings.forEachIndexed { i, r ->
+                drawRing(radius, s, progress[i].value, r)
+                radius -= s + gap.toPx()
+            }
         }
         center()
     }

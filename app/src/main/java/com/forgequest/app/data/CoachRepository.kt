@@ -394,7 +394,9 @@ class CoachRepository(
         } else {
             sb.append("- No meals logged in the last 7 days\n")
         }
-        sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.roundToInt()} g protein\n")
+        sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.roundToInt()} g protein")
+        if (s.trackCarbs) sb.append(", ${snap.today.carbs.roundToInt()} g carbs (goal ${s.carbsGoal} g)")
+        sb.append("\n")
 
         // Badges
         val unlocked = snap.badges.sortedByDescending { it.unlockedAt }
