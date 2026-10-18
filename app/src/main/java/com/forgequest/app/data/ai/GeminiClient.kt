@@ -1,6 +1,10 @@
 package com.forgequest.app.data.ai
 
+
 import android.os.SystemClock
+import androidx.annotation.StringRes
+import com.forgequest.app.LocalizedException
+import com.forgequest.app.R
 import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -33,23 +37,23 @@ import java.util.concurrent.TimeUnit
  * Why an AI call failed, in words a user can act on. [detail] is the technical cause (HTTP status and body,
  * exception class, model) for the "Copy error details" action; it never contains the key.
  */
-sealed class AiError(val userMessage: String, val detail: String = "") : Exception(userMessage) {
-    object MissingKey : AiError("Add your free Gemini key in Profile to use this.")
-    class InvalidKey(detail: String = "") : AiError("Your Gemini key was rejected. Check it in Profile → AI key.", detail)
-    class RateLimited(detail: String = "") : AiError("Gemini's free limit is used up for now. Try again in a minute.", detail)
+sealed class AiError(@StringRes res: Int, val detail: String = "", vararg args: Any) : LocalizedException(res, *args) {
+    object MissingKey : AiError(R.string.ai_err_missing_key)
+    class InvalidKey(detail: String = "") : AiError(R.string.ai_err_invalid_key, detail)
+    class RateLimited(detail: String = "") : AiError(R.string.ai_err_rate_limited, detail)
     /** The phone couldn't reach Google at all (no DNS, no route, connect failed). */
-    class Offline(detail: String = "") : AiError("No internet connection. Check your connection and try again.", detail)
+    class Offline(detail: String = "") : AiError(R.string.ai_err_offline, detail)
     /** Connected, but the connection broke in a way that isn't a timeout (TLS, reset, protocol). */
-    class Network(detail: String = "") : AiError("The connection to Gemini failed. Try again.", detail)
+    class Network(detail: String = "") : AiError(R.string.ai_err_network, detail)
     /** Connected, but Gemini sent nothing back in time. Never reported as offline. */
-    class Timeout(detail: String = "") : AiError("Gemini didn't answer in time. Try again.", detail)
-    class Blocked(detail: String = "") : AiError("Gemini couldn't answer that one. Try rephrasing or another photo.", detail)
-    class Busy(detail: String = "") : AiError("Gemini is very busy right now. Try again in a moment.", detail)
-    class Server(val code: Int, detail: String = "") : AiError("Gemini is having trouble right now (error $code). Try again shortly.", detail)
-    class Unreadable(what: String) : AiError(what)
+    class Timeout(detail: String = "") : AiError(R.string.ai_err_timeout, detail)
+    class Blocked(detail: String = "") : AiError(R.string.ai_err_blocked, detail)
+    class Busy(detail: String = "") : AiError(R.string.ai_err_busy, detail)
+    class Server(val code: Int, detail: String = "") : AiError(R.string.ai_err_server, detail, code)
+    class Unreadable(@StringRes what: Int) : AiError(what)
 
     /** The connection dropped after part of a streamed reply arrived; [text] is what came through. */
-    class Partial(val text: String, detail: String = "") : AiError("The connection dropped before the coach finished. Ask again to get the rest.", detail)
+    class Partial(val text: String, detail: String = "") : AiError(R.string.ai_err_partial, detail)
 }
 
 data class GeminiModels(val fast: String, val smart: String, val lite: String)

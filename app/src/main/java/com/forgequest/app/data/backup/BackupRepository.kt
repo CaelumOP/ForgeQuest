@@ -100,9 +100,9 @@ data class BackupFile(
     }
 }
 
-sealed class BackupError(val userMessage: String) : Exception(userMessage) {
-    object Unreadable : BackupError("That file isn't a ForgeQuest backup.")
-    object CantOpen : BackupError("Couldn't open that file.")
+sealed class BackupError(res: Int) : com.forgequest.app.LocalizedException(res) {
+    object Unreadable : BackupError(com.forgequest.app.R.string.backup_err_unreadable)
+    object CantOpen : BackupError(com.forgequest.app.R.string.backup_err_cant_open)
 }
 
 /**

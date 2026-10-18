@@ -1,5 +1,7 @@
 package com.forgequest.app.data
 
+import com.forgequest.app.AppText
+import com.forgequest.app.R
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.ai.GeminiClient
 import com.forgequest.app.data.ai.ModelStore
@@ -96,7 +98,7 @@ class CoachRepository(
     }
 
     private suspend fun saveError(e: AiError) {
-        val text = if (e is AiError.Timeout) "The coach didn't answer in time. Try again." else e.userMessage
+        val text = if (e is AiError.Timeout) AppText.get(R.string.ai_err_coach_timeout) else e.userMessage
         val s = settings.current()
         val detail = listOf(e.javaClass.simpleName, e.detail, "models ${s.liteModel} / ${s.fastModel}, app ${com.forgequest.app.BuildConfig.VERSION_NAME}")
             .filter { it.isNotBlank() }.joinToString("\n")
@@ -133,7 +135,7 @@ class CoachRepository(
             Reply ONLY with the JSON object, no other text.
         """.trimIndent()
         val raw = gemini.generate(requireKey(), models(), system, listOf("user" to text.take(20_000)), jsonOutput = true)
-        return PlanJson.extract("```json\n$raw\n```") ?: throw AiError.Unreadable("Couldn't turn that text into a plan. Make sure it lists days and exercises.")
+        return PlanJson.extract("```json\n$raw\n```") ?: throw AiError.Unreadable(R.string.ai_err_plan_text)
     }
 
     /** Once per week, a short review of last week. Returns true if one was written. */

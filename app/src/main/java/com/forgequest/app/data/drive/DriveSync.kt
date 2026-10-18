@@ -1,5 +1,7 @@
 package com.forgequest.app.data.drive
 
+import com.forgequest.app.R
+
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -30,13 +32,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.time.Instant
 
-sealed class DriveError(val userMessage: String) : Exception(userMessage) {
-    object NotConfigured : DriveError("Google Drive isn't set up for this copy of the app yet.")
-    object NeedsConsent : DriveError("Connect Google Drive in Profile first.")
-    object Offline : DriveError("No internet connection.")
-    object NoDoc : DriveError("No Google Doc with \"Workout Plan\" in its name was found in your Drive.")
-    object NoBackup : DriveError("No backup found in your Google Drive yet.")
-    class Http(code: Int) : DriveError("Google Drive returned an error ($code). Try again later.")
+sealed class DriveError(res: Int, vararg args: Any) : com.forgequest.app.LocalizedException(res, *args) {
+    object NotConfigured : DriveError(R.string.drive_err_not_configured)
+    object NeedsConsent : DriveError(R.string.drive_err_needs_consent)
+    object Offline : DriveError(R.string.drive_err_offline)
+    object NoDoc : DriveError(R.string.drive_err_no_doc)
+    object NoBackup : DriveError(R.string.drive_err_no_backup)
+    class Http(code: Int) : DriveError(R.string.drive_err_http, code)
 }
 
 /** Outcome of asking Google for Drive access. */

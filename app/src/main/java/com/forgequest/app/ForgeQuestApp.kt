@@ -51,6 +51,7 @@ class ForgeQuestApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppText.init(this)
         container = AppContainer(this)
         container.appScope.launch { container.workouts.seedLibrary() }
         container.appScope.launch { runCatching { container.food.deleteOrphanPhotos() } }
