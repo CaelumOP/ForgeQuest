@@ -108,6 +108,7 @@ object Fit {
  * Manrope (SIL OFL) for display and title sizes: a geometric sans with open, rounded forms that reads as
  * athletic without shouting. Body and label text stay on the system sans for density and Arabic fallback.
  */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 val Manrope = FontFamily(
     Font(R.font.manrope, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
     Font(R.font.manrope, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),

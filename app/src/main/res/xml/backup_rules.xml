@@ -4,5 +4,4 @@
     <include domain="file" path="." />
     <!-- Meal photos would blow the 25 MB auto-backup quota within months and silently stop the whole backup. -->
     <exclude domain="file" path="photos" />
-    <exclude domain="sharedpref" path="secure_key.xml" />
 </full-backup-content>
