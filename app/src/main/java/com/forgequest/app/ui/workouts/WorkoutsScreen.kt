@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material.icons.rounded.Repeat
@@ -103,6 +104,9 @@ fun WorkoutsScreen(nav: NavHostController) {
             Column(Modifier.weight(1f)) {
                 Text("Workouts", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
                 Text(plan?.plan?.name ?: "No plan yet", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            IconButton(onClick = { nav.navigate(Routes.HISTORY) }) {
+                Icon(Icons.Rounded.History, contentDescription = "Workout history", tint = c.textPrimary)
             }
             IconButton(onClick = { nav.navigate(Routes.PLAN) }) {
                 Icon(Icons.Rounded.Edit, contentDescription = "Edit plan", tint = c.textPrimary)

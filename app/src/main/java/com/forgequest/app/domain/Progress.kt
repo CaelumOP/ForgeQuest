@@ -200,4 +200,30 @@ object Records {
             if (w <= 0f) r / 100f else w * (1f + r / 30f)
         }
     }
+
+    /**
+     * Which sets count as personal records when the whole history of one exercise is replayed in order.
+     * [sessions] is oldest first, each holding that session's done sets. The first session has nothing
+     * to beat, so it never produces a record; after that, the best set of a session is a record when it
+     * beats every set before it. Used when a past session is edited or deleted.
+     */
+    fun <T> personalRecords(
+        kind: ExerciseKind,
+        sessions: List<List<T>>,
+        reps: (T) -> Int?,
+        seconds: (T) -> Int?,
+        weightKg: (T) -> Float?,
+    ): Set<T> {
+        val result = mutableSetOf<T>()
+        var best: Float? = null
+        for (sets in sessions) {
+            if (sets.isEmpty()) continue
+            val top = sets.maxBy { score(kind, reps(it), seconds(it), weightKg(it)) }
+            val topScore = score(kind, reps(top), seconds(top), weightKg(top))
+            val previous = best
+            if (previous != null && topScore > previous) result += top
+            best = if (previous == null) topScore else max(previous, topScore)
+        }
+        return result
+    }
 }

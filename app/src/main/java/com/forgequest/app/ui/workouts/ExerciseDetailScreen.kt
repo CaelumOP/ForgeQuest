@@ -2,6 +2,7 @@ package com.forgequest.app.ui.workouts
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -52,6 +54,7 @@ import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Records
+import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.FitCard
@@ -151,8 +154,11 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                 FitCard {
                     Text("History", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     history.reversed().take(20).forEach { (session, sets) ->
-                        Spacer(Modifier.height(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { nav.navigate(Routes.session(session.id)) }.padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(
                                 LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern("EEE, MMM d")),
                                 style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.width(110.dp),

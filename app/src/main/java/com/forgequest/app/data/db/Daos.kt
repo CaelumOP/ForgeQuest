@@ -104,6 +104,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE id = :id")
     suspend fun byId(id: Long): SessionEntity?
 
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    fun observeById(id: Long): Flow<SessionEntity?>
+
     @Insert
     suspend fun insert(session: SessionEntity): Long
 

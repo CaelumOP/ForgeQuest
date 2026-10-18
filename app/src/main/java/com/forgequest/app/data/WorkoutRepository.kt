@@ -258,4 +258,41 @@ class WorkoutRepository(private val db: AppDatabase) {
         val xp = com.forgequest.app.domain.Xp.total(1, done.size, prNames.size, 0)
         FinishResult(session.title, done.size, prNames, xp)
     }
+
+    // ------------------------------------------------------------ History
+
+    fun observeSession(id: Long): Flow<SessionEntity?> = sessions.observeById(id)
+
+    /** Edits a set of a finished workout and re-checks which sets of that exercise are records. */
+    suspend fun updateFinishedSet(set: SetEntity) = db.withTransaction {
+        sessions.updateSet(set)
+        recomputeRecords(set.exerciseId)
+    }
+
+    /** Removes one set from a finished workout. A workout left with no sets is removed too. */
+    suspend fun deleteFinishedSet(set: SetEntity) = db.withTransaction {
+        sessions.deleteSet(set.id)
+        if (sessions.sets(set.sessionId).isEmpty()) sessions.delete(set.sessionId)
+        recomputeRecords(set.exerciseId)
+    }
+
+    suspend fun deleteSession(sessionId: Long) = db.withTransaction {
+        val affected = sessions.sets(sessionId).map { it.exerciseId }.distinct()
+        sessions.deleteSetsOf(sessionId)
+        sessions.delete(sessionId)
+        affected.forEach { recomputeRecords(it) }
+    }
+
+    /** Replays the exercise's whole history so PR tags stay truthful after an edit or delete. */
+    private suspend fun recomputeRecords(exerciseId: String) {
+        val ex = exercises.byId(exerciseId) ?: return
+        val all = sessions.recentDoneSetsAll(exerciseId)
+        val finishedAt = sessions.finished().associate { it.id to (it.finishedAt ?: 0L) }
+        val ordered = all.groupBy { it.sessionId }.entries.sortedBy { finishedAt[it.key] ?: 0L }.map { it.value }
+        val records = Records.personalRecords(ex.kind, ordered, { it.reps }, { it.seconds }, { it.weightKg })
+        for (set in all) {
+            val shouldBe = set in records
+            if (set.isPr != shouldBe) sessions.updateSet(set.copy(isPr = shouldBe))
+        }
+    }
 }

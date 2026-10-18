@@ -56,6 +56,8 @@ import com.forgequest.app.container
 import com.forgequest.app.ui.coach.CoachScreen
 import com.forgequest.app.ui.food.FoodScreen
 import com.forgequest.app.ui.food.ScanScreen
+import com.forgequest.app.ui.history.HistoryScreen
+import com.forgequest.app.ui.history.SessionDetailScreen
 import com.forgequest.app.ui.home.HomeScreen
 import com.forgequest.app.ui.onboarding.OnboardingScreen
 import com.forgequest.app.ui.profile.ProfileScreen
@@ -75,7 +77,10 @@ object Routes {
     const val PLAN = "plan"
     const val SCAN = "scan"
     const val EXERCISE = "exercise/{id}"
+    const val HISTORY = "history"
+    const val SESSION = "session/{id}"
     fun exercise(id: String) = "exercise/$id"
+    fun session(id: Long) = "session/$id"
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
@@ -171,6 +176,10 @@ private fun MainScaffold() {
                 composable(Routes.SCAN) { ScanScreen(nav) }
                 composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty())
+                }
+                composable(Routes.HISTORY) { HistoryScreen(nav) }
+                composable(Routes.SESSION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
+                    SessionDetailScreen(nav, entry.arguments?.getLong("id") ?: 0L)
                 }
             }
         }

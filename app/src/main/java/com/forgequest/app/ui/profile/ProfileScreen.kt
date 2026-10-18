@@ -277,7 +277,7 @@ fun ProfileScreen(nav: NavHostController) {
             Text("${s.level.xpIntoLevel} / ${s.level.xpForNextLevel} XP to level ${s.level.level + 1}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
-                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", "Workouts", c.teal, Modifier.weight(1f))
+                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", "Workouts", c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
                 com.forgequest.app.ui.components.StatColumn("${s.streak.best}", "Best streak (wk)", c.gold, Modifier.weight(1f))
                 com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", "Badges", c.purple, Modifier.weight(1f))
             }
