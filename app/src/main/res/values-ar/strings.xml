@@ -981,4 +981,7 @@
     <string name="band_moderate">متوسط</string>
     <string name="band_high">عالي</string>
     <string name="band_all_out">أقصى جهد</string>
+    <string name="ready_not_now">ليس الآن</string>
+    <string name="profile_health_title">جاهزية Fitbit</string>
+    <string name="profile_health_hint">التعافي والنوم والإجهاد في الرئيسية من Health Connect. اختياري.</string>
 </resources>

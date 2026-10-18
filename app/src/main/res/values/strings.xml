@@ -884,4 +884,7 @@
     <string name="band_moderate">Moderate</string>
     <string name="band_high">High</string>
     <string name="band_all_out">All out</string>
+    <string name="ready_not_now">Not now</string>
+    <string name="profile_health_title">Fitbit readiness</string>
+    <string name="profile_health_hint">Recovery, sleep and strain on Home from Health Connect. Optional.</string>
 </resources>

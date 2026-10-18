@@ -154,6 +154,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { it.copy(proteinPerKg = perKg ?: it.proteinPerKg, fatSharePct = fatPct ?: it.fatSharePct) }
     }
 
+    fun setHealth(enabled: Boolean) = viewModelScope.launch {
+        app.settings.update { it.copy(healthEnabled = enabled) }
+        app.health.refresh(force = true)
+    }
+
     fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
     }
@@ -557,6 +562,20 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(8.dp))
             SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
             SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Fitbit readiness (optional)
+        FitCard {
+            Row(Modifier.fillMaxWidth().toggleable(settings.healthEnabled, role = Role.Switch) { vm.setHealth(it) }, verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.MonitorHeart, c.coral, c.coralTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.profile_health_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_health_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Switch(settings.healthEnabled, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
         }
         Spacer(Modifier.height(12.dp))
 

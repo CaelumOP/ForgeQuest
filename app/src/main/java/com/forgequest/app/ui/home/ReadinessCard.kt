@@ -63,10 +63,10 @@ private enum class Detail { RECOVERY, SLEEP, STRAIN }
 
 /** Whoop-style card: sleep, recovery and strain dials from the Fitbit, and what that means for today. */
 @Composable
-fun ReadinessCard(state: HealthState, onConnect: () -> Unit, onFeltGreat: (Boolean) -> Unit) {
+fun ReadinessCard(state: HealthState, onConnect: () -> Unit, onFeltGreat: (Boolean) -> Unit, onHide: () -> Unit) {
     when (state) {
         HealthState.Unavailable, HealthState.Loading -> Unit
-        HealthState.NeedsAccess -> ConnectCard(onConnect)
+        HealthState.NeedsAccess -> ConnectCard(onConnect, onHide)
         is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, onFeltGreat) else NoDataCard()
     }
 }
@@ -82,7 +82,7 @@ private val SleepColor = Color(0xFF8E7CF6)
 private val StrainColor = Color(0xFF3A8DFF)
 
 @Composable
-private fun ConnectCard(onConnect: () -> Unit) {
+private fun ConnectCard(onConnect: () -> Unit, onHide: () -> Unit) {
     val c = Fit.colors
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -95,6 +95,8 @@ private fun ConnectCard(onConnect: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         PillButton(stringResource(R.string.ready_connect), onClick = onConnect, modifier = Modifier.fillMaxWidth())
+        // Optional: one tap hides it for good; Profile › Your body turns it back on.
+        TextButton(onClick = onHide, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text(stringResource(R.string.ready_not_now), color = c.textSecondary) }
     }
     Spacer(Modifier.height(12.dp))
 }

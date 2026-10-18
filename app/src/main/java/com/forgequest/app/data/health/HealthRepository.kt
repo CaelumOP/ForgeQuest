@@ -28,6 +28,7 @@ import com.forgequest.app.domain.SleepPiece
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
@@ -95,22 +96,35 @@ class HealthRepository(private val context: Context, private val settings: Setti
 
     fun available(): Boolean = HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
 
-    /** Re-reads Health Connect. Cheap enough to call whenever Home opens. */
-    suspend fun refresh() {
-        if (!available()) { _state.value = HealthState.Unavailable; return }
+    private val refreshLock = kotlinx.coroutines.sync.Mutex()
+    private var lastRefreshAt = 0L
+
+    /**
+     * Re-reads Health Connect. Home calls it on every open, so a fresh result is reused for a few minutes and two
+     * opens at once share one read; [force] skips that (after granting access or changing the setting).
+     */
+    suspend fun refresh(force: Boolean = false) = refreshLock.withLock {
+        val fresh = System.currentTimeMillis() - lastRefreshAt < 5 * 60_000
+        if (!force && fresh && state.value is HealthState.Ready) return@withLock
+        refreshNow()
+    }
+
+    private suspend fun refreshNow() {
+        if (!settings.current().healthEnabled || !available()) { _state.value = HealthState.Unavailable; return }
         val client = HealthConnectClient.getOrCreate(context)
         val granted = suspendRunCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
         if (!granted.containsAll(permissions)) { _state.value = HealthState.NeedsAccess; return }
         suspendRunCatching { withContext(Dispatchers.IO) { compute(client) } }
-            .onSuccess { _state.value = HealthState.Ready(it) }
+            .onSuccess { _state.value = HealthState.Ready(it); lastRefreshAt = System.currentTimeMillis() }
             .onFailure { Log.w("ForgeQuest", "health refresh failed", it) }
     }
 
     /** The "I feel great" tap, kept next to the day's scores so the formulas can be tuned to this person later. */
     suspend fun setFeltGreat(value: Boolean) {
-        val today = LocalDate.now().toEpochDay()
+        // The readiness day can be yesterday until tonight's sleep is recorded, so save against the day on screen.
+        val day = (state.value as? HealthState.Ready)?.day?.week?.lastOrNull()?.epochDay ?: LocalDate.now().toEpochDay()
         val dao = db.readiness()
-        dao.get(today)?.let { dao.upsert(it.copy(feltGreat = value)) }
+        dao.get(day)?.let { dao.upsert(it.copy(feltGreat = value)) }
         (state.value as? HealthState.Ready)?.let { _state.value = HealthState.Ready(it.day.copy(feltGreat = value)) }
     }
 
