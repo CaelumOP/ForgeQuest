@@ -193,7 +193,8 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
     val greeting = when (hour) {
         in 5..11 -> stringResource(R.string.home_good_morning)
         in 12..16 -> stringResource(R.string.home_good_afternoon)
-        else -> stringResource(R.string.home_good_evening)
+        in 17..19 -> stringResource(R.string.home_good_evening)
+        else -> stringResource(R.string.home_good_night)
     }
     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {

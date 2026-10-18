@@ -988,4 +988,5 @@
     <string name="profile_health_on">مربوط · التعافي والنوم والإجهاد في الرئيسية</string>
     <string name="profile_body_not_set">غير محدد بعد: هذي قيم افتراضية. اضغط + أو − لتحديد قيمك.</string>
     <string name="profile_version">الإصدار %1$s</string>
+    <string name="home_good_night">تصبح على خير</string>
 </resources>
