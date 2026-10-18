@@ -268,6 +268,8 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         afterConsent = null
         if (!ok || op == null) {
             busy.value = null
+            // Google closes the account picker straight away when the app isn't registered for Drive yet; say so.
+            if (!ok) message.value = app.str(R.string.drive_signin_cancelled)
             return
         }
         viewModelScope.launch {
@@ -292,6 +294,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun syncBridge() = withDrive(app.str(R.string.bridge_syncing), bridge = true) { token ->
+        // The same sign-in connects Drive backup too, so one tap sets up both.
+        if (app.settings.current().driveEmail.isBlank()) {
+            val email = app.drive.accountEmail(token)
+            app.settings.update { it.copy(driveEmail = email.ifBlank { app.str(R.string.drive_connected) }) }
+        }
         val reply = app.bridge.sync(token)
         message.value = when {
             reply == null -> app.str(R.string.bridge_no_reply)
@@ -445,24 +452,23 @@ fun ProfileScreen(nav: NavHostController) {
     }
     LaunchedEffect(consent) { consent?.let { consentLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) } }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::previewImport) }
-    // Health Connect test: ask for read access, then save a report of what the phone actually holds.
+    // Health Connect check: reads in the background and answers in one line; no files, no extra screens.
     val probe = remember { com.forgequest.app.data.health.HealthProbe(context) }
     val hcScope = rememberCoroutineScope()
-    val hcSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null) hcScope.launch {
-            val msg = try {
-                val text = probe.report()
-                context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { it.write(text) }
-                context.getString(R.string.hc_saved)
-            } catch (e: Exception) {
-                if (e is kotlin.coroutines.cancellation.CancellationException) throw e
-                context.getString(R.string.hc_failed, e.message ?: e.javaClass.simpleName)
-            }
-            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+    fun runHealthCheck() = hcScope.launch {
+        val msg = try {
+            probe.check()
+        } catch (e: Exception) {
+            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+            context.getString(R.string.hc_failed, e.message ?: e.javaClass.simpleName)
         }
+        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
     }
-    val hcPerms = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) {
-        hcSave.launch("forgequest-health-connect.json")
+    val hcPerms = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) { runHealthCheck() }
+    fun startHealthCheck() = hcScope.launch {
+        // Only show the permission screen when something is still missing.
+        val granted = runCatching { probe.granted() }.getOrDefault(emptySet())
+        if (granted.containsAll(probe.permissions)) runHealthCheck() else hcPerms.launch(probe.permissions)
     }
     val health by vm.app.health.state.collectAsState()
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.app.health.refresh() }
@@ -622,7 +628,7 @@ fun ProfileScreen(nav: NavHostController) {
             }
             if (connected) {
                 // What Health Connect holds, as a file to share when something looks off.
-                TextButton(onClick = { hcPerms.launch(probe.permissions) }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
+                TextButton(onClick = { startHealthCheck() }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
             }
         }
         Spacer(Modifier.height(12.dp))

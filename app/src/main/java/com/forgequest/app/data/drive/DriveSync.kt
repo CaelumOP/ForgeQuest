@@ -61,14 +61,17 @@ class DriveSync(
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    /** Backup only touches the app's own hidden folder. Reading the person's documents is a separate, opt-in grant. */
+    /**
+     * One sign-in covers everything, and both scopes are Google's low-risk ones (no security review, so the OAuth
+     * app can be published for anyone): the hidden backup folder, and Docs the app creates itself ("ForgeQuest data",
+     * "ForgeQuest from Gemini", "ForgeQuest plan"). The app never sees the person's other files.
+     */
     private val backupScope = Scope("https://www.googleapis.com/auth/drive.appdata")
-    private val docsScope = Scope("https://www.googleapis.com/auth/drive.readonly")
-    /** Gemini bridge: create and update the app's own "ForgeQuest data" Doc. */
     private val fileScope = Scope("https://www.googleapis.com/auth/drive.file")
 
+    @Suppress("UNUSED_PARAMETER")
     suspend fun authorize(withDocs: Boolean = false, bridge: Boolean = false): DriveAuth {
-        val scopes = listOfNotNull(backupScope, docsScope.takeIf { withDocs || bridge }, fileScope.takeIf { bridge })
+        val scopes = listOf(backupScope, fileScope)
         val request = AuthorizationRequest.builder().setRequestedScopes(scopes).build()
         val result = try {
             Identity.getAuthorizationClient(context).authorize(request).await()
@@ -137,13 +140,19 @@ class DriveSync(
 
     data class DocPlan(val docName: String, val modifiedAt: Long, val plan: PlanDraft)
 
-    /** Finds the newest "Workout Plan" Google Doc. Returns null when it hasn't changed since [sinceMillis]. */
+    /**
+     * Reads the app's "ForgeQuest plan" Google Doc. The first time, the app creates it with a short how-to and
+     * reports [DriveError.NoDoc] so the person knows where to write the plan. Null when unchanged since [sinceMillis].
+     */
     suspend fun fetchPlanDoc(token: String, sinceMillis: Long = 0): DocPlan? = withContext(Dispatchers.IO) {
-        // Only the person's own docs: a file someone shares with them must never replace their plan.
-        val q = "mimeType='application/vnd.google-apps.document' and name contains 'Workout Plan' and trashed=false and 'me' in owners"
+        val q = "mimeType='application/vnd.google-apps.document' and name='$PLAN_DOC' and trashed=false"
         val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,name,modifiedTime)"
         val body = call(token, Request.Builder().url(url).get())
-        val doc = json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject ?: throw DriveError.NoDoc
+        val doc = json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject
+        if (doc == null) {
+            upsertTextDoc(token, PLAN_DOC, context.getString(R.string.drive_plan_doc_template), null)
+            throw DriveError.NoDoc
+        }
         val id = doc["id"]!!.jsonPrimitive.content
         val name = doc["name"]?.jsonPrimitive?.contentOrNull ?: "Workout Plan"
         val modified = doc["modifiedTime"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it).toEpochMilli() } ?: 0L
@@ -178,11 +187,19 @@ class DriveSync(
         json.parseToJsonElement(body).jsonObject["id"]!!.jsonPrimitive.content
     }
 
-    /** Text and modified time of the person's newest Doc named [name], or null if none is newer than [sinceMillis]. */
-    suspend fun newestDoc(token: String, name: String, sinceMillis: Long): Pair<String, Long>? = withContext(Dispatchers.IO) {
-        val q = "mimeType='application/vnd.google-apps.document' and name='$name' and trashed=false and 'me' in owners"
+    /**
+     * Text and modified time of the app-created Doc named [name], or null if none is newer than [sinceMillis]. When
+     * the Doc doesn't exist yet it is created with [placeholder], so another app (Gemini) can fill it in and this one
+     * can still read it with the file-only scope.
+     */
+    suspend fun newestDoc(token: String, name: String, sinceMillis: Long, placeholder: String? = null): Pair<String, Long>? = withContext(Dispatchers.IO) {
+        val q = "mimeType='application/vnd.google-apps.document' and name='$name' and trashed=false"
         val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime)"
-        val doc = json.parseToJsonElement(call(token, Request.Builder().url(url).get())).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject ?: return@withContext null
+        val doc = json.parseToJsonElement(call(token, Request.Builder().url(url).get())).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject
+        if (doc == null) {
+            if (placeholder != null) upsertTextDoc(token, name, placeholder, null)
+            return@withContext null
+        }
         val modified = doc["modifiedTime"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it).toEpochMilli() } ?: 0L
         if (modified <= sinceMillis) return@withContext null
         call(token, Request.Builder().url("$API/files/${doc["id"]!!.jsonPrimitive.content}/export?mimeType=text/plain").get()) to modified
@@ -205,5 +222,6 @@ class DriveSync(
         const val API = "https://www.googleapis.com/drive/v3"
         const val UPLOAD = "https://www.googleapis.com/upload/drive/v3"
         const val BACKUP_NAME = "forgequest_backup.json"
+        const val PLAN_DOC = "ForgeQuest plan"
     }
 }

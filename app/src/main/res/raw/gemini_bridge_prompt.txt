@@ -29,7 +29,7 @@ HOW TO WRITE
 - Write in the same language as the athlete's notes in the data document if they are in Arabic; otherwise English.
 
 OUTPUT
-Create a Google Doc named exactly "ForgeQuest from Gemini" in my Drive. If it already exists, replace its entire content. The content must follow this format exactly, with nothing before the first line and nothing after the last section:
+Open the existing Google Doc named exactly "ForgeQuest from Gemini" in my Drive (the ForgeQuest app created it) and replace its entire content. Never create a new document with that name, because the app can only read the one it created. If it is missing, stop and say so. The content must follow this format exactly, with nothing before the first line and nothing after the last section:
 
 FORGEQUEST-REPLY v1
 ## TODAY
