@@ -63,10 +63,10 @@ private enum class Detail { RECOVERY, SLEEP, STRAIN }
 
 /** Whoop-style card: sleep, recovery and strain dials from the Fitbit, and what that means for today. */
 @Composable
-fun ReadinessCard(state: HealthState, onConnect: () -> Unit, onFeltGreat: (Boolean) -> Unit) {
+fun ReadinessCard(state: HealthState, onFeltGreat: (Boolean) -> Unit) {
     when (state) {
-        HealthState.Unavailable, HealthState.Loading -> Unit
-        HealthState.NeedsAccess -> ConnectCard(onConnect)
+        // Not connected: nothing on Home; Profile › Your body › Fitbit readiness connects it.
+        HealthState.Unavailable, HealthState.Loading, HealthState.NeedsAccess -> Unit
         is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, onFeltGreat) else NoDataCard()
     }
 }
@@ -80,24 +80,6 @@ private fun recoveryColor(recovery: Int): Color = when (Readiness.recoveryZone(r
 
 private val SleepColor = Color(0xFF8E7CF6)
 private val StrainColor = Color(0xFF3A8DFF)
-
-@Composable
-private fun ConnectCard(onConnect: () -> Unit) {
-    val c = Fit.colors
-    FitCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconCircle(Icons.Rounded.MonitorHeart, c.coral, c.coralTrack)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.ready_connect_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                Text(stringResource(R.string.ready_connect_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        PillButton(stringResource(R.string.ready_connect), onClick = onConnect, modifier = Modifier.fillMaxWidth())
-    }
-    Spacer(Modifier.height(12.dp))
-}
 
 @Composable
 private fun NoDataCard() {
@@ -164,7 +146,13 @@ private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit) {
         Spacer(Modifier.height(14.dp))
         Text(stringResource(title), style = MaterialTheme.typography.headlineSmall, color = recColor)
         Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
+        // The numbers behind the call, in the person's own terms.
+        val why = buildList {
+            d.hrv?.let { h -> add(d.hrvUsual?.let { stringResource(R.string.ready_hrv, h.toInt(), it.toInt()) } ?: stringResource(R.string.ready_hrv_only, h.toInt())) }
+            d.rhr?.let { r -> add(d.rhrUsual?.let { stringResource(R.string.ready_rhr, r.toInt(), it.toInt()) } ?: stringResource(R.string.ready_rhr_only, r.toInt())) }
+        }
+        if (why.isNotEmpty()) Text(why.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         Text(
             stringResource(R.string.ready_target, target.start.toInt(), target.endInclusive.toInt()) + " · " + stringResource(R.string.ready_need_tonight, hm(d.sleepNeedTonight)),
             style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
@@ -173,7 +161,9 @@ private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text(stringResource(R.string.ready_learning, d.baselineNights, Readiness.MIN_BASELINE_DAYS), style = MaterialTheme.typography.bodySmall, color = c.gold)
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
+        Text(stringResource(R.string.ready_tap_hint), style = MaterialTheme.typography.labelSmall, color = c.textSecondary.copy(alpha = 0.7f))
+        Spacer(Modifier.height(2.dp))
         // Only the good mornings get a tap: people often miss feeling groggy but always notice feeling great.
         TextButton(onClick = { onFeltGreat(!d.feltGreat) }) {
             Icon(Icons.Rounded.Bolt, contentDescription = null, tint = if (d.feltGreat) c.gold else c.textSecondary, modifier = Modifier.size(18.dp))

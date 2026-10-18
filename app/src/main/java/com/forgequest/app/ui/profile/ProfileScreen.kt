@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.SaveAlt
 import com.forgequest.app.R
@@ -152,6 +153,13 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     fun setRatios(perKg: Float? = null, fatPct: Int? = null) = viewModelScope.launch {
         app.settings.update { it.copy(proteinPerKg = perKg ?: it.proteinPerKg, fatSharePct = fatPct ?: it.fatSharePct) }
+    }
+
+    fun refreshHealth() = viewModelScope.launch { app.health.refresh(force = true) }
+
+    fun setHealth(enabled: Boolean) = viewModelScope.launch {
+        app.settings.update { it.copy(healthEnabled = enabled) }
+        app.health.refresh(force = true)
     }
 
     fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
@@ -432,6 +440,9 @@ fun ProfileScreen(nav: NavHostController) {
     val hcPerms = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) {
         hcSave.launch("forgequest-health-connect.json")
     }
+    val health by vm.app.health.state.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.app.health.refresh() }
+    val healthAccess = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) { vm.refreshHealth() }
     val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTo) }
     LaunchedEffect(shareUri) {
         shareUri?.let { uri ->
@@ -557,6 +568,38 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(8.dp))
             SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
             SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
+            if (settings.heightCm <= 0f || age <= 0) {
+                Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.gold)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Fitbit readiness (optional): the only place it's switched on, connected or off.
+        val connected = settings.healthEnabled && (health is com.forgequest.app.data.health.HealthState.Ready || health is com.forgequest.app.data.health.HealthState.Loading)
+        FitCard {
+            Row(Modifier.fillMaxWidth().toggleable(connected, role = Role.Switch) { on ->
+                when {
+                    !on -> vm.setHealth(false)
+                    probe.status() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE ->
+                        android.widget.Toast.makeText(context, context.getString(R.string.hc_unavailable), android.widget.Toast.LENGTH_LONG).show()
+                    else -> { vm.setHealth(true); healthAccess.launch(vm.app.health.requestPermissions()) }
+                }
+            }, verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.MonitorHeart, c.coral, c.coralTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.profile_health_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(
+                        stringResource(if (connected) R.string.profile_health_on else R.string.profile_health_hint),
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                Switch(connected, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+            if (connected) {
+                // What Health Connect holds, as a file to share when something looks off.
+                TextButton(onClick = { hcPerms.launch(probe.permissions) }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
+            }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -851,14 +894,9 @@ fun ProfileScreen(nav: NavHostController) {
 
         SettingsSection(stringResource(R.string.settings_section_more))
 
-        // Health Connect test
-        SettingsRow(Icons.Rounded.MonitorHeart, c.coral, c.coralTrack, stringResource(R.string.hc_test_title), stringResource(R.string.hc_test_hint)) {
-            when (probe.status()) {
-                androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE -> hcPerms.launch(probe.permissions)
-                androidx.health.connect.client.HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED ->
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata")))
-                else -> android.widget.Toast.makeText(context, context.getString(R.string.hc_unavailable), android.widget.Toast.LENGTH_LONG).show()
-            }
+        // App tour, the same slides as the first run
+        SettingsRow(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
+            nav.navigate(com.forgequest.app.ui.Routes.TOUR)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -886,6 +924,7 @@ fun ProfileScreen(nav: NavHostController) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(10.dp))

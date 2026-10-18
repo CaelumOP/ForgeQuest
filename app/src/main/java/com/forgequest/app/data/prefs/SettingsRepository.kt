@@ -66,6 +66,8 @@ data class Settings(
     val birthYear: Int = 0,
     /** Carbs are off unless the person turns them on in Profile â†’ Goals. */
     val trackCarbs: Boolean = false,
+    /** Fitbit readiness on Home through Health Connect; off hides the card everywhere. */
+    val healthEnabled: Boolean = true,
     val carbsGoal: Int = 250,
     /** Grams of protein per kg of body weight behind the protein suggestion. */
     val proteinPerKg: Float = 1.8f,
@@ -109,6 +111,7 @@ class SettingsRepository(private val context: Context) {
         val height = floatPreferencesKey("height_cm")
         val birthYear = intPreferencesKey("birth_year")
         val trackCarbs = booleanPreferencesKey("track_carbs")
+        val healthEnabled = booleanPreferencesKey("health_enabled")
         val carbsGoal = intPreferencesKey("carbs_goal")
         val proteinPerKg = floatPreferencesKey("protein_per_kg")
         val fatShare = intPreferencesKey("fat_share_pct")
@@ -151,6 +154,7 @@ class SettingsRepository(private val context: Context) {
         heightCm = this[K.height] ?: 0f,
         birthYear = this[K.birthYear] ?: 0,
         trackCarbs = this[K.trackCarbs] ?: false,
+        healthEnabled = this[K.healthEnabled] ?: true,
         carbsGoal = this[K.carbsGoal] ?: 250,
         proteinPerKg = this[K.proteinPerKg] ?: 1.8f,
         fatSharePct = this[K.fatShare] ?: 25,
@@ -187,6 +191,7 @@ class SettingsRepository(private val context: Context) {
             p[K.height] = s.heightCm
             p[K.birthYear] = s.birthYear
             p[K.trackCarbs] = s.trackCarbs
+            p[K.healthEnabled] = s.healthEnabled
             p[K.carbsGoal] = s.carbsGoal
             p[K.proteinPerKg] = s.proteinPerKg
             p[K.fatShare] = s.fatSharePct

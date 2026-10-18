@@ -1,4 +1,4 @@
-# Used only when the release build runs with -PminifyRelease=true.
+# Release builds are shrunk by default (-PminifyRelease=false turns it off).
 
 -keepattributes *Annotation*, InnerClasses, Signature, EnclosingMethod
 
@@ -15,6 +15,12 @@
 -keep class com.forgequest.app.data.plan.** { *; }
 -keep class com.forgequest.app.data.FoodScan { *; }
 -keep class com.forgequest.app.data.ScanItem { *; }
+
+# Health Connect records are created reflectively when reading by type.
+-keep class androidx.health.connect.client.records.** { *; }
+# Tink / security-crypto used for the encrypted API keys.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
 
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**

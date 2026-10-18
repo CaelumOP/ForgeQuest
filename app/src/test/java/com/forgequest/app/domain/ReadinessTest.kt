@@ -63,14 +63,23 @@ class ReadinessTest {
     }
 
     @Test fun strainUsesHeartRateReserve() {
-        assertEquals(0.0, Readiness.strain(DoubleArray(5)), 0.001)
-        assertTrue(Readiness.strain(doubleArrayOf(0.0, 0.0, 20.0, 30.0, 10.0)) in 14.0..16.0)
+        assertEquals(0.0, Readiness.strainFromLoad(0.0), 0.001)
+        // An hour at 80 % of reserve (rest 65, max 190 → 165 bpm) is about 140 TRIMP; two hours of walking at 100 bpm about 33.
+        val hourHard = (0..1800).map { Instant.ofEpochSecond(it * 2L) to 165L }
+        val hard = Readiness.trimp(hourHard, 190, 65.0)
+        assertTrue(hard in 120.0..150.0)
+        val walk2h = (0..3600).map { Instant.ofEpochSecond(it * 2L) to 100L }
+        val easy = Readiness.trimp(walk2h, 190, 65.0)
+        assertTrue(easy in 25.0..40.0)
+        assertTrue(Readiness.strainFromLoad(easy + 60) in 7.0..11.0)
+        assertTrue(Readiness.strainFromLoad(easy + 60 + hard) in 14.0..18.0)
         // An easy walk at 100 bpm (rest 65, max 190 → 28 % of reserve) doesn't count; 165 bpm (80 %) does.
         val walk = (0 until 61).map { Instant.ofEpochSecond(it * 2L) to 100L }
         assertEquals(0.0, Readiness.zoneMinutes(walk, 190, 65.0).sum(), 0.001)
-        val hard = (0 until 61).map { Instant.ofEpochSecond(it * 2L) to 165L }
-        assertEquals(2.0, Readiness.zoneMinutes(hard, 190, 65.0)[3], 0.01)
+        val zoneHard = (0 until 61).map { Instant.ofEpochSecond(it * 2L) to 165L }
+        assertEquals(2.0, Readiness.zoneMinutes(zoneHard, 190, 65.0)[3], 0.01)
         assertEquals(StrainBand.MODERATE, Readiness.band(11.8))
-        assertEquals(4.0..10.0, Readiness.strainTarget(30))
+        assertEquals(4.0..7.0, Readiness.strainTarget(30))
+        assertEquals(7.0..10.0, Readiness.strainTarget(34))
     }
 }

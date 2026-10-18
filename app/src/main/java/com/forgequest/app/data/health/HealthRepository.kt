@@ -13,6 +13,7 @@ import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -28,6 +29,7 @@ import com.forgequest.app.domain.SleepPiece
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
@@ -87,7 +89,8 @@ class HealthRepository(private val context: Context, private val settings: Setti
             HealthConnectClient.getOrCreate(context).features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY) ==
                 HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
         }.getOrDefault(false)
-        return if (history) permissions + HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY else permissions
+        val wanted = permissions + HealthPermission.getReadPermission(WeightRecord::class)
+        return if (history) wanted + HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY else wanted
     }
 
     private val _state = MutableStateFlow<HealthState>(HealthState.Loading)
@@ -95,22 +98,36 @@ class HealthRepository(private val context: Context, private val settings: Setti
 
     fun available(): Boolean = HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
 
-    /** Re-reads Health Connect. Cheap enough to call whenever Home opens. */
-    suspend fun refresh() {
-        if (!available()) { _state.value = HealthState.Unavailable; return }
+    private val refreshLock = kotlinx.coroutines.sync.Mutex()
+    private var lastRefreshAt = 0L
+
+    /**
+     * Re-reads Health Connect. Home calls it on every open, so a fresh result is reused for a few minutes and two
+     * opens at once share one read; [force] skips that (after granting access or changing the setting).
+     */
+    suspend fun refresh(force: Boolean = false) = refreshLock.withLock {
+        val fresh = System.currentTimeMillis() - lastRefreshAt < 5 * 60_000
+        if (!force && fresh && state.value is HealthState.Ready) return@withLock
+        refreshNow()
+    }
+
+    private suspend fun refreshNow() {
+        if (!settings.current().healthEnabled || !available()) { _state.value = HealthState.Unavailable; return }
         val client = HealthConnectClient.getOrCreate(context)
         val granted = suspendRunCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
         if (!granted.containsAll(permissions)) { _state.value = HealthState.NeedsAccess; return }
+        if (HealthPermission.getReadPermission(WeightRecord::class) in granted) suspendRunCatching { syncWeight(client) }
         suspendRunCatching { withContext(Dispatchers.IO) { compute(client) } }
-            .onSuccess { _state.value = HealthState.Ready(it) }
+            .onSuccess { _state.value = HealthState.Ready(it); lastRefreshAt = System.currentTimeMillis() }
             .onFailure { Log.w("ForgeQuest", "health refresh failed", it) }
     }
 
     /** The "I feel great" tap, kept next to the day's scores so the formulas can be tuned to this person later. */
     suspend fun setFeltGreat(value: Boolean) {
-        val today = LocalDate.now().toEpochDay()
+        // The readiness day can be yesterday until tonight's sleep is recorded, so save against the day on screen.
+        val day = (state.value as? HealthState.Ready)?.day?.week?.lastOrNull()?.epochDay ?: LocalDate.now().toEpochDay()
         val dao = db.readiness()
-        dao.get(today)?.let { dao.upsert(it.copy(feltGreat = value)) }
+        dao.get(day)?.let { dao.upsert(it.copy(feltGreat = value)) }
         (state.value as? HealthState.Ready)?.let { _state.value = HealthState.Ready(it.day.copy(feltGreat = value)) }
     }
 
@@ -158,12 +175,14 @@ class HealthRepository(private val context: Context, private val settings: Setti
             val d = today.minusDays(back)
             val start = d.atStartOfDay(zone).toInstant()
             val end = if (back == 0L) now else d.plusDays(1).atStartOfDay(zone).toInstant()
-            val zones = suspendRunCatching {
-                Readiness.zoneMinutes(read(client, HeartRateRecord::class, start, end).flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }, hrMax, rest30)
-            }.getOrDefault(DoubleArray(5))
-            d to zones
+            val female = s.bodyType == com.forgequest.app.data.prefs.BodyType.FEMALE
+            val result = suspendRunCatching {
+                val samples = read(client, HeartRateRecord::class, start, end).flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }
+                Readiness.zoneMinutes(samples, hrMax, rest30) to Readiness.trimp(samples, hrMax, rest30, female)
+            }.getOrDefault(DoubleArray(5) to 0.0)
+            d to result
         }
-        fun strainOf(d: LocalDate) = strainByDay[d]?.let(Readiness::strain) ?: 0.0
+        fun strainOf(d: LocalDate) = Readiness.strainFromLoad(strainByDay[d]?.second ?: 0.0)
 
         fun asleepBefore(d: LocalDate) = (3L downTo 1L).map { nightOf(d.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }
         fun needFor(d: LocalDate) = Readiness.sleepNeed(strainOf(d.minusDays(1)), asleepBefore(d), sleepDays[d.minusDays(1)]?.napMin ?: 0)
@@ -200,10 +219,9 @@ class HealthRepository(private val context: Context, private val settings: Setti
 
         val night = nightOf(day)
         // The day runs from waking to the next sleep, so strain after midnight still adds to it.
-        val zonesSinceWake = (0L..java.time.temporal.ChronoUnit.DAYS.between(day, today)).fold(DoubleArray(5)) { acc, back ->
-            val z = strainByDay[day.plusDays(back)] ?: DoubleArray(5); DoubleArray(5) { acc[it] + z[it] }
-        }
-        val strain = Readiness.strain(zonesSinceWake)
+        val sinceWake = (0L..java.time.temporal.ChronoUnit.DAYS.between(day, today)).mapNotNull { strainByDay[day.plusDays(it)] }
+        val zonesSinceWake = DoubleArray(5) { i -> sinceWake.sumOf { it.first[i] } }
+        val strain = Readiness.strainFromLoad(sinceWake.sumOf { it.second })
         val perf = perfFor(day)
         val dao = db.readiness()
         val felt = dao.get(day.toEpochDay())?.feltGreat ?: false
@@ -236,6 +254,25 @@ class HealthRepository(private val context: Context, private val settings: Setti
             week = week,
             feltGreat = felt,
         )
+    }
+
+    /**
+     * Weigh-ins from Google Health / Fitbit fill days the app has no weight for; a weight typed in the app always wins.
+     * The latest reading of each day counts.
+     */
+    private suspend fun syncWeight(client: HealthConnectClient) = withContext(Dispatchers.IO) {
+        val zone = ZoneId.systemDefault()
+        val since = LocalDate.now(zone).minusDays(70).atStartOfDay(zone).toInstant()
+        val records = read(client, WeightRecord::class, since, Instant.now()).filter { it.metadata.dataOrigin.packageName != context.packageName }
+        if (records.isEmpty()) return@withContext
+        val dao = db.weights()
+        val have = dao.all().map { it.epochDay }.toSet()
+        records.groupBy { it.time.atZone(zone).toLocalDate().toEpochDay() }
+            .filterKeys { it !in have }
+            .forEach { (day, list) ->
+                val latest = list.maxBy { it.time }
+                dao.upsert(com.forgequest.app.data.db.WeightEntity(epochDay = day, kg = latest.weight.inKilograms.toFloat(), loggedAt = latest.time.toEpochMilli()))
+            }
     }
 
     private suspend fun <T : Record> read(client: HealthConnectClient, type: KClass<T>, start: Instant, end: Instant): List<T> {

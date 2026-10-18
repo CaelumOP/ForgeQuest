@@ -45,9 +45,9 @@ android {
 
     buildTypes {
         release {
-            // Shrinking is opt-in (-PminifyRelease=true) until it has been checked on a device: Room,
-            // kotlinx.serialization and Compose all need the rules in proguard-rules.pro to survive it.
-            isMinifyEnabled = (project.findProperty("minifyRelease") as String?) == "true"
+            // Shrinking is on (-PminifyRelease=false turns it off for a quick comparison). Room, kotlinx.serialization
+            // and Health Connect rely on the keep rules in proguard-rules.pro.
+            isMinifyEnabled = (project.findProperty("minifyRelease") as String?) != "false"
             isShrinkResources = isMinifyEnabled
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else {

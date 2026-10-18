@@ -112,9 +112,6 @@ fun HomeScreen(nav: NavHostController) {
     val health by vm.health.collectAsState()
     // Fitbit numbers through Health Connect: re-read whenever Home opens, and right after access is granted.
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.refreshHealth() }
-    val healthAccess = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
-    ) { vm.refreshHealth() }
     var weightSheet by remember { mutableStateOf(false) }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
@@ -144,7 +141,7 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        ReadinessCard(health, onConnect = { healthAccess.launch(vm.app.health.requestPermissions()) }, onFeltGreat = vm::setFeltGreat)
+        ReadinessCard(health, onFeltGreat = vm::setFeltGreat)
         StreakCard(s.streak)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
@@ -196,7 +193,8 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
     val greeting = when (hour) {
         in 5..11 -> stringResource(R.string.home_good_morning)
         in 12..16 -> stringResource(R.string.home_good_afternoon)
-        else -> stringResource(R.string.home_good_evening)
+        in 17..19 -> stringResource(R.string.home_good_evening)
+        else -> stringResource(R.string.home_good_night)
     }
     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
