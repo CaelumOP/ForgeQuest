@@ -1,5 +1,11 @@
 package com.forgequest.app.ui.coach
 
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.pluralStringResource
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -126,7 +132,7 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
     fun apply(message: ChatEntity) = viewModelScope.launch {
         if (app.coach.applyPlan(message.id)) {
             app.haptics.celebrate()
-            applied.value = "New plan applied. Check the Workouts tab."
+            applied.value = app.str(R.string.coach_plan_applied)
         }
     }
 
@@ -136,10 +142,10 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
 }
 
 private val suggestions = listOf(
-    "Review my week",
-    "How do I get my first pull-up?",
-    "Build me a 4-day plan",
-    "High-protein breakfast ideas",
+    R.string.coach_suggest_week,
+    R.string.coach_suggest_pull_up,
+    R.string.coach_suggest_plan,
+    R.string.coach_suggest_breakfast,
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -168,11 +174,11 @@ fun CoachScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Coach", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.tab_coach), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = c.textSecondary) }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textSecondary) }
                 DropdownMenu(menu, { menu = false }, containerColor = c.cardHigh) {
-                    DropdownMenuItem(text = { Text("Clear conversation") }, onClick = { menu = false; confirmClear = true })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.coach_clear)) }, onClick = { menu = false; confirmClear = true })
                 }
             }
         }
@@ -190,12 +196,12 @@ fun CoachScreen(nav: NavHostController) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack, 40.dp)
                                 Spacer(Modifier.width(12.dp))
-                                Text("Add your free AI key", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                                Text(stringResource(R.string.coach_add_key), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                             }
                             Spacer(Modifier.height(8.dp))
-                            Text("The coach runs on Google Gemini with your own free key. It takes about a minute.", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                            Text(stringResource(R.string.coach_add_key_body), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                             Spacer(Modifier.height(14.dp))
-                            PillButton("Set up in Profile", onClick = { nav.goToTab(Routes.PROFILE) })
+                            PillButton(stringResource(R.string.coach_set_up_profile), onClick = { nav.goToTab(Routes.PROFILE) })
                         }
                     }
                 }
@@ -230,7 +236,7 @@ fun CoachScreen(nav: NavHostController) {
                         .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    suggestions.take(3).forEach { s ->
+                    suggestions.take(3).map { stringResource(it) }.forEach { s ->
                         Box(
                             Modifier.clip(RoundedCornerShape(50)).background(c.card)
                                 .border(1.dp, c.divider.copy(alpha = 0.7f), RoundedCornerShape(50))
@@ -246,7 +252,7 @@ fun CoachScreen(nav: NavHostController) {
             TextField(
                 value = input,
                 onValueChange = { input = it },
-                placeholder = { Text("Ask your coach…") },
+                placeholder = { Text(stringResource(R.string.coach_input_hint)) },
                 enabled = hasKey,
                 shape = RoundedCornerShape(28.dp),
                 maxLines = 5,
@@ -267,7 +273,7 @@ fun CoachScreen(nav: NavHostController) {
                     .clickable(enabled = canSend) { vm.send(input.trim()); input = "" },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send", tint = if (canSend) c.onTeal else c.textSecondary)
+                Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = stringResource(R.string.cd_send), tint = if (canSend) c.onTeal else c.textSecondary)
             }
         }
     }
@@ -276,10 +282,10 @@ fun CoachScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
             containerColor = c.card,
-            title = { Text("Clear the conversation?", color = c.textPrimary) },
-            text = { Text("Messages and weekly check-ins are deleted. Plans you already applied stay.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { confirmClear = false; vm.clear() }) { Text("Clear", color = c.coral) } },
-            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel", color = c.textSecondary) } },
+            title = { Text(stringResource(R.string.coach_clear_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.coach_clear_body), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { confirmClear = false; vm.clear() }) { Text(stringResource(R.string.action_clear), color = c.coral) } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 
@@ -297,16 +303,16 @@ private fun Welcome(enabled: Boolean, onSuggestion: (String) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         IconCircle(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack, 64.dp)
         Spacer(Modifier.height(16.dp))
-        Text("Your training coach", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+        Text(stringResource(R.string.coach_welcome_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
         Spacer(Modifier.height(6.dp))
         Text(
-            "It knows your plan, workouts, records and meals. Ask for advice or a new plan you can apply in one tap.",
+            stringResource(R.string.coach_welcome_body),
             style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         Spacer(Modifier.height(20.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            suggestions.forEach { s ->
+            suggestions.map { stringResource(it) }.forEach { s ->
                 Box(
                     Modifier.clip(RoundedCornerShape(50)).background(c.card).clickable(enabled = enabled) { onSuggestion(s) }
                         .padding(horizontal = 16.dp, vertical = 10.dp).alpha(if (enabled) 1f else 0.5f),
@@ -336,7 +342,7 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
                 Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.gold, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Weekly check-in", style = MaterialTheme.typography.labelLarge, color = c.gold)
+                Text(stringResource(R.string.coach_weekly_checkin), style = MaterialTheme.typography.labelLarge, color = c.gold)
             }
         }
         Box(
@@ -349,17 +355,18 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
             val clipboard = LocalClipboardManager.current
             val snackbar = LocalSnackbar.current
             val scope = rememberCoroutineScope()
+            val copiedLabel = stringResource(R.string.coach_copied)
             Row(
                 Modifier.padding(top = 2.dp).clip(RoundedCornerShape(50)).clickable {
                     clipboard.setText(AnnotatedString("${m.text}\n${m.detail}"))
                     // Android 13+ shows its own copied-to-clipboard preview.
-                    if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar("Error details copied") }
+                    if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copiedLabel) }
                 }.padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Copy error details", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                Text(stringResource(R.string.coach_copy_details), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
             }
         }
         if (plan != null) {
@@ -371,15 +378,15 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
                     Column(Modifier.weight(1f)) {
                         Text(plan.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, fontWeight = FontWeight.SemiBold)
                         val training = plan.days.count { !it.isRest && it.items.isNotEmpty() }
-                        Text("$training training days · ${plan.days.sumOf { it.items.size }} exercises", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(stringResource(R.string.coach_plan_summary, pluralStringResource(R.plurals.coach_training_days, training, training), pluralStringResource(R.plurals.coach_exercises, plan.days.sumOf { it.items.size }, plan.days.sumOf { it.items.size })), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (m.planApplied) {
-                        PillButton("Applied", onClick = onPreview, icon = Icons.Rounded.Check, container = c.tealTrack, content = c.teal)
+                        PillButton(stringResource(R.string.coach_applied), onClick = onPreview, icon = Icons.Rounded.Check, container = c.tealTrack, content = c.teal)
                     } else {
-                        PillButton("Review and apply", onClick = onApply)
+                        PillButton(stringResource(R.string.coach_review_apply), onClick = onApply)
                     }
                 }
             }
@@ -406,7 +413,7 @@ private fun StreamingBubble(text: String, writingPlan: Boolean) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = c.teal, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Writing your week…", style = MaterialTheme.typography.labelLarge, color = c.teal)
+                        Text(stringResource(R.string.coach_writing_week), style = MaterialTheme.typography.labelLarge, color = c.teal)
                     }
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(color = c.teal, trackColor = c.tealTrack, modifier = Modifier.fillMaxWidth().clip(CircleShape))
@@ -424,7 +431,7 @@ private fun CheckinNote() {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
         Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
-        Text("Writing your weekly check-in in the background…", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+        Text(stringResource(R.string.coach_checkin_background), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
     }
 }
 

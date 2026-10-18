@@ -112,7 +112,7 @@ class CoachRepository(
         chat.insert(
             ChatEntity(
                 role = "coach",
-                text = PlanJson.strip(reply).ifBlank { "Here's your plan. Review it below." },
+                text = PlanJson.strip(reply).ifBlank { AppText.get(R.string.coach_plan_fallback) },
                 planJson = plan?.let(PlanJson::encode),
                 createdAt = System.currentTimeMillis(),
             )
@@ -150,7 +150,7 @@ class CoachRepository(
         settings.update { it.copy(lastCheckinWeek = thisWeek) }
         return try {
             val reply = gemini.generate(
-                requireKey(), models(), coachSystemPrompt(),
+                requireKey(), models(), coachSystemPrompt(replyLanguage = if (java.util.Locale.getDefault().language == "ar") "Arabic" else "English"),
                 listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line."),
                 fast = true,
             )

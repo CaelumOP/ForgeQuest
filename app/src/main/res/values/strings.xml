@@ -317,4 +317,38 @@
     <string name="scan_needs_key_title">Meal scanning needs your AI key</string>
     <string name="scan_needs_key_body">Add your free Gemini key in Profile once, and every photo turns into calories and protein.</string>
     <string name="scan_add_key">Add key in Profile</string>
+    <string name="coach_plan_applied">New plan applied. Check the Workouts tab.</string>
+    <string name="coach_suggest_week">Review my week</string>
+    <string name="coach_suggest_pull_up">How do I get my first pull-up?</string>
+    <string name="coach_suggest_plan">Build me a 4-day plan</string>
+    <string name="coach_suggest_breakfast">High-protein breakfast ideas</string>
+    <string name="cd_more">More</string>
+    <string name="coach_clear">Clear conversation</string>
+    <string name="coach_add_key">Add your free AI key</string>
+    <string name="coach_add_key_body">The coach runs on Google Gemini with your own free key. It takes about a minute.</string>
+    <string name="coach_set_up_profile">Set up in Profile</string>
+    <string name="coach_input_hint">Ask your coach…</string>
+    <string name="cd_send">Send</string>
+    <string name="coach_clear_title">Clear the conversation?</string>
+    <string name="coach_clear_body">Messages and weekly check-ins are deleted. Plans you already applied stay.</string>
+    <string name="action_clear">Clear</string>
+    <string name="coach_welcome_title">Your training coach</string>
+    <string name="coach_welcome_body">It knows your plan, workouts, records and meals. Ask for advice or a new plan you can apply in one tap.</string>
+    <string name="coach_weekly_checkin">Weekly check-in</string>
+    <string name="coach_copied">Error details copied</string>
+    <string name="coach_copy_details">Copy error details</string>
+    <string name="coach_plan_summary">%1$s · %2$s</string>
+    <plurals name="coach_training_days">
+        <item quantity="one">%1$d training day</item>
+        <item quantity="other">%1$d training days</item>
+    </plurals>
+    <plurals name="coach_exercises">
+        <item quantity="one">%1$d exercise</item>
+        <item quantity="other">%1$d exercises</item>
+    </plurals>
+    <string name="coach_applied">Applied</string>
+    <string name="coach_review_apply">Review and apply</string>
+    <string name="coach_writing_week">Writing your week…</string>
+    <string name="coach_checkin_background">Writing your weekly check-in in the background…</string>
+    <string name="coach_plan_fallback">Here\'s your plan. Review it below.</string>
 </resources>
