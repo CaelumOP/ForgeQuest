@@ -96,6 +96,7 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     fun logWeight(kg: Float) = viewModelScope.launch { app.progress.logWeight(kg) }
     val health = app.health.state
     fun refreshHealth() = viewModelScope.launch { app.health.refresh() }
+    fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 
     suspend fun startToday(day: PlanDayWithItems?) = app.workouts.startSession(day)
 }
@@ -143,7 +144,7 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        ReadinessCard(health, onConnect = { healthAccess.launch(vm.app.health.permissions) })
+        ReadinessCard(health, onConnect = { healthAccess.launch(vm.app.health.permissions) }, onFeltGreat = vm::setFeltGreat)
         StreakCard(s.streak)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })

@@ -341,3 +341,15 @@ interface BackupDao {
     @Insert suspend fun putChat(v: List<ChatEntity>)
     @Insert suspend fun putBadges(v: List<BadgeEntity>)
 }
+
+@Dao
+interface ReadinessDao {
+    @Query("SELECT * FROM readiness_days WHERE epochDay = :day")
+    suspend fun get(day: Long): ReadinessDayEntity?
+
+    @Upsert
+    suspend fun upsert(day: ReadinessDayEntity)
+
+    @Query("SELECT * FROM readiness_days ORDER BY epochDay")
+    suspend fun all(): List<ReadinessDayEntity>
+}

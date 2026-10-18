@@ -15,9 +15,10 @@ import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.forgequest.app.data.db.AppDatabase
+import com.forgequest.app.data.db.ReadinessDayEntity
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.suspendRunCatching
-import com.forgequest.app.domain.Baseline
 import com.forgequest.app.domain.DayCall
 import com.forgequest.app.domain.Night
 import com.forgequest.app.domain.Nutrition
@@ -30,15 +31,23 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.exp
 import kotlin.reflect.KClass
+
+/** One day in the 7-day charts. */
+data class DaySummary(val epochDay: Long, val recovery: Int?, val sleepMin: Int?, val sleepPerf: Int?, val strain: Double)
 
 /** Today's Whoop-style numbers, built from Health Connect (Fitbit / Google Health). */
 data class DayReadiness(
     val recovery: Int,
     val call: DayCall,
     val night: Night?,
-    val sleepScore: Int?,
+    val sleepPerf: Int?,
+    val sleepNeedLastNight: Int,
+    val sleepNeedTonight: Int,
+    val debtMin: Int,
     val strain: Double,
+    val zoneMin: DoubleArray,
     val steps: Long,
     val kcalBurned: Int,
     val hrv: Double?,
@@ -46,9 +55,15 @@ data class DayReadiness(
     val rhr: Double?,
     val rhrUsual: Double?,
     val resp: Double?,
+    val respUsual: Double?,
     /** Nights with HRV in the last 30 days; under [Readiness.MIN_BASELINE_DAYS] the score is still learning. */
     val baselineNights: Int,
-)
+    /** Oldest first, today last. */
+    val week: List<DaySummary>,
+    val feltGreat: Boolean,
+) {
+    val hasData get() = night != null || hrv != null || rhr != null
+}
 
 sealed interface HealthState {
     data object Unavailable : HealthState
@@ -57,7 +72,7 @@ sealed interface HealthState {
     data class Ready(val day: DayReadiness) : HealthState
 }
 
-class HealthRepository(private val context: Context, private val settings: SettingsRepository) {
+class HealthRepository(private val context: Context, private val settings: SettingsRepository, private val db: AppDatabase) {
 
     private val types: List<KClass<out Record>> = listOf(
         SleepSessionRecord::class, HeartRateRecord::class, RestingHeartRateRecord::class, HeartRateVariabilityRmssdRecord::class,
@@ -81,79 +96,128 @@ class HealthRepository(private val context: Context, private val settings: Setti
             .onFailure { Log.w("ForgeQuest", "health refresh failed", it) }
     }
 
+    /** The "I feel great" tap, kept next to the day's scores so the formulas can be tuned to this person later. */
+    suspend fun setFeltGreat(value: Boolean) {
+        val today = LocalDate.now().toEpochDay()
+        val dao = db.readiness()
+        dao.get(today)?.let { dao.upsert(it.copy(feltGreat = value)) }
+        (state.value as? HealthState.Ready)?.let { _state.value = HealthState.Ready(it.day.copy(feltGreat = value)) }
+    }
+
     private suspend fun compute(client: HealthConnectClient): DayReadiness {
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
-        val from = today.minusDays(31).atStartOfDay(zone).toInstant()
+        val from = today.minusDays(40).atStartOfDay(zone).toInstant()
         val now = Instant.now()
-        val dayStart = today.atStartOfDay(zone).toInstant()
 
         val sleep = read(client, SleepSessionRecord::class, from, now).map { s ->
             fun mins(vararg stage: Int) = s.stages.filter { it.stage in stage }.sumOf { ((it.endTime.epochSecond - it.startTime.epochSecond) / 60).toInt() }
-            val staged = s.stages.isNotEmpty()
             SleepPiece(
                 s.startTime, s.endTime,
                 deepMin = mins(SleepSessionRecord.STAGE_TYPE_DEEP),
                 remMin = mins(SleepSessionRecord.STAGE_TYPE_REM),
                 lightMin = mins(SleepSessionRecord.STAGE_TYPE_LIGHT),
                 awakeMin = mins(SleepSessionRecord.STAGE_TYPE_AWAKE, SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED, SleepSessionRecord.STAGE_TYPE_OUT_OF_BED),
-                unstagedMin = if (staged) mins(SleepSessionRecord.STAGE_TYPE_SLEEPING) else ((s.endTime.epochSecond - s.startTime.epochSecond) / 60).toInt(),
+                unstagedMin = if (s.stages.isNotEmpty()) mins(SleepSessionRecord.STAGE_TYPE_SLEEPING) else ((s.endTime.epochSecond - s.startTime.epochSecond) / 60).toInt(),
                 fromFitbit = s.metadata.dataOrigin.packageName == FITBIT,
             )
         }
-        val nights = Readiness.nights(sleep, zone)
+        val sleepDays = Readiness.sleepDays(sleep, zone)
         val hrvRecords = read(client, HeartRateVariabilityRmssdRecord::class, from, now)
         val rhrRecords = read(client, RestingHeartRateRecord::class, from, now)
         val respRecords = read(client, RespiratoryRateRecord::class, from, now)
 
-        // Per-day signals: HRV and breathing during that day's night, resting heart rate on that day (Fitbit's first).
-        fun hrvFor(n: Night) = Readiness.median(hrvRecords.filter { it.time >= n.start && it.time <= n.end }.map { it.heartRateVariabilityMillis })
-        fun respFor(day: LocalDate, n: Night?) = respRecords.filter { r ->
-            if (n != null) r.time >= n.start && r.time <= n.end.plusSeconds(3600) else r.time.atZone(zone).toLocalDate() == day
-        }.map { it.rate }.let(Readiness::median)
-        fun rhrFor(day: LocalDate): Double? {
-            val sameDay = rhrRecords.filter { it.time.atZone(zone).toLocalDate() == day }
+        fun nightOf(d: LocalDate) = sleepDays[d]?.night
+        fun hrvFor(d: LocalDate) = nightOf(d)?.let { n -> Readiness.median(hrvRecords.filter { it.time >= n.start && it.time <= n.end }.map { it.heartRateVariabilityMillis }) }
+        fun respFor(d: LocalDate): Double? {
+            val n = nightOf(d)
+            return Readiness.median(respRecords.filter { r -> if (n != null) r.time >= n.start && r.time <= n.end.plusSeconds(3600) else r.time.atZone(zone).toLocalDate() == d }.map { it.rate })
+        }
+        fun rhrFor(d: LocalDate): Double? {
+            val sameDay = rhrRecords.filter { it.time.atZone(zone).toLocalDate() == d }
             val fitbit = sameDay.filter { it.metadata.dataOrigin.packageName == FITBIT }
             return Readiness.median((fitbit.ifEmpty { sameDay }).map { it.beatsPerMinute.toDouble() })
         }
 
-        val pastDays = (1L..30L).map { today.minusDays(it) }
-        val hrvHistory = pastDays.mapNotNull { d -> nights[d]?.let(::hrvFor) }
-        val rhrHistory = pastDays.mapNotNull(::rhrFor)
-        val respHistory = pastDays.mapNotNull { d -> nights[d]?.let { respFor(d, it) } }
-        val hrvBase: Baseline? = Readiness.baseline(hrvHistory, floorSd = 3.0)
-        val rhrBase = Readiness.baseline(rhrHistory, floorSd = 2.0)
-        val respBase = Readiness.baseline(respHistory, floorSd = 0.5)
-
-        val night = nights[today]
-        val sleepScore = night?.let { Readiness.sleepScore(it) }
-        val hrv = night?.let(::hrvFor)
-        val rhr = rhrFor(today)
-        val resp = respFor(today, night)
-        val recovery = Readiness.recovery(hrv, rhr, resp, sleepScore, hrvBase, rhrBase, respBase)
-
         val s = settings.current()
-        val age = Nutrition.ageFromBirthYear(s.birthYear, today.year)
-        val heart = read(client, HeartRateRecord::class, dayStart, now).flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }
-        val strain = Readiness.strain(Readiness.zoneMinutes(heart, Readiness.hrMax(age)))
+        val hrMax = Readiness.hrMax(Nutrition.ageFromBirthYear(s.birthYear, today.year))
+        val rest30 = Readiness.median((1L..30L).mapNotNull { rhrFor(today.minusDays(it)) }) ?: 65.0
+
+        // Strain per day for the last 8 days, read a day at a time so 2-second heart rate never piles up in memory.
+        val strainByDay = (0L..7L).associate { back ->
+            val d = today.minusDays(back)
+            val start = d.atStartOfDay(zone).toInstant()
+            val end = if (back == 0L) now else d.plusDays(1).atStartOfDay(zone).toInstant()
+            val zones = suspendRunCatching {
+                Readiness.zoneMinutes(read(client, HeartRateRecord::class, start, end).flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }, hrMax, rest30)
+            }.getOrDefault(DoubleArray(5))
+            d to zones
+        }
+        fun strainOf(d: LocalDate) = strainByDay[d]?.let(Readiness::strain) ?: 0.0
+
+        fun asleepBefore(d: LocalDate) = (3L downTo 1L).map { nightOf(d.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }
+        fun needFor(d: LocalDate) = Readiness.sleepNeed(strainOf(d.minusDays(1)), asleepBefore(d), sleepDays[d.minusDays(1)]?.napMin ?: 0)
+        fun perfFor(d: LocalDate) = nightOf(d)?.let { Readiness.sleepPerformance(it.asleepMin, needFor(d)) }
+
+        // Baselines from the 30 days before the given day.
+        fun recoveryFor(d: LocalDate): Triple<Int, Pair<Double?, Double?>, Int> {
+            val past = (1L..30L).map { d.minusDays(it) }
+            val hrvHistory = past.mapNotNull(::hrvFor)
+            val hrvBase = Readiness.baseline(hrvHistory.filter { it > 0 }.map { kotlin.math.ln(it) }, floorSd = 0.05)
+            val rhrBase = Readiness.baseline(past.mapNotNull(::rhrFor), floorSd = 2.0)
+            val respBase = Readiness.baseline(past.mapNotNull(::respFor), floorSd = 0.5)
+            val last7 = (0L..6L).mapNotNull { hrvFor(d.minusDays(it)) }
+            val signal = Readiness.hrvSignal(hrvFor(d), last7)
+            val rec = Readiness.recovery(signal, rhrFor(d), respFor(d), perfFor(d), hrvBase, rhrBase, respBase)
+            return Triple(rec, Pair(hrvBase?.mean?.let { exp(it) }, rhrBase?.mean), hrvHistory.size)
+        }
+
+        val (recovery, usual, baselineNights) = recoveryFor(today)
+        val respUsual = Readiness.median((1L..30L).mapNotNull { respFor(today.minusDays(it)) })
+        val week = (6L downTo 0L).map { back ->
+            val d = today.minusDays(back)
+            val hasSignal = nightOf(d) != null || rhrFor(d) != null
+            DaySummary(d.toEpochDay(), if (hasSignal) (if (back == 0L) recovery else recoveryFor(d).first) else null, nightOf(d)?.asleepMin, perfFor(d), strainOf(d))
+        }
 
         // Health Connect's own totals merge Google Fit, Fitbit and the phone instead of adding them up.
         val totals = suspendRunCatching {
-            client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL, TotalCaloriesBurnedRecord.ENERGY_TOTAL), TimeRangeFilter.between(dayStart, now)))
+            client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL, TotalCaloriesBurnedRecord.ENERGY_TOTAL), TimeRangeFilter.between(today.atStartOfDay(zone).toInstant(), now)))
         }.getOrNull()
+
+        val night = nightOf(today)
+        val strain = strainOf(today)
+        val perf = perfFor(today)
+        val dao = db.readiness()
+        val felt = dao.get(today.toEpochDay())?.feltGreat ?: false
+        if (night != null || rhrFor(today) != null) {
+            dao.upsert(
+                ReadinessDayEntity(
+                    epochDay = today.toEpochDay(), recovery = recovery, sleepPerf = perf ?: 0, sleepMin = night?.asleepMin ?: 0,
+                    strain = strain.toFloat(), hrv = (hrvFor(today) ?: 0.0).toFloat(), rhr = (rhrFor(today) ?: 0.0).toFloat(),
+                    feltGreat = felt, updatedAt = System.currentTimeMillis(),
+                )
+            )
+        }
 
         return DayReadiness(
             recovery = recovery,
             call = Readiness.call(recovery),
             night = night,
-            sleepScore = sleepScore,
+            sleepPerf = perf,
+            sleepNeedLastNight = needFor(today),
+            sleepNeedTonight = Readiness.sleepNeed(strain, (2L downTo 0L).map { nightOf(today.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }, sleepDays[today]?.napMin ?: 0),
+            debtMin = Readiness.debtMin((2L downTo 0L).map { nightOf(today.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }),
             strain = strain,
+            zoneMin = strainByDay[today] ?: DoubleArray(5),
             steps = totals?.get(StepsRecord.COUNT_TOTAL) ?: 0L,
             kcalBurned = totals?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories?.toInt() ?: 0,
-            hrv = hrv, hrvUsual = hrvBase?.mean,
-            rhr = rhr, rhrUsual = rhrBase?.mean,
-            resp = resp,
-            baselineNights = hrvHistory.size,
+            hrv = hrvFor(today), hrvUsual = usual.first,
+            rhr = rhrFor(today), rhrUsual = usual.second,
+            resp = respFor(today), respUsual = respUsual,
+            baselineNights = baselineNights,
+            week = week,
+            feltGreat = felt,
         )
     }
 
@@ -170,11 +234,12 @@ class HealthRepository(private val context: Context, private val settings: Setti
 
     /** One line for the coach's context. */
     fun coachLine(): String? {
-        val d = (state.value as? HealthState.Ready)?.day ?: return null
-        val sleep = d.night?.let { "slept ${it.asleepMin / 60}h ${it.asleepMin % 60}m (deep ${it.deepMin}m, REM ${it.remMin}m), sleep score ${d.sleepScore}" } ?: "no sleep recorded last night"
+        val d = (state.value as? HealthState.Ready)?.day?.takeIf { it.hasData } ?: return null
+        val sleep = d.night?.let { "slept ${it.asleepMin / 60}h ${it.asleepMin % 60}m of ${d.sleepNeedLastNight / 60}h ${d.sleepNeedLastNight % 60}m needed (deep ${it.deepMin}m, REM ${it.remMin}m)" } ?: "no sleep recorded last night"
         val hrv = d.hrv?.let { "HRV ${it.toInt()} ms" + (d.hrvUsual?.let { u -> " vs usual ${u.toInt()}" } ?: "") } ?: "no HRV"
         val rhr = d.rhr?.let { "resting HR ${it.toInt()}" + (d.rhrUsual?.let { u -> " vs usual ${u.toInt()}" } ?: "") } ?: ""
-        return "- Fitbit today: recovery ${d.recovery}% (${d.call.name.lowercase().replace('_', ' ')}), $sleep, $hrv, $rhr, strain so far ${"%.1f".format(java.util.Locale.US, d.strain)}/21, ${d.steps} steps" +
+        val target = Readiness.strainTarget(d.recovery)
+        return "- Fitbit today: recovery ${d.recovery}% (${d.call.name.lowercase().replace('_', ' ')}), $sleep, $hrv, $rhr, strain so far ${"%.1f".format(java.util.Locale.US, d.strain)}/21 (target ${target.start.toInt()}–${target.endInclusive.toInt()}), ${d.steps} steps" +
             (if (d.baselineNights < Readiness.MIN_BASELINE_DAYS) " (still learning their normal)" else "") + "\n"
     }
 

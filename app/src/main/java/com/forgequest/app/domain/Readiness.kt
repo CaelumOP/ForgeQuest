@@ -3,7 +3,9 @@ package com.forgequest.app.domain
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -27,22 +29,31 @@ data class Night(val start: Instant, val end: Instant, val deepMin: Int, val rem
     val inBedMin get() = ((end.epochSecond - start.epochSecond) / 60).toInt()
 }
 
+/** The day's main night plus any naps that ended the same day. */
+data class SleepDay(val night: Night, val napMin: Int)
+
 data class Baseline(val mean: Double, val sd: Double, val days: Int)
 
 enum class DayCall { PEAK, READY, STEADY, EASE_OFF, RECOVER }
+enum class StrainBand { LIGHT, MODERATE, HIGH, ALL_OUT }
 
 /**
- * Whoop-style recovery, sleep and strain from Fitbit data. Our own estimates, not Whoop's formulas: each signal
- * is compared with the person's own last 30 days, so "good" means good for them.
+ * Whoop-style recovery, sleep and strain from Fitbit data. Whoop doesn't publish its formulas, so these follow its
+ * documented inputs and the published methods behind them:
+ * - HRV as ln RMSSD with a 7-day rolling average against the person's own baseline, ignoring changes smaller than
+ *   the "smallest worthwhile change" (AIS HRV guidelines; Plews & Buchheit).
+ * - Sleep performance = hours slept ÷ hours needed, need = base + strain + sleep debt − naps (Whoop).
+ * - Strain = Edwards TRIMP on heart-rate-reserve zones, on a 0–21 curve that gets harder to climb (Whoop's scale).
  */
 object Readiness {
-    /** Chunks closer than this belong to the same night. */
     private const val JOIN_GAP_SECONDS = 3 * 3600L
-    const val SLEEP_NEED_MIN = 480
+    const val BASE_NEED_MIN = 480
     const val MIN_BASELINE_DAYS = 4
 
+    // ---------- Sleep ----------
+
     /** Keeps one copy of each stretch of sleep (Fitbit's first), joins split chunks, and files each night under the day it ended. */
-    fun nights(pieces: List<SleepPiece>, zone: ZoneId): Map<LocalDate, Night> {
+    fun sleepDays(pieces: List<SleepPiece>, zone: ZoneId): Map<LocalDate, SleepDay> {
         val kept = mutableListOf<SleepPiece>()
         for (p in pieces.sortedWith(compareByDescending<SleepPiece> { it.fromFitbit }.thenBy { it.start })) {
             val dup = kept.any { k ->
@@ -56,21 +67,30 @@ object Readiness {
             val last = groups.lastOrNull()
             if (last != null && p.start.epochSecond - last.maxOf { it.end.epochSecond } <= JOIN_GAP_SECONDS) last += p else groups += mutableListOf(p)
         }
-        // A day's night is the biggest sleep that ended that day; naps the same day don't replace it.
         return groups.map { g ->
             Night(g.minOf { it.start }, g.maxOf { it.end }, g.sumOf { it.deepMin }, g.sumOf { it.remMin }, g.sumOf { it.lightMin }, g.sumOf { it.awakeMin }, g.sumOf { it.asleepMin })
-        }.groupBy { it.end.atZone(zone).toLocalDate() }.mapValues { (_, list) -> list.maxBy { it.asleepMin } }
+        }.groupBy { it.end.atZone(zone).toLocalDate() }.mapValues { (_, list) ->
+            // The biggest sleep that ended that day is the night; the rest were naps.
+            val night = list.maxBy { it.asleepMin }
+            SleepDay(night, list.filter { it !== night }.sumOf { it.asleepMin })
+        }
     }
 
-    /** 0–100: mostly hours against need, plus how much of the time in bed was sleep and how much was deep + REM. */
-    fun sleepScore(n: Night, needMin: Int = SLEEP_NEED_MIN): Int {
-        if (n.asleepMin <= 0) return 0
-        val hours = minOf(1.0, n.asleepMin.toDouble() / needMin)
-        val efficiency = if (n.inBedMin > 0) minOf(1.0, n.asleepMin.toDouble() / n.inBedMin) else 1.0
-        val staged = n.deepMin + n.remMin + n.lightMin
-        val restorative = if (staged > 0) minOf(1.0, (n.deepMin + n.remMin).toDouble() / staged / 0.40) else 0.75
-        return ((0.65 * hours + 0.15 * efficiency + 0.20 * restorative) * 100).roundToInt().coerceIn(0, 100)
-    }
+    fun nights(pieces: List<SleepPiece>, zone: ZoneId): Map<LocalDate, Night> = sleepDays(pieces, zone).mapValues { it.value.night }
+
+    /** Extra sleep a hard day asks for: about 4 minutes per strain point above 10. */
+    fun strainNeedMin(strain: Double): Int = (maxOf(0.0, strain - 10) * 4).roundToInt()
+
+    /** A third of the last three nights' shortfall carries over, capped at two hours. */
+    fun debtMin(previousAsleep: List<Int>): Int = (previousAsleep.takeLast(3).sumOf { maxOf(0, BASE_NEED_MIN - it) } / 3.0).roundToInt().coerceAtMost(120)
+
+    fun sleepNeed(strainBefore: Double, previousAsleep: List<Int>, napMin: Int): Int =
+        (BASE_NEED_MIN + strainNeedMin(strainBefore) + debtMin(previousAsleep) - napMin).coerceIn(360, 720)
+
+    /** 0–100: hours slept against hours needed, like Whoop's sleep performance. */
+    fun sleepPerformance(asleepMin: Int, needMin: Int): Int = if (needMin <= 0) 0 else (100.0 * asleepMin / needMin).roundToInt().coerceIn(0, 100)
+
+    // ---------- Recovery ----------
 
     fun baseline(values: List<Double>, floorSd: Double): Baseline? {
         if (values.size < MIN_BASELINE_DAYS) return null
@@ -79,43 +99,36 @@ object Readiness {
         return Baseline(mean, maxOf(sd, floorSd), values.size)
     }
 
-    /**
-     * 1–99 %. Higher HRV, lower resting heart rate and lower breathing rate than usual all count for you; sleep adds
-     * a little. A normal day lands around 60 %. Missing signals are simply left out.
-     */
-    fun recovery(hrv: Double?, rhr: Double?, resp: Double?, sleepScore: Int?, hrvBase: Baseline?, rhrBase: Baseline?, respBase: Baseline?): Int {
+    /** ln RMSSD of tonight blended with the 7-day rolling average, which tracks real change better than one night. */
+    fun hrvSignal(tonightMs: Double?, last7Ms: List<Double>): Double? {
+        val logs = last7Ms.filter { it > 0 }.map { ln(it) }
+        val tonight = tonightMs?.takeIf { it > 0 }?.let { ln(it) }
+        return when {
+            tonight != null && logs.isNotEmpty() -> 0.6 * tonight + 0.4 * logs.average()
+            tonight != null -> tonight
+            logs.isNotEmpty() -> logs.average()
+            else -> null
+        }
+    }
+
+    /** z-score with a dead zone of half a standard deviation: wiggles inside the normal range count as zero. */
+    fun zWithSwc(diff: Double, sd: Double): Double {
+        val swc = 0.5 * sd
+        return if (abs(diff) <= swc) 0.0 else (diff - (if (diff > 0) swc else -swc)) / sd
+    }
+
+    /** 1–99 %. HRV weighs most, then resting heart rate, then sleep, then breathing rate. A normal day lands near 60 %. */
+    fun recovery(hrvLn: Double?, rhr: Double?, resp: Double?, sleepPerf: Int?, hrvBase: Baseline?, rhrBase: Baseline?, respBase: Baseline?): Int {
         var sum = 0.0
         var weight = 0.0
         fun add(w: Double, z: Double) { sum += w * z.coerceIn(-3.0, 3.0); weight += w }
-        if (hrv != null && hrvBase != null) add(0.50, (hrv - hrvBase.mean) / hrvBase.sd)
-        if (rhr != null && rhrBase != null) add(0.25, (rhrBase.mean - rhr) / rhrBase.sd)
-        if (resp != null && respBase != null) add(0.10, (respBase.mean - resp) / respBase.sd)
-        if (sleepScore != null) add(0.15, (sleepScore - 70) / 15.0)
+        if (hrvLn != null && hrvBase != null) add(0.50, zWithSwc(hrvLn - hrvBase.mean, hrvBase.sd))
+        if (rhr != null && rhrBase != null) add(0.25, zWithSwc(rhrBase.mean - rhr, rhrBase.sd))
+        if (resp != null && respBase != null) add(0.10, zWithSwc(respBase.mean - resp, respBase.sd))
+        if (sleepPerf != null) add(0.15, (sleepPerf - 85) / 15.0)
         val z = if (weight > 0) sum / weight else 0.0
-        return (100 / (1 + exp(-(1.3 * z + 0.4)))).roundToInt().coerceIn(1, 99)
+        return (100 / (1 + exp(-(1.4 * z + 0.4)))).roundToInt().coerceIn(1, 99)
     }
-
-    /** Minutes in the five heart-rate zones (50/60/70/80/90 % of max). Gaps over 30 s count as 30 s so a lost signal doesn't inflate them. */
-    fun zoneMinutes(samples: List<Pair<Instant, Long>>, hrMax: Int): DoubleArray {
-        val zones = DoubleArray(5)
-        val sorted = samples.sortedBy { it.first }
-        for (i in sorted.indices) {
-            val next = sorted.getOrNull(i + 1)?.first ?: break
-            val seconds = minOf(30L, next.epochSecond - sorted[i].first.epochSecond).coerceAtLeast(0)
-            val pct = sorted[i].second.toDouble() / hrMax
-            val zone = when { pct >= 0.9 -> 4; pct >= 0.8 -> 3; pct >= 0.7 -> 2; pct >= 0.6 -> 1; pct >= 0.5 -> 0; else -> -1 }
-            if (zone >= 0) zones[zone] += seconds / 60.0
-        }
-        return zones
-    }
-
-    /** 0–21 like Whoop: zone minutes weighted 1–5, on a curve that gets harder to climb the higher you go. */
-    fun strain(zoneMinutes: DoubleArray): Double {
-        val load = zoneMinutes.withIndex().sumOf { (i, m) -> m * (i + 1) }
-        return 21 * (1 - exp(-load / 250))
-    }
-
-    fun hrMax(age: Int): Int = if (age in 10..100) 220 - age else 190
 
     fun call(recovery: Int): DayCall = when {
         recovery >= 85 -> DayCall.PEAK
@@ -123,6 +136,51 @@ object Readiness {
         recovery >= 50 -> DayCall.STEADY
         recovery >= 34 -> DayCall.EASE_OFF
         else -> DayCall.RECOVER
+    }
+
+    /** Whoop's recovery colours: green 67+, yellow 34–66, red below. */
+    fun recoveryZone(recovery: Int): Int = when { recovery >= 67 -> 2; recovery >= 34 -> 1; else -> 0 }
+
+    // ---------- Strain ----------
+
+    fun hrMax(age: Int): Int = if (age in 10..100) 220 - age else 190
+
+    /**
+     * Minutes in five heart-rate-reserve zones (50/60/70/80/90 % of the gap between resting and max), so an easy walk
+     * barely counts. Gaps over 30 s count as 30 s so a lost signal doesn't inflate them.
+     */
+    fun zoneMinutes(samples: List<Pair<Instant, Long>>, hrMax: Int, hrRest: Double): DoubleArray {
+        val zones = DoubleArray(5)
+        val reserve = (hrMax - hrRest).coerceAtLeast(40.0)
+        val sorted = samples.sortedBy { it.first }
+        for (i in sorted.indices) {
+            val next = sorted.getOrNull(i + 1)?.first ?: break
+            val seconds = minOf(30L, next.epochSecond - sorted[i].first.epochSecond).coerceAtLeast(0)
+            val pct = (sorted[i].second - hrRest) / reserve
+            val zone = when { pct >= 0.9 -> 4; pct >= 0.8 -> 3; pct >= 0.7 -> 2; pct >= 0.6 -> 1; pct >= 0.5 -> 0; else -> -1 }
+            if (zone >= 0) zones[zone] += seconds / 60.0
+        }
+        return zones
+    }
+
+    /** 0–21: Edwards TRIMP (zone minutes × 1–5) on a curve that gets harder to climb. An hour of hard work lands around 14–15. */
+    fun strain(zoneMinutes: DoubleArray): Double {
+        val load = zoneMinutes.withIndex().sumOf { (i, m) -> m * (i + 1) }
+        return 21 * (1 - exp(-load / 200))
+    }
+
+    fun band(strain: Double): StrainBand = when {
+        strain >= 18 -> StrainBand.ALL_OUT
+        strain >= 14 -> StrainBand.HIGH
+        strain >= 10 -> StrainBand.MODERATE
+        else -> StrainBand.LIGHT
+    }
+
+    /** Today's strain target from recovery, like Whoop's strain coach. */
+    fun strainTarget(recovery: Int): ClosedFloatingPointRange<Double> = when (recoveryZone(recovery)) {
+        2 -> 14.0..18.0
+        1 -> 10.0..14.0
+        else -> 4.0..10.0
     }
 
     fun median(values: List<Double>): Double? = values.sorted().let { if (it.isEmpty()) null else if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2 }
