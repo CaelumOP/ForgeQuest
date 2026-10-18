@@ -40,6 +40,7 @@ class CoachRepository(
     private val progress: ProgressRepository,
     private val workouts: WorkoutRepository,
     private val groq: GroqClient,
+    private val health: com.forgequest.app.data.health.HealthRepository,
 ) {
     private val chat = db.chat()
 
@@ -397,6 +398,7 @@ class CoachRepository(
         sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.roundToInt()} g protein")
         if (s.trackCarbs) sb.append(", ${snap.today.carbs.roundToInt()} g carbs (goal ${s.carbsGoal} g)")
         sb.append("\n")
+        health.coachLine()?.let { sb.append(it) }
 
         // Badges
         val unlocked = snap.badges.sortedByDescending { it.unlockedAt }
