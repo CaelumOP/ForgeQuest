@@ -100,3 +100,29 @@ val FoodCategory.labelRes: Int
 
 @Composable
 fun FoodCategory.localLabel(): String = stringResource(labelRes)
+
+@Composable
+fun com.forgequest.app.domain.RankInfo.localTitle(): String = stringResource(
+    when (letter) {
+        "S" -> R.string.rank_legend
+        "A" -> R.string.rank_elite
+        "B" -> R.string.rank_strong
+        "C" -> R.string.rank_committed
+        "D" -> R.string.rank_regular
+        else -> R.string.rank_starter
+    }
+)
+
+/** "12 workouts, 30 meals, 4 weight entries · saved Oct 18, 2026" */
+@Composable
+fun com.forgequest.app.data.backup.BackupFile.localSummary(): String {
+    val finished = sessions.count { it.finishedAt != null }
+    val made = java.time.Instant.ofEpochMilli(createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+    val parts = listOf(
+        androidx.compose.ui.res.pluralStringResource(R.plurals.backup_workouts, finished, finished),
+        androidx.compose.ui.res.pluralStringResource(R.plurals.backup_meals, meals.size, meals.size),
+        androidx.compose.ui.res.pluralStringResource(R.plurals.backup_weights, weights.size, weights.size),
+    )
+    val date = made.format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM))
+    return stringResource(R.string.backup_summary, parts.joinToString(stringResource(R.string.list_separator)), date)
+}
