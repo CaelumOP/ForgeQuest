@@ -37,6 +37,10 @@ class AppContainer(context: Context) {
     val haptics = Haptics(context)
     val notifier = Notifier(context)
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Strings for view models and workers, in the app's language. */
+    fun str(@androidx.annotation.StringRes id: Int, vararg args: Any): String = appContext.getString(id, *args)
+    fun plural(@androidx.annotation.PluralsRes id: Int, count: Int, vararg args: Any): String = appContext.resources.getQuantityString(id, count, *args)
 }
 
 class ForgeQuestApp : Application() {

@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.localTitle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -542,7 +543,8 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
                         Text("New record: $name", style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                     }
                 }
-                sum.newBadges.forEach { title ->
+                sum.newBadges.forEach { badge ->
+                    val title = badge.localTitle()
                     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(10.dp))

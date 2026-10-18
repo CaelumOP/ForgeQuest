@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.forgequest.app.R
+import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.domain.BadgeCategory
 import com.forgequest.app.domain.BadgeDef
 import com.forgequest.app.domain.Muscle
@@ -82,3 +83,20 @@ val Muscle.labelRes: Int
 
 @Composable
 fun Muscle.localLabel(): String = stringResource(labelRes)
+
+@get:StringRes
+val BadgeDef.titleRes: Int
+    get() = badgeText[id]?.first ?: R.string.app_name
+
+@get:StringRes
+val FoodCategory.labelRes: Int
+    get() = when (this) {
+        FoodCategory.BREAKFAST -> R.string.food_cat_breakfast
+        FoodCategory.LUNCH -> R.string.food_cat_lunch
+        FoodCategory.DINNER -> R.string.food_cat_dinner
+        FoodCategory.SNACKS -> R.string.food_cat_snacks
+        FoodCategory.DRINKS -> R.string.food_cat_drinks
+    }
+
+@Composable
+fun FoodCategory.localLabel(): String = stringResource(labelRes)

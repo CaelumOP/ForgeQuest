@@ -148,7 +148,7 @@ class ProgressRepository(
     }
 
     /** Unlocks any badges whose rule now passes. Returns the newly unlocked ones. */
-    suspend fun evaluateBadges(): List<String> {
+    suspend fun evaluateBadges(): List<com.forgequest.app.domain.BadgeDef> {
         val snap = snapshot.first()
         val owned = snap.badges.map { it.id }.toSet()
         val fresh = Badges.all.filter { it.id !in owned && it.unlocked(snap.stats) }
@@ -156,7 +156,7 @@ class ProgressRepository(
             val now = System.currentTimeMillis()
             db.badges().insertAll(fresh.map { BadgeEntity(it.id, now) })
         }
-        return fresh.map { it.title }
+        return fresh
     }
 
     suspend fun markBadgesSeen() = db.badges().markAllSeen()

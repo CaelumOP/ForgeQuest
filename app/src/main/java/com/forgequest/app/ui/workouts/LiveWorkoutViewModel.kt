@@ -33,7 +33,7 @@ data class WorkoutSummary(
     val doneSets: Int,
     val minutes: Int,
     val prs: List<String>,
-    val newBadges: List<String>,
+    val newBadges: List<com.forgequest.app.domain.BadgeDef>,
     val xpGained: Int,
     val before: LevelInfo,
     val after: LevelInfo,
