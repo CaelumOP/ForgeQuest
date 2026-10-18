@@ -141,7 +141,7 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        ReadinessCard(health, onFeltGreat = vm::setFeltGreat)
+        ReadinessCard(health, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") })
         // Today's line from the owner's Gemini automation, when the bridge is on.
         if (s.settings.bridgeEnabled && s.settings.bridgeToday.isNotBlank()) {
             FitCard {

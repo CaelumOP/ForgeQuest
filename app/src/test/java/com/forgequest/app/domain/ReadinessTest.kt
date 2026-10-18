@@ -71,11 +71,14 @@ class ReadinessTest {
         val walk2h = (0..3600).map { Instant.ofEpochSecond(it * 2L) to 100L }
         val easy = Readiness.trimp(walk2h, 190, 65.0)
         assertTrue(easy in 25.0..40.0)
-        assertTrue(Readiness.strainFromLoad(easy + 60) in 7.0..11.0)
-        assertTrue(Readiness.strainFromLoad(easy + 60 + hard) in 14.0..18.0)
-        // An easy walk at 100 bpm (rest 65, max 190 → 28 % of reserve) doesn't count; 165 bpm (80 %) does.
+        assertTrue(Readiness.strainFromLoad(easy) in 4.0..8.0)
+        assertTrue(Readiness.strainFromLoad(easy + hard) in 14.0..18.0)
+        // Sitting at 75 bpm (8 % of reserve) all day adds nothing.
+        val sitting = (0..21600).map { Instant.ofEpochSecond(it * 2L) to 75L }
+        assertEquals(0.0, Readiness.trimp(sitting, 190, 65.0), 0.001)
+        // An easy walk at 100 bpm (rest 65, max 190 → 28 % of reserve) is zone 1; 165 bpm (80 %) is zone 4.
         val walk = (0 until 61).map { Instant.ofEpochSecond(it * 2L) to 100L }
-        assertEquals(0.0, Readiness.zoneMinutes(walk, 190, 65.0).sum(), 0.001)
+        assertEquals(2.0, Readiness.zoneMinutes(walk, 190, 65.0)[0], 0.01)
         val zoneHard = (0 until 61).map { Instant.ofEpochSecond(it * 2L) to 165L }
         assertEquals(2.0, Readiness.zoneMinutes(zoneHard, 190, 65.0)[3], 0.01)
         assertEquals(StrainBand.MODERATE, Readiness.band(11.8))

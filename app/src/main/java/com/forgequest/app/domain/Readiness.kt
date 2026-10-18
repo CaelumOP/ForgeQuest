@@ -9,6 +9,9 @@ import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+/** One stretch of a sleep stage: 0 awake, 1 light, 2 deep, 3 REM. Kept for the hypnogram. */
+data class Seg(val stage: Int, val start: Instant, val end: Instant)
+
 /** One sleep record as Health Connect gives it; several apps may write the same night. */
 data class SleepPiece(
     val start: Instant,
@@ -20,12 +23,13 @@ data class SleepPiece(
     /** Minutes asleep when the record has no stages. */
     val unstagedMin: Int,
     val fromFitbit: Boolean,
+    val segments: List<Seg> = emptyList(),
 ) {
     val asleepMin get() = deepMin + remMin + lightMin + unstagedMin
 }
 
 /** A night after duplicates are dropped and split chunks (2:00–6:00 then 8:00–11:30) are joined. */
-data class Night(val start: Instant, val end: Instant, val deepMin: Int, val remMin: Int, val lightMin: Int, val awakeMin: Int, val asleepMin: Int) {
+data class Night(val start: Instant, val end: Instant, val deepMin: Int, val remMin: Int, val lightMin: Int, val awakeMin: Int, val asleepMin: Int, val segments: List<Seg> = emptyList()) {
     val inBedMin get() = ((end.epochSecond - start.epochSecond) / 60).toInt()
 }
 
@@ -69,7 +73,7 @@ object Readiness {
             if (last != null && p.start.epochSecond - last.maxOf { it.end.epochSecond } <= JOIN_GAP_SECONDS) last += p else groups += mutableListOf(p)
         }
         return groups.map { g ->
-            Night(g.minOf { it.start }, g.maxOf { it.end }, g.sumOf { it.deepMin }, g.sumOf { it.remMin }, g.sumOf { it.lightMin }, g.sumOf { it.awakeMin }, g.sumOf { it.asleepMin })
+            Night(g.minOf { it.start }, g.maxOf { it.end }, g.sumOf { it.deepMin }, g.sumOf { it.remMin }, g.sumOf { it.lightMin }, g.sumOf { it.awakeMin }, g.sumOf { it.asleepMin }, g.flatMap { it.segments }.sortedBy { it.start })
         }.groupBy { it.end.atZone(zone).toLocalDate() }.mapValues { (_, list) ->
             // The biggest sleep that ended that day is the night; the rest were naps.
             val night = list.maxBy { it.asleepMin }
@@ -147,8 +151,8 @@ object Readiness {
     fun hrMax(age: Int): Int = if (age in 10..100) 220 - age else 190
 
     /**
-     * Minutes in five heart-rate-reserve zones (50/60/70/80/90 % of the gap between resting and max), so an easy walk
-     * barely counts. Gaps over 30 s count as 30 s so a lost signal doesn't inflate them.
+     * Minutes in five heart-rate-reserve zones (20/40/60/75/90 % of the gap between resting and max): light movement,
+     * moderate, hard, very hard, max. Gaps over 30 s count as 30 s so a lost signal doesn't inflate them.
      */
     fun zoneMinutes(samples: List<Pair<Instant, Long>>, hrMax: Int, hrRest: Double): DoubleArray {
         val zones = DoubleArray(5)
@@ -158,7 +162,8 @@ object Readiness {
             val next = sorted.getOrNull(i + 1)?.first ?: break
             val seconds = minOf(30L, next.epochSecond - sorted[i].first.epochSecond).coerceAtLeast(0)
             val pct = (sorted[i].second - hrRest) / reserve
-            val zone = when { pct >= 0.9 -> 4; pct >= 0.8 -> 3; pct >= 0.7 -> 2; pct >= 0.6 -> 1; pct >= 0.5 -> 0; else -> -1 }
+            // Same floor as the strain load (20 % of reserve), so the zones explain the number above them.
+            val zone = when { pct >= 0.9 -> 4; pct >= 0.75 -> 3; pct >= 0.6 -> 2; pct >= 0.4 -> 1; pct >= 0.2 -> 0; else -> -1 }
             if (zone >= 0) zones[zone] += seconds / 60.0
         }
         return zones
@@ -177,13 +182,15 @@ object Readiness {
             val next = sorted.getOrNull(i + 1)?.first ?: break
             val minutes = minOf(30L, next.epochSecond - sorted[i].first.epochSecond).coerceAtLeast(0) / 60.0
             val r = ((sorted[i].second - hrRest) / reserve).coerceIn(0.0, 1.0)
+            // Sitting a little above resting isn't effort; below 20 % of reserve nothing counts.
+            if (r < 0.2) continue
             load += minutes * r * a * exp(b * r)
         }
         return load
     }
 
-    /** 0–21 on a curve that gets harder to climb: a normal day about 8–10, a hard training day 15–17. */
-    fun strainFromLoad(load: Double): Double = 21 * (1 - exp(-load / 150))
+    /** 0–21 on a curve that gets harder to climb: a day with an hour of walking about 5–6, a hard training day 15–17. */
+    fun strainFromLoad(load: Double): Double = 21 * (1 - exp(-load / 110))
 
     fun band(strain: Double): StrainBand = when {
         strain >= 18 -> StrainBand.ALL_OUT

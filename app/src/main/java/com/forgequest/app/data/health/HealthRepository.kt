@@ -37,6 +37,8 @@ import java.time.ZoneId
 import kotlin.math.exp
 import kotlin.reflect.KClass
 
+private class DayLoad(val zones: DoubleArray, val load: Double, val workoutLoad: Double)
+
 /** One day in the 7-day charts. */
 data class DaySummary(val epochDay: Long, val recovery: Int?, val sleepMin: Int?, val sleepPerf: Int?, val strain: Double)
 
@@ -51,6 +53,8 @@ data class DayReadiness(
     val debtMin: Int,
     val strain: Double,
     val zoneMin: DoubleArray,
+    /** Share of today's strain load earned during ForgeQuest workouts (0–1). */
+    val workoutShare: Float = 0f,
     val steps: Long,
     val kcalBurned: Int,
     val hrv: Double?,
@@ -147,6 +151,15 @@ class HealthRepository(private val context: Context, private val settings: Setti
                 awakeMin = mins(SleepSessionRecord.STAGE_TYPE_AWAKE, SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED, SleepSessionRecord.STAGE_TYPE_OUT_OF_BED),
                 unstagedMin = if (s.stages.isNotEmpty()) mins(SleepSessionRecord.STAGE_TYPE_SLEEPING) else ((s.endTime.epochSecond - s.startTime.epochSecond) / 60).toInt(),
                 fromFitbit = s.metadata.dataOrigin.packageName == FITBIT,
+                segments = s.stages.map { st ->
+                    val code = when (st.stage) {
+                        SleepSessionRecord.STAGE_TYPE_DEEP -> 2
+                        SleepSessionRecord.STAGE_TYPE_REM -> 3
+                        SleepSessionRecord.STAGE_TYPE_LIGHT, SleepSessionRecord.STAGE_TYPE_SLEEPING -> 1
+                        else -> 0
+                    }
+                    com.forgequest.app.domain.Seg(code, st.startTime, st.endTime)
+                },
             )
         }
         val sleepDays = Readiness.sleepDays(sleep, zone)
@@ -170,6 +183,8 @@ class HealthRepository(private val context: Context, private val settings: Setti
         val hrMax = Readiness.hrMax(Nutrition.ageFromBirthYear(s.birthYear, today.year))
         val rest30 = Readiness.median((1L..30L).mapNotNull { rhrFor(today.minusDays(it)) }) ?: 65.0
 
+        val workoutWindows = db.backup().sessions().mapNotNull { ss -> ss.finishedAt?.let { Instant.ofEpochMilli(ss.startedAt) to Instant.ofEpochMilli(it) } }
+            .filter { it.second.isAfter(today.minusDays(9).atStartOfDay(zone).toInstant()) }
         // Strain per day for the last 8 days, read a day at a time so 2-second heart rate never piles up in memory.
         val strainByDay = (0L..8L).associate { back ->
             val d = today.minusDays(back)
@@ -178,11 +193,13 @@ class HealthRepository(private val context: Context, private val settings: Setti
             val female = s.bodyType == com.forgequest.app.data.prefs.BodyType.FEMALE
             val result = suspendRunCatching {
                 val samples = read(client, HeartRateRecord::class, start, end).flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }
-                Readiness.zoneMinutes(samples, hrMax, rest30) to Readiness.trimp(samples, hrMax, rest30, female)
-            }.getOrDefault(DoubleArray(5) to 0.0)
+                // Load during ForgeQuest workouts, for "how you earned strain".
+                val inWorkout = samples.filter { (t, _) -> workoutWindows.any { (a, b) -> t >= a && t <= b } }
+                DayLoad(Readiness.zoneMinutes(samples, hrMax, rest30), Readiness.trimp(samples, hrMax, rest30, female), Readiness.trimp(inWorkout, hrMax, rest30, female))
+            }.getOrDefault(DayLoad(DoubleArray(5), 0.0, 0.0))
             d to result
         }
-        fun strainOf(d: LocalDate) = Readiness.strainFromLoad(strainByDay[d]?.second ?: 0.0)
+        fun strainOf(d: LocalDate) = Readiness.strainFromLoad(strainByDay[d]?.load ?: 0.0)
 
         fun asleepBefore(d: LocalDate) = (3L downTo 1L).map { nightOf(d.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }
         fun needFor(d: LocalDate) = Readiness.sleepNeed(strainOf(d.minusDays(1)), asleepBefore(d), sleepDays[d.minusDays(1)]?.napMin ?: 0)
@@ -220,8 +237,10 @@ class HealthRepository(private val context: Context, private val settings: Setti
         val night = nightOf(day)
         // The day runs from waking to the next sleep, so strain after midnight still adds to it.
         val sinceWake = (0L..java.time.temporal.ChronoUnit.DAYS.between(day, today)).mapNotNull { strainByDay[day.plusDays(it)] }
-        val zonesSinceWake = DoubleArray(5) { i -> sinceWake.sumOf { it.first[i] } }
-        val strain = Readiness.strainFromLoad(sinceWake.sumOf { it.second })
+        val zonesSinceWake = DoubleArray(5) { i -> sinceWake.sumOf { it.zones[i] } }
+        val loadSinceWake = sinceWake.sumOf { it.load }
+        val strain = Readiness.strainFromLoad(loadSinceWake)
+        val workoutShare = if (loadSinceWake > 0) (sinceWake.sumOf { it.workoutLoad } / loadSinceWake).toFloat() else 0f
         val perf = perfFor(day)
         val dao = db.readiness()
         val felt = dao.get(day.toEpochDay())?.feltGreat ?: false
@@ -245,6 +264,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
             debtMin = Readiness.debtMin((2L downTo 0L).map { nightOf(day.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }),
             strain = strain,
             zoneMin = zonesSinceWake,
+            workoutShare = workoutShare,
             steps = totals?.get(StepsRecord.COUNT_TOTAL) ?: 0L,
             kcalBurned = totals?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories?.toInt() ?: 0,
             hrv = hrvFor(day), hrvUsual = usual.first,

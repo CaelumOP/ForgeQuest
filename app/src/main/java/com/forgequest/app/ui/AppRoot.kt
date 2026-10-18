@@ -200,6 +200,9 @@ private fun MainScaffold() {
                 }
                 composable(Routes.HISTORY) { HistoryScreen(nav) }
                 composable(Routes.BADGES) { BadgesScreen(nav) }
+                composable("readiness/{kind}") { entry ->
+                    com.forgequest.app.ui.home.ReadinessDetailScreen(nav, com.forgequest.app.ui.home.ReadinessKind.valueOf(entry.arguments?.getString("kind") ?: "RECOVERY"))
+                }
                 composable(Routes.TOUR) { com.forgequest.app.ui.onboarding.AppTour(androidx.compose.ui.res.stringResource(R.string.tour_done)) { nav.popBackStack() } }
                 composable(Routes.LIBRARY) { ExerciseLibraryScreen(nav) }
                 composable(Routes.PROGRESS) { ProgressScreen(nav) }
