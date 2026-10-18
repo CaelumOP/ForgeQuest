@@ -478,9 +478,9 @@
     <string name="profile_workouts_per_week">تمارين في الأسبوع</string>
     <string name="profile_from_plan">حسب خطتك</string>
     <string name="profile_streak_explain">سلسلتك الأسبوعية تحسب الأسابيع اللي توصل فيها لهذا الرقم.</string>
-    <string name="profile_ai_key">مفتاح الذكاء الاصطناعي</string>
-    <string name="profile_key_not_set">غير مضاف · تصوير الوجبات والمدرب مقفلين</string>
-    <string name="profile_key_connected">مربوط · محفوظ مشفّر على هذا الجوال</string>
+    <string name="profile_ai_key">مفتاح Gemini</string>
+    <string name="profile_key_not_set">غير مضاف · المدرب وتصوير الوجبات والخطط مقفلة</string>
+    <string name="profile_key_connected">مربوط · يشغّل المدرب وتصوير الوجبات والخطط</string>
     <string name="profile_appearance">المظهر</string>
     <string name="profile_theme">السمة</string>
     <string name="theme_system">النظام</string>
@@ -510,7 +510,7 @@
     <string name="profile_hand_value">الطول %1$s سم · الكف %2$s سم</string>
     <string name="profile_hand_hint">يساعد في تقدير الكميات لما تكون يدك في الصورة</string>
     <string name="profile_muscle_map">خريطة العضلات</string>
-    <string name="profile_muscle_map_hint">الجسم المعروض في خريطة الاستشفاء</string>
+    <string name="profile_muscle_map_hint">الجسم الظاهر في خريطة التعافي</string>
     <string name="body_male">رجل</string>
     <string name="body_female">امرأة</string>
     <string name="profile_your_data">بياناتك</string>
@@ -878,13 +878,13 @@
     <string name="profile_age">العمر</string>
     <string name="unit_years">سنة</string>
     <string name="goals_suggested">المقترح %1$s سعرة بناءً على وزنك وطولك وعمرك و%2$d أيام تدريب أسبوعيًا</string>
-    <string name="goals_suggest_missing">أضف طولك وعمرك للحصول على تقدير للسعرات</string>
+    <string name="goals_suggest_missing">حدّد طولك وعمرك في قسم عنك لتحصل على اقتراح للسعرات</string>
     <string name="goals_use">استخدم</string>
     <string name="profile_language">اللغة</string>
     <string name="language_system">إعداد الهاتف</string>
     <string name="groq_key_title">مفتاح Groq (اختياري)</string>
-    <string name="groq_key_off">غير مضاف · أضفه لأسرع محادثة</string>
-    <string name="groq_key_on">مربوط · المحادثة ترد عن طريق Groq</string>
+    <string name="groq_key_off">غير مضاف · يخلي ردود المدرب أسرع بكثير</string>
+    <string name="groq_key_on">مربوط · محادثة المدرب ترد عن طريق Groq</string>
     <string name="groq_dialog_body">مفتاح Groq مجاني يخلي ردود المدرب توصل في أقل من ثانية. تصوير الوجبات والخطط تبقى على Gemini. رسائلك وبيانات تمرينك تنرسل لـ Groq بهذا المفتاح.</string>
     <string name="groq_dialog_open">افتح لوحة Groq</string>
     <string name="groq_key_saved">تم حفظ مفتاح Groq. المحادثة الحين ترد عن طريق Groq.</string>
@@ -905,4 +905,15 @@
     <string name="profile_daily_carbs">الكارب اليومي</string>
     <string name="profile_carbs_suggested">المقترح %1$d غ: السعرات الباقية بعد البروتين وحصة دهون 25%%</string>
     <string name="profile_use">استخدم</string>
+    <string name="settings_section_body">جسمك</string>
+    <string name="settings_section_goals">الأهداف</string>
+    <string name="settings_section_coach">المدرب والذكاء الاصطناعي</string>
+    <string name="settings_section_app">التطبيق</string>
+    <string name="settings_section_data">بياناتك</string>
+    <string name="settings_section_more">المزيد</string>
+    <string name="profile_about_you">عنك</string>
+    <string name="profile_about_you_hint">يحدد اقتراح السعرات وشكل الجسم في خريطة العضلات</string>
+    <string name="profile_daily_targets">الأهداف اليومية</string>
+    <string name="goals_protein_suggested">المقترح %1$d غ: 1.8 غ لكل كغ من وزنك</string>
+    <string name="profile_backup_file">ملف النسخة الاحتياطية</string>
 </resources>

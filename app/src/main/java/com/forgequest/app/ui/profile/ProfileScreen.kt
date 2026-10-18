@@ -488,6 +488,8 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
+        SettingsSection(stringResource(R.string.settings_section_body))
+
         // Body weight
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -507,37 +509,51 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
-        // Goals
+        val planDays = s.plan?.trainingDays?.size ?: 0
+        val thisYear = java.time.Year.now().value
+        val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
+
+        // About you: what the calorie suggestion and the muscle map are built from
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.profile_about_you), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                    Text(stringResource(R.string.profile_about_you_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            SegmentedTabs(
+                listOf(stringResource(R.string.body_male), stringResource(R.string.body_female)),
+                if (settings.bodyType == BodyType.FEMALE) 1 else 0,
+                onSelect = { vm.setBody(if (it == 1) BodyType.FEMALE else BodyType.MALE) },
+            )
+            Spacer(Modifier.height(8.dp))
+            SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
+            SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Hand + body
+        SettingsRow(
+            Icons.Rounded.PanTool, c.purple, c.purpleTrack,
+            stringResource(R.string.profile_hand_size),
+            if (settings.handLengthCm > 0f) stringResource(R.string.profile_hand_value, "%.1f".format(settings.handLengthCm), "%.1f".format(settings.palmWidthCm)) else stringResource(R.string.profile_hand_hint),
+        ) { handDialog = true }
+        Spacer(Modifier.height(12.dp))
+
+        SettingsSection(stringResource(R.string.settings_section_goals))
+
+        // Goals: each target sits with its suggestion
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.TrackChanges, c.gold, c.goldTrack)
                 Spacer(Modifier.width(14.dp))
-                Text(stringResource(R.string.profile_goals), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(12.dp))
-            SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
             SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
-            // The whole row toggles, not just the switch.
-            Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                Switch(settings.trackCarbs, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
-            }
-            if (settings.trackCarbs) {
-                SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
-                // Calories left after protein (4 kcal/g) and a 25 % fat share, as grams of carbs (4 kcal/g).
-                val suggested = (((settings.kcalGoal * 0.75f) - settings.proteinGoal * 4f) / 4f / 5f).roundToInt().coerceAtLeast(4) * 5
-                if (suggested != settings.carbsGoal) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.profile_carbs_suggested, suggested), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.setCarbs(goal = suggested) }) { Text(stringResource(R.string.profile_use), color = c.teal) }
-                    }
-                }
-            }
-            val planDays = s.plan?.trainingDays?.size ?: 0
-            val thisYear = java.time.Year.now().value
-            val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
-            SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
-            SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
             val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
             val suggested = s.latestWeight?.let { Nutrition.suggestedKcal(it, settings.heightCm, age, settings.bodyType == BodyType.MALE, trainingDaysForKcal) }
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -552,6 +568,31 @@ fun ProfileScreen(nav: NavHostController) {
                 if (suggested != null && settings.heightCm > 0f && age > 0 && suggested != settings.kcalGoal) {
                     Spacer(Modifier.width(8.dp))
                     TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(kcal = suggested) })
+                }
+            }
+            SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
+            s.latestWeight?.let { kg -> Nutrition.suggestedProtein(kg) }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.goals_protein_suggested, suggestedProtein), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(protein = suggestedProtein) })
+                }
+            }
+            // The whole row toggles, not just the switch.
+            Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                Switch(settings.trackCarbs, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+            if (settings.trackCarbs) {
+                SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
+                // Calories left after protein (4 kcal/g) and a 25 % fat share, as grams of carbs (4 kcal/g).
+                val suggested = (((settings.kcalGoal * 0.75f) - settings.proteinGoal * 4f) / 4f / 5f).roundToInt().coerceAtLeast(4) * 5
+                if (suggested != settings.carbsGoal) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.profile_carbs_suggested, suggested), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.setCarbs(goal = suggested) })
+                    }
                 }
             }
             val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
@@ -572,6 +613,8 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
+        SettingsSection(stringResource(R.string.settings_section_coach))
+
         // AI key
         SettingsRow(
             Icons.Rounded.Key, c.blue, c.blueTrack,
@@ -585,6 +628,40 @@ fun ProfileScreen(nav: NavHostController) {
             if (groqKey.isBlank()) stringResource(R.string.groq_key_off) else stringResource(R.string.groq_key_on),
         ) { groqDialog = true }
         Spacer(Modifier.height(12.dp))
+
+        // Coach memory
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                    Text(
+                        if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
+                        else stringResource(R.string.profile_memory_hint),
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                TonalPill(stringResource(R.string.action_add), onClick = { notesDialog = true })
+            }
+            val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
+            if (notes.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                notes.forEach { note ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
+                        Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        SettingsSection(stringResource(R.string.settings_section_app))
 
         // Appearance & feel
         FitCard {
@@ -661,38 +738,6 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
-        // Coach memory
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(
-                        if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
-                        else stringResource(R.string.profile_memory_hint),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                    )
-                }
-                TonalPill(stringResource(R.string.action_add), onClick = { notesDialog = true })
-            }
-            val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
-            if (notes.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                notes.forEach { note ->
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
-                        Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
         // App lock
         FitCard {
             val canLock = remember {
@@ -717,46 +762,7 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
-        // Progress
-        SettingsRow(
-            Icons.Rounded.ShowChart, c.teal, c.tealTrack,
-            stringResource(R.string.profile_progress_title),
-            stringResource(R.string.profile_progress_hint),
-        ) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
-        Spacer(Modifier.height(12.dp))
-
-        // Exercise library
-        SettingsRow(
-            Icons.Rounded.FitnessCenter, c.teal, c.tealTrack,
-            stringResource(R.string.profile_exercise_library),
-            stringResource(R.string.profile_exercise_library_hint),
-        ) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
-        Spacer(Modifier.height(12.dp))
-
-        // Hand + body
-        SettingsRow(
-            Icons.Rounded.PanTool, c.purple, c.purpleTrack,
-            stringResource(R.string.profile_hand_size),
-            if (settings.handLengthCm > 0f) stringResource(R.string.profile_hand_value, "%.1f".format(settings.handLengthCm), "%.1f".format(settings.palmWidthCm)) else stringResource(R.string.profile_hand_hint),
-        ) { handDialog = true }
-        Spacer(Modifier.height(12.dp))
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_muscle_map), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.profile_muscle_map_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            SegmentedTabs(
-                listOf(stringResource(R.string.body_male), stringResource(R.string.body_female)),
-                if (settings.bodyType == BodyType.FEMALE) 1 else 0,
-                onSelect = { vm.setBody(if (it == 1) BodyType.FEMALE else BodyType.MALE) },
-            )
-        }
-        Spacer(Modifier.height(12.dp))
+        SettingsSection(stringResource(R.string.settings_section_data))
 
         // Local backup file
         FitCard {
@@ -764,7 +770,7 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_your_data), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                    Text(stringResource(R.string.profile_backup_file), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_your_data_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
@@ -814,6 +820,24 @@ fun ProfileScreen(nav: NavHostController) {
                 )
             }
         }
+        Spacer(Modifier.height(12.dp))
+
+        SettingsSection(stringResource(R.string.settings_section_more))
+
+        // Progress
+        SettingsRow(
+            Icons.Rounded.ShowChart, c.teal, c.tealTrack,
+            stringResource(R.string.profile_progress_title),
+            stringResource(R.string.profile_progress_hint),
+        ) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
+        Spacer(Modifier.height(12.dp))
+
+        // Exercise library
+        SettingsRow(
+            Icons.Rounded.FitnessCenter, c.teal, c.tealTrack,
+            stringResource(R.string.profile_exercise_library),
+            stringResource(R.string.profile_exercise_library_hint),
+        ) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
         Spacer(Modifier.height(12.dp))
 
         // About
@@ -1028,6 +1052,17 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
             confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_ok), color = c.teal) } },
         )
     }
+}
+
+/** Small group title between cards, so related settings read as one block. */
+@Composable
+private fun SettingsSection(title: String) {
+    Text(
+        title.uppercase(java.util.Locale.getDefault()),
+        style = MaterialTheme.typography.labelLarge,
+        color = Fit.colors.textSecondary,
+        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp).semantics { heading() },
+    )
 }
 
 @Composable

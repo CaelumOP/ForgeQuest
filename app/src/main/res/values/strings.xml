@@ -413,9 +413,9 @@
     <string name="profile_workouts_per_week">Workouts per week</string>
     <string name="profile_from_plan">From your plan</string>
     <string name="profile_streak_explain">Your weekly streak counts weeks where you reach this number.</string>
-    <string name="profile_ai_key">AI key</string>
-    <string name="profile_key_not_set">Not set · meal scan and coach are off</string>
-    <string name="profile_key_connected">Connected · stored encrypted on this phone</string>
+    <string name="profile_ai_key">Gemini key</string>
+    <string name="profile_key_not_set">Not set · coach, meal scan and plans are off</string>
+    <string name="profile_key_connected">Connected · runs the coach, meal scans and plans</string>
     <string name="profile_appearance">Appearance</string>
     <string name="profile_theme">Theme</string>
     <string name="theme_system">System</string>
@@ -781,13 +781,13 @@
     <string name="profile_age">Age</string>
     <string name="unit_years">yrs</string>
     <string name="goals_suggested">Suggested %1$s kcal from your weight, height, age and %2$d training days a week</string>
-    <string name="goals_suggest_missing">Add your height and age for a calorie estimate</string>
+    <string name="goals_suggest_missing">Set your height and age under About you to get a calorie suggestion</string>
     <string name="goals_use">Use</string>
     <string name="profile_language">Language</string>
     <string name="language_system">Phone setting</string>
     <string name="groq_key_title">Groq key (optional)</string>
-    <string name="groq_key_off">Not set · add one for the fastest chat</string>
-    <string name="groq_key_on">Connected · chat answers through Groq</string>
+    <string name="groq_key_off">Not set · makes coach replies much faster</string>
+    <string name="groq_key_on">Connected · coach chat replies through Groq</string>
     <string name="groq_dialog_body">A free Groq key makes the coach\'s chat replies arrive in under a second. Meal scans and plans still use Gemini. Your messages and training data go to Groq under this key.</string>
     <string name="groq_dialog_open">Open the Groq console</string>
     <string name="groq_key_saved">Groq key saved. Chat now answers through Groq.</string>
@@ -808,4 +808,15 @@
     <string name="profile_daily_carbs">Daily carbs</string>
     <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a 25%% fat share</string>
     <string name="profile_use">Use</string>
+    <string name="settings_section_body">Your body</string>
+    <string name="settings_section_goals">Goals</string>
+    <string name="settings_section_coach">Coach and AI</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_section_data">Your data</string>
+    <string name="settings_section_more">More</string>
+    <string name="profile_about_you">About you</string>
+    <string name="profile_about_you_hint">Sets your calorie suggestion and the body on the muscle map</string>
+    <string name="profile_daily_targets">Daily targets</string>
+    <string name="goals_protein_suggested">Suggested %1$d g: 1.8 g per kg of body weight</string>
+    <string name="profile_backup_file">Backup file</string>
 </resources>
