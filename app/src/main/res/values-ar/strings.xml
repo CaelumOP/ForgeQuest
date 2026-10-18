@@ -989,4 +989,24 @@
     <string name="profile_body_not_set">غير محدد بعد: هذي قيم افتراضية. اضغط + أو − لتحديد قيمك.</string>
     <string name="profile_version">الإصدار %1$s</string>
     <string name="home_good_night">تصبح على خير</string>
+    <string name="tour_skip">تخطّي</string>
+    <string name="tour_next">التالي</string>
+    <string name="tour_start">يلّا نجهّزك</string>
+    <string name="tour_done">تم</string>
+    <string name="tour_replay">أعد جولة التطبيق</string>
+    <string name="tour_replay_hint">نظرة سريعة على مزايا ForgeQuest</string>
+    <string name="tour_1_t">تمرّن باستمرار، بدون ما تحترق</string>
+    <string name="tour_1_b">ForgeQuest يخليك ترجع كل مرة لأنه يضبط إيقاعك: يدفعك في الأيام الحلوة ويخفف عنك في أيام التعب.</string>
+    <string name="tour_2_t">سلسلة أسبوعية</string>
+    <string name="tour_2_b">سلسلتك تحسب الأسابيع اللي وصلت فيها هدف تمارينك، مو كل يوم. أيام الراحة ما تكسرها أبدًا.</string>
+    <string name="tour_3_t">خطط وتمارين مباشرة</string>
+    <string name="tour_3_b">ابدأ بخطة جاهزة أو استوردها من برنامج على يوتيوب. سجّل مجموعاتك مع مؤقت الراحة، والأرقام القياسية الجديدة تنكشف تلقائيًا.</string>
+    <string name="tour_4_t">أكلك في ثواني</string>
+    <string name="tour_4_b">صوّر وجبتك والذكاء الاصطناعي يقدّر البروتين والسعرات، والكارب إذا تبيه. الحلقات في الرئيسية تمتلي وأنت تاكل.</string>
+    <string name="tour_5_t">مدربك الذكي</string>
+    <string name="tour_5_b">كلّمه أي وقت. يتذكر إصاباتك وأدواتك، ويكتب لك متابعة أسبوعية، ويقدر يعيد بناء خطتك.</string>
+    <string name="tour_6_t">جاهزيتك من Fitbit</string>
+    <string name="tour_6_b">اختياري: اربط Fitbit عبر Health Connect لتحصل على التعافي والنوم والإجهاد يوميًا، وتعرف متى تضغط ومتى تخفف.</string>
+    <string name="tour_7_t">ارتقِ</string>
+    <string name="tour_7_b">اجمع نقاط الخبرة، واصعد بالرتب، وافتح الأوسمة، وتابع تقدمك وتعافي عضلاتك مع الوقت.</string>
 </resources>

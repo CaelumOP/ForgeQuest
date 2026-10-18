@@ -1,5 +1,6 @@
 package com.forgequest.app.ui
 
+import androidx.compose.runtime.setValue
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
@@ -75,6 +76,7 @@ import com.forgequest.app.ui.workouts.WorkoutsScreen
 
 object Routes {
     const val HOME = "home"
+    const val TOUR = "tour"
     const val WORKOUTS = "workouts"
     const val FOOD = "food"
     const val COACH = "coach"
@@ -120,7 +122,17 @@ fun AppRoot() {
         return
     }
     if (!current.onboarded) {
-        OnboardingScreen()
+        // First run: language (both scripts shown), then the feature slides, then setup. Saveable so the
+        // activity restart after picking a language lands on the slides.
+        var langDone by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.languageChosen(context)) }
+        var tourDone by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.tourSeen(context)) }
+        when {
+            !langDone -> com.forgequest.app.ui.onboarding.LanguageChoice { langDone = true }
+            !tourDone -> com.forgequest.app.ui.onboarding.AppTour(androidx.compose.ui.res.stringResource(R.string.tour_start)) {
+                com.forgequest.app.ui.onboarding.TourPrefs.setTourSeen(context); tourDone = true
+            }
+            else -> OnboardingScreen()
+        }
         return
     }
     MainScaffold()
@@ -188,6 +200,7 @@ private fun MainScaffold() {
                 }
                 composable(Routes.HISTORY) { HistoryScreen(nav) }
                 composable(Routes.BADGES) { BadgesScreen(nav) }
+                composable(Routes.TOUR) { com.forgequest.app.ui.onboarding.AppTour(androidx.compose.ui.res.stringResource(R.string.tour_done)) { nav.popBackStack() } }
                 composable(Routes.LIBRARY) { ExerciseLibraryScreen(nav) }
                 composable(Routes.PROGRESS) { ProgressScreen(nav) }
                 composable(Routes.SESSION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->

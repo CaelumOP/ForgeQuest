@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.SaveAlt
 import com.forgequest.app.R
@@ -892,6 +893,12 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         SettingsSection(stringResource(R.string.settings_section_more))
+
+        // App tour, the same slides as the first run
+        SettingsRow(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
+            nav.navigate(com.forgequest.app.ui.Routes.TOUR)
+        }
+        Spacer(Modifier.height(12.dp))
 
         // Progress
         SettingsRow(
