@@ -86,6 +86,13 @@ class WorkoutRepository(private val db: AppDatabase) {
                         custom = true,
                     )
                 )
+            } else if (!item.videoUrl.isNullOrBlank()) {
+                val existing = exercises.byId(item.exerciseId)!!
+                val builtInLink = ExerciseCatalog.all.firstOrNull { it.id == existing.id }?.videoUrl
+                val userEdited = existing.videoUrl != null && existing.videoUrl != builtInLink
+                if (existing.videoUrl != item.videoUrl && !(userEdited && item.videoUrl == builtInLink)) {
+                    exercises.upsert(existing.copy(videoUrl = item.videoUrl))
+                }
             }
         }
         plans.deactivateAll()

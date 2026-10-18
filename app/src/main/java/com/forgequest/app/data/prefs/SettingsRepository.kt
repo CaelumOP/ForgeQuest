@@ -44,6 +44,8 @@ data class Settings(
     val modelsCheckedAt: Long = 0,
     /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
     val coachModel: String = "auto",
+    /** Groq chat model picked for the saved Groq key. */
+    val groqModel: String = "",
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
@@ -83,6 +85,7 @@ class SettingsRepository(private val context: Context) {
         val liteModel = stringPreferencesKey("lite_model")
         val modelsCheckedAt = longPreferencesKey("models_checked_at")
         val coachModel = stringPreferencesKey("coach_model")
+        val groqModel = stringPreferencesKey("groq_model")
         val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
@@ -116,6 +119,7 @@ class SettingsRepository(private val context: Context) {
         liteModel = this[K.liteModel] ?: "",
         modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
         coachModel = this[K.coachModel] ?: "auto",
+        groqModel = this[K.groqModel] ?: "",
         lastCheckinWeek = this[K.lastCheckin] ?: -1,
         driveEmail = this[K.driveEmail] ?: "",
         lastBackupAt = this[K.lastBackup] ?: 0,
@@ -147,6 +151,7 @@ class SettingsRepository(private val context: Context) {
             p[K.liteModel] = s.liteModel
             p[K.modelsCheckedAt] = s.modelsCheckedAt
             p[K.coachModel] = s.coachModel
+            p[K.groqModel] = s.groqModel
             p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
@@ -179,9 +184,22 @@ class SettingsRepository(private val context: Context) {
         _apiKey.value = trimmed
     }
 
-    private fun readApiKey(): String {
-        val stored = keyPrefs.getString("gemini", null) ?: return ""
+    private fun readApiKey(): String = readKey("gemini")
+
+    private fun readKey(name: String): String {
+        val stored = keyPrefs.getString(name, null) ?: return ""
         return runCatching { decrypt(stored) }.getOrDefault("")
+    }
+
+    // --- Optional Groq key for fast chat, same encryption, also kept out of backups. ---
+
+    private val _groqKey = MutableStateFlow(readKey("groq"))
+    val groqKey: StateFlow<String> = _groqKey
+
+    fun setGroqKey(value: String) {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) keyPrefs.edit().remove("groq").apply() else keyPrefs.edit().putString("groq", encrypt(trimmed)).apply()
+        _groqKey.value = trimmed
     }
 
     private fun secretKey(): SecretKey {

@@ -199,6 +199,12 @@ private fun MainScaffold() {
 }
 
 fun NavHostController.goToTab(route: String) {
+    // Home is the start destination: navigating to it with saveState/restoreState restored the tab you were
+    // leaving (tapping Home on Coach stayed on Coach). Going home is just popping back to it.
+    if (route == Routes.HOME) {
+        if (!popBackStack(Routes.HOME, inclusive = false)) navigate(Routes.HOME)
+        return
+    }
     navigate(route) {
         popUpTo(Routes.HOME) { saveState = true }
         launchSingleTop = true

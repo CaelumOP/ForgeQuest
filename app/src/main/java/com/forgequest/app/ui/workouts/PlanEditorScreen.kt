@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.data.plan.PlanJson
+import androidx.compose.material.icons.rounded.SmartDisplay
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.R
 
@@ -121,6 +123,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun parsePasted(text: String) {
+        PlanJson.parsePasted(text)?.let { pending.value = it; return }
         busy.value = app.str(R.string.plan_reading)
         viewModelScope.launch {
             try {
@@ -171,6 +174,7 @@ fun PlanEditorScreen(nav: NavHostController) {
     val busy by vm.busy.collectAsState()
     val message by vm.message.collectAsState()
     val snackbar = LocalSnackbar.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val c = Fit.colors
     var selectedDay by rememberSaveable { mutableIntStateOf(Dates.todayDayOfWeek()) }
     var picker by remember { mutableStateOf(false) }
@@ -213,6 +217,15 @@ fun PlanEditorScreen(nav: NavHostController) {
                     ActionRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_hint)) { previous = true }
                 }
                 ActionRow(Icons.Rounded.ContentPaste, stringResource(R.string.plan_paste), stringResource(R.string.plan_paste_hint)) { paste = true }
+                // One file feeds both the docs and the app (res/raw/plan_prompt.txt mirrors docs/prompts/plan-from-youtube.md).
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+                val copied = stringResource(R.string.plan_prompt_copied)
+                ActionRow(Icons.Rounded.SmartDisplay, stringResource(R.string.plan_from_youtube), stringResource(R.string.plan_from_youtube_hint)) {
+                    val prompt = context.resources.openRawResource(R.raw.plan_prompt).bufferedReader().use { it.readText() }
+                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                    if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copied) }
+                }
                 ActionRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_import_docs_hint)) {
                     nav.navigate(com.forgequest.app.ui.Routes.PROFILE)
                 }

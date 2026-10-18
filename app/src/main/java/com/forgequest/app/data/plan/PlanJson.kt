@@ -14,6 +14,15 @@ object PlanJson {
             ?.let { draft -> draft.copy(days = draft.days.filter { it.dayOfWeek in 1..7 }.distinctBy { it.dayOfWeek }) }
     }
 
+    /** A pasted plan that is already JSON (with or without a ```json fence), so it needs no AI round trip. */
+    fun parsePasted(text: String): PlanDraft? {
+        val t = text.trim()
+        val body = fenced.find(t)?.groupValues?.get(1) ?: t.takeIf { it.startsWith("{") && it.endsWith("}") } ?: return null
+        return runCatching { json.decodeFromString(PlanDraft.serializer(), body) }.getOrNull()
+            ?.takeIf { it.days.isNotEmpty() }
+            ?.let { draft -> draft.copy(days = draft.days.filter { it.dayOfWeek in 1..7 }.distinctBy { it.dayOfWeek }) }
+    }
+
     fun strip(text: String): String = CoachMemory.strip(text.replace(fenced, "")).trim()
 
     /**

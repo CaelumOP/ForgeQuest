@@ -728,9 +728,9 @@
     <string name="coach_model_lite">Flash-Lite · fastest</string>
     <string name="coach_model_lite_hint">Answers in about a second</string>
     <string name="coach_model_flash">Flash · smarter</string>
-    <string name="coach_model_flash_hint">%1$s · slower, small free daily limit</string>
+    <string name="coach_model_flash_hint">Slower, small free daily limit</string>
     <string name="coach_model_pro">Pro · deepest</string>
-    <string name="coach_model_pro_hint">%1$s · can take a minute, often no free quota</string>
+    <string name="coach_model_pro_hint">Can take a minute, often no free quota</string>
     <!-- Progress -->
     <string name="progress_title">Progress</string>
     <string name="progress_subtitle">Every number with its direction</string>
@@ -783,4 +783,16 @@
     <string name="goals_use">Use</string>
     <string name="profile_language">Language</string>
     <string name="language_system">Phone setting</string>
+    <string name="groq_key_title">Groq key (optional)</string>
+    <string name="groq_key_off">Not set · add one for the fastest chat</string>
+    <string name="groq_key_on">Connected · chat answers through Groq</string>
+    <string name="groq_dialog_body">A free Groq key makes the coach\'s chat replies arrive in under a second. Meal scans and plans still use Gemini. Your messages and training data go to Groq under this key.</string>
+    <string name="groq_dialog_open">Open the Groq console</string>
+    <string name="groq_key_saved">Groq key saved. Chat now answers through Groq.</string>
+    <string name="groq_key_removed">Groq key removed</string>
+    <string name="coach_answered_by">Last reply: %1$s · %2$s s</string>
+    <string name="plan_from_youtube">Make a plan from YouTube with Gemini</string>
+    <string name="plan_from_youtube_hint">Copies a prompt. Paste it into the Gemini app with the video links, then paste the JSON here.</string>
+    <string name="plan_prompt_copied">Prompt copied</string>
+    <string name="onb_groq_hint">Want even faster chat? Add a free Groq key later in Profile.</string>
 </resources>
