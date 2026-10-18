@@ -3,6 +3,7 @@ package com.forgequest.app.data.health
 import android.content.Context
 import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
@@ -80,6 +81,15 @@ class HealthRepository(private val context: Context, private val settings: Setti
     )
     val permissions: Set<String> = types.map { HealthPermission.getReadPermission(it) }.toSet()
 
+    /** What the Connect button asks for: the required set plus, where the phone supports it, full history. */
+    fun requestPermissions(): Set<String> {
+        val history = runCatching {
+            HealthConnectClient.getOrCreate(context).features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY) ==
+                HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+        }.getOrDefault(false)
+        return if (history) permissions + HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY else permissions
+    }
+
     private val _state = MutableStateFlow<HealthState>(HealthState.Loading)
     val state: StateFlow<HealthState> = _state
 
@@ -107,7 +117,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
     private suspend fun compute(client: HealthConnectClient): DayReadiness {
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
-        val from = today.minusDays(40).atStartOfDay(zone).toInstant()
+        val from = today.minusDays(70).atStartOfDay(zone).toInstant()
         val now = Instant.now()
 
         val sleep = read(client, SleepSessionRecord::class, from, now).map { s ->
@@ -161,7 +171,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
 
         // Baselines from the 30 days before the given day.
         fun recoveryFor(d: LocalDate): Triple<Int, Pair<Double?, Double?>, Int> {
-            val past = (1L..30L).map { d.minusDays(it) }
+            val past = (1L..60L).map { d.minusDays(it) }
             val hrvHistory = past.mapNotNull(::hrvFor)
             val hrvBase = Readiness.baseline(hrvHistory.filter { it > 0 }.map { kotlin.math.ln(it) }, floorSd = 0.05)
             val rhrBase = Readiness.baseline(past.mapNotNull(::rhrFor), floorSd = 2.0)

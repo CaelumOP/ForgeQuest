@@ -144,7 +144,7 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        ReadinessCard(health, onConnect = { healthAccess.launch(vm.app.health.permissions) }, onFeltGreat = vm::setFeltGreat)
+        ReadinessCard(health, onConnect = { healthAccess.launch(vm.app.health.requestPermissions()) }, onFeltGreat = vm::setFeltGreat)
         StreakCard(s.streak)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
