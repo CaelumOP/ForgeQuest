@@ -378,4 +378,6 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
         stringResource(R.string.onb_privacy),
         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
     )
+    Spacer(Modifier.height(8.dp))
+    Text(stringResource(R.string.onb_groq_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
 }

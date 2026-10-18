@@ -1,5 +1,6 @@
 package com.forgequest.app.data
 
+import com.forgequest.app.data.ai.GroqClient
 import com.forgequest.app.AppText
 import com.forgequest.app.R
 import com.forgequest.app.data.ai.AiError
@@ -38,8 +39,13 @@ class CoachRepository(
     private val models: ModelStore,
     private val progress: ProgressRepository,
     private val workouts: WorkoutRepository,
+    private val groq: GroqClient,
 ) {
     private val chat = db.chat()
+
+    /** Who answered the last message and how fast, for the Coach menu ("Groq · 0.8 s"). */
+    private val _lastAnswer = MutableStateFlow<Pair<String, Long>?>(null)
+    val lastAnswer: StateFlow<Pair<String, Long>?> = _lastAnswer
 
     val messages: Flow<List<ChatEntity>> = chat.observeAll()
 
@@ -50,7 +56,10 @@ class CoachRepository(
     suspend fun clear() = chat.clear()
 
     /** Opens the connection to Google when the Coach tab opens, so the first message skips the handshake. */
-    suspend fun warmUp() = gemini.warmUp(settings.apiKey.value)
+    suspend fun warmUp() {
+        gemini.warmUp(settings.apiKey.value)
+        runCatching { models.current() }
+    }
 
     suspend fun send(text: String) {
         val tapped = SystemClock.elapsedRealtime()
@@ -61,18 +70,33 @@ class CoachRepository(
         try {
             val system = coachSystemPrompt(replyLanguage = languageOf(text), plan = wantsPlan)
             var firstText = -1L
-            val reply = gemini.generateStreaming(
-                apiKey = requireKey(),
-                models = models(),
-                system = system,
-                turns = history.map { (if (it.role == "user") "user" else "model") to it.text },
-                // Plans deserve the model's thinking; everything else should land in a second or two.
-                fast = !wantsPlan,
-            ) { delta ->
+            val turns = history.map { (if (it.role == "user") "user" else "model") to it.text }
+            val onDelta: suspend (String) -> Unit = { delta ->
                 if (firstText < 0) firstText = SystemClock.elapsedRealtime() - tapped
                 _draft.value = (_draft.value ?: "") + delta
             }
-            Log.i(TAG, "send→first text ${firstText} ms, send→done ${SystemClock.elapsedRealtime() - tapped} ms (plan=$wantsPlan)")
+            var provider = "Gemini"
+            // Chat goes to Groq when there's a Groq key and Automatic is chosen; plans stay on Gemini. Anything that
+            // fails on Groq before the first word falls back to Gemini without the person noticing.
+            val viaGroq = !wantsPlan && settings.groqKey.value.isNotBlank() && settings.current().coachModel == "auto"
+            val fromGroq = if (!viaGroq) null else try {
+                groq.streamChat(settings.groqKey.value, groqModel(), system, turns, onDelta).also { provider = "Groq" }
+            } catch (e: AiError) {
+                if (e is AiError.Partial) throw e
+                Log.w(TAG, "groq failed before any text, using Gemini: ${e.detail}")
+                null
+            }
+            val reply = fromGroq ?: gemini.generateStreaming(
+                apiKey = requireKey(),
+                models = models(),
+                system = system,
+                turns = turns,
+                // Plans deserve the model's thinking; everything else should land in a second or two.
+                fast = !wantsPlan,
+                onDelta = onDelta,
+            )
+            _lastAnswer.value = provider to firstText
+            Log.i(TAG, "send→first text ${firstText} ms, send→done ${SystemClock.elapsedRealtime() - tapped} ms via $provider (plan=$wantsPlan)")
             saveReply(reply)
         } catch (e: AiError.Partial) {
             if (PlanJson.strip(e.text).length > 40) saveReply(e.text)
@@ -149,11 +173,11 @@ class CoachRepository(
         if (snap.sessions.none { it.epochDay in lastWeek until thisWeek }) return false
         settings.update { it.copy(lastCheckinWeek = thisWeek) }
         return try {
-            val reply = gemini.generate(
-                requireKey(), models(), coachSystemPrompt(replyLanguage = if (java.util.Locale.getDefault().language == "ar") "Arabic" else "English"),
-                listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line."),
-                fast = true,
-            )
+            val system = coachSystemPrompt(replyLanguage = if (java.util.Locale.getDefault().language == "ar") "Arabic" else "English")
+            val ask = listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line.")
+            val viaGroq = settings.groqKey.value.isNotBlank() && settings.current().coachModel == "auto"
+            val reply = (if (viaGroq) runCatching { groq.streamChat(settings.groqKey.value, groqModel(), system, ask) {} }.getOrNull() else null)
+                ?: gemini.generate(requireKey(), models(), system, ask, fast = true)
             chat.insert(ChatEntity(role = "coach", text = PlanJson.strip(reply), kind = "checkin", createdAt = System.currentTimeMillis()))
             true
         } catch (e: AiError) {
@@ -184,6 +208,17 @@ class CoachRepository(
     }
 
     suspend fun setCoachModel(choice: String) = settings.update { it.copy(coachModel = choice) }
+
+    /** Checks a Groq key by reading its model list, then saves it with the fastest chat model it offers. */
+    suspend fun saveGroqKey(key: String) {
+        val trimmed = key.trim()
+        if (trimmed.isEmpty()) { settings.setGroqKey(""); return }
+        val model = groq.pickModel(trimmed)
+        settings.setGroqKey(trimmed)
+        settings.update { it.copy(groqModel = model) }
+    }
+
+    private suspend fun groqModel(): String = settings.current().groqModel.ifBlank { GroqClient.FALLBACK_MODEL }
 
     private fun wantsPlan(text: String) = PlanIntent.matches(text)
 
@@ -359,7 +394,9 @@ class CoachRepository(
         } else {
             sb.append("- No meals logged in the last 7 days\n")
         }
-        sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.roundToInt()} g protein\n")
+        sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.roundToInt()} g protein")
+        if (s.trackCarbs) sb.append(", ${snap.today.carbs.roundToInt()} g carbs (goal ${s.carbsGoal} g)")
+        sb.append("\n")
 
         // Badges
         val unlocked = snap.badges.sortedByDescending { it.unlockedAt }

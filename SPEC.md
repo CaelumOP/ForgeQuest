@@ -97,8 +97,34 @@ sharing an APK:
 - Not done: Arabic UI localisation. Every string is hardcoded in Kotlin across ~20 screens; extracting them to
   resources plus an Arabic set is a dedicated pass to do once this build is confirmed working on a phone.
 
+### Third pass (2026-10-18, branch claude/project-thread-m895wm, built and run on the emulator)
+Verified on an Android 15 emulator with a real free Gemini key, dark and light, 1.0× and 1.3× text, English and Arabic.
+- **Coach "No internet" root cause:** Google holds back even the response headers until the first word. Free-tier
+  Flash queued 10-65 s (a plan with thinking on: 37 s), past the old 45 s read timeout, and the timeout was labelled
+  offline. gemini-3.8-flash also allows only 20 free requests a day.
+- **Coach now:** gemini-3.5-flash-lite for chat, plans, check-ins and scans, Flash as fallback; thinking off via
+  thinkingLevel "minimal" on Lite and thinkingBudget 0 on Flash. Timeouts say "The coach didn't answer in time";
+  only DNS/connect failures say offline. A stream that fails before text retries once without streaming; a stalled
+  model moves on. Error bubbles have "Copy error details". Quota-exhausted models cool down for Google's retry delay.
+- **Measured (tap Send → first word / done):** before 9.8-12.1 s / 11-14 s on 3.8-flash; after 0.7-0.9 s / 1.2-1.8 s.
+  Full week plan 3.8 s, meal scan 2.7 s. System prompt ~1,360 → ~800 tokens (plan schema only for plan requests).
+- **Groq (optional key, Profile):** chat and check-in go to Groq's fastest Llama model under Automatic, with silent
+  fallback to Gemini before the first word. Gemini stays on its native API (thinking control, model list). The Coach
+  ⋮ menu picks the model (Automatic, Flash-Lite, Flash, Pro) and shows who answered last and how fast.
+- **Arabic UI:** ~650 strings in values/ and values-ar/ with Arabic plural forms; per-app language; Western digits
+  (nu-latn); day names from the locale; steppers and the muscle map stay left-to-right; fractions and weights are
+  bidi-isolated; titles use the system face untracked in Arabic.
+- **From hands-on use** (inspiration in brackets): hold-to-repeat steppers [Strong, Hevy]; last-time hint per set
+  [Strong, Hevy]; faint check in empty set boxes [Strong]; −15 s on the rest bar [Hevy]; swap starts on the same muscle
+  [Hevy, Fitbod]; Tick all & finish [Strong]; next workout on the summary [Fitbod]; labelled ring centre [Google Fit];
+  recent one-off meals in Quick log [MacroFactor, MyFitnessPal]; Save file export; JSON plan paste; Copy prompt for
+  YouTube plans; Home tab no longer restores the previous tab.
+- **Checked fine:** muscle map back view (no wedge), light-mode text contrast ≥ 4.5:1, Progress screen renders.
+- **Not verified:** Import file through the picker end to end, reminder notification firing, app lock with a real
+  screen lock, Groq with a real key.
+
 ## Open items
 - [x] Hemo routine: the Foundation playlist was transcribed from on-screen labels into docs/hemo-foundation.md. It's 5 training days plus 2 rest days, not 6.
 - [x] Body map: react-native-body-highlighter 3.2.0 (MIT), male and female.
 - [ ] Google Cloud OAuth setup for Drive (steps in README.md). The code is ready but untested against a real Google account.
-- [ ] A real Gemini key test on a phone. The UI and parsing were checked against a local stand-in server, and a fake key was correctly rejected by the real API.
+- [x] A real Gemini key test: done on the emulator (see Third pass). Phone timing still to confirm.

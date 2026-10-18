@@ -44,6 +44,8 @@ data class Settings(
     val modelsCheckedAt: Long = 0,
     /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
     val coachModel: String = "auto",
+    /** Groq chat model picked for the saved Groq key. */
+    val groqModel: String = "",
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
@@ -60,6 +62,9 @@ data class Settings(
     /** Optional, for the calorie estimate. 0 means not given. */
     val heightCm: Float = 0f,
     val birthYear: Int = 0,
+    /** Carbs are off unless the person turns them on in Profile → Goals. */
+    val trackCarbs: Boolean = false,
+    val carbsGoal: Int = 250,
 ) {
     val weightUnit: WeightUnit
         get() = if (unit.equals("lb", ignoreCase = true)) WeightUnit.LB else WeightUnit.KG
@@ -83,6 +88,7 @@ class SettingsRepository(private val context: Context) {
         val liteModel = stringPreferencesKey("lite_model")
         val modelsCheckedAt = longPreferencesKey("models_checked_at")
         val coachModel = stringPreferencesKey("coach_model")
+        val groqModel = stringPreferencesKey("groq_model")
         val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
@@ -96,6 +102,8 @@ class SettingsRepository(private val context: Context) {
         val biometric = booleanPreferencesKey("biometric_lock")
         val height = floatPreferencesKey("height_cm")
         val birthYear = intPreferencesKey("birth_year")
+        val trackCarbs = booleanPreferencesKey("track_carbs")
+        val carbsGoal = intPreferencesKey("carbs_goal")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -116,6 +124,7 @@ class SettingsRepository(private val context: Context) {
         liteModel = this[K.liteModel] ?: "",
         modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
         coachModel = this[K.coachModel] ?: "auto",
+        groqModel = this[K.groqModel] ?: "",
         lastCheckinWeek = this[K.lastCheckin] ?: -1,
         driveEmail = this[K.driveEmail] ?: "",
         lastBackupAt = this[K.lastBackup] ?: 0,
@@ -129,6 +138,8 @@ class SettingsRepository(private val context: Context) {
         biometricLock = this[K.biometric] ?: false,
         heightCm = this[K.height] ?: 0f,
         birthYear = this[K.birthYear] ?: 0,
+        trackCarbs = this[K.trackCarbs] ?: false,
+        carbsGoal = this[K.carbsGoal] ?: 250,
     )
 
     suspend fun update(transform: (Settings) -> Settings) {
@@ -147,6 +158,7 @@ class SettingsRepository(private val context: Context) {
             p[K.liteModel] = s.liteModel
             p[K.modelsCheckedAt] = s.modelsCheckedAt
             p[K.coachModel] = s.coachModel
+            p[K.groqModel] = s.groqModel
             p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
@@ -160,6 +172,8 @@ class SettingsRepository(private val context: Context) {
             p[K.biometric] = s.biometricLock
             p[K.height] = s.heightCm
             p[K.birthYear] = s.birthYear
+            p[K.trackCarbs] = s.trackCarbs
+            p[K.carbsGoal] = s.carbsGoal
         }
     }
 
@@ -179,9 +193,22 @@ class SettingsRepository(private val context: Context) {
         _apiKey.value = trimmed
     }
 
-    private fun readApiKey(): String {
-        val stored = keyPrefs.getString("gemini", null) ?: return ""
+    private fun readApiKey(): String = readKey("gemini")
+
+    private fun readKey(name: String): String {
+        val stored = keyPrefs.getString(name, null) ?: return ""
         return runCatching { decrypt(stored) }.getOrDefault("")
+    }
+
+    // --- Optional Groq key for fast chat, same encryption, also kept out of backups. ---
+
+    private val _groqKey = MutableStateFlow(readKey("groq"))
+    val groqKey: StateFlow<String> = _groqKey
+
+    fun setGroqKey(value: String) {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) keyPrefs.edit().remove("groq").apply() else keyPrefs.edit().putString("groq", encrypt(trimmed)).apply()
+        _groqKey.value = trimmed
     }
 
     private fun secretKey(): SecretKey {

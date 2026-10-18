@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
         WeightEntity::class, ChatEntity::class, BadgeEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -45,9 +45,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v3 → v4: optional carbs on foods and logged meals. */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE foods ADD COLUMN carbs REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE meals ADD COLUMN carbs REAL NOT NULL DEFAULT 0")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
     }
 }

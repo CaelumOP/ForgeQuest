@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
-data class DayNutrition(val epochDay: Long, val kcal: Int, val protein: Float)
+data class DayNutrition(val epochDay: Long, val kcal: Int, val protein: Float, val carbs: Float = 0f)
 
 data class ProgressSnapshot(
     val settings: Settings,
@@ -100,7 +100,7 @@ class ProgressRepository(
         val recovery = Recovery.compute(hits, System.currentTimeMillis())
 
         val byDay = r.meals.groupBy { it.epochDay }.map { (day, meals) ->
-            DayNutrition(day, meals.sumOf { it.kcal }, meals.sumOf { it.protein.toDouble() }.toFloat())
+            DayNutrition(day, meals.sumOf { it.kcal }, meals.sumOf { it.protein.toDouble() }.toFloat(), meals.sumOf { it.carbs.toDouble() }.toFloat())
         }.sortedBy { it.epochDay }
         val todayNutrition = byDay.firstOrNull { it.epochDay == today } ?: DayNutrition(today, 0, 0f)
 

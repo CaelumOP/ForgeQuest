@@ -825,9 +825,9 @@
     <string name="coach_model_lite">Flash-Lite · الأسرع</string>
     <string name="coach_model_lite_hint">يرد خلال ثانية تقريبًا</string>
     <string name="coach_model_flash">Flash · أذكى</string>
-    <string name="coach_model_flash_hint">%1$s · أبطأ، وحده المجاني اليومي قليل</string>
+    <string name="coach_model_flash_hint">أبطأ، وحده المجاني اليومي قليل</string>
     <string name="coach_model_pro">Pro · الأعمق</string>
-    <string name="coach_model_pro_hint">%1$s · قد ياخذ دقيقة، وغالبًا بدون حصة مجانية</string>
+    <string name="coach_model_pro_hint">قد ياخذ دقيقة، وغالبًا بدون حصة مجانية</string>
     <!-- Progress -->
     <string name="progress_title">التقدّم</string>
     <string name="progress_subtitle">كل رقم مع اتجاهه</string>
@@ -880,4 +880,27 @@
     <string name="goals_use">استخدم</string>
     <string name="profile_language">اللغة</string>
     <string name="language_system">إعداد الهاتف</string>
+    <string name="groq_key_title">مفتاح Groq (اختياري)</string>
+    <string name="groq_key_off">غير مضاف · أضفه لأسرع محادثة</string>
+    <string name="groq_key_on">مربوط · المحادثة ترد عن طريق Groq</string>
+    <string name="groq_dialog_body">مفتاح Groq مجاني يخلي ردود المدرب توصل في أقل من ثانية. تصوير الوجبات والخطط تبقى على Gemini. رسائلك وبيانات تمرينك تنرسل لـ Groq بهذا المفتاح.</string>
+    <string name="groq_dialog_open">افتح لوحة Groq</string>
+    <string name="groq_key_saved">تم حفظ مفتاح Groq. المحادثة الحين ترد عن طريق Groq.</string>
+    <string name="groq_key_removed">تم حذف مفتاح Groq</string>
+    <string name="coach_answered_by">آخر رد: %1$s · %2$s ث</string>
+    <string name="plan_from_youtube">سوّ خطة من يوتيوب بمساعدة Gemini</string>
+    <string name="plan_from_youtube_hint">ينسخ نص جاهز. الصقه في تطبيق Gemini مع روابط الفيديو، وبعدين الصق الـ JSON هنا.</string>
+    <string name="plan_prompt_copied">تم نسخ النص</string>
+    <string name="onb_groq_hint">تبغى محادثة أسرع؟ أضف مفتاح Groq مجاني بعدين من حسابي.</string>
+    <string name="hist_change_date">غيّر التاريخ</string>
+    <string name="home_carbs_left">باقي كارب</string>
+    <string name="food_carbs_of_goal">⁦%1$d / %2$d⁩ غ</string>
+    <string name="label_carbs">كارب</string>
+    <string name="label_carbs_g">كارب (غ)</string>
+    <string name="food_week_carbs">" · %1$d غ كارب"</string>
+    <string name="food_g_carbs">%1$d غ كارب</string>
+    <string name="profile_track_carbs">تتبّع الكارب</string>
+    <string name="profile_daily_carbs">الكارب اليومي</string>
+    <string name="profile_carbs_suggested">المقترح %1$d غ: السعرات الباقية بعد البروتين وحصة دهون 25%</string>
+    <string name="profile_use">استخدم</string>
 </resources>

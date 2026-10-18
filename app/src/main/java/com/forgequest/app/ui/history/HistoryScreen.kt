@@ -203,10 +203,11 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
 
     /** The screen closes itself once the session flow emits null. */
     fun deleteWorkout() = viewModelScope.launch { app.workouts.deleteSession(sessionId) }
+    fun moveTo(epochDay: Long) = viewModelScope.launch { app.workouts.moveSession(sessionId, epochDay) }
 }
 
 /** One finished workout: fix a number, remove a set, or delete the whole thing. Records are re-checked after each change. */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     val vm = appViewModel { SessionDetailViewModel(it, sessionId) }
@@ -217,6 +218,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     val c = Fit.colors
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
     var pendingSetDelete by remember { mutableStateOf<SetEntity?>(null) }
     var noteFor by remember { mutableStateOf<SetEntity?>(null) }
 
@@ -240,6 +242,8 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textSecondary) }
                 DropdownMenu(menu, { menu = false }, containerColor = c.cardHigh) {
+                    // Strong and Hevy let you fix a workout's date; logging a day late shouldn't break the streak.
+                    DropdownMenuItem(text = { Text(stringResource(R.string.hist_change_date)) }, onClick = { menu = false; picking = true })
                     DropdownMenuItem(text = { Text(stringResource(R.string.hist_delete_workout), color = c.coral) }, onClick = { menu = false; confirmDelete = true })
                 }
             }
@@ -312,6 +316,22 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
             confirmButton = { TextButton(onClick = { pendingSetDelete = null; vm.deleteSet(set) }) { Text(stringResource(R.string.action_remove), color = c.coral) } },
             dismissButton = { TextButton(onClick = { pendingSetDelete = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
+    }
+
+    if (picking) {
+        val state = androidx.compose.material3.rememberDatePickerState(
+            initialSelectedDateMillis = session.epochDay * 86_400_000L,
+            selectableDates = object : androidx.compose.material3.SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis / 86_400_000L <= com.forgequest.app.domain.Dates.today()
+            },
+        )
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { picking = false },
+            confirmButton = {
+                TextButton(onClick = { state.selectedDateMillis?.let { vm.moveTo(it / 86_400_000L) }; picking = false }) { Text(stringResource(R.string.action_save), color = c.teal) }
+            },
+            dismissButton = { TextButton(onClick = { picking = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+        ) { androidx.compose.material3.DatePicker(state) }
     }
 
     if (confirmDelete) {

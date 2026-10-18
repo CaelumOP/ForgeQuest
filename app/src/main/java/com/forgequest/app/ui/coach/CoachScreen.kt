@@ -140,6 +140,7 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
 
     val settings = app.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     fun setModel(choice: String) = viewModelScope.launch { app.coach.setCoachModel(choice) }
+    val lastAnswer = app.coach.lastAnswer
 
     fun planOf(message: ChatEntity): PlanDraft? = message.planJson?.let(PlanJson::decode)
 }
@@ -184,11 +185,15 @@ fun CoachScreen(nav: NavHostController) {
                     val s by vm.settings.collectAsState()
                     val current = s?.coachModel ?: "auto"
                     Text(stringResource(R.string.coach_model_header), style = MaterialTheme.typography.labelMedium, color = c.textSecondary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    val last by vm.lastAnswer.collectAsState()
+                    last?.let { (who, ms) ->
+                        if (ms >= 0) Text(stringResource(R.string.coach_answered_by, who, "%.1f".format(ms / 1000f)), style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp))
+                    }
                     listOf(
                         Triple("auto", R.string.coach_model_auto, stringResource(R.string.coach_model_auto_hint)),
-                        Triple("lite", R.string.coach_model_lite, (s?.liteModel ?: "").ifBlank { stringResource(R.string.coach_model_lite_hint) }),
-                        Triple("flash", R.string.coach_model_flash, stringResource(R.string.coach_model_flash_hint, s?.fastModel.orEmpty())),
-                        Triple("pro", R.string.coach_model_pro, stringResource(R.string.coach_model_pro_hint, s?.smartModel.orEmpty())),
+                        Triple("lite", R.string.coach_model_lite, listOfNotNull(s?.liteModel?.ifBlank { null }, stringResource(R.string.coach_model_lite_hint)).joinToString(" · ")),
+                        Triple("flash", R.string.coach_model_flash, listOfNotNull(s?.fastModel?.ifBlank { null }, stringResource(R.string.coach_model_flash_hint)).joinToString(" · ")),
+                        Triple("pro", R.string.coach_model_pro, listOfNotNull(s?.smartModel?.ifBlank { null }, stringResource(R.string.coach_model_pro_hint)).joinToString(" · ")),
                     ).forEach { (id, label, hint) ->
                         DropdownMenuItem(
                             text = {
