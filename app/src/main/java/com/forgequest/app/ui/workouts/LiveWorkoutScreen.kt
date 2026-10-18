@@ -10,6 +10,15 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.os.Build
+import android.Manifest
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -126,6 +135,11 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 
     var confirmExit by remember { mutableStateOf(false) }
     var confirmFinish by remember { mutableStateOf(false) }
+    // The rest countdown lives in the notification shade too, so the phone can be locked between sets.
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
@@ -298,7 +312,7 @@ private fun CircuitCard(
             Spacer(Modifier.width(4.dp))
             Text("Circuit", style = MaterialTheme.typography.labelMedium, color = c.teal)
         }
-        Text("One set of each, then repeat.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        Text("One set of each, then repeat. Long-press a set to add a note.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         g.rounds.forEachIndexed { r, round ->
             val roundDone = round.all { it.done }
             Spacer(Modifier.height(12.dp))
@@ -335,6 +349,7 @@ private fun CircuitCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SetRow(
     label: String?,
@@ -346,8 +361,14 @@ private fun SetRow(
 ) {
     val c = Fit.colors
     val rowColor by animateColorAsState(if (set.done) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent, label = "row")
+    var noteDialog by remember { mutableStateOf(false) }
+    if (noteDialog) {
+        SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
+    }
     Row(
-        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor).padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor)
+            .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = "add a note")
+            .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (label != null) {
@@ -371,6 +392,9 @@ private fun SetRow(
                     PrTag()
                 }
             }
+            if (set.note.isNotBlank()) {
+                Text(set.note, style = MaterialTheme.typography.labelSmall, color = c.blue, maxLines = 2, overflow = TextOverflow.Ellipsis, fontStyle = FontStyle.Italic)
+            }
         }
         Spacer(Modifier.width(6.dp))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -388,9 +412,10 @@ private fun SetRow(
                         (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                         unit = "reps", title = "Reps", minValueWidth = 64.dp,
                     )
+                    val unit by vm.unit.collectAsState()
                     NumberStepper(
-                        set.weightKg ?: 0f, { vm.setField(set, Field.WEIGHT, it) }, step = 2.5f, min = 0f, max = 999f,
-                        unit = "kg", decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue,
+                        unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f),
+                        unit = unit.label, decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue,
                     )
                 }
             }
@@ -398,6 +423,33 @@ private fun SetRow(
         Spacer(Modifier.width(6.dp))
         MorphCheck(set.done) { vm.toggle(set) }
     }
+}
+
+/** Long-press a set to jot something down: how it felt, a variation, a niggle. */
+@Composable
+fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    val c = Fit.colors
+    var text by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        title = { Text("Note for this set", color = c.textPrimary) },
+        text = {
+            OutlinedTextField(
+                value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                placeholder = { Text("Felt easy, add weight next time") },
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Save", color = c.teal) } },
+        dismissButton = {
+            Row {
+                if (initial.isNotBlank()) TextButton(onClick = { onSave("") }) { Text("Clear", color = c.coral) }
+                TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
+            }
+        },
+    )
 }
 
 /** Squircle that springs into a filled circle with a check when ticked. */

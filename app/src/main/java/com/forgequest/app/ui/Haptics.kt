@@ -15,7 +15,11 @@ class Haptics(context: Context) {
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
+    /** Mirrors Settings.hapticsEnabled; kept here so every tick doesn't read the DataStore. */
+    @Volatile var enabled: Boolean = true
+
     private fun play(composition: () -> VibrationEffect?, fallbackMs: Long) {
+        if (!enabled) return
         val v = vibrator ?: return
         if (!v.hasVibrator()) return
         val effect = if (Build.VERSION.SDK_INT >= 30) composition() else null

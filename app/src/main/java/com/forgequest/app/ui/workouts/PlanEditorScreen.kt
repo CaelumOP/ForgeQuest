@@ -77,6 +77,7 @@ import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.seed.StarterPlans
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
@@ -259,7 +260,7 @@ fun PlanEditorScreen(nav: NavHostController) {
                                 Column(Modifier.weight(1f)) {
                                     Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                                     Text(
-                                        "${item.block}${if (item.circuit) " · circuit" else ""} · ${if (item.circuit) "${item.sets} rounds × " else ""}${item.prescription(ex?.kind)} · rest ${item.restSeconds}s",
+                                        "${item.block}${if (item.circuit) " · circuit" else ""} · ${if (item.circuit) "${item.sets} rounds × " else ""}${item.prescription(ex?.kind, s.settings.weightUnit)} · rest ${item.restSeconds}s",
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                     )
                                 }
@@ -291,7 +292,7 @@ fun PlanEditorScreen(nav: NavHostController) {
         val siblings = day?.items?.sortedBy { it.position }.orEmpty()
         val index = siblings.indexOfFirst { it.id == item.id }
         ItemEditorSheet(
-            item, kind, s.exercises[item.exerciseId]?.name ?: item.exerciseId,
+            item, kind, s.exercises[item.exerciseId]?.name ?: item.exerciseId, s.settings.weightUnit,
             canMoveUp = index > 0, canMoveDown = index >= 0 && index < siblings.lastIndex,
             onMove = { delta -> vm.move(item, delta); editing = null },
             onSave = { vm.updateItem(it); editing = null }, onDismiss = { editing = null },
@@ -447,6 +448,7 @@ private fun ItemEditorSheet(
     item: PlanItemEntity,
     kind: ExerciseKind,
     name: String,
+    unit: WeightUnit,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     onMove: (Int) -> Unit,
@@ -469,7 +471,7 @@ private fun ItemEditorSheet(
                 EditorRow("Reps (max)", maxReps.toFloat(), { v -> draft = draft.copy(repsMax = v.toInt().coerceAtLeast(minReps)) }, step = 1f, min = minReps.toFloat(), max = 999f)
             }
             if (kind == ExerciseKind.WEIGHTED) {
-                EditorRow("Weight", draft.weightKg ?: 0f, { draft = draft.copy(weightKg = it) }, step = 2.5f, min = 0f, max = 999f, unit = "kg", decimals = 1)
+                EditorRow("Weight", unit.fromKg(draft.weightKg ?: 0f), { draft = draft.copy(weightKg = unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f), unit = unit.label, decimals = 1)
             }
             EditorRow("Rest", draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = "s")
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -41,9 +41,16 @@ data class BackupSettings(
     val handLengthCm: Float = 0f,
     val palmWidthCm: Float = 0f,
     val coachNotes: String = "",
+    val theme: String = "system",
+    val hapticsEnabled: Boolean = true,
+    val unit: String = "kg",
+    val reminderHour: Int = -1,
 ) {
     companion object {
-        fun from(s: Settings) = BackupSettings(s.name, s.bodyType.name, s.kcalGoal, s.proteinGoal, s.weeklyTargetOverride, s.handLengthCm, s.palmWidthCm, s.coachNotes)
+        fun from(s: Settings) = BackupSettings(
+            s.name, s.bodyType.name, s.kcalGoal, s.proteinGoal, s.weeklyTargetOverride, s.handLengthCm, s.palmWidthCm, s.coachNotes,
+            s.theme, s.hapticsEnabled, s.unit, s.reminderHour,
+        )
     }
 
     fun applyTo(s: Settings) = s.copy(
@@ -55,6 +62,10 @@ data class BackupSettings(
         handLengthCm = handLengthCm,
         palmWidthCm = palmWidthCm,
         coachNotes = coachNotes,
+        theme = theme,
+        hapticsEnabled = hapticsEnabled,
+        unit = unit,
+        reminderHour = reminderHour,
     )
 }
 

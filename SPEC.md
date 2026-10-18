@@ -86,8 +86,16 @@ sharing an APK:
   release notes list).
 - Release signing via keystore.properties (see README). Shrinking is opt-in with -PminifyRelease=true.
 
-Still open from the review (nice-to-have): Arabic localisation and lb units, rest-timer notification, custom
-exercise management, a display typeface, per-set notes, reminders, manual theme switch, haptics toggle, biometric lock.
+### Second pass (after the first phone test)
+- Muscle map: all SVG paths re-tokenised; the broken head on the back view came from compact arc flags that Android's parser misreads.
+- Coach: Flash for everything (Pro took 1-2 min per plan), 15/45 s timeouts, check-in no longer blocks sending,
+  "Writing your week…" progress while plan JSON streams, reply language locked to the latest message's script,
+  Arabic rendered right-to-left, suggestion chips float translucently over the conversation.
+- Nice-to-haves done: System/Light/Dark theme, kg/lb, vibration toggle, Manrope display typeface, rest timer in the
+  notification shade, workout-day reminder, per-set notes (Room v2 migration), exercise library (rename/merge/delete),
+  app lock with fingerprint/face/PIN (MainActivity is now a FragmentActivity; androidx.biometric 1.1.0).
+- Not done: Arabic UI localisation. Every string is hardcoded in Kotlin across ~20 screens; extracting them to
+  resources plus an Arabic set is a dedicated pass to do once this build is confirmed working on a phone.
 
 ## Open items
 - [x] Hemo routine: the Foundation playlist was transcribed from on-screen labels into docs/hemo-foundation.md. It's 5 training days plus 2 rest days, not 6.

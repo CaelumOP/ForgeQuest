@@ -1,6 +1,9 @@
 package com.forgequest.app.ui.history
 
 import androidx.compose.foundation.background
+import com.forgequest.app.ui.workouts.SetNoteDialog
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +58,7 @@ import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.EmptyState
@@ -174,6 +178,8 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
     val exercises: StateFlow<Map<String, ExerciseEntity>> = app.workouts.library.map { l -> l.associateBy { it.id } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
+
     data class Loaded(val session: SessionEntity?)
 
     fun setField(set: SetEntity, field: Field, value: Float) {
@@ -187,22 +193,26 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
     }
 
     fun deleteSet(set: SetEntity) = viewModelScope.launch { app.workouts.deleteFinishedSet(set) }
+    fun setNote(set: SetEntity, note: String) = viewModelScope.launch { app.workouts.updateFinishedSet(set.copy(note = note.trim().take(120))) }
 
     /** The screen closes itself once the session flow emits null. */
     fun deleteWorkout() = viewModelScope.launch { app.workouts.deleteSession(sessionId) }
 }
 
 /** One finished workout: fix a number, remove a set, or delete the whole thing. Records are re-checked after each change. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     val vm = appViewModel { SessionDetailViewModel(it, sessionId) }
     val loaded by vm.session.collectAsState()
     val sets by vm.sets.collectAsState()
     val exercises by vm.exercises.collectAsState()
+    val unit by vm.unit.collectAsState()
     val c = Fit.colors
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var pendingSetDelete by remember { mutableStateOf<SetEntity?>(null) }
+    var noteFor by remember { mutableStateOf<SetEntity?>(null) }
 
     val session = loaded?.session
     if (session == null) {
@@ -230,7 +240,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
         }
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text("Tap a number to change it. Records are re-checked after every edit.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text("Tap a number to change it, long-press a set for a note. Records are re-checked after every edit.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             items(groups, key = { it.first().itemPosition }) { group ->
                 val ex = exercises[group.first().exerciseId]
@@ -242,20 +252,26 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                     }
                     Spacer(Modifier.height(4.dp))
                     group.sortedBy { it.setIndex }.forEachIndexed { index, set ->
-                        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(12.dp))
+                                .combinedClickable(onClick = {}, onLongClick = { noteFor = set }, onLongClickLabel = "add a note"),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                                 Text("${index + 1}", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                             }
                             Spacer(Modifier.width(10.dp))
-                            if (set.isPr) PrTag()
-                            Spacer(Modifier.weight(1f))
+                            Column(Modifier.weight(1f)) {
+                                if (set.isPr) PrTag()
+                                if (set.note.isNotBlank()) Text(set.note, style = MaterialTheme.typography.labelSmall, color = c.blue, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 when (kind) {
                                     ExerciseKind.HOLD -> NumberStepper((set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, 5f, 0f, 3600f, unit = "s", title = "Hold time", minValueWidth = 52.dp)
                                     ExerciseKind.REPS -> NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, title = "Reps", minValueWidth = 40.dp)
                                     ExerciseKind.WEIGHTED -> {
                                         NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, unit = "reps", title = "Reps", minValueWidth = 64.dp)
-                                        NumberStepper(set.weightKg ?: 0f, { vm.setField(set, Field.WEIGHT, it) }, 2.5f, 0f, 999f, unit = "kg", decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue)
+                                        NumberStepper(unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, unit.loadStep, 0f, unit.fromKg(999f), unit = unit.label, decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue)
                                     }
                                 }
                             }
@@ -270,6 +286,10 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 item { EmptyState(Icons.Rounded.FitnessCenter, "No sets", "This workout has no sets left.") }
             }
         }
+    }
+
+    noteFor?.let { set ->
+        SetNoteDialog(set.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(set, it); noteFor = null })
     }
 
     pendingSetDelete?.let { set ->

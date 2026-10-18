@@ -60,6 +60,7 @@ import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.prefs.BodyType
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.data.seed.StarterPlans
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ChoiceChip
@@ -78,6 +79,7 @@ data class OnboardingState(
     val name: String = "",
     val bodyType: BodyType = BodyType.MALE,
     val weightKg: Float = 75f,
+    val unit: WeightUnit = WeightUnit.KG,
     val kcal: Int = 2500,
     val protein: Int = 135,
     val goalsTouched: Boolean = false,
@@ -127,7 +129,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
             app.workouts.applyPlan(plan, if (plan === emptyPlan) "manual" else "starter")
             app.progress.logWeight(s.weightKg)
             app.settings.update {
-                it.copy(onboarded = true, name = s.name.trim(), bodyType = s.bodyType, kcalGoal = s.kcal, proteinGoal = s.protein)
+                it.copy(onboarded = true, name = s.name.trim(), bodyType = s.bodyType, kcalGoal = s.kcal, proteinGoal = s.protein, unit = s.unit.label)
             }
         }
     }
@@ -228,7 +230,11 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
 @Composable
 private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
     Title("Your body & goals", "We suggest goals from your weight. Adjust them any time in Profile.")
-    GoalRow("Body weight", s.weightKg, vm::setWeight, step = 0.5f, min = 30f, max = 250f, unit = "kg", decimals = 1)
+    Row(Modifier.padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChoiceChip("Kilograms", s.unit == WeightUnit.KG, { vm.update { it.copy(unit = WeightUnit.KG) } })
+        ChoiceChip("Pounds", s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })
+    }
+    GoalRow("Body weight", s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = if (s.unit == WeightUnit.KG) 0.5f else 1f, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
     GoalRow("Daily protein", s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = "g")
     GoalRow("Daily calories", s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
     Spacer(Modifier.height(4.dp))

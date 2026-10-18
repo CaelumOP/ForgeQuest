@@ -1,6 +1,11 @@
 package com.forgequest.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,8 +31,22 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier) {
+    val rtl = isRtlText(text)
+    CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+        MarkdownBody(text, color, modifier)
+    }
+}
+
+/** True when the first strong letter is Arabic or Hebrew, so bullets and alignment mirror for that message. */
+fun isRtlText(text: String): Boolean {
+    val first = text.firstOrNull { it.isLetter() } ?: return false
+    return first in '\u0590'..'\u08FF' || first in '\uFB1D'..'\uFDFF' || first in '\uFE70'..'\uFEFF'
+}
+
+@Composable
+private fun MarkdownBody(text: String, color: Color, modifier: Modifier) {
     val lines = text.replace("\r", "").lines()
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         for ((index, raw) in lines.withIndex()) {
             val line = raw.trimEnd()
             if (line.isBlank()) {
@@ -44,22 +63,25 @@ fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ") -> Bullet("•", trimmed.drop(2), color, indent = line.length - trimmed.length > 1)
-                Regex("^\\d+[.)] ").containsMatchIn(trimmed) -> {
+                numbered.containsMatchIn(trimmed) -> {
                     val num = trimmed.substringBefore(' ')
                     Bullet(num, trimmed.substringAfter(' '), color, indent = false)
                 }
                 trimmed == "---" || trimmed == "***" -> Unit
-                else -> Text(inline(trimmed), style = MaterialTheme.typography.bodyMedium, color = color)
+                else -> Text(inline(trimmed), style = MaterialTheme.typography.bodyMedium, color = color, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
             }
         }
     }
 }
 
+/** "1." or "١." or "3)" followed by a space. */
+private val numbered = Regex("^\\p{Nd}+[.)] ")
+
 @Composable
 private fun Bullet(marker: String, body: String, color: Color, indent: Boolean) {
-    Row(Modifier.padding(start = if (indent) 16.dp else 0.dp)) {
+    Row(Modifier.fillMaxWidth().padding(start = if (indent) 16.dp else 0.dp)) {
         Text(marker, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.width(if (marker.length > 1) 22.dp else 14.dp))
-        Text(inline(body), style = MaterialTheme.typography.bodyMedium, color = color)
+        Text(inline(body), style = MaterialTheme.typography.bodyMedium, color = color, textAlign = TextAlign.Start, modifier = Modifier.weight(1f))
     }
 }
 

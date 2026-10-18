@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,6 +69,11 @@ class SettingsRepository(private val context: Context) {
         val lastDocImport = longPreferencesKey("last_doc_import_modified")
         val coachNotes = stringPreferencesKey("coach_notes")
         val driveDocs = booleanPreferencesKey("drive_docs_enabled")
+        val theme = stringPreferencesKey("theme")
+        val haptics = booleanPreferencesKey("haptics_enabled")
+        val unit = stringPreferencesKey("weight_unit")
+        val reminderHour = intPreferencesKey("reminder_hour")
+        val biometric = booleanPreferencesKey("biometric_lock")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -91,6 +97,11 @@ class SettingsRepository(private val context: Context) {
         lastDocImportModified = this[K.lastDocImport] ?: 0,
         coachNotes = this[K.coachNotes] ?: "",
         driveDocsEnabled = this[K.driveDocs] ?: false,
+        theme = this[K.theme] ?: "system",
+        hapticsEnabled = this[K.haptics] ?: true,
+        unit = this[K.unit] ?: "kg",
+        reminderHour = this[K.reminderHour] ?: -1,
+        biometricLock = this[K.biometric] ?: false,
     )
 
     suspend fun update(transform: (Settings) -> Settings) {
@@ -112,6 +123,11 @@ class SettingsRepository(private val context: Context) {
             p[K.lastDocImport] = s.lastDocImportModified
             p[K.coachNotes] = s.coachNotes
             p[K.driveDocs] = s.driveDocsEnabled
+            p[K.theme] = s.theme
+            p[K.haptics] = s.hapticsEnabled
+            p[K.unit] = s.unit
+            p[K.reminderHour] = s.reminderHour
+            p[K.biometric] = s.biometricLock
         }
     }
 

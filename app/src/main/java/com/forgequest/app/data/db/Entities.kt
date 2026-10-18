@@ -93,6 +93,8 @@ data class SetEntity(
     val done: Boolean = false,
     val isPr: Boolean = false,
     val restSeconds: Int = 60,
+    /** Free text for this set: "felt easy", "left knee twinge", "used the green band". */
+    val note: String = "",
 )
 
 @Serializable

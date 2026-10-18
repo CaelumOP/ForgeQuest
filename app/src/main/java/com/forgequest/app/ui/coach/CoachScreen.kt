@@ -6,6 +6,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,15 +95,17 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
     val hasKey: StateFlow<Boolean> = app.settings.apiKey.map { it.isNotBlank() }.stateIn(viewModelScope, SharingStarted.Eagerly, app.settings.apiKey.value.isNotBlank())
     val sending = MutableStateFlow(false)
+    /** The weekly check-in being written in the background. It never blocks sending a message. */
+    val checkingIn = MutableStateFlow(false)
     val applied = MutableStateFlow<String?>(null)
     /** Text of the reply still arriving, shown live. */
     val draft: StateFlow<String?> = app.coach.draft
 
     init {
         viewModelScope.launch {
-            sending.value = true
+            checkingIn.value = true
             runCatching { app.coach.weeklyCheckinIfDue() }
-            sending.value = false
+            checkingIn.value = false
         }
     }
 
@@ -138,6 +144,7 @@ fun CoachScreen(nav: NavHostController) {
     val messages by vm.messages.collectAsState()
     val exercises by vm.exercises.collectAsState()
     val sending by vm.sending.collectAsState()
+    val checkingIn by vm.checkingIn.collectAsState()
     val hasKey by vm.hasKey.collectAsState()
     val applied by vm.applied.collectAsState()
     val draft by vm.draft.collectAsState()
@@ -164,55 +171,68 @@ fun CoachScreen(nav: NavHostController) {
                 }
             }
         }
-        LazyColumn(
-            Modifier.weight(1f),
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (!hasKey) {
-                item {
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.card).padding(20.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack, 40.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Text("Add your free AI key", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+        val showChips = messages.isNotEmpty() && hasKey && !sending
+        Box(Modifier.weight(1f)) {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = if (showChips) 64.dp else 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (!hasKey) {
+                    item {
+                        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.card).padding(20.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack, 40.dp)
+                                Spacer(Modifier.width(12.dp))
+                                Text("Add your free AI key", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text("The coach runs on Google Gemini with your own free key. It takes about a minute.", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                            Spacer(Modifier.height(14.dp))
+                            PillButton("Set up in Profile", onClick = { nav.goToTab(Routes.PROFILE) })
                         }
-                        Spacer(Modifier.height(8.dp))
-                        Text("The coach runs on Google Gemini with your own free key. It takes about a minute.", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
-                        Spacer(Modifier.height(14.dp))
-                        PillButton("Set up in Profile", onClick = { nav.goToTab(Routes.PROFILE) })
+                    }
+                }
+                if (messages.isEmpty()) {
+                    item { Welcome(enabled = hasKey) { vm.send(it) } }
+                }
+                items(messages, key = { it.id }) { m ->
+                    when {
+                        m.role == "user" -> UserBubble(m.text)
+                        else -> CoachMessage(
+                            m,
+                            plan = vm.planOf(m),
+                            onPreview = { preview = m },
+                            onApply = { preview = m },
+                        )
+                    }
+                }
+                val live = draft?.let { PlanJson.stripPartial(it) }
+                val writingPlan = draft?.let { Regex("```").findAll(it).count() % 2 == 1 } == true
+                if (sending && (!live.isNullOrBlank() || writingPlan)) item(key = "draft") { StreamingBubble(live.orEmpty(), writingPlan) }
+                else if (sending) item(key = "typing") { TypingDots() }
+                if (checkingIn && !sending) item(key = "checkin") { CheckinNote() }
+                item { Spacer(Modifier.height(4.dp)) }
+            }
+            // Suggestions float over the conversation on a see-through pill, so the text underneath stays readable.
+            if (showChips) {
+                Row(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    suggestions.take(3).forEach { s ->
+                        Box(
+                            Modifier.clip(RoundedCornerShape(50)).background(c.card.copy(alpha = 0.55f))
+                                .border(1.dp, c.divider.copy(alpha = 0.7f), RoundedCornerShape(50))
+                                .clickable { vm.send(s) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            Text(s, style = MaterialTheme.typography.labelLarge, color = c.textPrimary, maxLines = 1)
+                        }
                     }
                 }
             }
-            if (messages.isEmpty()) {
-                item { Welcome(enabled = hasKey) { vm.send(it) } }
-            }
-            items(messages, key = { it.id }) { m ->
-                when {
-                    m.role == "user" -> UserBubble(m.text)
-                    else -> CoachMessage(
-                        m,
-                        plan = vm.planOf(m),
-                        onPreview = { preview = m },
-                        onApply = { preview = m },
-                    )
-                }
-            }
-            val live = draft?.let { PlanJson.stripPartial(it) }
-            if (sending && !live.isNullOrBlank()) item(key = "draft") { StreamingBubble(live) }
-            else if (sending) item(key = "typing") { TypingDots() }
-            item { Spacer(Modifier.height(4.dp)) }
-        }
-        if (messages.isNotEmpty() && hasKey && !sending) {
-            FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                suggestions.take(2).forEach { s ->
-                    Box(Modifier.clip(RoundedCornerShape(50)).background(c.card).clickable { vm.send(s) }.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                        Text(s, style = MaterialTheme.typography.labelLarge, color = c.textPrimary)
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
         }
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             TextField(
@@ -344,7 +364,7 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
 
 /** The coach's reply as it streams in, with a soft pulsing caret at the end. */
 @Composable
-private fun StreamingBubble(text: String) {
+private fun StreamingBubble(text: String, writingPlan: Boolean) {
     val c = Fit.colors
     val t = rememberInfiniteTransition(label = "caret")
     val a by t.animateFloat(0.2f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "caretAlpha")
@@ -354,10 +374,32 @@ private fun StreamingBubble(text: String) {
                 .background(c.card).padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Column {
-                MarkdownText(text, color = c.textPrimary)
-                Box(Modifier.padding(top = 4.dp).size(width = 10.dp, height = 3.dp).alpha(a).clip(CircleShape).background(c.teal))
+                if (text.isNotBlank()) MarkdownText(text, color = c.textPrimary)
+                if (writingPlan) {
+                    // The plan itself streams as JSON the person never sees; show that something is still happening.
+                    Spacer(Modifier.height(if (text.isNotBlank()) 10.dp else 0.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = c.teal, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Writing your week…", style = MaterialTheme.typography.labelLarge, color = c.teal)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(color = c.teal, trackColor = c.tealTrack, modifier = Modifier.fillMaxWidth().clip(CircleShape))
+                } else {
+                    Box(Modifier.padding(top = 4.dp).size(width = 10.dp, height = 3.dp).alpha(a).clip(CircleShape).background(c.teal))
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun CheckinNote() {
+    val c = Fit.colors
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
+        Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("Writing your weekly check-in in the background…", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
     }
 }
 

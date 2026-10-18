@@ -45,9 +45,10 @@ data class GeminiModels(val fast: String, val smart: String)
  */
 class GeminiClient(
     private val http: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        // A stalled model should fail over to the next one in well under a minute, not two.
+        .readTimeout(45, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build(),
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }

@@ -29,6 +29,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Undo
@@ -49,6 +51,8 @@ import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -83,6 +87,7 @@ import com.forgequest.app.data.drive.DriveError
 import com.forgequest.app.data.backup.BackupError
 import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.drive.DriveSync
+import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
 import com.forgequest.app.ui.LocalSnackbar
@@ -93,6 +98,7 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
+import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
@@ -137,6 +143,17 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun removeNote(note: String) = viewModelScope.launch {
         app.coach.setNotes(app.settings.current().coachNotes.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
     }
+
+    fun setReminder(hour: Int) = viewModelScope.launch {
+        app.settings.update { it.copy(reminderHour = hour) }
+        ReminderWorker.schedule(app.appContext, hour)
+    }
+
+    fun setLock(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(biometricLock = on) } }
+
+    fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
+    fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = unit) } }
+    fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
     fun setHand(length: Float, palm: Float) = viewModelScope.launch { app.settings.update { it.copy(handLengthCm = length, palmWidthCm = palm) } }
@@ -421,14 +438,14 @@ fun ProfileScreen(nav: NavHostController) {
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Body weight", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text(s.latestWeight?.let { "%.1f kg".format(it) } ?: "Not logged", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                    Text(s.latestWeight?.let { settings.weightUnit.format(it) } ?: "Not logged", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 }
                 TonalPill("Log", onClick = { weightDialog = true })
             }
             val recent = s.weights.takeLast(30)
             if (recent.size >= 2) {
                 Spacer(Modifier.height(16.dp))
-                LineChart(recent.map { it.kg }, Modifier.fillMaxWidth().height(120.dp))
+                LineChart(recent.map { settings.weightUnit.fromKg(it.kg) }, Modifier.fillMaxWidth().height(120.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -470,6 +487,69 @@ fun ProfileScreen(nav: NavHostController) {
         ) { keyDialog = true }
         Spacer(Modifier.height(12.dp))
 
+        // Appearance & feel
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Palette, c.blue, c.blueTrack)
+                Spacer(Modifier.width(14.dp))
+                Text("Appearance", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            }
+            Spacer(Modifier.height(14.dp))
+            Text("Theme", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+            Spacer(Modifier.height(6.dp))
+            SegmentedTabs(
+                listOf("System", "Light", "Dark"),
+                when (settings.theme) { "light" -> 1; "dark" -> 2; else -> 0 },
+                onSelect = { vm.setTheme(listOf("system", "light", "dark")[it]) },
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("Weights", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+            Spacer(Modifier.height(6.dp))
+            SegmentedTabs(listOf("Kilograms", "Pounds"), if (settings.unit == "lb") 1 else 0, onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") })
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Vibration feedback", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    Text("Ticks on steppers, a thud when a set is done", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Switch(settings.hapticsEnabled, { vm.setHaptics(it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Reminders
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Workout reminder", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(
+                        if (settings.reminderHour < 0) "Off. A nudge on planned days if nothing is logged yet."
+                        else "On planned days at ${"%02d:00".format(settings.reminderHour)}, only if nothing is logged yet.",
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                Switch(settings.reminderHour >= 0, { vm.setReminder(if (it) 18 else -1) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+            if (settings.reminderHour >= 0) {
+                var typingHour by remember { mutableStateOf(false) }
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Time", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    Stepper(
+                        "%02d:00".format(settings.reminderHour),
+                        onMinus = { vm.setReminder((settings.reminderHour + 23) % 24) },
+                        onPlus = { vm.setReminder((settings.reminderHour + 1) % 24) },
+                        minValueWidth = 72.dp,
+                        onValueClick = { typingHour = true },
+                    )
+                }
+                if (typingHour) {
+                    NumberEntryDialog("Reminder hour (0–23)", settings.reminderHour.toFloat(), "h", 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
         // Coach memory
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -500,6 +580,38 @@ fun ProfileScreen(nav: NavHostController) {
                 }
             }
         }
+        Spacer(Modifier.height(12.dp))
+
+        // App lock
+        FitCard {
+            val canLock = remember {
+                androidx.biometric.BiometricManager.from(context).canAuthenticate(
+                    androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+                ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Lock, c.coral, c.coralTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("App lock", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(
+                        if (!canLock) "Set up a screen lock or fingerprint on this phone first."
+                        else if (settings.biometricLock) "Asks for your fingerprint, face or PIN when you open the app."
+                        else "Ask for your fingerprint, face or PIN when the app opens.",
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                Switch(settings.biometricLock && canLock, { vm.setLock(it) }, enabled = canLock, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Exercise library
+        SettingsRow(
+            Icons.Rounded.FitnessCenter, c.teal, c.tealTrack,
+            "Exercise library",
+            "Rename, merge or delete exercises you or the coach created",
+        ) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
         Spacer(Modifier.height(12.dp))
 
         // Hand + body
@@ -644,7 +756,8 @@ fun ProfileScreen(nav: NavHostController) {
             title = { Text("Log body weight", color = c.textPrimary) },
             text = {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    NumberStepper(kg, { kg = it }, step = 0.1f, min = 30f, max = 250f, unit = "kg", decimals = 1, title = "Body weight", minValueWidth = 96.dp)
+                    val unit = settings.weightUnit
+                    NumberStepper(unit.fromKg(kg), { kg = unit.toKg(it) }, step = unit.bodyStep, min = unit.fromKg(30f), max = unit.fromKg(250f), unit = unit.label, decimals = 1, title = "Body weight", minValueWidth = 96.dp)
                 }
             },
             confirmButton = { TextButton(onClick = { vm.logWeight(kg); weightDialog = false }) { Text("Save", color = c.teal) } },

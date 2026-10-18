@@ -11,6 +11,8 @@ import com.forgequest.app.data.backup.BackupRepository
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.drive.DriveSyncWorker
+import com.forgequest.app.data.notify.Notifier
+import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.ui.Haptics
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 
 /** Hand-wired dependencies. Small enough that a DI framework would only add build time. */
 class AppContainer(context: Context) {
+    val appContext: Context = context.applicationContext
     val db = AppDatabase.build(context)
     val settings = SettingsRepository(context)
     val gemini = GeminiClient()
@@ -30,6 +33,7 @@ class AppContainer(context: Context) {
     val backup = BackupRepository(context, db, settings, workouts)
     val drive = DriveSync(context, settings, workouts, coach, backup)
     val haptics = Haptics(context)
+    val notifier = Notifier(context)
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }
 
@@ -42,7 +46,9 @@ class ForgeQuestApp : Application() {
         container = AppContainer(this)
         container.appScope.launch { container.workouts.seedLibrary() }
         container.appScope.launch { runCatching { container.food.deleteOrphanPhotos() } }
+        container.appScope.launch { container.settings.settings.collect { container.haptics.enabled = it.hapticsEnabled } }
         DriveSyncWorker.schedule(this)
+        container.appScope.launch { ReminderWorker.schedule(this@ForgeQuestApp, container.settings.current().reminderHour) }
     }
 }
 

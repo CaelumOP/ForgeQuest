@@ -28,6 +28,21 @@ interface ExerciseDao {
 
     @Upsert
     suspend fun upsert(item: ExerciseEntity)
+
+    @Query("DELETE FROM exercises WHERE id = :id")
+    suspend fun delete(id: String)
+
+    @Query("SELECT COUNT(*) FROM sets WHERE exerciseId = :id")
+    suspend fun setCount(id: String): Int
+
+    @Query("SELECT COUNT(*) FROM plan_items WHERE exerciseId = :id")
+    suspend fun planItemCount(id: String): Int
+
+    @Query("UPDATE sets SET exerciseId = :to WHERE exerciseId = :from")
+    suspend fun repointSets(from: String, to: String)
+
+    @Query("UPDATE plan_items SET exerciseId = :to WHERE exerciseId = :from")
+    suspend fun repointPlanItems(from: String, to: String)
 }
 
 @Dao

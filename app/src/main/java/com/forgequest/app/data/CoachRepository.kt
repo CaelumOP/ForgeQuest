@@ -52,7 +52,7 @@ class CoachRepository(
             val reply = gemini.generateStreaming(
                 apiKey = requireKey(),
                 models = models(smart = wantsPlan),
-                system = coachSystemPrompt(),
+                system = coachSystemPrompt(replyLanguage = languageOf(text)),
                 turns = history.map { (if (it.role == "user") "user" else "model") to it.text },
                 // Plans deserve the model's thinking; everything else should land in a couple of seconds.
                 fast = !wantsPlan,
@@ -129,21 +129,32 @@ class CoachRepository(
 
     private fun requireKey(): String = settings.apiKey.value.ifBlank { throw AiError.MissingKey }
 
-    /** Pro first for plans (it often has no free quota, so Flash takes over), Flash first for chat. */
+    /**
+     * Flash for everything. Pro writes a full week of JSON in one to two minutes on the free tier; Flash with
+     * thinking on does it in well under one, and Flash with thinking off answers chat in a few seconds.
+     */
     private suspend fun models(smart: Boolean): List<String> {
         val s = settings.current()
-        return if (smart) listOf(s.smartModel, s.fastModel) else listOf(s.fastModel)
+        return listOf(s.fastModel)
+    }
+
+    /** Script of the person's latest message, so the reply never drifts into another language. */
+    internal fun languageOf(text: String): String = when {
+        text.any { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' } -> "Arabic"
+        text.any { it.isLetter() && it.code < 0x250 } -> "English"
+        else -> "the language of the user's latest message"
     }
 
     // ------------------------------------------------------------ Prompting
 
-    private suspend fun coachSystemPrompt(): String = """
+    private suspend fun coachSystemPrompt(replyLanguage: String = "the language of the user's latest message"): String = """
         You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
+        LANGUAGE: reply in $replyLanguage. Decide from the latest message only, never from earlier messages, the user's name or the data below.
+        If replying in Arabic, keep exercise names in English in parentheses the first time, and keep numbers as plain digits.
         Be warm, direct and specific. Use their data below: quote their real numbers, name the exercises they actually do,
         notice trends, and point out what they missed or improved. Keep answers short (under 180 words) unless they ask for detail.
         Use simple Markdown: **bold**, short bullet lists, at most one small heading. No tables.
         Never shame food choices; going over calories is fuel, not failure.
-        Answer in the language the user writes in.
 
         When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a
         ```json code block at the very end.
@@ -164,6 +175,7 @@ class CoachRepository(
             "sets": int, "repsMin": int|null, "repsMax": int|null, "seconds": int|null, "weightKg": number|null, "restSeconds": int, "note": string}]}]}
             Include all 7 days. Prefer these exercise ids: $ids.
             For an exercise not in that list, invent a snake_case id and set name, kind and muscles (from: ${Muscle.entries.joinToString(", ") { it.name }}).
+            Keep the JSON short: for ids from the list leave out name, kind and muscles; omit "note" unless needed; one-sentence description.
             Use "seconds" for holds, "repsMin"/"repsMax" for reps. Items with the same block and circuit=true are done round by round.
         """.trimIndent()
     }
@@ -189,6 +201,7 @@ class CoachRepository(
             }.orEmpty()
             sb.append("- Body weight: ${"%.1f".format(Locale.US, latest)} kg$trend\n")
         }
+        if (s.unit == "lb") sb.append("- Units: the user thinks in pounds. The data below is in kg; convert weights to lb when you mention them.\n")
         val target = if (s.weeklyTargetOverride > 0) s.weeklyTargetOverride else snap.plan?.trainingDays?.size ?: 0
         sb.append("- Goals: ${s.kcalGoal} kcal and ${s.proteinGoal} g protein per day; $target workouts per week\n")
 
@@ -250,6 +263,8 @@ class CoachRepository(
                     "${ex?.name ?: id} ${list.joinToString("/") { setLabel(ex?.kind, it) }}${if (list.any { it.isPr }) " PR" else ""}"
                 }
                 sb.append("  ${LocalDate.ofEpochDay(session.epochDay)} ${session.title}${minutes?.let { " ($it min)" } ?: ""}: $summary\n")
+                val notes = sets.filter { it.note.isNotBlank() }.take(4).joinToString("; ") { "${snap.exercises[it.exerciseId]?.name ?: it.exerciseId}: ${it.note}" }
+                if (notes.isNotEmpty()) sb.append("    notes: $notes\n")
             }
         }
 
