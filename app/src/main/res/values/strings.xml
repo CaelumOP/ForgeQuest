@@ -781,4 +781,6 @@
     <string name="goals_suggested">Suggested %1$s kcal from your weight, height, age and %2$d training days a week</string>
     <string name="goals_suggest_missing">Add your height and age for a calorie estimate</string>
     <string name="goals_use">Use</string>
+    <string name="profile_language">Language</string>
+    <string name="language_system">Phone setting</string>
 </resources>

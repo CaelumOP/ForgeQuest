@@ -52,6 +52,8 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Strings resolved outside Compose (errors, notifications) follow the in-app language too.
+        AppText.init(AppLocale.wrap(applicationContext))
         setContent {
             val settings by container.settings.settings.collectAsState(initial = null)
             val dark = when (settings?.theme) {
