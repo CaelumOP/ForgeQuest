@@ -149,6 +149,8 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         ReminderWorker.schedule(app.appContext, hour)
     }
 
+    fun setLock(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(biometricLock = on) } }
+
     fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
     fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = unit) } }
     fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
@@ -576,6 +578,30 @@ fun ProfileScreen(nav: NavHostController) {
                         Icon(Icons.Rounded.Close, contentDescription = "Remove", tint = c.textSecondary, modifier = Modifier.size(16.dp))
                     }
                 }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // App lock
+        FitCard {
+            val canLock = remember {
+                androidx.biometric.BiometricManager.from(context).canAuthenticate(
+                    androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+                ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Lock, c.coral, c.coralTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("App lock", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(
+                        if (!canLock) "Set up a screen lock or fingerprint on this phone first."
+                        else if (settings.biometricLock) "Asks for your fingerprint, face or PIN when you open the app."
+                        else "Ask for your fingerprint, face or PIN when the app opens.",
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                Switch(settings.biometricLock && canLock, { vm.setLock(it) }, enabled = canLock, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
         }
         Spacer(Modifier.height(12.dp))
