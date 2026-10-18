@@ -29,6 +29,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Undo
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Restaurant
@@ -74,6 +78,8 @@ import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.drive.DriveAuth
 import com.forgequest.app.data.drive.DriveError
+import com.forgequest.app.data.backup.BackupError
+import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
@@ -107,6 +113,12 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val busy = MutableStateFlow<String?>(null)
     val consent = MutableStateFlow<android.app.PendingIntent?>(null)
     val docPreview = MutableStateFlow<DriveSync.DocPlan?>(null)
+
+    /** A backup waiting for the person to confirm: where it came from, and its contents. */
+    data class RestorePreview(val source: String, val file: BackupFile)
+    val restorePreview = MutableStateFlow<RestorePreview?>(null)
+    val shareUri = MutableStateFlow<Uri?>(null)
+    val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
     private var afterConsent: (suspend (String) -> Unit)? = null
 
     fun updateGoals(kcal: Int? = null, protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
@@ -206,9 +218,67 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         message.value = "Backed up to Google Drive"
     }
 
-    fun restore() = withDrive("Restoring…") { token ->
-        app.drive.restore(token)
-        message.value = "Restored from Google Drive"
+    fun restore() = withDrive("Reading your Drive backup…") { token ->
+        restorePreview.value = RestorePreview("Google Drive", app.drive.fetchBackup(token))
+    }
+
+    // ------------------------------------------------------------ Local backup file
+
+    fun exportData() {
+        busy.value = "Preparing your backup…"
+        viewModelScope.launch {
+            try {
+                shareUri.value = app.backup.exportForSharing()
+            } catch (e: Exception) {
+                message.value = "Couldn't create the backup file."
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    fun previewImport(uri: Uri) {
+        busy.value = "Reading the file…"
+        viewModelScope.launch {
+            try {
+                restorePreview.value = RestorePreview("this file", app.backup.read(uri))
+            } catch (e: BackupError) {
+                message.value = e.userMessage
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    fun previewUndoRestore() {
+        val latest = safetyCopies.value.firstOrNull() ?: return
+        busy.value = "Reading the copy…"
+        viewModelScope.launch {
+            try {
+                restorePreview.value = RestorePreview("the copy saved before your last restore", app.backup.read(latest))
+            } catch (e: BackupError) {
+                message.value = e.userMessage
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    fun applyRestore() {
+        val preview = restorePreview.value ?: return
+        restorePreview.value = null
+        busy.value = "Restoring…"
+        viewModelScope.launch {
+            try {
+                app.backup.apply(preview.file)
+                safetyCopies.value = app.backup.safetyCopies()
+                message.value = "Restored from ${preview.source}"
+            } catch (e: Exception) {
+                message.value = "Couldn't restore that backup."
+            } finally {
+                busy.value = null
+            }
+        }
     }
 
     fun importDoc() = withDrive("Reading your Workout Plan doc…") { token ->
@@ -238,18 +308,29 @@ fun ProfileScreen(nav: NavHostController) {
     val busy by vm.busy.collectAsState()
     val consent by vm.consent.collectAsState()
     val docPreview by vm.docPreview.collectAsState()
+    val restorePreview by vm.restorePreview.collectAsState()
+    val shareUri by vm.shareUri.collectAsState()
+    val safetyCopies by vm.safetyCopies.collectAsState()
     val snackbar = LocalSnackbar.current
     val context = LocalContext.current
     val c = Fit.colors
     var keyDialog by remember { mutableStateOf(false) }
     var weightDialog by remember { mutableStateOf(false) }
     var handDialog by remember { mutableStateOf(false) }
-    var confirmRestore by remember { mutableStateOf(false) }
 
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         vm.onConsentResult(r.resultCode == Activity.RESULT_OK, r.data)
     }
     LaunchedEffect(consent) { consent?.let { consentLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) } }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::previewImport) }
+    LaunchedEffect(shareUri) {
+        shareUri?.let { uri ->
+            val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_SUBJECT, "ForgeQuest backup").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            context.startActivity(Intent.createChooser(send, "Save your backup"))
+            vm.shareUri.value = null
+        }
+    }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
     DisposableEffect(Unit) { onDispose { vm.markBadgesSeen() } }
 
@@ -386,6 +467,25 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
+        // Local backup file
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Your data", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text("Save a file to keep, or bring everything to a new phone. Photos and your AI key stay out of it.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("Export file", onClick = vm::exportData, icon = Icons.Rounded.Share)
+                TonalPill("Import file", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
+                if (safetyCopies.isNotEmpty()) TonalPill("Undo last restore", onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
         // Drive
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -410,7 +510,7 @@ fun ProfileScreen(nav: NavHostController) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton("Back up now", onClick = vm::backupNow)
                     TonalPill("Import plan from Docs", onClick = vm::importDoc)
-                    TonalPill("Restore", onClick = { confirmRestore = true })
+                    TonalPill("Restore", onClick = vm::restore)
                     TonalPill("Disconnect", onClick = vm::disconnectDrive, tint = c.textSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
@@ -510,14 +610,23 @@ fun ProfileScreen(nav: NavHostController) {
         )
     }
 
-    if (confirmRestore) {
+    restorePreview?.let { preview ->
         AlertDialog(
-            onDismissRequest = { confirmRestore = false },
+            onDismissRequest = { vm.restorePreview.value = null },
             containerColor = c.card,
-            title = { Text("Restore from Google Drive?", color = c.textPrimary) },
-            text = { Text("This replaces everything on this phone with your last Drive backup.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { confirmRestore = false; vm.restore() }) { Text("Restore", color = c.coral) } },
-            dismissButton = { TextButton(onClick = { confirmRestore = false }) { Text("Cancel", color = c.textSecondary) } },
+            title = { Text("Restore from ${preview.source}?", color = c.textPrimary) },
+            text = {
+                Column {
+                    Text(preview.file.summary(), color = c.textPrimary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Everything on this phone is replaced. A copy of what's here now is kept, so you can undo this from the Your data card.",
+                        color = c.textSecondary, style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = vm::applyRestore) { Text("Restore", color = c.coral) } },
+            dismissButton = { TextButton(onClick = { vm.restorePreview.value = null }) { Text("Cancel", color = c.textSecondary) } },
         )
     }
 

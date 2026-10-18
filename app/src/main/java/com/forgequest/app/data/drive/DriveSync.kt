@@ -3,21 +3,10 @@ package com.forgequest.app.data.drive
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import androidx.room.withTransaction
 import com.forgequest.app.data.CoachRepository
 import com.forgequest.app.data.WorkoutRepository
-import com.forgequest.app.data.db.AppDatabase
-import com.forgequest.app.data.db.BadgeEntity
-import com.forgequest.app.data.db.ChatEntity
-import com.forgequest.app.data.db.ExerciseEntity
-import com.forgequest.app.data.db.FoodEntity
-import com.forgequest.app.data.db.MealEntity
-import com.forgequest.app.data.db.PlanDayEntity
-import com.forgequest.app.data.db.PlanEntity
-import com.forgequest.app.data.db.PlanItemEntity
-import com.forgequest.app.data.db.SessionEntity
-import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.data.db.WeightEntity
+import com.forgequest.app.data.backup.BackupFile
+import com.forgequest.app.data.backup.BackupRepository
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
@@ -28,7 +17,6 @@ import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -41,23 +29,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.time.Instant
-
-@Serializable
-data class BackupFile(
-    val version: Int = 1,
-    val createdAt: Long,
-    val exercises: List<ExerciseEntity>,
-    val plans: List<PlanEntity>,
-    val planDays: List<PlanDayEntity>,
-    val planItems: List<PlanItemEntity>,
-    val sessions: List<SessionEntity>,
-    val sets: List<SetEntity>,
-    val foods: List<FoodEntity>,
-    val meals: List<MealEntity>,
-    val weights: List<WeightEntity>,
-    val chat: List<ChatEntity>,
-    val badges: List<BadgeEntity>,
-)
 
 sealed class DriveError(val userMessage: String) : Exception(userMessage) {
     object NotConfigured : DriveError("Google Drive isn't set up for this copy of the app yet.")
@@ -80,10 +51,10 @@ sealed interface DriveAuth {
  */
 class DriveSync(
     private val context: Context,
-    private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val workouts: WorkoutRepository,
     private val coach: CoachRepository,
+    private val backups: BackupRepository,
 ) {
     private val http = OkHttpClient()
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -129,14 +100,7 @@ class DriveSync(
     // ------------------------------------------------------------ Backup
 
     suspend fun backup(token: String) = withContext(Dispatchers.IO) {
-        val b = db.backup()
-        val file = BackupFile(
-            createdAt = System.currentTimeMillis(),
-            exercises = b.exercises(), plans = b.plans(), planDays = b.planDays(), planItems = b.planItems(),
-            sessions = b.sessions(), sets = b.sets(), foods = b.foods(), meals = b.meals(), weights = b.weights(),
-            chat = b.chat(), badges = b.badges(),
-        )
-        val content = json.encodeToString(BackupFile.serializer(), file)
+        val content = backups.encode(backups.build())
         val existing = findBackupId(token)
         val metadata = if (existing == null) """{"name":"$BACKUP_NAME","parents":["appDataFolder"]}""" else """{"name":"$BACKUP_NAME"}"""
         val multipart = MultipartBody.Builder().setType("multipart/related".toMediaType())
@@ -152,21 +116,13 @@ class DriveSync(
         settings.update { it.copy(lastBackupAt = System.currentTimeMillis()) }
     }
 
-    suspend fun restore(token: String) = withContext(Dispatchers.IO) {
+    /** Downloads the Drive backup without applying it, so the person can read what's in it first. */
+    suspend fun fetchBackup(token: String): BackupFile = withContext(Dispatchers.IO) {
         val id = findBackupId(token) ?: throw DriveError.NoBackup
-        val body = call(token, Request.Builder().url("$API/files/$id?alt=media").get())
-        val f = json.decodeFromString(BackupFile.serializer(), body)
-        db.withTransaction {
-            db.backup().replaceAll(
-                f.exercises, f.plans, f.planDays, f.planItems, f.sessions, f.sets,
-                // Photos aren't part of the backup, so drop paths that don't exist on this phone.
-                f.foods.map { it.copy(photoPath = it.photoPath?.takeIf { p -> java.io.File(p).exists() }) },
-                f.meals.map { it.copy(photoPath = it.photoPath?.takeIf { p -> java.io.File(p).exists() }) },
-                f.weights, f.chat, f.badges,
-            )
-        }
-        workouts.seedLibrary()
+        backups.decode(call(token, Request.Builder().url("$API/files/$id?alt=media").get()))
     }
+
+    suspend fun restore(token: String) = backups.apply(fetchBackup(token))
 
     private fun findBackupId(token: String): String? {
         val body = call(token, Request.Builder().url("$API/files?spaces=appDataFolder&q=name%3D%27$BACKUP_NAME%27&fields=files(id)").get())

@@ -25,6 +25,13 @@ Each person uses their own free Gemini key:
 
 The app checks the key with Google and picks the newest Flash and Pro models available to it. The key is stored encrypted on the phone and isn't included in backups.
 
+## Backup without Google Drive
+
+**Profile → Your data → Export file** writes a JSON backup and opens the share sheet, so you can save it to Files,
+Drive, Telegram or wherever you like. **Import file** reads one back and shows what's in it before replacing anything.
+Every restore first keeps a copy of what was on the phone; **Undo last restore** brings it back. Settings (name, goals,
+hand size) are included; meal photos and the AI key are not.
+
 ## Google Drive (backup + "Workout Plan" doc import): one-time setup
 
 Google only lets an app use Drive after its owner registers it. You do this once, and friends who install the same APK can then use it too.
