@@ -171,11 +171,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     // ------------------------------------------------------------ Drive
 
-    private fun withDrive(label: String, op: suspend (String) -> Unit) {
+    private fun withDrive(label: String, withDocs: Boolean = false, op: suspend (String) -> Unit) {
         busy.value = label
         viewModelScope.launch {
             try {
-                when (val auth = app.drive.authorize()) {
+                when (val auth = app.drive.authorize(withDocs)) {
                     is DriveAuth.Token -> op(auth.accessToken)
                     is DriveAuth.NeedsUi -> {
                         afterConsent = op
@@ -288,10 +288,13 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun importDoc() = withDrive("Reading your Workout Plan doc…") { token ->
+    fun importDoc() = withDrive("Reading your Workout Plan doc…", withDocs = true) { token ->
         if (app.settings.apiKey.value.isBlank()) throw AiError.MissingKey
+        app.settings.update { it.copy(driveDocsEnabled = true) }
         docPreview.value = app.drive.fetchPlanDoc(token, 0)
     }
+
+    fun disableDocs() = viewModelScope.launch { app.settings.update { it.copy(driveDocsEnabled = false) } }
 
     fun applyDoc() {
         val doc = docPreview.value ?: return
@@ -302,7 +305,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "") } }
+    fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "", driveDocsEnabled = false) } }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -348,6 +351,21 @@ fun ProfileScreen(nav: NavHostController) {
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Text("Profile", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
 
+        if (apiKey.isBlank()) {
+            FitCard(onClick = { keyDialog = true }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Turn on the coach and meal scanning", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                        Text("Paste a free Gemini key. Takes about a minute.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    PillButton("Add key", onClick = { keyDialog = true })
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
         // Rank
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -374,21 +392,23 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         // Badges
-        FitCard {
-            Text("Badges", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+        FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.BADGES) }) {
             val owned = s.badges.associateBy { it.id }
-            com.forgequest.app.domain.BadgeCategory.entries.forEach { cat ->
-                Spacer(Modifier.height(14.dp))
-                Text(cat.label, style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(8.dp))
-                Badges.all.filter { it.category == cat }.chunked(4).forEach { row ->
-                    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
-                        row.forEach { b ->
-                            val got = owned[b.id]
-                            BadgeChip(b.title, b.description, badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f))
-                        }
-                        repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Badges", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text("${s.badges.size} of ${Badges.all.size} unlocked", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Text("See all", style = MaterialTheme.typography.labelLarge, color = c.teal)
+            }
+            val latest = s.badges.sortedByDescending { it.unlockedAt }.take(4).mapNotNull { b -> Badges.byId[b.id]?.let { it to b } }
+            if (latest.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    latest.forEach { (def, got) ->
+                        BadgeChip(def.title, def.description, badgeIcon(def.category), unlocked = true, isNew = !got.seen, modifier = Modifier.weight(1f))
                     }
+                    repeat(4 - latest.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -535,7 +555,7 @@ fun ProfileScreen(nav: NavHostController) {
                     Text("Google Drive", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Text(
                         when {
-                            settings.driveEmail.isBlank() -> "Back up your data and import plans from Google Docs"
+                            settings.driveEmail.isBlank() -> "Daily backup to a hidden app folder in your Drive. Nothing else in your Drive is touched."
                             settings.lastBackupAt > 0 -> "${settings.driveEmail} · backed up ${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt))}"
                             else -> settings.driveEmail
                         },
@@ -549,12 +569,17 @@ fun ProfileScreen(nav: NavHostController) {
             } else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton("Back up now", onClick = vm::backupNow)
-                    TonalPill("Import plan from Docs", onClick = vm::importDoc)
+                    TonalPill(if (settings.driveDocsEnabled) "Import plan from Docs" else "Import plan from Docs…", onClick = vm::importDoc)
+                    if (settings.driveDocsEnabled) TonalPill("Stop reading Docs", onClick = vm::disableDocs, tint = c.textSecondary)
                     TonalPill("Restore", onClick = vm::restore)
                     TonalPill("Disconnect", onClick = vm::disconnectDrive, tint = c.textSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("Backs up daily on its own. Name a Google Doc \"Workout Plan\" and changes to it are imported automatically.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(
+                    if (settings.driveDocsEnabled) "Backs up daily on its own. Your newest Google Doc named \"Workout Plan\" is checked daily too; changes appear in the Coach tab for you to apply."
+                    else "Backs up daily on its own. Importing a plan from Google Docs asks separately for permission to read your Drive; you can turn that off any time.",
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                )
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -587,6 +612,8 @@ fun ProfileScreen(nav: NavHostController) {
             text = {
                 Column {
                     Text("Get a free key from Google AI Studio, then paste it here. It stays encrypted on this phone.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Meal photos and your training data are sent to Google Gemini under this key. Free keys let Google use them to improve its models.", color = c.textSecondary, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
                     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) }) {
                         Text("Open Google AI Studio", color = c.blue)
@@ -702,7 +729,7 @@ fun ProfileScreen(nav: NavHostController) {
     }
 }
 
-private fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector = when (cat) {
+internal fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector = when (cat) {
     com.forgequest.app.domain.BadgeCategory.CONSISTENCY -> Icons.Rounded.LocalFireDepartment
     com.forgequest.app.domain.BadgeCategory.SKILL -> Icons.Rounded.SportsGymnastics
     com.forgequest.app.domain.BadgeCategory.STRENGTH -> Icons.Rounded.FitnessCenter
@@ -710,7 +737,7 @@ private fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector
 }
 
 @Composable
-private fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier) {
+internal fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier) {
     val c = Fit.colors
     var open by remember { mutableStateOf(false) }
     Column(

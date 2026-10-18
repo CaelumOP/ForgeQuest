@@ -63,7 +63,7 @@ Google only lets an app use Drive after its owner registers it. You do this once
 2. Go to **APIs & Services → Library**, search **Google Drive API** and click **Enable**.
 3. Go to **APIs & Services → OAuth consent screen**:
    - User type: **External**. App name: ForgeQuest. Use your email for the support and developer contact fields.
-   - Scopes: add `.../auth/drive.appdata` and `.../auth/drive.readonly`.
+   - Scopes: add `.../auth/drive.appdata` (backup) and `.../auth/drive.readonly` (only used when someone turns on the Docs import; the app asks for it separately).
    - Test users: add your Google account and each friend's Gmail address.
 4. Go to **APIs & Services → Credentials → Create credentials → OAuth client ID**:
    - Application type: **Android**
@@ -77,7 +77,7 @@ Keep a copy of `C:\Users\Administrator\.android\debug.keystore`. APKs are signed
 What Drive does once connected:
 - **Backup:** daily, plus a **Back up now** button. It goes to the app's hidden Drive folder, so it doesn't clutter your files. Photos aren't included.
 - **Restore:** replaces the data on this phone with the latest backup.
-- **Docs import:** name a Google Doc "Workout Plan" and write your week in plain text. The app turns it into a plan using your AI key. **Import plan from Docs** shows a preview first. The daily sync re-imports the doc automatically when it changes.
+- **Docs import (optional):** name a Google Doc "Workout Plan" and write your week in plain text. The first **Import plan from Docs** asks for read access to your Drive and shows a preview. After that, the daily sync checks the doc and, when it changed, posts the new week in the Coach tab for you to review and apply. **Stop reading Docs** turns it off.
 
 ## Credits
 

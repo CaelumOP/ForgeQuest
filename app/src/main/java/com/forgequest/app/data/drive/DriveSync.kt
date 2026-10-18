@@ -59,12 +59,12 @@ class DriveSync(
     private val http = OkHttpClient()
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    private val scopes = listOf(
-        Scope("https://www.googleapis.com/auth/drive.appdata"),
-        Scope("https://www.googleapis.com/auth/drive.readonly"),
-    )
+    /** Backup only touches the app's own hidden folder. Reading the person's documents is a separate, opt-in grant. */
+    private val backupScope = Scope("https://www.googleapis.com/auth/drive.appdata")
+    private val docsScope = Scope("https://www.googleapis.com/auth/drive.readonly")
 
-    suspend fun authorize(): DriveAuth {
+    suspend fun authorize(withDocs: Boolean = false): DriveAuth {
+        val scopes = if (withDocs) listOf(backupScope, docsScope) else listOf(backupScope)
         val request = AuthorizationRequest.builder().setRequestedScopes(scopes).build()
         val result = try {
             Identity.getAuthorizationClient(context).authorize(request).await()
@@ -90,7 +90,7 @@ class DriveSync(
     }
 
     /** Silent token for background work; null when the user has to approve something first. */
-    suspend fun silentToken(): String? = runCatching { (authorize() as? DriveAuth.Token)?.accessToken }.getOrNull()
+    suspend fun silentToken(withDocs: Boolean = false): String? = runCatching { (authorize(withDocs) as? DriveAuth.Token)?.accessToken }.getOrNull()
 
     suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
         val body = call(token, Request.Builder().url("$API/about?fields=user(emailAddress)").get())

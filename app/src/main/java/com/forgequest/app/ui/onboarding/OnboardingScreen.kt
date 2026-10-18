@@ -342,5 +342,8 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
         }
     }
     Spacer(Modifier.height(12.dp))
-    Text("Your key stays encrypted on this phone.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+    Text(
+        "Your key stays encrypted on this phone. Meal photos and your training data are sent to Google Gemini under it; free keys let Google use them to improve its models.",
+        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+    )
 }
