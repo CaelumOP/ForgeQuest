@@ -49,6 +49,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
+import com.forgequest.app.container
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.db.ExerciseEntity
@@ -71,7 +73,7 @@ import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
-import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -321,17 +323,19 @@ private fun ItemEditorSheet(item: PlanItemEntity, kind: ExerciseKind, name: Stri
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
             Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(16.dp))
-            EditorRow(if (draft.circuit) "Rounds" else "Sets", "${draft.sets}", { draft = draft.copy(sets = (draft.sets - 1).coerceAtLeast(1)) }, { draft = draft.copy(sets = (draft.sets + 1).coerceAtMost(10)) })
+            EditorRow(if (draft.circuit) "Rounds" else "Sets", draft.sets.toFloat(), { draft = draft.copy(sets = it.toInt()) }, step = 1f, min = 1f, max = 10f)
             if (kind == ExerciseKind.HOLD) {
-                EditorRow("Hold", "${draft.seconds ?: 30} s", { draft = draft.copy(seconds = ((draft.seconds ?: 30) - 5).coerceAtLeast(5)) }, { draft = draft.copy(seconds = (draft.seconds ?: 30) + 5) })
+                EditorRow("Hold", (draft.seconds ?: 30).toFloat(), { draft = draft.copy(seconds = it.toInt()) }, step = 5f, min = 5f, max = 3600f, unit = "s")
             } else {
-                EditorRow("Reps (min)", "${draft.repsMin ?: 10}", { draft = draft.copy(repsMin = ((draft.repsMin ?: 10) - 1).coerceAtLeast(1)) }, { draft = draft.copy(repsMin = (draft.repsMin ?: 10) + 1) })
-                EditorRow("Reps (max)", "${draft.repsMax ?: draft.repsMin ?: 10}", { draft = draft.copy(repsMax = ((draft.repsMax ?: draft.repsMin ?: 10) - 1).coerceAtLeast(draft.repsMin ?: 1)) }, { draft = draft.copy(repsMax = (draft.repsMax ?: draft.repsMin ?: 10) + 1) })
+                val minReps = draft.repsMin ?: 10
+                val maxReps = draft.repsMax ?: minReps
+                EditorRow("Reps (min)", minReps.toFloat(), { v -> draft = draft.copy(repsMin = v.toInt(), repsMax = draft.repsMax?.coerceAtLeast(v.toInt())) }, step = 1f, min = 1f, max = 999f)
+                EditorRow("Reps (max)", maxReps.toFloat(), { v -> draft = draft.copy(repsMax = v.toInt().coerceAtLeast(minReps)) }, step = 1f, min = minReps.toFloat(), max = 999f)
             }
             if (kind == ExerciseKind.WEIGHTED) {
-                EditorRow("Weight", "%.1f kg".format(draft.weightKg ?: 0f), { draft = draft.copy(weightKg = ((draft.weightKg ?: 0f) - 2.5f).coerceAtLeast(0f)) }, { draft = draft.copy(weightKg = (draft.weightKg ?: 0f) + 2.5f) })
+                EditorRow("Weight", draft.weightKg ?: 0f, { draft = draft.copy(weightKg = it) }, step = 2.5f, min = 0f, max = 999f, unit = "kg", decimals = 1)
             }
-            EditorRow("Rest", "${draft.restSeconds} s", { draft = draft.copy(restSeconds = (draft.restSeconds - 15).coerceAtLeast(0)) }, { draft = draft.copy(restSeconds = draft.restSeconds + 15) })
+            EditorRow("Rest", draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = "s")
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Part of a circuit", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
@@ -346,11 +350,12 @@ private fun ItemEditorSheet(item: PlanItemEntity, kind: ExerciseKind, name: Stri
 }
 
 @Composable
-private fun EditorRow(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+private fun EditorRow(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String = "", decimals: Int = 0) {
     val c = Fit.colors
+    val haptics = LocalContext.current.container.haptics
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-        Stepper(value, onMinus, onPlus, minValueWidth = 72.dp)
+        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 72.dp, onTick = haptics::tick)
     }
 }
 

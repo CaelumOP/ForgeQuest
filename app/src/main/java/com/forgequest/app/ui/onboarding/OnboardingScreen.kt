@@ -66,7 +66,7 @@ import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
-import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -228,9 +228,11 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
 @Composable
 private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
     Title("Your body & goals", "We suggest goals from your weight. Adjust them any time in Profile.")
-    GoalRow("Body weight", "%.1f kg".format(s.weightKg), { vm.setWeight(s.weightKg - 0.5f) }, { vm.setWeight(s.weightKg + 0.5f) })
-    GoalRow("Daily protein", "${s.protein} g", { vm.update { it.copy(protein = (it.protein - 5).coerceAtLeast(40), goalsTouched = true) } }, { vm.update { it.copy(protein = (it.protein + 5).coerceAtMost(400), goalsTouched = true) } })
-    GoalRow("Daily calories", "%,d kcal".format(s.kcal), { vm.update { it.copy(kcal = (it.kcal - 50).coerceAtLeast(1000), goalsTouched = true) } }, { vm.update { it.copy(kcal = (it.kcal + 50).coerceAtMost(6000), goalsTouched = true) } })
+    GoalRow("Body weight", s.weightKg, vm::setWeight, step = 0.5f, min = 30f, max = 250f, unit = "kg", decimals = 1)
+    GoalRow("Daily protein", s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = "g")
+    GoalRow("Daily calories", s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
+    Spacer(Modifier.height(4.dp))
+    Text("Tap a number to type it.", style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
     Spacer(Modifier.height(8.dp))
     Text(
         "Protein suggestion: about 1.8 g per kg of body weight, a common target for building muscle.",
@@ -240,14 +242,14 @@ private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
 }
 
 @Composable
-private fun GoalRow(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String, decimals: Int = 0) {
     val c = Fit.colors
     Row(
         Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card).padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
-        Stepper(value, onMinus, onPlus, minValueWidth = 84.dp)
+        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp)
     }
 }
 

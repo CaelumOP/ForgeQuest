@@ -69,7 +69,7 @@ import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
-import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.LiveWorkoutViewModel.Field
@@ -358,11 +358,23 @@ private fun SetRow(
         Spacer(Modifier.width(6.dp))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             when (kind) {
-                ExerciseKind.HOLD -> Stepper("${set.seconds ?: 0} s", { vm.adjust(set, kind, Field.SECONDS, -1) }, { vm.adjust(set, kind, Field.SECONDS, 1) }, minValueWidth = 44.dp)
-                ExerciseKind.REPS -> Stepper("${set.reps ?: 0}", { vm.adjust(set, kind, Field.REPS, -1) }, { vm.adjust(set, kind, Field.REPS, 1) }, minValueWidth = 32.dp)
+                ExerciseKind.HOLD -> NumberStepper(
+                    (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
+                    unit = "s", title = "Hold time", minValueWidth = 52.dp,
+                )
+                ExerciseKind.REPS -> NumberStepper(
+                    (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
+                    title = "Reps", minValueWidth = 40.dp,
+                )
                 ExerciseKind.WEIGHTED -> {
-                    Stepper("${set.reps ?: 0} reps", { vm.adjust(set, kind, Field.REPS, -1) }, { vm.adjust(set, kind, Field.REPS, 1) }, minValueWidth = 56.dp)
-                    Stepper("%.1f kg".format(set.weightKg ?: 0f), { vm.adjust(set, kind, Field.WEIGHT, -1) }, { vm.adjust(set, kind, Field.WEIGHT, 1) }, minValueWidth = 56.dp, valueColor = c.blue)
+                    NumberStepper(
+                        (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
+                        unit = "reps", title = "Reps", minValueWidth = 64.dp,
+                    )
+                    NumberStepper(
+                        set.weightKg ?: 0f, { vm.setField(set, Field.WEIGHT, it) }, step = 2.5f, min = 0f, max = 999f,
+                        unit = "kg", decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue,
+                    )
                 }
             }
         }

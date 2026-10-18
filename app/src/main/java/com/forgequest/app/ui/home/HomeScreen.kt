@@ -65,7 +65,7 @@ import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.RingSpec
 import com.forgequest.app.ui.components.StatColumn
-import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.SharingStarted
@@ -151,12 +151,12 @@ fun HomeScreen(nav: NavHostController) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Log body weight", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(20.dp))
-                Stepper(
-                    "%.1f kg".format(kg),
-                    onMinus = { kg = ((kg * 10).roundToInt() - 1) / 10f; vm.app.haptics.tick() },
-                    onPlus = { kg = ((kg * 10).roundToInt() + 1) / 10f; vm.app.haptics.tick() },
-                    minValueWidth = 96.dp,
+                NumberStepper(
+                    kg, { kg = it }, step = 0.1f, min = 30f, max = 250f, unit = "kg", decimals = 1,
+                    title = "Body weight", minValueWidth = 96.dp, onTick = vm.app.haptics::tick,
                 )
+                Spacer(Modifier.height(8.dp))
+                Text("Tap the number to type it", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(24.dp))
                 PillButton("Save", onClick = { vm.logWeight(kg); weightSheet = false }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))

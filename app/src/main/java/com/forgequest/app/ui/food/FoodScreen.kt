@@ -85,6 +85,7 @@ import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
+import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
@@ -325,13 +326,21 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
             )
         }
         if (qty != null) {
+            var typing by remember { mutableStateOf(false) }
             Stepper(
                 if (qty % 1f == 0f) "${qty.toInt()}×" else "${qty}×",
                 // Whole servings, with a half serving as the smallest step.
                 onMinus = { onQty(if (qty > 1f) qty - 1f else if (qty == 1f) 0.5f else 0f) },
                 onPlus = { onQty(if (qty < 1f) 1f else (qty + 1f).coerceAtMost(20f)) },
-                minValueWidth = 34.dp,
+                minValueWidth = 40.dp,
+                onValueClick = { typing = true },
             )
+            if (typing) {
+                NumberEntryDialog(
+                    title = "Servings of ${food.name}", initial = qty, unit = "×", decimals = 2, min = 0.25f, max = 20f,
+                    onDismiss = { typing = false }, onConfirm = { typing = false; onQty(it) },
+                )
+            }
         }
     }
 }

@@ -85,6 +85,7 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
@@ -331,15 +332,23 @@ fun ProfileScreen(nav: NavHostController) {
                 Text("Goals", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             }
             Spacer(Modifier.height(12.dp))
-            SettingStepper("Daily protein", "${settings.proteinGoal} g", { vm.updateGoals(protein = (settings.proteinGoal - 5).coerceAtLeast(40)) }, { vm.updateGoals(protein = settings.proteinGoal + 5) })
-            SettingStepper("Daily calories", "%,d".format(settings.kcalGoal), { vm.updateGoals(kcal = (settings.kcalGoal - 50).coerceAtLeast(1000)) }, { vm.updateGoals(kcal = settings.kcalGoal + 50) })
+            SettingStepper("Daily protein", settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = "g")
+            SettingStepper("Daily calories", settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
             val planDays = s.plan?.trainingDays?.size ?: 0
-            SettingStepper(
-                "Workouts per week",
-                if (settings.weeklyTargetOverride == 0) "$planDays (plan)" else "${settings.weeklyTargetOverride}",
-                { vm.updateGoals(weekly = if (settings.weeklyTargetOverride <= 1) 0 else settings.weeklyTargetOverride - 1) },
-                { vm.updateGoals(weekly = ((if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride) + 1).coerceAtMost(7)) },
-            )
+            val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Workouts per week", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    if (settings.weeklyTargetOverride == 0) Text("From your plan", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Stepper(
+                    "$weeklyShown",
+                    // Going below the plan's count sets an explicit target; landing back on the plan's count clears it.
+                    onMinus = { vm.updateGoals(weekly = (weeklyShown - 1).coerceAtLeast(1).let { if (it == planDays) 0 else it }) },
+                    onPlus = { vm.updateGoals(weekly = (weeklyShown + 1).coerceAtMost(7).let { if (it == planDays) 0 else it }) },
+                    minValueWidth = 84.dp,
+                )
+            }
             Text("Your weekly streak counts weeks where you reach this number.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
         Spacer(Modifier.height(12.dp))
@@ -468,7 +477,7 @@ fun ProfileScreen(nav: NavHostController) {
             title = { Text("Log body weight", color = c.textPrimary) },
             text = {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Stepper("%.1f kg".format(kg), { kg = ((kg * 10).roundToInt() - 1) / 10f }, { kg = ((kg * 10).roundToInt() + 1) / 10f }, minValueWidth = 96.dp)
+                    NumberStepper(kg, { kg = it }, step = 0.1f, min = 30f, max = 250f, unit = "kg", decimals = 1, title = "Body weight", minValueWidth = 96.dp)
                 }
             },
             confirmButton = { TextButton(onClick = { vm.logWeight(kg); weightDialog = false }) { Text("Save", color = c.teal) } },
@@ -487,8 +496,8 @@ fun ProfileScreen(nav: NavHostController) {
                 Column {
                     Text("Measure from wrist crease to the tip of your middle finger, and across your palm.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
-                    SettingStepper("Length", "%.1f cm".format(length), { length = (length - 0.5f).coerceAtLeast(10f) }, { length = (length + 0.5f).coerceAtMost(28f) })
-                    SettingStepper("Palm width", "%.1f cm".format(palm), { palm = (palm - 0.5f).coerceAtLeast(5f) }, { palm = (palm + 0.5f).coerceAtMost(14f) })
+                    SettingStepper("Length", length, { length = it }, step = 0.5f, min = 10f, max = 28f, unit = "cm", decimals = 1)
+                    SettingStepper("Palm width", palm, { palm = it }, step = 0.5f, min = 5f, max = 14f, unit = "cm", decimals = 1)
                 }
             },
             confirmButton = { TextButton(onClick = { vm.setHand(length, palm); handDialog = false }) { Text("Save", color = c.teal) } },
@@ -574,10 +583,10 @@ private fun SettingsRow(icon: ImageVector, tint: androidx.compose.ui.graphics.Co
 }
 
 @Composable
-private fun SettingStepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+private fun SettingStepper(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String = "", decimals: Int = 0) {
     val c = Fit.colors
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-        Stepper(value, onMinus, onPlus, minValueWidth = 84.dp)
+        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp)
     }
 }
