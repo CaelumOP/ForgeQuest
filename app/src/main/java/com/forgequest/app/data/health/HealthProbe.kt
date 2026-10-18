@@ -50,6 +50,20 @@ class HealthProbe(private val context: Context) {
 
     suspend fun granted(): Set<String> = HealthConnectClient.getOrCreate(context).permissionController.getGrantedPermissions()
 
+    /** A one-line verdict for the Settings button: which data types actually have readings in the last 14 days. */
+    suspend fun check(): String {
+        val client = HealthConnectClient.getOrCreate(context)
+        val granted = client.permissionController.getGrantedPermissions()
+        val end = Instant.now()
+        val start = end.minus(14, ChronoUnit.DAYS)
+        val withData = types.filter { HealthPermission.getReadPermission(it) in granted }.filter { type ->
+            runCatching { client.readRecords(ReadRecordsRequest(type, TimeRangeFilter.between(start, end), pageSize = 1)).records.isNotEmpty() }.getOrDefault(false)
+        }
+        val names = withData.joinToString(", ") { t -> (t.simpleName ?: "").removeSuffix("Record").replace(Regex("(?<=[a-z])(?=[A-Z])"), " ") }
+        return if (withData.isEmpty()) context.getString(com.forgequest.app.R.string.hc_check_empty)
+        else context.getString(com.forgequest.app.R.string.hc_check_ok, withData.size, types.size, names)
+    }
+
     suspend fun report(days: Long = 14): String {
         val client = HealthConnectClient.getOrCreate(context)
         val granted = client.permissionController.getGrantedPermissions()

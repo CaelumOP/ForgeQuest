@@ -919,10 +919,10 @@
     <string name="profile_protein_per_kg">البروتين لكل كغ</string>
     <string name="unit_g_per_kg">غ/كغ</string>
     <string name="profile_fat_share">حصة الدهون من السعرات</string>
-    <string name="hc_test_title">تجربة Health Connect</string>
+    <string name="hc_test_title">افحص Health Connect</string>
     <string name="hc_test_hint">يقرأ آخر 14 يومًا من Fitbit وGoogle Health وغيرها، ويحفظ تقريرًا تقدر تشاركه</string>
     <string name="hc_saved">تم حفظ تقرير Health Connect</string>
-    <string name="hc_failed">تعذّرت قراءة Health Connect: %1$s</string>
+    <string name="hc_failed">فشل فحص Health Connect: %1$s</string>
     <string name="hc_unavailable">Health Connect غير متوفر على هذا الجوال</string>
     <string name="ready_title">جاهزيتك اليوم</string>
     <string name="ready_recovery">التعافي</string>
@@ -1032,4 +1032,6 @@
     <string name="bridge_week_title">**التحليل الأسبوعي من Gemini**</string>
     <string name="bridge_plan_card">Gemini يقترح أسبوعًا جديدًا. استعرضه وطبّقه إذا كان مناسبًا.</string>
     <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول في Google. إذا قائمة الحسابات تقفل فورًا، فالتطبيق غير مسجّل في Drive بعد (README › Google Drive).</string>
+    <string name="hc_check_ok">Health Connect يعمل: %1$d من %2$d أنواع بيانات فيها قراءات (%3$s).</string>
+    <string name="hc_check_empty">Health Connect يعمل، لكن ما فيه بيانات في آخر 14 يومًا. تأكد أن Google Health يشارك مع Health Connect.</string>
 </resources>
