@@ -1031,4 +1031,5 @@
     <string name="bridge_home_title">من Gemini</string>
     <string name="bridge_week_title">**التحليل الأسبوعي من Gemini**</string>
     <string name="bridge_plan_card">Gemini يقترح أسبوعًا جديدًا. استعرضه وطبّقه إذا كان مناسبًا.</string>
+    <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول في Google. إذا قائمة الحسابات تقفل فورًا، فالتطبيق غير مسجّل في Drive بعد (README › Google Drive).</string>
 </resources>

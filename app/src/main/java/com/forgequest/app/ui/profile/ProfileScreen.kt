@@ -268,6 +268,8 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         afterConsent = null
         if (!ok || op == null) {
             busy.value = null
+            // Google closes the account picker straight away when the app isn't registered for Drive yet; say so.
+            if (!ok) message.value = app.str(R.string.drive_signin_cancelled)
             return
         }
         viewModelScope.launch {

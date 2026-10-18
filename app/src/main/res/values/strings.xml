@@ -934,4 +934,5 @@
     <string name="bridge_home_title">From Gemini</string>
     <string name="bridge_week_title">**Weekly analysis from Gemini**</string>
     <string name="bridge_plan_card">Gemini suggests a new week. Preview it, and apply it if it looks right.</string>
+    <string name="drive_signin_cancelled">Google sign-in didn\'t finish. If the account list closes straight away, Drive isn\'t registered for this app yet (README › Google Drive).</string>
 </resources>
