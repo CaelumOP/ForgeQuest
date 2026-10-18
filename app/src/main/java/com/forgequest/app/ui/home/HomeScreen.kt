@@ -1,5 +1,12 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.R
+import com.forgequest.app.ui.localTitle
+
+import androidx.compose.ui.res.pluralStringResource
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -118,8 +125,8 @@ fun HomeScreen(nav: NavHostController) {
                     IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(if (unseen.size == 1) "New badge unlocked" else "${unseen.size} new badges", style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                        Text(unseen.joinToString(" · ") { it.title }, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(pluralStringResource(R.plurals.home_new_badges, unseen.size, unseen.size), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Text(unseen.map { it.localTitle() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -152,16 +159,16 @@ fun HomeScreen(nav: NavHostController) {
         var kg by remember { mutableFloatStateOf(s.latestWeight ?: 75f) }
         ModalBottomSheet(onDismissRequest = { weightSheet = false }, containerColor = c.card) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Log body weight", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.weight_log_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(20.dp))
                 NumberStepper(
                     unit.fromKg(kg), { kg = unit.toKg(it) }, step = unit.bodyStep, min = unit.fromKg(30f), max = unit.fromKg(250f), unit = unit.label, decimals = 1,
-                    title = "Body weight", minValueWidth = 96.dp, onTick = vm.app.haptics::tick,
+                    title = stringResource(R.string.weight_body), minValueWidth = 96.dp, onTick = vm.app.haptics::tick,
                 )
                 Spacer(Modifier.height(8.dp))
-                Text("Tap the number to type it", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(stringResource(R.string.stepper_tap_to_type), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(24.dp))
-                PillButton("Save", onClick = { vm.logWeight(kg); weightSheet = false }, modifier = Modifier.fillMaxWidth())
+                PillButton(stringResource(R.string.action_save), onClick = { vm.logWeight(kg); weightSheet = false }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
             }
         }
@@ -173,20 +180,20 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
     val c = Fit.colors
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
-        in 5..11 -> "Good morning"
-        in 12..16 -> "Good afternoon"
-        else -> "Good evening"
+        in 5..11 -> stringResource(R.string.home_good_morning)
+        in 12..16 -> stringResource(R.string.home_good_afternoon)
+        else -> stringResource(R.string.home_good_evening)
     }
     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(
-                if (s.settings.name.isNotBlank()) "$greeting, ${s.settings.name}" else greeting,
+                if (s.settings.name.isNotBlank()) stringResource(R.string.home_greeting_name, greeting, s.settings.name) else greeting,
                 style = MaterialTheme.typography.headlineSmall,
                 color = c.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d")), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+            Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
         Box(Modifier.clip(CircleShape).clickable(onClick = onRankClick)) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
@@ -217,8 +224,8 @@ private fun NutritionRings(s: ProgressSnapshot) {
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            Legend(c.teal, "Protein (g)")
-            Legend(kcalColor, "Calories")
+            Legend(c.teal, stringResource(R.string.home_legend_protein))
+            Legend(kcalColor, stringResource(R.string.home_legend_calories))
         }
     }
 }
@@ -239,20 +246,20 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
     val kcalLeft = s.settings.kcalGoal - s.today.kcal
     Row(Modifier.fillMaxWidth()) {
         StatColumn(
-            if (proteinLeft > 0) "$proteinLeft g" else "Done",
-            if (proteinLeft > 0) "Protein left" else "Protein goal",
+            if (proteinLeft > 0) stringResource(R.string.home_protein_left_value, proteinLeft) else stringResource(R.string.home_done),
+            if (proteinLeft > 0) stringResource(R.string.home_protein_left) else stringResource(R.string.home_protein_goal),
             c.teal,
             Modifier.weight(1f),
         )
         StatColumn(
             "%,d".format(abs(kcalLeft)),
-            if (kcalLeft >= 0) "Cal left" else "Cal surplus",
+            if (kcalLeft >= 0) stringResource(R.string.home_cal_left) else stringResource(R.string.home_cal_surplus),
             if (kcalLeft >= 0) c.blue else c.gold,
             Modifier.weight(1f),
         )
         StatColumn(
             s.latestWeight?.let { s.settings.weightUnit.number(it) } ?: "–",
-            "Weight (${s.settings.weightUnit.label})",
+            stringResource(R.string.home_weight_unit, s.settings.weightUnit.label),
             c.textPrimary,
             Modifier.weight(1f),
             onClick = onWeight,
@@ -265,12 +272,12 @@ private fun StreakCard(streak: WeeklyStreak) {
     val c = Fit.colors
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Your weekly streak", style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.streak_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
             Text(
                 when {
-                    streak.freeWeek -> "Starts next week"
-                    streak.hitThisWeek -> "Week complete"
-                    else -> "${streak.doneThisWeek} of ${streak.targetThisWeek} this week"
+                    streak.freeWeek -> stringResource(R.string.streak_starts_next_week)
+                    streak.hitThisWeek -> stringResource(R.string.streak_week_complete)
+                    else -> stringResource(R.string.streak_done_of_target, streak.doneThisWeek, streak.targetThisWeek)
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = if (streak.hitThisWeek) c.gold else c.textSecondary,
@@ -290,17 +297,17 @@ private fun StreakCard(streak: WeeklyStreak) {
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (streak.weeks == 1) "1 week" else "${streak.weeks} weeks",
+                    pluralStringResource(R.plurals.streak_weeks, streak.weeks, streak.weeks),
                     style = MaterialTheme.typography.headlineSmall,
                     color = c.textPrimary,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
                     when {
-                        streak.freeWeek -> "Your first full week starts Monday"
-                        streak.weeks == 0 && streak.doneThisWeek == 0 -> "Hit your weekly target to start a streak"
-                        streak.hitThisWeek -> "Best: ${streak.best} ${if (streak.best == 1) "week" else "weeks"}"
-                        else -> "${streak.targetThisWeek - streak.doneThisWeek} more to keep it going"
+                        streak.freeWeek -> stringResource(R.string.streak_first_week)
+                        streak.weeks == 0 && streak.doneThisWeek == 0 -> stringResource(R.string.streak_hit_to_start)
+                        streak.hitThisWeek -> pluralStringResource(R.plurals.streak_best, streak.best, streak.best)
+                        else -> pluralStringResource(R.plurals.streak_more_to_go, streak.targetThisWeek - streak.doneThisWeek, streak.targetThisWeek - streak.doneThisWeek)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = c.textSecondary,
@@ -326,7 +333,7 @@ private fun DayCircle(state: DayState) {
     val size = 34.dp
     when (state) {
         DayState.DONE -> Box(Modifier.size(size).clip(CircleShape).background(c.teal), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Check, contentDescription = "Done", tint = c.onTeal, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_done), tint = c.onTeal, modifier = Modifier.size(20.dp))
         }
         DayState.TODAY_PLANNED -> MiniRing(0f, c.teal, c.teal, size = size, stroke = 2.5.dp) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(c.teal))
@@ -336,7 +343,7 @@ private fun DayCircle(state: DayState) {
             Box(Modifier.size(4.dp).clip(CircleShape).background(c.textSecondary.copy(alpha = 0.5f)))
         }
         DayState.REST -> Box(Modifier.size(size).clip(CircleShape).background(c.blueTrack), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Bedtime, contentDescription = "Rest", tint = c.blue, modifier = Modifier.size(16.dp))
+            Icon(Icons.Rounded.Bedtime, contentDescription = stringResource(R.string.cd_rest), tint = c.blue, modifier = Modifier.size(16.dp))
         }
         DayState.OFF -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh.copy(alpha = 0.5f)))
     }
@@ -355,7 +362,7 @@ private fun TodayCard(
     val isRest = day == null || day.day.isRest
     val noPlan = day == null
     FitCard(onClick = onOpenPlan) {
-        Text("Today's workout", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+        Text(stringResource(R.string.today_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (noPlan && !hasOpenSession) IconCircle(Icons.Rounded.Edit, c.teal, c.tealTrack)
@@ -365,9 +372,9 @@ private fun TodayCard(
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
-                        hasOpenSession -> "Workout in progress"
-                        noPlan -> "No plan yet"
-                        isRest -> "Rest day"
+                        hasOpenSession -> stringResource(R.string.today_in_progress)
+                        noPlan -> stringResource(R.string.today_no_plan)
+                        isRest -> stringResource(R.string.today_rest_day)
                         else -> day!!.day.title
                     },
                     style = MaterialTheme.typography.titleMedium,
@@ -377,11 +384,11 @@ private fun TodayCard(
                 )
                 Text(
                     when {
-                        hasOpenSession -> "Pick up where you left off"
-                        doneToday -> "Done for today. Nice work."
-                        noPlan -> "Pick a starter plan, build your own, or ask the coach."
-                        isRest -> day?.day?.note?.ifBlank { null } ?: "Recovery is part of training."
-                        else -> "${exerciseNames.size} exercises · " + exerciseNames.take(3).joinToString(", ")
+                        hasOpenSession -> stringResource(R.string.today_resume_hint)
+                        doneToday -> stringResource(R.string.today_done)
+                        noPlan -> stringResource(R.string.today_no_plan_hint)
+                        isRest -> day?.day?.note?.ifBlank { null } ?: stringResource(R.string.today_rest_hint)
+                        else -> pluralStringResource(R.plurals.today_exercises, exerciseNames.size, exerciseNames.size, exerciseNames.take(3).joinToString(stringResource(R.string.list_separator)))
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = c.textSecondary,
@@ -391,10 +398,10 @@ private fun TodayCard(
             }
             Spacer(Modifier.width(12.dp))
             when {
-                hasOpenSession -> PillButton("Resume", onClick = onStart)
+                hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)
                 doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
-                noPlan -> PillButton("Set up", onClick = onOpenPlan)
-                !isRest -> PillButton("Start", onClick = onStart)
+                noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
+                !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
             }
         }
     }

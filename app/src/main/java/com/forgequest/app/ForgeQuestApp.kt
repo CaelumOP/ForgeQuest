@@ -43,6 +43,8 @@ class ForgeQuestApp : Application() {
     lateinit var container: AppContainer
         private set
 
+    override fun attachBaseContext(base: Context) = super.attachBaseContext(AppLocale.wrap(base))
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)

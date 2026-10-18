@@ -1,5 +1,7 @@
 package com.forgequest.app
 
+import androidx.compose.ui.res.stringResource
+
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -45,6 +47,8 @@ class MainActivity : FragmentActivity() {
     /** True whenever the app comes back to the foreground with the lock turned on, until the person authenticates. */
     private var locked by mutableStateOf(true)
     private var prompting = false
+
+    override fun attachBaseContext(newBase: android.content.Context) = super.attachBaseContext(AppLocale.wrap(newBase))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,8 +106,8 @@ class MainActivity : FragmentActivity() {
         })
         prompt.authenticate(
             BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Unlock ForgeQuest")
-                .setSubtitle("Your training and food data stay private")
+                .setTitle(getString(R.string.lock_prompt_title))
+                .setSubtitle(getString(R.string.lock_prompt_subtitle))
                 .setAllowedAuthenticators(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
                 .build()
         )
@@ -117,11 +121,11 @@ private fun LockScreen(onUnlock: () -> Unit) {
         Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             IconCircle(Icons.Rounded.Lock, c.teal, c.tealTrack, 72.dp)
             Spacer(Modifier.height(20.dp))
-            Text("ForgeQuest is locked", style = MaterialTheme.typography.headlineSmall, color = c.textPrimary, textAlign = TextAlign.Center)
+            Text(stringResource(R.string.lock_title), style = MaterialTheme.typography.headlineSmall, color = c.textPrimary, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.dp))
-            Text("Use your fingerprint, face or screen lock to continue.", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, textAlign = TextAlign.Center)
+            Text(stringResource(R.string.lock_body), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, textAlign = TextAlign.Center)
             Spacer(Modifier.height(24.dp))
-            PillButton("Unlock", onClick = onUnlock)
+            PillButton(stringResource(R.string.lock_unlock), onClick = onUnlock)
         }
     }
 }
