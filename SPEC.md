@@ -63,6 +63,32 @@ Google Drive backup/restore + Docs plan import via Google sign-in. Requires one-
 ## Status (2026-10-18)
 All phases are built and checked on an Android 15 emulator with real screenshots, in dark and light mode. 29 unit tests pass.
 
+### Review pass (2026-10-18, branch claude/hopeful-meitner-lkx0er)
+Done from the product review, top down. Logic layers compile and 36 unit tests pass under a standalone Kotlin
+compiler; the Compose screens could not be built in that environment, so **check these on the emulator** before
+sharing an APK:
+- Direct number entry: tap any stepper value (sets, reps, kg, seconds, body weight, goals, servings).
+- Workouts → history icon: list by month, open a session, edit/remove sets, delete a workout; PR tags recompute.
+- Profile → Your data: Export file (share sheet), Import file, Undo last restore; Drive Restore shows a preview first.
+- Light mode: deeper teal/blue/gold/coral; dark mode unchanged.
+- Scan: full-res photos are subsampled; tap an item to fix grams; dish name editable; snackbar after logging;
+  camera permanently denied → "Open app settings".
+- Undo snackbars for meal and plan-item deletes; confirm before finishing with unticked sets, deleting a food,
+  clearing the chat.
+- Coach: streaming bubble, fast mode (thinking off) for chat/scans/check-in with 400 fallback, richer data summary,
+  MEMORY notes under Profile → What the coach remembers. "Review and apply" always previews first.
+- Food: day picker (log to past days), 7-day protein card, Quick log sheet.
+- Plan editor: Previous plans, Move up/down, swap days. Docs sync posts a staged plan in Coach instead of applying.
+- Drive: appdata-only by default; Docs read access is a separate opt-in. Gemini data-use disclosure in onboarding and the key dialog.
+- Badges on their own screen; setup card on Profile when no key.
+- Snapshot built off the main thread with a 90-day meal window; orphan photo cleanup; stable Material 3 and Room 2.7.2
+  (Room 2.7.2 with KSP 2.2.21-2.0.4 is expected to work; if the build complains, pin KSP to the version Room's
+  release notes list).
+- Release signing via keystore.properties (see README). Shrinking is opt-in with -PminifyRelease=true.
+
+Still open from the review (nice-to-have): Arabic localisation and lb units, rest-timer notification, custom
+exercise management, a display typeface, per-set notes, reminders, manual theme switch, haptics toggle, biometric lock.
+
 ## Open items
 - [x] Hemo routine: the Foundation playlist was transcribed from on-screen labels into docs/hemo-foundation.md. It's 5 training days plus 2 rest days, not 6.
 - [x] Body map: react-native-body-highlighter 3.2.0 (MIT), male and female.
