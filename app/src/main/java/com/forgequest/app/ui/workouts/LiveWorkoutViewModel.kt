@@ -7,6 +7,7 @@ import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.LevelInfo
 import com.forgequest.app.domain.Muscle
@@ -144,6 +145,18 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         setField(set, field, current + step * direction)
     }
 
+    /** Best score ever per exercise (finished sessions only), for the gold flash when a typed value beats it. */
+    private val bestScores: StateFlow<Map<String, Float>> = app.progress.snapshot.map { snap ->
+        snap.doneSets.groupBy { it.exerciseId }.mapValues { (id, sets) ->
+            val kind = snap.exercises[id]?.kind ?: ExerciseKind.REPS
+            sets.maxOf { Records.score(kind, it.reps, it.seconds, it.weightKg) }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /** Id of the set whose value just beat the person's best; cleared after the flash. */
+    val newBest = MutableStateFlow<Long?>(null)
+    private val celebrated = mutableSetOf<Long>()
+
     /** Writes a typed or nudged value, clamped to a sane range. */
     fun setField(set: SetEntity, field: Field, value: Float) {
         app.haptics.tick()
@@ -153,6 +166,13 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             Field.WEIGHT -> set.copy(weightKg = ((value * 10).roundToInt() / 10f).coerceIn(0f, 999f))
         }
         viewModelScope.launch { repo.updateSet(updated) }
+        val kind = exercises.value[set.exerciseId]?.kind ?: ExerciseKind.REPS
+        val best = bestScores.value[set.exerciseId] ?: return
+        if (Records.score(kind, updated.reps, updated.seconds, updated.weightKg) > best && celebrated.add(set.id)) {
+            app.haptics.celebrate()
+            newBest.value = set.id
+            viewModelScope.launch { delay(1400); if (newBest.value == set.id) newBest.value = null }
+        }
     }
 
     fun setNote(set: SetEntity, note: String) = viewModelScope.launch { repo.updateSet(set.copy(note = note.trim().take(120))) }

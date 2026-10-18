@@ -45,11 +45,13 @@ data class BackupSettings(
     val hapticsEnabled: Boolean = true,
     val unit: String = "kg",
     val reminderHour: Int = -1,
+    val heightCm: Float = 0f,
+    val birthYear: Int = 0,
 ) {
     companion object {
         fun from(s: Settings) = BackupSettings(
             s.name, s.bodyType.name, s.kcalGoal, s.proteinGoal, s.weeklyTargetOverride, s.handLengthCm, s.palmWidthCm, s.coachNotes,
-            s.theme, s.hapticsEnabled, s.unit, s.reminderHour,
+            s.theme, s.hapticsEnabled, s.unit, s.reminderHour, s.heightCm, s.birthYear,
         )
     }
 
@@ -66,6 +68,8 @@ data class BackupSettings(
         hapticsEnabled = hapticsEnabled,
         unit = unit,
         reminderHour = reminderHour,
+        heightCm = heightCm,
+        birthYear = birthYear,
     )
 }
 

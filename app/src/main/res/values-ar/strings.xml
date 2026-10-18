@@ -872,4 +872,10 @@
     <string name="home_progress_open">شاهد تقدّمك</string>
     <string name="profile_progress_title">التقدّم</string>
     <string name="profile_progress_hint">الاتجاهات والأرقام القياسية والانتظام عبر الأشهر</string>
+    <string name="profile_height">الطول</string>
+    <string name="profile_age">العمر</string>
+    <string name="unit_years">سنة</string>
+    <string name="goals_suggested">المقترح %1$s سعرة بناءً على وزنك وطولك وعمرك و%2$d أيام تدريب أسبوعيًا</string>
+    <string name="goals_suggest_missing">أضف طولك وعمرك للحصول على تقدير للسعرات</string>
+    <string name="goals_use">استخدم</string>
 </resources>

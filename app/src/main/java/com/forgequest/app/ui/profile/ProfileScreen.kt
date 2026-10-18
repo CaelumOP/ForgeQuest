@@ -99,6 +99,7 @@ import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
+import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
@@ -137,6 +138,10 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val shareUri = MutableStateFlow<Uri?>(null)
     val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
     private var afterConsent: (suspend (String) -> Unit)? = null
+
+    fun setBodyMeasures(heightCm: Float? = null, birthYear: Int? = null) = viewModelScope.launch {
+        app.settings.update { it.copy(heightCm = heightCm ?: it.heightCm, birthYear = birthYear ?: it.birthYear) }
+    }
 
     fun updateGoals(kcal: Int? = null, protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
         app.settings.update { s ->
@@ -486,6 +491,26 @@ fun ProfileScreen(nav: NavHostController) {
             SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
             SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
             val planDays = s.plan?.trainingDays?.size ?: 0
+            val thisYear = java.time.Year.now().value
+            val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
+            SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
+            SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
+            val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
+            val suggested = s.latestWeight?.let { Nutrition.suggestedKcal(it, settings.heightCm, age, settings.bodyType == BodyType.MALE, trainingDaysForKcal) }
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    when {
+                        settings.heightCm <= 0f || age <= 0 -> stringResource(R.string.goals_suggest_missing)
+                        suggested != null -> stringResource(R.string.goals_suggested, "%,d".format(suggested), trainingDaysForKcal)
+                        else -> stringResource(R.string.goals_suggest_missing)
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f),
+                )
+                if (suggested != null && settings.heightCm > 0f && age > 0 && suggested != settings.kcalGoal) {
+                    Spacer(Modifier.width(8.dp))
+                    TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(kcal = suggested) })
+                }
+            }
             val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

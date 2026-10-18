@@ -775,4 +775,10 @@
     <string name="home_progress_open">See your progress</string>
     <string name="profile_progress_title">Progress</string>
     <string name="profile_progress_hint">Trends, records and consistency over months</string>
+    <string name="profile_height">Height</string>
+    <string name="profile_age">Age</string>
+    <string name="unit_years">yrs</string>
+    <string name="goals_suggested">Suggested %1$s kcal from your weight, height, age and %2$d training days a week</string>
+    <string name="goals_suggest_missing">Add your height and age for a calorie estimate</string>
+    <string name="goals_use">Use</string>
 </resources>
