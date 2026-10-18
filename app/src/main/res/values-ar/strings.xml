@@ -983,6 +983,9 @@
     <string name="band_all_out">أقصى جهد</string>
     <string name="ready_not_now">ليس الآن</string>
     <string name="profile_health_title">جاهزية Fitbit</string>
-    <string name="profile_health_hint">التعافي والنوم والإجهاد في الرئيسية من Health Connect. اختياري.</string>
+    <string name="profile_health_hint">مقفل · شغّله لتحصل على التعافي والنوم والإجهاد من Fitbit عبر Health Connect</string>
     <string name="ready_tap_hint">اضغط على أي دائرة للتفاصيل</string>
+    <string name="profile_health_on">مربوط · التعافي والنوم والإجهاد في الرئيسية</string>
+    <string name="profile_body_not_set">غير محدد بعد: هذي قيم افتراضية. اضغط + أو − لتحديد قيمك.</string>
+    <string name="profile_version">الإصدار %1$s</string>
 </resources>

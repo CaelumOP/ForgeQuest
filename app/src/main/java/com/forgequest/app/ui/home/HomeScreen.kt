@@ -97,8 +97,6 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     val health = app.health.state
     fun refreshHealth() = viewModelScope.launch { app.health.refresh() }
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
-    fun hideHealth() = viewModelScope.launch { app.settings.update { it.copy(healthEnabled = false) }; app.health.refresh(force = true) }
-    fun refreshHealthNow() = viewModelScope.launch { app.health.refresh(force = true) }
 
     suspend fun startToday(day: PlanDayWithItems?) = app.workouts.startSession(day)
 }
@@ -113,10 +111,7 @@ fun HomeScreen(nav: NavHostController) {
     val scope = rememberCoroutineScope()
     val health by vm.health.collectAsState()
     // Fitbit numbers through Health Connect: re-read whenever Home opens, and right after access is granted.
-    androidx.compose.runtime.LaunchedEffect(Unit) { vm.refreshHealthNow() }
-    val healthAccess = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
-    ) { vm.refreshHealth() }
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.refreshHealth() }
     var weightSheet by remember { mutableStateOf(false) }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
@@ -146,7 +141,7 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        ReadinessCard(health, onConnect = { healthAccess.launch(vm.app.health.requestPermissions()) }, onFeltGreat = vm::setFeltGreat, onHide = vm::hideHealth)
+        ReadinessCard(health, onFeltGreat = vm::setFeltGreat)
         StreakCard(s.streak)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
