@@ -53,11 +53,11 @@ class CoachRepository(
     suspend fun send(text: String) {
         val tapped = SystemClock.elapsedRealtime()
         chat.insert(ChatEntity(role = "user", text = text.trim(), createdAt = System.currentTimeMillis()))
-        val history = chat.recent(12).reversed().filter { it.kind != "error" }
+        val history = answeredHistory(chat.recent(12).reversed())
         val wantsPlan = wantsPlan(text)
         _draft.value = ""
         try {
-            val system = coachSystemPrompt(replyLanguage = languageOf(text))
+            val system = coachSystemPrompt(replyLanguage = languageOf(text), plan = wantsPlan)
             var firstText = -1L
             val reply = gemini.generateStreaming(
                 apiKey = requireKey(),
@@ -79,6 +79,19 @@ class CoachRepository(
             saveError(e)
         } finally {
             _draft.value = null
+        }
+    }
+
+    /**
+     * Drops error bubbles and the questions that got one instead of an answer; otherwise the model answers
+     * every failed question again on top of the new one. The newest message always stays.
+     */
+    internal fun answeredHistory(messages: List<ChatEntity>): List<ChatEntity> = messages.filterIndexed { i, m ->
+        when {
+            m.kind == "error" -> false
+            i == messages.lastIndex -> true
+            m.role == "user" -> messages[i + 1].role == "coach" && messages[i + 1].kind != "error"
+            else -> true
         }
     }
 
@@ -175,27 +188,30 @@ class CoachRepository(
     // ------------------------------------------------------------ Prompting
 
     /** The exact chat system prompt, for the debug latency bench. */
-    internal suspend fun systemPromptForBench(latest: String): String = coachSystemPrompt(languageOf(latest))
+    internal suspend fun systemPromptForBench(latest: String): String = coachSystemPrompt(languageOf(latest), wantsPlan(latest))
 
-    private suspend fun coachSystemPrompt(replyLanguage: String = "the language of the user's latest message"): String = """
-        You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
-        LANGUAGE: reply in $replyLanguage. Decide from the latest message only, never from earlier messages, the user's name or the data below.
-        If replying in Arabic, keep exercise names in English in parentheses the first time, and keep numbers as plain digits.
-        Be warm, direct and specific. Use their data below: quote their real numbers, name the exercises they actually do,
-        notice trends, and point out what they missed or improved. Keep answers short (under 180 words) unless they ask for detail.
-        Use simple Markdown: **bold**, short bullet lists, at most one small heading. No tables.
-        Never shame food choices; going over calories is fuel, not failure.
-
-        When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a
-        ```json code block at the very end.
-        ${planSchemaInstructions()}
-
-        If the user tells you something lasting about themselves (an injury, their equipment, their schedule, a food
-        preference, a goal), finish your reply with one final line exactly like: MEMORY: <one short sentence>
-        Only do this for new facts not already in "Things to remember" below. Never mention this mechanism.
-
-        ${progressSummary()}
-    """.trimIndent()
+    /**
+     * Stable instructions first and the per-message language rule last, so consecutive requests share the
+     * longest possible prefix (Gemini's implicit cache) and the rule sits closest to the reply. The plan schema,
+     * with every exercise id, is about 600 tokens and only goes in when the person asked for a plan.
+     */
+    private suspend fun coachSystemPrompt(replyLanguage: String = "the language of the user's latest message", plan: Boolean = false): String = buildString {
+        appendLine(CORE_RULES)
+        appendLine()
+        if (plan) {
+            appendLine("When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a ```json code block at the very end.")
+            appendLine(planSchemaInstructions())
+        } else {
+            appendLine("Never write plan JSON in this reply. If they want a new or changed weekly plan, outline it in a few lines and tell them to say \"make it my plan\" (in Arabic: \"اعمل لي الخطة\") to get one they can apply.")
+        }
+        appendLine()
+        appendLine(MEMORY_RULE)
+        appendLine()
+        append(progressSummary())
+        appendLine()
+        append("LANGUAGE: reply in $replyLanguage. Decide from the latest message only, never from earlier messages, the user's name or the data above.")
+        if (replyLanguage == "Arabic") append(" Keep exercise names in English in parentheses the first time, and write numbers as Western digits (0-9).")
+    }
 
     private fun planSchemaInstructions(): String {
         val ids = ExerciseCatalog.all.joinToString(", ") { it.id }
@@ -240,7 +256,12 @@ class CoachRepository(
         val missed = streak.days.withIndex().filter { it.value == DayState.MISSED }.map { Dates.dayName(it.index + 1) }
         val upcoming = streak.days.withIndex().filter { it.value == DayState.UPCOMING }.map { Dates.dayName(it.index + 1) }
         sb.append("- Level ${snap.level.level} (rank ${snap.level.rank.letter}, ${snap.level.rank.title}); weekly streak ${streak.weeks} (best ${streak.best})\n")
-        sb.append("- This week: ${streak.doneThisWeek} of ${streak.targetThisWeek} workouts done")
+        if (streak.targetThisWeek == 0) {
+            // The week they joined has no target (planned days had already passed); "1 of 0" confused the model.
+            sb.append("- This week: ${streak.doneThisWeek} workouts done; they started mid-week, so the weekly target starts next Monday")
+        } else {
+            sb.append("- This week: ${streak.doneThisWeek} of ${streak.targetThisWeek} workouts done")
+        }
         if (missed.isNotEmpty()) sb.append("; missed planned days: ${missed.joinToString(", ")}")
         if (upcoming.isNotEmpty()) sb.append("; still to come: ${upcoming.joinToString(", ")}")
         sb.append("\n")
@@ -353,6 +374,18 @@ class CoachRepository(
 
     private companion object {
         const val TAG = "FQ-AI"
+
+        val CORE_RULES = """
+            You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
+            Be warm, direct and specific. Use their data below: quote their real numbers, name the exercises they actually do, notice trends, and point out what they missed or improved.
+            Keep answers short (under 180 words) unless they ask for detail. Use simple Markdown: **bold**, short bullet lists, at most one small heading. No tables.
+            Never shame food choices; going over calories is fuel, not failure.
+        """.trimIndent()
+
+        val MEMORY_RULE = """
+            If the user tells you something lasting about themselves (an injury, their equipment, their schedule, a food preference, a goal), finish your reply with one final line exactly like: MEMORY: <one short sentence>
+            Only do this for new facts not already in "Things to remember" below. Never mention this mechanism.
+        """.trimIndent()
     }
 }
 

@@ -31,6 +31,8 @@ class DebugBench : BroadcastReceiver() {
         val pending = goAsync()
         app.appScope.launch {
             try {
+                // `--es send "…"` posts a coach message as if typed (adb can't type Arabic).
+                intent.getStringExtra("send")?.let { app.coach.send(it); return@launch }
                 run(app, intent.getStringExtra("models"), intent.getStringExtra("prompt") ?: "How am I doing this week?", intent.getStringExtra("variants"), intent.getIntExtra("runs", 1))
             } catch (e: Throwable) {
                 Log.e(TAG, "bench failed", e)
@@ -50,6 +52,8 @@ class DebugBench : BroadcastReceiver() {
         val names = json.parseToJsonElement(list).jsonObject["models"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content.removePrefix("models/") }
         Log.i(TAG, "models: ${names.filter { "flash" in it || "pro" in it }}")
         val system = app.coach.systemPromptForBench(prompt)
+        system.lines().forEach { Log.i(TAG, "SYS| $it") }
+        if (variantsArg == "dump") return
         val models = modelsArg?.split(",") ?: listOf(app.settings.current().fastModel)
 
         fun body(sys: String, thinking: JsonObject?) = buildJsonObject {

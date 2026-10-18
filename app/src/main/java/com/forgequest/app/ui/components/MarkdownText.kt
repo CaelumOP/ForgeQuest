@@ -33,8 +33,31 @@ import androidx.compose.ui.unit.dp
 fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier) {
     val rtl = isRtlText(text)
     CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-        MarkdownBody(text, color, modifier)
+        MarkdownBody(if (rtl) isolateLtr(text) else text, color, modifier)
     }
+}
+
+private val parenthesizedLatin = Regex("""\(\s*[A-Za-z][^()\n؀-ۿ]*\)""")
+private val latinRun = Regex("""[A-Za-z][A-Za-z0-9 .'’+\-/·×]*[A-Za-z0-9]|[A-Za-z]""")
+
+/**
+ * Wraps English runs inside Arabic text in Unicode isolates (LRI…PDI), so "(Dead hang)" stays one unit with its
+ * brackets the right way round instead of breaking into "Dead)" and "(hang" across a line wrap.
+ */
+internal fun isolateLtr(text: String): String {
+    val out = StringBuilder()
+    var last = 0
+    val spans = (parenthesizedLatin.findAll(text).map { it.range } +
+        latinRun.findAll(text).map { it.range }).sortedBy { it.first }
+    for (r in spans) {
+        if (r.first < last) continue
+        var run = text.substring(r.first, r.last + 1)
+        // Keep short names like "(Dead hang)" on one line; long English passages may still wrap.
+        if (run.length <= 24) run = run.replace(' ', ' ').replace('-', '‑')
+        out.append(text, last, r.first).append('⁦').append(run).append('⁩')
+        last = r.last + 1
+    }
+    return out.append(text, last, text.length).toString()
 }
 
 /** True when the first strong letter is Arabic or Hebrew, so bullets and alignment mirror for that message. */

@@ -126,6 +126,15 @@ class ModelPickTest {
     }
 }
 
+class BidiTest {
+    @Test
+    fun isolatesEnglishInsideArabic() {
+        val out = com.forgequest.app.ui.components.isolateLtr("تمارين مثل (Australian pull-up) و(Dead hang) يوميا")
+        assertEquals("تمارين مثل ⁦(Australian pull‑up)⁩ و⁦(Dead hang)⁩ يوميا", out)
+        assertEquals("بدون إنجليزي", com.forgequest.app.ui.components.isolateLtr("بدون إنجليزي"))
+    }
+}
+
 class PlanIntentTest {
     @Test
     fun onlyRequestsToMakeOrChangeAPlanCount() {

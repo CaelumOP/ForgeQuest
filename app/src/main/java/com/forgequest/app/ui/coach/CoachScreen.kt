@@ -181,7 +181,7 @@ fun CoachScreen(nav: NavHostController) {
             LazyColumn(
                 Modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = if (showChips) 64.dp else 12.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = if (showChips) 72.dp else 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (!hasKey) {
@@ -220,16 +220,19 @@ fun CoachScreen(nav: NavHostController) {
                 if (checkingIn && !sending) item(key = "checkin") { CheckinNote() }
                 item { Spacer(Modifier.height(4.dp)) }
             }
-            // Suggestions float over the conversation on a see-through pill, so the text underneath stays readable.
+            // Suggestions float over the conversation. Text scrolling underneath fades out behind a short scrim
+            // instead of showing through the pills, where it made both unreadable.
             if (showChips) {
                 Row(
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(c.background.copy(alpha = 0f), c.background.copy(alpha = 0.92f), c.background)))
+                        .horizontalScroll(rememberScrollState())
+                        .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     suggestions.take(3).forEach { s ->
                         Box(
-                            Modifier.clip(RoundedCornerShape(50)).background(c.card.copy(alpha = 0.55f))
+                            Modifier.clip(RoundedCornerShape(50)).background(c.card)
                                 .border(1.dp, c.divider.copy(alpha = 0.7f), RoundedCornerShape(50))
                                 .clickable { vm.send(s) }.padding(horizontal = 14.dp, vertical = 8.dp),
                         ) {
