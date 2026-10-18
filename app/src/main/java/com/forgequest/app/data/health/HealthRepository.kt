@@ -144,7 +144,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
         val rest30 = Readiness.median((1L..30L).mapNotNull { rhrFor(today.minusDays(it)) }) ?: 65.0
 
         // Strain per day for the last 8 days, read a day at a time so 2-second heart rate never piles up in memory.
-        val strainByDay = (0L..7L).associate { back ->
+        val strainByDay = (0L..8L).associate { back ->
             val d = today.minusDays(back)
             val start = d.atStartOfDay(zone).toInstant()
             val end = if (back == 0L) now else d.plusDays(1).atStartOfDay(zone).toInstant()
@@ -172,29 +172,36 @@ class HealthRepository(private val context: Context, private val settings: Setti
             return Triple(rec, Pair(hrvBase?.mean?.let { exp(it) }, rhrBase?.mean), hrvHistory.size)
         }
 
-        val (recovery, usual, baselineNights) = recoveryFor(today)
-        val respUsual = Readiness.median((1L..30L).mapNotNull { respFor(today.minusDays(it)) })
+        // Like Whoop, a day starts when you wake up: after midnight but before tonight's sleep is recorded, keep showing
+        // the night you last woke from instead of an empty card.
+        val day = if (nightOf(today) == null && nightOf(today.minusDays(1)) != null) today.minusDays(1) else today
+        val (recovery, usual, baselineNights) = recoveryFor(day)
+        val respUsual = Readiness.median((1L..30L).mapNotNull { respFor(day.minusDays(it)) })
         val week = (6L downTo 0L).map { back ->
-            val d = today.minusDays(back)
+            val d = day.minusDays(back)
             val hasSignal = nightOf(d) != null || rhrFor(d) != null
             DaySummary(d.toEpochDay(), if (hasSignal) (if (back == 0L) recovery else recoveryFor(d).first) else null, nightOf(d)?.asleepMin, perfFor(d), strainOf(d))
         }
 
         // Health Connect's own totals merge Google Fit, Fitbit and the phone instead of adding them up.
         val totals = suspendRunCatching {
-            client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL, TotalCaloriesBurnedRecord.ENERGY_TOTAL), TimeRangeFilter.between(today.atStartOfDay(zone).toInstant(), now)))
+            client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL, TotalCaloriesBurnedRecord.ENERGY_TOTAL), TimeRangeFilter.between(day.atStartOfDay(zone).toInstant(), now)))
         }.getOrNull()
 
-        val night = nightOf(today)
-        val strain = strainOf(today)
-        val perf = perfFor(today)
+        val night = nightOf(day)
+        // The day runs from waking to the next sleep, so strain after midnight still adds to it.
+        val zonesSinceWake = (0L..java.time.temporal.ChronoUnit.DAYS.between(day, today)).fold(DoubleArray(5)) { acc, back ->
+            val z = strainByDay[day.plusDays(back)] ?: DoubleArray(5); DoubleArray(5) { acc[it] + z[it] }
+        }
+        val strain = Readiness.strain(zonesSinceWake)
+        val perf = perfFor(day)
         val dao = db.readiness()
-        val felt = dao.get(today.toEpochDay())?.feltGreat ?: false
-        if (night != null || rhrFor(today) != null) {
+        val felt = dao.get(day.toEpochDay())?.feltGreat ?: false
+        if (night != null || rhrFor(day) != null) {
             dao.upsert(
                 ReadinessDayEntity(
-                    epochDay = today.toEpochDay(), recovery = recovery, sleepPerf = perf ?: 0, sleepMin = night?.asleepMin ?: 0,
-                    strain = strain.toFloat(), hrv = (hrvFor(today) ?: 0.0).toFloat(), rhr = (rhrFor(today) ?: 0.0).toFloat(),
+                    epochDay = day.toEpochDay(), recovery = recovery, sleepPerf = perf ?: 0, sleepMin = night?.asleepMin ?: 0,
+                    strain = strain.toFloat(), hrv = (hrvFor(day) ?: 0.0).toFloat(), rhr = (rhrFor(day) ?: 0.0).toFloat(),
                     feltGreat = felt, updatedAt = System.currentTimeMillis(),
                 )
             )
@@ -205,16 +212,16 @@ class HealthRepository(private val context: Context, private val settings: Setti
             call = Readiness.call(recovery),
             night = night,
             sleepPerf = perf,
-            sleepNeedLastNight = needFor(today),
-            sleepNeedTonight = Readiness.sleepNeed(strain, (2L downTo 0L).map { nightOf(today.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }, sleepDays[today]?.napMin ?: 0),
-            debtMin = Readiness.debtMin((2L downTo 0L).map { nightOf(today.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }),
+            sleepNeedLastNight = needFor(day),
+            sleepNeedTonight = Readiness.sleepNeed(strain, (2L downTo 0L).map { nightOf(day.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }, sleepDays[day]?.napMin ?: 0),
+            debtMin = Readiness.debtMin((2L downTo 0L).map { nightOf(day.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }),
             strain = strain,
-            zoneMin = strainByDay[today] ?: DoubleArray(5),
+            zoneMin = zonesSinceWake,
             steps = totals?.get(StepsRecord.COUNT_TOTAL) ?: 0L,
             kcalBurned = totals?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories?.toInt() ?: 0,
-            hrv = hrvFor(today), hrvUsual = usual.first,
-            rhr = rhrFor(today), rhrUsual = usual.second,
-            resp = respFor(today), respUsual = respUsual,
+            hrv = hrvFor(day), hrvUsual = usual.first,
+            rhr = rhrFor(day), rhrUsual = usual.second,
+            resp = respFor(day), respUsual = respUsual,
             baselineNights = baselineNights,
             week = week,
             feltGreat = felt,
