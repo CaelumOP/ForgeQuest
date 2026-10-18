@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Undo
@@ -49,6 +50,8 @@ import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -137,6 +140,10 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun removeNote(note: String) = viewModelScope.launch {
         app.coach.setNotes(app.settings.current().coachNotes.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
     }
+
+    fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
+    fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = unit) } }
+    fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
     fun setHand(length: Float, palm: Float) = viewModelScope.launch { app.settings.update { it.copy(handLengthCm = length, palmWidthCm = palm) } }
@@ -421,14 +428,14 @@ fun ProfileScreen(nav: NavHostController) {
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Body weight", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text(s.latestWeight?.let { "%.1f kg".format(it) } ?: "Not logged", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                    Text(s.latestWeight?.let { settings.weightUnit.format(it) } ?: "Not logged", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 }
                 TonalPill("Log", onClick = { weightDialog = true })
             }
             val recent = s.weights.takeLast(30)
             if (recent.size >= 2) {
                 Spacer(Modifier.height(16.dp))
-                LineChart(recent.map { it.kg }, Modifier.fillMaxWidth().height(120.dp))
+                LineChart(recent.map { settings.weightUnit.fromKg(it.kg) }, Modifier.fillMaxWidth().height(120.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -468,6 +475,35 @@ fun ProfileScreen(nav: NavHostController) {
             "AI key",
             if (apiKey.isBlank()) "Not set · meal scan and coach are off" else "Connected · stored encrypted on this phone",
         ) { keyDialog = true }
+        Spacer(Modifier.height(12.dp))
+
+        // Appearance & feel
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Palette, c.blue, c.blueTrack)
+                Spacer(Modifier.width(14.dp))
+                Text("Appearance", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            }
+            Spacer(Modifier.height(14.dp))
+            Text("Theme", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+            Spacer(Modifier.height(6.dp))
+            SegmentedTabs(
+                listOf("System", "Light", "Dark"),
+                when (settings.theme) { "light" -> 1; "dark" -> 2; else -> 0 },
+                onSelect = { vm.setTheme(listOf("system", "light", "dark")[it]) },
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("Weights", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+            Spacer(Modifier.height(6.dp))
+            SegmentedTabs(listOf("Kilograms", "Pounds"), if (settings.unit == "lb") 1 else 0, onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") })
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Vibration feedback", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    Text("Ticks on steppers, a thud when a set is done", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Switch(settings.hapticsEnabled, { vm.setHaptics(it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+        }
         Spacer(Modifier.height(12.dp))
 
         // Coach memory
@@ -644,7 +680,8 @@ fun ProfileScreen(nav: NavHostController) {
             title = { Text("Log body weight", color = c.textPrimary) },
             text = {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    NumberStepper(kg, { kg = it }, step = 0.1f, min = 30f, max = 250f, unit = "kg", decimals = 1, title = "Body weight", minValueWidth = 96.dp)
+                    val unit = settings.weightUnit
+                    NumberStepper(unit.fromKg(kg), { kg = unit.toKg(it) }, step = unit.bodyStep, min = unit.fromKg(30f), max = unit.fromKg(250f), unit = unit.label, decimals = 1, title = "Body weight", minValueWidth = 96.dp)
                 }
             },
             confirmButton = { TextButton(onClick = { vm.logWeight(kg); weightDialog = false }) { Text("Save", color = c.teal) } },

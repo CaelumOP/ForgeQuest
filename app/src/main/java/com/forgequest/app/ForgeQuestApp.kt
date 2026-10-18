@@ -42,6 +42,7 @@ class ForgeQuestApp : Application() {
         container = AppContainer(this)
         container.appScope.launch { container.workouts.seedLibrary() }
         container.appScope.launch { runCatching { container.food.deleteOrphanPhotos() } }
+        container.appScope.launch { container.settings.settings.collect { container.haptics.enabled = it.hapticsEnabled } }
         DriveSyncWorker.schedule(this)
     }
 }

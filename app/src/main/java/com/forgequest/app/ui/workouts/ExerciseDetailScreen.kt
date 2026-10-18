@@ -54,6 +54,7 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.Records
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
@@ -81,7 +82,7 @@ class ExerciseDetailViewModel(val app: AppContainer) : ViewModel() {
 
 private data class Metric(val label: String, val unit: String, val value: (List<SetEntity>, ExerciseKind) -> Float)
 
-private fun metricsFor(kind: ExerciseKind): List<Metric> = when (kind) {
+private fun metricsFor(kind: ExerciseKind, wu: WeightUnit = WeightUnit.KG): List<Metric> = when (kind) {
     ExerciseKind.REPS -> listOf(
         Metric("Max reps", "reps") { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },
         Metric("Total reps", "reps") { s, _ -> s.sumOf { it.reps ?: 0 }.toFloat() },
@@ -91,9 +92,9 @@ private fun metricsFor(kind: ExerciseKind): List<Metric> = when (kind) {
         Metric("Total time", "s") { s, _ -> s.sumOf { it.seconds ?: 0 }.toFloat() },
     )
     ExerciseKind.WEIGHTED -> listOf(
-        Metric("Best set", "kg est. 1RM") { s, k -> s.maxOfOrNull { Records.score(k, it.reps, it.seconds, it.weightKg) } ?: 0f },
-        Metric("Max weight", "kg") { s, _ -> s.maxOfOrNull { it.weightKg ?: 0f } ?: 0f },
-        Metric("Volume", "kg") { s, _ -> s.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat() },
+        Metric("Best set", "${wu.label} est. 1RM") { s, k -> wu.fromKg(s.maxOfOrNull { Records.score(k, it.reps, it.seconds, it.weightKg) } ?: 0f) },
+        Metric("Max weight", wu.label) { s, _ -> wu.fromKg(s.maxOfOrNull { it.weightKg ?: 0f } ?: 0f) },
+        Metric("Volume", wu.label) { s, _ -> wu.fromKg(s.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat()) },
         Metric("Max reps", "reps") { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },
     )
 }
@@ -113,7 +114,8 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val ex = s.exercises[exerciseId]
     val kind = ex?.kind ?: ExerciseKind.REPS
-    val metrics = metricsFor(kind)
+    val unit = s.settings.weightUnit
+    val metrics = metricsFor(kind, unit)
     val metric = metrics[metricIndex.coerceIn(0, metrics.lastIndex)]
     val sessionsById = s.sessions.associateBy { it.id }
     val history = s.doneSets.filter { it.exerciseId == exerciseId }.groupBy { it.sessionId }
@@ -176,7 +178,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                                 sets.joinToString("  ") { set ->
                                     when (kind) {
                                         ExerciseKind.HOLD -> "${set.seconds}s"
-                                        ExerciseKind.WEIGHTED -> "${set.reps}×${"%.1f".format(set.weightKg ?: 0f)}"
+                                        ExerciseKind.WEIGHTED -> "${set.reps}×${unit.number(set.weightKg ?: 0f)}"
                                         ExerciseKind.REPS -> "${set.reps}"
                                     }
                                 },

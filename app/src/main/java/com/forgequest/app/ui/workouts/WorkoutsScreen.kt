@@ -58,6 +58,7 @@ import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.EmptyState
@@ -79,14 +80,14 @@ class WorkoutsViewModel(val app: AppContainer) : ViewModel() {
 }
 
 /** "3 × 10 reps", "3 × 30 s", "4 × 6–8 reps" */
-fun PlanItemEntity.prescription(kind: ExerciseKind?): String {
+fun PlanItemEntity.prescription(kind: ExerciseKind?, unit: WeightUnit = WeightUnit.KG): String {
     val per = when {
         kind == ExerciseKind.HOLD || (seconds != null && repsMin == null) -> "${seconds ?: 30} s"
         repsMin != null && repsMax != null && repsMax != repsMin -> "$repsMin–$repsMax reps"
         repsMin != null -> "$repsMin reps"
         else -> "reps"
     }
-    val load = if (kind == ExerciseKind.WEIGHTED && (weightKg ?: 0f) > 0f) " · ${"%.1f".format(weightKg)} kg" else ""
+    val load = if (kind == ExerciseKind.WEIGHTED && (weightKg ?: 0f) > 0f) " · ${unit.format(weightKg ?: 0f)}" else ""
     return if (circuit) "$per$load" else "$sets × $per$load"
 }
 
@@ -158,6 +159,7 @@ fun WorkoutsScreen(nav: NavHostController) {
                 onExercise = { nav.navigate(Routes.exercise(it)) },
                 onVideo = { openFormVideo(context, s.exercises[it]) },
                 onEdit = { nav.navigate(Routes.PLAN) },
+                unit = s.settings.weightUnit,
             )
         }
         Spacer(Modifier.height(16.dp))
@@ -223,6 +225,7 @@ private fun DayCard(
     onExercise: (String) -> Unit,
     onVideo: (String) -> Unit,
     onEdit: () -> Unit,
+    unit: WeightUnit = WeightUnit.KG,
 ) {
     val c = Fit.colors
     FitCard {
@@ -262,7 +265,7 @@ private fun DayCard(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(item.prescription(ex?.kind), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(item.prescription(ex?.kind, unit), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                     IconButton(onClick = { onVideo(item.exerciseId) }) {
                         Icon(Icons.Rounded.PlayCircleOutline, contentDescription = "Watch form", tint = c.blue)

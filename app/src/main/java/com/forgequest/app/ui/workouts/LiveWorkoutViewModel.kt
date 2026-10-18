@@ -7,6 +7,7 @@ import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.LevelInfo
 import com.forgequest.app.domain.Muscle
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,6 +56,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val library: StateFlow<List<ExerciseEntity>> = repo.library.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val exercises: StateFlow<Map<String, ExerciseEntity>> = repo.library.map { list -> list.associateBy { it.id } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
 
     val rest = MutableStateFlow<RestTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())

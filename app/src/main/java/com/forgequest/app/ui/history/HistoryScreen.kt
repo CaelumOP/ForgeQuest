@@ -55,6 +55,7 @@ import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.EmptyState
@@ -174,6 +175,8 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
     val exercises: StateFlow<Map<String, ExerciseEntity>> = app.workouts.library.map { l -> l.associateBy { it.id } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
+
     data class Loaded(val session: SessionEntity?)
 
     fun setField(set: SetEntity, field: Field, value: Float) {
@@ -199,6 +202,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     val loaded by vm.session.collectAsState()
     val sets by vm.sets.collectAsState()
     val exercises by vm.exercises.collectAsState()
+    val unit by vm.unit.collectAsState()
     val c = Fit.colors
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -255,7 +259,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                                     ExerciseKind.REPS -> NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, title = "Reps", minValueWidth = 40.dp)
                                     ExerciseKind.WEIGHTED -> {
                                         NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, unit = "reps", title = "Reps", minValueWidth = 64.dp)
-                                        NumberStepper(set.weightKg ?: 0f, { vm.setField(set, Field.WEIGHT, it) }, 2.5f, 0f, 999f, unit = "kg", decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue)
+                                        NumberStepper(unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, unit.loadStep, 0f, unit.fromKg(999f), unit = unit.label, decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue)
                                     }
                                 }
                             }

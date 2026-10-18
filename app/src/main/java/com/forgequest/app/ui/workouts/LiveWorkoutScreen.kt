@@ -388,9 +388,10 @@ private fun SetRow(
                         (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                         unit = "reps", title = "Reps", minValueWidth = 64.dp,
                     )
+                    val unit by vm.unit.collectAsState()
                     NumberStepper(
-                        set.weightKg ?: 0f, { vm.setField(set, Field.WEIGHT, it) }, step = 2.5f, min = 0f, max = 999f,
-                        unit = "kg", decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue,
+                        unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f),
+                        unit = unit.label, decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue,
                     )
                 }
             }

@@ -201,6 +201,7 @@ class CoachRepository(
             }.orEmpty()
             sb.append("- Body weight: ${"%.1f".format(Locale.US, latest)} kg$trend\n")
         }
+        if (s.unit == "lb") sb.append("- Units: the user thinks in pounds. The data below is in kg; convert weights to lb when you mention them.\n")
         val target = if (s.weeklyTargetOverride > 0) s.weeklyTargetOverride else snap.plan?.trainingDays?.size ?: 0
         sb.append("- Goals: ${s.kcalGoal} kcal and ${s.proteinGoal} g protein per day; $target workouts per week\n")
 

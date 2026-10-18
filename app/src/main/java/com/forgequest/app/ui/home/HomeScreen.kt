@@ -69,6 +69,7 @@ import com.forgequest.app.ui.components.StatColumn
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.Manrope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -147,13 +148,14 @@ fun HomeScreen(nav: NavHostController) {
     }
 
     if (weightSheet) {
+        val unit = s.settings.weightUnit
         var kg by remember { mutableFloatStateOf(s.latestWeight ?: 75f) }
         ModalBottomSheet(onDismissRequest = { weightSheet = false }, containerColor = c.card) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Log body weight", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(20.dp))
                 NumberStepper(
-                    kg, { kg = it }, step = 0.1f, min = 30f, max = 250f, unit = "kg", decimals = 1,
+                    unit.fromKg(kg), { kg = unit.toKg(it) }, step = unit.bodyStep, min = unit.fromKg(30f), max = unit.fromKg(250f), unit = unit.label, decimals = 1,
                     title = "Body weight", minValueWidth = 96.dp, onTick = vm.app.haptics::tick,
                 )
                 Spacer(Modifier.height(8.dp))
@@ -209,8 +211,8 @@ private fun NutritionRings(s: ProgressSnapshot) {
             size = 210.dp,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${s.today.protein.roundToInt()}", fontSize = 36.sp, fontWeight = FontWeight.Medium, color = c.teal)
-                Text("%,d".format(s.today.kcal), fontSize = 18.sp, fontWeight = FontWeight.Medium, color = kcalColor)
+                Text("${s.today.protein.roundToInt()}", fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
+                Text("%,d".format(s.today.kcal), fontFamily = Manrope, fontSize = 18.sp, fontWeight = FontWeight.Medium, color = kcalColor)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -249,8 +251,8 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
             Modifier.weight(1f),
         )
         StatColumn(
-            s.latestWeight?.let { "%.1f".format(it) } ?: "–",
-            "Weight (kg)",
+            s.latestWeight?.let { s.settings.weightUnit.number(it) } ?: "–",
+            "Weight (${s.settings.weightUnit.label})",
             c.textPrimary,
             Modifier.weight(1f),
             onClick = onWeight,
