@@ -12,9 +12,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         ExerciseEntity::class, PlanEntity::class, PlanDayEntity::class, PlanItemEntity::class,
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
-        WeightEntity::class, ChatEntity::class, BadgeEntity::class,
+        WeightEntity::class, ChatEntity::class, BadgeEntity::class, ReadinessDayEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -27,6 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun chat(): ChatDao
     abstract fun badges(): BadgeDao
     abstract fun backup(): BackupDao
+    abstract fun readiness(): ReadinessDao
 
     companion object {
         const val NAME = "forgequest.db"
@@ -53,9 +54,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v4 → v5: daily Fitbit readiness scores. */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS readiness_days (epochDay INTEGER NOT NULL, recovery INTEGER NOT NULL, sleepPerf INTEGER NOT NULL, " +
+                        "sleepMin INTEGER NOT NULL, strain REAL NOT NULL, hrv REAL NOT NULL, rhr REAL NOT NULL, feltGreat INTEGER NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, PRIMARY KEY(epochDay))"
+                )
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
     }
 }

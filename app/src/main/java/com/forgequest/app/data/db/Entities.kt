@@ -171,3 +171,17 @@ class Converters {
     fun stringToMuscles(value: String): List<Muscle> =
         value.split(",").filter { it.isNotBlank() }.mapNotNull { runCatching { Muscle.valueOf(it) }.getOrNull() }
 }
+
+/** One day's Fitbit readiness, saved so the formulas can later be tuned against workouts and "I feel great" taps. */
+@Entity(tableName = "readiness_days")
+data class ReadinessDayEntity(
+    @PrimaryKey val epochDay: Long,
+    val recovery: Int,
+    val sleepPerf: Int,
+    val sleepMin: Int,
+    val strain: Float,
+    val hrv: Float,
+    val rhr: Float,
+    val feltGreat: Boolean,
+    val updatedAt: Long,
+)

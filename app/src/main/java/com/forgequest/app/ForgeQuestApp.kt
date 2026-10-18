@@ -35,7 +35,7 @@ class AppContainer(context: Context) {
     val workouts = WorkoutRepository(db)
     val progress = ProgressRepository(db, settings, workouts, appScope)
     val food = FoodRepository(context, db, settings, gemini, models)
-    val health = com.forgequest.app.data.health.HealthRepository(context, settings)
+    val health = com.forgequest.app.data.health.HealthRepository(context, settings, db)
     val coach = CoachRepository(db, settings, gemini, models, progress, workouts, groq, health)
     val backup = BackupRepository(context, db, settings, workouts)
     val drive = DriveSync(context, settings, workouts, coach, backup, http)
