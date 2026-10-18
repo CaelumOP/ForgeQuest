@@ -29,6 +29,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Share
@@ -129,6 +131,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
                 weeklyTargetOverride = weekly ?: s.weeklyTargetOverride,
             )
         }
+    }
+
+    fun addNote(note: String) = viewModelScope.launch { app.coach.setNotes(app.settings.current().coachNotes + "\n" + note.trim()) }
+    fun removeNote(note: String) = viewModelScope.launch {
+        app.coach.setNotes(app.settings.current().coachNotes.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
     }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
@@ -317,6 +324,7 @@ fun ProfileScreen(nav: NavHostController) {
     var keyDialog by remember { mutableStateOf(false) }
     var weightDialog by remember { mutableStateOf(false) }
     var handDialog by remember { mutableStateOf(false) }
+    var notesDialog by remember { mutableStateOf(false) }
 
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         vm.onConsentResult(r.resultCode == Activity.RESULT_OK, r.data)
@@ -440,6 +448,38 @@ fun ProfileScreen(nav: NavHostController) {
             "AI key",
             if (apiKey.isBlank()) "Not set · meal scan and coach are off" else "Connected · stored encrypted on this phone",
         ) { keyDialog = true }
+        Spacer(Modifier.height(12.dp))
+
+        // Coach memory
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("What the coach remembers", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(
+                        if (settings.coachNotes.isBlank()) "Tell the coach about injuries, equipment or preferences and it keeps them here."
+                        else "Used in every conversation. Tap a line to remove it.",
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                TonalPill("Add", onClick = { notesDialog = true })
+            }
+            val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
+            if (notes.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                notes.forEach { note ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
+                        Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                        Icon(Icons.Rounded.Close, contentDescription = "Remove", tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
 
         // Hand + body
@@ -582,6 +622,28 @@ fun ProfileScreen(nav: NavHostController) {
             },
             confirmButton = { TextButton(onClick = { vm.logWeight(kg); weightDialog = false }) { Text("Save", color = c.teal) } },
             dismissButton = { TextButton(onClick = { weightDialog = false }) { Text("Cancel", color = c.textSecondary) } },
+        )
+    }
+
+    if (notesDialog) {
+        var note by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { notesDialog = false },
+            containerColor = c.card,
+            title = { Text("Something the coach should know", color = c.textPrimary) },
+            text = {
+                Column {
+                    Text("One fact per note, e.g. \"Left knee hurts in deep squats\" or \"Only have a pull-up bar and rings\".", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = note, onValueChange = { note = it.take(160) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { vm.addNote(note); notesDialog = false }, enabled = note.isNotBlank()) { Text("Save", color = c.teal) } },
+            dismissButton = { TextButton(onClick = { notesDialog = false }) { Text("Cancel", color = c.textSecondary) } },
         )
     }
 

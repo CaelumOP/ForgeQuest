@@ -40,6 +40,14 @@ Each person uses their own free Gemini key:
 
 The app checks the key with Google and picks the newest Flash and Pro models available to it. The key is stored encrypted on the phone and isn't included in backups.
 
+What the coach sees with every message: your goals, weight trend, this week's done and missed days, today's session, the
+full plan, muscles still recovering, your last 5 workouts, 4-week trends on the exercises you do most, personal bests,
+7-day nutrition and badges. Replies stream in as they're written, and chat and meal scans run with the model's
+"thinking" off so they land in a few seconds; plans keep it on. If you mention something lasting (an injury, your
+equipment, a preference) the coach saves it under **Profile → What the coach remembers**, where you can also add or
+remove notes yourself. Photos and this data go to Google under your key; free keys allow Google to use them to improve
+its models.
+
 ## Backup without Google Drive
 
 **Profile → Your data → Export file** writes a JSON backup and opens the share sheet, so you can save it to Files,

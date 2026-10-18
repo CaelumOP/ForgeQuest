@@ -152,7 +152,7 @@ class FoodRepository(
             Reply ONLY with JSON: {"dish": string, "items": [{"name": string, "grams": int, "kcal": int, "protein": number}], "handVisible": boolean, "note": string}
             "note" is one short sentence about anything uncertain, or empty.
         """.trimIndent()
-        val raw = gemini.generate(key, listOf(s.fastModel), system, listOf("user" to "Estimate this meal."), image = image, jsonOutput = true)
+        val raw = gemini.generate(key, listOf(s.fastModel), system, listOf("user" to "Estimate this meal."), image = image, jsonOutput = true, fast = true)
         val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
             ?: throw AiError.Unreadable("Couldn't read the meal from that photo. Try again with the plate fully in frame.")
         if (scan.items.isEmpty()) throw AiError.Unreadable("No food found in that photo. Try again with the plate in the middle of the frame.")

@@ -40,9 +40,10 @@ data class BackupSettings(
     val weeklyTargetOverride: Int = 0,
     val handLengthCm: Float = 0f,
     val palmWidthCm: Float = 0f,
+    val coachNotes: String = "",
 ) {
     companion object {
-        fun from(s: Settings) = BackupSettings(s.name, s.bodyType.name, s.kcalGoal, s.proteinGoal, s.weeklyTargetOverride, s.handLengthCm, s.palmWidthCm)
+        fun from(s: Settings) = BackupSettings(s.name, s.bodyType.name, s.kcalGoal, s.proteinGoal, s.weeklyTargetOverride, s.handLengthCm, s.palmWidthCm, s.coachNotes)
     }
 
     fun applyTo(s: Settings) = s.copy(
@@ -53,6 +54,7 @@ data class BackupSettings(
         weeklyTargetOverride = weeklyTargetOverride,
         handLengthCm = handLengthCm,
         palmWidthCm = palmWidthCm,
+        coachNotes = coachNotes,
     )
 }
 

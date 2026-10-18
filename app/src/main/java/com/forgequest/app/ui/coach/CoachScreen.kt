@@ -92,6 +92,8 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
     val hasKey: StateFlow<Boolean> = app.settings.apiKey.map { it.isNotBlank() }.stateIn(viewModelScope, SharingStarted.Eagerly, app.settings.apiKey.value.isNotBlank())
     val sending = MutableStateFlow(false)
     val applied = MutableStateFlow<String?>(null)
+    /** Text of the reply still arriving, shown live. */
+    val draft: StateFlow<String?> = app.coach.draft
 
     init {
         viewModelScope.launch {
@@ -138,6 +140,7 @@ fun CoachScreen(nav: NavHostController) {
     val sending by vm.sending.collectAsState()
     val hasKey by vm.hasKey.collectAsState()
     val applied by vm.applied.collectAsState()
+    val draft by vm.draft.collectAsState()
     val snackbar = LocalSnackbar.current
     val c = Fit.colors
     var input by remember { mutableStateOf("") }
@@ -146,7 +149,9 @@ fun CoachScreen(nav: NavHostController) {
     var confirmClear by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(messages.size, sending) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size + 1) }
+    LaunchedEffect(messages.size, sending, draft?.length) {
+        if (messages.isNotEmpty()) listState.scrollToItem(listState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1)
+    }
     LaunchedEffect(applied) { applied?.let { snackbar.showSnackbar(it); vm.applied.value = null } }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().imePadding()) {
@@ -194,7 +199,9 @@ fun CoachScreen(nav: NavHostController) {
                     )
                 }
             }
-            if (sending) item { TypingDots() }
+            val live = draft?.let { PlanJson.stripPartial(it) }
+            if (sending && !live.isNullOrBlank()) item(key = "draft") { StreamingBubble(live) }
+            else if (sending) item(key = "typing") { TypingDots() }
             item { Spacer(Modifier.height(4.dp)) }
         }
         if (messages.isNotEmpty() && hasKey && !sending) {
@@ -331,6 +338,25 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
                         PillButton("Apply plan", onClick = onApply)
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The coach's reply as it streams in, with a soft pulsing caret at the end. */
+@Composable
+private fun StreamingBubble(text: String) {
+    val c = Fit.colors
+    val t = rememberInfiniteTransition(label = "caret")
+    val a by t.animateFloat(0.2f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "caretAlpha")
+    Column(Modifier.fillMaxWidth().padding(end = 24.dp)) {
+        Box(
+            Modifier.clip(RoundedCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomStart = 22.dp, bottomEnd = 22.dp))
+                .background(c.card).padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Column {
+                MarkdownText(text, color = c.textPrimary)
+                Box(Modifier.padding(top = 4.dp).size(width = 10.dp, height = 3.dp).alpha(a).clip(CircleShape).background(c.teal))
             }
         }
     }
