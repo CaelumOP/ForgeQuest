@@ -553,6 +553,18 @@ fun ProfileScreen(nav: NavHostController) {
                 onSelect = { vm.setTheme(listOf("system", "light", "dark")[it]) },
             )
             Spacer(Modifier.height(12.dp))
+            Text(stringResource(R.string.profile_language), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+            Spacer(Modifier.height(6.dp))
+            val languages = listOf(com.forgequest.app.AppLocale.SYSTEM, "en", "ar")
+            SegmentedTabs(
+                listOf(stringResource(R.string.language_system), "English", "العربية"),
+                languages.indexOf(com.forgequest.app.AppLocale.current(context)).coerceAtLeast(0),
+                onSelect = { i ->
+                    com.forgequest.app.AppLocale.set(context, languages[i])
+                    (context as? android.app.Activity)?.recreate()
+                },
+            )
+            Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.profile_weights), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
             Spacer(Modifier.height(6.dp))
             SegmentedTabs(listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)), if (settings.unit == "lb") 1 else 0, onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") })
