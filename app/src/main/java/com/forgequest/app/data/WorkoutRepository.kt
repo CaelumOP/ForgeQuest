@@ -198,6 +198,7 @@ class WorkoutRepository(private val db: AppDatabase) {
     // ------------------------------------------------------------ Live session
 
     val openSession: Flow<SessionEntity?> = sessions.observeOpen()
+    suspend fun openSessionNow(): SessionEntity? = sessions.open()
 
     fun observeSets(sessionId: Long): Flow<List<SetEntity>> = sessions.observeSets(sessionId)
 

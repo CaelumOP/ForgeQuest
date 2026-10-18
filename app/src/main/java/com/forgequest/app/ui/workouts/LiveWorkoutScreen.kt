@@ -10,6 +10,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.os.Build
+import android.Manifest
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -126,6 +130,11 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 
     var confirmExit by remember { mutableStateOf(false) }
     var confirmFinish by remember { mutableStateOf(false) }
+    // The rest countdown lives in the notification shade too, so the phone can be locked between sets.
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->

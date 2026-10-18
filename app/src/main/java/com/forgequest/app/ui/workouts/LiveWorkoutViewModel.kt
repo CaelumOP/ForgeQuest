@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
 
 data class OpenSession(val session: SessionEntity?)
 
-data class RestTimer(val totalSeconds: Int, val endsAt: Long)
+data class RestTimer(val totalSeconds: Int, val endsAt: Long, val nextExercise: String? = null)
 
 data class WorkoutSummary(
     val title: String,
@@ -72,6 +72,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     if (now.value >= r.endsAt) {
                         rest.value = null
                         app.haptics.setDone()
+                        app.notifier.restOver(r.nextExercise)
                     }
                 }
                 delay(250)
@@ -83,20 +84,31 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val done = !set.done
         if (done) app.haptics.setDone() else app.haptics.tick()
         viewModelScope.launch { repo.updateSet(set.copy(done = done)) }
-        if (done && set.restSeconds > 0) startRest(set.restSeconds) else if (!done) rest.value = null
+        if (done && set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set)) else if (!done) skipRest()
     }
 
-    fun startRest(seconds: Int) {
-        rest.value = RestTimer(seconds, System.currentTimeMillis() + seconds * 1000L)
+    /** Name of the exercise the next unticked set belongs to, for the notification text. */
+    private fun nextExerciseAfter(set: SetEntity): String? {
+        val ordered = sets.value.sortedWith(compareBy({ it.itemPosition }, { it.setIndex }))
+        val next = ordered.firstOrNull { !it.done && it.id != set.id } ?: return null
+        return exercises.value[next.exerciseId]?.name
+    }
+
+    fun startRest(seconds: Int, nextExercise: String? = null) {
+        val endsAt = System.currentTimeMillis() + seconds * 1000L
+        rest.value = RestTimer(seconds, endsAt, nextExercise)
+        app.notifier.showRest(endsAt, nextExercise)
     }
 
     fun addRest(seconds: Int) {
         rest.value = rest.value?.let { it.copy(totalSeconds = it.totalSeconds + seconds, endsAt = it.endsAt + seconds * 1000L) }
+        rest.value?.let { app.notifier.showRest(it.endsAt, it.nextExercise) }
         app.haptics.tick()
     }
 
     fun skipRest() {
         rest.value = null
+        app.notifier.cancelRest()
     }
 
     fun adjust(set: SetEntity, kind: ExerciseKind, field: Field, direction: Int) {
@@ -151,6 +163,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     fun discard(onDone: () -> Unit) {
         val s = currentSession ?: return onDone()
+        app.notifier.cancelRest()
         viewModelScope.launch {
             repo.discardSession(s.id)
             onDone()
@@ -162,6 +175,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         if (finishing.value) return
         finishing.value = true
         rest.value = null
+        app.notifier.cancelRest()
         viewModelScope.launch {
             val before = app.progress.snapshot.first().level
             val result = repo.finishSession(s.id)

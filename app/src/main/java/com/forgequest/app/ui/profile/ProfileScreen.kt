@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Psychology
@@ -86,6 +87,7 @@ import com.forgequest.app.data.drive.DriveError
 import com.forgequest.app.data.backup.BackupError
 import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.drive.DriveSync
+import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
 import com.forgequest.app.ui.LocalSnackbar
@@ -96,6 +98,7 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
+import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
@@ -139,6 +142,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun addNote(note: String) = viewModelScope.launch { app.coach.setNotes(app.settings.current().coachNotes + "\n" + note.trim()) }
     fun removeNote(note: String) = viewModelScope.launch {
         app.coach.setNotes(app.settings.current().coachNotes.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
+    }
+
+    fun setReminder(hour: Int) = viewModelScope.launch {
+        app.settings.update { it.copy(reminderHour = hour) }
+        ReminderWorker.schedule(app.appContext, hour)
     }
 
     fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
@@ -502,6 +510,40 @@ fun ProfileScreen(nav: NavHostController) {
                     Text("Ticks on steppers, a thud when a set is done", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Switch(settings.hapticsEnabled, { vm.setHaptics(it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Reminders
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Workout reminder", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(
+                        if (settings.reminderHour < 0) "Off. A nudge on planned days if nothing is logged yet."
+                        else "On planned days at ${"%02d:00".format(settings.reminderHour)}, only if nothing is logged yet.",
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                Switch(settings.reminderHour >= 0, { vm.setReminder(if (it) 18 else -1) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+            if (settings.reminderHour >= 0) {
+                var typingHour by remember { mutableStateOf(false) }
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Time", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    Stepper(
+                        "%02d:00".format(settings.reminderHour),
+                        onMinus = { vm.setReminder((settings.reminderHour + 23) % 24) },
+                        onPlus = { vm.setReminder((settings.reminderHour + 1) % 24) },
+                        minValueWidth = 72.dp,
+                        onValueClick = { typingHour = true },
+                    )
+                }
+                if (typingHour) {
+                    NumberEntryDialog("Reminder hour (0–23)", settings.reminderHour.toFloat(), "h", 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
+                }
             }
         }
         Spacer(Modifier.height(12.dp))
