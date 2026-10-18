@@ -1,5 +1,7 @@
 package com.forgequest.app.data.notify
 
+import com.forgequest.app.R
+
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -28,7 +30,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val planned = today != null && !today.day.isRest && today.items.isNotEmpty()
         if (planned && !snap.workoutDoneToday && app.workouts.openSessionNow() == null) {
             val count = today!!.items.map { it.exerciseId }.distinct().size
-            app.notifier.showReminder("Today: ${today.day.title}", "$count exercises on the plan. Tap to start.")
+            app.notifier.showReminder(app.str(R.string.notif_reminder_title, today.day.title), app.plural(R.plurals.notif_reminder_body, count, count))
         }
         schedule(applicationContext, settings.reminderHour)
         return Result.success()

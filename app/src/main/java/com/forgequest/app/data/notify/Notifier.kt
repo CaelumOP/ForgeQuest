@@ -25,14 +25,14 @@ class Notifier(private val context: Context) {
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = context.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(
-                NotificationChannel(REST_CHANNEL, "Rest timer", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Countdown between sets while a workout is open"
+                NotificationChannel(REST_CHANNEL, context.getString(R.string.notif_rest_channel), NotificationManager.IMPORTANCE_LOW).apply {
+                    description = context.getString(R.string.notif_rest_channel_desc)
                     setShowBadge(false)
                 }
             )
             nm.createNotificationChannel(
-                NotificationChannel(REMINDER_CHANNEL, "Workout reminders", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "A nudge on planned training days"
+                NotificationChannel(REMINDER_CHANNEL, context.getString(R.string.notif_reminder_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = context.getString(R.string.notif_reminder_channel_desc)
                 }
             )
         }
@@ -54,8 +54,8 @@ class Notifier(private val context: Context) {
         if (!canPost()) return
         val n = NotificationCompat.Builder(context, REST_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Rest")
-            .setContentText(exercise?.let { "Next: $it" } ?: "Next set when the timer ends")
+            .setContentTitle(context.getString(R.string.live_rest))
+            .setContentText(exercise?.let { context.getString(R.string.notif_next, it) } ?: context.getString(R.string.notif_next_set))
             .setWhen(endsAtMillis)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
@@ -71,8 +71,8 @@ class Notifier(private val context: Context) {
         if (!canPost()) return
         val n = NotificationCompat.Builder(context, REST_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Rest over")
-            .setContentText(exercise?.let { "Back to $it" } ?: "Back to it")
+            .setContentTitle(context.getString(R.string.notif_rest_over))
+            .setContentText(exercise?.let { context.getString(R.string.notif_back_to, it) } ?: context.getString(R.string.notif_back_to_it))
             .setAutoCancel(true)
             .setSilent(true)
             .setTimeoutAfter(20_000)

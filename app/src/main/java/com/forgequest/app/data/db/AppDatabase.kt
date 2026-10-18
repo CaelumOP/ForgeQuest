@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
         WeightEntity::class, ChatEntity::class, BadgeEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -38,9 +38,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v2 → v3: technical detail behind coach error bubbles. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE chat ADD COLUMN detail TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

@@ -1,5 +1,11 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.R
+import com.forgequest.app.ui.localLabel
+import com.forgequest.app.ui.titleRes
+
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
@@ -117,8 +123,8 @@ sealed interface ScanState {
     data class Failed(val photo: String?, val message: String, val keyProblem: Boolean = false) : ScanState
 }
 
-enum class Portion(val label: String, val factor: Float) { SMALL("Small", 0.75f), NORMAL("Normal", 1f), LARGE("Large", 1.25f) }
-enum class CookingFat(val label: String, val kcal: Int) { LIGHT("Light", 0), NORMAL("Normal", 50), HEAVY("Heavy", 150) }
+enum class Portion(@androidx.annotation.StringRes val label: Int, val factor: Float) { SMALL(R.string.scan_portion_small, 0.75f), NORMAL(R.string.scan_normal, 1f), LARGE(R.string.scan_portion_large, 1.25f) }
+enum class CookingFat(@androidx.annotation.StringRes val label: Int, val kcal: Int) { LIGHT(R.string.scan_fat_light, 0), NORMAL(R.string.scan_normal, 50), HEAVY(R.string.scan_fat_heavy, 150) }
 
 class ScanViewModel(val app: AppContainer) : ViewModel() {
     val state = MutableStateFlow<ScanState>(ScanState.Camera)
@@ -130,13 +136,13 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
     fun analyzeBytes(bytes: ByteArray) = viewModelScope.launch {
         runCatching { app.food.savePhoto(bytes) }
             .onSuccess { analyze(it) }
-            .onFailure { state.value = ScanState.Failed(null, (it as? AiError)?.userMessage ?: "Couldn't save the photo.") }
+            .onFailure { state.value = ScanState.Failed(null, (it as? AiError)?.userMessage ?: app.str(R.string.scan_err_save_photo)) }
     }
 
     fun analyzeUri(uri: android.net.Uri) = viewModelScope.launch {
         runCatching { app.food.importPhoto(uri) }
             .onSuccess { analyze(it) }
-            .onFailure { state.value = ScanState.Failed(null, (it as? AiError)?.userMessage ?: "Couldn't open that photo.") }
+            .onFailure { state.value = ScanState.Failed(null, (it as? AiError)?.userMessage ?: app.str(R.string.photo_err_open)) }
     }
 
     fun analyze(photo: String) {
@@ -147,7 +153,7 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             } catch (e: AiError) {
                 ScanState.Failed(photo, e.userMessage, keyProblem = e is AiError.InvalidKey || e is AiError.MissingKey)
             } catch (e: Exception) {
-                ScanState.Failed(photo, "Something went wrong reading that meal. Try again.")
+                ScanState.Failed(photo, app.str(R.string.scan_err_generic))
             }
         }
     }
@@ -167,11 +173,11 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
         viewModelScope.launch {
             app.food.logScannedMeal(name, category, kcal, protein, photo)
             if (saveToFoods) {
-                app.food.saveFood(FoodEntity(name = name, category = category, kcal = kcal, protein = protein, serving = "1 plate", photoPath = photo, pinned = pin, createdAt = System.currentTimeMillis()))
+                app.food.saveFood(FoodEntity(name = name, category = category, kcal = kcal, protein = protein, serving = app.str(R.string.scan_default_serving), photoPath = photo, pinned = pin, createdAt = System.currentTimeMillis()))
             }
             val badges = app.progress.evaluateBadges()
             app.haptics.celebrate()
-            loggedSummary = "Logged $name · $kcal kcal · ${protein.roundToInt()} g protein" + if (badges.isNotEmpty()) " · Badge: ${badges.first()}" else ""
+            loggedSummary = app.str(R.string.scan_logged_summary, name, kcal, protein.roundToInt()) + if (badges.isNotEmpty()) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
             logged.value = true
         }
     }
@@ -218,7 +224,7 @@ fun ScanScreen(nav: NavHostController) {
             }
         }
         if (state !is ScanState.Camera) {
-            CircleButton(Icons.Rounded.Close, "Close", Modifier.statusBarsPadding().padding(12.dp).align(Alignment.TopStart)) { nav.popBackStack() }
+            CircleButton(Icons.Rounded.Close, stringResource(R.string.cd_close), Modifier.statusBarsPadding().padding(12.dp).align(Alignment.TopStart)) { nav.popBackStack() }
         }
     }
 }
@@ -269,32 +275,32 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
             )
         } else {
             Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Camera access is off", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                Text(stringResource(R.string.scan_camera_off), style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (permanentlyDenied) "Camera access was turned off for ForgeQuest. Turn it on in the app's settings, or pick a photo from your gallery."
-                    else "Allow the camera to scan meals, or pick a photo from your gallery.",
+                    if (permanentlyDenied) stringResource(R.string.scan_camera_denied)
+                    else stringResource(R.string.scan_camera_ask),
                     style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(20.dp))
                 if (permanentlyDenied) {
-                    PillButton("Open app settings", onClick = {
+                    PillButton(stringResource(R.string.scan_open_settings), onClick = {
                         context.startActivity(
                             Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null)),
                         )
                     })
                 } else {
-                    PillButton("Allow camera", onClick = { askedBefore.value = true; permission.launch(Manifest.permission.CAMERA) })
+                    PillButton(stringResource(R.string.scan_allow_camera), onClick = { askedBefore.value = true; permission.launch(Manifest.permission.CAMERA) })
                 }
                 Spacer(Modifier.height(10.dp))
-                TonalPill("Choose from gallery", onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, tint = Color.White)
+                TonalPill(stringResource(R.string.photo_choose_gallery), onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, tint = Color.White)
             }
         }
 
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            CircleButton(Icons.Rounded.Close, "Close", onClick = onClose)
+            CircleButton(Icons.Rounded.Close, stringResource(R.string.cd_close), onClick = onClose)
             if (granted && camera?.cameraInfo?.hasFlashUnit() == true) {
-                CircleButton(if (torch) Icons.Rounded.FlashlightOn else Icons.Rounded.FlashlightOff, "Light") {
+                CircleButton(if (torch) Icons.Rounded.FlashlightOn else Icons.Rounded.FlashlightOff, stringResource(R.string.cd_light)) {
                     torch = !torch
                     camera?.cameraControl?.enableTorch(torch)
                 }
@@ -308,8 +314,8 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                if (captureFailed) "The camera couldn't take that picture. Try again, or pick one from your gallery."
-                else "Fit the whole plate in frame. A hand or fork beside it helps with portions.",
+                if (captureFailed) stringResource(R.string.scan_capture_failed)
+                else stringResource(R.string.scan_frame_hint),
                 style = MaterialTheme.typography.bodySmall, color = if (captureFailed) Fit.colors.coral else Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 40.dp),
             )
@@ -321,7 +327,7 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
                             .border(1.5.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
                             .clickable { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Rounded.PhotoLibrary, contentDescription = "Choose from gallery", tint = Color.White) }
+                    ) { Icon(Icons.Rounded.PhotoLibrary, contentDescription = stringResource(R.string.photo_choose_gallery), tint = Color.White) }
                 }
                 // Shutter: white ring with a filled core, like the system camera.
                 Box(
@@ -371,7 +377,7 @@ private fun ScanningOverlay() {
     val c = Fit.colors
     val transition = rememberInfiniteTransition(label = "scan")
     val sweep by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Reverse), label = "sweep")
-    val steps = listOf("Finding the foods…", "Estimating portions…", "Adding up calories and protein…")
+    val steps = listOf(stringResource(R.string.scan_step_find), stringResource(R.string.scan_step_portions), stringResource(R.string.scan_step_add))
     var step by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (step < steps.lastIndex) { delay(2200); step++ } }
 
@@ -410,15 +416,15 @@ private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, o
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp)
                 .clip(RoundedCornerShape(28.dp)).background(c.card).padding(24.dp),
         ) {
-            Text("Couldn't scan this meal", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Text(stringResource(R.string.scan_failed_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             Spacer(Modifier.height(6.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PillButton("Retake", onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
+                PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
                 when {
-                    keyProblem -> PillButton("Open Profile", onClick = onOpenProfile)
-                    canRetry -> PillButton("Try again", onClick = onRetry)
+                    keyProblem -> PillButton(stringResource(R.string.scan_open_profile), onClick = onOpenProfile)
+                    canRetry -> PillButton(stringResource(R.string.action_try_again), onClick = onRetry)
                 }
             }
         }
@@ -452,7 +458,7 @@ private fun ResultSheet(
     editingGrams?.let { index ->
         val item = items[index]
         NumberEntryDialog(
-            title = "${item.name}: how many grams?", initial = item.grams.toFloat().coerceAtLeast(1f), unit = "g", decimals = 0, min = 1f, max = 3000f,
+            title = stringResource(R.string.scan_grams_title, item.name), initial = item.grams.toFloat().coerceAtLeast(1f), unit = stringResource(R.string.unit_g), decimals = 0, min = 1f, max = 3000f,
             onDismiss = { editingGrams = null },
             onConfirm = { grams ->
                 // Scale calories and protein with the weight so a corrected portion stays consistent.
@@ -484,17 +490,17 @@ private fun ResultSheet(
                         decorationBox = { inner ->
                             Column {
                                 inner()
-                                Text("Tap the name to change it", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                                Text(stringResource(R.string.scan_tap_name), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                             }
                         },
                     )
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("$kcal kcal", style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.SemiBold)
-                        Text("${protein.roundToInt()} g protein", style = MaterialTheme.typography.labelLarge, color = c.teal)
+                        Text(stringResource(R.string.food_kcal, kcal), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.food_g_protein, protein.roundToInt()), style = MaterialTheme.typography.labelLarge, color = c.teal)
                     }
                 }
                 if (scan.handVisible) {
-                    Text("Portions scaled using your hand", style = MaterialTheme.typography.bodySmall, color = c.teal)
+                    Text(stringResource(R.string.scan_hand_scaled), style = MaterialTheme.typography.bodySmall, color = c.teal)
                 }
                 if (scan.note.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
@@ -513,50 +519,51 @@ private fun ResultSheet(
                             contentAlignment = Alignment.Center,
                         ) {
                             Box(Modifier.size(24.dp).clip(CircleShape).background(if (on) c.teal else c.card), contentAlignment = Alignment.Center) {
-                                if (on) Icon(Icons.Rounded.Check, contentDescription = if (on) "Included" else "Excluded", tint = c.onTeal, modifier = Modifier.size(16.dp))
+                                if (on) Icon(Icons.Rounded.Check, contentDescription = if (on) stringResource(R.string.cd_included) else stringResource(R.string.cd_excluded), tint = c.onTeal, modifier = Modifier.size(16.dp))
                             }
                         }
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f).padding(end = 12.dp).clip(RoundedCornerShape(8.dp)).clickable { editingGrams = i }.padding(vertical = 4.dp)) {
                             Text(item.name, style = MaterialTheme.typography.bodyMedium, color = if (on) c.textPrimary else c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(if (item.grams > 0) "about ${item.grams} g · tap to correct" else "tap to set grams", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                            Text(if (item.grams > 0) stringResource(R.string.scan_about_grams, item.grams) else stringResource(R.string.scan_set_grams), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("${item.kcal} kcal", style = MaterialTheme.typography.labelLarge, color = if (on) c.blue else c.textSecondary)
-                            Text("${item.protein.roundToInt()} g", style = MaterialTheme.typography.labelMedium, color = if (on) c.teal else c.textSecondary)
+                            Text(stringResource(R.string.food_kcal, item.kcal), style = MaterialTheme.typography.labelLarge, color = if (on) c.blue else c.textSecondary)
+                            Text(stringResource(R.string.food_g, item.protein.roundToInt()), style = MaterialTheme.typography.labelMedium, color = if (on) c.teal else c.textSecondary)
                         }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
-                Text("Portion size", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Text(stringResource(R.string.scan_portion_size), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
-                SegmentedTabs(Portion.entries.map { "${it.label} ${it.factor}×".replace(".0×", "×") }, Portion.entries.indexOf(portion), onSelect = { portion = Portion.entries[it] })
+                SegmentedTabs(Portion.entries.map { stringResource(it.label) + " " + "${it.factor}×".replace(".0×", "×") }, Portion.entries.indexOf(portion), onSelect = { portion = Portion.entries[it] })
                 Spacer(Modifier.height(14.dp))
-                Text("Extra oil, ghee or sauce", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Text(stringResource(R.string.scan_extra_fat), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
-                SegmentedTabs(CookingFat.entries.map { "${it.label} +${it.kcal}" }, CookingFat.entries.indexOf(fat), onSelect = { fat = CookingFat.entries[it] })
+                SegmentedTabs(CookingFat.entries.map { stringResource(it.label) + " +${it.kcal}" }, CookingFat.entries.indexOf(fat), onSelect = { fat = CookingFat.entries[it] })
                 Spacer(Modifier.height(14.dp))
-                Text("Meal", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Text(stringResource(R.string.scan_meal), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
-                SegmentedTabs(FoodCategory.entries.map { it.label }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
+                SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Save to my foods", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                        Text("Log it again later with one tap", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(stringResource(R.string.scan_save_to_foods), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                        Text(stringResource(R.string.scan_save_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                     Switch(save, { save = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
                 }
                 if (save) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Pin to top", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                         Switch(pin, { pin = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PillButton("Retake", onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
-                    PillButton("Log meal", onClick = { onLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
+                // Clear of the gesture bar; the Log button sat under the home handle.
+                Row(Modifier.navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
+                    PillButton(stringResource(R.string.scan_log_meal), onClick = { onLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -568,16 +575,16 @@ private fun NoKeyScreen(onClose: () -> Unit, onOpenProfile: () -> Unit) {
     val c = Fit.colors
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().padding(24.dp)) {
         Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClose), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Close, contentDescription = "Close", tint = c.textPrimary)
+            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = c.textPrimary)
         }
         Spacer(Modifier.weight(1f))
         IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack, 72.dp)
         Spacer(Modifier.height(20.dp))
-        Text("Meal scanning needs your AI key", style = MaterialTheme.typography.headlineSmall, color = c.textPrimary)
+        Text(stringResource(R.string.scan_needs_key_title), style = MaterialTheme.typography.headlineSmall, color = c.textPrimary)
         Spacer(Modifier.height(8.dp))
-        Text("Add your free Gemini key in Profile once, and every photo turns into calories and protein.", style = MaterialTheme.typography.bodyLarge, color = c.textSecondary)
+        Text(stringResource(R.string.scan_needs_key_body), style = MaterialTheme.typography.bodyLarge, color = c.textSecondary)
         Spacer(Modifier.height(24.dp))
-        PillButton("Add key in Profile", onClick = onOpenProfile, modifier = Modifier.fillMaxWidth())
+        PillButton(stringResource(R.string.scan_add_key), onClick = onOpenProfile, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.weight(1f))
     }
 }

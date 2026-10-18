@@ -11,7 +11,8 @@ enum class WeightUnit(val label: String, private val perKg: Float, val loadStep:
     fun toKg(value: Float): Float = value / perKg
 
     /** "72.5 kg" / "160.0 lb" */
-    fun format(kg: Float, decimals: Int = 1): String = "%.${decimals}f %s".format(Locale.US, fromKg(kg), label)
+    // Isolated so an Arabic layout doesn't flip it into "kg 72.5".
+    fun format(kg: Float, decimals: Int = 1): String = "⁦%.${decimals}f %s⁩".format(Locale.US, fromKg(kg), label)
 
     /** Just the number, e.g. for compact "8×60" labels. */
     fun number(kg: Float, decimals: Int = 1): String = "%.${decimals}f".format(Locale.US, fromKg(kg)).removeSuffix(".0")

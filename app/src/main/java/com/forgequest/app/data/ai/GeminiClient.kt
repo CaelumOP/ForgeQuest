@@ -1,6 +1,12 @@
 package com.forgequest.app.data.ai
 
+
+import android.os.SystemClock
+import androidx.annotation.StringRes
+import com.forgequest.app.LocalizedException
+import com.forgequest.app.R
 import android.util.Base64
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -20,24 +26,37 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
-/** Why an AI call failed, in words a user can act on. */
-sealed class AiError(val userMessage: String) : Exception(userMessage) {
-    object MissingKey : AiError("Add your free Gemini key in Profile to use this.")
-    object InvalidKey : AiError("Your Gemini key was rejected. Check it in Profile → AI key.")
-    object RateLimited : AiError("Gemini's free limit is used up for now. Try again in a minute.")
-    object Offline : AiError("No internet connection. Check your connection and try again.")
-    object Blocked : AiError("Gemini couldn't answer that one. Try rephrasing or another photo.")
-    object Busy : AiError("Gemini is very busy right now. Try again in a moment.")
-    class Server(val code: Int) : AiError("Gemini is having trouble right now (error $code). Try again shortly.")
-    class Unreadable(what: String) : AiError(what)
+/**
+ * Why an AI call failed, in words a user can act on. [detail] is the technical cause (HTTP status and body,
+ * exception class, model) for the "Copy error details" action; it never contains the key.
+ */
+sealed class AiError(@StringRes res: Int, val detail: String = "", vararg args: Any) : LocalizedException(res, *args) {
+    object MissingKey : AiError(R.string.ai_err_missing_key)
+    class InvalidKey(detail: String = "") : AiError(R.string.ai_err_invalid_key, detail)
+    class RateLimited(detail: String = "") : AiError(R.string.ai_err_rate_limited, detail)
+    /** The phone couldn't reach Google at all (no DNS, no route, connect failed). */
+    class Offline(detail: String = "") : AiError(R.string.ai_err_offline, detail)
+    /** Connected, but the connection broke in a way that isn't a timeout (TLS, reset, protocol). */
+    class Network(detail: String = "") : AiError(R.string.ai_err_network, detail)
+    /** Connected, but Gemini sent nothing back in time. Never reported as offline. */
+    class Timeout(detail: String = "") : AiError(R.string.ai_err_timeout, detail)
+    class Blocked(detail: String = "") : AiError(R.string.ai_err_blocked, detail)
+    class Busy(detail: String = "") : AiError(R.string.ai_err_busy, detail)
+    class Server(val code: Int, detail: String = "") : AiError(R.string.ai_err_server, detail, code)
+    class Unreadable(@StringRes what: Int) : AiError(what)
 
     /** The connection dropped after part of a streamed reply arrived; [text] is what came through. */
-    class Partial(val text: String) : AiError("The connection dropped before the coach finished. Ask again to get the rest.")
+    class Partial(val text: String, detail: String = "") : AiError(R.string.ai_err_partial, detail)
 }
 
-data class GeminiModels(val fast: String, val smart: String)
+data class GeminiModels(val fast: String, val smart: String, val lite: String)
 
 /**
  * Direct calls to the Gemini REST API with the user's own key.
@@ -46,8 +65,8 @@ data class GeminiModels(val fast: String, val smart: String)
 class GeminiClient(
     private val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        // A stalled model should fail over to the next one in well under a minute, not two.
-        .readTimeout(45, TimeUnit.SECONDS)
+        // Quick calls (thinking off); thinking calls use [slowHttp].
+        .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build(),
 ) {
@@ -71,8 +90,9 @@ class GeminiClient(
             GeminiModels(
                 fast = pickNewest(models, "flash") ?: FALLBACK_FAST,
                 smart = pickNewest(models, "pro") ?: pickNewest(models, "flash") ?: FALLBACK_FAST,
-            )
-        }.recoverCatching { e -> if (e is AiError) throw e else GeminiModels(FALLBACK_FAST, FALLBACK_FAST) }
+                lite = pickNewest(models, "flash-lite") ?: FALLBACK_LITE,
+            ).also { Log.i(TAG, "models for this key: ${models.filter { "gemini" in it }}; picked $it") }
+        }.recoverCatching { e -> if (e is AiError) throw e else GeminiModels(FALLBACK_FAST, FALLBACK_FAST, FALLBACK_LITE) }
     }
 
     /** Newest "gemini-X.Y-[family]" model; a stable release only wins over a preview of the same version. */
@@ -111,22 +131,44 @@ class GeminiClient(
         turns: List<Pair<String, String>>,
         fast: Boolean = false,
         onDelta: suspend (String) -> Unit,
-    ): String = attempt(apiKey, models) { model -> generateOnce(apiKey, model, system, turns, null, false, fast, stream = onDelta) }
+    ): String = attempt(apiKey, models) { model ->
+        try {
+            generateOnce(apiKey, model, system, turns, null, false, fast, stream = onDelta)
+        } catch (e: AiError) {
+            // A stalled model is better replaced by the next one than waited on again; quota and key problems
+            // won't change either. Anything else (a 500, a broken stream) gets one plain call: nothing reached
+            // the screen yet, so it loses nothing.
+            if (e is AiError.Partial || e is AiError.InvalidKey || e is AiError.Offline || e is AiError.RateLimited || e is AiError.Timeout) throw e
+            Log.w(TAG, "stream failed before any text on $model (${e.detail}); retrying without streaming")
+            val text = generateOnce(apiKey, model, system, turns, null, false, fast, stream = null)
+            onDelta(text)
+            text
+        }
+    }
+
+    /** Models whose free quota ran out, until when. Retrying them only costs a round trip per message. */
+    private val coolingDown = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     private suspend fun attempt(apiKey: String, models: List<String>, once: suspend (String) -> String): String {
         if (apiKey.isBlank()) throw AiError.MissingKey
-        val candidates = (models + FALLBACK_FAST).filter { it.isNotBlank() }.distinct()
-        var lastError: AiError = AiError.Blocked
+        val all = (models + FALLBACK_FAST).filter { it.isNotBlank() }.distinct()
+        val now = System.currentTimeMillis()
+        val candidates = all.filter { (coolingDown[it] ?: 0) < now }.ifEmpty { all }
+        var lastError: AiError = AiError.Blocked("no model answered")
+        var timeouts = 0
         for (model in candidates) {
             var retried = false
             while (true) {
                 try {
                     return once(model)
                 } catch (e: AiError) {
-                    if (e === AiError.MissingKey || e === AiError.InvalidKey || e === AiError.Offline || e === AiError.Blocked) throw e
+                    if (e === AiError.MissingKey || e is AiError.InvalidKey || e is AiError.Offline || e is AiError.Blocked) throw e
                     if (e is AiError.Partial) throw e
                     lastError = e
-                    if (e === AiError.Busy && !retried) {
+                    if (e is AiError.RateLimited) coolingDown[model] = System.currentTimeMillis() + retryAfterMs(e.detail)
+                    // Two stalled models in a row means Google (or the network) is the problem; stop making them wait.
+                    if (e is AiError.Timeout && ++timeouts >= 2) throw e
+                    if (e is AiError.Busy && !retried) {
                         retried = true
                         delay(1500)
                         continue
@@ -148,11 +190,48 @@ class GeminiClient(
         fast: Boolean,
         stream: (suspend (String) -> Unit)?,
     ): String = withContext(Dispatchers.IO) {
-        try {
-            request(apiKey, model, system, turns, image, jsonOutput, fast, stream)
-        } catch (e: AiError.Server) {
-            // Older models reject thinkingConfig with a 400; the request is still fine without it.
-            if (fast && e.code == 400) request(apiKey, model, system, turns, image, jsonOutput, fast = false, stream = stream) else throw e
+        // Each model family takes a different switch for "no thinking": Flash wants thinkingBudget 0, Flash-Lite
+        // rejects that and wants thinkingLevel "minimal". Try the likely one first, then the other, then none;
+        // remember what worked so later calls go straight to it.
+        val options = if (fast) {
+            val remembered = offSwitch[model]
+            listOfNotNull(remembered) + (if ("lite" in model) listOf(Thinking.MINIMAL, Thinking.BUDGET_0) else listOf(Thinking.BUDGET_0, Thinking.MINIMAL)) + Thinking.DEFAULT
+        } else {
+            listOf(Thinking.DEFAULT)
+        }.distinct()
+        var last: AiError? = null
+        for (thinking in options) {
+            try {
+                return@withContext request(apiKey, model, system, turns, image, jsonOutput, thinking, stream).also {
+                    if (fast) offSwitch[model] = thinking
+                }
+            } catch (e: AiError.Server) {
+                if (e.code != 400) throw e
+                last = e
+            }
+        }
+        throw last ?: AiError.Blocked("$model: no thinking option accepted")
+    }
+
+    /** "Please retry in 12h7m14s" → milliseconds; a minute when Google doesn't say. */
+    internal fun retryAfterMs(detail: String): Long {
+        val m = Regex("""retry in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?""").find(detail) ?: return 60_000
+        val (h, min, s) = m.destructured
+        val ms = ((h.toLongOrNull() ?: 0) * 3600 + (min.toLongOrNull() ?: 0) * 60) * 1000 + ((s.toDoubleOrNull() ?: 0.0) * 1000).toLong()
+        return ms.coerceIn(10_000, 24 * 3600_000L)
+    }
+
+    private enum class Thinking { BUDGET_0, MINIMAL, DEFAULT }
+
+    private val offSwitch = java.util.concurrent.ConcurrentHashMap<String, Thinking>()
+
+    /** Opens the TLS connection ahead of the first message so it doesn't pay the handshake. Errors are ignored. */
+    suspend fun warmUp(apiKey: String) = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext
+        val started = SystemClock.elapsedRealtime()
+        runCatching {
+            http.newCall(Request.Builder().url("$base/models?pageSize=1").header("x-goog-api-key", apiKey).get().build()).execute().close()
+            Log.i(TAG, "warm-up ${SystemClock.elapsedRealtime() - started} ms")
         }
     }
 
@@ -163,7 +242,7 @@ class GeminiClient(
         turns: List<Pair<String, String>>,
         image: ByteArray?,
         jsonOutput: Boolean,
-        fast: Boolean,
+        thinking: Thinking,
         stream: (suspend (String) -> Unit)?,
     ): String {
         val payload = buildJsonObject {
@@ -188,73 +267,135 @@ class GeminiClient(
                     })
                 }
             })
-            if (jsonOutput || fast) {
+            val thinkingConfig = when (thinking) {
+                Thinking.BUDGET_0 -> buildJsonObject { put("thinkingBudget", 0) }
+                Thinking.MINIMAL -> buildJsonObject { put("thinkingLevel", "minimal") }
+                Thinking.DEFAULT -> null
+            }
+            if (jsonOutput || thinkingConfig != null) {
                 put("generationConfig", buildJsonObject {
                     if (jsonOutput) put("responseMimeType", "application/json")
-                    if (fast) put("thinkingConfig", buildJsonObject { put("thinkingBudget", 0) })
+                    if (thinkingConfig != null) put("thinkingConfig", thinkingConfig)
                 })
             }
         }
         val body = payload.toString().toRequestBody("application/json".toMediaType())
+        val label = "$model ${if (stream == null) "generate" else "stream"} ${thinking.name.lowercase()}"
+        Log.i(TAG, "→ $label: system ${system.length} chars (~${system.length / 4} tokens), ${turns.size} turns${if (image != null) ", image ${image.size / 1024} KB" else ""}")
+        // Google sends nothing, not even headers, until the first word. With thinking off that should take a second
+        // or two, so a 20 s silence means the model is queued and the next one is a better bet. Thinking through a
+        // plan can legitimately stay silent for a minute.
+        val client = if (thinking == Thinking.DEFAULT) slowHttp else http
         if (stream == null) {
             val request = Request.Builder().url("$base/models/$model:generateContent").header("x-goog-api-key", apiKey).post(body).build()
-            return extractText(execute(request)) ?: throw AiError.Blocked
+            val started = SystemClock.elapsedRealtime()
+            val raw = execute(request, label, client)
+            logUsage(label, raw, SystemClock.elapsedRealtime() - started)
+            return extractText(raw) ?: throw AiError.Blocked("$label: no text in reply: ${finishInfo(raw)}")
         }
         val request = Request.Builder().url("$base/models/$model:streamGenerateContent?alt=sse").header("x-goog-api-key", apiKey).post(body).build()
-        return executeStreaming(request, stream)
+        return executeStreaming(request, label, client, stream)
     }
 
+    private val slowHttp: OkHttpClient by lazy { http.newBuilder().readTimeout(90, TimeUnit.SECONDS).build() }
+
     /** Reads Gemini's server-sent events; each "data:" line is one chunk of the reply. */
-    private suspend fun executeStreaming(request: Request, onDelta: suspend (String) -> Unit): String {
+    private suspend fun executeStreaming(
+        request: Request,
+        label: String,
+        client: OkHttpClient,
+        onDelta: suspend (String) -> Unit,
+    ): String {
+        val started = SystemClock.elapsedRealtime()
+        fun ms() = SystemClock.elapsedRealtime() - started
         val response = try {
-            http.newCall(request).execute()
+            client.newCall(request).execute()
         } catch (e: IOException) {
-            throw AiError.Offline
+            throw networkError(e, "$label after ${ms()} ms, before headers")
         }
+        Log.i(TAG, "← $label: HTTP ${response.code} headers in ${ms()} ms (${response.protocol})")
         response.use { r ->
-            if (!r.isSuccessful) throw classify(r.code, r.body?.string().orEmpty())
-            val source = r.body?.source() ?: throw AiError.Blocked
+            if (!r.isSuccessful) throw classify(r.code, r.body?.string().orEmpty(), label)
+            val source = r.body?.source() ?: throw AiError.Blocked("$label: empty body")
             val full = StringBuilder()
+            var lastChunk = ""
             try {
                 while (true) {
                     val line = source.readUtf8Line() ?: break
                     if (!line.startsWith("data:")) continue
                     val chunk = line.removePrefix("data:").trim()
                     if (chunk.isEmpty() || chunk == "[DONE]") continue
+                    lastChunk = chunk
                     val text = extractText(chunk, trim = false) ?: continue
+                    if (full.isEmpty()) Log.i(TAG, "← $label: first text in ${ms()} ms")
                     full.append(text)
                     onDelta(text)
                 }
             } catch (e: IOException) {
-                if (full.isEmpty()) throw AiError.Offline
-                throw AiError.Partial(full.toString())
+                val cause = networkError(e, "$label after ${ms()} ms, ${full.length} chars received")
+                if (full.isEmpty()) throw cause
+                throw AiError.Partial(full.toString(), cause.detail)
             }
-            return full.toString().trim().ifEmpty { throw AiError.Blocked }
+            logUsage(label, lastChunk, ms())
+            return full.toString().trim().ifEmpty { throw AiError.Blocked("$label: stream ended without text: ${finishInfo(lastChunk)}") }
         }
     }
 
-    private fun execute(request: Request): String {
+    private fun execute(request: Request, label: String = request.url.encodedPath, client: OkHttpClient = http): String {
+        val started = SystemClock.elapsedRealtime()
         val response = try {
-            http.newCall(request).execute()
+            client.newCall(request).execute()
         } catch (e: IOException) {
-            throw AiError.Offline
+            throw networkError(e, "$label after ${SystemClock.elapsedRealtime() - started} ms")
         }
         response.use { r ->
-            val text = r.body?.string().orEmpty()
+            val text = try {
+                r.body?.string().orEmpty()
+            } catch (e: IOException) {
+                throw networkError(e, "$label reading body after ${SystemClock.elapsedRealtime() - started} ms")
+            }
             if (r.isSuccessful) return text
-            throw classify(r.code, text)
+            throw classify(r.code, text, label)
         }
     }
 
-    private fun classify(code: Int, text: String): AiError {
-        val lower = text.lowercase()
+    /** A read timeout means Google accepted the request but sent nothing back; only a failed connect is "offline". */
+    private fun networkError(e: IOException, where: String): AiError {
+        val detail = "$where: ${e.javaClass.simpleName}: ${e.message}"
+        Log.w(TAG, detail)
+        val message = e.message.orEmpty().lowercase()
         return when {
-            "api_key_invalid" in lower || "api key not valid" in lower || "api key expired" in lower || code == 401 -> AiError.InvalidKey
-            code == 429 -> AiError.RateLimited
-            code == 503 -> AiError.Busy
-            else -> AiError.Server(code)
+            e is UnknownHostException || e is ConnectException || e is NoRouteToHostException -> AiError.Offline(detail)
+            e is SocketTimeoutException && "connect" in message -> AiError.Offline(detail)
+            e is InterruptedIOException -> AiError.Timeout(detail)
+            else -> AiError.Network(detail)
         }
     }
+
+    private fun classify(code: Int, text: String, label: String): AiError {
+        val detail = "$label: HTTP $code: ${text.take(600)}"
+        Log.w(TAG, detail)
+        val lower = text.lowercase()
+        return when {
+            "api_key_invalid" in lower || "api key not valid" in lower || "api key expired" in lower || code == 401 -> AiError.InvalidKey(detail)
+            code == 429 -> AiError.RateLimited(detail)
+            code == 503 -> AiError.Busy(detail)
+            code == 504 -> AiError.Timeout(detail)
+            else -> AiError.Server(code, detail)
+        }
+    }
+
+    private fun logUsage(label: String, raw: String, ms: Long) {
+        val usage = runCatching { json.parseToJsonElement(raw).jsonObject["usageMetadata"]?.jsonObject }.getOrNull()
+        Log.i(TAG, "✓ $label done in $ms ms; usage ${usage ?: "n/a"}")
+    }
+
+    private fun finishInfo(raw: String): String = runCatching {
+        val root = json.parseToJsonElement(raw).jsonObject
+        val finish = root["candidates"]?.jsonArray?.firstOrNull()?.jsonObject?.get("finishReason")?.jsonPrimitive?.contentOrNull
+        val block = root["promptFeedback"]?.jsonObject?.get("blockReason")?.jsonPrimitive?.contentOrNull
+        "finishReason=$finish blockReason=$block"
+    }.getOrDefault(raw.take(200))
 
     private fun extractText(body: String, trim: Boolean = true): String? {
         val root = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull() ?: return null
@@ -268,6 +409,8 @@ class GeminiClient(
     }
 
     companion object {
+        private const val TAG = "FQ-AI"
         const val FALLBACK_FAST = "gemini-flash-latest"
+        const val FALLBACK_LITE = "gemini-flash-lite-latest"
     }
 }

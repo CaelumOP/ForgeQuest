@@ -149,6 +149,8 @@ data class ChatEntity(
     /** "chat", "checkin", "error" */
     val kind: String = "chat",
     val createdAt: Long,
+    /** For errors: the technical cause behind the friendly text, for "Copy error details". */
+    val detail: String = "",
 )
 
 @Serializable

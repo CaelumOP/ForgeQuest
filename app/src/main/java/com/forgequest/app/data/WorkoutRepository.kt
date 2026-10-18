@@ -1,5 +1,8 @@
 package com.forgequest.app.data
 
+import com.forgequest.app.AppText
+import com.forgequest.app.R
+
 import androidx.room.withTransaction
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.ExerciseEntity
@@ -95,7 +98,7 @@ class WorkoutRepository(private val db: AppDatabase) {
                 PlanDayEntity(
                     planId = planId,
                     dayOfWeek = dow,
-                    title = day?.title ?: "Rest day",
+                    title = day?.title ?: AppText.get(R.string.today_rest_day),
                     isRest = day == null || day.isRest || day.items.isEmpty(),
                     note = day?.note ?: "",
                 )
@@ -170,7 +173,7 @@ class WorkoutRepository(private val db: AppDatabase) {
             )
         )
         val day = plans.day(dayId)
-        if (day != null && day.isRest) plans.updateDay(day.copy(isRest = false, title = if (day.title == "Rest day") "Workout" else day.title))
+        if (day != null && day.isRest) plans.updateDay(day.copy(isRest = false, title = if (day.title == "Rest day" || day.title == AppText.get(R.string.today_rest_day)) AppText.get(R.string.plan_workout) else day.title))
     }
 
     suspend fun addCustomExercise(name: String, kind: ExerciseKind, primary: List<Muscle>, videoUrl: String?): String {
@@ -233,7 +236,7 @@ class WorkoutRepository(private val db: AppDatabase) {
         sessions.open()?.let { return@withTransaction it.id }
         val now = System.currentTimeMillis()
         val id = sessions.insert(
-            SessionEntity(planDayId = day?.day?.id, title = day?.day?.title ?: "Quick workout", epochDay = Dates.today(), startedAt = now)
+            SessionEntity(planDayId = day?.day?.id, title = day?.day?.title ?: AppText.get(R.string.quick_workout_title), epochDay = Dates.today(), startedAt = now)
         )
         val sets = mutableListOf<SetEntity>()
         day?.items?.forEach { item -> sets += buildSetsFor(id, item.position, item, exercises.byId(item.exerciseId)) }
@@ -267,12 +270,12 @@ class WorkoutRepository(private val db: AppDatabase) {
     fun targetLabel(kind: ExerciseKind, item: PlanItemEntity?): String {
         if (item == null) return ""
         val reps = when {
-            item.repsMin != null && item.repsMax != null && item.repsMax != item.repsMin -> "${item.repsMin}–${item.repsMax} reps"
-            item.repsMin != null -> "${item.repsMin} reps"
+            item.repsMin != null && item.repsMax != null && item.repsMax != item.repsMin -> AppText.get(R.string.rx_rep_range, item.repsMin, item.repsMax)
+            item.repsMin != null -> AppText.get(R.string.rx_reps_n, item.repsMin)
             else -> ""
         }
         return when (kind) {
-            ExerciseKind.HOLD -> "${item.seconds ?: 30} s"
+            ExerciseKind.HOLD -> AppText.get(R.string.rx_seconds, item.seconds ?: 30)
             ExerciseKind.WEIGHTED -> reps
             ExerciseKind.REPS -> reps
         }

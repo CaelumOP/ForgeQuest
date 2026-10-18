@@ -1,5 +1,13 @@
 package com.forgequest.app.ui.profile
 
+import androidx.compose.material.icons.rounded.SaveAlt
+import com.forgequest.app.R
+import com.forgequest.app.ui.localTitle
+import com.forgequest.app.ui.localDescription
+import com.forgequest.app.ui.localSummary
+
+import androidx.compose.ui.res.stringResource
+
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -123,7 +131,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val docPreview = MutableStateFlow<DriveSync.DocPlan?>(null)
 
     /** A backup waiting for the person to confirm: where it came from, and its contents. */
-    data class RestorePreview(val source: String, val file: BackupFile)
+    data class RestorePreview(@androidx.annotation.StringRes val source: Int, val file: BackupFile)
     val restorePreview = MutableStateFlow<RestorePreview?>(null)
     val shareUri = MutableStateFlow<Uri?>(null)
     val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
@@ -164,23 +172,23 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         val trimmed = key.trim()
         if (trimmed.isEmpty()) {
             app.settings.setApiKey("")
-            message.value = "AI key removed"
+            message.value = app.str(R.string.profile_key_removed)
             return
         }
-        busy.value = "Checking your key…"
+        busy.value = app.str(R.string.profile_checking_key)
         viewModelScope.launch {
             val result = app.gemini.discoverModels(trimmed)
             busy.value = null
             result.onSuccess { models ->
                 app.settings.setApiKey(trimmed)
-                app.settings.update { it.copy(fastModel = models.fast, smartModel = models.smart) }
-                message.value = "Key saved. AI features are on."
+                app.models.save(models)
+                message.value = app.str(R.string.profile_key_saved)
             }.onFailure { e ->
                 if (e is AiError.Offline) {
                     app.settings.setApiKey(trimmed)
-                    message.value = "Saved. Couldn't check it while offline."
+                    message.value = app.str(R.string.profile_key_saved_offline)
                 } else {
-                    message.value = (e as? AiError)?.userMessage ?: "Couldn't check that key."
+                    message.value = (e as? AiError)?.userMessage ?: app.str(R.string.profile_key_check_failed)
                 }
             }
         }
@@ -230,31 +238,46 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun connectDrive() = withDrive("Connecting Google Drive…") { token ->
+    fun connectDrive() = withDrive(app.str(R.string.drive_connecting)) { token ->
         val email = app.drive.accountEmail(token)
-        app.settings.update { it.copy(driveEmail = email.ifBlank { "Connected" }) }
+        app.settings.update { it.copy(driveEmail = email.ifBlank { app.str(R.string.drive_connected) }) }
         app.drive.backup(token)
-        message.value = "Google Drive connected and backed up"
+        message.value = app.str(R.string.drive_connected_backed_up)
     }
 
-    fun backupNow() = withDrive("Backing up…") { token ->
+    fun backupNow() = withDrive(app.str(R.string.drive_backing_up)) { token ->
         app.drive.backup(token)
-        message.value = "Backed up to Google Drive"
+        message.value = app.str(R.string.drive_backed_up)
     }
 
-    fun restore() = withDrive("Reading your Drive backup…") { token ->
-        restorePreview.value = RestorePreview("Google Drive", app.drive.fetchBackup(token))
+    fun restore() = withDrive(app.str(R.string.drive_reading_backup)) { token ->
+        restorePreview.value = RestorePreview(R.string.restore_src_drive, app.drive.fetchBackup(token))
     }
 
     // ------------------------------------------------------------ Local backup file
 
     fun exportData() {
-        busy.value = "Preparing your backup…"
+        busy.value = app.str(R.string.backup_preparing)
         viewModelScope.launch {
             try {
                 shareUri.value = app.backup.exportForSharing()
             } catch (e: Exception) {
-                message.value = "Couldn't create the backup file."
+                message.value = app.str(R.string.backup_create_failed)
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    /** Saves to a place the person picks (Downloads, Files, Drive) instead of only offering the share sheet. */
+    fun exportTo(uri: Uri) {
+        busy.value = app.str(R.string.backup_preparing)
+        viewModelScope.launch {
+            try {
+                app.backup.exportTo(uri)
+                message.value = app.str(R.string.backup_saved)
+            } catch (e: Exception) {
+                message.value = app.str(R.string.backup_create_failed)
             } finally {
                 busy.value = null
             }
@@ -262,10 +285,10 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun previewImport(uri: Uri) {
-        busy.value = "Reading the file…"
+        busy.value = app.str(R.string.backup_reading_file)
         viewModelScope.launch {
             try {
-                restorePreview.value = RestorePreview("this file", app.backup.read(uri))
+                restorePreview.value = RestorePreview(R.string.restore_src_file, app.backup.read(uri))
             } catch (e: BackupError) {
                 message.value = e.userMessage
             } finally {
@@ -276,10 +299,10 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     fun previewUndoRestore() {
         val latest = safetyCopies.value.firstOrNull() ?: return
-        busy.value = "Reading the copy…"
+        busy.value = app.str(R.string.backup_reading_copy)
         viewModelScope.launch {
             try {
-                restorePreview.value = RestorePreview("the copy saved before your last restore", app.backup.read(latest))
+                restorePreview.value = RestorePreview(R.string.restore_src_copy, app.backup.read(latest))
             } catch (e: BackupError) {
                 message.value = e.userMessage
             } finally {
@@ -291,21 +314,21 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun applyRestore() {
         val preview = restorePreview.value ?: return
         restorePreview.value = null
-        busy.value = "Restoring…"
+        busy.value = app.str(R.string.backup_restoring)
         viewModelScope.launch {
             try {
                 app.backup.apply(preview.file)
                 safetyCopies.value = app.backup.safetyCopies()
-                message.value = "Restored from ${preview.source}"
+                message.value = app.str(R.string.backup_restored_from, app.str(preview.source))
             } catch (e: Exception) {
-                message.value = "Couldn't restore that backup."
+                message.value = app.str(R.string.backup_restore_failed)
             } finally {
                 busy.value = null
             }
         }
     }
 
-    fun importDoc() = withDrive("Reading your Workout Plan doc…", withDocs = true) { token ->
+    fun importDoc() = withDrive(app.str(R.string.drive_reading_doc), withDocs = true) { token ->
         if (app.settings.apiKey.value.isBlank()) throw AiError.MissingKey
         app.settings.update { it.copy(driveDocsEnabled = true) }
         docPreview.value = app.drive.fetchPlanDoc(token, 0)
@@ -318,7 +341,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         docPreview.value = null
         viewModelScope.launch {
             app.drive.applyDocPlan(doc)
-            message.value = "Imported ${doc.docName}"
+            message.value = app.str(R.string.drive_imported, doc.docName)
         }
     }
 
@@ -351,11 +374,12 @@ fun ProfileScreen(nav: NavHostController) {
     }
     LaunchedEffect(consent) { consent?.let { consentLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) } }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::previewImport) }
+    val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTo) }
     LaunchedEffect(shareUri) {
         shareUri?.let { uri ->
             val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri)
-                .putExtra(Intent.EXTRA_SUBJECT, "ForgeQuest backup").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            context.startActivity(Intent.createChooser(send, "Save your backup"))
+                .putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.backup_share_subject)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            context.startActivity(Intent.createChooser(send, context.getString(R.string.backup_share_title)))
             vm.shareUri.value = null
         }
     }
@@ -366,7 +390,7 @@ fun ProfileScreen(nav: NavHostController) {
     val settings = s.settings
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        Text("Profile", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
+        Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
 
         if (apiKey.isBlank()) {
             FitCard(onClick = { keyDialog = true }) {
@@ -374,10 +398,10 @@ fun ProfileScreen(nav: NavHostController) {
                     IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Turn on the coach and meal scanning", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                        Text("Paste a free Gemini key. Takes about a minute.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(stringResource(R.string.profile_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                        Text(stringResource(R.string.profile_setup_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
-                    PillButton("Add key", onClick = { keyDialog = true })
+                    PillButton(stringResource(R.string.profile_add_key), onClick = { keyDialog = true })
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -391,19 +415,19 @@ fun ProfileScreen(nav: NavHostController) {
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(settings.name.ifBlank { "Athlete" }, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                    Text("Rank ${s.level.rank.letter} · ${s.level.rank.title} · Level ${s.level.level}", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                    Text(settings.name.ifBlank { stringResource(R.string.profile_default_name) }, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_rank_line, s.level.rank.letter, s.level.rank.localTitle(), s.level.level), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(16.dp))
             ProgressLine(s.level.progress, c.blue, c.blueTrack, height = 8.dp)
             Spacer(Modifier.height(6.dp))
-            Text("${s.level.xpIntoLevel} / ${s.level.xpForNextLevel} XP to level ${s.level.level + 1}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Text(stringResource(R.string.profile_xp_line, s.level.xpIntoLevel, s.level.xpForNextLevel, s.level.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
-                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", "Workouts", c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
-                com.forgequest.app.ui.components.StatColumn("${s.streak.best}", "Best streak (wk)", c.gold, Modifier.weight(1f))
-                com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", "Badges", c.purple, Modifier.weight(1f))
+                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", stringResource(R.string.tab_workouts), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
+                com.forgequest.app.ui.components.StatColumn("${s.streak.best}", stringResource(R.string.profile_best_streak), c.gold, Modifier.weight(1f))
+                com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", stringResource(R.string.profile_badges), c.purple, Modifier.weight(1f))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -413,17 +437,17 @@ fun ProfileScreen(nav: NavHostController) {
             val owned = s.badges.associateBy { it.id }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Badges", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text("${s.badges.size} of ${Badges.all.size} unlocked", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_badges), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_badges_unlocked, s.badges.size, Badges.all.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
-                Text("See all", style = MaterialTheme.typography.labelLarge, color = c.teal)
+                Text(stringResource(R.string.action_see_all), style = MaterialTheme.typography.labelLarge, color = c.teal)
             }
             val latest = s.badges.sortedByDescending { it.unlockedAt }.take(4).mapNotNull { b -> Badges.byId[b.id]?.let { it to b } }
             if (latest.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth()) {
                     latest.forEach { (def, got) ->
-                        BadgeChip(def.title, def.description, badgeIcon(def.category), unlocked = true, isNew = !got.seen, modifier = Modifier.weight(1f))
+                        BadgeChip(def.localTitle(), def.localDescription(), badgeIcon(def.category), unlocked = true, isNew = !got.seen, modifier = Modifier.weight(1f))
                     }
                     repeat(4 - latest.size) { Spacer(Modifier.weight(1f)) }
                 }
@@ -437,10 +461,10 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.MonitorWeight, c.teal, c.tealTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Body weight", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text(s.latestWeight?.let { settings.weightUnit.format(it) } ?: "Not logged", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                    Text(stringResource(R.string.weight_body), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(s.latestWeight?.let { settings.weightUnit.format(it) } ?: stringResource(R.string.profile_not_logged), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 }
-                TonalPill("Log", onClick = { weightDialog = true })
+                TonalPill(stringResource(R.string.action_log), onClick = { weightDialog = true })
             }
             val recent = s.weights.takeLast(30)
             if (recent.size >= 2) {
@@ -455,17 +479,17 @@ fun ProfileScreen(nav: NavHostController) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.TrackChanges, c.gold, c.goldTrack)
                 Spacer(Modifier.width(14.dp))
-                Text("Goals", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(stringResource(R.string.profile_goals), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             }
             Spacer(Modifier.height(12.dp))
-            SettingStepper("Daily protein", settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = "g")
-            SettingStepper("Daily calories", settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
+            SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
+            SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
             val planDays = s.plan?.trainingDays?.size ?: 0
             val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Workouts per week", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    if (settings.weeklyTargetOverride == 0) Text("From your plan", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_workouts_per_week), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    if (settings.weeklyTargetOverride == 0) Text(stringResource(R.string.profile_from_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Stepper(
                     "$weeklyShown",
@@ -475,15 +499,15 @@ fun ProfileScreen(nav: NavHostController) {
                     minValueWidth = 84.dp,
                 )
             }
-            Text("Your weekly streak counts weeks where you reach this number.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
         Spacer(Modifier.height(12.dp))
 
         // AI key
         SettingsRow(
             Icons.Rounded.Key, c.blue, c.blueTrack,
-            "AI key",
-            if (apiKey.isBlank()) "Not set · meal scan and coach are off" else "Connected · stored encrypted on this phone",
+            stringResource(R.string.profile_ai_key),
+            if (apiKey.isBlank()) stringResource(R.string.profile_key_not_set) else stringResource(R.string.profile_key_connected),
         ) { keyDialog = true }
         Spacer(Modifier.height(12.dp))
 
@@ -492,24 +516,24 @@ fun ProfileScreen(nav: NavHostController) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Palette, c.blue, c.blueTrack)
                 Spacer(Modifier.width(14.dp))
-                Text("Appearance", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(stringResource(R.string.profile_appearance), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             }
             Spacer(Modifier.height(14.dp))
-            Text("Theme", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+            Text(stringResource(R.string.profile_theme), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
             Spacer(Modifier.height(6.dp))
             SegmentedTabs(
-                listOf("System", "Light", "Dark"),
+                listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_light), stringResource(R.string.theme_dark)),
                 when (settings.theme) { "light" -> 1; "dark" -> 2; else -> 0 },
                 onSelect = { vm.setTheme(listOf("system", "light", "dark")[it]) },
             )
             Spacer(Modifier.height(12.dp))
-            Text("Weights", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+            Text(stringResource(R.string.profile_weights), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
             Spacer(Modifier.height(6.dp))
-            SegmentedTabs(listOf("Kilograms", "Pounds"), if (settings.unit == "lb") 1 else 0, onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") })
+            SegmentedTabs(listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)), if (settings.unit == "lb") 1 else 0, onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") })
             Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Vibration feedback", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    Text("Ticks on steppers, a thud when a set is done", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_vibration), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_vibration_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Switch(settings.hapticsEnabled, { vm.setHaptics(it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
@@ -522,10 +546,10 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Workout reminder", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_reminder), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Text(
-                        if (settings.reminderHour < 0) "Off. A nudge on planned days if nothing is logged yet."
-                        else "On planned days at ${"%02d:00".format(settings.reminderHour)}, only if nothing is logged yet.",
+                        if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off)
+                        else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
@@ -534,7 +558,7 @@ fun ProfileScreen(nav: NavHostController) {
             if (settings.reminderHour >= 0) {
                 var typingHour by remember { mutableStateOf(false) }
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Time", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.profile_time), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                     Stepper(
                         "%02d:00".format(settings.reminderHour),
                         onMinus = { vm.setReminder((settings.reminderHour + 23) % 24) },
@@ -544,7 +568,7 @@ fun ProfileScreen(nav: NavHostController) {
                     )
                 }
                 if (typingHour) {
-                    NumberEntryDialog("Reminder hour (0–23)", settings.reminderHour.toFloat(), "h", 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
+                    NumberEntryDialog(stringResource(R.string.profile_reminder_hour), settings.reminderHour.toFloat(), "h", 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
                 }
             }
         }
@@ -556,14 +580,14 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("What the coach remembers", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Text(
-                        if (settings.coachNotes.isBlank()) "Tell the coach about injuries, equipment or preferences and it keeps them here."
-                        else "Used in every conversation. Tap a line to remove it.",
+                        if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
+                        else stringResource(R.string.profile_memory_hint),
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
-                TonalPill("Add", onClick = { notesDialog = true })
+                TonalPill(stringResource(R.string.action_add), onClick = { notesDialog = true })
             }
             val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
             if (notes.isNotEmpty()) {
@@ -575,7 +599,7 @@ fun ProfileScreen(nav: NavHostController) {
                     ) {
                         Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
                         Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                        Icon(Icons.Rounded.Close, contentDescription = "Remove", tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -593,11 +617,11 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Lock, c.coral, c.coralTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("App lock", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_app_lock), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Text(
-                        if (!canLock) "Set up a screen lock or fingerprint on this phone first."
-                        else if (settings.biometricLock) "Asks for your fingerprint, face or PIN when you open the app."
-                        else "Ask for your fingerprint, face or PIN when the app opens.",
+                        if (!canLock) stringResource(R.string.profile_lock_unavailable)
+                        else if (settings.biometricLock) stringResource(R.string.profile_lock_on)
+                        else stringResource(R.string.profile_lock_off),
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
@@ -609,16 +633,16 @@ fun ProfileScreen(nav: NavHostController) {
         // Exercise library
         SettingsRow(
             Icons.Rounded.FitnessCenter, c.teal, c.tealTrack,
-            "Exercise library",
-            "Rename, merge or delete exercises you or the coach created",
+            stringResource(R.string.profile_exercise_library),
+            stringResource(R.string.profile_exercise_library_hint),
         ) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
         Spacer(Modifier.height(12.dp))
 
         // Hand + body
         SettingsRow(
             Icons.Rounded.PanTool, c.purple, c.purpleTrack,
-            "Hand size (optional)",
-            if (settings.handLengthCm > 0f) "%.1f cm long · %.1f cm palm".format(settings.handLengthCm, settings.palmWidthCm) else "Helps portion estimates when your hand is in the photo",
+            stringResource(R.string.profile_hand_size),
+            if (settings.handLengthCm > 0f) stringResource(R.string.profile_hand_value, "%.1f".format(settings.handLengthCm), "%.1f".format(settings.palmWidthCm)) else stringResource(R.string.profile_hand_hint),
         ) { handDialog = true }
         Spacer(Modifier.height(12.dp))
         FitCard {
@@ -626,13 +650,13 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Muscle map", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text("Body shown on the recovery map", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_muscle_map), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_muscle_map_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(16.dp))
             SegmentedTabs(
-                listOf("Male", "Female"),
+                listOf(stringResource(R.string.body_male), stringResource(R.string.body_female)),
                 if (settings.bodyType == BodyType.FEMALE) 1 else 0,
                 onSelect = { vm.setBody(if (it == 1) BodyType.FEMALE else BodyType.MALE) },
             )
@@ -645,15 +669,16 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Your data", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text("Save a file to keep, or bring everything to a new phone. Photos and your AI key stay out of it.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_your_data), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_your_data_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(14.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PillButton("Export file", onClick = vm::exportData, icon = Icons.Rounded.Share)
-                TonalPill("Import file", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
-                if (safetyCopies.isNotEmpty()) TonalPill("Undo last restore", onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
+                PillButton(stringResource(R.string.profile_save_file), onClick = { saveLauncher.launch(vm.app.backup.exportFileName()) }, icon = Icons.Rounded.SaveAlt)
+                TonalPill(stringResource(R.string.profile_share_file), onClick = vm::exportData, icon = Icons.Rounded.Share)
+                TonalPill(stringResource(R.string.profile_import), onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
+                if (safetyCopies.isNotEmpty()) TonalPill(stringResource(R.string.profile_undo_restore), onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -664,11 +689,11 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Cloud, c.teal, c.tealTrack)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Google Drive", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.drive_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Text(
                         when {
-                            settings.driveEmail.isBlank() -> "Daily backup to a hidden app folder in your Drive. Nothing else in your Drive is touched."
-                            settings.lastBackupAt > 0 -> "${settings.driveEmail} · backed up ${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt))}"
+                            settings.driveEmail.isBlank() -> stringResource(R.string.drive_hint)
+                            settings.lastBackupAt > 0 -> stringResource(R.string.drive_backed_up_at, settings.driveEmail, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt)))
                             else -> settings.driveEmail
                         },
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
@@ -677,19 +702,19 @@ fun ProfileScreen(nav: NavHostController) {
             }
             Spacer(Modifier.height(14.dp))
             if (settings.driveEmail.isBlank()) {
-                PillButton("Connect Google Drive", onClick = vm::connectDrive, modifier = Modifier.fillMaxWidth())
+                PillButton(stringResource(R.string.drive_connect), onClick = vm::connectDrive, modifier = Modifier.fillMaxWidth())
             } else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PillButton("Back up now", onClick = vm::backupNow)
-                    TonalPill(if (settings.driveDocsEnabled) "Import plan from Docs" else "Import plan from Docs…", onClick = vm::importDoc)
-                    if (settings.driveDocsEnabled) TonalPill("Stop reading Docs", onClick = vm::disableDocs, tint = c.textSecondary)
-                    TonalPill("Restore", onClick = vm::restore)
-                    TonalPill("Disconnect", onClick = vm::disconnectDrive, tint = c.textSecondary)
+                    PillButton(stringResource(R.string.drive_back_up_now), onClick = vm::backupNow)
+                    TonalPill(if (settings.driveDocsEnabled) stringResource(R.string.drive_import_doc) else stringResource(R.string.drive_import_doc_first), onClick = vm::importDoc)
+                    if (settings.driveDocsEnabled) TonalPill(stringResource(R.string.drive_stop_docs), onClick = vm::disableDocs, tint = c.textSecondary)
+                    TonalPill(stringResource(R.string.action_restore), onClick = vm::restore)
+                    TonalPill(stringResource(R.string.drive_disconnect), onClick = vm::disconnectDrive, tint = c.textSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (settings.driveDocsEnabled) "Backs up daily on its own. Your newest Google Doc named \"Workout Plan\" is checked daily too; changes appear in the Coach tab for you to apply."
-                    else "Backs up daily on its own. Importing a plan from Google Docs asks separately for permission to read your Drive; you can turn that off any time.",
+                    if (settings.driveDocsEnabled) stringResource(R.string.drive_docs_on_hint)
+                    else stringResource(R.string.drive_docs_off_hint),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
             }
@@ -702,12 +727,12 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Credits", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text("Foundation routine by Hemo Calisthenics. Anatomy art from react-native-body-highlighter (MIT).", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(10.dp))
-            TonalPill("Hemo Calisthenics on YouTube", onClick = {
+            TonalPill(stringResource(R.string.profile_hemo_youtube), onClick = {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/@HemoCalisthenics")))
             }, icon = Icons.Rounded.OpenInNew)
         }
@@ -720,29 +745,29 @@ fun ProfileScreen(nav: NavHostController) {
             onDismissRequest = { keyDialog = false },
             containerColor = c.card,
             icon = { Icon(Icons.Rounded.Lock, contentDescription = null, tint = c.blue) },
-            title = { Text("Gemini AI key", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.key_dialog_title), color = c.textPrimary) },
             text = {
                 Column {
-                    Text("Get a free key from Google AI Studio, then paste it here. It stays encrypted on this phone.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.key_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(6.dp))
-                    Text("Meal photos and your training data are sent to Google Gemini under this key. Free keys let Google use them to improve its models.", color = c.textSecondary, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.key_dialog_privacy), color = c.textSecondary, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
                     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) }) {
-                        Text("Open Google AI Studio", color = c.blue)
+                        Text(stringResource(R.string.key_dialog_open_studio), color = c.blue)
                     }
                     OutlinedTextField(
                         value = key, onValueChange = { key = it.trim() }, singleLine = true,
-                        placeholder = { Text(if (apiKey.isBlank()) "Paste key" else "Paste a new key") },
+                        placeholder = { Text(if (apiKey.isBlank()) stringResource(R.string.key_paste) else stringResource(R.string.key_paste_new)) },
                         visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = { keyDialog = false; vm.saveKey(key) }, enabled = key.isNotBlank()) { Text("Save", color = c.teal) } },
+            confirmButton = { TextButton(onClick = { keyDialog = false; vm.saveKey(key) }, enabled = key.isNotBlank()) { Text(stringResource(R.string.action_save), color = c.teal) } },
             dismissButton = {
                 Row {
-                    if (apiKey.isNotBlank()) TextButton(onClick = { keyDialog = false; vm.saveKey("") }) { Text("Remove", color = c.coral) }
-                    TextButton(onClick = { keyDialog = false }) { Text("Cancel", color = c.textSecondary) }
+                    if (apiKey.isNotBlank()) TextButton(onClick = { keyDialog = false; vm.saveKey("") }) { Text(stringResource(R.string.action_remove), color = c.coral) }
+                    TextButton(onClick = { keyDialog = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) }
                 }
             },
         )
@@ -753,15 +778,15 @@ fun ProfileScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { weightDialog = false },
             containerColor = c.card,
-            title = { Text("Log body weight", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.weight_log_title), color = c.textPrimary) },
             text = {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     val unit = settings.weightUnit
-                    NumberStepper(unit.fromKg(kg), { kg = unit.toKg(it) }, step = unit.bodyStep, min = unit.fromKg(30f), max = unit.fromKg(250f), unit = unit.label, decimals = 1, title = "Body weight", minValueWidth = 96.dp)
+                    NumberStepper(unit.fromKg(kg), { kg = unit.toKg(it) }, step = unit.bodyStep, min = unit.fromKg(30f), max = unit.fromKg(250f), unit = unit.label, decimals = 1, title = stringResource(R.string.weight_body), minValueWidth = 96.dp)
                 }
             },
-            confirmButton = { TextButton(onClick = { vm.logWeight(kg); weightDialog = false }) { Text("Save", color = c.teal) } },
-            dismissButton = { TextButton(onClick = { weightDialog = false }) { Text("Cancel", color = c.textSecondary) } },
+            confirmButton = { TextButton(onClick = { vm.logWeight(kg); weightDialog = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { weightDialog = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 
@@ -770,10 +795,10 @@ fun ProfileScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { notesDialog = false },
             containerColor = c.card,
-            title = { Text("Something the coach should know", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.notes_dialog_title), color = c.textPrimary) },
             text = {
                 Column {
-                    Text("One fact per note, e.g. \"Left knee hurts in deep squats\" or \"Only have a pull-up bar and rings\".", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.notes_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = note, onValueChange = { note = it.take(160) }, singleLine = true, shape = RoundedCornerShape(16.dp),
@@ -782,8 +807,8 @@ fun ProfileScreen(nav: NavHostController) {
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = { vm.addNote(note); notesDialog = false }, enabled = note.isNotBlank()) { Text("Save", color = c.teal) } },
-            dismissButton = { TextButton(onClick = { notesDialog = false }) { Text("Cancel", color = c.textSecondary) } },
+            confirmButton = { TextButton(onClick = { vm.addNote(note); notesDialog = false }, enabled = note.isNotBlank()) { Text(stringResource(R.string.action_save), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { notesDialog = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 
@@ -793,20 +818,20 @@ fun ProfileScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { handDialog = false },
             containerColor = c.card,
-            title = { Text("Hand size", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.hand_dialog_title), color = c.textPrimary) },
             text = {
                 Column {
-                    Text("Measure from wrist crease to the tip of your middle finger, and across your palm.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.hand_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
-                    SettingStepper("Length", length, { length = it }, step = 0.5f, min = 10f, max = 28f, unit = "cm", decimals = 1)
-                    SettingStepper("Palm width", palm, { palm = it }, step = 0.5f, min = 5f, max = 14f, unit = "cm", decimals = 1)
+                    SettingStepper(stringResource(R.string.hand_length), length, { length = it }, step = 0.5f, min = 10f, max = 28f, unit = stringResource(R.string.unit_cm), decimals = 1)
+                    SettingStepper(stringResource(R.string.hand_palm), palm, { palm = it }, step = 0.5f, min = 5f, max = 14f, unit = stringResource(R.string.unit_cm), decimals = 1)
                 }
             },
-            confirmButton = { TextButton(onClick = { vm.setHand(length, palm); handDialog = false }) { Text("Save", color = c.teal) } },
+            confirmButton = { TextButton(onClick = { vm.setHand(length, palm); handDialog = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
             dismissButton = {
                 Row {
-                    if (settings.handLengthCm > 0f) TextButton(onClick = { vm.setHand(0f, 0f); handDialog = false }) { Text("Clear", color = c.coral) }
-                    TextButton(onClick = { handDialog = false }) { Text("Cancel", color = c.textSecondary) }
+                    if (settings.handLengthCm > 0f) TextButton(onClick = { vm.setHand(0f, 0f); handDialog = false }) { Text(stringResource(R.string.action_clear), color = c.coral) }
+                    TextButton(onClick = { handDialog = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) }
                 }
             },
         )
@@ -816,19 +841,19 @@ fun ProfileScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { vm.restorePreview.value = null },
             containerColor = c.card,
-            title = { Text("Restore from ${preview.source}?", color = c.textPrimary) },
+            title = { Text(stringResource(R.string.restore_title, stringResource(preview.source)), color = c.textPrimary) },
             text = {
                 Column {
-                    Text(preview.file.summary(), color = c.textPrimary, style = MaterialTheme.typography.bodyMedium)
+                    Text(preview.file.localSummary(), color = c.textPrimary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Everything on this phone is replaced. A copy of what's here now is kept, so you can undo this from the Your data card.",
+                        stringResource(R.string.restore_body),
                         color = c.textSecondary, style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = vm::applyRestore) { Text("Restore", color = c.coral) } },
-            dismissButton = { TextButton(onClick = { vm.restorePreview.value = null }) { Text("Cancel", color = c.textSecondary) } },
+            confirmButton = { TextButton(onClick = vm::applyRestore) { Text(stringResource(R.string.action_restore), color = c.coral) } },
+            dismissButton = { TextButton(onClick = { vm.restorePreview.value = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 
@@ -872,8 +897,8 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
             containerColor = c.card,
             icon = { Icon(icon, contentDescription = null, tint = if (unlocked) c.gold else c.textSecondary) },
             title = { Text(title, color = c.textPrimary) },
-            text = { Text(if (unlocked) "Unlocked. $description." else "$description to unlock.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { open = false }) { Text("OK", color = c.teal) } },
+            text = { Text(if (unlocked) stringResource(R.string.badge_unlocked_detail, description) else stringResource(R.string.badge_locked_detail, description), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_ok), color = c.teal) } },
         )
     }
 }

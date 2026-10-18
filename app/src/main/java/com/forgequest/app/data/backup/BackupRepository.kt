@@ -100,9 +100,9 @@ data class BackupFile(
     }
 }
 
-sealed class BackupError(val userMessage: String) : Exception(userMessage) {
-    object Unreadable : BackupError("That file isn't a ForgeQuest backup.")
-    object CantOpen : BackupError("Couldn't open that file.")
+sealed class BackupError(res: Int) : com.forgequest.app.LocalizedException(res) {
+    object Unreadable : BackupError(com.forgequest.app.R.string.backup_err_unreadable)
+    object CantOpen : BackupError(com.forgequest.app.R.string.backup_err_cant_open)
 }
 
 /**
@@ -172,6 +172,14 @@ class BackupRepository(
         file.writeText(encode(build()))
         FileProvider.getUriForFile(context, "${context.packageName}.files", file)
     }
+
+    /** Writes a backup straight to a file the person chose in the system "Save as" screen. */
+    suspend fun exportTo(uri: Uri) = withContext(Dispatchers.IO) {
+        val text = encode(build())
+        context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { it.write(text) } ?: throw BackupError.CantOpen
+    }
+
+    fun exportFileName(): String = "forgequest-backup-${LocalDate.now().format(DateTimeFormatter.ISO_DATE)}.json"
 
     /** Reads a backup the person picked, without applying it. */
     suspend fun read(uri: Uri): BackupFile = withContext(Dispatchers.IO) {

@@ -1,5 +1,10 @@
 package com.forgequest.app.ui.components
 
+import com.forgequest.app.R
+import com.forgequest.app.ui.localLabel
+
+import androidx.compose.ui.res.stringResource
+
 import android.content.Context
 import android.graphics.Region
 import androidx.compose.animation.animateColorAsState
@@ -127,11 +132,13 @@ fun MuscleRecoveryMap(
     var selected by remember { mutableStateOf<Muscle?>(null) }
     val c = Fit.colors
 
-    val summary = if (recovery.isEmpty()) "Muscle recovery map. All muscles fresh."
-    else "Muscle recovery map. Recovering: " + recovery.entries.sortedByDescending { it.value.fatigue }.joinToString(", ") { "${it.key.label} ready in ${it.value.hoursUntilReady} hours" }
+    val summary = if (recovery.isEmpty()) stringResource(R.string.map_cd_all_fresh)
+    else stringResource(R.string.map_cd_recovering, recovery.entries.sortedByDescending { it.value.fatigue }.map { stringResource(R.string.map_cd_muscle_ready, it.key.localLabel(), it.value.hoursUntilReady) }.joinToString(stringResource(R.string.list_separator)))
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        // Front on the left and back on the right in every language: it's a picture of a body, not a reading order.
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
         Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = summary }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Front" to art?.front, "Back" to art?.back).forEach { (label, view) ->
+            listOf(stringResource(R.string.map_front) to art?.front, stringResource(R.string.map_back) to art?.back).forEach { (label, view) ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.fillMaxWidth().aspectRatio(0.5f)) {
                         if (view != null) {
@@ -142,12 +149,13 @@ fun MuscleRecoveryMap(
                 }
             }
         }
+        }
         Spacer(Modifier.height(12.dp))
         val info = selected?.let { m ->
             val r = recovery[m]
-            if (r == null) "${m.label} · fully recovered"
-            else "${m.label} · ${((1f - r.fatigue) * 100).roundToInt()}% recovered · ready in ${r.hoursUntilReady} h"
-        } ?: if (recovery.isEmpty()) "All muscles fresh. Tap a muscle for details." else "Tap a muscle for details"
+            if (r == null) stringResource(R.string.map_fully_recovered, m.localLabel())
+            else stringResource(R.string.map_recovering_detail, m.localLabel(), ((1f - r.fatigue) * 100).roundToInt(), r.hoursUntilReady)
+        } ?: if (recovery.isEmpty()) stringResource(R.string.map_all_fresh_tap) else stringResource(R.string.map_tap_hint)
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(c.cardHigh).padding(horizontal = 16.dp, vertical = 10.dp),
             contentAlignment = Alignment.Center,
@@ -156,10 +164,10 @@ fun MuscleRecoveryMap(
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            LegendDot(c.coral, "Just trained")
-            LegendDot(c.gold, "Recovering")
-            LegendDot(c.teal, "Almost ready")
-            LegendDot(c.muscleRest, "Fresh")
+            LegendDot(c.coral, stringResource(R.string.map_just_trained))
+            LegendDot(c.gold, stringResource(R.string.map_recovering))
+            LegendDot(c.teal, stringResource(R.string.map_almost_ready))
+            LegendDot(c.muscleRest, stringResource(R.string.map_fresh))
         }
     }
 }

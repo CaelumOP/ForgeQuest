@@ -33,10 +33,12 @@ data class WorkoutSummary(
     val doneSets: Int,
     val minutes: Int,
     val prs: List<String>,
-    val newBadges: List<String>,
+    val newBadges: List<com.forgequest.app.domain.BadgeDef>,
     val xpGained: Int,
     val before: LevelInfo,
     val after: LevelInfo,
+    /** Next planned training day after today: day of week (1 = Monday) and title. */
+    val nextUp: Pair<Int, String>? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -59,12 +61,29 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
 
+    /**
+     * What each exercise looked like last time, set by set, shown beside today's sets the way Strong and Hevy
+     * show a "Previous" column. Loaded once per exercise as exercises appear in the session.
+     */
+    val previous = MutableStateFlow<Map<String, List<SetEntity>>>(emptyMap())
+
     val rest = MutableStateFlow<RestTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
     val summary = MutableStateFlow<WorkoutSummary?>(null)
     val finishing = MutableStateFlow(false)
 
     init {
+        viewModelScope.launch {
+            sets.collect { list ->
+                val missing = list.map { it.exerciseId }.distinct().filter { it !in previous.value }
+                if (missing.isEmpty()) return@collect
+                val loaded = missing.associateWith { id ->
+                    val recent = app.db.sessions().recentDoneSets(id).filter { it.sessionId != currentSession?.id }
+                    recent.filter { it.sessionId == recent.firstOrNull()?.sessionId }.sortedBy { it.setIndex }
+                }
+                previous.value = previous.value + loaded
+            }
+        }
         viewModelScope.launch {
             while (isActive) {
                 now.value = System.currentTimeMillis()
@@ -172,6 +191,15 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
+    /** For when you did the work but didn't tick along (Strong offers the same on finish). */
+    fun tickAllAndFinish() {
+        val pending = sets.value.filter { !it.done }
+        viewModelScope.launch {
+            pending.forEach { repo.updateSet(it.copy(done = true)) }
+            finish()
+        }
+    }
+
     fun finish() {
         val s = currentSession ?: return
         if (finishing.value) return
@@ -182,7 +210,13 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             val before = app.progress.snapshot.first().level
             val result = repo.finishSession(s.id)
             val badges = app.progress.evaluateBadges()
-            val after = app.progress.snapshot.first().level
+            val snap = app.progress.snapshot.first()
+            val after = snap.level
+            val today = com.forgequest.app.domain.Dates.todayDayOfWeek()
+            val nextUp = snap.plan?.days.orEmpty()
+                .filter { !it.day.isRest && it.items.isNotEmpty() }
+                .minByOrNull { (it.day.dayOfWeek - today + 7 - 1) % 7 }
+                ?.let { it.day.dayOfWeek to it.day.title }
             app.haptics.celebrate()
             summary.value = WorkoutSummary(
                 title = result.sessionTitle,
@@ -193,6 +227,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 xpGained = after.totalXp - before.totalXp,
                 before = before,
                 after = after,
+                nextUp = nextUp,
             )
             finishing.value = false
         }

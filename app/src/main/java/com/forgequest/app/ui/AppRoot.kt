@@ -40,6 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
+import com.forgequest.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -87,14 +90,14 @@ object Routes {
     fun session(id: Long) = "session/$id"
 }
 
-private data class Tab(val route: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
+private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector)
 
 private val tabs = listOf(
-    Tab(Routes.HOME, "Home", Icons.Outlined.Home, Icons.Rounded.Home),
-    Tab(Routes.WORKOUTS, "Workouts", Icons.Outlined.FitnessCenter, Icons.Rounded.FitnessCenter),
-    Tab(Routes.FOOD, "Food", Icons.Outlined.Restaurant, Icons.Rounded.Restaurant),
-    Tab(Routes.COACH, "Coach", Icons.Outlined.AutoAwesome, Icons.Rounded.AutoAwesome),
-    Tab(Routes.PROFILE, "Profile", Icons.Outlined.AccountCircle, Icons.Rounded.AccountCircle),
+    Tab(Routes.HOME, R.string.tab_home, Icons.Outlined.Home, Icons.Rounded.Home),
+    Tab(Routes.WORKOUTS, R.string.tab_workouts, Icons.Outlined.FitnessCenter, Icons.Rounded.FitnessCenter),
+    Tab(Routes.FOOD, R.string.tab_food, Icons.Outlined.Restaurant, Icons.Rounded.Restaurant),
+    Tab(Routes.COACH, R.string.tab_coach, Icons.Outlined.AutoAwesome, Icons.Rounded.AutoAwesome),
+    Tab(Routes.PROFILE, R.string.tab_profile, Icons.Outlined.AccountCircle, Icons.Rounded.AccountCircle),
 )
 
 /** App-wide snackbar so any screen can confirm an action in one line. */
@@ -143,7 +146,7 @@ private fun MainScaffold() {
                                 selected = selected,
                                 onClick = { nav.goToTab(tab.route) },
                                 icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                                label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
+                                label = { Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = c.teal,
                                     selectedTextColor = c.textPrimary,

@@ -1,5 +1,12 @@
 package com.forgequest.app.ui.profile
 
+import com.forgequest.app.R
+import com.forgequest.app.ui.localTitle
+import com.forgequest.app.ui.localDescription
+import com.forgequest.app.ui.localLabel
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,22 +51,22 @@ fun BadgesScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.textPrimary) }
+            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Column(Modifier.weight(1f)) {
-                Text("Badges", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                Text("${s.badges.size} of ${Badges.all.size} unlocked", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(stringResource(R.string.profile_badges), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.profile_badges_unlocked, s.badges.size, Badges.all.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             BadgeCategory.entries.forEach { cat ->
                 FitCard {
-                    Text(cat.label, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(cat.localLabel(), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Spacer(Modifier.height(10.dp))
                     Badges.all.filter { it.category == cat }.chunked(4).forEach { row ->
                         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
                             row.forEach { b ->
                                 val got = owned[b.id]
-                                BadgeChip(b.title, b.description, badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f))
+                                BadgeChip(b.localTitle(), b.localDescription(), badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f))
                             }
                             repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                         }

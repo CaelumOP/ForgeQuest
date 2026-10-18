@@ -1,5 +1,16 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.components.ChoiceChip
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import com.forgequest.app.R
+import com.forgequest.app.ui.localLabel
+import com.forgequest.app.ui.titleRes
+
+import androidx.compose.ui.res.pluralStringResource
+
+import androidx.compose.ui.res.stringResource
+
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -114,6 +125,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalCoroutinesApi::class)
 class FoodViewModel(val app: AppContainer) : ViewModel() {
     val foods: StateFlow<List<FoodEntity>> = app.food.foods.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val recentOneOffs: StateFlow<List<MealEntity>> = app.db.food().observeRecentOneOffs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** The day being viewed and logged to. Follows the real date until the person steps away from today. */
     val day = MutableStateFlow(Dates.today())
     private var followToday = true
@@ -141,7 +153,7 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
         app.food.logOnce(name, category, kcal, protein, epochDay = day.value)
         app.haptics.setDone()
         app.progress.evaluateBadges()
-        message.value = "Logged $name"
+        message.value = app.str(R.string.food_logged_name, name)
     }
 
     fun toggle(food: FoodEntity) {
@@ -163,8 +175,8 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
             selection.value = emptyMap()
             app.haptics.setDone()
             val badges = app.progress.evaluateBadges()
-            message.value = "Logged ${picked.size} item${if (picked.size > 1) "s" else ""}" +
-                if (badges.isNotEmpty()) " · Badge unlocked: ${badges.first()}" else ""
+            message.value = app.plural(R.plurals.food_logged_items, picked.size, picked.size) +
+                if (badges.isNotEmpty()) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
         }
     }
 
@@ -175,14 +187,14 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
 
     fun deleteMeal(meal: MealEntity) = viewModelScope.launch {
         app.food.deleteMeal(meal.id)
-        undo.value = "Removed ${meal.name}" to { app.food.restoreMeal(meal) }
+        undo.value = app.str(R.string.food_removed, meal.name) to { app.food.restoreMeal(meal) }
     }
 
     fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
 
     fun setPhotoFromUri(food: FoodEntity, uri: Uri) = viewModelScope.launch {
         runCatching { app.food.importPhoto(uri) }.onSuccess { app.food.saveFood(food.copy(photoPath = it)) }
-            .onFailure { message.value = "Couldn't use that photo." }
+            .onFailure { message.value = app.str(R.string.food_photo_failed) }
     }
 
     fun setPhotoFromBitmap(food: FoodEntity, bitmap: Bitmap) = viewModelScope.launch {
@@ -213,9 +225,10 @@ fun FoodScreen(nav: NavHostController) {
     LaunchedEffect(Unit) { vm.onShown() }
 
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
+    val undoLabel = stringResource(R.string.action_undo)
     LaunchedEffect(undo) {
         undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = "Undo", duration = SnackbarDuration.Short)
+            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = SnackbarDuration.Short)
             if (result == SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
         }
     }
@@ -233,13 +246,13 @@ fun FoodScreen(nav: NavHostController) {
         ) {
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Food", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                    PillButton("Scan meal", onClick = { nav.navigate(Routes.SCAN) }, icon = Icons.Rounded.CameraAlt)
+                    Text(stringResource(R.string.food_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    PillButton(stringResource(R.string.food_scan_meal), onClick = { nav.navigate(Routes.SCAN) }, icon = Icons.Rounded.CameraAlt)
                     Spacer(Modifier.width(8.dp))
                     Box(Modifier.size(44.dp).clip(CircleShape).background(c.cardHigh).clickable {
                         editing = FoodEntity(name = "", category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
                     }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Add, contentDescription = "Add food", tint = c.textPrimary)
+                        Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.food_add), tint = c.textPrimary)
                     }
                 }
             }
@@ -251,7 +264,7 @@ fun FoodScreen(nav: NavHostController) {
             item {
                 val withSelection = FoodCategory.entries.indices.filter { i -> foods.any { it.category == FoodCategory.entries[i] && it.id in selection } }.toSet()
                 SegmentedTabs(
-                    FoodCategory.entries.map { it.label }, FoodCategory.entries.indexOf(category),
+                    FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category),
                     onSelect = { vm.category.value = FoodCategory.entries[it] }, dots = withSelection,
                 )
             }
@@ -261,11 +274,11 @@ fun FoodScreen(nav: NavHostController) {
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                             IconCircle(Icons.Rounded.Restaurant, c.teal, c.tealTrack, 56.dp)
                             Spacer(Modifier.height(12.dp))
-                            Text("No ${category.label.lowercase()} foods yet", style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                            Text(stringResource(R.string.food_none_in_category, category.localLabel()), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                             Spacer(Modifier.height(4.dp))
-                            Text("Scan a meal or add the foods you eat often. Next time it's one tap.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
+                            Text(stringResource(R.string.food_empty_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
                             Spacer(Modifier.height(14.dp))
-                            TonalPill("Add a food", onClick = {
+                            TonalPill(stringResource(R.string.food_add_a_food), onClick = {
                                 editing = FoodEntity(name = "", category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
                             }, icon = Icons.Rounded.Add)
                         }
@@ -284,12 +297,12 @@ fun FoodScreen(nav: NavHostController) {
             }
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (isToday) "Logged today" else "Logged that day", style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                    TonalPill("Quick log", onClick = { quickLog = true }, icon = Icons.Rounded.Add)
+                    Text(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    TonalPill(stringResource(R.string.food_quick_log), onClick = { quickLog = true }, icon = Icons.Rounded.Add)
                 }
             }
             if (meals.isEmpty()) {
-                item { Text(if (isToday) "Nothing logged yet. Tick foods above, scan a plate, or quick-log a one-off meal." else "Nothing was logged on this day.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
+                item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
             }
             items(meals, key = { "m${it.id}" }) { meal -> MealRow(meal, onDelete = { vm.deleteMeal(meal) }) }
         }
@@ -301,7 +314,7 @@ fun FoodScreen(nav: NavHostController) {
         ) {
             Box(Modifier.fillMaxWidth().background(c.background).padding(16.dp)) {
                 PillButton(
-                    "Log ${selection.size} item${if (selection.size > 1) "s" else ""} · $selKcal kcal · $selProtein g protein",
+                    pluralStringResource(R.plurals.food_log_selection, selection.size, selection.size, selKcal, selProtein),
                     onClick = vm::logSelected,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -310,7 +323,8 @@ fun FoodScreen(nav: NavHostController) {
     }
 
     if (quickLog) {
-        QuickLogSheet(category, onLog = { n, cat, k, p -> vm.logOnce(n, cat, k, p); quickLog = false }, onDismiss = { quickLog = false })
+        val recentOneOffs by vm.recentOneOffs.collectAsState()
+        QuickLogSheet(category, recent = recentOneOffs, onLog = { n, cat, k, p -> vm.logOnce(n, cat, k, p); quickLog = false }, onDismiss = { quickLog = false })
     }
     editing?.let { food ->
         FoodEditorSheet(food, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
@@ -319,10 +333,10 @@ fun FoodScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { confirmDeleteFood = null },
             containerColor = c.card,
-            title = { Text("Delete ${food.name}?", color = c.textPrimary) },
-            text = { Text("It leaves your food list. Meals you already logged with it stay.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { vm.delete(food); confirmDeleteFood = null }) { Text("Delete", color = c.coral) } },
-            dismissButton = { TextButton(onClick = { confirmDeleteFood = null }) { Text("Cancel", color = c.textSecondary) } },
+            title = { Text(stringResource(R.string.food_delete_title, food.name), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.food_delete_body), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { vm.delete(food); confirmDeleteFood = null }) { Text(stringResource(R.string.action_delete), color = c.coral) } },
+            dismissButton = { TextButton(onClick = { confirmDeleteFood = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
     photoFor?.let { food ->
@@ -340,20 +354,20 @@ private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: (
     val c = Fit.colors
     val date = LocalDate.ofEpochDay(day)
     val label = when {
-        isToday -> "Today"
-        day == Dates.today() - 1 -> "Yesterday"
-        else -> date.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
+        isToday -> stringResource(R.string.day_today)
+        day == Dates.today() - 1 -> stringResource(R.string.day_yesterday)
+        else -> date.format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern)))
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Previous day", tint = c.textPrimary) }
+        IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.cd_previous_day), tint = c.textPrimary) }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             if (!isToday) {
-                Text("Back to today", style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onToday).padding(horizontal = 6.dp, vertical = 2.dp))
+                Text(stringResource(R.string.food_back_to_today), style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onToday).padding(horizontal = 6.dp, vertical = 2.dp))
             }
         }
         IconButton(onClick = onNext, enabled = !isToday) {
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Next day", tint = if (isToday) c.divider else c.textPrimary)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = stringResource(R.string.cd_next_day), tint = if (isToday) c.divider else c.textPrimary)
         }
     }
 }
@@ -367,15 +381,15 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
     FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
         Row {
             Column(Modifier.weight(1f)) {
-                Text("${protein.roundToInt()} / ${s.settings.proteinGoal} g", style = MaterialTheme.typography.titleSmall, color = c.teal)
-                Text("Protein", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                Text(stringResource(R.string.food_protein_of_goal, protein.roundToInt(), s.settings.proteinGoal), style = MaterialTheme.typography.titleSmall, color = c.teal)
+                Text(stringResource(R.string.label_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 ProgressLine(protein / s.settings.proteinGoal.coerceAtLeast(1), c.teal, c.tealTrack, height = 5.dp)
             }
             Spacer(Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("%,d / %,d".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall, color = if (over) c.gold else c.blue)
-                Text(if (over) "Calories · surplus" else "Calories", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                Text("⁦%,d / %,d⁩".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall, color = if (over) c.gold else c.blue)
+                Text(if (over) stringResource(R.string.food_calories_surplus) else stringResource(R.string.home_legend_calories), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
             }
@@ -398,15 +412,15 @@ private fun WeekCard(s: ProgressSnapshot) {
     FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Last 7 days", style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                Text(stringResource(R.string.food_last_7_days), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                 Text(
-                    "Avg ${"%,d".format(avgKcal)} kcal · $avgProtein g protein · goal hit $hits of ${logged.size} logged day${if (logged.size == 1) "" else "s"}",
+                    pluralStringResource(R.plurals.food_week_summary, logged.size, "%,d".format(avgKcal), avgProtein, hits, logged.size),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().height(44.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
             days.forEach { d ->
                 val n = byDay[d]
                 val ratio = ((n?.protein ?: 0f) / s.settings.proteinGoal.coerceAtLeast(1)).coerceIn(0f, 1f)
@@ -423,7 +437,7 @@ private fun WeekCard(s: ProgressSnapshot) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickLogSheet(initial: FoodCategory, onLog: (String, FoodCategory, Int, Float) -> Unit, onDismiss: () -> Unit) {
+private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, onLog: (String, FoodCategory, Int, Float) -> Unit, onDismiss: () -> Unit) {
     val c = Fit.colors
     var name by remember { mutableStateOf("") }
     var kcal by remember { mutableStateOf("") }
@@ -432,22 +446,35 @@ private fun QuickLogSheet(initial: FoodCategory, onLog: (String, FoodCategory, I
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
     ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-            Text("Quick log", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-            Text("A one-off meal. It counts for the day but isn't added to your food list.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Text(stringResource(R.string.food_quick_log), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+            Text(stringResource(R.string.food_quick_log_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            // Recent one-offs fill the form in one tap (MacroFactor and MyFitnessPal lead with recents).
+            if (recent.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.food_recent), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    recent.forEach { m ->
+                        ChoiceChip("${m.name} · ${m.kcal}", m.name == name, {
+                            name = m.name; kcal = m.kcal.toString(); protein = m.protein.toString().removeSuffix(".0")
+                        })
+                    }
+                }
+            }
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(name, { name = it.take(48) }, label = { Text("What was it?") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.food_what_was_it)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text("Calories") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-                OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text("Protein (g)") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(14.dp))
-            SegmentedTabs(FoodCategory.entries.map { it.label }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
+            SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
             Spacer(Modifier.height(16.dp))
             PillButton(
-                "Log it",
+                stringResource(R.string.food_log_it),
                 onClick = { onLog(name.trim(), category, kcal.toIntOrNull() ?: 0, protein.toFloatOrNull() ?: 0f) },
                 enabled = name.isNotBlank() && kcal.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
@@ -473,27 +500,27 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
             Modifier.size(26.dp).clip(CircleShape).background(if (selected) c.teal else c.cardHigh),
             contentAlignment = Alignment.Center,
         ) {
-            if (selected) Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = c.onTeal, modifier = Modifier.size(18.dp))
+            if (selected) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_selected), tint = c.onTeal, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(12.dp))
         Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(c.cardHigh).clickable(onClick = onPhoto), contentAlignment = Alignment.Center) {
             if (food.photoPath != null) {
                 AsyncImage(model = File(food.photoPath), contentDescription = food.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             } else {
-                Icon(Icons.Rounded.PhotoCamera, contentDescription = "Add photo", tint = c.textSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.PhotoCamera, contentDescription = stringResource(R.string.cd_add_photo), tint = c.textSecondary, modifier = Modifier.size(20.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f).padding(end = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (food.pinned) {
-                    Icon(Icons.Rounded.PushPin, contentDescription = "Pinned", tint = c.gold, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Rounded.PushPin, contentDescription = stringResource(R.string.cd_pinned), tint = c.gold, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(food.name, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(
-                listOfNotNull("${food.kcal} kcal", "${food.protein.roundToInt()} g protein", food.serving.ifBlank { null }).joinToString(" · "),
+                listOfNotNull(stringResource(R.string.food_kcal, food.kcal), stringResource(R.string.food_g_protein, food.protein.roundToInt()), food.serving.ifBlank { null }).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
@@ -509,7 +536,7 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
             )
             if (typing) {
                 NumberEntryDialog(
-                    title = "Servings of ${food.name}", initial = qty, unit = "×", decimals = 2, min = 0.25f, max = 20f,
+                    title = stringResource(R.string.food_servings_of, food.name), initial = qty, unit = "×", decimals = 2, min = 0.25f, max = 20f,
                     onDismiss = { typing = false }, onConfirm = { typing = false; onQty(it) },
                 )
             }
@@ -534,13 +561,13 @@ private fun MealRow(meal: MealEntity, onDelete: () -> Unit) {
                 (if (meal.quantity != 1f) "${if (meal.quantity % 1f == 0f) meal.quantity.toInt() else meal.quantity}× " else "") + meal.name,
                 style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            Text("$time · ${meal.category.label}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Text("$time · ${meal.category.localLabel()}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("${meal.kcal} kcal", style = MaterialTheme.typography.labelLarge, color = c.blue)
-            Text("${meal.protein.roundToInt()} g", style = MaterialTheme.typography.labelMedium, color = c.teal)
+            Text(stringResource(R.string.food_kcal, meal.kcal), style = MaterialTheme.typography.labelLarge, color = c.blue)
+            Text(stringResource(R.string.food_g, meal.protein.roundToInt()), style = MaterialTheme.typography.labelMedium, color = c.teal)
         }
-        IconButton(onClick = onDelete) { Icon(Icons.Rounded.Close, contentDescription = "Remove", tint = c.textSecondary, modifier = Modifier.size(18.dp)) }
+        IconButton(onClick = onDelete) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(18.dp)) }
     }
 }
 
@@ -552,11 +579,11 @@ fun PhotoSourceSheet(onUri: (Uri) -> Unit, onBitmap: (Bitmap) -> Unit, onRemove:
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp -> if (bmp != null) onBitmap(bmp) else onDismiss() }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-            Text("Food photo", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+            Text(stringResource(R.string.food_photo), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(12.dp))
-            SheetAction(Icons.Rounded.PhotoLibrary, "Choose from gallery") { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
-            SheetAction(Icons.Rounded.PhotoCamera, "Take a photo") { camera.launch(null) }
-            if (onRemove != null) SheetAction(Icons.Rounded.Close, "Remove photo", onRemove)
+            SheetAction(Icons.Rounded.PhotoLibrary, stringResource(R.string.photo_choose_gallery)) { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+            SheetAction(Icons.Rounded.PhotoCamera, stringResource(R.string.photo_take)) { camera.launch(null) }
+            if (onRemove != null) SheetAction(Icons.Rounded.Close, stringResource(R.string.photo_remove), onRemove)
         }
     }
 }
@@ -584,30 +611,30 @@ private fun FoodEditorSheet(food: FoodEntity, onSave: (FoodEntity) -> Unit, onDe
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
     ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-            Text(if (food.id == 0L) "Add food" else "Edit food", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+            Text(if (food.id == 0L) stringResource(R.string.food_add_title) else stringResource(R.string.food_edit_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(name, { name = it.take(48) }, label = { Text("Name") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text("Calories") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-                OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text("Protein (g)") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(serving, { serving = it.take(32) }, label = { Text("Serving (e.g. 1 cup)") }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(serving, { serving = it.take(32) }, label = { Text(stringResource(R.string.food_serving_hint)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(14.dp))
-            SegmentedTabs(FoodCategory.entries.map { it.label }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
+            SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Pin to top", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                 Switch(pinned, { pinned = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (onDelete != null) TextButton(onClick = onDelete) { Text("Delete", color = c.coral) }
+                if (onDelete != null) TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete), color = c.coral) }
                 Spacer(Modifier.weight(1f))
                 PillButton(
-                    "Save",
+                    stringResource(R.string.action_save),
                     onClick = {
                         onSave(food.copy(name = name.trim(), kcal = kcal.toIntOrNull() ?: 0, protein = protein.toFloatOrNull() ?: 0f, serving = serving.trim(), category = category, pinned = pinned))
                     },

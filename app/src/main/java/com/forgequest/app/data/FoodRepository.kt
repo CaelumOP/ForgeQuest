@@ -1,5 +1,6 @@
 package com.forgequest.app.data
 
+import com.forgequest.app.R
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -8,6 +9,7 @@ import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.ai.GeminiClient
+import com.forgequest.app.data.ai.ModelStore
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
@@ -43,6 +45,7 @@ class FoodRepository(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val gemini: GeminiClient,
+    private val models: ModelStore,
 ) {
     private val dao = db.food()
     private companion object { const val MAX_EDGE = 1280 }
@@ -94,7 +97,7 @@ class FoodRepository(
     /** Copies a picked image into app storage, downscaled and upright. Returns the file path. */
     suspend fun importPhoto(uri: Uri): String = withContext(Dispatchers.IO) {
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: throw AiError.Unreadable("Couldn't open that photo.")
+            ?: throw AiError.Unreadable(R.string.photo_err_open)
         savePhoto(bytes)
     }
 
@@ -113,9 +116,9 @@ class FoodRepository(
     suspend fun savePhoto(jpeg: ByteArray): String = withContext(Dispatchers.IO) {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw AiError.Unreadable("Couldn't read that photo.")
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw AiError.Unreadable(R.string.photo_err_read)
         val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, MAX_EDGE) }
-        val decoded = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, options) ?: throw AiError.Unreadable("Couldn't read that photo.")
+        val decoded = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, options) ?: throw AiError.Unreadable(R.string.photo_err_read)
         val rotation = runCatching { ExifInterface(jpeg.inputStream()).rotationDegrees }.getOrDefault(0)
         val scale = minOf(1f, MAX_EDGE.toFloat() / maxOf(decoded.width, decoded.height))
         val matrix = Matrix().apply { postScale(scale, scale); postRotate(rotation.toFloat()) }
@@ -171,10 +174,11 @@ class FoodRepository(
             Reply ONLY with JSON: {"dish": string, "items": [{"name": string, "grams": int, "kcal": int, "protein": number}], "handVisible": boolean, "note": string}
             "note" is one short sentence about anything uncertain, or empty.
         """.trimIndent()
-        val raw = gemini.generate(key, listOf(s.fastModel), system, listOf("user" to "Estimate this meal."), image = image, jsonOutput = true, fast = true)
+        val m = models.current()
+        val raw = gemini.generate(key, listOf(m.lite, m.fast), system, listOf("user" to "Estimate this meal."), image = image, jsonOutput = true, fast = true)
         val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
-            ?: throw AiError.Unreadable("Couldn't read the meal from that photo. Try again with the plate fully in frame.")
-        if (scan.items.isEmpty()) throw AiError.Unreadable("No food found in that photo. Try again with the plate in the middle of the frame.")
+            ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
+        if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
         return scan
     }
 

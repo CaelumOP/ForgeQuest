@@ -6,6 +6,7 @@ import com.forgequest.app.data.plan.PlanJson
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.StarterPlans
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -105,9 +106,45 @@ class ModelPickTest {
     }
 
     @Test
+    fun picksNewestFlashLiteWithoutConfusingItWithFlash() {
+        assertEquals("gemini-3.5-flash-lite", client.pickNewest(models + "gemini-3.5-flash-lite", "flash-lite"))
+        assertEquals("gemini-3.8-flash", client.pickNewest(models + "gemini-3.9-flash-lite", "flash"))
+    }
+
+    @Test
+    fun readsGooglesRetryDelay() {
+        val detail = "limit: 20, model: gemini-3.8-flash\nPlease retry in 12h7m14.002832781s."
+        assertEquals((12 * 3600 + 7 * 60 + 14) * 1000L + 2, client.retryAfterMs(detail))
+        assertEquals(42_500L, client.retryAfterMs("Please retry in 42.5s."))
+        assertEquals(60_000L, client.retryAfterMs("quota exceeded"))
+    }
+
+    @Test
     fun stableWinsOnTheSameVersion() {
         assertEquals("gemini-3.1-pro", client.pickNewest(listOf("gemini-3.1-pro-preview", "gemini-3.1-pro"), "pro"))
         assertNull(client.pickNewest(listOf("gemini-flash-latest"), "pro"))
+    }
+}
+
+class BidiTest {
+    @Test
+    fun isolatesEnglishInsideArabic() {
+        val out = com.forgequest.app.ui.components.isolateLtr("تمارين مثل (Australian pull-up) و(Dead hang) يوميا")
+        assertEquals("تمارين مثل ⁦(Australian pull‑up)⁩ و⁦(Dead hang)⁩ يوميا", out)
+        assertEquals("بدون إنجليزي", com.forgequest.app.ui.components.isolateLtr("بدون إنجليزي"))
+    }
+}
+
+class PlanIntentTest {
+    @Test
+    fun onlyRequestsToMakeOrChangeAPlanCount() {
+        assertTrue(PlanIntent.matches("Build me a 4-day plan"))
+        assertTrue(PlanIntent.matches("Can you change my routine so legs are on Friday?"))
+        assertTrue(PlanIntent.matches("اعمل لي خطة تمارين 3 أيام"))
+        assertFalse(PlanIntent.matches("Can you explain how to do a dip?"))
+        assertFalse(PlanIntent.matches("How is my plan going?"))
+        assertFalse(PlanIntent.matches("I planned to rest tomorrow"))
+        assertFalse(PlanIntent.matches("كيف أتحسن في العقلة؟"))
     }
 }
 

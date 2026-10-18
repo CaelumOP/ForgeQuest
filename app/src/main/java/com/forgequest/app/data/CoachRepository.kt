@@ -1,7 +1,10 @@
 package com.forgequest.app.data
 
+import com.forgequest.app.AppText
+import com.forgequest.app.R
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.ai.GeminiClient
+import com.forgequest.app.data.ai.ModelStore
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.ChatEntity
 import com.forgequest.app.data.db.SetEntity
@@ -16,6 +19,8 @@ import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Records
+import android.os.SystemClock
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +35,7 @@ class CoachRepository(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val gemini: GeminiClient,
+    private val models: ModelStore,
     private val progress: ProgressRepository,
     private val workouts: WorkoutRepository,
 ) {
@@ -43,29 +49,60 @@ class CoachRepository(
 
     suspend fun clear() = chat.clear()
 
+    /** Opens the connection to Google when the Coach tab opens, so the first message skips the handshake. */
+    suspend fun warmUp() = gemini.warmUp(settings.apiKey.value)
+
     suspend fun send(text: String) {
+        val tapped = SystemClock.elapsedRealtime()
         chat.insert(ChatEntity(role = "user", text = text.trim(), createdAt = System.currentTimeMillis()))
-        val history = chat.recent(12).reversed().filter { it.kind != "error" }
-        val wantsPlan = PLAN_WORDS.containsMatchIn(text.lowercase())
+        val history = answeredHistory(chat.recent(12).reversed())
+        val wantsPlan = wantsPlan(text)
         _draft.value = ""
         try {
+            val system = coachSystemPrompt(replyLanguage = languageOf(text), plan = wantsPlan)
+            var firstText = -1L
             val reply = gemini.generateStreaming(
                 apiKey = requireKey(),
-                models = models(smart = wantsPlan),
-                system = coachSystemPrompt(replyLanguage = languageOf(text)),
+                models = models(),
+                system = system,
                 turns = history.map { (if (it.role == "user") "user" else "model") to it.text },
-                // Plans deserve the model's thinking; everything else should land in a couple of seconds.
+                // Plans deserve the model's thinking; everything else should land in a second or two.
                 fast = !wantsPlan,
-            ) { delta -> _draft.value = (_draft.value ?: "") + delta }
+            ) { delta ->
+                if (firstText < 0) firstText = SystemClock.elapsedRealtime() - tapped
+                _draft.value = (_draft.value ?: "") + delta
+            }
+            Log.i(TAG, "send→first text ${firstText} ms, send→done ${SystemClock.elapsedRealtime() - tapped} ms (plan=$wantsPlan)")
             saveReply(reply)
         } catch (e: AiError.Partial) {
             if (PlanJson.strip(e.text).length > 40) saveReply(e.text)
-            chat.insert(ChatEntity(role = "coach", text = e.userMessage, kind = "error", createdAt = System.currentTimeMillis()))
+            saveError(e)
         } catch (e: AiError) {
-            chat.insert(ChatEntity(role = "coach", text = e.userMessage, kind = "error", createdAt = System.currentTimeMillis()))
+            saveError(e)
         } finally {
             _draft.value = null
         }
+    }
+
+    /**
+     * Drops error bubbles and the questions that got one instead of an answer; otherwise the model answers
+     * every failed question again on top of the new one. The newest message always stays.
+     */
+    internal fun answeredHistory(messages: List<ChatEntity>): List<ChatEntity> = messages.filterIndexed { i, m ->
+        when {
+            m.kind == "error" -> false
+            i == messages.lastIndex -> true
+            m.role == "user" -> messages[i + 1].role == "coach" && messages[i + 1].kind != "error"
+            else -> true
+        }
+    }
+
+    private suspend fun saveError(e: AiError) {
+        val text = if (e is AiError.Timeout) AppText.get(R.string.ai_err_coach_timeout) else e.userMessage
+        val s = settings.current()
+        val detail = listOf(e.javaClass.simpleName, e.detail, "models ${s.liteModel} / ${s.fastModel}, app ${com.forgequest.app.BuildConfig.VERSION_NAME}")
+            .filter { it.isNotBlank() }.joinToString("\n")
+        chat.insert(ChatEntity(role = "coach", text = text, kind = "error", detail = detail, createdAt = System.currentTimeMillis()))
     }
 
     private suspend fun saveReply(reply: String) {
@@ -75,7 +112,7 @@ class CoachRepository(
         chat.insert(
             ChatEntity(
                 role = "coach",
-                text = PlanJson.strip(reply).ifBlank { "Here's your plan. Review it below." },
+                text = PlanJson.strip(reply).ifBlank { AppText.get(R.string.coach_plan_fallback) },
                 planJson = plan?.let(PlanJson::encode),
                 createdAt = System.currentTimeMillis(),
             )
@@ -97,8 +134,8 @@ class CoachRepository(
             ${planSchemaInstructions()}
             Reply ONLY with the JSON object, no other text.
         """.trimIndent()
-        val raw = gemini.generate(requireKey(), models(smart = true), system, listOf("user" to text.take(20_000)), jsonOutput = true)
-        return PlanJson.extract("```json\n$raw\n```") ?: throw AiError.Unreadable("Couldn't turn that text into a plan. Make sure it lists days and exercises.")
+        val raw = gemini.generate(requireKey(), models(), system, listOf("user" to text.take(20_000)), jsonOutput = true)
+        return PlanJson.extract("```json\n$raw\n```") ?: throw AiError.Unreadable(R.string.ai_err_plan_text)
     }
 
     /** Once per week, a short review of last week. Returns true if one was written. */
@@ -113,7 +150,7 @@ class CoachRepository(
         settings.update { it.copy(lastCheckinWeek = thisWeek) }
         return try {
             val reply = gemini.generate(
-                requireKey(), models(smart = false), coachSystemPrompt(),
+                requireKey(), models(), coachSystemPrompt(replyLanguage = if (java.util.Locale.getDefault().language == "ar") "Arabic" else "English"),
                 listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line."),
                 fast = true,
             )
@@ -130,13 +167,25 @@ class CoachRepository(
     private fun requireKey(): String = settings.apiKey.value.ifBlank { throw AiError.MissingKey }
 
     /**
-     * Flash for everything. Pro writes a full week of JSON in one to two minutes on the free tier; Flash with
-     * thinking on does it in well under one, and Flash with thinking off answers chat in a few seconds.
+     * Measured on the emulator (18 Oct 2026, free key, ~1,800-token prompt): Flash-Lite with thinking off shows
+     * its first words in 0.6-1.5 s and writes a whole week's plan, thinking on, in ~4.5 s. Flash with thinking off
+     * took 2-65 s to say anything (queued free tier) and gemini-3.8-flash allows only 20 requests a day; with
+     * thinking on, a plan took 37-80 s. Pro takes one to two minutes. So Flash-Lite answers everything and
+     * Flash only steps in when Lite is rate limited, busy or stalled.
      */
-    private suspend fun models(smart: Boolean): List<String> {
-        val s = settings.current()
-        return listOf(s.fastModel)
+    private suspend fun models(): List<String> {
+        val m = models.current()
+        // The person can pin a model from the Coach menu; the others stay as fallbacks for quota or outages.
+        return when (settings.current().coachModel) {
+            "flash" -> listOf(m.fast, m.lite)
+            "pro" -> listOf(m.smart, m.fast, m.lite)
+            else -> listOf(m.lite, m.fast)
+        }
     }
+
+    suspend fun setCoachModel(choice: String) = settings.update { it.copy(coachModel = choice) }
+
+    private fun wantsPlan(text: String) = PlanIntent.matches(text)
 
     /** Script of the person's latest message, so the reply never drifts into another language. */
     internal fun languageOf(text: String): String = when {
@@ -147,25 +196,31 @@ class CoachRepository(
 
     // ------------------------------------------------------------ Prompting
 
-    private suspend fun coachSystemPrompt(replyLanguage: String = "the language of the user's latest message"): String = """
-        You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
-        LANGUAGE: reply in $replyLanguage. Decide from the latest message only, never from earlier messages, the user's name or the data below.
-        If replying in Arabic, keep exercise names in English in parentheses the first time, and keep numbers as plain digits.
-        Be warm, direct and specific. Use their data below: quote their real numbers, name the exercises they actually do,
-        notice trends, and point out what they missed or improved. Keep answers short (under 180 words) unless they ask for detail.
-        Use simple Markdown: **bold**, short bullet lists, at most one small heading. No tables.
-        Never shame food choices; going over calories is fuel, not failure.
+    /** The exact chat system prompt, for the debug latency bench. */
+    internal suspend fun systemPromptForBench(latest: String): String = coachSystemPrompt(languageOf(latest), wantsPlan(latest))
 
-        When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a
-        ```json code block at the very end.
-        ${planSchemaInstructions()}
-
-        If the user tells you something lasting about themselves (an injury, their equipment, their schedule, a food
-        preference, a goal), finish your reply with one final line exactly like: MEMORY: <one short sentence>
-        Only do this for new facts not already in "Things to remember" below. Never mention this mechanism.
-
-        ${progressSummary()}
-    """.trimIndent()
+    /**
+     * Stable instructions first and the per-message language rule last, so consecutive requests share the
+     * longest possible prefix (Gemini's implicit cache) and the rule sits closest to the reply. The plan schema,
+     * with every exercise id, is about 600 tokens and only goes in when the person asked for a plan.
+     */
+    private suspend fun coachSystemPrompt(replyLanguage: String = "the language of the user's latest message", plan: Boolean = false): String = buildString {
+        appendLine(CORE_RULES)
+        appendLine()
+        if (plan) {
+            appendLine("When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a ```json code block at the very end.")
+            appendLine(planSchemaInstructions())
+        } else {
+            appendLine("Never write plan JSON in this reply. If they want a new or changed weekly plan, outline it in a few lines and tell them to say \"make it my plan\" (in Arabic: \"اعمل لي الخطة\") to get one they can apply.")
+        }
+        appendLine()
+        appendLine(MEMORY_RULE)
+        appendLine()
+        append(progressSummary())
+        appendLine()
+        append("LANGUAGE: reply in $replyLanguage. Decide from the latest message only, never from earlier messages, the user's name or the data above.")
+        if (replyLanguage == "Arabic") append(" Keep exercise names in English in parentheses the first time, and write numbers as Western digits (0-9).")
+    }
 
     private fun planSchemaInstructions(): String {
         val ids = ExerciseCatalog.all.joinToString(", ") { it.id }
@@ -210,7 +265,12 @@ class CoachRepository(
         val missed = streak.days.withIndex().filter { it.value == DayState.MISSED }.map { Dates.dayName(it.index + 1) }
         val upcoming = streak.days.withIndex().filter { it.value == DayState.UPCOMING }.map { Dates.dayName(it.index + 1) }
         sb.append("- Level ${snap.level.level} (rank ${snap.level.rank.letter}, ${snap.level.rank.title}); weekly streak ${streak.weeks} (best ${streak.best})\n")
-        sb.append("- This week: ${streak.doneThisWeek} of ${streak.targetThisWeek} workouts done")
+        if (streak.targetThisWeek == 0) {
+            // The week they joined has no target (planned days had already passed); "1 of 0" confused the model.
+            sb.append("- This week: ${streak.doneThisWeek} workouts done; they started mid-week, so the weekly target starts next Monday")
+        } else {
+            sb.append("- This week: ${streak.doneThisWeek} of ${streak.targetThisWeek} workouts done")
+        }
         if (missed.isNotEmpty()) sb.append("; missed planned days: ${missed.joinToString(", ")}")
         if (upcoming.isNotEmpty()) sb.append("; still to come: ${upcoming.joinToString(", ")}")
         sb.append("\n")
@@ -322,6 +382,34 @@ class CoachRepository(
     }
 
     private companion object {
-        val PLAN_WORDS = Regex("plan|program|programme|split|routine|schedule|جدول|برنامج|خطة")
+        const val TAG = "FQ-AI"
+
+        val CORE_RULES = """
+            You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
+            Be warm, direct and specific. Use their data below: quote their real numbers, name the exercises they actually do, notice trends, and point out what they missed or improved.
+            Keep answers short (under 180 words) unless they ask for detail. Use simple Markdown: **bold**, short bullet lists, at most one small heading. No tables.
+            Never shame food choices; going over calories is fuel, not failure.
+        """.trimIndent()
+
+        val MEMORY_RULE = """
+            If the user tells you something lasting about themselves (an injury, their equipment, their schedule, a food preference, a goal), finish your reply with one final line exactly like: MEMORY: <one short sentence>
+            Only do this for new facts not already in "Things to remember" below. Never mention this mechanism.
+        """.trimIndent()
+    }
+}
+
+/**
+ * Asking to make or change a plan, not just mentioning one. The old check matched "plan" anywhere, so
+ * "explain" or "how's my plan going?" switched thinking on and left the person waiting 30+ seconds.
+ */
+internal object PlanIntent {
+    private val planWord = Regex("""\b(plan|program|programme|split|routine|schedule)s?\b""")
+    private val action = Regex("""\b(make|build|create|write|design|give|new|change|update|adjust|modify|redo|swap|replace|generate|set up|turn|convert)\b""")
+    private val arabicPlan = Regex("جدول|برنامج|خطة|خطه|روتين|سبليت")
+    private val arabicAction = Regex("اعمل|سوي|سوّي|ابني|اكتب|صمم|غير|غيّر|عدل|عدّل|بدل|جديد|اعطني|عطني|ابغى|أبغى|بدي|عايز|حضر|جهز")
+
+    fun matches(text: String): Boolean {
+        val t = text.lowercase()
+        return (planWord.containsMatchIn(t) || arabicPlan.containsMatchIn(t)) && (action.containsMatchIn(t) || arabicAction.containsMatchIn(t))
     }
 }

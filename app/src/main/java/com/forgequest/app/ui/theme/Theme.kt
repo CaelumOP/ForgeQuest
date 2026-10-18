@@ -108,6 +108,7 @@ object Fit {
  * Manrope (SIL OFL) for display and title sizes: a geometric sans with open, rounded forms that reads as
  * athletic without shouting. Body and label text stay on the system sans for density and Arabic fallback.
  */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 val Manrope = FontFamily(
     Font(R.font.manrope, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
     Font(R.font.manrope, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
@@ -129,6 +130,20 @@ private val FitTypography = Typography(
     labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
     labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
 )
+
+/**
+ * Arabic: system face without tracking for the display sizes, and every style picks its direction from the text
+ * itself, so English data (plan notes, food names) still reads left to right with its full stop at the end.
+ */
+private val ArabicTypography = FitTypography.run {
+    fun TextStyle.content() = copy(textDirection = androidx.compose.ui.text.style.TextDirection.Content)
+    fun TextStyle.plain() = copy(fontFamily = FontFamily.Default, letterSpacing = 0.sp).content()
+    copy(
+        displaySmall = displaySmall.plain(), headlineMedium = headlineMedium.plain(), headlineSmall = headlineSmall.plain(), titleLarge = titleLarge.plain(),
+        titleMedium = titleMedium.content(), titleSmall = titleSmall.content(), bodyLarge = bodyLarge.content(), bodyMedium = bodyMedium.content(),
+        bodySmall = bodySmall.content(), labelLarge = labelLarge.content(), labelMedium = labelMedium.content(), labelSmall = labelSmall.content(),
+    )
+}
 
 @Composable
 fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
@@ -154,7 +169,10 @@ fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
             outline = fit.divider, outlineVariant = fit.divider, error = fit.coral,
         )
     }
+    // Manrope has no Arabic glyphs, and the negative tracking on display sizes pulls joined Arabic letters apart and
+    // makes Compose wrap the last letter of a title onto its own line. Arabic gets the system face, untracked.
+    val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"
     CompositionLocalProvider(LocalFitColors provides fit) {
-        MaterialTheme(colorScheme = scheme, typography = FitTypography, content = content)
+        MaterialTheme(colorScheme = scheme, typography = if (arabic) ArabicTypography else FitTypography, content = content)
     }
 }

@@ -1,5 +1,12 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.blockLabel
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.pluralStringResource
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -80,15 +87,16 @@ class WorkoutsViewModel(val app: AppContainer) : ViewModel() {
 }
 
 /** "3 × 10 reps", "3 × 30 s", "4 × 6–8 reps" */
+@Composable
 fun PlanItemEntity.prescription(kind: ExerciseKind?, unit: WeightUnit = WeightUnit.KG): String {
     val per = when {
-        kind == ExerciseKind.HOLD || (seconds != null && repsMin == null) -> "${seconds ?: 30} s"
-        repsMin != null && repsMax != null && repsMax != repsMin -> "$repsMin–$repsMax reps"
-        repsMin != null -> "$repsMin reps"
-        else -> "reps"
+        kind == ExerciseKind.HOLD || (seconds != null && repsMin == null) -> stringResource(R.string.rx_seconds, seconds ?: 30)
+        repsMin != null && repsMax != null && repsMax != repsMin -> stringResource(R.string.rx_rep_range, repsMin, repsMax)
+        repsMin != null -> pluralStringResource(R.plurals.rx_reps, repsMin, repsMin)
+        else -> stringResource(R.string.rx_reps_only)
     }
     val load = if (kind == ExerciseKind.WEIGHTED && (weightKg ?: 0f) > 0f) " · ${unit.format(weightKg ?: 0f)}" else ""
-    return if (circuit) "$per$load" else "$sets × $per$load"
+    return if (circuit) "$per$load" else stringResource(R.string.rx_sets_times, sets, per + load)
 }
 
 @Composable
@@ -107,14 +115,14 @@ fun WorkoutsScreen(nav: NavHostController) {
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Workouts", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
-                Text(plan?.plan?.name ?: "No plan yet", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.workouts_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
+                Text(plan?.plan?.name ?: stringResource(R.string.today_no_plan), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             IconButton(onClick = { nav.navigate(Routes.HISTORY) }) {
-                Icon(Icons.Rounded.History, contentDescription = "Workout history", tint = c.textPrimary)
+                Icon(Icons.Rounded.History, contentDescription = stringResource(R.string.cd_workout_history), tint = c.textPrimary)
             }
             IconButton(onClick = { nav.navigate(Routes.PLAN) }) {
-                Icon(Icons.Rounded.Edit, contentDescription = "Edit plan", tint = c.textPrimary)
+                Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.cd_edit_plan), tint = c.textPrimary)
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -125,10 +133,10 @@ fun WorkoutsScreen(nav: NavHostController) {
                     Box(Modifier.size(10.dp).clip(CircleShape).background(c.coral))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Workout in progress", style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Text(stringResource(R.string.today_in_progress), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Text(open!!.title, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
-                    PillButton("Resume", onClick = { nav.navigate(Routes.LIVE) })
+                    PillButton(stringResource(R.string.action_resume), onClick = { nav.navigate(Routes.LIVE) })
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -140,8 +148,8 @@ fun WorkoutsScreen(nav: NavHostController) {
         val day = plan?.day(selectedDay)
         if (plan == null) {
             FitCard {
-                EmptyState(Icons.Rounded.Edit, "No plan yet", "Pick a starter plan, build your own, or ask the coach.") {
-                    PillButton("Set up a plan", onClick = { nav.navigate(Routes.PLAN) })
+                EmptyState(Icons.Rounded.Edit, stringResource(R.string.today_no_plan), stringResource(R.string.today_no_plan_hint)) {
+                    PillButton(stringResource(R.string.workouts_set_up_plan), onClick = { nav.navigate(Routes.PLAN) })
                 }
             }
         } else {
@@ -165,13 +173,13 @@ fun WorkoutsScreen(nav: NavHostController) {
         Spacer(Modifier.height(16.dp))
 
         FitCard {
-            Text("Muscle recovery", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-            Text("Based on the last 48 hours", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Text(stringResource(R.string.recovery_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Text(stringResource(R.string.recovery_subtitle), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             Spacer(Modifier.height(16.dp))
             MuscleRecoveryMap(s.recovery, s.settings.bodyType)
         }
         Spacer(Modifier.height(12.dp))
-        TonalPill("Quick workout without a plan", onClick = {
+        TonalPill(stringResource(R.string.workouts_quick), onClick = {
             scope.launch { vm.start(null); nav.navigate(Routes.LIVE) }
         }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
         Spacer(Modifier.height(24.dp))
@@ -182,6 +190,8 @@ fun WorkoutsScreen(nav: NavHostController) {
 private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int) -> Unit) {
     val c = Fit.colors
     val today = Dates.todayDayOfWeek()
+    val dayRestCd = stringResource(R.string.day_cd_rest)
+    val dayTrainingCd = stringResource(R.string.day_cd_training)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         (1..7).forEach { dow ->
             val isSel = dow == selected
@@ -189,12 +199,12 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
             Column(
                 Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(if (isSel) c.teal else c.card)
                     .selectable(selected = isSel, role = Role.Tab) { onSelect(dow) }
-                    .semantics { contentDescription = Dates.dayName(dow) + if (rest) ", rest" else ", training" }
+                    .semantics { contentDescription = if (rest) dayRestCd.format(Dates.dayName(dow)) else dayTrainingCd.format(Dates.dayName(dow)) }
                     .padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    Dates.dayName(dow).take(3),
+                    Dates.shortDayName(dow),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (isSel) c.onTeal else if (dow == today) c.teal else c.textSecondary,
                     maxLines = 1,
@@ -232,10 +242,10 @@ private fun DayCard(
         if (day == null || day.day.isRest) {
             EmptyState(
                 Icons.Rounded.Bedtime,
-                "Rest day",
-                day?.day?.note?.ifBlank { null } ?: "Recovery is when muscles grow. Take it easy, stretch, walk.",
+                stringResource(R.string.today_rest_day),
+                day?.day?.note?.ifBlank { null } ?: stringResource(R.string.workouts_rest_hint),
             ) {
-                TonalPill("Add exercises to this day", onClick = onEdit)
+                TonalPill(stringResource(R.string.workouts_add_exercises), onClick = onEdit)
             }
             return@FitCard
         }
@@ -249,12 +259,12 @@ private fun DayCard(
         blocks.forEach { (block, items) ->
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(block, style = MaterialTheme.typography.labelLarge, color = c.teal)
+                Text(blockLabel(block), style = MaterialTheme.typography.labelLarge, color = c.teal)
                 if (items.first().circuit) {
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.Rounded.Repeat, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Circuit · ${items.first().sets} rounds", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                    Text(pluralStringResource(R.plurals.workouts_circuit_rounds, items.first().sets, items.first().sets), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                 }
             }
             items.forEach { item ->
@@ -268,14 +278,14 @@ private fun DayCard(
                         Text(item.prescription(ex?.kind, unit), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                     IconButton(onClick = { onVideo(item.exerciseId) }) {
-                        Icon(Icons.Rounded.PlayCircleOutline, contentDescription = "Watch form", tint = c.blue)
+                        Icon(Icons.Rounded.PlayCircleOutline, contentDescription = stringResource(R.string.cd_watch_form), tint = c.blue)
                     }
                 }
             }
         }
         Spacer(Modifier.height(16.dp))
         if (canStart) {
-            PillButton(if (isToday) "Start workout" else "Start this workout", onClick = onStart, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
+            PillButton(if (isToday) stringResource(R.string.workouts_start) else stringResource(R.string.workouts_start_this), onClick = onStart, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
         }
     }
 }

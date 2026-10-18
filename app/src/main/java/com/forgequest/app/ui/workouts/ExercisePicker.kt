@@ -1,5 +1,10 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.R
+import com.forgequest.app.ui.localLabel
+
+import androidx.compose.ui.res.stringResource
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -51,14 +56,18 @@ fun openFormVideo(context: Context, exercise: ExerciseEntity?) {
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }
 
+@Composable
 fun ExerciseEntity.musclesLabel(): String =
-    (primary + secondary).distinct().take(3).joinToString(", ") { it.label }
+    (primary + secondary).distinct().take(3).map { it.localLabel() }.joinToString(stringResource(R.string.list_separator))
 
-fun ExerciseKind.label(): String = when (this) {
-    ExerciseKind.REPS -> "Reps"
-    ExerciseKind.HOLD -> "Hold"
-    ExerciseKind.WEIGHTED -> "Weighted"
-}
+@Composable
+fun ExerciseKind.label(): String = stringResource(
+    when (this) {
+        ExerciseKind.REPS -> R.string.stepper_reps
+        ExerciseKind.HOLD -> R.string.kind_hold
+        ExerciseKind.WEIGHTED -> R.string.kind_weighted
+    }
+)
 
 /**
  * Searchable exercise library with "create custom" at the bottom.
@@ -72,10 +81,12 @@ fun ExercisePickerSheet(
     onPick: (ExerciseEntity) -> Unit,
     onCreate: (String, ExerciseKind, Muscle) -> Unit,
     onDismiss: () -> Unit,
+    /** Swapping starts filtered to the same muscle, so similar exercises are on top (as in Hevy and Fitbod). */
+    initialMuscle: Muscle? = null,
 ) {
     val c = Fit.colors
     var query by remember { mutableStateOf("") }
-    var muscle by remember { mutableStateOf<Muscle?>(null) }
+    var muscle by remember { mutableStateOf(initialMuscle) }
     var creating by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -86,7 +97,7 @@ fun ExercisePickerSheet(
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Search exercises") },
+                placeholder = { Text(stringResource(R.string.picker_search)) },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 singleLine = true,
                 shape = RoundedCornerShape(50),
@@ -99,8 +110,8 @@ fun ExercisePickerSheet(
             )
             Spacer(Modifier.height(10.dp))
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChoiceChip("All", muscle == null, { muscle = null })
-                Muscle.entries.forEach { m -> ChoiceChip(m.label, muscle == m, { muscle = if (muscle == m) null else m }) }
+                ChoiceChip(stringResource(R.string.picker_all), muscle == null, { muscle = null })
+                Muscle.entries.forEach { m -> ChoiceChip(m.localLabel(), muscle == m, { muscle = if (muscle == m) null else m }) }
             }
             Spacer(Modifier.height(8.dp))
             if (creating) {
@@ -129,7 +140,7 @@ fun ExercisePickerSheet(
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = null, tint = c.teal)
                             Text(
-                                if (query.isBlank()) "Create a custom exercise" else "Create \"${query.trim()}\"",
+                                if (query.isBlank()) stringResource(R.string.picker_create_custom) else stringResource(R.string.picker_create_named, query.trim()),
                                 style = MaterialTheme.typography.bodyLarge, color = c.teal, modifier = Modifier.padding(start = 12.dp),
                             )
                         }
@@ -149,26 +160,26 @@ private fun CreateExerciseForm(initialName: String, initialMuscle: Muscle?, onCr
     var muscle by remember { mutableStateOf(initialMuscle ?: Muscle.CHEST) }
     Column(Modifier.fillMaxWidth()) {
         OutlinedTextField(
-            value = name, onValueChange = { name = it.take(40) }, label = { Text("Exercise name") }, singleLine = true,
+            value = name, onValueChange = { name = it.take(40) }, label = { Text(stringResource(R.string.picker_exercise_name)) }, singleLine = true,
             shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
         )
         Spacer(Modifier.height(14.dp))
-        Text("Measured in", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+        Text(stringResource(R.string.picker_measured_in), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ExerciseKind.entries.forEach { k -> ChoiceChip(k.label(), kind == k, { kind = k }) }
         }
         Spacer(Modifier.height(14.dp))
-        Text("Main muscle", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+        Text(stringResource(R.string.picker_main_muscle), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(8.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Muscle.entries.forEach { m -> ChoiceChip(m.label, muscle == m, { muscle = m }) }
+            Muscle.entries.forEach { m -> ChoiceChip(m.localLabel(), muscle == m, { muscle = m }) }
         }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PillButton("Cancel", onClick = onCancel, container = c.cardHigh, content = c.textPrimary)
-            PillButton("Create", onClick = { onCreate(name.trim(), kind, muscle) }, enabled = name.isNotBlank())
+            PillButton(stringResource(R.string.action_cancel), onClick = onCancel, container = c.cardHigh, content = c.textPrimary)
+            PillButton(stringResource(R.string.action_create), onClick = { onCreate(name.trim(), kind, muscle) }, enabled = name.isNotBlank())
         }
     }
 }

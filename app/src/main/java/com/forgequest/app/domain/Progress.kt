@@ -16,7 +16,13 @@ object Dates {
 
     fun todayDayOfWeek(): Int = LocalDate.now().dayOfWeek.value
 
-    val shortDayLetters = listOf("M", "T", "W", "T", "F", "S", "S")
+    /** One-letter day names, Monday first, in the phone's language ("M T W…", "ن ث ر…"). */
+    val shortDayLetters: List<String>
+        get() = DayOfWeek.entries.map { it.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()) }
+
+    /** Short day names, Monday first ("Mon", "الاثنين"). */
+    fun shortDayName(dayOfWeek: Int): String =
+        DayOfWeek.of(dayOfWeek).getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())
 
     fun dayName(dayOfWeek: Int): String =
         DayOfWeek.of(dayOfWeek).getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())

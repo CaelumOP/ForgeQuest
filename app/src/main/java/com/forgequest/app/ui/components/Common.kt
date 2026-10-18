@@ -1,5 +1,27 @@
 package com.forgequest.app.ui.components
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.material3.ripple
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.composed
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -213,16 +235,19 @@ fun Stepper(
     onValueClick: (() -> Unit)? = null,
 ) {
     val c = Fit.colors
+    val typeLabel = stringResource(R.string.cd_type_value)
+    // Minus stays left and plus right in Arabic too, like a number line.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Row(
         modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onMinus, role = Role.Button), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Remove, contentDescription = "Decrease, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onMinus), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
         Box(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
-                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = "type a value") else it }
+                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -235,10 +260,46 @@ fun Stepper(
                 maxLines = 1,
             )
         }
-        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onPlus, role = Role.Button), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = "Increase, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onPlus), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
     }
+    }
+}
+
+/**
+ * Tap to step once; hold to keep stepping, slowly at first and then faster (Strong and Hevy do the same), so
+ * 75 → 85 kg is one press instead of twenty. Keeps a ripple and a normal click for TalkBack.
+ */
+private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = composed {
+    val current by rememberUpdatedState(onClick)
+    val scope = rememberCoroutineScope()
+    val interaction = remember { MutableInteractionSource() }
+    this
+        .indication(interaction, ripple())
+        .semantics { role = Role.Button; onClick { current(); true } }
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                // Ours, not the row underneath: a long hold must not also open the set-note dialog.
+                down.consume()
+                val press = PressInteraction.Press(down.position)
+                scope.launch { interaction.emit(press) }
+                current()
+                val repeat = scope.launch {
+                    delay(420)
+                    var gap = 110L
+                    while (true) {
+                        current()
+                        delay(gap)
+                        gap = (gap * 0.9f).toLong().coerceAtLeast(60)
+                    }
+                }
+                waitForUpOrCancellation()
+                repeat.cancel()
+                scope.launch { interaction.emit(PressInteraction.Release(press)) }
+            }
+        }
 }
 
 /** Formats a number for display and parsing with a fixed locale so "72.5" round-trips through the keyboard. */
@@ -259,21 +320,32 @@ fun NumberStepper(
     modifier: Modifier = Modifier,
     unit: String = "",
     decimals: Int = 0,
-    title: String = "Enter a value",
+    title: String = stringResource(R.string.stepper_enter_value),
     valueColor: Color = Fit.colors.textPrimary,
     minValueWidth: Dp = 40.dp,
     onTick: (() -> Unit)? = null,
 ) {
     var editing by remember { mutableStateOf(false) }
+    // Shown value runs ahead of the stored one, so holding ± keeps counting even while the database write
+    // for the previous step is still on its way back.
+    var local by remember { mutableStateOf(value) }
+    var lastCommit by remember { mutableStateOf(0L) }
+    // Echoes of earlier steps arriving mid-hold are ignored; anything else (an edit elsewhere) wins.
+    LaunchedEffect(value) { if (android.os.SystemClock.uptimeMillis() - lastCommit > 800) local = value }
     fun commit(v: Float) {
         val rounded = if (decimals <= 0) kotlin.math.round(v) else kotlin.math.round(v * 10f.pow(decimals)) / 10f.pow(decimals)
-        onValueChange(rounded.coerceIn(min, max))
+        val next = rounded.coerceIn(min, max)
+        if (next == local) return
+        local = next
+        lastCommit = android.os.SystemClock.uptimeMillis()
+        onTick?.invoke()
+        onValueChange(next)
     }
-    val shown = formatNumber(value, decimals) + if (unit.isNotEmpty()) " $unit" else ""
+    val shown = formatNumber(local, decimals) + if (unit.isNotEmpty()) " $unit" else ""
     Stepper(
         value = shown,
-        onMinus = { onTick?.invoke(); commit(value - step) },
-        onPlus = { onTick?.invoke(); commit(value + step) },
+        onMinus = { commit(local - step) },
+        onPlus = { commit(local + step) },
         modifier = modifier,
         valueColor = valueColor,
         minValueWidth = minValueWidth,
@@ -282,13 +354,13 @@ fun NumberStepper(
     if (editing) {
         NumberEntryDialog(
             title = title,
-            initial = value,
+            initial = local,
             unit = unit,
             decimals = decimals,
             min = min,
             max = max,
             onDismiss = { editing = false },
-            onConfirm = { editing = false; onTick?.invoke(); commit(it) },
+            onConfirm = { editing = false; commit(it) },
         )
     }
 }
@@ -343,14 +415,14 @@ fun NumberEntryDialog(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Between ${formatNumber(min, decimals)} and ${formatNumber(max, decimals)}${if (unit.isNotEmpty()) " $unit" else ""}",
+                    stringResource(R.string.stepper_range, formatNumber(min, decimals), formatNumber(max, decimals) + if (unit.isNotEmpty()) " $unit" else ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (text.text.isNotEmpty() && !valid) c.coral else c.textSecondary,
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { if (valid) onConfirm(parsed!!) }, enabled = valid) { Text("Save", color = c.teal) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) } },
+        confirmButton = { TextButton(onClick = { if (valid) onConfirm(parsed!!) }, enabled = valid) { Text(stringResource(R.string.action_save), color = c.teal) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
     )
 }
 

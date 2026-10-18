@@ -38,6 +38,12 @@ data class Settings(
     val palmWidthCm: Float = 0f,
     val fastModel: String = "",
     val smartModel: String = "",
+    /** Newest Flash-Lite: first words in about a second, used for everyday chat. */
+    val liteModel: String = "",
+    /** When the model list was last read from Google; new models ship often, so it's refreshed weekly. */
+    val modelsCheckedAt: Long = 0,
+    /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
+    val coachModel: String = "auto",
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
@@ -46,7 +52,15 @@ data class Settings(
     val driveDocsEnabled: Boolean = false,
     /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
     val coachNotes: String = "",
-)
+    val theme: String = "system",
+    val hapticsEnabled: Boolean = true,
+    val unit: String = "kg",
+    val reminderHour: Int = -1,
+    val biometricLock: Boolean = false,
+) {
+    val weightUnit: WeightUnit
+        get() = if (unit.equals("lb", ignoreCase = true)) WeightUnit.LB else WeightUnit.KG
+}
 
 private val Context.dataStore by preferencesDataStore("settings")
 
@@ -63,6 +77,9 @@ class SettingsRepository(private val context: Context) {
         val palm = floatPreferencesKey("palm_width_cm")
         val fastModel = stringPreferencesKey("fast_model")
         val smartModel = stringPreferencesKey("smart_model")
+        val liteModel = stringPreferencesKey("lite_model")
+        val modelsCheckedAt = longPreferencesKey("models_checked_at")
+        val coachModel = stringPreferencesKey("coach_model")
         val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
@@ -91,6 +108,9 @@ class SettingsRepository(private val context: Context) {
         palmWidthCm = this[K.palm] ?: 0f,
         fastModel = this[K.fastModel] ?: "",
         smartModel = this[K.smartModel] ?: "",
+        liteModel = this[K.liteModel] ?: "",
+        modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
+        coachModel = this[K.coachModel] ?: "auto",
         lastCheckinWeek = this[K.lastCheckin] ?: -1,
         driveEmail = this[K.driveEmail] ?: "",
         lastBackupAt = this[K.lastBackup] ?: 0,
@@ -117,6 +137,9 @@ class SettingsRepository(private val context: Context) {
             p[K.palm] = s.palmWidthCm
             p[K.fastModel] = s.fastModel
             p[K.smartModel] = s.smartModel
+            p[K.liteModel] = s.liteModel
+            p[K.modelsCheckedAt] = s.modelsCheckedAt
+            p[K.coachModel] = s.coachModel
             p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
