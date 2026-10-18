@@ -13,6 +13,7 @@ import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -88,7 +89,8 @@ class HealthRepository(private val context: Context, private val settings: Setti
             HealthConnectClient.getOrCreate(context).features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY) ==
                 HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
         }.getOrDefault(false)
-        return if (history) permissions + HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY else permissions
+        val wanted = permissions + HealthPermission.getReadPermission(WeightRecord::class)
+        return if (history) wanted + HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY else wanted
     }
 
     private val _state = MutableStateFlow<HealthState>(HealthState.Loading)
@@ -114,6 +116,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
         val client = HealthConnectClient.getOrCreate(context)
         val granted = suspendRunCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
         if (!granted.containsAll(permissions)) { _state.value = HealthState.NeedsAccess; return }
+        if (HealthPermission.getReadPermission(WeightRecord::class) in granted) suspendRunCatching { syncWeight(client) }
         suspendRunCatching { withContext(Dispatchers.IO) { compute(client) } }
             .onSuccess { _state.value = HealthState.Ready(it); lastRefreshAt = System.currentTimeMillis() }
             .onFailure { Log.w("ForgeQuest", "health refresh failed", it) }
@@ -251,6 +254,25 @@ class HealthRepository(private val context: Context, private val settings: Setti
             week = week,
             feltGreat = felt,
         )
+    }
+
+    /**
+     * Weigh-ins from Google Health / Fitbit fill days the app has no weight for; a weight typed in the app always wins.
+     * The latest reading of each day counts.
+     */
+    private suspend fun syncWeight(client: HealthConnectClient) = withContext(Dispatchers.IO) {
+        val zone = ZoneId.systemDefault()
+        val since = LocalDate.now(zone).minusDays(70).atStartOfDay(zone).toInstant()
+        val records = read(client, WeightRecord::class, since, Instant.now()).filter { it.metadata.dataOrigin.packageName != context.packageName }
+        if (records.isEmpty()) return@withContext
+        val dao = db.weights()
+        val have = dao.all().map { it.epochDay }.toSet()
+        records.groupBy { it.time.atZone(zone).toLocalDate().toEpochDay() }
+            .filterKeys { it !in have }
+            .forEach { (day, list) ->
+                val latest = list.maxBy { it.time }
+                dao.upsert(com.forgequest.app.data.db.WeightEntity(epochDay = day, kg = latest.weight.inKilograms.toFloat(), loggedAt = latest.time.toEpochMilli()))
+            }
     }
 
     private suspend fun <T : Record> read(client: HealthConnectClient, type: KClass<T>, start: Instant, end: Instant): List<T> {

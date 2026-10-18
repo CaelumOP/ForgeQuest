@@ -122,10 +122,10 @@ fun AppRoot() {
         return
     }
     if (!current.onboarded) {
-        // First run: language (both scripts shown), then the feature slides, then setup. Saveable so the
-        // activity restart after picking a language lands on the slides.
-        var langDone by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.languageChosen(context)) }
-        var tourDone by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.tourSeen(context)) }
+        // First run: language (both scripts shown), then the feature slides, then setup. Read from prefs so the
+        // activity restart after picking a language re-reads it (saved state would bring the language screen back).
+        var langDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.languageChosen(context)) }
+        var tourDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.tourSeen(context)) }
         when {
             !langDone -> com.forgequest.app.ui.onboarding.LanguageChoice { langDone = true }
             !tourDone -> com.forgequest.app.ui.onboarding.AppTour(androidx.compose.ui.res.stringResource(R.string.tour_start)) {
