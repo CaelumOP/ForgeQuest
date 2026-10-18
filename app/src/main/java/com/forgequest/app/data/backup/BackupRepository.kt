@@ -49,11 +49,13 @@ data class BackupSettings(
     val birthYear: Int = 0,
     val trackCarbs: Boolean = false,
     val carbsGoal: Int = 250,
+    val proteinPerKg: Float = 1.8f,
+    val fatSharePct: Int = 25,
 ) {
     companion object {
         fun from(s: Settings) = BackupSettings(
             s.name, s.bodyType.name, s.kcalGoal, s.proteinGoal, s.weeklyTargetOverride, s.handLengthCm, s.palmWidthCm, s.coachNotes,
-            s.theme, s.hapticsEnabled, s.unit, s.reminderHour, s.heightCm, s.birthYear, s.trackCarbs, s.carbsGoal,
+            s.theme, s.hapticsEnabled, s.unit, s.reminderHour, s.heightCm, s.birthYear, s.trackCarbs, s.carbsGoal, s.proteinPerKg, s.fatSharePct,
         )
     }
 
@@ -74,6 +76,8 @@ data class BackupSettings(
         birthYear = birthYear,
         trackCarbs = trackCarbs,
         carbsGoal = carbsGoal,
+        proteinPerKg = proteinPerKg,
+        fatSharePct = fatSharePct,
     )
 }
 

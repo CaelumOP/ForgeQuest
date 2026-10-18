@@ -58,7 +58,7 @@ class CoachRepository(
     /** Opens the connection to Google when the Coach tab opens, so the first message skips the handshake. */
     suspend fun warmUp() {
         gemini.warmUp(settings.apiKey.value)
-        runCatching { models.current() }
+        suspendRunCatching { models.current() }
     }
 
     suspend fun send(text: String) {
@@ -176,7 +176,7 @@ class CoachRepository(
             val system = coachSystemPrompt(replyLanguage = if (java.util.Locale.getDefault().language == "ar") "Arabic" else "English")
             val ask = listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line.")
             val viaGroq = settings.groqKey.value.isNotBlank() && settings.current().coachModel == "auto"
-            val reply = (if (viaGroq) runCatching { groq.streamChat(settings.groqKey.value, groqModel(), system, ask) {} }.getOrNull() else null)
+            val reply = (if (viaGroq) suspendRunCatching { groq.streamChat(settings.groqKey.value, groqModel(), system, ask) {} }.getOrNull() else null)
                 ?: gemini.generate(requireKey(), models(), system, ask, fast = true)
             chat.insert(ChatEntity(role = "coach", text = PlanJson.strip(reply), kind = "checkin", createdAt = System.currentTimeMillis()))
             true

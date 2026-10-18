@@ -1,4 +1,4 @@
-package com.forgequest.app.data.prefs
+﻿package com.forgequest.app.data.prefs
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -62,9 +64,13 @@ data class Settings(
     /** Optional, for the calorie estimate. 0 means not given. */
     val heightCm: Float = 0f,
     val birthYear: Int = 0,
-    /** Carbs are off unless the person turns them on in Profile → Goals. */
+    /** Carbs are off unless the person turns them on in Profile â†’ Goals. */
     val trackCarbs: Boolean = false,
     val carbsGoal: Int = 250,
+    /** Grams of protein per kg of body weight behind the protein suggestion. */
+    val proteinPerKg: Float = 1.8f,
+    /** Share of calories kept for fat when suggesting carbs, in percent. */
+    val fatSharePct: Int = 25,
 ) {
     val weightUnit: WeightUnit
         get() = if (unit.equals("lb", ignoreCase = true)) WeightUnit.LB else WeightUnit.KG
@@ -104,9 +110,15 @@ class SettingsRepository(private val context: Context) {
         val birthYear = intPreferencesKey("birth_year")
         val trackCarbs = booleanPreferencesKey("track_carbs")
         val carbsGoal = intPreferencesKey("carbs_goal")
+        val proteinPerKg = floatPreferencesKey("protein_per_kg")
+        val fatShare = intPreferencesKey("fat_share_pct")
     }
 
-    val settings: Flow<Settings> = context.dataStore.data.map { p -> p.toSettings() }
+    /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
+    val settings: Flow<Settings> = context.dataStore.data
+        .catch { e -> if (e is java.io.IOException) emit(androidx.datastore.preferences.core.emptyPreferences()) else throw e }
+        .map { p -> p.toSettings() }
+        .distinctUntilChanged()
 
     suspend fun current(): Settings = settings.first()
 
@@ -140,6 +152,8 @@ class SettingsRepository(private val context: Context) {
         birthYear = this[K.birthYear] ?: 0,
         trackCarbs = this[K.trackCarbs] ?: false,
         carbsGoal = this[K.carbsGoal] ?: 250,
+        proteinPerKg = this[K.proteinPerKg] ?: 1.8f,
+        fatSharePct = this[K.fatShare] ?: 25,
     )
 
     suspend fun update(transform: (Settings) -> Settings) {
@@ -174,6 +188,8 @@ class SettingsRepository(private val context: Context) {
             p[K.birthYear] = s.birthYear
             p[K.trackCarbs] = s.trackCarbs
             p[K.carbsGoal] = s.carbsGoal
+            p[K.proteinPerKg] = s.proteinPerKg
+            p[K.fatShare] = s.fatSharePct
         }
     }
 
