@@ -65,6 +65,7 @@ import com.forgequest.app.ui.home.HomeScreen
 import com.forgequest.app.ui.onboarding.OnboardingScreen
 import com.forgequest.app.ui.profile.BadgesScreen
 import com.forgequest.app.ui.profile.ProfileScreen
+import com.forgequest.app.ui.progress.ProgressScreen
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.ExerciseDetailScreen
 import com.forgequest.app.ui.workouts.ExerciseLibraryScreen
@@ -86,6 +87,7 @@ object Routes {
     const val SESSION = "session/{id}"
     const val BADGES = "badges"
     const val LIBRARY = "library"
+    const val PROGRESS = "progress"
     fun exercise(id: String) = "exercise/$id"
     fun session(id: Long) = "session/$id"
 }
@@ -187,6 +189,7 @@ private fun MainScaffold() {
                 composable(Routes.HISTORY) { HistoryScreen(nav) }
                 composable(Routes.BADGES) { BadgesScreen(nav) }
                 composable(Routes.LIBRARY) { ExerciseLibraryScreen(nav) }
+                composable(Routes.PROGRESS) { ProgressScreen(nav) }
                 composable(Routes.SESSION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
                     SessionDetailScreen(nav, entry.arguments?.getLong("id") ?: 0L)
                 }

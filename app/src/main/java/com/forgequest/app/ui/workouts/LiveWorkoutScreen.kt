@@ -381,6 +381,9 @@ private fun SetRow(
 ) {
     val c = Fit.colors
     val rowColor by animateColorAsState(if (set.done) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent, label = "row")
+    val flashingId by vm.newBest.collectAsState()
+    val flashing = flashingId == set.id
+    val flashColor by animateColorAsState(if (flashing) c.gold else c.textPrimary, label = "flash")
     var noteDialog by remember { mutableStateOf(false) }
     if (noteDialog) {
         SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
@@ -433,21 +436,21 @@ private fun SetRow(
             when (kind) {
                 ExerciseKind.HOLD -> NumberStepper(
                     (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
-                    unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp,
+                    unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
                 )
                 ExerciseKind.REPS -> NumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
-                    title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp,
+                    title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp, valueColor = flashColor,
                 )
                 ExerciseKind.WEIGHTED -> {
                     NumberStepper(
                         (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
-                        unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp,
+                        unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
                     )
                     val unit by vm.unit.collectAsState()
                     NumberStepper(
                         unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f),
-                        unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
+                        unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = if (flashing) flashColor else c.blue,
                     )
                 }
             }

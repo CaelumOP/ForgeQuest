@@ -67,6 +67,7 @@ import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.prefs.BodyType
+import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.data.seed.StarterPlans
 import com.forgequest.app.ui.appViewModel
@@ -87,6 +88,8 @@ data class OnboardingState(
     val bodyType: BodyType = BodyType.MALE,
     val weightKg: Float = 75f,
     val unit: WeightUnit = WeightUnit.KG,
+    val heightCm: Float = 0f,
+    val age: Int = 0,
     val kcal: Int = 2500,
     val protein: Int = 135,
     val goalsTouched: Boolean = false,
@@ -105,7 +108,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     fun setWeight(kg: Float) = state.update { s ->
         val w = kg.coerceIn(30f, 250f)
         if (s.goalsTouched) s.copy(weightKg = w)
-        else s.copy(weightKg = w, protein = suggestedProtein(w), kcal = suggestedKcal(w))
+        else s.copy(weightKg = w, protein = suggestedProtein(w)).let { it.copy(kcal = suggestedKcal(it)) }
     }
 
     fun next() = state.update { it.copy(step = (it.step + 1).coerceAtMost(LAST_STEP)) }
@@ -138,15 +141,26 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
             app.workouts.applyPlan(plan, if (plan === emptyPlan) "manual" else "starter")
             app.progress.logWeight(s.weightKg)
             app.settings.update {
-                it.copy(onboarded = true, name = s.name.trim(), bodyType = s.bodyType, kcalGoal = s.kcal, proteinGoal = s.protein, unit = s.unit.label)
+                it.copy(onboarded = true, name = s.name.trim(), bodyType = s.bodyType, kcalGoal = s.kcal, proteinGoal = s.protein, unit = s.unit.label, heightCm = s.heightCm, birthYear = if (s.age > 0) java.time.Year.now().value - s.age else 0)
             }
         }
     }
 
     companion object {
         const val LAST_STEP = 3
-        fun suggestedProtein(kg: Float) = ((kg * 1.8f) / 5f).roundToInt() * 5
-        fun suggestedKcal(kg: Float) = ((kg * 33f) / 50f).roundToInt() * 50    }
+        fun suggestedProtein(kg: Float) = Nutrition.suggestedProtein(kg)
+    }
+
+    /** Height or age changed: refresh the calorie suggestion unless the person already set goals by hand. */
+    fun setBody(heightCm: Float = state.value.heightCm, age: Int = state.value.age) = state.update { s ->
+        val next = s.copy(heightCm = heightCm, age = age)
+        if (s.goalsTouched) next else next.copy(kcal = suggestedKcal(next))
+    }
+
+    private fun suggestedKcal(s: OnboardingState): Int {
+        val days = StarterPlans.all.getOrNull(s.planIndex)?.days?.count { !it.isRest && it.items.isNotEmpty() } ?: 3
+        return Nutrition.suggestedKcal(s.weightKg, s.heightCm, s.age, s.bodyType == BodyType.MALE, days)
+    }
 }
 
 @Composable
@@ -245,6 +259,8 @@ private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
         ChoiceChip(stringResource(R.string.unit_pounds), s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })
     }
     GoalRow(stringResource(R.string.weight_body), s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = if (s.unit == WeightUnit.KG) 0.5f else 1f, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
+    GoalRow(stringResource(R.string.profile_height), if (s.heightCm > 0f) s.heightCm else 170f, { vm.setBody(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
+    GoalRow(stringResource(R.string.profile_age), if (s.age > 0) s.age.toFloat() else 25f, { vm.setBody(age = it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
     GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
     GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
     Spacer(Modifier.height(4.dp))

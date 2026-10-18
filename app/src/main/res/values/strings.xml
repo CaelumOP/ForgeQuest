@@ -731,4 +731,54 @@
     <string name="coach_model_flash_hint">%1$s · slower, small free daily limit</string>
     <string name="coach_model_pro">Pro · deepest</string>
     <string name="coach_model_pro_hint">%1$s · can take a minute, often no free quota</string>
+    <!-- Progress -->
+    <string name="progress_title">Progress</string>
+    <string name="progress_subtitle">Every number with its direction</string>
+    <string name="progress_range_1m">1M</string>
+    <string name="progress_range_3m">3M</string>
+    <string name="progress_range_6m">6M</string>
+    <string name="progress_range_1y">1Y</string>
+    <string name="progress_range_all">All</string>
+    <string name="progress_load">Training load</string>
+    <string name="progress_load_hint">This week against your 12-week average</string>
+    <plurals name="progress_sets_this_week"><item quantity="one">%d set this week</item><item quantity="other">%d sets this week</item></plurals>
+    <string name="progress_vs_last_week">%1$s vs last week</string>
+    <string name="progress_first_week">your first week</string>
+    <string name="progress_tile_best">%1$s · best set</string>
+    <string name="progress_tile_weight">Body weight · 7-day avg</string>
+    <string name="progress_tile_protein">Protein · days on goal</string>
+    <string name="progress_tile_workouts">Workouts · per week</string>
+    <string name="progress_of_seven">%1$d of 7</string>
+    <string name="progress_holding">holding</string>
+    <string name="progress_on_target">on target</string>
+    <string name="progress_strength">Strength</string>
+    <string name="progress_strength_hint">Best set per session · gold dots are records · dashed line is your all-time high · drag to read</string>
+    <string name="progress_weight_hint">Daily entries with a 7-day average line · drag to read</string>
+    <string name="progress_consistency">Consistency</string>
+    <plurals name="progress_workout_days"><item quantity="one">%d workout day in this range</item><item quantity="other">%d workout days in this range</item></plurals>
+    <string name="progress_legend_rest">rest</string>
+    <string name="progress_legend_workout">workout</string>
+    <string name="progress_legend_record">record day</string>
+    <string name="progress_then_now">Then vs now</string>
+    <string name="progress_then_now_hint">Start of this range → today</string>
+    <string name="progress_per_week">%1$d / wk</string>
+    <string name="progress_all_time">All time</string>
+    <string name="progress_total_workouts">workouts</string>
+    <string name="progress_total_reps">reps</string>
+    <string name="progress_total_hours">trained</string>
+    <string name="progress_total_records">records</string>
+    <string name="progress_total_lifted">lifted</string>
+    <string name="progress_empty_title">Your charts start after your first workout</string>
+    <string name="progress_empty_body">Finish a session and this page fills in with your trends, records and consistency.</string>
+    <string name="progress_need_more">Two sessions of %1$s and the line appears.</string>
+    <string name="home_progress_card">This month</string>
+    <string name="home_progress_open">See your progress</string>
+    <string name="profile_progress_title">Progress</string>
+    <string name="profile_progress_hint">Trends, records and consistency over months</string>
+    <string name="profile_height">Height</string>
+    <string name="profile_age">Age</string>
+    <string name="unit_years">yrs</string>
+    <string name="goals_suggested">Suggested %1$s kcal from your weight, height, age and %2$d training days a week</string>
+    <string name="goals_suggest_missing">Add your height and age for a calorie estimate</string>
+    <string name="goals_use">Use</string>
 </resources>

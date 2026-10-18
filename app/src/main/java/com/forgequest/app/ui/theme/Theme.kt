@@ -45,6 +45,14 @@ data class FitColors(
     val muscleRest: Color,
     val bodyOutline: Color,
     val isDark: Boolean,
+    /** Chart hues, validated for colour-blind separation and 3:1 contrast on the card surface in each mode. */
+    val chartStrength: Color,
+    val chartWeight: Color,
+    val chartCalories: Color,
+    val chartProtein: Color,
+    val chartOther: Color,
+    val chartGain: Color,
+    val chartGainTrack: Color,
 )
 
 val DarkFitColors = FitColors(
@@ -68,6 +76,13 @@ val DarkFitColors = FitColors(
     muscleRest = Color(0xFF34373A),
     bodyOutline = Color(0xFF4A4D51),
     isDark = true,
+    chartStrength = Color(0xFF21A693),
+    chartWeight = Color(0xFF4C8FE6),
+    chartCalories = Color(0xFFB07F00),
+    chartProtein = Color(0xFFC85A72),
+    chartOther = Color(0xFFA572E0),
+    chartGain = Color(0xFF21A693),
+    chartGainTrack = Color(0xFF1C2E2B),
 )
 
 /**
@@ -95,6 +110,13 @@ val LightFitColors = FitColors(
     muscleRest = Color(0xFFDCE1E8),
     bodyOutline = Color(0xFFB9C0C9),
     isDark = false,
+    chartStrength = Color(0xFF008F78),
+    chartWeight = Color(0xFF0B57D0),
+    chartCalories = Color(0xFF8A6100),
+    chartProtein = Color(0xFFC62A6E),
+    chartOther = Color(0xFF6F2DBD),
+    chartGain = Color(0xFF008F78),
+    chartGainTrack = Color(0xFFD5F0EB),
 )
 
 private val LocalFitColors = staticCompositionLocalOf { DarkFitColors }

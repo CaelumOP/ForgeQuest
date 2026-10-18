@@ -46,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,6 +66,7 @@ import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
@@ -72,6 +74,7 @@ import com.forgequest.app.ui.components.EmptyState
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.MuscleRecoveryMap
 import com.forgequest.app.ui.components.PillButton
+import com.forgequest.app.ui.components.Sparkline
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.SharingStarted
@@ -111,6 +114,13 @@ fun WorkoutsScreen(nav: NavHostController) {
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val plan = s.plan
+    // Best set per session for every exercise on the plan, so the plan reads like a progress board.
+    val trends = remember(s.doneSets.size, s.sessions.size) {
+        val sessionDay = s.sessions.associate { it.id to it.epochDay }
+        s.doneSets.groupBy { it.exerciseId }.mapValues { (id, sets) ->
+            Trends.bestSetSeries(sets, s.exercises[id]?.kind ?: ExerciseKind.REPS, sessionDay).takeLast(12).map { it.value }
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -168,6 +178,7 @@ fun WorkoutsScreen(nav: NavHostController) {
                 onVideo = { openFormVideo(context, s.exercises[it]) },
                 onEdit = { nav.navigate(Routes.PLAN) },
                 unit = s.settings.weightUnit,
+                trends = trends,
             )
         }
         Spacer(Modifier.height(16.dp))
@@ -236,6 +247,7 @@ private fun DayCard(
     onVideo: (String) -> Unit,
     onEdit: () -> Unit,
     unit: WeightUnit = WeightUnit.KG,
+    trends: Map<String, List<Float>> = emptyMap(),
 ) {
     val c = Fit.colors
     FitCard {
@@ -276,6 +288,9 @@ private fun DayCard(
                     Column(Modifier.weight(1f)) {
                         Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(item.prescription(ex?.kind, unit), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    trends[item.exerciseId]?.takeIf { it.size >= 2 }?.let { pts ->
+                        Box(Modifier.width(56.dp).padding(horizontal = 4.dp)) { Sparkline(pts, c.chartStrength) }
                     }
                     IconButton(onClick = { onVideo(item.exerciseId) }) {
                         Icon(Icons.Rounded.PlayCircleOutline, contentDescription = stringResource(R.string.cd_watch_form), tint = c.blue)

@@ -57,6 +57,9 @@ data class Settings(
     val unit: String = "kg",
     val reminderHour: Int = -1,
     val biometricLock: Boolean = false,
+    /** Optional, for the calorie estimate. 0 means not given. */
+    val heightCm: Float = 0f,
+    val birthYear: Int = 0,
 ) {
     val weightUnit: WeightUnit
         get() = if (unit.equals("lb", ignoreCase = true)) WeightUnit.LB else WeightUnit.KG
@@ -91,6 +94,8 @@ class SettingsRepository(private val context: Context) {
         val unit = stringPreferencesKey("weight_unit")
         val reminderHour = intPreferencesKey("reminder_hour")
         val biometric = booleanPreferencesKey("biometric_lock")
+        val height = floatPreferencesKey("height_cm")
+        val birthYear = intPreferencesKey("birth_year")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -122,6 +127,8 @@ class SettingsRepository(private val context: Context) {
         unit = this[K.unit] ?: "kg",
         reminderHour = this[K.reminderHour] ?: -1,
         biometricLock = this[K.biometric] ?: false,
+        heightCm = this[K.height] ?: 0f,
+        birthYear = this[K.birthYear] ?: 0,
     )
 
     suspend fun update(transform: (Settings) -> Settings) {
@@ -151,6 +158,8 @@ class SettingsRepository(private val context: Context) {
             p[K.unit] = s.unit
             p[K.reminderHour] = s.reminderHour
             p[K.biometric] = s.biometricLock
+            p[K.height] = s.heightCm
+            p[K.birthYear] = s.birthYear
         }
     }
 
