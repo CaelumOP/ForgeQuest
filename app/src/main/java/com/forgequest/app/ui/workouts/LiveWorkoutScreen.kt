@@ -1,5 +1,11 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.pluralStringResource
+
+import androidx.compose.ui.res.stringResource
+
 import com.forgequest.app.ui.localTitle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -164,12 +170,12 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             Column(Modifier.background(c.background).statusBarsPadding()) {
                 ProgressLine(if (sets.isEmpty()) 0f else doneCount / sets.size.toFloat(), c.teal, c.tealTrack, height = 4.dp)
                 Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.Close, contentDescription = "Minimize", tint = c.textPrimary) }
+                    IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("%d:%02d · %d of %d sets".format(elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(stringResource(R.string.live_header, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
-                    TextButton(onClick = { confirmExit = true }) { Text("Discard", color = c.textSecondary) }
+                    TextButton(onClick = { confirmExit = true }) { Text(stringResource(R.string.live_discard), color = c.textSecondary) }
                 }
             }
             LazyColumn(
@@ -193,7 +199,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     }
                 }
                 item {
-                    TonalPill("Add exercise", onClick = { picker = PickerMode.Add }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
+                    TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = PickerMode.Add }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -207,7 +213,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             }
             Box(Modifier.fillMaxWidth().background(c.background).navigationBarsPadding().padding(16.dp)) {
                 PillButton(
-                    if (finishing) "Saving…" else "Finish workout",
+                    if (finishing) stringResource(R.string.live_saving) else stringResource(R.string.live_finish_workout),
                     onClick = { if (sets.any { !it.done }) confirmFinish = true else vm.finish() },
                     enabled = doneCount > 0 && !finishing,
                     modifier = Modifier.fillMaxWidth(),
@@ -221,10 +227,10 @@ fun LiveWorkoutScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { confirmFinish = false },
             containerColor = c.card,
-            title = { Text("Finish with $left set${if (left == 1) "" else "s"} unticked?", color = c.textPrimary) },
-            text = { Text("Only ticked sets are saved. The $left you didn't tick ${if (left == 1) "is" else "are"} dropped.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text("Finish", color = c.teal) } },
-            dismissButton = { TextButton(onClick = { confirmFinish = false }) { Text("Keep going", color = c.textSecondary) } },
+            title = { Text(pluralStringResource(R.plurals.live_finish_unticked_title, left, left), color = c.textPrimary) },
+            text = { Text(pluralStringResource(R.plurals.live_finish_unticked_body, left, left), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) } },
         )
     }
 
@@ -232,16 +238,16 @@ fun LiveWorkoutScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { confirmExit = false },
             containerColor = c.card,
-            title = { Text("Discard this workout?", color = c.textPrimary) },
-            text = { Text("Logged sets from this session will be deleted.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { confirmExit = false; vm.discard { nav.popBackStack() } }) { Text("Discard", color = c.coral) } },
-            dismissButton = { TextButton(onClick = { confirmExit = false }) { Text("Keep going", color = c.teal) } },
+            title = { Text(stringResource(R.string.live_discard_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.live_discard_body), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { confirmExit = false; vm.discard { nav.popBackStack() } }) { Text(stringResource(R.string.live_discard), color = c.coral) } },
+            dismissButton = { TextButton(onClick = { confirmExit = false }) { Text(stringResource(R.string.live_keep_going), color = c.teal) } },
         )
     }
 
     picker?.let { mode ->
         ExercisePickerSheet(
-            title = if (mode is PickerMode.Swap) "Swap exercise" else "Add exercise",
+            title = if (mode is PickerMode.Swap) stringResource(R.string.live_swap_exercise) else stringResource(R.string.live_add_exercise),
             library = library,
             onPick = { ex ->
                 if (mode is PickerMode.Swap) vm.swap(mode.position, ex.id) else vm.addExercise(ex.id)
@@ -277,15 +283,15 @@ private fun StraightCard(
             Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onDetail)) {
                 Text(ex?.name ?: g.sets.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 val target = g.sets.first().targetLabel
-                Text(if (target.isNotBlank()) "Target ${g.sets.size} × $target" else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(if (target.isNotBlank()) stringResource(R.string.live_target, g.sets.size, target) else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "Options", tint = c.textSecondary) }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
-                    DropdownMenuItem(text = { Text("Watch form") }, onClick = { menu = false; onVideo(ex) })
-                    DropdownMenuItem(text = { Text("Swap exercise") }, onClick = { menu = false; onSwap() })
-                    DropdownMenuItem(text = { Text("Add set") }, onClick = { menu = false; vm.addSet(g.position) })
-                    DropdownMenuItem(text = { Text("Remove last set") }, onClick = { menu = false; vm.removeLastSet(g.position) })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.cd_watch_form)) }, onClick = { menu = false; onVideo(ex) })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.live_swap_exercise)) }, onClick = { menu = false; onSwap() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.live_add_set)) }, onClick = { menu = false; vm.addSet(g.position) })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.live_remove_last_set)) }, onClick = { menu = false; vm.removeLastSet(g.position) })
                 }
             }
         }
@@ -311,14 +317,14 @@ private fun CircuitCard(
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Rounded.Repeat, contentDescription = null, tint = c.teal, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Circuit", style = MaterialTheme.typography.labelMedium, color = c.teal)
+            Text(stringResource(R.string.live_circuit), style = MaterialTheme.typography.labelMedium, color = c.teal)
         }
-        Text("One set of each, then repeat. Long-press a set to add a note.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        Text(stringResource(R.string.live_circuit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         g.rounds.forEachIndexed { r, round ->
             val roundDone = round.all { it.done }
             Spacer(Modifier.height(12.dp))
             Text(
-                "Round ${r + 1} of ${g.rounds.size}" + if (roundDone) " · done" else "",
+                stringResource(R.string.live_round, r + 1, g.rounds.size) + if (roundDone) stringResource(R.string.live_round_done) else "",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (roundDone) c.teal else c.textSecondary,
             )
@@ -335,8 +341,8 @@ private fun CircuitCard(
                         onLabelClick = { menu = true },
                     )
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
-                        DropdownMenuItem(text = { Text("Watch form") }, onClick = { menu = false; onVideo(ex) })
-                        DropdownMenuItem(text = { Text("Swap exercise") }, onClick = { menu = false; onSwap(set.itemPosition) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.cd_watch_form)) }, onClick = { menu = false; onVideo(ex) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.live_swap_exercise)) }, onClick = { menu = false; onSwap(set.itemPosition) })
                     }
                 }
             }
@@ -345,7 +351,7 @@ private fun CircuitCard(
         TextButton(onClick = { vm.addRound(g.positions) }) {
             Icon(Icons.Rounded.Add, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Add round", color = c.teal)
+            Text(stringResource(R.string.live_add_round), color = c.teal)
         }
     }
 }
@@ -368,7 +374,7 @@ private fun SetRow(
     }
     Row(
         Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor)
-            .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = "add a note")
+            .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
             .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -402,21 +408,21 @@ private fun SetRow(
             when (kind) {
                 ExerciseKind.HOLD -> NumberStepper(
                     (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
-                    unit = "s", title = "Hold time", minValueWidth = 52.dp,
+                    unit = "s", title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp,
                 )
                 ExerciseKind.REPS -> NumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
-                    title = "Reps", minValueWidth = 40.dp,
+                    title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp,
                 )
                 ExerciseKind.WEIGHTED -> {
                     NumberStepper(
                         (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
-                        unit = "reps", title = "Reps", minValueWidth = 64.dp,
+                        unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp,
                     )
                     val unit by vm.unit.collectAsState()
                     NumberStepper(
                         unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f),
-                        unit = unit.label, decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue,
+                        unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
                     )
                 }
             }
@@ -434,20 +440,20 @@ fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Un
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = c.card,
-        title = { Text("Note for this set", color = c.textPrimary) },
+        title = { Text(stringResource(R.string.live_note_title), color = c.textPrimary) },
         text = {
             OutlinedTextField(
                 value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = RoundedCornerShape(16.dp),
-                placeholder = { Text("Felt easy, add weight next time") },
+                placeholder = { Text(stringResource(R.string.live_note_hint)) },
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                 modifier = Modifier.fillMaxWidth(),
             )
         },
-        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Save", color = c.teal) } },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text(stringResource(R.string.action_save), color = c.teal) } },
         dismissButton = {
             Row {
-                if (initial.isNotBlank()) TextButton(onClick = { onSave("") }) { Text("Clear", color = c.coral) }
-                TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
+                if (initial.isNotBlank()) TextButton(onClick = { onSave("") }) { Text(stringResource(R.string.action_clear), color = c.coral) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) }
             }
         },
     )
@@ -457,13 +463,14 @@ fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Un
 @Composable
 private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
     val c = Fit.colors
+    val setDoneLabel = stringResource(R.string.cd_set_done)
     val corner by animateDpAsState(if (checked) 22.dp else 10.dp, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "corner")
     val color by animateColorAsState(if (checked) c.teal else c.cardHigh, label = "fill")
     val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
     Box(
         Modifier.size(44.dp).clip(RoundedCornerShape(corner)).background(color)
             .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
-            .semantics { contentDescription = "Set done" },
+            .semantics { contentDescription = setDoneLabel },
         contentAlignment = Alignment.Center,
     ) {
         Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp).scale(checkScale))
@@ -474,7 +481,7 @@ private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
 fun PrTag() {
     val c = Fit.colors
     Box(Modifier.clip(RoundedCornerShape(50)).background(c.goldTrack).padding(horizontal = 6.dp, vertical = 1.dp)) {
-        Text("PR", style = MaterialTheme.typography.labelSmall, color = c.gold, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.live_pr), style = MaterialTheme.typography.labelSmall, color = c.gold, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -483,11 +490,11 @@ private fun RestBar(secondsLeft: Int, total: Int, onAdd: () -> Unit, onSkip: () 
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Rest", style = MaterialTheme.typography.titleSmall, color = c.textSecondary)
+            Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary)
             Spacer(Modifier.width(10.dp))
             Text("%d:%02d".format(secondsLeft / 60, secondsLeft % 60), style = MaterialTheme.typography.titleLarge, color = c.blue, modifier = Modifier.weight(1f))
             TextButton(onClick = onAdd) { Text("+15 s", color = c.textPrimary) }
-            TextButton(onClick = onSkip) { Text("Skip", color = c.teal) }
+            TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal) }
         }
         Spacer(Modifier.height(8.dp))
         ProgressLine(if (total == 0) 0f else secondsLeft / total.toFloat(), c.blue, c.blueTrack, height = 4.dp)
@@ -508,30 +515,30 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
         Spacer(Modifier.height(32.dp))
         IconCircle(Icons.Rounded.Check, c.onTeal, c.teal, 88.dp)
         Spacer(Modifier.height(20.dp))
-        Text("Workout complete", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
+        Text(stringResource(R.string.live_complete), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
         Text(sum.title, style = MaterialTheme.typography.bodyLarge, color = c.textSecondary, textAlign = TextAlign.Center)
         Spacer(Modifier.height(28.dp))
         Row(Modifier.fillMaxWidth()) {
-            com.forgequest.app.ui.components.StatColumn("${sum.doneSets}", "Sets", c.teal, Modifier.weight(1f))
-            com.forgequest.app.ui.components.StatColumn("${sum.minutes} min", "Time", c.blue, Modifier.weight(1f))
-            com.forgequest.app.ui.components.StatColumn("+${sum.xpGained}", "XP", c.gold, Modifier.weight(1f))
+            com.forgequest.app.ui.components.StatColumn("${sum.doneSets}", stringResource(R.string.live_sets), c.teal, Modifier.weight(1f))
+            com.forgequest.app.ui.components.StatColumn(stringResource(R.string.hist_minutes, sum.minutes), stringResource(R.string.profile_time), c.blue, Modifier.weight(1f))
+            com.forgequest.app.ui.components.StatColumn("+${sum.xpGained}", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
         }
         Spacer(Modifier.height(24.dp))
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (leveledUp) "Level up! Level ${sum.after.level}" else "Level ${sum.after.level}",
+                    if (leveledUp) stringResource(R.string.live_level_up, sum.after.level) else stringResource(R.string.live_level, sum.after.level),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (leveledUp) c.gold else c.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
-                Text("Rank ${sum.after.rank.letter} · ${sum.after.rank.title}", style = MaterialTheme.typography.labelLarge, color = c.blue)
+                Text(stringResource(R.string.live_rank, sum.after.rank.letter, sum.after.rank.localTitle()), style = MaterialTheme.typography.labelLarge, color = c.blue)
             }
             Spacer(Modifier.height(12.dp))
             val from = if (leveledUp) 0f else sum.before.progress
             ProgressLine(if (filled) sum.after.progress else from, c.blue, c.blueTrack, height = 8.dp)
             Spacer(Modifier.height(6.dp))
-            Text("${sum.after.xpIntoLevel} / ${sum.after.xpForNextLevel} XP to level ${sum.after.level + 1}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Text(stringResource(R.string.profile_xp_line, sum.after.xpIntoLevel, sum.after.xpForNextLevel, sum.after.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
         if (sum.prs.isNotEmpty() || sum.newBadges.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
@@ -540,7 +547,7 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
                     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         PrTag()
                         Spacer(Modifier.width(10.dp))
-                        Text("New record: $name", style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                        Text(stringResource(R.string.live_new_record, name), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                     }
                 }
                 sum.newBadges.forEach { badge ->
@@ -548,12 +555,12 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
                     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text("Badge unlocked: $title", style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                        Text(stringResource(R.string.live_badge_unlocked, title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                     }
                 }
             }
         }
         Spacer(Modifier.weight(1f))
-        PillButton("Done", onClick = onDone, modifier = Modifier.fillMaxWidth())
+        PillButton(stringResource(R.string.home_done), onClick = onDone, modifier = Modifier.fillMaxWidth())
     }
 }
