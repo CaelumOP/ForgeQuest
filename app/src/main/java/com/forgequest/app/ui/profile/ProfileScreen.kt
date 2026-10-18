@@ -241,11 +241,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     // ------------------------------------------------------------ Drive
 
-    private fun withDrive(label: String, withDocs: Boolean = false, op: suspend (String) -> Unit) {
+    private fun withDrive(label: String, withDocs: Boolean = false, bridge: Boolean = false, op: suspend (String) -> Unit) {
         busy.value = label
         viewModelScope.launch {
             try {
-                when (val auth = app.drive.authorize(withDocs)) {
+                when (val auth = app.drive.authorize(withDocs, bridge)) {
                     is DriveAuth.Token -> op(auth.accessToken)
                     is DriveAuth.NeedsUi -> {
                         afterConsent = op
@@ -281,6 +281,30 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
                 busy.value = null
             }
         }
+    }
+
+    // ------------------------------------------------------------ Gemini bridge
+
+    fun setBridge(on: Boolean) = viewModelScope.launch {
+        app.settings.update { it.copy(bridgeEnabled = on) }
+        if (on) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(app.appContext) else com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
+        if (on) syncBridge()
+    }
+
+    fun syncBridge() = withDrive(app.str(R.string.bridge_syncing), bridge = true) { token ->
+        val reply = app.bridge.sync(token)
+        message.value = when {
+            reply == null -> app.str(R.string.bridge_no_reply)
+            reply.ok -> app.str(R.string.bridge_read_ok)
+            else -> app.str(R.string.bridge_read_issues, reply.issues.joinToString(", "))
+        }
+    }
+
+    suspend fun bridgeData(): String = app.bridge.dataText()
+
+    fun pasteBridgeReply(text: String) = viewModelScope.launch {
+        val reply = app.bridge.applyText(text)
+        message.value = if (reply.ok) app.str(R.string.bridge_read_ok) else app.str(R.string.bridge_read_issues, reply.issues.joinToString(", "))
     }
 
     fun connectDrive() = withDrive(app.str(R.string.drive_connecting)) { token ->
@@ -697,6 +721,67 @@ fun ProfileScreen(nav: NavHostController) {
             stringResource(R.string.groq_key_title),
             if (groqKey.isBlank()) stringResource(R.string.groq_key_off) else stringResource(R.string.groq_key_on),
         ) { groqDialog = true }
+        Spacer(Modifier.height(12.dp))
+
+        // Gemini app bridge (owner feature): data out twice a day, the big model's brief back in.
+        var pasteOpen by remember { mutableStateOf(false) }
+        val bridgeScope = rememberCoroutineScope()
+        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+        FitCard {
+            Row(Modifier.fillMaxWidth().toggleable(settings.bridgeEnabled, role = Role.Switch) { vm.setBridge(it) }, verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.bridge_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.bridge_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Switch(settings.bridgeEnabled, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+            }
+            if (settings.bridgeEnabled) {
+                Spacer(Modifier.height(10.dp))
+                val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", java.util.Locale.getDefault())
+                fun at(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).format(fmt)
+                Text(
+                    (if (settings.bridgeLastWrite > 0) stringResource(R.string.bridge_wrote, at(settings.bridgeLastWrite)) else stringResource(R.string.bridge_never_wrote)) + " · " +
+                        (if (settings.bridgeLastReadAt > 0) stringResource(R.string.bridge_read, at(settings.bridgeLastReadAt)) else stringResource(R.string.bridge_never_read)),
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                )
+                if (settings.bridgeIssues.isNotBlank()) Text(stringResource(R.string.bridge_issues, settings.bridgeIssues), style = MaterialTheme.typography.bodySmall, color = c.coral)
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncBridge)
+                    TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
+                        val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                        android.widget.Toast.makeText(context, context.getString(R.string.bridge_prompt_copied), android.widget.Toast.LENGTH_SHORT).show()
+                    })
+                }
+                Spacer(Modifier.height(8.dp))
+                // Without Drive access, the same exchange works by hand.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TonalPill(stringResource(R.string.bridge_copy_data), onClick = {
+                        bridgeScope.launch {
+                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(vm.bridgeData()))
+                            android.widget.Toast.makeText(context, context.getString(R.string.bridge_data_copied), android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }, tint = c.textSecondary)
+                    TonalPill(stringResource(R.string.bridge_paste), onClick = { pasteOpen = true }, tint = c.textSecondary)
+                }
+            }
+        }
+        if (pasteOpen) {
+            var text by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { pasteOpen = false },
+                containerColor = c.card,
+                title = { Text(stringResource(R.string.bridge_paste_title), color = c.textPrimary) },
+                text = {
+                    OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth().height(220.dp), placeholder = { Text("FORGEQUEST-REPLY v1 …") })
+                },
+                confirmButton = { TextButton(onClick = { vm.pasteBridgeReply(text); pasteOpen = false }, enabled = text.isNotBlank()) { Text(stringResource(R.string.bridge_paste_apply), color = c.teal) } },
+                dismissButton = { TextButton(onClick = { pasteOpen = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+            )
+        }
         Spacer(Modifier.height(12.dp))
 
         // Coach memory

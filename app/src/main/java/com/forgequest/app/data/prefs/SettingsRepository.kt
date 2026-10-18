@@ -51,6 +51,14 @@ data class Settings(
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
+    /** Owner-only Gemini app bridge (see data/bridge). */
+    val bridgeEnabled: Boolean = false,
+    val bridgeDataId: String = "",
+    val bridgeLastWrite: Long = 0,
+    val bridgeLastReplyModified: Long = 0,
+    val bridgeLastReadAt: Long = 0,
+    val bridgeToday: String = "",
+    val bridgeIssues: String = "",
     val lastDocImportModified: Long = 0,
     /** The person separately allowed reading their Drive to import a "Workout Plan" doc. */
     val driveDocsEnabled: Boolean = false,
@@ -101,6 +109,13 @@ class SettingsRepository(private val context: Context) {
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
         val lastDocImport = longPreferencesKey("last_doc_import_modified")
+        val bridgeEnabled = booleanPreferencesKey("bridge_enabled")
+        val bridgeDataId = stringPreferencesKey("bridge_data_id")
+        val bridgeLastWrite = longPreferencesKey("bridge_last_write")
+        val bridgeLastReplyModified = longPreferencesKey("bridge_last_reply_modified")
+        val bridgeLastReadAt = longPreferencesKey("bridge_last_read_at")
+        val bridgeToday = stringPreferencesKey("bridge_today")
+        val bridgeIssues = stringPreferencesKey("bridge_issues")
         val coachNotes = stringPreferencesKey("coach_notes")
         val driveDocs = booleanPreferencesKey("drive_docs_enabled")
         val theme = stringPreferencesKey("theme")
@@ -143,6 +158,13 @@ class SettingsRepository(private val context: Context) {
         lastCheckinWeek = this[K.lastCheckin] ?: -1,
         driveEmail = this[K.driveEmail] ?: "",
         lastBackupAt = this[K.lastBackup] ?: 0,
+        bridgeEnabled = this[K.bridgeEnabled] ?: false,
+        bridgeDataId = this[K.bridgeDataId] ?: "",
+        bridgeLastWrite = this[K.bridgeLastWrite] ?: 0,
+        bridgeLastReplyModified = this[K.bridgeLastReplyModified] ?: 0,
+        bridgeLastReadAt = this[K.bridgeLastReadAt] ?: 0,
+        bridgeToday = this[K.bridgeToday] ?: "",
+        bridgeIssues = this[K.bridgeIssues] ?: "",
         lastDocImportModified = this[K.lastDocImport] ?: 0,
         coachNotes = this[K.coachNotes] ?: "",
         driveDocsEnabled = this[K.driveDocs] ?: false,
@@ -180,6 +202,13 @@ class SettingsRepository(private val context: Context) {
             p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
+            p[K.bridgeEnabled] = s.bridgeEnabled
+            p[K.bridgeDataId] = s.bridgeDataId
+            p[K.bridgeLastWrite] = s.bridgeLastWrite
+            p[K.bridgeLastReplyModified] = s.bridgeLastReplyModified
+            p[K.bridgeLastReadAt] = s.bridgeLastReadAt
+            p[K.bridgeToday] = s.bridgeToday
+            p[K.bridgeIssues] = s.bridgeIssues
             p[K.lastDocImport] = s.lastDocImportModified
             p[K.coachNotes] = s.coachNotes
             p[K.driveDocs] = s.driveDocsEnabled

@@ -39,6 +39,7 @@ class AppContainer(context: Context) {
     val coach = CoachRepository(db, settings, gemini, models, progress, workouts, groq, health)
     val backup = BackupRepository(context, db, settings, workouts)
     val drive = DriveSync(context, settings, workouts, coach, backup, http)
+    val bridge = com.forgequest.app.data.bridge.GeminiBridge(context, settings, db, coach, health, drive)
     val haptics = Haptics(context)
     val notifier = Notifier(context)
 
@@ -61,6 +62,7 @@ class ForgeQuestApp : Application() {
         container.appScope.launch { com.forgequest.app.data.suspendRunCatching { container.food.deleteOrphanPhotos() } }
         container.appScope.launch { container.settings.settings.collect { container.haptics.enabled = it.hapticsEnabled } }
         DriveSyncWorker.schedule(this)
+        container.appScope.launch { if (container.settings.current().bridgeEnabled) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(this@ForgeQuestApp) }
         container.appScope.launch { ReminderWorker.schedule(this@ForgeQuestApp, container.settings.current().reminderHour) }
     }
 }

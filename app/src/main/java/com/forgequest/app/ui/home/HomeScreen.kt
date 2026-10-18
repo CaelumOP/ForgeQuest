@@ -142,6 +142,15 @@ fun HomeScreen(nav: NavHostController) {
         }
 
         ReadinessCard(health, onFeltGreat = vm::setFeltGreat)
+        // Today's line from the owner's Gemini automation, when the bridge is on.
+        if (s.settings.bridgeEnabled && s.settings.bridgeToday.isNotBlank()) {
+            FitCard {
+                Text(stringResource(R.string.bridge_home_title), style = MaterialTheme.typography.labelLarge, color = c.purple)
+                Spacer(Modifier.height(4.dp))
+                Text(s.settings.bridgeToday, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            }
+            Spacer(Modifier.height(12.dp))
+        }
         StreakCard(s.streak)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
