@@ -1,13 +1,35 @@
-# Next coding session (Opus): providers, plan import, copy-prompt button, carbs
+# Next coding session (Opus): leftovers, plan import, copy-prompt button, providers, carbs
 
-Branch `claude/hopeful-meitner-lkx0er`. Start with `docs/HANDOFF-progress.md` (verify the Progress screen builds and
-looks right), then do the items below in order. Build and screenshot per item, tests before each commit, English and
-Arabic strings for every new label. Don't open a PR; the owner merges.
+Branch `claude/hopeful-meitner-lkx0er`. Build and screenshot per item, tests before each commit, English and Arabic
+strings for every new label. Don't open a PR; the owner merges.
 
-## 1. Second free AI provider: Groq (no paid providers, ever)
+## Where things stand (from the last Opus session, stopped at the 5-hour limit)
 
-Goal: chat answers in under 2 seconds. Gemini stays for meal scans and plans; Groq takes chat when the person has a
-Groq key, with automatic fallback to Gemini.
+Fixed and measured on the emulator: the "No internet" coach bug was Gemini's free-tier queue (10–65 s before the first
+byte) running past the app's 45 s timeout. Chat now runs on gemini-3.5-flash-lite with Flash as fallback: first words
+in 0.7–0.9 s, short reply ~1.3 s, full plan ~4 s, meal scan ~2.7 s. Timeouts say "The coach didn't answer in time",
+every error bubble has "Copy error details", a failed stream falls back to a plain request, and the system prompt went
+from ~1,360 to ~800 tokens with no data dropped. gemini-3.8-flash is capped at 20 requests a day on the free tier.
+Arabic UI is complete and checked (dark/light, 1.3× text, RTL fixes for steppers, muscle map, fractions, titles).
+UX from the two-week simulated use: steppers repeat while held, each set shows last time's numbers, rest timer has
+−15 s, "Tick all & finish", the summary shows what's next, Quick log offers recents, ring numbers are labelled, backups
+can be saved straight to a file. Muscle map back view is clean; light-mode text passes contrast.
+
+## 0. Finish what that session left (do these first, about 1.5 h)
+
+- Verify the Progress screen per `docs/HANDOFF-progress.md` (written without a build; expect small compile fixes).
+- Re-test Profile → Your data → Import file through the system picker (the earlier tap hit the preview, not the file).
+- Reminder and App lock: set a screen lock on the emulator and check both end to end.
+- Coach ⋮ model picker: the model names under each option stay blank until the first message after a reset. Load the
+  model list when the menu opens (or from the cached discovery result), not only after a send.
+- Update SPEC.md's status section with everything above and the measured coach timings.
+
+## 1. Second free AI provider: Groq (no paid providers, ever) — now lower priority
+
+Speed is solved (first words under a second on Flash-Lite), so Groq's value is a second free quota pool for days when
+Gemini's daily cap bites, plus resilience when Google queues. Do items 2 and 3 before this; skip it entirely if the
+owner is happy with Flash-Lite's limits after a week of use. Gemini stays for meal scans and plans; Groq takes chat
+when the person has a Groq key, with automatic fallback to Gemini.
 
 - Make the client OpenAI-compatible: `GeminiClient` becomes `AiClient(provider)` speaking the `/chat/completions`
   shape (messages, `stream: true` SSE with `data:` lines and `[DONE]`, `response_format: {type: "json_object"}` for JSON,
@@ -49,6 +71,14 @@ raw resource, `res/raw/plan_prompt.txt`, so the app and the doc stay one file) t
   calories) at 13 dp stroke in the same 210 dp; centre still shows protein big and calories small; "Carbs left" joins the
   stat row. With tracking off nothing changes anywhere.
 
+## 5. Log or move a past workout (about 2 h, owner's call)
+
+From the History screen: "Log a past workout" picks a date and opens the live logger for that day (session.epochDay set
+to the chosen day, startedAt/finishedAt on that date); and in a session's ⋮ menu, "Change date" moves it. Streak,
+records and the consistency grid already key off epochDay, so they follow automatically; re-run record recomputation
+for the affected exercises after a date change.
+
 ## Still open from before
 
-Coach first-token time measured under 2 s on a phone; the hard-test pass (Phase 4 of the earlier prompt) was cut short.
+The hard-test pass (Phase 4 of the earlier prompt) ended before the Progress screen existed; give the new screen the
+same treatment once it builds.
