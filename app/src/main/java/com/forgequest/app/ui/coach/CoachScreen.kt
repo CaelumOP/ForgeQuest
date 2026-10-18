@@ -38,6 +38,10 @@ import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Insights
@@ -102,6 +106,7 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
     val draft: StateFlow<String?> = app.coach.draft
 
     init {
+        viewModelScope.launch { app.coach.warmUp() }
         viewModelScope.launch {
             checkingIn.value = true
             runCatching { app.coach.weeklyCheckinIfDue() }
@@ -335,7 +340,24 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
             Modifier.clip(RoundedCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomStart = 22.dp, bottomEnd = 22.dp))
                 .background(if (isError) c.coralTrack else c.card).padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            MarkdownText(m.text, color = if (isError) c.textPrimary else c.textPrimary)
+            MarkdownText(m.text, color = c.textPrimary)
+        }
+        if (isError && m.detail.isNotBlank()) {
+            val clipboard = LocalClipboardManager.current
+            val snackbar = LocalSnackbar.current
+            val scope = rememberCoroutineScope()
+            Row(
+                Modifier.padding(top = 2.dp).clip(RoundedCornerShape(50)).clickable {
+                    clipboard.setText(AnnotatedString("${m.text}\n${m.detail}"))
+                    // Android 13+ shows its own copied-to-clipboard preview.
+                    if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar("Error details copied") }
+                }.padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Copy error details", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+            }
         }
         if (plan != null) {
             Spacer(Modifier.height(8.dp))

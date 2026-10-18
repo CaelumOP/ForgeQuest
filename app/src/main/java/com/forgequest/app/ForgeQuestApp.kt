@@ -7,6 +7,7 @@ import com.forgequest.app.data.FoodRepository
 import com.forgequest.app.data.ProgressRepository
 import com.forgequest.app.data.WorkoutRepository
 import com.forgequest.app.data.ai.GeminiClient
+import com.forgequest.app.data.ai.ModelStore
 import com.forgequest.app.data.backup.BackupRepository
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.drive.DriveSync
@@ -26,10 +27,11 @@ class AppContainer(context: Context) {
     val db = AppDatabase.build(context)
     val settings = SettingsRepository(context)
     val gemini = GeminiClient()
+    val models = ModelStore(settings, gemini)
     val workouts = WorkoutRepository(db)
     val progress = ProgressRepository(db, settings, workouts)
-    val food = FoodRepository(context, db, settings, gemini)
-    val coach = CoachRepository(db, settings, gemini, progress, workouts)
+    val food = FoodRepository(context, db, settings, gemini, models)
+    val coach = CoachRepository(db, settings, gemini, models, progress, workouts)
     val backup = BackupRepository(context, db, settings, workouts)
     val drive = DriveSync(context, settings, workouts, coach, backup)
     val haptics = Haptics(context)

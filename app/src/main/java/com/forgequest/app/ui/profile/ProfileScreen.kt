@@ -173,7 +173,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
             busy.value = null
             result.onSuccess { models ->
                 app.settings.setApiKey(trimmed)
-                app.settings.update { it.copy(fastModel = models.fast, smartModel = models.smart) }
+                app.models.save(models)
                 message.value = "Key saved. AI features are on."
             }.onFailure { e ->
                 if (e is AiError.Offline) {

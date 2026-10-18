@@ -2,6 +2,7 @@ package com.forgequest.app.data
 
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.ai.GeminiClient
+import com.forgequest.app.data.ai.ModelStore
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.ChatEntity
 import com.forgequest.app.data.db.SetEntity
@@ -16,6 +17,8 @@ import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Records
+import android.os.SystemClock
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +33,7 @@ class CoachRepository(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val gemini: GeminiClient,
+    private val models: ModelStore,
     private val progress: ProgressRepository,
     private val workouts: WorkoutRepository,
 ) {
@@ -43,29 +47,47 @@ class CoachRepository(
 
     suspend fun clear() = chat.clear()
 
+    /** Opens the connection to Google when the Coach tab opens, so the first message skips the handshake. */
+    suspend fun warmUp() = gemini.warmUp(settings.apiKey.value)
+
     suspend fun send(text: String) {
+        val tapped = SystemClock.elapsedRealtime()
         chat.insert(ChatEntity(role = "user", text = text.trim(), createdAt = System.currentTimeMillis()))
         val history = chat.recent(12).reversed().filter { it.kind != "error" }
-        val wantsPlan = PLAN_WORDS.containsMatchIn(text.lowercase())
+        val wantsPlan = wantsPlan(text)
         _draft.value = ""
         try {
+            val system = coachSystemPrompt(replyLanguage = languageOf(text))
+            var firstText = -1L
             val reply = gemini.generateStreaming(
                 apiKey = requireKey(),
-                models = models(smart = wantsPlan),
-                system = coachSystemPrompt(replyLanguage = languageOf(text)),
+                models = models(),
+                system = system,
                 turns = history.map { (if (it.role == "user") "user" else "model") to it.text },
-                // Plans deserve the model's thinking; everything else should land in a couple of seconds.
+                // Plans deserve the model's thinking; everything else should land in a second or two.
                 fast = !wantsPlan,
-            ) { delta -> _draft.value = (_draft.value ?: "") + delta }
+            ) { delta ->
+                if (firstText < 0) firstText = SystemClock.elapsedRealtime() - tapped
+                _draft.value = (_draft.value ?: "") + delta
+            }
+            Log.i(TAG, "send→first text ${firstText} ms, send→done ${SystemClock.elapsedRealtime() - tapped} ms (plan=$wantsPlan)")
             saveReply(reply)
         } catch (e: AiError.Partial) {
             if (PlanJson.strip(e.text).length > 40) saveReply(e.text)
-            chat.insert(ChatEntity(role = "coach", text = e.userMessage, kind = "error", createdAt = System.currentTimeMillis()))
+            saveError(e)
         } catch (e: AiError) {
-            chat.insert(ChatEntity(role = "coach", text = e.userMessage, kind = "error", createdAt = System.currentTimeMillis()))
+            saveError(e)
         } finally {
             _draft.value = null
         }
+    }
+
+    private suspend fun saveError(e: AiError) {
+        val text = if (e is AiError.Timeout) "The coach didn't answer in time. Try again." else e.userMessage
+        val s = settings.current()
+        val detail = listOf(e.javaClass.simpleName, e.detail, "models ${s.liteModel} / ${s.fastModel}, app ${com.forgequest.app.BuildConfig.VERSION_NAME}")
+            .filter { it.isNotBlank() }.joinToString("\n")
+        chat.insert(ChatEntity(role = "coach", text = text, kind = "error", detail = detail, createdAt = System.currentTimeMillis()))
     }
 
     private suspend fun saveReply(reply: String) {
@@ -97,7 +119,7 @@ class CoachRepository(
             ${planSchemaInstructions()}
             Reply ONLY with the JSON object, no other text.
         """.trimIndent()
-        val raw = gemini.generate(requireKey(), models(smart = true), system, listOf("user" to text.take(20_000)), jsonOutput = true)
+        val raw = gemini.generate(requireKey(), models(), system, listOf("user" to text.take(20_000)), jsonOutput = true)
         return PlanJson.extract("```json\n$raw\n```") ?: throw AiError.Unreadable("Couldn't turn that text into a plan. Make sure it lists days and exercises.")
     }
 
@@ -113,7 +135,7 @@ class CoachRepository(
         settings.update { it.copy(lastCheckinWeek = thisWeek) }
         return try {
             val reply = gemini.generate(
-                requireKey(), models(smart = false), coachSystemPrompt(),
+                requireKey(), models(), coachSystemPrompt(),
                 listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line."),
                 fast = true,
             )
@@ -130,13 +152,18 @@ class CoachRepository(
     private fun requireKey(): String = settings.apiKey.value.ifBlank { throw AiError.MissingKey }
 
     /**
-     * Flash for everything. Pro writes a full week of JSON in one to two minutes on the free tier; Flash with
-     * thinking on does it in well under one, and Flash with thinking off answers chat in a few seconds.
+     * Measured on the emulator (18 Oct 2026, free key, ~1,800-token prompt): Flash-Lite with thinking off shows
+     * its first words in 0.6-1.5 s and writes a whole week's plan, thinking on, in ~4.5 s. Flash with thinking off
+     * took 2-65 s to say anything (queued free tier) and gemini-3.8-flash allows only 20 requests a day; with
+     * thinking on, a plan took 37-80 s. Pro takes one to two minutes. So Flash-Lite answers everything and
+     * Flash only steps in when Lite is rate limited, busy or stalled.
      */
-    private suspend fun models(smart: Boolean): List<String> {
-        val s = settings.current()
-        return listOf(s.fastModel)
+    private suspend fun models(): List<String> {
+        val m = models.current()
+        return listOf(m.lite, m.fast)
     }
+
+    private fun wantsPlan(text: String) = PlanIntent.matches(text)
 
     /** Script of the person's latest message, so the reply never drifts into another language. */
     internal fun languageOf(text: String): String = when {
@@ -146,6 +173,9 @@ class CoachRepository(
     }
 
     // ------------------------------------------------------------ Prompting
+
+    /** The exact chat system prompt, for the debug latency bench. */
+    internal suspend fun systemPromptForBench(latest: String): String = coachSystemPrompt(languageOf(latest))
 
     private suspend fun coachSystemPrompt(replyLanguage: String = "the language of the user's latest message"): String = """
         You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
@@ -322,6 +352,22 @@ class CoachRepository(
     }
 
     private companion object {
-        val PLAN_WORDS = Regex("plan|program|programme|split|routine|schedule|جدول|برنامج|خطة")
+        const val TAG = "FQ-AI"
+    }
+}
+
+/**
+ * Asking to make or change a plan, not just mentioning one. The old check matched "plan" anywhere, so
+ * "explain" or "how's my plan going?" switched thinking on and left the person waiting 30+ seconds.
+ */
+internal object PlanIntent {
+    private val planWord = Regex("""\b(plan|program|programme|split|routine|schedule)s?\b""")
+    private val action = Regex("""\b(make|build|create|write|design|give|new|change|update|adjust|modify|redo|swap|replace|generate|set up|turn|convert)\b""")
+    private val arabicPlan = Regex("جدول|برنامج|خطة|خطه|روتين|سبليت")
+    private val arabicAction = Regex("اعمل|سوي|سوّي|ابني|اكتب|صمم|غير|غيّر|عدل|عدّل|بدل|جديد|اعطني|عطني|ابغى|أبغى|بدي|عايز|حضر|جهز")
+
+    fun matches(text: String): Boolean {
+        val t = text.lowercase()
+        return (planWord.containsMatchIn(t) || arabicPlan.containsMatchIn(t)) && (action.containsMatchIn(t) || arabicAction.containsMatchIn(t))
     }
 }

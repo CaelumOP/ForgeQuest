@@ -116,7 +116,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                     onFailure = { e -> s.copy(checkingKey = false, keyOk = false, keyMessage = (e as? AiError)?.userMessage ?: "Couldn't check the key.") },
                 )
             }
-            result.getOrNull()?.let { models -> app.settings.update { it.copy(fastModel = models.fast, smartModel = models.smart) } }
+            result.getOrNull()?.let { models -> app.models.save(models) }
         }
     }
 
