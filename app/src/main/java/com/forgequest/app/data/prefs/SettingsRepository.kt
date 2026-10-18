@@ -41,6 +41,10 @@ data class Settings(
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
     val lastDocImportModified: Long = 0,
+    /** The person separately allowed reading their Drive to import a "Workout Plan" doc. */
+    val driveDocsEnabled: Boolean = false,
+    /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
+    val coachNotes: String = "",
 )
 
 private val Context.dataStore by preferencesDataStore("settings")
@@ -62,6 +66,8 @@ class SettingsRepository(private val context: Context) {
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
         val lastDocImport = longPreferencesKey("last_doc_import_modified")
+        val coachNotes = stringPreferencesKey("coach_notes")
+        val driveDocs = booleanPreferencesKey("drive_docs_enabled")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { p -> p.toSettings() }
@@ -83,6 +89,8 @@ class SettingsRepository(private val context: Context) {
         driveEmail = this[K.driveEmail] ?: "",
         lastBackupAt = this[K.lastBackup] ?: 0,
         lastDocImportModified = this[K.lastDocImport] ?: 0,
+        coachNotes = this[K.coachNotes] ?: "",
+        driveDocsEnabled = this[K.driveDocs] ?: false,
     )
 
     suspend fun update(transform: (Settings) -> Settings) {
@@ -102,6 +110,8 @@ class SettingsRepository(private val context: Context) {
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
             p[K.lastDocImport] = s.lastDocImportModified
+            p[K.coachNotes] = s.coachNotes
+            p[K.driveDocs] = s.driveDocsEnabled
         }
     }
 

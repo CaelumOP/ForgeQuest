@@ -42,6 +42,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -90,6 +92,8 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
     val hasKey: StateFlow<Boolean> = app.settings.apiKey.map { it.isNotBlank() }.stateIn(viewModelScope, SharingStarted.Eagerly, app.settings.apiKey.value.isNotBlank())
     val sending = MutableStateFlow(false)
     val applied = MutableStateFlow<String?>(null)
+    /** Text of the reply still arriving, shown live. */
+    val draft: StateFlow<String?> = app.coach.draft
 
     init {
         viewModelScope.launch {
@@ -136,14 +140,18 @@ fun CoachScreen(nav: NavHostController) {
     val sending by vm.sending.collectAsState()
     val hasKey by vm.hasKey.collectAsState()
     val applied by vm.applied.collectAsState()
+    val draft by vm.draft.collectAsState()
     val snackbar = LocalSnackbar.current
     val c = Fit.colors
     var input by remember { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
     var preview by remember { mutableStateOf<ChatEntity?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(messages.size, sending) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size + 1) }
+    LaunchedEffect(messages.size, sending, draft?.length) {
+        if (messages.isNotEmpty()) listState.scrollToItem(listState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1)
+    }
     LaunchedEffect(applied) { applied?.let { snackbar.showSnackbar(it); vm.applied.value = null } }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().imePadding()) {
@@ -152,7 +160,7 @@ fun CoachScreen(nav: NavHostController) {
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = c.textSecondary) }
                 DropdownMenu(menu, { menu = false }, containerColor = c.cardHigh) {
-                    DropdownMenuItem(text = { Text("Clear conversation") }, onClick = { menu = false; vm.clear() })
+                    DropdownMenuItem(text = { Text("Clear conversation") }, onClick = { menu = false; confirmClear = true })
                 }
             }
         }
@@ -187,11 +195,13 @@ fun CoachScreen(nav: NavHostController) {
                         m,
                         plan = vm.planOf(m),
                         onPreview = { preview = m },
-                        onApply = { vm.apply(m) },
+                        onApply = { preview = m },
                     )
                 }
             }
-            if (sending) item { TypingDots() }
+            val live = draft?.let { PlanJson.stripPartial(it) }
+            if (sending && !live.isNullOrBlank()) item(key = "draft") { StreamingBubble(live) }
+            else if (sending) item(key = "typing") { TypingDots() }
             item { Spacer(Modifier.height(4.dp)) }
         }
         if (messages.isNotEmpty() && hasKey && !sending) {
@@ -232,6 +242,17 @@ fun CoachScreen(nav: NavHostController) {
                 Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send", tint = if (canSend) c.onTeal else c.textSecondary)
             }
         }
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            containerColor = c.card,
+            title = { Text("Clear the conversation?", color = c.textPrimary) },
+            text = { Text("Messages and weekly check-ins are deleted. Plans you already applied stay.", color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { confirmClear = false; vm.clear() }) { Text("Clear", color = c.coral) } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel", color = c.textSecondary) } },
+        )
     }
 
     preview?.let { m ->
@@ -310,13 +331,31 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalPill("Preview", onClick = onPreview)
                     if (m.planApplied) {
-                        PillButton("Applied", onClick = {}, icon = Icons.Rounded.Check, container = c.tealTrack, content = c.teal)
+                        PillButton("Applied", onClick = onPreview, icon = Icons.Rounded.Check, container = c.tealTrack, content = c.teal)
                     } else {
-                        PillButton("Apply plan", onClick = onApply)
+                        PillButton("Review and apply", onClick = onApply)
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The coach's reply as it streams in, with a soft pulsing caret at the end. */
+@Composable
+private fun StreamingBubble(text: String) {
+    val c = Fit.colors
+    val t = rememberInfiniteTransition(label = "caret")
+    val a by t.animateFloat(0.2f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "caretAlpha")
+    Column(Modifier.fillMaxWidth().padding(end = 24.dp)) {
+        Box(
+            Modifier.clip(RoundedCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomStart = 22.dp, bottomEnd = 22.dp))
+                .background(c.card).padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Column {
+                MarkdownText(text, color = c.textPrimary)
+                Box(Modifier.padding(top = 4.dp).size(width = 10.dp, height = 3.dp).alpha(a).clip(CircleShape).background(c.teal))
             }
         }
     }

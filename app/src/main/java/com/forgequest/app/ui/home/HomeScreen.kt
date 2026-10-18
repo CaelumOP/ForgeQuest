@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
@@ -65,7 +66,7 @@ import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.RingSpec
 import com.forgequest.app.ui.components.StatColumn
-import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.SharingStarted
@@ -151,12 +152,12 @@ fun HomeScreen(nav: NavHostController) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Log body weight", style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(20.dp))
-                Stepper(
-                    "%.1f kg".format(kg),
-                    onMinus = { kg = ((kg * 10).roundToInt() - 1) / 10f; vm.app.haptics.tick() },
-                    onPlus = { kg = ((kg * 10).roundToInt() + 1) / 10f; vm.app.haptics.tick() },
-                    minValueWidth = 96.dp,
+                NumberStepper(
+                    kg, { kg = it }, step = 0.1f, min = 30f, max = 250f, unit = "kg", decimals = 1,
+                    title = "Body weight", minValueWidth = 96.dp, onTick = vm.app.haptics::tick,
                 )
+                Spacer(Modifier.height(8.dp))
+                Text("Tap the number to type it", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(24.dp))
                 PillButton("Save", onClick = { vm.logWeight(kg); weightSheet = false }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
@@ -350,17 +351,20 @@ private fun TodayCard(
 ) {
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
+    val noPlan = day == null
     FitCard(onClick = onOpenPlan) {
         Text("Today's workout", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.blue, c.blueTrack)
+            if (noPlan && !hasOpenSession) IconCircle(Icons.Rounded.Edit, c.teal, c.tealTrack)
+            else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.blue, c.blueTrack)
             else IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
                         hasOpenSession -> "Workout in progress"
+                        noPlan -> "No plan yet"
                         isRest -> "Rest day"
                         else -> day!!.day.title
                     },
@@ -373,6 +377,7 @@ private fun TodayCard(
                     when {
                         hasOpenSession -> "Pick up where you left off"
                         doneToday -> "Done for today. Nice work."
+                        noPlan -> "Pick a starter plan, build your own, or ask the coach."
                         isRest -> day?.day?.note?.ifBlank { null } ?: "Recovery is part of training."
                         else -> "${exerciseNames.size} exercises · " + exerciseNames.take(3).joinToString(", ")
                     },
@@ -386,6 +391,7 @@ private fun TodayCard(
             when {
                 hasOpenSession -> PillButton("Resume", onClick = onStart)
                 doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
+                noPlan -> PillButton("Set up", onClick = onOpenPlan)
                 !isRest -> PillButton("Start", onClick = onStart)
             }
         }

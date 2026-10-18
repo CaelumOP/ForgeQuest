@@ -2,6 +2,7 @@ package com.forgequest.app.ui.workouts
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -37,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -52,12 +55,15 @@ import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Records
+import com.forgequest.app.ui.LocalSnackbar
+import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -67,7 +73,10 @@ import java.time.format.DateTimeFormatter
 
 class ExerciseDetailViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-    fun setVideo(id: String, url: String) = viewModelScope.launch { app.workouts.setVideoUrl(id, url) }
+    val message = MutableStateFlow<String?>(null)
+    fun setVideo(id: String, url: String) = viewModelScope.launch {
+        if (!app.workouts.setVideoUrl(id, url)) message.value = "That isn't a web link. Paste something starting with https://"
+    }
 }
 
 private data class Metric(val label: String, val unit: String, val value: (List<SetEntity>, ExerciseKind) -> Float)
@@ -97,6 +106,9 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
     val context = LocalContext.current
     var metricIndex by remember { mutableIntStateOf(0) }
     var editLink by remember { mutableStateOf(false) }
+    val message by vm.message.collectAsState()
+    val snackbar = LocalSnackbar.current
+    LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val ex = s.exercises[exerciseId]
@@ -151,11 +163,14 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                 FitCard {
                     Text("History", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     history.reversed().take(20).forEach { (session, sets) ->
-                        Spacer(Modifier.height(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { nav.navigate(Routes.session(session.id)) }.padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(
                                 LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern("EEE, MMM d")),
-                                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.width(110.dp),
+                                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.weight(0.45f),
                             )
                             Text(
                                 sets.joinToString("  ") { set ->
@@ -165,7 +180,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                                         ExerciseKind.REPS -> "${set.reps}"
                                     }
                                 },
-                                style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(0.55f),
                             )
                             if (sets.any { it.isPr }) PrTag()
                         }
@@ -202,8 +217,12 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
 fun LineChart(points: List<Float>, modifier: Modifier = Modifier) {
     val c = Fit.colors
     Canvas(modifier) {
-        val max = points.max().coerceAtLeast(1f)
-        val min = (points.min() * 0.9f).coerceAtMost(max - 1f)
+        // Range hugs the data with a small margin, so a 75 → 76 kg month shows a real slope, not a flat line at the top.
+        val lo = points.min()
+        val hi = points.max()
+        val margin = ((hi - lo) * 0.25f).coerceAtLeast(if (hi >= 20f) hi * 0.02f else 1f)
+        val min = lo - margin
+        val max = hi + margin
         val stepX = size.width / (points.size - 1).coerceAtLeast(1)
         fun pos(i: Int) = Offset(i * stepX, size.height - (points[i] - min) / (max - min) * size.height * 0.9f - size.height * 0.05f)
         for (g in 0..3) {

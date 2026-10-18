@@ -45,6 +45,7 @@ class FoodRepository(
     private val gemini: GeminiClient,
 ) {
     private val dao = db.food()
+    private companion object { const val MAX_EDGE = 1280 }
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     val foods: Flow<List<FoodEntity>> = dao.observeFoods()
@@ -53,22 +54,27 @@ class FoodRepository(
     suspend fun saveFood(food: FoodEntity): Long = dao.upsertFood(food)
     suspend fun deleteFood(id: Long) = dao.deleteFood(id)
     suspend fun deleteMeal(id: Long) = dao.deleteMeal(id)
+    suspend fun restoreMeal(meal: MealEntity) = dao.restoreMeal(meal)
 
-    suspend fun logFoods(selection: List<Pair<FoodEntity, Float>>) {
+    suspend fun logFoods(selection: List<Pair<FoodEntity, Float>>, epochDay: Long = Dates.today()) {
         val now = System.currentTimeMillis()
         dao.insertMeals(selection.map { (food, qty) ->
             MealEntity(
-                epochDay = Dates.today(), loggedAt = now, name = food.name, category = food.category,
+                epochDay = epochDay, loggedAt = now, name = food.name, category = food.category,
                 kcal = (food.kcal * qty).toInt(), protein = food.protein * qty, quantity = qty,
                 photoPath = food.photoPath, foodId = food.id,
             )
         })
     }
 
-    suspend fun logScannedMeal(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String?) {
+    suspend fun logScannedMeal(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String?) =
+        logOnce(name, category, kcal, protein, photoPath, Dates.today())
+
+    /** One meal that isn't saved to the food list: a restaurant plate, a snack you won't repeat. */
+    suspend fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String? = null, epochDay: Long = Dates.today()) {
         dao.insertMeals(listOf(
             MealEntity(
-                epochDay = Dates.today(), loggedAt = System.currentTimeMillis(), name = name, category = category,
+                epochDay = epochDay, loggedAt = System.currentTimeMillis(), name = name.trim(), category = category,
                 kcal = kcal, protein = protein, photoPath = photoPath,
             )
         ))
@@ -100,17 +106,48 @@ class FoodRepository(
         file.absolutePath
     }
 
-    /** Saves camera JPEG bytes, downscaled to 1280 px and rotated upright. */
+    /**
+     * Saves camera or gallery JPEG bytes, downscaled to 1280 px and rotated upright.
+     * The image is subsampled while decoding, so a 48 MP photo never becomes a 190 MB bitmap in memory.
+     */
     suspend fun savePhoto(jpeg: ByteArray): String = withContext(Dispatchers.IO) {
-        val decoded = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size) ?: throw AiError.Unreadable("Couldn't read that photo.")
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw AiError.Unreadable("Couldn't read that photo.")
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, MAX_EDGE) }
+        val decoded = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, options) ?: throw AiError.Unreadable("Couldn't read that photo.")
         val rotation = runCatching { ExifInterface(jpeg.inputStream()).rotationDegrees }.getOrDefault(0)
-        val scale = minOf(1f, 1280f / maxOf(decoded.width, decoded.height))
+        val scale = minOf(1f, MAX_EDGE.toFloat() / maxOf(decoded.width, decoded.height))
         val matrix = Matrix().apply { postScale(scale, scale); postRotate(rotation.toFloat()) }
         val upright = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+        if (upright !== decoded) decoded.recycle()
         val dir = File(context.filesDir, "photos").apply { mkdirs() }
         val file = File(dir, "meal_${System.currentTimeMillis()}.jpg")
         file.outputStream().use { upright.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+        upright.recycle()
         file.absolutePath
+    }
+
+    /** Largest power-of-two subsampling that still leaves the longest edge at or above [maxEdge]. */
+    private fun sampleSize(width: Int, height: Int, maxEdge: Int): Int {
+        var sample = 1
+        while (maxOf(width, height) / (sample * 2) >= maxEdge) sample *= 2
+        return sample
+    }
+
+    /** Deletes one photo file, e.g. after a retake or a failed scan. */
+    suspend fun discardPhoto(path: String?) = withContext(Dispatchers.IO) { path?.let { File(it).takeIf { f -> f.parentFile?.name == "photos" }?.delete() } }
+
+    /**
+     * Removes photo files no food or meal refers to any more (retakes, failed scans, deleted meals).
+     * Files younger than an hour are left alone in case a scan is still in progress.
+     */
+    suspend fun deleteOrphanPhotos() = withContext(Dispatchers.IO) {
+        val dir = File(context.filesDir, "photos")
+        if (!dir.isDirectory) return@withContext
+        val referenced = (dao.allFoods().mapNotNull { it.photoPath } + dao.allMeals().mapNotNull { it.photoPath }).toSet()
+        val cutoff = System.currentTimeMillis() - 60 * 60 * 1000
+        dir.listFiles().orEmpty().filter { it.absolutePath !in referenced && it.lastModified() < cutoff }.forEach { it.delete() }
     }
 
     // ------------------------------------------------------------ AI scan
@@ -134,7 +171,7 @@ class FoodRepository(
             Reply ONLY with JSON: {"dish": string, "items": [{"name": string, "grams": int, "kcal": int, "protein": number}], "handVisible": boolean, "note": string}
             "note" is one short sentence about anything uncertain, or empty.
         """.trimIndent()
-        val raw = gemini.generate(key, listOf(s.fastModel), system, listOf("user" to "Estimate this meal."), image = image, jsonOutput = true)
+        val raw = gemini.generate(key, listOf(s.fastModel), system, listOf("user" to "Estimate this meal."), image = image, jsonOutput = true, fast = true)
         val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
             ?: throw AiError.Unreadable("Couldn't read the meal from that photo. Try again with the plate fully in frame.")
         if (scan.items.isEmpty()) throw AiError.Unreadable("No food found in that photo. Try again with the plate in the middle of the frame.")

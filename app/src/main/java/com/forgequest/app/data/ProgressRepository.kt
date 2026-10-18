@@ -20,7 +20,9 @@ import com.forgequest.app.domain.Recovery
 import com.forgequest.app.domain.StreakCalculator
 import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.domain.Xp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
@@ -56,19 +58,23 @@ class ProgressRepository(
         val exercises: List<ExerciseEntity>,
         val badges: List<BadgeEntity>,
         val meals: List<MealEntity>,
+        val mealCount: Int,
+        val scannedCount: Int,
     )
 
+    /** Only the last [NUTRITION_DAYS] days of meals are loaded; totals come from COUNT queries so badges still see everything. */
     private val raw: Flow<Raw> = combine(
-        db.sessions().observeFinished(),
-        db.sessions().observeAllDoneSets(),
-        db.exercises().observeAll(),
+        combine(db.sessions().observeFinished(), db.sessions().observeAllDoneSets(), db.exercises().observeAll()) { s, sets, ex -> Triple(s, sets, ex) },
         db.badges().observeAll(),
-        db.food().observeMealsSince(0),
-    ) { s, sets, ex, b, m -> Raw(s, sets, ex, b, m) }
+        db.food().observeMealsSince(Dates.today() - NUTRITION_DAYS),
+        db.food().observeMealCount(),
+        db.food().observeScannedCount(),
+    ) { (s, sets, ex), b, m, count, scanned -> Raw(s, sets, ex, b, m, count, scanned) }
 
+    /** Rebuilt on every change and off the main thread: with years of data this is real work. */
     val snapshot: Flow<ProgressSnapshot> = combine(
         raw, settingsRepo.settings, workouts.activePlan, db.weights().observeAll(),
-    ) { r, settings, plan, weights -> build(r, settings, plan, weights) }
+    ) { r, settings, plan, weights -> build(r, settings, plan, weights) }.flowOn(Dispatchers.Default)
 
     private fun build(r: Raw, settings: Settings, plan: ActivePlan?, weights: List<WeightEntity>): ProgressSnapshot {
         val today = Dates.today()
@@ -135,8 +141,8 @@ class ProgressRepository(
             bestReps = bestReps,
             bestSeconds = bestSeconds,
             bestWeight = bestWeight,
-            mealsLogged = r.meals.size,
-            mealsScanned = r.meals.count { it.photoPath != null && it.foodId == null },
+            mealsLogged = r.mealCount,
+            mealsScanned = r.scannedCount,
             proteinGoalDaysInARow = run,
         )
     }
@@ -154,6 +160,8 @@ class ProgressRepository(
     }
 
     suspend fun markBadgesSeen() = db.badges().markAllSeen()
+
+    private companion object { const val NUTRITION_DAYS = 90L }
 
     suspend fun logWeight(kg: Float) =
         db.weights().upsert(WeightEntity(Dates.today(), (kg * 10).toInt() / 10f, System.currentTimeMillis()))

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +7,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
 }
+
+// Release signing: put a real keystore's details in <repo>/keystore.properties (gitignored, see README).
+// Without it the release APK is signed with the debug key, which anyone can reproduce.
+val keystoreProps = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all { keystoreProps.getProperty(it)?.isNotBlank() == true }
 
 android {
     namespace = "com.forgequest.app"
@@ -23,10 +32,28 @@ android {
         manifestPlaceholders["cleartext"] = geminiBase.startsWith("http://").toString()
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            // Shrinking is opt-in (-PminifyRelease=true) until it has been checked on a device: Room,
+            // kotlinx.serialization and Compose all need the rules in proguard-rules.pro to survive it.
+            isMinifyEnabled = (project.findProperty("minifyRelease") as String?) == "true"
+            isShrinkResources = isMinifyEnabled
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else {
+                logger.warn("ForgeQuest: no keystore.properties found, signing the release APK with the DEBUG key. See README → Release signing.")
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -68,11 +95,11 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3:1.4.0-alpha07")
+    implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    val room = "2.7.0-alpha13"
+    val room = "2.7.2"
     implementation("androidx.room:room-runtime:$room")
     implementation("androidx.room:room-ktx:$room")
     ksp("androidx.room:room-compiler:$room")

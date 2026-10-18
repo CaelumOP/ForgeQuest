@@ -111,8 +111,49 @@ class WorkoutRepository(private val db: AppDatabase) {
         planId
     }
 
+    /** Every plan ever applied, newest first. Switching back is instant; nothing is lost on Apply. */
+    val allPlans: Flow<List<PlanEntity>> = plans.observeAll()
+
+    suspend fun activatePlan(planId: Long) = db.withTransaction {
+        if (plans.byId(planId) == null) return@withTransaction
+        plans.deactivateAll()
+        plans.activate(planId)
+    }
+
+    /** Removes an inactive plan. Workouts done under it keep their sets; only the schedule goes. */
+    suspend fun deletePlan(planId: Long) = db.withTransaction {
+        val plan = plans.byId(planId) ?: return@withTransaction
+        if (plan.active) return@withTransaction
+        plans.deleteItemsOfPlan(planId)
+        plans.deleteDaysOfPlan(planId)
+        plans.deletePlan(planId)
+    }
+
+    /** Moves an exercise one step up (-1) or down (+1) within its day. */
+    suspend fun movePlanItem(item: PlanItemEntity, delta: Int) = db.withTransaction {
+        val items = plans.items(item.dayId).sortedBy { it.position }
+        val index = items.indexOfFirst { it.id == item.id }
+        val target = index + delta
+        if (index < 0 || target !in items.indices) return@withTransaction
+        val reordered = items.toMutableList().also { it.add(target, it.removeAt(index)) }
+        reordered.forEachIndexed { i, it -> if (it.position != i) plans.updateItem(it.copy(position = i)) }
+    }
+
+    /** Swaps two weekdays of the active plan, e.g. to make the week start on Saturday. */
+    suspend fun swapPlanDays(planId: Long, dayA: Int, dayB: Int) = db.withTransaction {
+        if (dayA == dayB) return@withTransaction
+        val days = plans.days(planId)
+        val a = days.firstOrNull { it.dayOfWeek == dayA } ?: return@withTransaction
+        val b = days.firstOrNull { it.dayOfWeek == dayB } ?: return@withTransaction
+        // Park A on an unused value so the (planId, dayOfWeek) pair never collides mid-swap.
+        plans.updateDay(a.copy(dayOfWeek = 0))
+        plans.updateDay(b.copy(dayOfWeek = dayA))
+        plans.updateDay(a.copy(dayOfWeek = dayB))
+    }
+
     suspend fun updatePlanItem(item: PlanItemEntity) = plans.updateItem(item)
     suspend fun deletePlanItem(id: Long) = plans.deleteItem(id)
+    suspend fun restorePlanItem(item: PlanItemEntity) = plans.restoreItem(item)
     suspend fun updatePlanDay(day: PlanDayEntity) = plans.updateDay(day)
 
     suspend fun addPlanItem(dayId: Long, exerciseId: String) {
@@ -141,9 +182,17 @@ class WorkoutRepository(private val db: AppDatabase) {
         return id
     }
 
-    suspend fun setVideoUrl(exerciseId: String, url: String?) {
-        val ex = exercises.byId(exerciseId) ?: return
-        exercises.upsert(ex.copy(videoUrl = url?.trim()?.ifEmpty { null }))
+    /** Saves a form-video link. Returns false (and changes nothing) when it isn't a web address. */
+    suspend fun setVideoUrl(exerciseId: String, url: String?): Boolean {
+        val ex = exercises.byId(exerciseId) ?: return false
+        val clean = url?.trim()?.ifEmpty { null }
+        if (clean != null && !isWebUrl(clean)) return false
+        exercises.upsert(ex.copy(videoUrl = clean))
+        return true
+    }
+
+    companion object {
+        fun isWebUrl(s: String): Boolean = Regex("""^https?://[^\s/$.?#].[^\s]*$""", RegexOption.IGNORE_CASE).matches(s)
     }
 
     // ------------------------------------------------------------ Live session
@@ -257,5 +306,42 @@ class WorkoutRepository(private val db: AppDatabase) {
         sessions.update(session.copy(finishedAt = System.currentTimeMillis()))
         val xp = com.forgequest.app.domain.Xp.total(1, done.size, prNames.size, 0)
         FinishResult(session.title, done.size, prNames, xp)
+    }
+
+    // ------------------------------------------------------------ History
+
+    fun observeSession(id: Long): Flow<SessionEntity?> = sessions.observeById(id)
+
+    /** Edits a set of a finished workout and re-checks which sets of that exercise are records. */
+    suspend fun updateFinishedSet(set: SetEntity) = db.withTransaction {
+        sessions.updateSet(set)
+        recomputeRecords(set.exerciseId)
+    }
+
+    /** Removes one set from a finished workout. A workout left with no sets is removed too. */
+    suspend fun deleteFinishedSet(set: SetEntity) = db.withTransaction {
+        sessions.deleteSet(set.id)
+        if (sessions.sets(set.sessionId).isEmpty()) sessions.delete(set.sessionId)
+        recomputeRecords(set.exerciseId)
+    }
+
+    suspend fun deleteSession(sessionId: Long) = db.withTransaction {
+        val affected = sessions.sets(sessionId).map { it.exerciseId }.distinct()
+        sessions.deleteSetsOf(sessionId)
+        sessions.delete(sessionId)
+        affected.forEach { recomputeRecords(it) }
+    }
+
+    /** Replays the exercise's whole history so PR tags stay truthful after an edit or delete. */
+    private suspend fun recomputeRecords(exerciseId: String) {
+        val ex = exercises.byId(exerciseId) ?: return
+        val all = sessions.recentDoneSetsAll(exerciseId)
+        val finishedAt = sessions.finished().associate { it.id to (it.finishedAt ?: 0L) }
+        val ordered = all.groupBy { it.sessionId }.entries.sortedBy { finishedAt[it.key] ?: 0L }.map { it.value }
+        val records = Records.personalRecords(ex.kind, ordered, { it.reps }, { it.seconds }, { it.weightKg })
+        for (set in all) {
+            val shouldBe = set in records
+            if (set.isPr != shouldBe) sessions.updateSet(set.copy(isPr = shouldBe))
+        }
     }
 }

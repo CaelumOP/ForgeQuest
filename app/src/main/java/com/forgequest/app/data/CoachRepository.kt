@@ -4,16 +4,27 @@ import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.ai.GeminiClient
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.ChatEntity
+import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.data.plan.CoachMemory
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.plan.PlanJson
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
+import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Records
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class CoachRepository(
     private val db: AppDatabase,
@@ -26,31 +37,49 @@ class CoachRepository(
 
     val messages: Flow<List<ChatEntity>> = chat.observeAll()
 
+    /** The reply currently streaming in, or null. The screen shows it as a live bubble. */
+    private val _draft = MutableStateFlow<String?>(null)
+    val draft: StateFlow<String?> = _draft
+
     suspend fun clear() = chat.clear()
 
     suspend fun send(text: String) {
         chat.insert(ChatEntity(role = "user", text = text.trim(), createdAt = System.currentTimeMillis()))
         val history = chat.recent(12).reversed().filter { it.kind != "error" }
         val wantsPlan = PLAN_WORDS.containsMatchIn(text.lowercase())
+        _draft.value = ""
         try {
-            val reply = gemini.generate(
+            val reply = gemini.generateStreaming(
                 apiKey = requireKey(),
                 models = models(smart = wantsPlan),
                 system = coachSystemPrompt(),
                 turns = history.map { (if (it.role == "user") "user" else "model") to it.text },
-            )
-            val plan = PlanJson.extract(reply)
-            chat.insert(
-                ChatEntity(
-                    role = "coach",
-                    text = PlanJson.strip(reply).ifBlank { "Here's your plan. Review it below." },
-                    planJson = plan?.let(PlanJson::encode),
-                    createdAt = System.currentTimeMillis(),
-                )
-            )
+                // Plans deserve the model's thinking; everything else should land in a couple of seconds.
+                fast = !wantsPlan,
+            ) { delta -> _draft.value = (_draft.value ?: "") + delta }
+            saveReply(reply)
+        } catch (e: AiError.Partial) {
+            if (PlanJson.strip(e.text).length > 40) saveReply(e.text)
+            chat.insert(ChatEntity(role = "coach", text = e.userMessage, kind = "error", createdAt = System.currentTimeMillis()))
         } catch (e: AiError) {
             chat.insert(ChatEntity(role = "coach", text = e.userMessage, kind = "error", createdAt = System.currentTimeMillis()))
+        } finally {
+            _draft.value = null
         }
+    }
+
+    private suspend fun saveReply(reply: String) {
+        val plan = PlanJson.extract(reply)
+        val notes = CoachMemory.extract(reply)
+        if (notes.isNotEmpty()) settings.update { it.copy(coachNotes = CoachMemory.merge(it.coachNotes, notes)) }
+        chat.insert(
+            ChatEntity(
+                role = "coach",
+                text = PlanJson.strip(reply).ifBlank { "Here's your plan. Review it below." },
+                planJson = plan?.let(PlanJson::encode),
+                createdAt = System.currentTimeMillis(),
+            )
+        )
     }
 
     suspend fun applyPlan(messageId: Long): Boolean {
@@ -85,7 +114,8 @@ class CoachRepository(
         return try {
             val reply = gemini.generate(
                 requireKey(), models(smart = false), coachSystemPrompt(),
-                listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON."),
+                listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line."),
+                fast = true,
             )
             chat.insert(ChatEntity(role = "coach", text = PlanJson.strip(reply), kind = "checkin", createdAt = System.currentTimeMillis()))
             true
@@ -94,6 +124,8 @@ class CoachRepository(
             false
         }
     }
+
+    suspend fun setNotes(notes: String) = settings.update { it.copy(coachNotes = notes.lines().map(String::trim).filter { l -> l.isNotBlank() }.joinToString("\n")) }
 
     private fun requireKey(): String = settings.apiKey.value.ifBlank { throw AiError.MissingKey }
 
@@ -107,13 +139,19 @@ class CoachRepository(
 
     private suspend fun coachSystemPrompt(): String = """
         You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
-        Be warm, direct and specific. Use their data below. Keep answers short (under 180 words) unless they ask for detail.
+        Be warm, direct and specific. Use their data below: quote their real numbers, name the exercises they actually do,
+        notice trends, and point out what they missed or improved. Keep answers short (under 180 words) unless they ask for detail.
         Use simple Markdown: **bold**, short bullet lists, at most one small heading. No tables.
         Never shame food choices; going over calories is fuel, not failure.
+        Answer in the language the user writes in.
 
         When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a
         ```json code block at the very end.
         ${planSchemaInstructions()}
+
+        If the user tells you something lasting about themselves (an injury, their equipment, their schedule, a food
+        preference, a goal), finish your reply with one final line exactly like: MEMORY: <one short sentence>
+        Only do this for new facts not already in "Things to remember" below. Never mention this mechanism.
 
         ${progressSummary()}
     """.trimIndent()
@@ -130,64 +168,145 @@ class CoachRepository(
         """.trimIndent()
     }
 
-    /** Compact snapshot of the user's training and nutrition (well under 800 tokens). */
+    /**
+     * What the coach knows about the user: goals, this week, plan, recovery, recent sessions, 4-week trends,
+     * records, nutrition, badges and remembered facts. Lists are capped so the whole thing stays around 1,000 tokens.
+     */
     private suspend fun progressSummary(): String {
         val snap = progress.snapshot.first()
         val s = snap.settings
-        val sb = StringBuilder("User data:\n")
+        val today = Dates.today()
+        val sb = StringBuilder("User data (today is ${LocalDate.ofEpochDay(today).format(DateTimeFormatter.ofPattern("EEEE, MMM d yyyy", Locale.ENGLISH))}):\n")
         if (s.name.isNotBlank()) sb.append("- Name: ${s.name}\n")
-        snap.latestWeight?.let { sb.append("- Body weight: $it kg\n") }
-        sb.append("- Goals: ${s.kcalGoal} kcal, ${s.proteinGoal} g protein per day\n")
-        sb.append("- Level ${snap.level.level}, rank ${snap.level.rank.letter}; weekly streak ${snap.streak.weeks} weeks; this week ${snap.streak.doneThisWeek}/${snap.streak.targetThisWeek} workouts\n")
+
+        // Body weight and trend
+        snap.latestWeight?.let { latest ->
+            val monthAgo = snap.weights.filter { it.epochDay <= today - 28 }.lastOrNull() ?: snap.weights.firstOrNull()
+            val trend = monthAgo?.takeIf { it.epochDay < (snap.weights.lastOrNull()?.epochDay ?: today) }?.let { base ->
+                val delta = latest - base.kg
+                val days = (snap.weights.last().epochDay - base.epochDay).toInt()
+                if (abs(delta) < 0.05f) " (steady over the last $days days)" else " (${if (delta > 0) "+" else "−"}${"%.1f".format(Locale.US, abs(delta))} kg over the last $days days)"
+            }.orEmpty()
+            sb.append("- Body weight: ${"%.1f".format(Locale.US, latest)} kg$trend\n")
+        }
+        val target = if (s.weeklyTargetOverride > 0) s.weeklyTargetOverride else snap.plan?.trainingDays?.size ?: 0
+        sb.append("- Goals: ${s.kcalGoal} kcal and ${s.proteinGoal} g protein per day; $target workouts per week\n")
+
+        // This week
+        val streak = snap.streak
+        val missed = streak.days.withIndex().filter { it.value == DayState.MISSED }.map { Dates.dayName(it.index + 1) }
+        val upcoming = streak.days.withIndex().filter { it.value == DayState.UPCOMING }.map { Dates.dayName(it.index + 1) }
+        sb.append("- Level ${snap.level.level} (rank ${snap.level.rank.letter}, ${snap.level.rank.title}); weekly streak ${streak.weeks} (best ${streak.best})\n")
+        sb.append("- This week: ${streak.doneThisWeek} of ${streak.targetThisWeek} workouts done")
+        if (missed.isNotEmpty()) sb.append("; missed planned days: ${missed.joinToString(", ")}")
+        if (upcoming.isNotEmpty()) sb.append("; still to come: ${upcoming.joinToString(", ")}")
+        sb.append("\n")
+        val todayPlan = snap.plan?.day(Dates.todayDayOfWeek())
+        sb.append("- Today: ")
+        when {
+            todayPlan == null || todayPlan.day.isRest -> sb.append("rest day")
+            snap.workoutDoneToday -> sb.append("${todayPlan.day.title} (done)")
+            else -> sb.append("${todayPlan.day.title} (not done yet)")
+        }
+        sb.append("\n")
+
+        // Plan
         snap.plan?.let { plan ->
-            sb.append("- Current plan: ${plan.plan.name}\n")
+            sb.append("- Current plan: ${plan.plan.name} (source: ${plan.plan.source})\n")
             plan.days.forEach { d ->
                 if (d.day.isRest) {
-                    sb.append("  ${Dates.dayName(d.day.dayOfWeek)}: rest\n")
+                    sb.append("  ${Dates.dayName(d.day.dayOfWeek).take(3)}: rest\n")
                 } else {
-                    val names = d.items.joinToString(", ") { snap.exercises[it.exerciseId]?.name ?: it.exerciseId }
-                    sb.append("  ${Dates.dayName(d.day.dayOfWeek)}: ${d.day.title} — $names\n")
+                    val names = d.items.joinToString(", ") { item ->
+                        val ex = snap.exercises[item.exerciseId]
+                        val per = when {
+                            ex?.kind == ExerciseKind.HOLD -> "${item.seconds ?: 30}s"
+                            item.repsMin != null && item.repsMax != null && item.repsMax != item.repsMin -> "${item.repsMin}-${item.repsMax}"
+                            item.repsMin != null -> "${item.repsMin}"
+                            else -> ""
+                        }
+                        "${ex?.name ?: item.exerciseId}${if (per.isNotEmpty()) " ${item.sets}×$per" else ""}"
+                    }
+                    sb.append("  ${Dates.dayName(d.day.dayOfWeek).take(3)}: ${d.day.title}: $names\n")
                 }
             }
+        } ?: sb.append("- No plan set yet\n")
+
+        // Recovery
+        val recovering = snap.recovery.entries.filter { it.value.fatigue >= 0.33f }.sortedByDescending { it.value.fatigue }.take(6)
+        if (recovering.isNotEmpty()) {
+            sb.append("- Still recovering: ${recovering.joinToString(", ") { "${it.key.label} (ready in ${it.value.hoursUntilReady} h)" }}\n")
         }
+
+        // Recent workouts
         val recent = snap.sessions.take(5)
         if (recent.isNotEmpty()) {
-            sb.append("- Recent workouts:\n")
+            sb.append("- Recent workouts (newest first):\n")
             recent.forEach { session ->
                 val sets = snap.doneSets.filter { it.sessionId == session.id }
-                val summary = sets.groupBy { it.exerciseId }.entries.take(6).joinToString("; ") { (id, list) ->
+                val minutes = session.finishedAt?.let { ((it - session.startedAt) / 60_000).toInt() }
+                val summary = sets.groupBy { it.exerciseId }.entries.take(7).joinToString("; ") { (id, list) ->
                     val ex = snap.exercises[id]
-                    val parts = list.joinToString("/") { set ->
-                        when (ex?.kind) {
-                            ExerciseKind.HOLD -> "${set.seconds}s"
-                            ExerciseKind.WEIGHTED -> "${set.reps}×${set.weightKg}kg"
-                            else -> "${set.reps}"
-                        }
-                    }
-                    "${ex?.name ?: id} $parts"
+                    "${ex?.name ?: id} ${list.joinToString("/") { setLabel(ex?.kind, it) }}${if (list.any { it.isPr }) " PR" else ""}"
                 }
-                sb.append("  ${java.time.LocalDate.ofEpochDay(session.epochDay)} ${session.title}: $summary\n")
+                sb.append("  ${LocalDate.ofEpochDay(session.epochDay)} ${session.title}${minutes?.let { " ($it min)" } ?: ""}: $summary\n")
             }
         }
-        val bests = snap.doneSets.groupBy { it.exerciseId }.mapNotNull { (id, sets) ->
+
+        // 4-week trends for the exercises done most
+        val sessionDay = snap.sessions.associate { it.id to it.epochDay }
+        val byExercise = snap.doneSets.groupBy { it.exerciseId }
+        val trends = byExercise.entries.sortedByDescending { it.value.size }.take(8).mapNotNull { (id, sets) ->
+            val ex = snap.exercises[id] ?: return@mapNotNull null
+            val old = sets.filter { (sessionDay[it.sessionId] ?: 0) in (today - 56)..(today - 21) }
+            val new = sets.filter { (sessionDay[it.sessionId] ?: 0) > today - 21 }
+            if (old.isEmpty() || new.isEmpty()) return@mapNotNull null
+            val bestOld = old.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) }
+            val bestNew = new.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) }
+            "${ex.name} ${setLabel(ex.kind, bestOld)} → ${setLabel(ex.kind, bestNew)}"
+        }
+        if (trends.isNotEmpty()) sb.append("- Best set 3-8 weeks ago → best set in the last 3 weeks: ${trends.joinToString("; ")}\n")
+
+        // Personal bests
+        val bests = byExercise.entries.mapNotNull { (id, sets) ->
             val ex = snap.exercises[id] ?: return@mapNotNull null
             val best = sets.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) } ?: return@mapNotNull null
-            when (ex.kind) {
-                ExerciseKind.HOLD -> "${ex.name} ${best.seconds}s"
-                ExerciseKind.WEIGHTED -> "${ex.name} ${best.reps}×${best.weightKg}kg"
-                ExerciseKind.REPS -> "${ex.name} ${best.reps} reps"
-            }
-        }.take(12)
-        if (bests.isNotEmpty()) sb.append("- Personal bests: ${bests.joinToString(", ")}\n")
-        val week = snap.nutritionByDay.filter { it.epochDay > Dates.today() - 7 }
+            Triple(ex.name, setLabel(ex.kind, best), sets.size)
+        }.sortedByDescending { it.third }.take(12)
+        if (bests.isNotEmpty()) sb.append("- Personal bests: ${bests.joinToString(", ") { "${it.first} ${it.second}" }}\n")
+
+        // Nutrition
+        val week = snap.nutritionByDay.filter { it.epochDay > today - 7 && it.epochDay < today }
         if (week.isNotEmpty()) {
-            sb.append("- Last 7 days nutrition (avg): ${week.sumOf { it.kcal } / week.size} kcal, ${(week.sumOf { it.protein.toDouble() } / week.size).toInt()} g protein over ${week.size} logged days\n")
+            val hit = week.count { it.protein >= s.proteinGoal }
+            sb.append("- Last 7 days nutrition: avg ${week.sumOf { it.kcal } / week.size} kcal, ${(week.sumOf { it.protein.toDouble() } / week.size).toInt()} g protein over ${week.size} logged days; protein goal hit on $hit of them\n")
+        } else {
+            sb.append("- No meals logged in the last 7 days\n")
         }
-        sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.toInt()} g protein\n")
+        sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.roundToInt()} g protein\n")
+
+        // Badges
+        val unlocked = snap.badges.sortedByDescending { it.unlockedAt }
+        sb.append("- Badges: ${unlocked.size} of ${Badges.all.size} unlocked")
+        if (unlocked.isNotEmpty()) sb.append("; latest: ${unlocked.take(3).mapNotNull { Badges.byId[it.id]?.title }.joinToString(", ")}")
+        sb.append("\n")
+
+        // Memory
+        val notes = s.coachNotes.lines().filter { it.isNotBlank() }
+        if (notes.isNotEmpty()) {
+            sb.append("- Things to remember about the user:\n")
+            notes.forEach { sb.append("  • $it\n") }
+        }
         return sb.toString()
     }
 
+    private fun setLabel(kind: ExerciseKind?, set: SetEntity): String = when (kind) {
+        ExerciseKind.HOLD -> "${set.seconds}s"
+        ExerciseKind.WEIGHTED -> "${set.reps}×${"%.1f".format(Locale.US, set.weightKg ?: 0f).removeSuffix(".0")}kg"
+        else -> "${set.reps}"
+    }
+
     private companion object {
-        val PLAN_WORDS = Regex("plan|program|programme|split|routine|schedule|week|جدول|برنامج")
+        val PLAN_WORDS = Regex("plan|program|programme|split|routine|schedule|جدول|برنامج|خطة")
     }
 }

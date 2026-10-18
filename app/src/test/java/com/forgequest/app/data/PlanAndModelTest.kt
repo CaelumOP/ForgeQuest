@@ -1,6 +1,7 @@
 package com.forgequest.app.data
 
 import com.forgequest.app.data.ai.GeminiClient
+import com.forgequest.app.data.plan.CoachMemory
 import com.forgequest.app.data.plan.PlanJson
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.StarterPlans
@@ -107,5 +108,31 @@ class ModelPickTest {
     fun stableWinsOnTheSameVersion() {
         assertEquals("gemini-3.1-pro", client.pickNewest(listOf("gemini-3.1-pro-preview", "gemini-3.1-pro"), "pro"))
         assertNull(client.pickNewest(listOf("gemini-flash-latest"), "pro"))
+    }
+}
+
+class CoachMemoryTest {
+    @Test
+    fun extractsAndStripsMemoryLines() {
+        val reply = "Rest the shoulder this week.\n\n**MEMORY:** Left shoulder hurts on overhead pressing.\nMEMORY: Trains at home with a pull-up bar"
+        assertEquals(listOf("Left shoulder hurts on overhead pressing", "Trains at home with a pull-up bar"), CoachMemory.extract(reply))
+        assertEquals("Rest the shoulder this week.", CoachMemory.strip(reply).trim())
+    }
+
+    @Test
+    fun mergeSkipsDuplicatesAndCaps() {
+        val merged = CoachMemory.merge("Has rings\nhas rings", listOf("Has Rings", "Vegetarian"))
+        assertEquals("Has rings\nhas rings\nVegetarian", merged)
+        val many = CoachMemory.merge("", (1..20).map { "note $it" })
+        assertEquals(CoachMemory.MAX_NOTES, many.lines().size)
+        assertTrue(many.lines().first() == "note 6")
+    }
+
+    @Test
+    fun partialStreamHidesUnfinishedPlanBlock() {
+        val streaming = "Here's your week.\n\n```json\n{\"name\": \"Pl"
+        assertEquals("Here's your week.", PlanJson.stripPartial(streaming))
+        val done = "Here's your week.\n\n```json\n{\"name\": \"P\", \"days\": [{\"dayOfWeek\": 1, \"title\": \"A\"}]}\n```\nMEMORY: Likes short sessions"
+        assertEquals("Here's your week.", PlanJson.stripPartial(done))
     }
 }

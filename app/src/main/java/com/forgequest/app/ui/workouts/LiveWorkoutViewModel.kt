@@ -97,11 +97,26 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun adjust(set: SetEntity, kind: ExerciseKind, field: Field, direction: Int) {
+        val current = when (field) {
+            Field.REPS -> (set.reps ?: 0).toFloat()
+            Field.SECONDS -> (set.seconds ?: 0).toFloat()
+            Field.WEIGHT -> set.weightKg ?: 0f
+        }
+        val step = when (field) {
+            Field.REPS -> 1f
+            Field.SECONDS -> 5f
+            Field.WEIGHT -> 2.5f
+        }
+        setField(set, field, current + step * direction)
+    }
+
+    /** Writes a typed or nudged value, clamped to a sane range. */
+    fun setField(set: SetEntity, field: Field, value: Float) {
         app.haptics.tick()
         val updated = when (field) {
-            Field.REPS -> set.copy(reps = ((set.reps ?: 0) + direction).coerceIn(0, 999))
-            Field.SECONDS -> set.copy(seconds = ((set.seconds ?: 0) + 5 * direction).coerceIn(0, 3600))
-            Field.WEIGHT -> set.copy(weightKg = (((set.weightKg ?: 0f) + 2.5f * direction) * 10).roundToInt() / 10f)
+            Field.REPS -> set.copy(reps = value.roundToInt().coerceIn(0, 999))
+            Field.SECONDS -> set.copy(seconds = value.roundToInt().coerceIn(0, 3600))
+            Field.WEIGHT -> set.copy(weightKg = ((value * 10).roundToInt() / 10f).coerceIn(0f, 999f))
         }
         viewModelScope.launch { repo.updateSet(updated) }
     }

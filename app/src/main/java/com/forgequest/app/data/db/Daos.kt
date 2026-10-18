@@ -71,6 +71,10 @@ interface PlanDao {
     @Insert
     suspend fun insertItem(item: PlanItemEntity): Long
 
+    /** Puts a removed plan item back with its original id and position (undo). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreItem(item: PlanItemEntity)
+
     @Update
     suspend fun updateItem(item: PlanItemEntity)
 
@@ -85,6 +89,21 @@ interface PlanDao {
 
     @Query("UPDATE plans SET active = 1 WHERE id = :id")
     suspend fun activate(id: Long)
+
+    @Query("SELECT * FROM plans WHERE id = :id")
+    suspend fun byId(id: Long): PlanEntity?
+
+    @Query("DELETE FROM plan_items WHERE dayId IN (SELECT id FROM plan_days WHERE planId = :planId)")
+    suspend fun deleteItemsOfPlan(planId: Long)
+
+    @Query("DELETE FROM plan_days WHERE planId = :planId")
+    suspend fun deleteDaysOfPlan(planId: Long)
+
+    @Query("DELETE FROM plans WHERE id = :planId")
+    suspend fun deletePlan(planId: Long)
+
+    @Query("SELECT COUNT(*) FROM sessions WHERE planDayId IN (SELECT id FROM plan_days WHERE planId = :planId)")
+    suspend fun sessionsUsingPlan(planId: Long): Int
 }
 
 @Dao
@@ -103,6 +122,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions WHERE id = :id")
     suspend fun byId(id: Long): SessionEntity?
+
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    fun observeById(id: Long): Flow<SessionEntity?>
 
     @Insert
     suspend fun insert(session: SessionEntity): Long
@@ -182,8 +204,21 @@ interface FoodDao {
     @Query("SELECT * FROM meals ORDER BY loggedAt")
     suspend fun allMeals(): List<MealEntity>
 
+    @Query("SELECT COUNT(*) FROM meals")
+    fun observeMealCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM meals WHERE photoPath IS NOT NULL AND foodId IS NULL")
+    fun observeScannedCount(): Flow<Int>
+
+    @Query("SELECT * FROM foods")
+    suspend fun allFoods(): List<FoodEntity>
+
     @Insert
     suspend fun insertMeals(meals: List<MealEntity>)
+
+    /** Puts a deleted meal back with its original id (undo). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreMeal(meal: MealEntity)
 
     @Query("DELETE FROM meals WHERE id = :id")
     suspend fun deleteMeal(id: Long)

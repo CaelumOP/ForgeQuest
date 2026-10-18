@@ -29,6 +29,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.Undo
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Restaurant
@@ -74,6 +80,8 @@ import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.drive.DriveAuth
 import com.forgequest.app.data.drive.DriveError
+import com.forgequest.app.data.backup.BackupError
+import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
@@ -85,6 +93,7 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
@@ -106,6 +115,12 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val busy = MutableStateFlow<String?>(null)
     val consent = MutableStateFlow<android.app.PendingIntent?>(null)
     val docPreview = MutableStateFlow<DriveSync.DocPlan?>(null)
+
+    /** A backup waiting for the person to confirm: where it came from, and its contents. */
+    data class RestorePreview(val source: String, val file: BackupFile)
+    val restorePreview = MutableStateFlow<RestorePreview?>(null)
+    val shareUri = MutableStateFlow<Uri?>(null)
+    val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
     private var afterConsent: (suspend (String) -> Unit)? = null
 
     fun updateGoals(kcal: Int? = null, protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
@@ -116,6 +131,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
                 weeklyTargetOverride = weekly ?: s.weeklyTargetOverride,
             )
         }
+    }
+
+    fun addNote(note: String) = viewModelScope.launch { app.coach.setNotes(app.settings.current().coachNotes + "\n" + note.trim()) }
+    fun removeNote(note: String) = viewModelScope.launch {
+        app.coach.setNotes(app.settings.current().coachNotes.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
     }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
@@ -151,11 +171,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     // ------------------------------------------------------------ Drive
 
-    private fun withDrive(label: String, op: suspend (String) -> Unit) {
+    private fun withDrive(label: String, withDocs: Boolean = false, op: suspend (String) -> Unit) {
         busy.value = label
         viewModelScope.launch {
             try {
-                when (val auth = app.drive.authorize()) {
+                when (val auth = app.drive.authorize(withDocs)) {
                     is DriveAuth.Token -> op(auth.accessToken)
                     is DriveAuth.NeedsUi -> {
                         afterConsent = op
@@ -205,15 +225,76 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         message.value = "Backed up to Google Drive"
     }
 
-    fun restore() = withDrive("Restoring…") { token ->
-        app.drive.restore(token)
-        message.value = "Restored from Google Drive"
+    fun restore() = withDrive("Reading your Drive backup…") { token ->
+        restorePreview.value = RestorePreview("Google Drive", app.drive.fetchBackup(token))
     }
 
-    fun importDoc() = withDrive("Reading your Workout Plan doc…") { token ->
+    // ------------------------------------------------------------ Local backup file
+
+    fun exportData() {
+        busy.value = "Preparing your backup…"
+        viewModelScope.launch {
+            try {
+                shareUri.value = app.backup.exportForSharing()
+            } catch (e: Exception) {
+                message.value = "Couldn't create the backup file."
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    fun previewImport(uri: Uri) {
+        busy.value = "Reading the file…"
+        viewModelScope.launch {
+            try {
+                restorePreview.value = RestorePreview("this file", app.backup.read(uri))
+            } catch (e: BackupError) {
+                message.value = e.userMessage
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    fun previewUndoRestore() {
+        val latest = safetyCopies.value.firstOrNull() ?: return
+        busy.value = "Reading the copy…"
+        viewModelScope.launch {
+            try {
+                restorePreview.value = RestorePreview("the copy saved before your last restore", app.backup.read(latest))
+            } catch (e: BackupError) {
+                message.value = e.userMessage
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    fun applyRestore() {
+        val preview = restorePreview.value ?: return
+        restorePreview.value = null
+        busy.value = "Restoring…"
+        viewModelScope.launch {
+            try {
+                app.backup.apply(preview.file)
+                safetyCopies.value = app.backup.safetyCopies()
+                message.value = "Restored from ${preview.source}"
+            } catch (e: Exception) {
+                message.value = "Couldn't restore that backup."
+            } finally {
+                busy.value = null
+            }
+        }
+    }
+
+    fun importDoc() = withDrive("Reading your Workout Plan doc…", withDocs = true) { token ->
         if (app.settings.apiKey.value.isBlank()) throw AiError.MissingKey
+        app.settings.update { it.copy(driveDocsEnabled = true) }
         docPreview.value = app.drive.fetchPlanDoc(token, 0)
     }
+
+    fun disableDocs() = viewModelScope.launch { app.settings.update { it.copy(driveDocsEnabled = false) } }
 
     fun applyDoc() {
         val doc = docPreview.value ?: return
@@ -224,7 +305,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "") } }
+    fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "", driveDocsEnabled = false) } }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -237,18 +318,30 @@ fun ProfileScreen(nav: NavHostController) {
     val busy by vm.busy.collectAsState()
     val consent by vm.consent.collectAsState()
     val docPreview by vm.docPreview.collectAsState()
+    val restorePreview by vm.restorePreview.collectAsState()
+    val shareUri by vm.shareUri.collectAsState()
+    val safetyCopies by vm.safetyCopies.collectAsState()
     val snackbar = LocalSnackbar.current
     val context = LocalContext.current
     val c = Fit.colors
     var keyDialog by remember { mutableStateOf(false) }
     var weightDialog by remember { mutableStateOf(false) }
     var handDialog by remember { mutableStateOf(false) }
-    var confirmRestore by remember { mutableStateOf(false) }
+    var notesDialog by remember { mutableStateOf(false) }
 
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         vm.onConsentResult(r.resultCode == Activity.RESULT_OK, r.data)
     }
     LaunchedEffect(consent) { consent?.let { consentLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) } }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::previewImport) }
+    LaunchedEffect(shareUri) {
+        shareUri?.let { uri ->
+            val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_SUBJECT, "ForgeQuest backup").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            context.startActivity(Intent.createChooser(send, "Save your backup"))
+            vm.shareUri.value = null
+        }
+    }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
     DisposableEffect(Unit) { onDispose { vm.markBadgesSeen() } }
 
@@ -257,6 +350,21 @@ fun ProfileScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Text("Profile", style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
+
+        if (apiKey.isBlank()) {
+            FitCard(onClick = { keyDialog = true }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Turn on the coach and meal scanning", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                        Text("Paste a free Gemini key. Takes about a minute.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    PillButton("Add key", onClick = { keyDialog = true })
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
 
         // Rank
         FitCard {
@@ -276,7 +384,7 @@ fun ProfileScreen(nav: NavHostController) {
             Text("${s.level.xpIntoLevel} / ${s.level.xpForNextLevel} XP to level ${s.level.level + 1}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
-                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", "Workouts", c.teal, Modifier.weight(1f))
+                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", "Workouts", c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
                 com.forgequest.app.ui.components.StatColumn("${s.streak.best}", "Best streak (wk)", c.gold, Modifier.weight(1f))
                 com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", "Badges", c.purple, Modifier.weight(1f))
             }
@@ -284,21 +392,23 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         // Badges
-        FitCard {
-            Text("Badges", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+        FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.BADGES) }) {
             val owned = s.badges.associateBy { it.id }
-            com.forgequest.app.domain.BadgeCategory.entries.forEach { cat ->
-                Spacer(Modifier.height(14.dp))
-                Text(cat.label, style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(8.dp))
-                Badges.all.filter { it.category == cat }.chunked(4).forEach { row ->
-                    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
-                        row.forEach { b ->
-                            val got = owned[b.id]
-                            BadgeChip(b.title, b.description, badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f))
-                        }
-                        repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Badges", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text("${s.badges.size} of ${Badges.all.size} unlocked", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Text("See all", style = MaterialTheme.typography.labelLarge, color = c.teal)
+            }
+            val latest = s.badges.sortedByDescending { it.unlockedAt }.take(4).mapNotNull { b -> Badges.byId[b.id]?.let { it to b } }
+            if (latest.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    latest.forEach { (def, got) ->
+                        BadgeChip(def.title, def.description, badgeIcon(def.category), unlocked = true, isNew = !got.seen, modifier = Modifier.weight(1f))
                     }
+                    repeat(4 - latest.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -331,15 +441,23 @@ fun ProfileScreen(nav: NavHostController) {
                 Text("Goals", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             }
             Spacer(Modifier.height(12.dp))
-            SettingStepper("Daily protein", "${settings.proteinGoal} g", { vm.updateGoals(protein = (settings.proteinGoal - 5).coerceAtLeast(40)) }, { vm.updateGoals(protein = settings.proteinGoal + 5) })
-            SettingStepper("Daily calories", "%,d".format(settings.kcalGoal), { vm.updateGoals(kcal = (settings.kcalGoal - 50).coerceAtLeast(1000)) }, { vm.updateGoals(kcal = settings.kcalGoal + 50) })
+            SettingStepper("Daily protein", settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = "g")
+            SettingStepper("Daily calories", settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = "kcal")
             val planDays = s.plan?.trainingDays?.size ?: 0
-            SettingStepper(
-                "Workouts per week",
-                if (settings.weeklyTargetOverride == 0) "$planDays (plan)" else "${settings.weeklyTargetOverride}",
-                { vm.updateGoals(weekly = if (settings.weeklyTargetOverride <= 1) 0 else settings.weeklyTargetOverride - 1) },
-                { vm.updateGoals(weekly = ((if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride) + 1).coerceAtMost(7)) },
-            )
+            val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Workouts per week", style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    if (settings.weeklyTargetOverride == 0) Text("From your plan", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Stepper(
+                    "$weeklyShown",
+                    // Going below the plan's count sets an explicit target; landing back on the plan's count clears it.
+                    onMinus = { vm.updateGoals(weekly = (weeklyShown - 1).coerceAtLeast(1).let { if (it == planDays) 0 else it }) },
+                    onPlus = { vm.updateGoals(weekly = (weeklyShown + 1).coerceAtMost(7).let { if (it == planDays) 0 else it }) },
+                    minValueWidth = 84.dp,
+                )
+            }
             Text("Your weekly streak counts weeks where you reach this number.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
         Spacer(Modifier.height(12.dp))
@@ -350,6 +468,38 @@ fun ProfileScreen(nav: NavHostController) {
             "AI key",
             if (apiKey.isBlank()) "Not set · meal scan and coach are off" else "Connected · stored encrypted on this phone",
         ) { keyDialog = true }
+        Spacer(Modifier.height(12.dp))
+
+        // Coach memory
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("What the coach remembers", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(
+                        if (settings.coachNotes.isBlank()) "Tell the coach about injuries, equipment or preferences and it keeps them here."
+                        else "Used in every conversation. Tap a line to remove it.",
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
+                TonalPill("Add", onClick = { notesDialog = true })
+            }
+            val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
+            if (notes.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                notes.forEach { note ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
+                        Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                        Icon(Icons.Rounded.Close, contentDescription = "Remove", tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
 
         // Hand + body
@@ -377,6 +527,25 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
+        // Local backup file
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Your data", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text("Save a file to keep, or bring everything to a new phone. Photos and your AI key stay out of it.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("Export file", onClick = vm::exportData, icon = Icons.Rounded.Share)
+                TonalPill("Import file", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
+                if (safetyCopies.isNotEmpty()) TonalPill("Undo last restore", onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
         // Drive
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -386,7 +555,7 @@ fun ProfileScreen(nav: NavHostController) {
                     Text("Google Drive", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Text(
                         when {
-                            settings.driveEmail.isBlank() -> "Back up your data and import plans from Google Docs"
+                            settings.driveEmail.isBlank() -> "Daily backup to a hidden app folder in your Drive. Nothing else in your Drive is touched."
                             settings.lastBackupAt > 0 -> "${settings.driveEmail} · backed up ${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt))}"
                             else -> settings.driveEmail
                         },
@@ -400,12 +569,17 @@ fun ProfileScreen(nav: NavHostController) {
             } else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton("Back up now", onClick = vm::backupNow)
-                    TonalPill("Import plan from Docs", onClick = vm::importDoc)
-                    TonalPill("Restore", onClick = { confirmRestore = true })
+                    TonalPill(if (settings.driveDocsEnabled) "Import plan from Docs" else "Import plan from Docs…", onClick = vm::importDoc)
+                    if (settings.driveDocsEnabled) TonalPill("Stop reading Docs", onClick = vm::disableDocs, tint = c.textSecondary)
+                    TonalPill("Restore", onClick = vm::restore)
                     TonalPill("Disconnect", onClick = vm::disconnectDrive, tint = c.textSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("Backs up daily on its own. Name a Google Doc \"Workout Plan\" and changes to it are imported automatically.", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(
+                    if (settings.driveDocsEnabled) "Backs up daily on its own. Your newest Google Doc named \"Workout Plan\" is checked daily too; changes appear in the Coach tab for you to apply."
+                    else "Backs up daily on its own. Importing a plan from Google Docs asks separately for permission to read your Drive; you can turn that off any time.",
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                )
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -438,6 +612,8 @@ fun ProfileScreen(nav: NavHostController) {
             text = {
                 Column {
                     Text("Get a free key from Google AI Studio, then paste it here. It stays encrypted on this phone.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Meal photos and your training data are sent to Google Gemini under this key. Free keys let Google use them to improve its models.", color = c.textSecondary, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
                     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) }) {
                         Text("Open Google AI Studio", color = c.blue)
@@ -468,11 +644,33 @@ fun ProfileScreen(nav: NavHostController) {
             title = { Text("Log body weight", color = c.textPrimary) },
             text = {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Stepper("%.1f kg".format(kg), { kg = ((kg * 10).roundToInt() - 1) / 10f }, { kg = ((kg * 10).roundToInt() + 1) / 10f }, minValueWidth = 96.dp)
+                    NumberStepper(kg, { kg = it }, step = 0.1f, min = 30f, max = 250f, unit = "kg", decimals = 1, title = "Body weight", minValueWidth = 96.dp)
                 }
             },
             confirmButton = { TextButton(onClick = { vm.logWeight(kg); weightDialog = false }) { Text("Save", color = c.teal) } },
             dismissButton = { TextButton(onClick = { weightDialog = false }) { Text("Cancel", color = c.textSecondary) } },
+        )
+    }
+
+    if (notesDialog) {
+        var note by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { notesDialog = false },
+            containerColor = c.card,
+            title = { Text("Something the coach should know", color = c.textPrimary) },
+            text = {
+                Column {
+                    Text("One fact per note, e.g. \"Left knee hurts in deep squats\" or \"Only have a pull-up bar and rings\".", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = note, onValueChange = { note = it.take(160) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { vm.addNote(note); notesDialog = false }, enabled = note.isNotBlank()) { Text("Save", color = c.teal) } },
+            dismissButton = { TextButton(onClick = { notesDialog = false }) { Text("Cancel", color = c.textSecondary) } },
         )
     }
 
@@ -487,8 +685,8 @@ fun ProfileScreen(nav: NavHostController) {
                 Column {
                     Text("Measure from wrist crease to the tip of your middle finger, and across your palm.", color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
-                    SettingStepper("Length", "%.1f cm".format(length), { length = (length - 0.5f).coerceAtLeast(10f) }, { length = (length + 0.5f).coerceAtMost(28f) })
-                    SettingStepper("Palm width", "%.1f cm".format(palm), { palm = (palm - 0.5f).coerceAtLeast(5f) }, { palm = (palm + 0.5f).coerceAtMost(14f) })
+                    SettingStepper("Length", length, { length = it }, step = 0.5f, min = 10f, max = 28f, unit = "cm", decimals = 1)
+                    SettingStepper("Palm width", palm, { palm = it }, step = 0.5f, min = 5f, max = 14f, unit = "cm", decimals = 1)
                 }
             },
             confirmButton = { TextButton(onClick = { vm.setHand(length, palm); handDialog = false }) { Text("Save", color = c.teal) } },
@@ -501,14 +699,23 @@ fun ProfileScreen(nav: NavHostController) {
         )
     }
 
-    if (confirmRestore) {
+    restorePreview?.let { preview ->
         AlertDialog(
-            onDismissRequest = { confirmRestore = false },
+            onDismissRequest = { vm.restorePreview.value = null },
             containerColor = c.card,
-            title = { Text("Restore from Google Drive?", color = c.textPrimary) },
-            text = { Text("This replaces everything on this phone with your last Drive backup.", color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { confirmRestore = false; vm.restore() }) { Text("Restore", color = c.coral) } },
-            dismissButton = { TextButton(onClick = { confirmRestore = false }) { Text("Cancel", color = c.textSecondary) } },
+            title = { Text("Restore from ${preview.source}?", color = c.textPrimary) },
+            text = {
+                Column {
+                    Text(preview.file.summary(), color = c.textPrimary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Everything on this phone is replaced. A copy of what's here now is kept, so you can undo this from the Your data card.",
+                        color = c.textSecondary, style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = vm::applyRestore) { Text("Restore", color = c.coral) } },
+            dismissButton = { TextButton(onClick = { vm.restorePreview.value = null }) { Text("Cancel", color = c.textSecondary) } },
         )
     }
 
@@ -522,7 +729,7 @@ fun ProfileScreen(nav: NavHostController) {
     }
 }
 
-private fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector = when (cat) {
+internal fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector = when (cat) {
     com.forgequest.app.domain.BadgeCategory.CONSISTENCY -> Icons.Rounded.LocalFireDepartment
     com.forgequest.app.domain.BadgeCategory.SKILL -> Icons.Rounded.SportsGymnastics
     com.forgequest.app.domain.BadgeCategory.STRENGTH -> Icons.Rounded.FitnessCenter
@@ -530,7 +737,7 @@ private fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector
 }
 
 @Composable
-private fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier) {
+internal fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier) {
     val c = Fit.colors
     var open by remember { mutableStateOf(false) }
     Column(
@@ -574,10 +781,10 @@ private fun SettingsRow(icon: ImageVector, tint: androidx.compose.ui.graphics.Co
 }
 
 @Composable
-private fun SettingStepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+private fun SettingStepper(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String = "", decimals: Int = 0) {
     val c = Fit.colors
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-        Stepper(value, onMinus, onPlus, minValueWidth = 84.dp)
+        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp)
     }
 }

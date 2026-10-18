@@ -174,3 +174,29 @@ class BadgesTest {
         assertEquals(Badges.all.size, Badges.all.map { it.id }.toSet().size)
     }
 }
+
+class PersonalRecordsTest {
+    private data class S(val reps: Int)
+    private fun prs(vararg sessions: List<Int>) =
+        Records.personalRecords(ExerciseKind.REPS, sessions.map { it.map(::S) }, { it.reps }, { null }, { null }).map { it.reps }.toSet()
+
+    @Test
+    fun firstSessionNeverCounts() {
+        assertEquals(emptySet<Int>(), prs(listOf(10, 12)))
+    }
+
+    @Test
+    fun onlyImprovementsOverEverythingBeforeCount() {
+        assertEquals(setOf(13, 15), prs(listOf(10, 12), listOf(13, 11), listOf(12), listOf(15, 15)))
+    }
+
+    @Test
+    fun equalToBestIsNotARecord() {
+        assertEquals(emptySet<Int>(), prs(listOf(12), listOf(12), listOf(11)))
+    }
+
+    @Test
+    fun emptySessionsAreSkipped() {
+        assertEquals(setOf(9), prs(listOf(8), emptyList(), listOf(9)))
+    }
+}

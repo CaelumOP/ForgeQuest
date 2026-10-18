@@ -4,6 +4,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +19,8 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,12 +29,28 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.runtime.LaunchedEffect
+import java.util.Locale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -121,9 +143,9 @@ fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(50),
+        modifier = modifier.semantics { this.selected = selected },
         color = if (selected) accent else c.cardHigh,
         contentColor = if (selected) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary,
-        modifier = modifier,
     ) {
         Text(
             text,
@@ -153,7 +175,7 @@ fun SegmentedTabs(
             val isSel = i == selected
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (isSel) c.teal else Color.Transparent)
-                    .clickable { onSelect(i) }.padding(vertical = 9.dp),
+                    .selectable(selected = isSel, role = Role.Tab) { onSelect(i) }.padding(vertical = 9.dp, horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -163,6 +185,8 @@ fun SegmentedTabs(
                         color = if (isSel) c.onTeal else c.textPrimary,
                         maxLines = 1,
                         softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     if (i in dots) {
                         Spacer(Modifier.width(3.dp))
@@ -174,7 +198,10 @@ fun SegmentedTabs(
     }
 }
 
-/** "−  value  +" control. */
+/**
+ * "−  value  +" control. When [onValueClick] is set the number itself is tappable (used to type a value directly),
+ * and it's drawn slightly brighter so the affordance is visible.
+ */
 @Composable
 fun Stepper(
     value: String,
@@ -183,28 +210,148 @@ fun Stepper(
     modifier: Modifier = Modifier,
     valueColor: Color = Fit.colors.textPrimary,
     minValueWidth: Dp = 40.dp,
+    onValueClick: (() -> Unit)? = null,
 ) {
     val c = Fit.colors
     Row(
         modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(36.dp).clip(CircleShape).clickable(onClick = onMinus), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Remove, contentDescription = "Less", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onMinus, role = Role.Button), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Remove, contentDescription = "Decrease, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
-        Text(
-            value,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = valueColor,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(minValueWidth),
-            maxLines = 1,
-        )
-        Box(Modifier.size(36.dp).clip(CircleShape).clickable(onClick = onPlus), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = "More", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Box(
+            Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
+                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = "type a value") else it }
+                .padding(horizontal = 2.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                value,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = valueColor,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+        }
+        Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onPlus, role = Role.Button), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Add, contentDescription = "Increase, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
     }
+}
+
+/** Formats a number for display and parsing with a fixed locale so "72.5" round-trips through the keyboard. */
+fun formatNumber(value: Float, decimals: Int): String =
+    if (decimals <= 0) "%,d".format(Locale.US, value.toInt()).replace(",", "") else "%.${decimals}f".format(Locale.US, value)
+
+/**
+ * Stepper over a numeric value: ± nudge by [step], tap the number to type it.
+ * [unit] is shown after the value ("kg", "s", "reps"); [decimals] controls display and rounding.
+ */
+@Composable
+fun NumberStepper(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    step: Float,
+    min: Float,
+    max: Float,
+    modifier: Modifier = Modifier,
+    unit: String = "",
+    decimals: Int = 0,
+    title: String = "Enter a value",
+    valueColor: Color = Fit.colors.textPrimary,
+    minValueWidth: Dp = 40.dp,
+    onTick: (() -> Unit)? = null,
+) {
+    var editing by remember { mutableStateOf(false) }
+    fun commit(v: Float) {
+        val rounded = if (decimals <= 0) kotlin.math.round(v) else kotlin.math.round(v * 10f.pow(decimals)) / 10f.pow(decimals)
+        onValueChange(rounded.coerceIn(min, max))
+    }
+    val shown = formatNumber(value, decimals) + if (unit.isNotEmpty()) " $unit" else ""
+    Stepper(
+        value = shown,
+        onMinus = { onTick?.invoke(); commit(value - step) },
+        onPlus = { onTick?.invoke(); commit(value + step) },
+        modifier = modifier,
+        valueColor = valueColor,
+        minValueWidth = minValueWidth,
+        onValueClick = { editing = true },
+    )
+    if (editing) {
+        NumberEntryDialog(
+            title = title,
+            initial = value,
+            unit = unit,
+            decimals = decimals,
+            min = min,
+            max = max,
+            onDismiss = { editing = false },
+            onConfirm = { editing = false; onTick?.invoke(); commit(it) },
+        )
+    }
+}
+
+private fun Float.pow(n: Int): Float { var r = 1f; repeat(n) { r *= this }; return r }
+
+/** Parses what a person typed, accepting a comma as the decimal separator. */
+fun parseNumber(text: String): Float? = text.trim().replace(',', '.').toFloatOrNull()
+
+/** Full-keyboard entry for one number. The field opens focused with the current value selected, so typing replaces it. */
+@Composable
+fun NumberEntryDialog(
+    title: String,
+    initial: Float,
+    unit: String,
+    decimals: Int,
+    min: Float,
+    max: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit,
+) {
+    val c = Fit.colors
+    val start = formatNumber(initial, decimals)
+    var text by remember { mutableStateOf(TextFieldValue(start, selection = TextRange(0, start.length))) }
+    val focus = remember { FocusRequester() }
+    val parsed = parseNumber(text.text)
+    val valid = parsed != null && parsed >= min && parsed <= max
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        title = { Text(title, color = c.textPrimary) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { v -> text = v.copy(text = v.text.filter { ch -> ch.isDigit() || ch == '.' || ch == ',' }.take(8)) },
+                    singleLine = true,
+                    suffix = if (unit.isNotEmpty()) ({ Text(unit, color = c.textSecondary) }) else null,
+                    isError = text.text.isNotEmpty() && !valid,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (decimals > 0) KeyboardType.Decimal else KeyboardType.Number,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { if (valid) onConfirm(parsed!!) }),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, errorBorderColor = c.coral,
+                        focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, cursorColor = c.teal,
+                    ),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Between ${formatNumber(min, decimals)} and ${formatNumber(max, decimals)}${if (unit.isNotEmpty()) " $unit" else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (text.text.isNotEmpty() && !valid) c.coral else c.textSecondary,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { if (valid) onConfirm(parsed!!) }, enabled = valid) { Text("Save", color = c.teal) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) } },
+    )
 }
 
 /** Thin rounded progress bar. */

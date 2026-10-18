@@ -10,6 +10,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,7 +73,7 @@ import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
-import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.LiveWorkoutViewModel.Field
@@ -121,6 +125,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val c = Fit.colors
 
     var confirmExit by remember { mutableStateOf(false) }
+    var confirmFinish by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
@@ -188,12 +193,24 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             Box(Modifier.fillMaxWidth().background(c.background).navigationBarsPadding().padding(16.dp)) {
                 PillButton(
                     if (finishing) "Saving…" else "Finish workout",
-                    onClick = vm::finish,
+                    onClick = { if (sets.any { !it.done }) confirmFinish = true else vm.finish() },
                     enabled = doneCount > 0 && !finishing,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
+    }
+
+    if (confirmFinish) {
+        val left = sets.count { !it.done }
+        AlertDialog(
+            onDismissRequest = { confirmFinish = false },
+            containerColor = c.card,
+            title = { Text("Finish with $left set${if (left == 1) "" else "s"} unticked?", color = c.textPrimary) },
+            text = { Text("Only ticked sets are saved. The $left you didn't tick ${if (left == 1) "is" else "are"} dropped.", color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text("Finish", color = c.teal) } },
+            dismissButton = { TextButton(onClick = { confirmFinish = false }) { Text("Keep going", color = c.textSecondary) } },
+        )
     }
 
     if (confirmExit) {
@@ -358,11 +375,23 @@ private fun SetRow(
         Spacer(Modifier.width(6.dp))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             when (kind) {
-                ExerciseKind.HOLD -> Stepper("${set.seconds ?: 0} s", { vm.adjust(set, kind, Field.SECONDS, -1) }, { vm.adjust(set, kind, Field.SECONDS, 1) }, minValueWidth = 44.dp)
-                ExerciseKind.REPS -> Stepper("${set.reps ?: 0}", { vm.adjust(set, kind, Field.REPS, -1) }, { vm.adjust(set, kind, Field.REPS, 1) }, minValueWidth = 32.dp)
+                ExerciseKind.HOLD -> NumberStepper(
+                    (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
+                    unit = "s", title = "Hold time", minValueWidth = 52.dp,
+                )
+                ExerciseKind.REPS -> NumberStepper(
+                    (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
+                    title = "Reps", minValueWidth = 40.dp,
+                )
                 ExerciseKind.WEIGHTED -> {
-                    Stepper("${set.reps ?: 0} reps", { vm.adjust(set, kind, Field.REPS, -1) }, { vm.adjust(set, kind, Field.REPS, 1) }, minValueWidth = 56.dp)
-                    Stepper("%.1f kg".format(set.weightKg ?: 0f), { vm.adjust(set, kind, Field.WEIGHT, -1) }, { vm.adjust(set, kind, Field.WEIGHT, 1) }, minValueWidth = 56.dp, valueColor = c.blue)
+                    NumberStepper(
+                        (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
+                        unit = "reps", title = "Reps", minValueWidth = 64.dp,
+                    )
+                    NumberStepper(
+                        set.weightKg ?: 0f, { vm.setField(set, Field.WEIGHT, it) }, step = 2.5f, min = 0f, max = 999f,
+                        unit = "kg", decimals = 1, title = "Weight", minValueWidth = 64.dp, valueColor = c.blue,
+                    )
                 }
             }
         }
@@ -379,10 +408,12 @@ private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
     val color by animateColorAsState(if (checked) c.teal else c.cardHigh, label = "fill")
     val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
     Box(
-        Modifier.size(44.dp).clip(RoundedCornerShape(corner)).background(color).clickable(onClick = onToggle),
+        Modifier.size(44.dp).clip(RoundedCornerShape(corner)).background(color)
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
+            .semantics { contentDescription = "Set done" },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.Check, contentDescription = if (checked) "Done" else "Mark done", tint = c.onTeal, modifier = Modifier.size(24.dp).scale(checkScale))
+        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp).scale(checkScale))
     }
 }
 
