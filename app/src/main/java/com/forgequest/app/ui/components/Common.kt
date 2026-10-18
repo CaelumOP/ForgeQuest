@@ -1,5 +1,9 @@
 package com.forgequest.app.ui.components
 
+import com.forgequest.app.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -213,16 +217,17 @@ fun Stepper(
     onValueClick: (() -> Unit)? = null,
 ) {
     val c = Fit.colors
+    val typeLabel = stringResource(R.string.cd_type_value)
     Row(
         modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onMinus, role = Role.Button), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Remove, contentDescription = "Decrease, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
         Box(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
-                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = "type a value") else it }
+                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -236,7 +241,7 @@ fun Stepper(
             )
         }
         Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onPlus, role = Role.Button), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = "Increase, now $value", tint = c.textSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -259,7 +264,7 @@ fun NumberStepper(
     modifier: Modifier = Modifier,
     unit: String = "",
     decimals: Int = 0,
-    title: String = "Enter a value",
+    title: String = stringResource(R.string.stepper_enter_value),
     valueColor: Color = Fit.colors.textPrimary,
     minValueWidth: Dp = 40.dp,
     onTick: (() -> Unit)? = null,
@@ -343,14 +348,14 @@ fun NumberEntryDialog(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Between ${formatNumber(min, decimals)} and ${formatNumber(max, decimals)}${if (unit.isNotEmpty()) " $unit" else ""}",
+                    stringResource(R.string.stepper_range, formatNumber(min, decimals), formatNumber(max, decimals) + if (unit.isNotEmpty()) " $unit" else ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (text.text.isNotEmpty() && !valid) c.coral else c.textSecondary,
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { if (valid) onConfirm(parsed!!) }, enabled = valid) { Text("Save", color = c.teal) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) } },
+        confirmButton = { TextButton(onClick = { if (valid) onConfirm(parsed!!) }, enabled = valid) { Text(stringResource(R.string.action_save), color = c.teal) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
     )
 }
 
