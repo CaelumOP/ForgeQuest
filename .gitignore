@@ -4,3 +4,6 @@ build/
 local.properties
 *.apk
 .idea/
+keystore.properties
+*.jks
+*.keystore

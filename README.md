@@ -15,6 +15,21 @@ To build it yourself:
 ./gradlew testDebugUnitTest    # streak, XP, recovery, records, plan parsing
 ```
 
+## Release signing (do this before anyone else installs)
+
+Release APKs are signed with the debug key unless you create a real one. The debug key's password is public, so anyone
+holding the file could ship an update that installs over the app. Once, on your PC:
+
+```
+keytool -genkeypair -v -keystore forgequest-release.jks -alias forgequest -keyalg RSA -keysize 2048 -validity 10000
+cp keystore.properties.example keystore.properties   # then fill in the passwords
+./gradlew assembleRelease                              # → app/build/outputs/apk/release/app-release.apk
+```
+
+Keep `forgequest-release.jks` and `keystore.properties` out of git (they are ignored) and back them up somewhere safe.
+Updates must be signed with the same key, or Android refuses to install over the old version. For the Drive setup
+below, use this key's SHA-1 (`keytool -list -v -keystore forgequest-release.jks`) instead of the debug one.
+
 ## AI features (meal scan + coach)
 
 Each person uses their own free Gemini key:
