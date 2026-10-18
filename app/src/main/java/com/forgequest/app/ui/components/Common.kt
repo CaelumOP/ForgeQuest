@@ -1,5 +1,8 @@
 package com.forgequest.app.ui.components
 
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.stringResource
@@ -218,6 +221,8 @@ fun Stepper(
 ) {
     val c = Fit.colors
     val typeLabel = stringResource(R.string.cd_type_value)
+    // Minus stays left and plus right in Arabic too, like a number line.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Row(
         modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
@@ -243,6 +248,7 @@ fun Stepper(
         Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onPlus, role = Role.Button), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }
+    }
     }
 }
 

@@ -383,7 +383,7 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
             }
             Spacer(Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("%,d / %,d".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall, color = if (over) c.gold else c.blue)
+                Text("⁦%,d / %,d⁩".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall, color = if (over) c.gold else c.blue)
                 Text(if (over) stringResource(R.string.food_calories_surplus) else stringResource(R.string.home_legend_calories), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
@@ -415,7 +415,7 @@ private fun WeekCard(s: ProgressSnapshot) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().height(44.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
             days.forEach { d ->
                 val n = byDay[d]
                 val ratio = ((n?.protein ?: 0f) / s.settings.proteinGoal.coerceAtLeast(1)).coerceIn(0f, 1f)

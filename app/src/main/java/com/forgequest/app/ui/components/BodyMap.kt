@@ -135,6 +135,8 @@ fun MuscleRecoveryMap(
     val summary = if (recovery.isEmpty()) stringResource(R.string.map_cd_all_fresh)
     else stringResource(R.string.map_cd_recovering, recovery.entries.sortedByDescending { it.value.fatigue }.map { stringResource(R.string.map_cd_muscle_ready, it.key.localLabel(), it.value.hoursUntilReady) }.joinToString(stringResource(R.string.list_separator)))
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        // Front on the left and back on the right in every language: it's a picture of a body, not a reading order.
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
         Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = summary }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(stringResource(R.string.map_front) to art?.front, stringResource(R.string.map_back) to art?.back).forEach { (label, view) ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -146,6 +148,7 @@ fun MuscleRecoveryMap(
                     Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                 }
             }
+        }
         }
         Spacer(Modifier.height(12.dp))
         val info = selected?.let { m ->
