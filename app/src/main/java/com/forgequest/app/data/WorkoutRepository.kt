@@ -46,6 +46,20 @@ class WorkoutRepository(private val db: AppDatabase) {
 
     suspend fun seedLibrary() {
         exercises.insertAll(ExerciseCatalog.all)
+        // Built-in names follow the app's language; a name the person changed is left alone.
+        val arabic = java.util.Locale.getDefault().language == "ar"
+        for (builtIn in ExerciseCatalog.all) {
+            val existing = exercises.byId(builtIn.id) ?: continue
+            if (existing.custom) continue
+            val ar = com.forgequest.app.data.seed.ExerciseNamesAr.byId[builtIn.id] ?: continue
+            val wanted = if (arabic) ar else builtIn.name
+            if (existing.name != wanted && (existing.name == ar || existing.name == builtIn.name)) exercises.upsert(existing.copy(name = wanted))
+        }
+        // Plans saved from the starter set too, so "Day 1 · Core + upper body" reads in the app's language.
+        for ((en, ar) in com.forgequest.app.data.seed.StarterPlans.arabic) {
+            val (from, to) = if (arabic) en to ar else ar to en
+            plans.renamePlans(from, to); plans.redescribePlans(from, to); plans.retitleDays(from, to); plans.renoteDays(from, to)
+        }
         // Keep built-in video links fresh without touching user edits on custom exercises.
         for (builtIn in ExerciseCatalog.all) {
             val existing = exercises.byId(builtIn.id) ?: continue

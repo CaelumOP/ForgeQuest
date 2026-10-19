@@ -99,6 +99,19 @@ interface PlanDao {
     @Query("DELETE FROM plan_items WHERE id = :id")
     suspend fun deleteItem(id: Long)
 
+    // Starter-plan texts follow the app's language (see WorkoutRepository.seedLibrary).
+    @Query("UPDATE plans SET name = :to WHERE name = :from")
+    suspend fun renamePlans(from: String, to: String)
+
+    @Query("UPDATE plans SET description = :to WHERE description = :from")
+    suspend fun redescribePlans(from: String, to: String)
+
+    @Query("UPDATE plan_days SET title = :to WHERE title = :from")
+    suspend fun retitleDays(from: String, to: String)
+
+    @Query("UPDATE plan_days SET note = :to WHERE note = :from")
+    suspend fun renoteDays(from: String, to: String)
+
     @Query("UPDATE plans SET active = 0")
     suspend fun deactivateAll()
 
