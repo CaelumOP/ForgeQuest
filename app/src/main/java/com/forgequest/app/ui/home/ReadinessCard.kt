@@ -50,7 +50,6 @@ import com.forgequest.app.data.health.DayReadiness
 import com.forgequest.app.data.health.HealthState
 import com.forgequest.app.domain.DayCall
 import com.forgequest.app.domain.Readiness
-import com.forgequest.app.domain.StrainBand
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
@@ -106,11 +105,6 @@ private fun Dial(fraction: Float, color: Color, value: String, label: String, si
         Text(label, style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
     }
 }
-
-@Composable
-private fun bandName(band: StrainBand) = stringResource(
-    when (band) { StrainBand.LIGHT -> R.string.band_light; StrainBand.MODERATE -> R.string.band_moderate; StrainBand.HIGH -> R.string.band_high; StrainBand.ALL_OUT -> R.string.band_all_out }
-)
 
 @Composable
 private fun hm(min: Int) = stringResource(R.string.dur_hm, min / 60, min % 60)

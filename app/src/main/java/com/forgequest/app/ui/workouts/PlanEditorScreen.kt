@@ -91,6 +91,7 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.NumberStepper

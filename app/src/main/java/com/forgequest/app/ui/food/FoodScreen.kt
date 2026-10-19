@@ -1,6 +1,7 @@
 package com.forgequest.app.ui.food
 
 import com.forgequest.app.ui.components.ChoiceChip
+import com.forgequest.app.ui.components.FitSwitch
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import com.forgequest.app.R
@@ -648,7 +649,7 @@ private fun FoodEditorSheet(food: FoodEntity, carbsOn: Boolean, onSave: (FoodEnt
             SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                Switch(pinned, { pinned = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                FitSwitch(pinned, { pinned = it })
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {

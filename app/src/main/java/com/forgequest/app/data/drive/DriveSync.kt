@@ -69,8 +69,7 @@ class DriveSync(
     private val backupScope = Scope("https://www.googleapis.com/auth/drive.appdata")
     private val fileScope = Scope("https://www.googleapis.com/auth/drive.file")
 
-    @Suppress("UNUSED_PARAMETER")
-    suspend fun authorize(withDocs: Boolean = false, bridge: Boolean = false): DriveAuth {
+    suspend fun authorize(): DriveAuth {
         val scopes = listOf(backupScope, fileScope)
         val request = AuthorizationRequest.builder().setRequestedScopes(scopes).build()
         val result = try {
@@ -97,7 +96,7 @@ class DriveSync(
     }
 
     /** Silent token for background work; null when the user has to approve something first. */
-    suspend fun silentToken(withDocs: Boolean = false, bridge: Boolean = false): String? = com.forgequest.app.data.suspendRunCatching { (authorize(withDocs, bridge) as? DriveAuth.Token)?.accessToken }.getOrNull()
+    suspend fun silentToken(): String? = com.forgequest.app.data.suspendRunCatching { (authorize() as? DriveAuth.Token)?.accessToken }.getOrNull()
 
     suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
         val body = call(token, Request.Builder().url("$API/about?fields=user(emailAddress)").get())
