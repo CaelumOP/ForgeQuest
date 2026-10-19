@@ -1041,4 +1041,15 @@
     <string name="zone_3">شديد</string>
     <string name="zone_4">شديد جدًا</string>
     <string name="zone_5">أقصى</string>
+    <string name="update_title">التحقق من التحديثات</string>
+    <string name="update_hint">الإصدار %1$s · اضغط للحصول على أحدث إصدار</string>
+    <string name="update_checking">جارٍ التحقق من التحديثات…</string>
+    <string name="update_latest">لديك أحدث إصدار.</string>
+    <string name="update_failed">تعذّر التحقق من التحديثات. تحقّق من اتصالك وأعد المحاولة.</string>
+    <string name="update_available">الإصدار %1$s متاح</string>
+    <string name="update_no_notes">إصلاحات وتحسينات.</string>
+    <string name="update_now">تحديث</string>
+    <string name="update_later">لاحقًا</string>
+    <string name="update_allow">اسمح لـForgeQuest بتثبيت التحديثات، ثم اضغط «تحديث» مجددًا.</string>
+    <string name="update_downloading">جارٍ تنزيل التحديث…</string>
 </resources>
