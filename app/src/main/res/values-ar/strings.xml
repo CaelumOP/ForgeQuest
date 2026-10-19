@@ -1052,4 +1052,12 @@
     <string name="update_later">لاحقًا</string>
     <string name="update_allow">اسمح لـForgeQuest بتثبيت التحديثات، ثم اضغط «تحديث» مجددًا.</string>
     <string name="update_downloading">جارٍ تنزيل التحديث…</string>
+    <string name="cd_start_hold">ابدأ المؤقّت</string>
+    <string name="hold_get_ready">استعدّ</string>
+    <string name="hold_holding">اثبت</string>
+    <string name="hold_overtime">بلغت الهدف. واصل لوقت إضافي</string>
+    <string name="hold_target">الهدف %1$d ث</string>
+    <string name="hold_stop">إيقاف</string>
+    <string name="hold_done">تمّ</string>
+    <string name="hold_stop_hint">الإيقاف المبكر يحفظ الثواني التي ثبتّ فيها.</string>
 </resources>

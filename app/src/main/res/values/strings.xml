@@ -955,4 +955,12 @@
     <string name="update_later">Later</string>
     <string name="update_allow">Allow ForgeQuest to install updates, then tap Update again.</string>
     <string name="update_downloading">Downloading the update…</string>
+    <string name="cd_start_hold">Start the timer</string>
+    <string name="hold_get_ready">Get ready</string>
+    <string name="hold_holding">Hold</string>
+    <string name="hold_overtime">Target reached. Keep going for extra time</string>
+    <string name="hold_target">Target %1$d s</string>
+    <string name="hold_stop">Stop</string>
+    <string name="hold_done">Done</string>
+    <string name="hold_stop_hint">Stopping early saves the seconds you held.</string>
 </resources>
