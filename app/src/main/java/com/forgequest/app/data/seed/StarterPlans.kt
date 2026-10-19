@@ -103,5 +103,35 @@ object StarterPlans {
         },
     )
 
-    val all = listOf(hemoFoundation, fullBodyBeginner, pushPullLegs)
+    /** English starter texts and their formal Arabic versions. */
+    val arabic = mapOf(
+        "Hemo · Foundation level" to "هيمو · المستوى التأسيسي",
+        "Hemo Calisthenics' 5-day foundation routine. Stretch, then jumping jacks, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target."
+            to "روتين Hemo Calisthenics التأسيسي على خمسة أيام: إطالة، ثم قفز مع فتح الذراعين، ثم كل مجموعة تمارين في دائرة من 3–4 جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.",
+        "Full body · 3 days" to "الجسم كاملًا · 3 أيام",
+        "Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home." to "خطة بسيطة للجسم كاملًا: الاثنين والأربعاء والجمعة، تصلح للنادي أو المنزل.",
+        "Push · Pull · Legs (gym)" to "دفع · سحب · أرجل (النادي)",
+        "6-day gym split. Each muscle twice a week." to "تقسيم على ستة أيام في النادي، تُمرَّن فيه كل عضلة مرتين أسبوعيًا.",
+        "Day 1 · Core + upper body" to "اليوم 1 · الجذع والجزء العلوي",
+        "Day 2 · Upper body" to "اليوم 2 · الجزء العلوي",
+        "Day 3 · Core + legs" to "اليوم 3 · الجذع والأرجل",
+        "Day 4 · Core + upper body" to "اليوم 4 · الجذع والجزء العلوي",
+        "Day 5 · Upper body" to "اليوم 5 · الجزء العلوي",
+        "Rest day" to "يوم راحة",
+        "Full body" to "الجسم كاملًا",
+        "Push" to "دفع",
+        "Pull" to "سحب",
+        "Legs" to "أرجل",
+        "Full rest. Hemo recommends a complete break after day 3." to "راحة تامة؛ يوصي Hemo براحة كاملة بعد اليوم الثالث.",
+        "Full rest, then repeat the week. Move to the Beginner level once this feels easy." to "راحة تامة، ثم كرّر الأسبوع. انتقل إلى مستوى المبتدئين متى صار هذا سهلًا.",
+    )
+
+    private fun localize(p: PlanDraft): PlanDraft {
+        if (java.util.Locale.getDefault().language != "ar") return p
+        fun t(s: String) = arabic[s] ?: s
+        return p.copy(name = t(p.name), description = t(p.description), days = p.days.map { it.copy(title = t(it.title), note = t(it.note)) })
+    }
+
+    /** In the reader's language; applied plans keep the names they were saved with. */
+    val all: List<PlanDraft> get() = listOf(hemoFoundation, fullBodyBeginner, pushPullLegs).map(::localize)
 }

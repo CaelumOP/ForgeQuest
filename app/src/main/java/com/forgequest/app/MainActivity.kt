@@ -1,5 +1,7 @@
 package com.forgequest.app
 
+import kotlinx.coroutines.launch
+
 import androidx.compose.ui.res.stringResource
 
 import android.os.Bundle
@@ -52,6 +54,8 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Built-in exercise names follow the language, which can change between activity restarts.
+        container.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { container.workouts.seedLibrary() }
         // Strings resolved outside Compose (errors, notifications) follow the in-app language too.
         AppText.init(AppLocale.wrap(applicationContext))
         setContent {

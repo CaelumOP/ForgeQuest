@@ -17,7 +17,7 @@ class GeminiBridgeWorker(context: Context, params: WorkerParameters) : Coroutine
     override suspend fun doWork(): Result {
         val app = applicationContext.container
         if (!app.settings.current().bridgeEnabled) return Result.success()
-        val token = app.drive.silentToken(withDocs = true, bridge = true) ?: return Result.success()
+        val token = app.drive.silentToken() ?: return Result.success()
         return try {
             app.bridge.sync(token)
             Result.success()

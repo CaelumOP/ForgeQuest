@@ -33,6 +33,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.FitSwitch
 import android.content.Intent
 import com.forgequest.app.ui.components.NumberEntryDialog
 import androidx.compose.ui.graphics.SolidColor
@@ -555,12 +556,12 @@ private fun ResultSheet(
                         Text(stringResource(R.string.scan_save_to_foods), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                         Text(stringResource(R.string.scan_save_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
-                    Switch(save, { save = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                    FitSwitch(save, { save = it })
                 }
                 if (save) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                        Switch(pin, { pin = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                        FitSwitch(pin, { pin = it })
                     }
                 }
                 Spacer(Modifier.height(16.dp))

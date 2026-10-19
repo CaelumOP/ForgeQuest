@@ -111,6 +111,8 @@ import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
+import com.forgequest.app.ui.components.FitSwitch
+import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
@@ -241,11 +243,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     // ------------------------------------------------------------ Drive
 
-    private fun withDrive(label: String, withDocs: Boolean = false, bridge: Boolean = false, op: suspend (String) -> Unit) {
+    private fun withDrive(label: String, op: suspend (String) -> Unit) {
         busy.value = label
         viewModelScope.launch {
             try {
-                when (val auth = app.drive.authorize(withDocs, bridge)) {
+                when (val auth = app.drive.authorize()) {
                     is DriveAuth.Token -> op(auth.accessToken)
                     is DriveAuth.NeedsUi -> {
                         afterConsent = op
@@ -293,7 +295,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         if (on) syncBridge()
     }
 
-    fun syncBridge() = withDrive(app.str(R.string.bridge_syncing), bridge = true) { token ->
+    fun syncBridge() = withDrive(app.str(R.string.bridge_syncing)) { token ->
         // The same sign-in connects Drive backup too, so one tap sets up both.
         if (app.settings.current().driveEmail.isBlank()) {
             val email = app.drive.accountEmail(token)
@@ -404,7 +406,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun importDoc() = withDrive(app.str(R.string.drive_reading_doc), withDocs = true) { token ->
+    fun importDoc() = withDrive(app.str(R.string.drive_reading_doc)) { token ->
         if (app.settings.apiKey.value.isBlank()) throw AiError.MissingKey
         app.settings.update { it.copy(driveDocsEnabled = true) }
         docPreview.value = app.drive.fetchPlanDoc(token, 0)
@@ -456,13 +458,7 @@ fun ProfileScreen(nav: NavHostController) {
     val probe = remember { com.forgequest.app.data.health.HealthProbe(context) }
     val hcScope = rememberCoroutineScope()
     fun runHealthCheck() = hcScope.launch {
-        val msg = try {
-            probe.check()
-        } catch (e: Exception) {
-            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
-            context.getString(R.string.hc_failed, e.message ?: e.javaClass.simpleName)
-        }
-        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+        context.toast(com.forgequest.app.data.suspendRunCatching { probe.check() }.getOrElse { context.getString(R.string.hc_failed, it.message ?: it.javaClass.simpleName) })
     }
     val hcPerms = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) { runHealthCheck() }
     fun startHealthCheck() = hcScope.launch {
@@ -607,24 +603,15 @@ fun ProfileScreen(nav: NavHostController) {
         // Fitbit readiness (optional): the only place it's switched on, connected or off.
         val connected = settings.healthEnabled && (health is com.forgequest.app.data.health.HealthState.Ready || health is com.forgequest.app.data.health.HealthState.Loading)
         FitCard {
-            Row(Modifier.fillMaxWidth().toggleable(connected, role = Role.Switch) { on ->
+            SwitchHeader(
+                Icons.Rounded.MonitorHeart, c.coral, c.coralTrack, stringResource(R.string.profile_health_title),
+                stringResource(if (connected) R.string.profile_health_on else R.string.profile_health_hint), connected,
+            ) { on ->
                 when {
                     !on -> vm.setHealth(false)
-                    probe.status() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE ->
-                        android.widget.Toast.makeText(context, context.getString(R.string.hc_unavailable), android.widget.Toast.LENGTH_LONG).show()
+                    probe.status() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE -> context.toast(context.getString(R.string.hc_unavailable))
                     else -> { vm.setHealth(true); healthAccess.launch(vm.app.health.requestPermissions()) }
                 }
-            }, verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.MonitorHeart, c.coral, c.coralTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_health_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text(
-                        stringResource(if (connected) R.string.profile_health_on else R.string.profile_health_hint),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                    )
-                }
-                Switch(connected, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
             }
             if (connected) {
                 // What Health Connect holds, as a file to share when something looks off.
@@ -680,7 +667,7 @@ fun ProfileScreen(nav: NavHostController) {
             // The whole row toggles, not just the switch.
             Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                Switch(settings.trackCarbs, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                FitSwitch(settings.trackCarbs, null)
             }
             if (settings.trackCarbs) {
                 SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
@@ -734,15 +721,7 @@ fun ProfileScreen(nav: NavHostController) {
         val bridgeScope = rememberCoroutineScope()
         val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
         FitCard {
-            Row(Modifier.fillMaxWidth().toggleable(settings.bridgeEnabled, role = Role.Switch) { vm.setBridge(it) }, verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.bridge_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text(stringResource(R.string.bridge_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-                Switch(settings.bridgeEnabled, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
-            }
+            SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { vm.setBridge(it) }
             if (settings.bridgeEnabled) {
                 Spacer(Modifier.height(10.dp))
                 val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", java.util.Locale.getDefault())
@@ -759,7 +738,7 @@ fun ProfileScreen(nav: NavHostController) {
                     TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
                         val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
                         clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
-                        android.widget.Toast.makeText(context, context.getString(R.string.bridge_prompt_copied), android.widget.Toast.LENGTH_SHORT).show()
+                        context.toast(context.getString(R.string.bridge_prompt_copied))
                     })
                 }
                 Spacer(Modifier.height(8.dp))
@@ -768,7 +747,7 @@ fun ProfileScreen(nav: NavHostController) {
                     TonalPill(stringResource(R.string.bridge_copy_data), onClick = {
                         bridgeScope.launch {
                             clipboard.setText(androidx.compose.ui.text.AnnotatedString(vm.bridgeData()))
-                            android.widget.Toast.makeText(context, context.getString(R.string.bridge_data_copied), android.widget.Toast.LENGTH_SHORT).show()
+                            context.toast(context.getString(R.string.bridge_data_copied))
                         }
                     }, tint = c.textSecondary)
                     TonalPill(stringResource(R.string.bridge_paste), onClick = { pasteOpen = true }, tint = c.textSecondary)
@@ -860,26 +839,18 @@ fun ProfileScreen(nav: NavHostController) {
                     Text(stringResource(R.string.profile_vibration), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                     Text(stringResource(R.string.profile_vibration_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
-                Switch(settings.hapticsEnabled, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                FitSwitch(settings.hapticsEnabled, null)
             }
         }
         Spacer(Modifier.height(12.dp))
 
         // Reminders
         FitCard {
-            Row(Modifier.toggleable(settings.reminderHour >= 0, role = Role.Switch) { vm.setReminder(if (it) 18 else -1) }, verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_reminder), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(
-                        if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off)
-                        else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                    )
-                }
-                Switch(settings.reminderHour >= 0, null, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
-            }
+            SwitchHeader(
+                Icons.Rounded.Notifications, c.gold, c.goldTrack, stringResource(R.string.profile_reminder),
+                if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
+                settings.reminderHour >= 0,
+            ) { vm.setReminder(if (it) 18 else -1) }
             if (settings.reminderHour >= 0) {
                 var typingHour by remember { mutableStateOf(false) }
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -906,20 +877,11 @@ fun ProfileScreen(nav: NavHostController) {
                     androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
                 ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
             }
-            Row(Modifier.toggleable(settings.biometricLock && canLock, enabled = canLock, role = Role.Switch) { vm.setLock(it) }, verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Lock, c.coral, c.coralTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_app_lock), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(
-                        if (!canLock) stringResource(R.string.profile_lock_unavailable)
-                        else if (settings.biometricLock) stringResource(R.string.profile_lock_on)
-                        else stringResource(R.string.profile_lock_off),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                    )
-                }
-                Switch(settings.biometricLock && canLock, null, enabled = canLock, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
-            }
+            SwitchHeader(
+                Icons.Rounded.Lock, c.coral, c.coralTrack, stringResource(R.string.profile_app_lock),
+                stringResource(if (!canLock) R.string.profile_lock_unavailable else if (settings.biometricLock) R.string.profile_lock_on else R.string.profile_lock_off),
+                settings.biometricLock && canLock, enabled = canLock,
+            ) { vm.setLock(it) }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -1231,6 +1193,21 @@ private fun SettingsSection(title: String) {
         color = Fit.colors.textSecondary,
         modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp).semantics { heading() },
     )
+}
+
+/** Header of a settings card that toggles as a whole: icon, title, current state, switch. */
+@Composable
+private fun SwitchHeader(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, subtitle: String, checked: Boolean, enabled: Boolean = true, onToggle: (Boolean) -> Unit) {
+    val c = Fit.colors
+    Row(Modifier.fillMaxWidth().toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onToggle), verticalAlignment = Alignment.CenterVertically) {
+        IconCircle(icon, tint, track)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        }
+        FitSwitch(checked, null, enabled = enabled)
+    }
 }
 
 @Composable

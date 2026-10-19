@@ -104,6 +104,17 @@ fun FitCard(
 }
 
 /** 48 dp pastel circle with an icon, the Google Fit list-row badge. */
+/** The app's switch: teal when on. Pass null for [onCheckedChange] when the whole row toggles. */
+@Composable
+fun FitSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true) =
+    androidx.compose.material3.Switch(
+        checked, onCheckedChange, enabled = enabled,
+        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Fit.colors.teal, checkedThumbColor = Fit.colors.card),
+    )
+
+/** Short message at the bottom of the screen, for results that need no action. */
+fun android.content.Context.toast(message: String) = android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show()
+
 @Composable
 fun IconCircle(icon: ImageVector, tint: Color, track: Color, size: Dp = 48.dp) {
     Box(Modifier.size(size).clip(CircleShape).background(track), contentAlignment = Alignment.Center) {

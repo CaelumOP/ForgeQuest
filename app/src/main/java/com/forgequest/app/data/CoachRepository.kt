@@ -255,7 +255,7 @@ class CoachRepository(
         append(progressSummary())
         appendLine()
         append("LANGUAGE: reply in $replyLanguage. Decide from the latest message only, never from earlier messages, the user's name or the data above.")
-        if (replyLanguage == "Arabic") append(" Keep exercise names in English in parentheses the first time, and write numbers as Western digits (0-9).")
+        if (replyLanguage == "Arabic") append(" Write formal Modern Standard Arabic (الفصحى), not dialect: natural Arabic phrasing, not translated English; use the Arabic comma (،) and question mark (؟). Keep exercise names in English in parentheses the first time, and write numbers as Western digits (0-9).")
     }
 
     fun planSchemaInstructions(): String {
