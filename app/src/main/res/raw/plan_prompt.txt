@@ -44,10 +44,10 @@ Rules:
    as the coach says it), "kind" and "muscles". Muscles come only from: CHEST SHOULDERS BICEPS TRICEPS FOREARMS ABS
    OBLIQUES TRAPS UPPER_BACK LOWER_BACK GLUTES QUADS HAMSTRINGS ADDUCTORS CALVES TIBIALIS. List the main muscle first,
    at most three.
-5. videoUrl: for EVERY item, the link to the exact moment the coach first demonstrates that exercise, as
+5. videoUrl: only when I gave you video links above. Then, for every item, the link to the exact moment the coach first demonstrates that exercise, as
    https://www.youtube.com/watch?v=VIDEOID&t=SSSs where SSS is whole seconds from the start of that day's video.
    Take the timestamp from the on-screen label or the first clear demonstration, not from the intro. Be as precise as
-   the video allows; if you are unsure between two moments, choose the earlier one.
+   the video allows; if you are unsure between two moments, choose the earlier one. If I gave no links, leave videoUrl out entirely; never invent or search for a link.
 6. "description": two sentences in the coach's own terms: how rounds and rest work, and when to move to the next level.
    "note" on an item only for a cue the coach stresses (e.g. "3 s hold at the top").
 7. Do not add exercises he doesn't show, do not pad sets, and do not round his numbers. If something is unclear in the
