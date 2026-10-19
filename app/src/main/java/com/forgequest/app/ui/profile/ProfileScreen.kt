@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.profile
 
+import androidx.compose.material.icons.rounded.SystemUpdate
+
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.SaveAlt
@@ -158,6 +160,29 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun refreshHealth() = viewModelScope.launch { app.health.refresh(force = true) }
+
+    // ------------------------------------------------------------ Updates
+
+    val update = MutableStateFlow<com.forgequest.app.data.update.LatestVersion?>(null)
+
+    fun checkUpdate() = viewModelScope.launch {
+        busy.value = app.str(R.string.update_checking)
+        com.forgequest.app.data.suspendRunCatching { app.updates.check() }
+            .onSuccess { latest -> if (latest == null) message.value = app.str(R.string.update_latest) else update.value = latest }
+            .onFailure { message.value = app.str(R.string.update_failed) }
+        busy.value = null
+    }
+
+    fun installUpdate() = viewModelScope.launch {
+        val latest = update.value ?: return@launch
+        if (!app.updates.canInstall()) { app.updates.openInstallPermission(); message.value = app.str(R.string.update_allow); return@launch }
+        update.value = null
+        busy.value = app.str(R.string.update_downloading)
+        com.forgequest.app.data.suspendRunCatching { app.updates.download(latest) }
+            .onSuccess { app.updates.install(it) }
+            .onFailure { message.value = app.str(R.string.update_failed) }
+        busy.value = null
+    }
 
     fun setHealth(enabled: Boolean) = viewModelScope.launch {
         app.settings.update { it.copy(healthEnabled = enabled) }
@@ -946,6 +971,21 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         SettingsSection(stringResource(R.string.settings_section_more))
+
+        // Updates from GitHub, for an app installed outside the Play Store
+        SettingsRow(Icons.Rounded.SystemUpdate, c.teal, c.tealTrack, stringResource(R.string.update_title), stringResource(R.string.update_hint, com.forgequest.app.BuildConfig.VERSION_NAME)) { vm.checkUpdate() }
+        Spacer(Modifier.height(12.dp))
+        val latest by vm.update.collectAsState()
+        latest?.let { v ->
+            AlertDialog(
+                onDismissRequest = { vm.update.value = null },
+                containerColor = c.card,
+                title = { Text(stringResource(R.string.update_available, v.versionName), color = c.textPrimary) },
+                text = { Text(v.notes.ifBlank { stringResource(R.string.update_no_notes) }, color = c.textSecondary) },
+                confirmButton = { TextButton(onClick = vm::installUpdate) { Text(stringResource(R.string.update_now), color = c.teal) } },
+                dismissButton = { TextButton(onClick = { vm.update.value = null }) { Text(stringResource(R.string.update_later), color = c.textSecondary) } },
+            )
+        }
 
         // App tour, the same slides as the first run
         SettingsRow(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
