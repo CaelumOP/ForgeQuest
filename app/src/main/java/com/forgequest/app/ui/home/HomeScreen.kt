@@ -193,6 +193,7 @@ fun HomeScreen(nav: NavHostController) {
             }
         }
     }
+    RaadEgg(s.settings.name, vm.app.haptics::celebrate)
 }
 
 @Composable
