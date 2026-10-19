@@ -327,6 +327,12 @@
     <string name="scan_fat_light">قليلة</string>
     <string name="scan_fat_heavy">كثيرة</string>
     <string name="scan_err_save_photo">تعذّر حفظ الصورة.</string>
+    <string name="scan_ask_outside">اسأل تطبيق ذكاء اصطناعي</string>
+    <string name="scan_ask_again">المشاركة مجددًا</string>
+    <string name="scan_err_slow">يستغرق التحليل داخل التطبيق وقتًا طويلًا. اسأل تطبيق ذكاء اصطناعي بدلًا من ذلك، أو حاول مرة أخرى.</string>
+    <string name="scan_outside_title">بانتظار إجابة الذكاء الاصطناعي</string>
+    <string name="scan_outside_body">نُسخت التعليمات إلى الحافظة أيضًا. انسخ الإجابة من تطبيق الذكاء الاصطناعي، ثم عد إلى هنا لتُملأ تلقائيًا.</string>
+    <string name="scan_outside_wrong_format">النص المنسوخ ليس تقديرًا للوجبة بالصيغة المطلوبة. انسخ إجابة الذكاء الاصطناعي كاملةً، ثم عد إلى هنا.</string>
     <string name="scan_err_generic">حدث خطأ في أثناء قراءة الوجبة. أعد المحاولة.</string>
     <string name="scan_default_serving">طبق واحد</string>
     <string name="scan_logged_summary">سُجّل %1$s · %2$d سعرة · %3$d غ بروتين</string>
@@ -359,9 +365,6 @@
     <string name="scan_save_to_foods">الحفظ في أطعمتي</string>
     <string name="scan_save_hint">سجّلها لاحقًا بضغطة واحدة</string>
     <string name="scan_log_meal">تسجيل الوجبة</string>
-    <string name="scan_needs_key_title">يحتاج تصوير الوجبات إلى مفتاح Gemini</string>
-    <string name="scan_needs_key_body">أضف مفتاح Gemini المجاني مرة واحدة من الملف الشخصي، لتتحول كل صورة إلى سعرات وبروتين.</string>
-    <string name="scan_add_key">إضافة المفتاح من الملف الشخصي</string>
     <string name="coach_plan_applied">طُبّقت الخطة الجديدة. راجعها في تبويب التمارين.</string>
     <string name="coach_suggest_week">راجع أسبوعي</string>
     <string name="coach_suggest_pull_up">كيف أوصل لأول عقلة؟</string>

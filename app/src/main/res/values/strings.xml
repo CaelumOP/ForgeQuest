@@ -282,6 +282,12 @@
     <string name="scan_fat_light">Light</string>
     <string name="scan_fat_heavy">Heavy</string>
     <string name="scan_err_save_photo">Couldn\'t save the photo.</string>
+    <string name="scan_ask_outside">Ask AI app</string>
+    <string name="scan_ask_again">Share again</string>
+    <string name="scan_err_slow">The in-app scan is taking too long. Ask your AI app instead, or try again.</string>
+    <string name="scan_outside_title">Waiting for the AI\'s answer</string>
+    <string name="scan_outside_body">The prompt is on your clipboard too. Copy the answer in the AI app, then come back here and it fills in by itself.</string>
+    <string name="scan_outside_wrong_format">The copied text isn\'t a meal estimate in the app\'s format. Copy the AI\'s whole answer, then come back.</string>
     <string name="scan_err_generic">Something went wrong reading that meal. Try again.</string>
     <string name="scan_default_serving">1 plate</string>
     <string name="scan_logged_summary">Logged %1$s · %2$d kcal · %3$d g protein</string>
@@ -314,9 +320,6 @@
     <string name="scan_save_to_foods">Save to my foods</string>
     <string name="scan_save_hint">Log it again later with one tap</string>
     <string name="scan_log_meal">Log meal</string>
-    <string name="scan_needs_key_title">Meal scanning needs your AI key</string>
-    <string name="scan_needs_key_body">Add your free Gemini key in Profile once, and every photo turns into calories and protein.</string>
-    <string name="scan_add_key">Add key in Profile</string>
     <string name="coach_plan_applied">New plan applied. Check the Workouts tab.</string>
     <string name="coach_suggest_week">Review my week</string>
     <string name="coach_suggest_pull_up">How do I get my first pull-up?</string>

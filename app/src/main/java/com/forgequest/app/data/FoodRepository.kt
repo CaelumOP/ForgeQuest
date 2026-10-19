@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.ai.GeminiClient
@@ -159,14 +160,23 @@ class FoodRepository(
     suspend fun scan(photoPath: String): FoodScan {
         val key = settings.apiKey.value
         if (key.isBlank()) throw AiError.MissingKey
-        val s = settings.current()
         val image = withContext(Dispatchers.IO) { File(photoPath).readBytes() }
+        val m = models.current()
+        val raw = gemini.generate(key, listOf(m.lite, m.fast), scanInstructions(), listOf("user" to "Estimate this meal."), image = image, jsonOutput = true, fast = true)
+        val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
+            ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
+        if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
+        return scan
+    }
+
+    private suspend fun scanInstructions(): String {
+        val s = settings.current()
         val handHint = if (s.handLengthCm > 0f) {
             "If the user's hand is visible, use it as a size reference: hand length ${s.handLengthCm} cm, palm width ${s.palmWidthCm} cm."
         } else {
             "If a hand, fork, phone or standard plate is visible, use it as a size reference."
         }
-        val system = """
+        return """
             You estimate nutrition from meal photos for a fitness app. Be realistic, not optimistic.
             $handHint
             List each distinct food separately with estimated cooked grams, kcal, grams of protein and grams of carbohydrate.
@@ -175,12 +185,25 @@ class FoodRepository(
             Reply ONLY with JSON: {"dish": string, "items": [{"name": string, "grams": int, "kcal": int, "protein": number, "carbs": number}], "handVisible": boolean, "note": string}
             "note" is one short sentence about anything uncertain, or empty.
         """.trimIndent()
-        val m = models.current()
-        val raw = gemini.generate(key, listOf(m.lite, m.fast), system, listOf("user" to "Estimate this meal."), image = image, jsonOutput = true, fast = true)
-        val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
-            ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
-        if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
-        return scan
+    }
+
+    /** The same instructions as the in-app scan, worded for pasting into another AI app (Gemini, ChatGPT…) with the photo. */
+    suspend fun outsidePrompt(): String = scanInstructions() + "\n\n" + """
+        Estimate the meal in the attached photo.
+        Put the JSON in a single code block with nothing before or after it, so it can be copied in one tap and pasted into the ForgeQuest app.
+    """.trimIndent()
+
+    /** Reads an answer copied from another AI app. Null when it isn't a meal estimate in the expected format. */
+    fun parseScan(text: String): FoodScan? =
+        runCatching { json.decodeFromString<FoodScan>(extractJson(text)) }.getOrNull()?.takeIf { it.items.isNotEmpty() }
+
+    /** A shareable copy of a meal photo for other apps; the private file itself stays out of reach. */
+    suspend fun shareablePhoto(photoPath: String): Uri = withContext(Dispatchers.IO) {
+        val dir = File(context.cacheDir, "share").apply { mkdirs() }
+        dir.listFiles().orEmpty().forEach { it.delete() }
+        val file = File(dir, "meal.jpg")
+        File(photoPath).copyTo(file, overwrite = true)
+        FileProvider.getUriForFile(context, "${context.packageName}.files", file)
     }
 
     private fun extractJson(raw: String): String {

@@ -7,6 +7,7 @@ import com.forgequest.app.ui.titleRes
 import androidx.compose.ui.res.stringResource
 
 import android.Manifest
+import android.content.ClipData
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,6 +60,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FlashlightOff
@@ -79,6 +81,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,7 +89,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -111,18 +117,26 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import kotlin.math.roundToInt
 
 sealed interface ScanState {
     data object Camera : ScanState
     data class Analyzing(val photo: String) : ScanState
-    data class Result(val photo: String, val scan: FoodScan) : ScanState
+    data class Result(val photo: String?, val scan: FoodScan) : ScanState
     data class Failed(val photo: String?, val message: String, val keyProblem: Boolean = false) : ScanState
+    /** The photo went to another AI app; its copied answer is read from the clipboard on return. */
+    data class Outside(val photo: String, val wrongFormat: Boolean = false) : ScanState
 }
+
+/** How long the in-app scan may take before the screen points to another AI app instead. */
+private const val SCAN_LIMIT_MS = 10_000L
 
 enum class Portion(@androidx.annotation.StringRes val label: Int, val factor: Float) { SMALL(R.string.scan_portion_small, 0.75f), NORMAL(R.string.scan_normal, 1f), LARGE(R.string.scan_portion_large, 1.25f) }
 enum class CookingFat(@androidx.annotation.StringRes val label: Int, val kcal: Int) { LIGHT(R.string.scan_fat_light, 0), NORMAL(R.string.scan_normal, 50), HEAVY(R.string.scan_fat_heavy, 150) }
@@ -146,17 +160,47 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             .onFailure { state.value = ScanState.Failed(null, (it as? AiError)?.userMessage ?: app.str(R.string.photo_err_open)) }
     }
 
+    private var scanJob: Job? = null
+    private var prompt: String? = null
+
     fun analyze(photo: String) {
         state.value = ScanState.Analyzing(photo)
-        viewModelScope.launch {
-            state.value = try {
-                ScanState.Result(photo, app.food.scan(photo))
-            } catch (e: AiError) {
-                ScanState.Failed(photo, e.userMessage, keyProblem = e is AiError.InvalidKey || e is AiError.MissingKey)
-            } catch (e: Exception) {
-                ScanState.Failed(photo, app.str(R.string.scan_err_generic))
+        scanJob?.cancel()
+        scanJob = viewModelScope.launch {
+            // Raced against a timer rather than wrapped in withTimeout: a blocking request ignores cancellation,
+            // and the screen shouldn't wait for it.
+            val pending = async { runCatching { app.food.scan(photo) } }
+            val outcome = withTimeoutOrNull(SCAN_LIMIT_MS) { pending.await() }
+            if (outcome == null) pending.cancel()
+            if ((state.value as? ScanState.Analyzing)?.photo != photo) return@launch
+            val error = outcome?.exceptionOrNull()
+            state.value = when {
+                outcome == null -> ScanState.Failed(photo, app.str(R.string.scan_err_slow))
+                error == null -> ScanState.Result(photo, outcome.getOrThrow())
+                error is AiError -> ScanState.Failed(photo, error.userMessage, keyProblem = error is AiError.InvalidKey || error is AiError.MissingKey)
+                else -> ScanState.Failed(photo, app.str(R.string.scan_err_generic))
             }
         }
+    }
+
+    /** Stops the in-app scan and hands the photo and prompt to [share], which opens the system share screen. */
+    fun askOutside(photo: String, share: (android.net.Uri, String) -> Unit) = viewModelScope.launch {
+        scanJob?.cancel()
+        val text = app.food.outsidePrompt().also { prompt = it }
+        runCatching { app.food.shareablePhoto(photo) }
+            .onSuccess { uri ->
+                state.value = ScanState.Outside(photo)
+                share(uri, text)
+            }
+            .onFailure { state.value = ScanState.Failed(photo, app.str(R.string.scan_err_save_photo)) }
+    }
+
+    /** Called when the screen is back in focus after sharing: imports the AI app's answer if one was copied. */
+    fun onReturn(clip: String?) {
+        val s = state.value as? ScanState.Outside ?: return
+        if (clip.isNullOrBlank() || clip == prompt) return
+        val scan = app.food.parseScan(clip)
+        state.value = if (scan != null) ScanState.Result(s.photo, scan) else s.copy(wrongFormat = true)
     }
 
     fun retake() {
@@ -164,13 +208,15 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             is ScanState.Analyzing -> s.photo
             is ScanState.Result -> s.photo
             is ScanState.Failed -> s.photo
+            is ScanState.Outside -> s.photo
             ScanState.Camera -> null
         }
+        scanJob?.cancel()
         state.value = ScanState.Camera
         viewModelScope.launch { app.food.discardPhoto(photo) }
     }
 
-    fun log(photo: String, name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float, saveToFoods: Boolean, pin: Boolean) {
+    fun log(photo: String?, name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float, saveToFoods: Boolean, pin: Boolean) {
         viewModelScope.launch {
             app.food.logScannedMeal(name, category, kcal, protein, photo, carbs)
             if (saveToFoods) {
@@ -199,15 +245,30 @@ fun ScanScreen(nav: NavHostController) {
     }
     BackHandler { if (state is ScanState.Camera) nav.popBackStack() else vm.retake() }
 
-    if (!vm.hasKey) {
-        NoKeyScreen(onClose = { nav.popBackStack() }, onOpenProfile = { nav.popBackStack(); nav.goToTab(Routes.PROFILE) })
-        return
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val askOutside: (String) -> Unit = { photo ->
+        vm.askOutside(photo) { uri, prompt ->
+            // Some AI apps drop the text that comes with a shared photo, so the prompt is on the clipboard too.
+            clipboard.setText(AnnotatedString(prompt))
+            val send = Intent(Intent.ACTION_SEND).setType("image/jpeg")
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_TEXT, prompt)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            send.clipData = ClipData.newRawUri(null, uri)
+            context.startActivity(Intent.createChooser(send, null))
+        }
+    }
+    // The clipboard is only readable while the window has focus, so check when focus comes back from the other app.
+    val windowInfo = LocalWindowInfo.current
+    LaunchedEffect(Unit) {
+        snapshotFlow { windowInfo.isWindowFocused }.collect { focused -> if (focused) vm.onReturn(clipboard.getText()?.text) }
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when (val s = state) {
             ScanState.Camera -> CameraView(onCaptured = vm::analyzeBytes, onPicked = vm::analyzeUri, onClose = { nav.popBackStack() })
-            is ScanState.Analyzing -> FrozenPhoto(s.photo) { ScanningOverlay() }
+            is ScanState.Analyzing -> FrozenPhoto(s.photo) { ScanningOverlay(onAskOutside = { askOutside(s.photo) }) }
             is ScanState.Result -> FrozenPhoto(s.photo) {
                 val carbsOn = vm.app.settings.settings.collectAsState(initial = null).value?.trackCarbs == true
                 ResultSheet(s.scan, vm.app.food.categoryForNow(), carbsOn, onRetake = vm::retake) { name, cat, kcal, protein, carbs, save, pin ->
@@ -222,7 +283,11 @@ fun ScanScreen(nav: NavHostController) {
                     onRetry = { s.photo?.let(vm::analyze) },
                     onRetake = vm::retake,
                     onOpenProfile = { nav.popBackStack(); nav.goToTab(Routes.PROFILE) },
+                    onAskOutside = s.photo?.let { photo -> { askOutside(photo) } },
                 )
+            }
+            is ScanState.Outside -> FrozenPhoto(s.photo) {
+                OutsideCard(s.wrongFormat, onRetake = vm::retake, onAskAgain = { askOutside(s.photo) })
             }
         }
         if (state !is ScanState.Camera) {
@@ -375,7 +440,7 @@ private fun FrozenPhoto(photo: String?, overlay: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ScanningOverlay() {
+private fun ScanningOverlay(onAskOutside: () -> Unit) {
     val c = Fit.colors
     val transition = rememberInfiniteTransition(label = "scan")
     val sweep by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Reverse), label = "sweep")
@@ -406,12 +471,14 @@ private fun ScanningOverlay() {
                     Box(Modifier.size(width = if (i == step) 22.dp else 8.dp, height = 8.dp).clip(CircleShape).background(if (i <= step) c.teal else c.cardHigh))
                 }
             }
+            Spacer(Modifier.height(16.dp))
+            TonalPill(stringResource(R.string.scan_ask_outside), onClick = onAskOutside, icon = Icons.Rounded.AutoAwesome)
         }
     }
 }
 
 @Composable
-private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, onRetry: () -> Unit, onRetake: () -> Unit, onOpenProfile: () -> Unit) {
+private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, onRetry: () -> Unit, onRetake: () -> Unit, onOpenProfile: () -> Unit, onAskOutside: (() -> Unit)?) {
     val c = Fit.colors
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -428,6 +495,34 @@ private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, o
                     keyProblem -> PillButton(stringResource(R.string.scan_open_profile), onClick = onOpenProfile)
                     canRetry -> PillButton(stringResource(R.string.action_try_again), onClick = onRetry)
                 }
+            }
+            if (onAskOutside != null) {
+                Spacer(Modifier.height(10.dp))
+                PillButton(stringResource(R.string.scan_ask_outside), onClick = onAskOutside, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
+private fun OutsideCard(wrongFormat: Boolean, onRetake: () -> Unit, onAskAgain: () -> Unit) {
+    val c = Fit.colors
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp)
+                .clip(RoundedCornerShape(28.dp)).background(c.card).padding(24.dp),
+        ) {
+            Text(stringResource(R.string.scan_outside_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(if (wrongFormat) R.string.scan_outside_wrong_format else R.string.scan_outside_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (wrongFormat) c.coral else c.textSecondary,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
+                PillButton(stringResource(R.string.scan_ask_again), onClick = onAskAgain, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -572,24 +667,5 @@ private fun ResultSheet(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun NoKeyScreen(onClose: () -> Unit, onOpenProfile: () -> Unit) {
-    val c = Fit.colors
-    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().padding(24.dp)) {
-        Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClose), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = c.textPrimary)
-        }
-        Spacer(Modifier.weight(1f))
-        IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack, 72.dp)
-        Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.scan_needs_key_title), style = MaterialTheme.typography.headlineSmall, color = c.textPrimary)
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.scan_needs_key_body), style = MaterialTheme.typography.bodyLarge, color = c.textSecondary)
-        Spacer(Modifier.height(24.dp))
-        PillButton(stringResource(R.string.scan_add_key), onClick = onOpenProfile, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.weight(1f))
     }
 }
