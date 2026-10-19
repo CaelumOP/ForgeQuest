@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "2.2.0",
+  "versionCode": 4,
+  "versionName": "2.2.1",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Hold timer for timed moves (3-2-1, countdown, vibration, extra time). Food scan stops after 10 s and can send the photo to your AI app instead."
+  "notes": "Hold timer for timed moves, food scan backup, and a little surprise."
 }
