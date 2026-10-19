@@ -29,6 +29,12 @@ data class OpenSession(val session: SessionEntity?)
 
 data class RestTimer(val totalSeconds: Int, val endsAt: Long, val nextExercise: String? = null)
 
+/** A timed hold in progress: a 3-second get-ready, then the clock runs from [startsAt] towards [target]. */
+data class HoldTimer(val setId: Long, val exerciseName: String, val target: Int, val startsAt: Long) {
+    /** Whole seconds held so far; negative during the get-ready. */
+    fun elapsed(now: Long): Int = Math.floorDiv(now - startsAt, 1000L).toInt()
+}
+
 data class WorkoutSummary(
     val title: String,
     val doneSets: Int,
@@ -69,6 +75,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val previous = MutableStateFlow<Map<String, List<SetEntity>>>(emptyMap())
 
     val rest = MutableStateFlow<RestTimer?>(null)
+    val hold = MutableStateFlow<HoldTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
     val summary = MutableStateFlow<WorkoutSummary?>(null)
     val finishing = MutableStateFlow(false)
@@ -95,6 +102,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                         app.notifier.restOver(r.nextExercise)
                     }
                 }
+                hold.value?.let { holdCue(it, it.elapsed(now.value)) }
                 delay(250)
             }
         }
@@ -129,6 +137,44 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun skipRest() {
         rest.value = null
         app.notifier.cancelRest()
+    }
+
+    // ------------------------------------------------------------ Hold timer
+
+    private var lastCue = Int.MIN_VALUE
+
+    fun startHold(set: SetEntity) {
+        skipRest()
+        val target = set.seconds?.takeIf { it > 0 } ?: 30
+        lastCue = Int.MIN_VALUE
+        hold.value = HoldTimer(set.id, exercises.value[set.exerciseId]?.name.orEmpty(), target, System.currentTimeMillis() + 3000)
+    }
+
+    /** One buzz per second of the get-ready, at halfway, on the last three seconds, and a big one on the target. */
+    private fun holdCue(h: HoldTimer, s: Int) {
+        if (s == lastCue) return
+        lastCue = s
+        val left = h.target - s
+        when {
+            s == h.target -> app.haptics.celebrate()
+            s < 0 || left in 1..3 || (h.target >= 10 && s == h.target / 2) -> app.haptics.tick()
+        }
+    }
+
+    fun cancelHold() { hold.value = null }
+
+    /** Saves the seconds actually held (short of the target or past it), ticks the set and starts the rest. */
+    fun stopHold() {
+        val h = hold.value ?: return
+        hold.value = null
+        val held = h.elapsed(System.currentTimeMillis()).coerceIn(0, 3600)
+        val set = sets.value.firstOrNull { it.id == h.setId } ?: return
+        if (held == 0) return
+        val updated = set.copy(seconds = held, done = true)
+        app.haptics.setDone()
+        viewModelScope.launch { repo.updateSet(updated) }
+        checkBest(set, updated)
+        if (set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set))
     }
 
     fun adjust(set: SetEntity, kind: ExerciseKind, field: Field, direction: Int) {
@@ -166,6 +212,10 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             Field.WEIGHT -> set.copy(weightKg = ((value * 10).roundToInt() / 10f).coerceIn(0f, 999f))
         }
         viewModelScope.launch { repo.updateSet(updated) }
+        checkBest(set, updated)
+    }
+
+    private fun checkBest(set: SetEntity, updated: SetEntity) {
         val kind = exercises.value[set.exerciseId]?.kind ?: ExerciseKind.REPS
         val best = bestScores.value[set.exerciseId] ?: return
         if (Records.score(kind, updated.reps, updated.seconds, updated.weightKg) > best && celebrated.add(set.id)) {

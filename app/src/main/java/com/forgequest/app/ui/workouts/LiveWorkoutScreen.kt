@@ -58,6 +58,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -223,6 +224,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 )
             }
         }
+
+        val hold by vm.hold.collectAsState()
+        hold?.let { HoldOverlay(it, now, onStop = vm::stopHold, onCancel = vm::cancelHold) }
     }
 
     if (confirmFinish) {
@@ -434,10 +438,15 @@ private fun SetRow(
         Spacer(Modifier.width(6.dp))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             when (kind) {
-                ExerciseKind.HOLD -> NumberStepper(
-                    (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
-                    unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
-                )
+                ExerciseKind.HOLD -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!set.done) IconButton(onClick = { vm.startHold(set) }) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.cd_start_hold), tint = c.teal)
+                    }
+                    NumberStepper(
+                        (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
+                        unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
+                    )
+                }
                 ExerciseKind.REPS -> NumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                     title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp, valueColor = flashColor,
@@ -512,6 +521,57 @@ fun PrTag() {
     val c = Fit.colors
     Box(Modifier.clip(RoundedCornerShape(50)).background(c.goldTrack).padding(horizontal = 6.dp, vertical = 1.dp)) {
         Text(stringResource(R.string.live_pr), style = MaterialTheme.typography.labelSmall, color = c.gold, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** Full-screen clock for a timed hold: 3-2-1, the countdown to the target, then extra time counting up. */
+@Composable
+private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: () -> Unit) {
+    val c = Fit.colors
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+    BackHandler(onBack = onCancel)
+    val s = h.elapsed(now)
+    val ready = s < 0
+    val over = s >= h.target
+    val shown = when {
+        ready -> "${-s}"
+        over -> "+%d:%02d".format(java.util.Locale.US, (s - h.target) / 60, (s - h.target) % 60)
+        else -> (h.target - s).let { "%d:%02d".format(java.util.Locale.US, it / 60, it % 60) }
+    }
+    val tint = when { ready -> c.textSecondary; over -> c.gold; else -> c.teal }
+    Column(
+        Modifier.fillMaxSize().background(c.background).clickable(enabled = false) {}.statusBarsPadding().navigationBarsPadding().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(h.exerciseName, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            IconButton(onClick = onCancel) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.action_cancel), tint = c.textSecondary) }
+        }
+        Spacer(Modifier.weight(1f))
+        Text(
+            stringResource(when { ready -> R.string.hold_get_ready; over -> R.string.hold_overtime; else -> R.string.hold_holding }),
+            style = MaterialTheme.typography.titleLarge, color = tint, textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(88f, androidx.compose.ui.unit.TextUnitType.Sp)), fontWeight = FontWeight.Bold, color = tint)
+        Spacer(Modifier.height(16.dp))
+        ProgressLine(if (ready) 0f else (s / h.target.toFloat()).coerceIn(0f, 1f), if (over) c.gold else c.teal, c.tealTrack, height = 6.dp)
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.hold_target, h.target), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        Spacer(Modifier.weight(1f))
+        PillButton(
+            stringResource(if (over) R.string.hold_done else R.string.hold_stop),
+            onClick = if (ready) onCancel else onStop,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (!ready && !over) {
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.hold_stop_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
+        }
     }
 }
 
