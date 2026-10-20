@@ -1083,4 +1083,13 @@
         <item quantity="many">%1$d مجموعة مكتملة</item>
         <item quantity="other">%1$d مجموعة مكتملة</item>
     </plurals>
+    <string name="plan_change">تغيير الخطة</string>
+    <string name="plan_gemini">إنشاء خطة باستخدام Gemini</string>
+    <string name="plan_gemini_copy">١. نسخ الطلب</string>
+    <string name="plan_gemini_paste">٢. لصق الخطة</string>
+    <string name="plan_gemini_info">ينسخ طلبًا لتطبيق Gemini. الصقه هناك مع روابط يوتيوب أو وصف لما تريد، فيسألك Gemini عن معدّاتك ومستواك ثم يردّ بخطة. انسخ ردّه واضغط «لصق الخطة».</string>
+    <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
+    <string name="plan_previous_info">خطط استخدمتها من قبل. يمكنك العودة إلى أيّ منها في أي وقت، ويبقى سجل تمارينك كما هو.</string>
+    <string name="plan_docs_info">يحمّل خطة من مستند Google «ForgeQuest plan» في Drive، كالذي تكتبه أتمتة Gemini. يفتح الملف الشخصي حيث يُربط Google Drive.</string>
+    <string name="cd_what_is_this">ما هو %1$s؟</string>
 </resources>

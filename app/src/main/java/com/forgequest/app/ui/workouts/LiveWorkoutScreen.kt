@@ -176,7 +176,8 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val doneCount = sets.count { it.done }
     val elapsed = ((now - s.startedAt) / 1000).coerceAtLeast(0)
     val groups = remember(sets) { group(sets) }
-    val nextSet = remember(sets) { sets.sortedWith(compareBy({ it.itemPosition }, { it.setIndex })).firstOrNull { !it.done } }
+    // In display order, so circuits go exercise by exercise within a round.
+    val nextSet = remember(groups) { groups.flatMap { it.allSets }.firstOrNull { !it.done } }
     val current = groups.indexOfFirst { g -> g.allSets.any { it.id == nextSet?.id } }
     val unit by vm.unit.collectAsState()
     val nextLabel = nextSet?.let { n -> exercises[n.exerciseId]?.let { ex -> "${ex.name} · ${setSummary(n, ex.kind, unit)}" } }
@@ -230,7 +231,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 androidx.compose.foundation.pager.HorizontalPager(
                     pager, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp, key = { groups[it].key },
                 ) { i ->
-                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * 1.25f)) {
+                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * 1.15f)) {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = bottomPad)) { cardFor(groups[i], true) }
                     }
                 }

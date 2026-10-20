@@ -34,6 +34,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ContentPaste
@@ -181,6 +184,7 @@ fun PlanEditorScreen(nav: NavHostController) {
     var picker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PlanItemEntity?>(null) }
     var templates by remember { mutableStateOf(false) }
+    var changePlan by remember { mutableStateOf(false) }
     var paste by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var previous by remember { mutableStateOf(false) }
@@ -212,25 +216,8 @@ fun PlanEditorScreen(nav: NavHostController) {
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            FitCard(padding = PaddingValues(vertical = 8.dp)) {
-                ActionRow(Icons.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_hint)) { templates = true }
-                if (allPlans.size > 1) {
-                    ActionRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_hint)) { previous = true }
-                }
-                ActionRow(Icons.Rounded.ContentPaste, stringResource(R.string.plan_paste), stringResource(R.string.plan_paste_hint)) { paste = true }
-                // One file feeds both the docs and the app (res/raw/plan_prompt.txt mirrors docs/prompts/plan-from-youtube.md).
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-                val copied = stringResource(R.string.plan_prompt_copied)
-                ActionRow(Icons.Rounded.SmartDisplay, stringResource(R.string.plan_from_youtube), stringResource(R.string.plan_from_youtube_hint)) {
-                    val prompt = context.resources.openRawResource(R.raw.plan_prompt).bufferedReader().use { it.readText() }
-                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
-                    if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copied) }
-                }
-                ActionRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_import_docs_hint)) {
-                    nav.navigate(com.forgequest.app.ui.Routes.PROFILE)
-                }
-            }
+            // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
+            com.forgequest.app.ui.components.TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 (1..7).forEach { dow ->
@@ -319,6 +306,34 @@ fun PlanEditorScreen(nav: NavHostController) {
             onMove = { delta -> vm.move(item, delta); editing = null },
             onSave = { vm.updateItem(it); editing = null }, onDismiss = { editing = null },
         )
+    }
+
+    if (changePlan) {
+        // Most used first; each choice has an ⓘ that explains what it does.
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+        val copied = stringResource(R.string.plan_prompt_copied)
+        ModalBottomSheet(onDismissRequest = { changePlan = false }, containerColor = c.card) {
+            Column(Modifier.padding(bottom = 32.dp)) {
+                Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
+                    Row(Modifier.padding(start = 70.dp, end = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        com.forgequest.app.ui.components.TonalPill(stringResource(R.string.plan_gemini_copy), onClick = {
+                            // The app copies res/raw/plan_prompt.txt, mirrored in docs/prompts/plan-from-youtube.md.
+                            val prompt = context.resources.openRawResource(R.raw.plan_prompt).bufferedReader().use { it.readText() }
+                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                            if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copied) }
+                        }, icon = Icons.Rounded.ContentCopy)
+                        com.forgequest.app.ui.components.TonalPill(stringResource(R.string.plan_gemini_paste), onClick = { changePlan = false; paste = true }, icon = Icons.Rounded.ContentPaste)
+                    }
+                }
+                ChoiceRow(Icons.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_info), onClick = { changePlan = false; templates = true })
+                if (allPlans.size > 1) {
+                    ChoiceRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_info), onClick = { changePlan = false; previous = true })
+                }
+                ChoiceRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_docs_info), onClick = { changePlan = false; nav.navigate(com.forgequest.app.ui.Routes.PROFILE) })
+            }
+        }
     }
 
     if (templates) {
@@ -462,6 +477,34 @@ private fun ActionRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tit
             Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
+    }
+}
+
+/** A choice in the Change plan sheet; the ⓘ opens a short explanation under it. */
+@Composable
+private fun ChoiceRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    info: String,
+    onClick: (() -> Unit)? = null,
+    extra: (@Composable () -> Unit)? = null,
+) {
+    val c = Fit.colors
+    var showInfo by remember { mutableStateOf(false) }
+    Column {
+        Row(
+            Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconCircle(icon, c.teal, c.tealTrack, 40.dp)
+            Spacer(Modifier.width(14.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
+            IconButton(onClick = { showInfo = !showInfo }) {
+                Icon(Icons.Rounded.Info, contentDescription = stringResource(R.string.cd_what_is_this, title), tint = if (showInfo) c.teal else c.textSecondary)
+            }
+        }
+        if (showInfo) Text(info, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(start = 70.dp, end = 20.dp, bottom = 8.dp))
+        extra?.invoke()
     }
 }
 

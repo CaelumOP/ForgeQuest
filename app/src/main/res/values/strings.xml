@@ -982,4 +982,13 @@
         <item quantity="one">%1$d set done</item>
         <item quantity="other">%1$d sets done</item>
     </plurals>
+    <string name="plan_change">Change plan</string>
+    <string name="plan_gemini">Make a plan with Gemini</string>
+    <string name="plan_gemini_copy">1. Copy prompt</string>
+    <string name="plan_gemini_paste">2. Paste plan</string>
+    <string name="plan_gemini_info">Copies a prompt for the Gemini app. Paste it there with YouTube links or a description of what you want; Gemini asks about your equipment and level, then replies with a plan. Copy its reply and tap Paste plan.</string>
+    <string name="plan_ready_made_info">Plans that come with the app, from beginner to advanced. Picking one replaces your current plan; the old one stays under Previous plans.</string>
+    <string name="plan_previous_info">Plans you used before. Switch back to one at any time; your workout history is kept.</string>
+    <string name="plan_docs_info">Loads a plan from the \"ForgeQuest plan\" Google Doc in your Drive, for example one written by your Gemini automation. Opens Profile, where Google Drive is connected.</string>
+    <string name="cd_what_is_this">What is %1$s?</string>
 </resources>
