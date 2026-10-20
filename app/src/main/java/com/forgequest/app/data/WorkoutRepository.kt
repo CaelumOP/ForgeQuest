@@ -282,7 +282,7 @@ class WorkoutRepository(private val db: AppDatabase) {
                 targetLabel = targetLabel(kind, item),
                 reps = if (kind == ExerciseKind.HOLD) null else last?.reps ?: item?.repsMin ?: 10,
                 seconds = if (kind == ExerciseKind.HOLD) last?.seconds ?: item?.seconds ?: 30 else null,
-                weightKg = if (kind == ExerciseKind.WEIGHTED) last?.weightKg ?: item?.weightKg ?: 0f else null,
+                weightKg = if (kind == ExerciseKind.WEIGHTED || item?.weightKg != null) last?.weightKg ?: item?.weightKg ?: 0f else null,
                 restSeconds = item?.restSeconds ?: 90,
             )
         }

@@ -493,7 +493,17 @@ private fun ItemEditorSheet(
                 EditorRow(stringResource(R.string.plan_reps_min), minReps.toFloat(), { v -> draft = draft.copy(repsMin = v.toInt(), repsMax = draft.repsMax?.coerceAtLeast(v.toInt())) }, step = 1f, min = 1f, max = 999f)
                 EditorRow(stringResource(R.string.plan_reps_max), maxReps.toFloat(), { v -> draft = draft.copy(repsMax = v.toInt().coerceAtLeast(minReps)) }, step = 1f, min = minReps.toFloat(), max = 999f)
             }
-            if (kind == ExerciseKind.WEIGHTED) {
+            // Weighted moves always carry kg; bodyweight moves (planks, push-ups) can add it here, e.g. a plate or a vest.
+            if (kind != ExerciseKind.WEIGHTED) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.plan_add_weight), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                        Text(stringResource(R.string.plan_add_weight_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    Switch(checked = draft.weightKg != null, onCheckedChange = { draft = draft.copy(weightKg = if (it) 0f else null) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                }
+            }
+            if (kind == ExerciseKind.WEIGHTED || draft.weightKg != null) {
                 EditorRow(stringResource(R.string.stepper_weight), unit.fromKg(draft.weightKg ?: 0f), { draft = draft.copy(weightKg = unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f), unit = unit.label, decimals = 1)
             }
             EditorRow(stringResource(R.string.live_rest), draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = stringResource(R.string.unit_s))

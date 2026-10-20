@@ -254,7 +254,7 @@ fun Stepper(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onMinus), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
         Box(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
@@ -272,7 +272,7 @@ fun Stepper(
             )
         }
         Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onPlus), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
     }
     }

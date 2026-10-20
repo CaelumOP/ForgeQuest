@@ -73,6 +73,8 @@ data class SessionEntity(
     val epochDay: Long,
     val startedAt: Long,
     val finishedAt: Long? = null,
+    /** Free-text journal note: how it went, how you slept. */
+    val note: String = "",
 )
 
 @Serializable

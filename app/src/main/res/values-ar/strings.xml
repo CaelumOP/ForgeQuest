@@ -180,7 +180,7 @@
     <string name="rx_reps_only">تكرارات</string>
     <string name="rx_sets_times">%1$d × %2$s</string>
     <string name="workouts_title">التمارين</string>
-    <string name="cd_workout_history">سجل التمارين</string>
+    <string name="cd_workout_history">يوميات التمارين</string>
     <string name="cd_edit_plan">تعديل الخطة</string>
     <string name="workouts_set_up_plan">إعداد خطة</string>
     <string name="recovery_title">تعافي العضلات</string>
@@ -1063,4 +1063,24 @@
     <string name="hold_stop">إيقاف</string>
     <string name="hold_done">تمّ</string>
     <string name="hold_stop_hint">الإيقاف المبكر يحفظ الثواني التي ثبتّ فيها.</string>
+    <string name="journal_this_week">هذا الأسبوع</string>
+    <string name="journal_last_week">الأسبوع الماضي</string>
+    <string name="journal_range">%1$s – %2$s</string>
+    <string name="journal_volume">رُفع %1$s</string>
+    <string name="journal_add_note">+ أضف ملاحظة</string>
+    <string name="live_now">الآن: %1$s</string>
+    <string name="live_next">التالي: %1$s</string>
+    <string name="live_exercise_of">التمرين %1$d من %2$d</string>
+    <string name="cd_focus_mode">وضع التركيز</string>
+    <string name="cd_list_mode">عرض القائمة</string>
+    <string name="plan_add_weight">إضافة وزن</string>
+    <string name="plan_add_weight_hint">لصفيحة على الظهر أو سترة أثقال.</string>
+    <plurals name="live_folded">
+        <item quantity="zero">لا مجموعات</item>
+        <item quantity="one">مجموعة واحدة مكتملة</item>
+        <item quantity="two">مجموعتان مكتملتان</item>
+        <item quantity="few">%1$d مجموعات مكتملة</item>
+        <item quantity="many">%1$d مجموعة مكتملة</item>
+        <item quantity="other">%1$d مجموعة مكتملة</item>
+    </plurals>
 </resources>

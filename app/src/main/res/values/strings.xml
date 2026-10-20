@@ -151,7 +151,7 @@
     <string name="rx_reps_only">reps</string>
     <string name="rx_sets_times">%1$d × %2$s</string>
     <string name="workouts_title">Workouts</string>
-    <string name="cd_workout_history">Workout history</string>
+    <string name="cd_workout_history">Journal</string>
     <string name="cd_edit_plan">Edit plan</string>
     <string name="workouts_set_up_plan">Set up a plan</string>
     <string name="recovery_title">Muscle recovery</string>
@@ -966,4 +966,20 @@
     <string name="hold_stop">Stop</string>
     <string name="hold_done">Done</string>
     <string name="hold_stop_hint">Stopping early saves the seconds you held.</string>
+    <string name="journal_this_week">This week</string>
+    <string name="journal_last_week">Last week</string>
+    <string name="journal_range">%1$s – %2$s</string>
+    <string name="journal_volume">%1$s lifted</string>
+    <string name="journal_add_note">+ Add a note</string>
+    <string name="live_now">Now: %1$s</string>
+    <string name="live_next">Next: %1$s</string>
+    <string name="live_exercise_of">Exercise %1$d of %2$d</string>
+    <string name="cd_focus_mode">Focus mode</string>
+    <string name="cd_list_mode">List view</string>
+    <string name="plan_add_weight">Add weight</string>
+    <string name="plan_add_weight_hint">For a plate on your back or a weighted vest.</string>
+    <plurals name="live_folded">
+        <item quantity="one">%1$d set done</item>
+        <item quantity="other">%1$d sets done</item>
+    </plurals>
 </resources>
