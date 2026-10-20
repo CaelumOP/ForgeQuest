@@ -58,6 +58,10 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.ViewAgenda
+import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -103,6 +107,10 @@ private sealed interface Group {
     data class Straight(val position: Int, val block: String, val sets: List<SetEntity>) : Group
     data class Circuit(val block: String, val positions: List<Int>, val rounds: List<List<SetEntity>>) : Group
 }
+
+private val Group.allSets: List<SetEntity> get() = when (this) { is Group.Straight -> sets; is Group.Circuit -> rounds.flatten() }
+
+private val Group.key: String get() = if (this is Group.Straight) "s$position" else "c${(this as Group.Circuit).positions.first()}"
 
 private fun group(sets: List<SetEntity>): List<Group> {
     val byPosition = sets.groupBy { it.itemPosition }.toSortedMap()
@@ -168,6 +176,28 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val doneCount = sets.count { it.done }
     val elapsed = ((now - s.startedAt) / 1000).coerceAtLeast(0)
     val groups = remember(sets) { group(sets) }
+    // In display order, so circuits go exercise by exercise within a round.
+    val nextSet = remember(groups) { groups.flatMap { it.allSets }.firstOrNull { !it.done } }
+    val current = groups.indexOfFirst { g -> g.allSets.any { it.id == nextSet?.id } }
+    val unit by vm.unit.collectAsState()
+    val nextLabel = nextSet?.let { n -> exercises[n.exerciseId]?.let { ex -> "${ex.name} · ${setSummary(n, ex.kind, unit)}" } }
+    // List or focus mode, remembered between workouts.
+    val prefs = remember { context.getSharedPreferences("live", android.content.Context.MODE_PRIVATE) }
+    var focus by remember { mutableStateOf(prefs.getBoolean("focus", false)) }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Follow along: after a tick, bring the exercise of the next set into view.
+    var lastDone by remember { mutableStateOf(doneCount) }
+    LaunchedEffect(doneCount) {
+        if (doneCount > lastDone && current >= 0 && !focus) listState.animateScrollToItem(current)
+        lastDone = doneCount
+    }
+    val bottomPad = if (rest != null) 260.dp else 160.dp
+    val cardFor: @Composable (Group, Boolean) -> Unit = { g, forceOpen ->
+        GroupCard(g, exercises, vm, forceOpen,
+            onVideo = { openFormVideo(context, it) },
+            onSwap = { picker = PickerMode.Swap(it) },
+            onDetail = { nav.navigate(Routes.exercise(it)) })
+    }
 
     Box(Modifier.fillMaxSize().background(c.background)) {
         Column(Modifier.fillMaxSize()) {
@@ -178,30 +208,40 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(stringResource(R.string.live_header, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        nextSet?.let { n -> exercises[n.exerciseId]?.let { Text(stringResource(R.string.live_now, it.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
+                    }
+                    IconButton(onClick = { focus = !focus; prefs.edit().putBoolean("focus", focus).apply() }) {
+                        Icon(
+                            if (focus) Icons.Rounded.ViewAgenda else Icons.Rounded.CenterFocusStrong,
+                            contentDescription = stringResource(if (focus) R.string.cd_list_mode else R.string.cd_focus_mode), tint = c.textPrimary,
+                        )
                     }
                     TextButton(onClick = { confirmExit = true }) { Text(stringResource(R.string.live_discard), color = c.textSecondary) }
                 }
             }
-            LazyColumn(
-                Modifier.weight(1f),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (rest != null) 260.dp else 160.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(groups, key = { g -> if (g is Group.Straight) "s${g.position}" else "c${(g as Group.Circuit).positions.first()}" }) { g ->
-                    when (g) {
-                        is Group.Straight -> StraightCard(
-                            g, exercises[g.sets.first().exerciseId], vm,
-                            onVideo = { openFormVideo(context, it) },
-                            onSwap = { picker = PickerMode.Swap(g.position) },
-                            onDetail = { nav.navigate(Routes.exercise(g.sets.first().exerciseId)) },
-                        )
-                        is Group.Circuit -> CircuitCard(
-                            g, exercises, vm,
-                            onVideo = { openFormVideo(context, it) },
-                            onSwap = { picker = PickerMode.Swap(it) },
-                        )
+            if (focus && groups.isNotEmpty()) {
+                // Focus mode: one exercise per page with larger text; moves on by itself when an exercise is finished.
+                val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = current.coerceAtLeast(0)) { groups.size }
+                LaunchedEffect(current) { if (current >= 0 && current != pager.currentPage) pager.animateScrollToPage(current) }
+                Text(
+                    stringResource(R.string.live_exercise_of, pager.currentPage + 1, groups.size), style = MaterialTheme.typography.labelLarge, color = c.textSecondary,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                androidx.compose.foundation.pager.HorizontalPager(
+                    pager, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp, key = { groups[it].key },
+                ) { i ->
+                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * 1.15f)) {
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = bottomPad)) { cardFor(groups[i], true) }
                     }
                 }
+            } else LazyColumn(
+                Modifier.weight(1f),
+                state = listState,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(groups, key = { it.key }) { g -> cardFor(g, false) }
                 item {
                     TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = PickerMode.Add }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }
@@ -212,7 +252,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             AnimatedVisibility(rest != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
                 rest?.let { r ->
                     val left = ((r.endsAt - now) / 1000).coerceAtLeast(0)
-                    RestBar(left.toInt(), r.totalSeconds, onAdd = { vm.addRest(15) }, onRemove = { if (left > 15) vm.addRest(-15) else vm.skipRest() }, onSkip = vm::skipRest)
+                    RestBar(left.toInt(), r.totalSeconds, nextLabel, onAdd = { vm.addRest(15) }, onRemove = { if (left > 15) vm.addRest(-15) else vm.skipRest() }, onSkip = vm::skipRest)
                 }
             }
             Box(Modifier.fillMaxWidth().background(c.background).navigationBarsPadding().padding(16.dp)) {
@@ -278,6 +318,51 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 private sealed interface PickerMode {
     data object Add : PickerMode
     data class Swap(val position: Int) : PickerMode
+}
+
+/** An exercise or circuit card; once every set is ticked it folds into one line (tap to open it again). */
+@Composable
+private fun GroupCard(
+    g: Group,
+    exercises: Map<String, ExerciseEntity>,
+    vm: LiveWorkoutViewModel,
+    forceOpen: Boolean,
+    onVideo: (ExerciseEntity?) -> Unit,
+    onSwap: (Int) -> Unit,
+    onDetail: (String) -> Unit,
+) {
+    val c = Fit.colors
+    val all = g.allSets
+    val allDone = all.isNotEmpty() && all.all { it.done }
+    var open by remember(allDone) { mutableStateOf(!allDone) }
+    if (!open && !forceOpen) {
+        val title = if (g is Group.Straight) exercises[g.sets.first().exerciseId]?.name ?: g.sets.first().exerciseId else blockLabel((g as Group.Circuit).block)
+        FitCard(onClick = { open = true }, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(pluralStringResource(R.plurals.live_folded, all.size, all.size), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+            }
+        }
+        return
+    }
+    when (g) {
+        is Group.Straight -> StraightCard(
+            g, exercises[g.sets.first().exerciseId], vm,
+            onVideo = onVideo, onSwap = { onSwap(g.position) }, onDetail = { onDetail(g.sets.first().exerciseId) },
+        )
+        is Group.Circuit -> CircuitCard(g, exercises, vm, onVideo = onVideo, onSwap = onSwap)
+    }
+}
+
+/** "12 reps · 10 kg" or "30 s", for the next-up lines. */
+@Composable
+private fun setSummary(set: SetEntity, kind: ExerciseKind, unit: com.forgequest.app.domain.WeightUnit): String {
+    val main = if (kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, set.seconds ?: 0) else stringResource(R.string.rx_reps_n, set.reps ?: 0)
+    val kg = set.weightKg
+    return if (kg != null && (kg > 0f || kind == ExerciseKind.WEIGHTED)) "$main · ${unit.format(kg)}" else main
 }
 
 @Composable
@@ -463,6 +548,15 @@ private fun SetRow(
                     )
                 }
             }
+            // Bodyweight moves with weight added in the plan editor (a plate on the back, a vest).
+            val extra = set.weightKg
+            if (kind != ExerciseKind.WEIGHTED && extra != null) {
+                val unit by vm.unit.collectAsState()
+                NumberStepper(
+                    unit.fromKg(extra), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f),
+                    unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
+                )
+            }
         }
         Spacer(Modifier.width(6.dp))
         MorphCheck(set.done) { vm.toggle(set) }
@@ -505,14 +599,14 @@ private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
     val color by animateColorAsState(if (checked) c.teal else c.cardHigh, label = "fill")
     val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
     Box(
-        Modifier.size(44.dp).clip(RoundedCornerShape(corner)).background(color)
+        Modifier.size(52.dp).clip(RoundedCornerShape(corner)).background(color)
             .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
             .semantics { contentDescription = setDoneLabel },
         contentAlignment = Alignment.Center,
     ) {
         // A faint check in the empty box says "tap to tick" before the first tap (Strong does the same).
         Icon(Icons.Rounded.Check, contentDescription = null, tint = c.textSecondary.copy(alpha = 0.45f), modifier = Modifier.size(22.dp).scale(1f - checkScale))
-        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp).scale(checkScale))
+        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(28.dp).scale(checkScale))
     }
 }
 
@@ -576,7 +670,7 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
 }
 
 @Composable
-private fun RestBar(secondsLeft: Int, total: Int, onAdd: () -> Unit, onRemove: () -> Unit, onSkip: () -> Unit) {
+private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Unit, onRemove: () -> Unit, onSkip: () -> Unit) {
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -587,6 +681,7 @@ private fun RestBar(secondsLeft: Int, total: Int, onAdd: () -> Unit, onRemove: (
             TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary) }
             TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal) }
         }
+        if (next != null) Text(stringResource(R.string.live_next, next), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(8.dp))
         ProgressLine(if (total == 0) 0f else secondsLeft / total.toFloat(), c.blue, c.blueTrack, height = 4.dp)
     }

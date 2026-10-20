@@ -1,5 +1,9 @@
 package com.forgequest.app.ui.history
 
+import androidx.compose.material.icons.rounded.ExpandMore
+
+import androidx.compose.material.icons.rounded.ExpandLess
+
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.pluralStringResource
@@ -88,9 +92,12 @@ import kotlin.math.roundToInt
 
 class HistoryViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
+
+    fun setNote(session: SessionEntity, note: String) = viewModelScope.launch { app.db.sessions().update(session.copy(note = note.trim().take(300))) }
 }
 
-/** Every finished workout, newest first, grouped by month. */
+/** The journal: a feed of weeks, newest first, each opening into its days and workouts (like Google Fit's journal). */
 @Composable
 fun HistoryScreen(nav: NavHostController) {
     val vm = appViewModel { HistoryViewModel(it) }
@@ -98,7 +105,18 @@ fun HistoryScreen(nav: NavHostController) {
     val c = Fit.colors
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val setsBySession = s.doneSets.groupBy { it.sessionId }
-    val months = s.sessions.groupBy { YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) }
+    val unit by vm.unit.collectAsState()
+    val firstDay = remember { java.time.temporal.WeekFields.of(java.util.Locale.getDefault()).firstDayOfWeek }
+    val weeks = remember(s.sessions) {
+        s.sessions.sortedByDescending { it.startedAt }
+            .groupBy { LocalDate.ofEpochDay(it.epochDay).with(java.time.temporal.TemporalAdjusters.previousOrSame(firstDay)) }
+    }
+    val thisWeek = LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(firstDay))
+    val open = remember { androidx.compose.runtime.mutableStateMapOf<LocalDate, Boolean>() }
+    var noteFor by remember { mutableStateOf<SessionEntity?>(null) }
+    noteFor?.let { ses ->
+        com.forgequest.app.ui.workouts.SetNoteDialog(ses.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(ses, it); noteFor = null })
+    }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -119,19 +137,82 @@ fun HistoryScreen(nav: NavHostController) {
             }
             return
         }
-        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            months.forEach { (month, sessions) ->
-                item(key = "m$month") {
-                    Text(
-                        month.format(DateTimeFormatter.ofPattern(stringResource(R.string.hist_month_pattern))),
-                        style = MaterialTheme.typography.titleSmall, color = c.textSecondary,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                    )
+        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            weeks.entries.forEachIndexed { index, (week, sessions) ->
+                val expanded = open[week] ?: (index == 0)
+                item(key = "w$week") {
+                    WeekCard(week, thisWeek, sessions, setsBySession, unit, expanded) { open[week] = !expanded }
                 }
-                items(sessions, key = { it.id }) { session ->
-                    SessionRow(session, setsBySession[session.id].orEmpty(), s.exercises) { nav.navigate(Routes.session(session.id)) }
+                if (expanded) {
+                    sessions.groupBy { it.epochDay }.forEach { (day, daySessions) ->
+                        item(key = "d$day") {
+                            Text(
+                                LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
+                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.padding(start = 8.dp, top = 6.dp),
+                            )
+                        }
+                        items(daySessions, key = { it.id }) { session ->
+                            Column(Modifier.padding(start = 8.dp)) {
+                                SessionRow(session, setsBySession[session.id].orEmpty(), s.exercises) { nav.navigate(Routes.session(session.id)) }
+                                TextButton(onClick = { noteFor = session }) {
+                                    Text(
+                                        session.note.ifBlank { stringResource(R.string.journal_add_note) },
+                                        style = MaterialTheme.typography.bodySmall, color = if (session.note.isBlank()) c.teal else c.textSecondary,
+                                        fontStyle = if (session.note.isBlank()) null else androidx.compose.ui.text.font.FontStyle.Italic,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+/** One week: how many workouts, time, kg lifted and records; tap to open its days. */
+@Composable
+private fun WeekCard(
+    week: LocalDate,
+    thisWeek: LocalDate,
+    sessions: List<SessionEntity>,
+    setsBySession: Map<Long, List<SetEntity>>,
+    unit: WeightUnit,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val c = Fit.colors
+    val sets = sessions.flatMap { setsBySession[it.id].orEmpty() }
+    val minutes = sessions.sumOf { s -> s.finishedAt?.let { ((it - s.startedAt) / 60_000).toInt().coerceAtLeast(1) } ?: 0 }
+    val volume = sets.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat()
+    val prs = sets.count { it.isPr }
+    val title = when (week) {
+        thisWeek -> stringResource(R.string.journal_this_week)
+        thisWeek.minusWeeks(1) -> stringResource(R.string.journal_last_week)
+        else -> stringResource(R.string.journal_range, week.format(DateTimeFormatter.ofPattern("d MMM")), week.plusDays(6).format(DateTimeFormatter.ofPattern("d MMM")))
+    }
+    FitCard(onClick = onToggle, padding = PaddingValues(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(
+                    listOfNotNull(
+                        pluralStringResource(R.plurals.backup_workouts, sessions.size, sessions.size),
+                        stringResource(R.string.hist_minutes, minutes),
+                        if (volume > 0f) stringResource(R.string.journal_volume, unit.format(volume)) else null,
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                )
+            }
+            if (prs > 0) {
+                PrTag()
+                if (prs > 1) Text(" ×$prs", style = MaterialTheme.typography.labelSmall, color = c.gold)
+                Spacer(Modifier.width(6.dp))
+            }
+            Icon(
+                if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = null, tint = c.textSecondary,
+            )
         }
     }
 }

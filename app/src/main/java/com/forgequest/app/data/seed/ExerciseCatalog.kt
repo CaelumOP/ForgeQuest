@@ -136,5 +136,20 @@ object ExerciseCatalog {
         ex("shrug", "Shrug", WEIGHTED, listOf(TRAPS), listOf(FOREARMS)),
         ex("cable_crunch", "Cable crunch", WEIGHTED, listOf(ABS), listOf(OBLIQUES)),
         ex("tibialis_raise", "Tibialis raise", REPS, listOf(TIBIALIS)),
+        // Kettlebells and dumbbells at home
+        ex("kb_swing", "Kettlebell swing", WEIGHTED, listOf(GLUTES, HAMSTRINGS), listOf(LOWER_BACK)),
+        ex("goblet_squat", "Goblet squat", WEIGHTED, listOf(QUADS, GLUTES), listOf(ABS)),
+        ex("kb_deadlift", "Kettlebell deadlift", WEIGHTED, listOf(HAMSTRINGS, GLUTES), listOf(LOWER_BACK)),
+        ex("kb_clean", "Kettlebell clean", WEIGHTED, listOf(GLUTES, SHOULDERS), listOf(FOREARMS)),
+        ex("kb_press", "Kettlebell press", WEIGHTED, listOf(SHOULDERS), listOf(TRICEPS)),
+        ex("kb_snatch", "Kettlebell snatch", WEIGHTED, listOf(SHOULDERS, GLUTES), listOf(HAMSTRINGS)),
+        ex("kb_row", "Kettlebell row", WEIGHTED, listOf(UPPER_BACK), listOf(BICEPS)),
+        ex("turkish_get_up", "Turkish get-up", WEIGHTED, listOf(SHOULDERS, ABS), listOf(GLUTES)),
+        ex("farmers_carry", "Farmer's carry", WEIGHTED, listOf(FOREARMS, TRAPS), listOf(ABS)),
+        ex("db_bench_press", "Dumbbell bench press", WEIGHTED, listOf(CHEST), listOf(TRICEPS)),
+        ex("db_shoulder_press", "Dumbbell shoulder press", WEIGHTED, listOf(SHOULDERS), listOf(TRICEPS)),
+        ex("db_row", "Dumbbell row", WEIGHTED, listOf(UPPER_BACK), listOf(BICEPS)),
+        ex("db_lunge", "Dumbbell lunge", WEIGHTED, listOf(QUADS, GLUTES), listOf(HAMSTRINGS)),
+        ex("russian_twist", "Russian twist", WEIGHTED, listOf(OBLIQUES), listOf(ABS)),
     )
 }

@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
         WeightEntity::class, ChatEntity::class, BadgeEntity::class, ReadinessDayEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -65,9 +65,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v5 → v6: a journal note on each workout. */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sessions ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
     }
 }

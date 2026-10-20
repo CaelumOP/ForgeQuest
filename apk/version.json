@@ -1,6 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "2.2.1",
+  "versionCode": 5,
+  "versionName": "2.3.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Hold timer for timed moves, food scan backup, and a little surprise."
+  "notes": "Weekly journal with notes, kg on any exercise from the plan editor, and a smoother workout screen with focus mode."
 }
