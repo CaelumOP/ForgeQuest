@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<full-backup-content>
-    <!-- Never upload encrypted Tink DataStore API key or Tink keyset to cloud backup -->
-    <exclude domain="file" path="datastore/encrypted_forgequest_secrets.pb" />
-    <exclude domain="file" path="datastore/encrypted_forgequest_secrets.preferences_pb" />
-    <exclude domain="sharedpref" path="forgequest_tink_keyset_prefs.xml" />
-</full-backup-content>
