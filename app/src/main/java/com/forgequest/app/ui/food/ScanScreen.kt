@@ -136,7 +136,7 @@ sealed interface ScanState {
 }
 
 /** How long the in-app scan may take before the screen points to another AI app instead. */
-private const val SCAN_LIMIT_MS = 10_000L
+private const val SCAN_LIMIT_MS = 25_000L
 
 enum class Portion(@androidx.annotation.StringRes val label: Int, val factor: Float) { SMALL(R.string.scan_portion_small, 0.75f), NORMAL(R.string.scan_normal, 1f), LARGE(R.string.scan_portion_large, 1.25f) }
 enum class CookingFat(@androidx.annotation.StringRes val label: Int, val kcal: Int) { LIGHT(R.string.scan_fat_light, 0), NORMAL(R.string.scan_normal, 50), HEAVY(R.string.scan_fat_heavy, 150) }
@@ -563,7 +563,7 @@ private fun ResultSheet(
                 // Scale calories and protein with the weight so a corrected portion stays consistent.
                 val factor = if (item.grams > 0) grams / item.grams else 1f
                 items = items.toMutableList().also {
-                    it[index] = item.copy(grams = grams.roundToInt(), kcal = (item.kcal * factor).roundToInt(), protein = item.protein * factor)
+                    it[index] = item.copy(grams = grams.roundToInt(), kcal = (item.kcal * factor).roundToInt(), protein = item.protein * factor, carbs = item.carbs * factor)
                 }
                 editingGrams = null
             },

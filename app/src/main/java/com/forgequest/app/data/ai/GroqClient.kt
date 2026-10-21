@@ -33,11 +33,11 @@ class GroqClient(base: OkHttpClient = OkHttpClient()) {
     private val http: OkHttpClient = base.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         // Groq either answers in about a second or is in trouble; fall back to Gemini quickly.
-        .readTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .build()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    /** Fastest chat model this key can use: Llama 4 Scout-class first, then the 8B instant model. */
+    /** Smartest fast chat model this key can use: Llama 3.3 70B Versatile first, then Llama 4 Scout, then 8B instant. */
     suspend fun pickModel(apiKey: String): String = withContext(Dispatchers.IO) {
         val ids = com.forgequest.app.data.suspendRunCatching {
             val body = execute(Request.Builder().url("$BASE/models").header("Authorization", "Bearer $apiKey").get().build())
@@ -47,7 +47,11 @@ class GroqClient(base: OkHttpClient = OkHttpClient()) {
     }
 
     internal fun pickFastest(ids: List<String>): String =
-        ids.firstOrNull { "llama-4-scout" in it }
+        ids.firstOrNull { "llama-3.3-70b-versatile" in it }
+            ?: ids.firstOrNull { "llama-3.3-70b" in it }
+            ?: ids.firstOrNull { "llama-4-maverick" in it }
+            ?: ids.firstOrNull { "llama-4-scout" in it }
+            ?: ids.firstOrNull { "qwen" in it && "32b" in it }
             ?: ids.firstOrNull { "llama-3.1-8b-instant" in it }
             ?: ids.firstOrNull { it.startsWith("llama") && "guard" !in it }
             ?: FALLBACK_MODEL
@@ -63,8 +67,8 @@ class GroqClient(base: OkHttpClient = OkHttpClient()) {
         val payload = buildJsonObject {
             put("model", model)
             put("stream", true)
-            put("temperature", 0.6)
-            put("max_tokens", 1200)
+            put("temperature", 0.5)
+            put("max_tokens", 1500)
             put("messages", buildJsonArray {
                 addJsonObject { put("role", "system"); put("content", system) }
                 turns.forEach { (role, text) -> addJsonObject { put("role", if (role == "user") "user" else "assistant"); put("content", text) } }
@@ -146,6 +150,6 @@ class GroqClient(base: OkHttpClient = OkHttpClient()) {
     companion object {
         private const val TAG = "FQ-AI"
         private const val BASE = "https://api.groq.com/openai/v1"
-        const val FALLBACK_MODEL = "llama-3.1-8b-instant"
+        const val FALLBACK_MODEL = "llama-3.3-70b-versatile"
     }
 }

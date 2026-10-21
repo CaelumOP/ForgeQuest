@@ -77,9 +77,9 @@ class CoachRepository(
                 _draft.value = (_draft.value ?: "") + delta
             }
             var provider = "Gemini"
-            // Chat goes to Groq when there's a Groq key and Automatic is chosen; plans stay on Gemini. Anything that
-            // fails on Groq before the first word falls back to Gemini without the person noticing.
-            val viaGroq = !wantsPlan && settings.groqKey.value.isNotBlank() && settings.current().coachModel == "auto"
+            val modelChoice = settings.current().coachModel
+            // Chat goes to Groq (Llama 3.3 70B) when there's a Groq key and Automatic is chosen; plans stay on Gemini.
+            val viaGroq = !wantsPlan && settings.groqKey.value.isNotBlank() && modelChoice == "auto"
             val fromGroq = if (!viaGroq) null else try {
                 groq.streamChat(settings.groqKey.value, groqModel(), system, turns, onDelta).also { provider = "Groq" }
             } catch (e: AiError) {
@@ -87,13 +87,16 @@ class CoachRepository(
                 Log.w(TAG, "groq failed before any text, using Gemini: ${e.detail}")
                 null
             }
+            val useZeroThinking = !wantsPlan && modelChoice == "lite"
             val reply = fromGroq ?: gemini.generateStreaming(
                 apiKey = requireKey(),
                 models = models(),
                 system = system,
                 turns = turns,
-                // Plans deserve the model's thinking; everything else should land in a second or two.
-                fast = !wantsPlan,
+                // Full thinking for weekly plans; lowThinking (~1,024 budget) for normal coaching so the coach
+                // actually reasons over Readiness, HRV, recovery and set history; zero thinking only if user pinned "lite".
+                fast = useZeroThinking,
+                lowThinking = !wantsPlan && !useZeroThinking,
                 onDelta = onDelta,
             )
             _lastAnswer.value = provider to firstText
@@ -159,7 +162,7 @@ class CoachRepository(
             ${planSchemaInstructions()}
             Reply ONLY with the JSON object, no other text.
         """.trimIndent()
-        val raw = gemini.generate(requireKey(), models(), system, listOf("user" to text.take(20_000)), jsonOutput = true)
+        val raw = gemini.generate(requireKey(), models(), system, listOf("user" to text.take(20_000)), jsonOutput = true, lowThinking = true)
         return PlanJson.extract("```json\n$raw\n```") ?: throw AiError.Unreadable(R.string.ai_err_plan_text)
     }
 
@@ -175,10 +178,10 @@ class CoachRepository(
         settings.update { it.copy(lastCheckinWeek = thisWeek) }
         return try {
             val system = coachSystemPrompt(replyLanguage = if (java.util.Locale.getDefault().language == "ar") "Arabic" else "English")
-            val ask = listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition tip. Under 120 words. No plan JSON, no MEMORY line.")
+            val ask = listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push this week, one nutrition/recovery tip. Under 180 words. No plan JSON, no MEMORY line.")
             val viaGroq = settings.groqKey.value.isNotBlank() && settings.current().coachModel == "auto"
             val reply = (if (viaGroq) suspendRunCatching { groq.streamChat(settings.groqKey.value, groqModel(), system, ask) {} }.getOrNull() else null)
-                ?: gemini.generate(requireKey(), models(), system, ask, fast = true)
+                ?: gemini.generate(requireKey(), models(), system, ask, lowThinking = true)
             chat.insert(ChatEntity(role = "coach", text = PlanJson.strip(reply), kind = "checkin", createdAt = System.currentTimeMillis()))
             true
         } catch (e: AiError) {
@@ -192,19 +195,16 @@ class CoachRepository(
     private fun requireKey(): String = settings.apiKey.value.ifBlank { throw AiError.MissingKey }
 
     /**
-     * Measured on the emulator (18 Oct 2026, free key, ~1,800-token prompt): Flash-Lite with thinking off shows
-     * its first words in 0.6-1.5 s and writes a whole week's plan, thinking on, in ~4.5 s. Flash with thinking off
-     * took 2-65 s to say anything (queued free tier) and gemini-3.8-flash allows only 20 requests a day; with
-     * thinking on, a plan took 37-80 s. Pro takes one to two minutes. So Flash-Lite answers everything and
-     * Flash only steps in when Lite is rate limited, busy or stalled.
+     * Prioritizes full Gemini Flash (and stable 2.5 Flash fallback) ahead of Flash-Lite in "auto" and "flash" modes
+     * so coaching quality is sharp; Flash-Lite is only used first if the user explicitly selects "lite" in the menu
+     * or if all Flash quotas are exhausted.
      */
     private suspend fun models(): List<String> {
         val m = models.current()
-        // The person can pin a model from the Coach menu; the others stay as fallbacks for quota or outages.
         return when (settings.current().coachModel) {
-            "flash" -> listOf(m.fast, m.lite)
-            "pro" -> listOf(m.smart, m.fast, m.lite)
-            else -> listOf(m.lite, m.fast)
+            "lite" -> listOf(m.lite, m.fast, GeminiClient.FALLBACK_STABLE_FLASH)
+            "pro" -> listOf(m.smart, m.fast, GeminiClient.FALLBACK_STABLE_FLASH, m.lite)
+            else -> listOf(m.fast, GeminiClient.FALLBACK_STABLE_FLASH, m.lite)
         }
     }
 
@@ -303,7 +303,6 @@ class CoachRepository(
         val upcoming = streak.days.withIndex().filter { it.value == DayState.UPCOMING }.map { Dates.dayName(it.index + 1) }
         sb.append("- Level ${snap.level.level} (rank ${snap.level.rank.letter}, ${snap.level.rank.title}); weekly streak ${streak.weeks} (best ${streak.best})\n")
         if (streak.targetThisWeek == 0) {
-            // The week they joined has no target (planned days had already passed); "1 of 0" confused the model.
             sb.append("- This week: ${streak.doneThisWeek} workouts done; they started mid-week, so the weekly target starts next Monday")
         } else {
             sb.append("- This week: ${streak.doneThisWeek} of ${streak.targetThisWeek} workouts done")
@@ -425,10 +424,11 @@ class CoachRepository(
         const val TAG = "FQ-AI"
 
         val CORE_RULES = """
-            You are the coach inside ForgeQuest, a workout and nutrition app. The user trains calisthenics and/or gym.
-            Be warm, direct and specific. Use their data below: quote their real numbers, name the exercises they actually do, notice trends, and point out what they missed or improved.
-            Keep answers short (under 180 words) unless they ask for detail. Use simple Markdown: **bold**, short bullet lists, at most one small heading. No tables.
-            Never shame food choices; going over calories is fuel, not failure.
+            You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Fitbit / Whoop / Calisthenics & Gym Coach).
+            - Synthesize, do not just parrot stats back: connect the dots between Fitbit Readiness (recovery %, HRV vs baseline, resting HR, sleep debt, strain target), muscle recovery hours, recent set performance, and daily protein/calorie intake.
+            - Give concrete, actionable prescriptions: when asked about today's session or progression, specify exact set/rep/hold/weight adjustments based on recovery state and their last logged sets.
+            - Keep normal replies focused and punchy (120-250 words), using **bold** and clean bullet points, and go deeper when the user asks for analysis or meal/workout breakdowns.
+            - Never shame food choices; going over calories is fuel, not failure.
         """.trimIndent()
 
         val MEMORY_RULE = """

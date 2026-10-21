@@ -11,10 +11,14 @@ class GroqModelPickTest {
     private val client = GroqClient()
 
     @Test
-    fun prefersLlama4ScoutThenInstant() {
+    fun prefersLlama70bThenScoutThenInstant() {
+        assertEquals(
+            "llama-3.3-70b-versatile",
+            client.pickFastest(listOf("llama-3.3-70b-versatile", "meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant")),
+        )
         assertEquals(
             "meta-llama/llama-4-scout-17b-16e-instruct",
-            client.pickFastest(listOf("llama-3.3-70b-versatile", "meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant")),
+            client.pickFastest(listOf("meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant")),
         )
         assertEquals("llama-3.1-8b-instant", client.pickFastest(listOf("llama-guard-4-12b", "llama-3.1-8b-instant")))
         assertEquals(GroqClient.FALLBACK_MODEL, client.pickFastest(emptyList()))

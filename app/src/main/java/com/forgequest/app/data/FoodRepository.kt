@@ -157,12 +157,28 @@ class FoodRepository(
 
     // ------------------------------------------------------------ AI scan
 
-    suspend fun scan(photoPath: String): FoodScan {
+    suspend fun scan(photoPath: String, userHint: String = ""): FoodScan {
         val key = settings.apiKey.value
         if (key.isBlank()) throw AiError.MissingKey
         val image = withContext(Dispatchers.IO) { File(photoPath).readBytes() }
         val m = models.current()
-        val raw = gemini.generate(key, listOf(m.lite, m.fast), scanInstructions(), listOf("user" to "Estimate this meal."), image = image, jsonOutput = true, fast = true)
+        val userPrompt = if (userHint.isBlank()) {
+            "Estimate this meal with realistic cooked weights and macro math."
+        } else {
+            "Estimate this meal. User notes/context: $userHint"
+        }
+        // Route meal scans to full Flash (m.fast) first with lowThinking = true (~1024 thinking budget)
+        // so the model calculates spatial geometry, density, and macro math before writing JSON.
+        val raw = gemini.generate(
+            apiKey = key,
+            models = listOf(m.fast, GeminiClient.FALLBACK_STABLE_FLASH, m.lite),
+            system = scanInstructions(),
+            turns = listOf("user" to userPrompt),
+            image = image,
+            jsonOutput = true,
+            fast = false,
+            lowThinking = true,
+        )
         val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
             ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
         if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
@@ -172,18 +188,21 @@ class FoodRepository(
     private suspend fun scanInstructions(): String {
         val s = settings.current()
         val handHint = if (s.handLengthCm > 0f) {
-            "If the user's hand is visible, use it as a size reference: hand length ${s.handLengthCm} cm, palm width ${s.palmWidthCm} cm."
+            "If the user's hand is visible, use it as an exact spatial ruler: hand length = ${s.handLengthCm} cm, palm width = ${s.palmWidthCm} cm."
         } else {
-            "If a hand, fork, phone or standard plate is visible, use it as a size reference."
+            "If a hand, standard fork (~19 cm), spoon, mug, or dinner plate (~26 cm rim) is visible, use it as a geometric scale reference."
         }
         return """
-            You estimate nutrition from meal photos for a fitness app. Be realistic, not optimistic.
-            $handHint
-            List each distinct food separately with estimated cooked grams, kcal, grams of protein and grams of carbohydrate.
-            Include visible sauces and oil in the items. Use short, plain food names (e.g. "Grilled chicken", "White rice").
-            If the photo shows no food, return an empty items list.
+            You are an expert sports nutritionist estimating macros from meal photos for a fitness app. Be realistic, never optimistic.
+            1. $handHint
+            2. Identify each distinct food component separately, including visible cooking oil, ghee, butter, sauces, or dressings.
+            3. Recognize Saudi / Middle Eastern and home-cooked items accurately (e.g., Kabsa, Mandi, Saleeg, Mutabbaq, Shawarma, Paratha flatbread ~260-300 kcal per 80g piece, eggs, cheese, laban, dates, cappuccino/mocha) as well as standard gym foods.
+            4. Anchor your math on standard cooked nutritional densities per 100g (e.g. cooked chicken breast ~165 kcal & 31g protein; cooked rice ~130 kcal & 2.7g protein & 28g carbs; cooked lean beef ~250 kcal & 26g protein; whole egg ~72 kcal & 6.3g protein; olive oil/ghee ~900 kcal per 100g).
+            5. Before emitting each item, verify internally that kcal roughly equals (protein * 4 + carbs * 4 + estimated_fat * 9).
+            6. Use short, plain food names (e.g. "Grilled chicken breast", "Basmati rice", "Paratha flatbread").
+            7. If the photo shows no food or drink, return an empty items list.
             Reply ONLY with JSON: {"dish": string, "items": [{"name": string, "grams": int, "kcal": int, "protein": number, "carbs": number}], "handVisible": boolean, "note": string}
-            "note" is one short sentence about anything uncertain, or empty.
+            "note" is one short sentence about portion/cooking assumptions or anything uncertain, or empty.
         """.trimIndent()
     }
 

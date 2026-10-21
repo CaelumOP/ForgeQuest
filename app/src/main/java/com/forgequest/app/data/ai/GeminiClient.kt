@@ -65,8 +65,8 @@ data class GeminiModels(val fast: String, val smart: String, val lite: String)
 class GeminiClient(base: OkHttpClient = OkHttpClient()) {
     private val http: OkHttpClient = base.newBuilder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        // Quick calls (thinking off); thinking calls use [slowHttp].
-        .readTimeout(20, TimeUnit.SECONDS)
+        // Quick and low-thinking calls; full default-thinking plan calls use [slowHttp].
+        .readTimeout(28, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -107,7 +107,8 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
     /**
      * Tries [models] in order. A busy model gets one retry; quota limits, retired models and server errors
      * move on to the next model. A bad key or no connection stops right away.
-     * [fast] turns the model's "thinking" off, which makes chat and photo scans answer in a few seconds.
+     * [fast] turns the model's "thinking" off; [lowThinking] uses a small reasoning budget (~1,024 tokens / "low")
+     * so meal scans and coach chat can do spatial & macro math in 2-4 seconds without 60-second stalls.
      */
     suspend fun generate(
         apiKey: String,
@@ -117,7 +118,10 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
         image: ByteArray? = null,
         jsonOutput: Boolean = false,
         fast: Boolean = false,
-    ): String = attempt(apiKey, models) { model -> generateOnce(apiKey, model, system, turns, image, jsonOutput, fast, stream = null) }
+        lowThinking: Boolean = false,
+    ): String = attempt(apiKey, models) { model ->
+        generateOnce(apiKey, model, system, turns, image, jsonOutput, fast, lowThinking, stream = null)
+    }
 
     /**
      * Same as [generate] but hands text to [onDelta] as it arrives, so the screen fills in while the model
@@ -129,17 +133,15 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
         system: String,
         turns: List<Pair<String, String>>,
         fast: Boolean = false,
+        lowThinking: Boolean = false,
         onDelta: suspend (String) -> Unit,
     ): String = attempt(apiKey, models) { model ->
         try {
-            generateOnce(apiKey, model, system, turns, null, false, fast, stream = onDelta)
+            generateOnce(apiKey, model, system, turns, null, false, fast, lowThinking, stream = onDelta)
         } catch (e: AiError) {
-            // A stalled model is better replaced by the next one than waited on again; quota and key problems
-            // won't change either. Anything else (a 500, a broken stream) gets one plain call: nothing reached
-            // the screen yet, so it loses nothing.
             if (e is AiError.Partial || e is AiError.InvalidKey || e is AiError.Offline || e is AiError.RateLimited || e is AiError.Timeout) throw e
             Log.w(TAG, "stream failed before any text on $model (${e.detail}); retrying without streaming")
-            val text = generateOnce(apiKey, model, system, turns, null, false, fast, stream = null)
+            val text = generateOnce(apiKey, model, system, turns, null, false, fast, lowThinking, stream = null)
             onDelta(text)
             text
         }
@@ -150,7 +152,8 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
 
     private suspend fun attempt(apiKey: String, models: List<String>, once: suspend (String) -> String): String {
         if (apiKey.isBlank()) throw AiError.MissingKey
-        val all = (models + FALLBACK_FAST).filter { it.isNotBlank() }.distinct()
+        // Include high-quota stable Flash aliases before dropping all the way to Flash-Lite when a 20-RPD preview Flash is rate-limited.
+        val all = (models + listOf(FALLBACK_STABLE_FLASH, FALLBACK_FAST, FALLBACK_LITE)).filter { it.isNotBlank() }.distinct()
         val now = System.currentTimeMillis()
         val candidates = all.filter { (coolingDown[it] ?: 0) < now }.ifEmpty { all }
         var lastError: AiError = AiError.Blocked("no model answered")
@@ -187,22 +190,29 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
         image: ByteArray?,
         jsonOutput: Boolean,
         fast: Boolean,
+        lowThinking: Boolean,
         stream: (suspend (String) -> Unit)?,
     ): String = withContext(Dispatchers.IO) {
-        // Each model family takes a different switch for "no thinking": Flash wants thinkingBudget 0, Flash-Lite
-        // rejects that and wants thinkingLevel "minimal". Try the likely one first, then the other, then none;
-        // remember what worked so later calls go straight to it.
-        val options = if (fast) {
-            val remembered = offSwitch[model]
-            listOfNotNull(remembered) + (if ("lite" in model) listOf(Thinking.MINIMAL, Thinking.BUDGET_0) else listOf(Thinking.BUDGET_0, Thinking.MINIMAL)) + Thinking.DEFAULT
-        } else {
-            listOf(Thinking.DEFAULT)
+        // Each model family takes a different switch:
+        // - For lowThinking (meal scans & smart chat): Gemini 3.x accepts thinkingLevel "low", Gemini 2.5 accepts thinkingBudget 1024.
+        // - For fast (zero thinking): Flash accepts thinkingBudget 0, Flash-Lite accepts thinkingLevel "minimal".
+        val options = when {
+            lowThinking -> {
+                val remembered = lowSwitch[model]
+                listOfNotNull(remembered) + listOf(Thinking.LOW_LEVEL, Thinking.LOW_BUDGET, Thinking.DEFAULT)
+            }
+            fast -> {
+                val remembered = offSwitch[model]
+                listOfNotNull(remembered) + (if ("lite" in model) listOf(Thinking.MINIMAL, Thinking.BUDGET_0) else listOf(Thinking.BUDGET_0, Thinking.MINIMAL)) + Thinking.DEFAULT
+            }
+            else -> listOf(Thinking.DEFAULT)
         }.distinct()
         var last: AiError? = null
         for (thinking in options) {
             try {
                 return@withContext request(apiKey, model, system, turns, image, jsonOutput, thinking, stream).also {
-                    if (fast) offSwitch[model] = thinking
+                    if (lowThinking) lowSwitch[model] = thinking
+                    else if (fast) offSwitch[model] = thinking
                 }
             } catch (e: AiError.Server) {
                 if (e.code != 400) throw e
@@ -220,9 +230,10 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
         return ms.coerceIn(10_000, 24 * 3600_000L)
     }
 
-    private enum class Thinking { BUDGET_0, MINIMAL, DEFAULT }
+    private enum class Thinking { BUDGET_0, MINIMAL, LOW_LEVEL, LOW_BUDGET, DEFAULT }
 
     private val offSwitch = java.util.concurrent.ConcurrentHashMap<String, Thinking>()
+    private val lowSwitch = java.util.concurrent.ConcurrentHashMap<String, Thinking>()
 
     /** Opens the TLS connection ahead of the first message so it doesn't pay the handshake. Errors are ignored. */
     suspend fun warmUp(apiKey: String) = withContext(Dispatchers.IO) {
@@ -269,6 +280,8 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
             val thinkingConfig = when (thinking) {
                 Thinking.BUDGET_0 -> buildJsonObject { put("thinkingBudget", 0) }
                 Thinking.MINIMAL -> buildJsonObject { put("thinkingLevel", "minimal") }
+                Thinking.LOW_LEVEL -> buildJsonObject { put("thinkingLevel", "low") }
+                Thinking.LOW_BUDGET -> buildJsonObject { put("thinkingBudget", 1024) }
                 Thinking.DEFAULT -> null
             }
             if (jsonOutput || thinkingConfig != null) {
@@ -281,9 +294,6 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
         val body = payload.toString().toRequestBody("application/json".toMediaType())
         val label = "$model ${if (stream == null) "generate" else "stream"} ${thinking.name.lowercase()}"
         Log.i(TAG, "→ $label: system ${system.length} chars (~${system.length / 4} tokens), ${turns.size} turns${if (image != null) ", image ${image.size / 1024} KB" else ""}")
-        // Google sends nothing, not even headers, until the first word. With thinking off that should take a second
-        // or two, so a 20 s silence means the model is queued and the next one is a better bet. Thinking through a
-        // plan can legitimately stay silent for a minute.
         val client = if (thinking == Thinking.DEFAULT) slowHttp else http
         if (stream == null) {
             val request = Request.Builder().url("$base/models/$model:generateContent").header("x-goog-api-key", apiKey).post(body).build()
@@ -409,6 +419,7 @@ class GeminiClient(base: OkHttpClient = OkHttpClient()) {
 
     companion object {
         private const val TAG = "FQ-AI"
+        const val FALLBACK_STABLE_FLASH = "gemini-2.5-flash"
         const val FALLBACK_FAST = "gemini-flash-latest"
         const val FALLBACK_LITE = "gemini-flash-lite-latest"
     }
