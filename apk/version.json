@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "2.3.0",
+  "versionCode": 7,
+  "versionName": "2.5.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Weekly journal with notes, kg on any exercise from the plan editor, and a smoother workout screen with focus mode."
+  "notes": ""
 }
