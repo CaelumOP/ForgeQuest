@@ -2,5 +2,5 @@
   "versionCode": 7,
   "versionName": "2.5.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": ""
+  "notes": "Realistic muscle recovery, an equipment-aware coach and exercise swapper, better nutrition math, and quick RPE/RIR effort tags."
 }
