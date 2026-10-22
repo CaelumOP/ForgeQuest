@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "2.5.0",
+  "versionCode": 8,
+  "versionName": "2.6.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Realistic muscle recovery, an equipment-aware coach and exercise swapper, better nutrition math, and quick RPE/RIR effort tags."
+  "notes": "Cut, Maintain or Gain goal, calmer weight increases, Easy/OK/Hard/Pain set tags, sick and travel days that protect your streak, safer coach plan edits, and a short AI debrief after each workout."
 }

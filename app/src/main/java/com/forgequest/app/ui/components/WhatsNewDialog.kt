@@ -48,19 +48,19 @@ fun WhatsNewGate() {
 
     val bullets = if (isArabic) {
         listOf(
-            "استشفاء عضلي واقعي: يُحتسب التعب الآن بناءً على عدد الجولات والعدات الفعلية وشدة التمرين بدلاً من 48 ساعة ثابتة لمجرد عدة واحدة.",
-            "محرك استبدال التمارين الذكي: يقترح بدائل متطابقة ميكانيكياً وحركياً حسب المعدات المتوفرة لديك.",
-            "مدرب ذكي واعي بالمعدات: يسألك المدرب عن معداتك أولاً ويصمم جدولك بناءً عليها، مع كشف تلقائي لثبات الأوزان والحاجة لأسبوع تخفيف الحمل (Deload).",
-            "معادلات تغذية دقيقة: دعم معادلة Katch-McArdle لنسبة الدهون، وحدود آمنة للسعرات والبروتين والدهون الأساسية.",
-            "أزرار سريعة لتقييم الجهد (RPE / RIR) داخل التمرين وتطوير تلقائي للأوزان والعدات."
+            "هدف الجسم: خسارة الوزن أو المحافظة عليه أو زيادته، مع سعرات وبروتين مقترحة تناسب هدفك.",
+            "زيادة أهدأ للأوزان: لا يرتفع الوزن إلا بعد جلستين ناجحتين، ويتوقف عند انخفاض الجاهزية.",
+            "تقييم كل جولة بلمسة واحدة: سهل، مناسب، صعب، ألم.",
+            "أيام المرض والسفر والإصابة والراحة لا تكسر سلسلتك، وتتوقف التذكيرات حين تبتعد.",
+            "تعديلات أدق من المدرب على خطتك، وملخص قصير بالذكاء الاصطناعي بعد كل تمرين."
         )
     } else {
         listOf(
-            "Realistic muscle recovery: fatigue and recovery hours now scale with your actual sets, reps, load, and effort instead of jumping to 48h after 1 rep.",
-            "Biomechanical exercise swapper: suggests movement-pattern and joint-angle matches filtered by your available equipment.",
-            "Equipment-aware AI Coach: checks your available equipment before building plans and automatically detects lift plateaus & deload weeks.",
-            "Upgraded nutrition math: adds optional Body Fat % (Katch-McArdle BMR) and enforces safe calorie, protein, and essential fat floors.",
-            "One-tap RPE / RIR effort tags on set notes with automatic double-progression overload."
+            "Cut, Maintain or Gain: pick your goal and get calorie and protein targets that fit it.",
+            "Calmer progression: weight goes up only after two good sessions in a row, and holds when readiness is low.",
+            "One-tap effort tags on each set: Easy, OK, Hard or Pain.",
+            "Sick, travel, injured and rest days protect your streak, and reminders back off when you step away.",
+            "Safer coach plan edits, and a short AI debrief after each workout."
         )
     }
 
