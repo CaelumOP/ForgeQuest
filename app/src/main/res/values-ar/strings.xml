@@ -1055,6 +1055,12 @@
     <string name="update_later">لاحقًا</string>
     <string name="update_allow">اسمح لـForgeQuest بتثبيت التحديثات، ثم اضغط «تحديث» مجددًا.</string>
     <string name="update_downloading">جارٍ تنزيل التحديث…</string>
+    <string name="update_banner_title">يتوفّر تحديث جديد!</string>
+    <string name="update_critical_title">تحديث مهم</string>
+    <string name="update_critical_hint">يُصلح هذا التحديث مشكلةً مهمة، فيُرجى تثبيته في أقرب وقت.</string>
+    <string name="update_progress">جارٍ التنزيل… %1$d%%</string>
+    <string name="update_download_failed">لم يكتمل التنزيل. تحقّق من اتصالك ثم اضغط «تحديث» مجددًا.</string>
+    <string name="whats_new_title">الجديد في الإصدار %1$s</string>
     <string name="cd_start_hold">ابدأ المؤقّت</string>
     <string name="hold_get_ready">استعدّ</string>
     <string name="hold_holding">اثبت</string>
