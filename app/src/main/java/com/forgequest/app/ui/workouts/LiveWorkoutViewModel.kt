@@ -6,6 +6,7 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Nudges
 import com.forgequest.app.domain.SetEffort
@@ -86,6 +87,9 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val hold = MutableStateFlow<HoldTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
     val summary = MutableStateFlow<WorkoutSummary?>(null)
+    /** The coach's debrief under the summary; loads in the background and may never arrive (offline, no key). */
+    val debrief = MutableStateFlow<WorkoutDebrief?>(null)
+    val debriefLoading = MutableStateFlow(false)
     val finishing = MutableStateFlow(false)
 
     init {
@@ -348,6 +352,12 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     after = after,
                     nextUp = nextUp,
                 )
+                // In its own job so a slow or failed debrief never holds up the summary.
+                if (snap.settings.debriefEnabled) viewModelScope.launch {
+                    debriefLoading.value = true
+                    debrief.value = app.coach.generateDebrief(s.id)
+                    debriefLoading.value = false
+                }
             } finally {
                 finishing.value = false
             }

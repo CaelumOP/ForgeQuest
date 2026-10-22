@@ -1027,4 +1027,11 @@
     <string name="coach_stale_title">Your plan changed</string>
     <string name="coach_stale_body">You edited your plan after the coach suggested this one. Applying it will replace those edits.</string>
     <string name="coach_stale_apply">Apply anyway</string>
+    <string name="debrief_title">Coach\'s debrief</string>
+    <string name="debrief_score">%1$d/10</string>
+    <string name="debrief_loading">Your coach is reviewing this workout…</string>
+    <string name="debrief_next_time">Next time: %1$s</string>
+    <string name="debrief_journal">Coach %1$d/10: %2$s</string>
+    <string name="debrief_setting">Workout debrief</string>
+    <string name="debrief_setting_hint">A short AI review with a score and one tip after each workout</string>
 </resources>

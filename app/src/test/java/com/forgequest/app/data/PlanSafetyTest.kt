@@ -87,3 +87,21 @@ class PlanSafetyTest {
         assertEquals(false, PlanJson.hasBrokenBlock("```json\n{\"changes\":[{\"type\":\"remove\",\"dayOfWeek\":2,\"exerciseId\":\"dips\"}]}\n```"))
     }
 }
+
+class DebriefTest {
+    @Test
+    fun parsesFencedJsonAndFloorsTheScore() {
+        val d = com.forgequest.app.data.plan.WorkoutDebrief.parse(
+            "Sure!\n```json\n{\"score\": 2, \"summary\": \"Solid work.\", \"highlights\": [\"PR on dips\", \"all sets done\", \"extra\"], \"watch\": [\"knee note\"], \"nextTime\": [\"add 1 rep\"]}\n```",
+        )!!
+        assertEquals(4, d.score)
+        assertEquals(2, d.highlights.size)
+        assertEquals("knee note", d.watch.single())
+    }
+
+    @Test
+    fun junkGivesNull() {
+        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("offline"))
+        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"score\": 7}"))
+    }
+}

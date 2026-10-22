@@ -231,6 +231,8 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
+    fun setDebrief(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(debriefEnabled = on) } }
+
     fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
     }
@@ -915,6 +917,20 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         SettingsSection(stringResource(R.string.settings_section_coach))
+
+        FitCard {
+            Row(
+                Modifier.fillMaxWidth().toggleable(settings.debriefEnabled, role = Role.Switch) { vm.setDebrief(it) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.debrief_setting), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    Text(stringResource(R.string.debrief_setting_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                FitSwitch(settings.debriefEnabled, null)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
 
         // AI key
         SettingsRow(

@@ -86,6 +86,7 @@ import androidx.navigation.NavHostController
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.ui.labelRes
@@ -165,7 +166,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
-        WorkoutCompleteScreen(sum, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        val debrief by vm.debrief.collectAsState()
+        val debriefLoading by vm.debriefLoading.collectAsState()
+        WorkoutCompleteScreen(sum, debrief, debriefLoading, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -775,14 +778,14 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
 }
 
 @Composable
-private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
+private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?, debriefLoading: Boolean, onDone: () -> Unit) {
     val c = Fit.colors
     var filled by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { filled = true }
     val leveledUp = sum.after.level > sum.before.level
     BackHandler(onBack = onDone)
     Column(
-        Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().padding(24.dp),
+        Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(32.dp))
@@ -844,7 +847,35 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
                 }
             }
         }
-        Spacer(Modifier.weight(1f))
+        AnimatedVisibility(debrief != null || debriefLoading) {
+            Column {
+                Spacer(Modifier.height(12.dp))
+                DebriefCard(debrief)
+            }
+        }
+        Spacer(Modifier.height(24.dp))
         PillButton(stringResource(R.string.home_done), onClick = onDone, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** The coach's take on the workout: score, what went well, one thing to watch, one tip. Null shows it loading. */
+@Composable
+fun DebriefCard(d: WorkoutDebrief?) {
+    val c = Fit.colors
+    FitCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            if (d != null) Text(stringResource(R.string.debrief_score, d.score), style = MaterialTheme.typography.titleMedium, color = c.gold)
+        }
+        Spacer(Modifier.height(6.dp))
+        if (d == null) {
+            Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        } else {
+            Text(d.summary, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            // Green for what went well, gold for what to watch, blue for next time.
+            d.highlights.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(top = 4.dp)) }
+            d.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(top = 4.dp)) }
+            d.nextTime.forEach { Text(stringResource(R.string.debrief_next_time, it), style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.padding(top = 4.dp)) }
+        }
     }
 }

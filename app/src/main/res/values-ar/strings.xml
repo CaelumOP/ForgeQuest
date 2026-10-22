@@ -1128,4 +1128,11 @@
     <string name="coach_stale_title">تغيّرت خطتك</string>
     <string name="coach_stale_body">عدّلت خطتك بعد أن اقترح المدرب هذه الخطة، وتطبيقها سيستبدل تعديلاتك.</string>
     <string name="coach_stale_apply">طبّقها على أي حال</string>
+    <string name="debrief_title">ملخص المدرب</string>
+    <string name="debrief_score">%1$d/10</string>
+    <string name="debrief_loading">يراجع مدربك هذا التمرين…</string>
+    <string name="debrief_next_time">في المرة القادمة: %1$s</string>
+    <string name="debrief_journal">المدرب %1$d/10: %2$s</string>
+    <string name="debrief_setting">ملخص ما بعد التمرين</string>
+    <string name="debrief_setting_hint">مراجعة قصيرة بالذكاء الاصطناعي مع تقييم ونصيحة بعد كل تمرين</string>
 </resources>

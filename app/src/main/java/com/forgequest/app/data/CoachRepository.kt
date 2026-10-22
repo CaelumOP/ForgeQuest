@@ -19,6 +19,7 @@ import com.forgequest.app.data.plan.PlanJson
 import com.forgequest.app.data.plan.PlanPatch
 import com.forgequest.app.data.plan.PlanPatches
 import com.forgequest.app.data.plan.PlanValidator
+import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Badges
@@ -40,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -299,6 +301,55 @@ class CoachRepository(
         chat.update(msg.copy(planApplied = true))
         return ApplyResult.APPLIED
     }
+
+    /**
+     * The coach's short debrief of a finished workout: compares it with the last time each exercise was done,
+     * the effort chips and notes, and that day's readiness. Fast provider (Groq when set, else Gemini with no
+     * thinking), 10 s at most; null when offline, off, keyless or unreadable, so the summary never waits on it.
+     */
+    suspend fun generateDebrief(sessionId: Long): WorkoutDebrief? = suspendRunCatching {
+        val s = settings.current()
+        if (!s.debriefEnabled) return@suspendRunCatching null
+        val groqKey = settings.groqKey.value
+        if (groqKey.isBlank() && settings.apiKey.value.isBlank()) return@suspendRunCatching null
+        val session = db.sessions().byId(sessionId) ?: return@suspendRunCatching null
+        val sets = db.sessions().observeSets(sessionId).first().filter { it.done }
+        if (sets.isEmpty()) return@suspendRunCatching null
+        val library = progress.snapshot.first().exercises
+        val payload = buildString {
+            appendLine("Workout: ${session.title}, ${LocalDate.ofEpochDay(session.epochDay)}, ${((session.finishedAt ?: System.currentTimeMillis()) - session.startedAt) / 60_000} min")
+            appendLine("Body goal: ${s.nutritionGoal.name}")
+            db.readiness().get(session.epochDay)?.let { appendLine("Readiness that day: recovery ${it.recovery}%, sleep ${it.sleepMin} min") }
+            if (session.note.isNotBlank()) appendLine("Their note: ${session.note}")
+            sets.groupBy { it.exerciseId }.forEach { (id, done) ->
+                val name = library[id]?.name ?: id
+                fun line(list: List<SetEntity>) = list.sortedBy { it.setIndex }.joinToString(", ") { st ->
+                    listOfNotNull(
+                        st.reps?.let { "$it reps" }, st.seconds?.let { "${it}s" }, st.weightKg?.takeIf { it > 0f }?.let { "${it}kg" },
+                        st.effort.takeIf { it.isNotBlank() && it != "OK" }?.lowercase(), st.note.takeIf { it.isNotBlank() }?.let { "\"$it\"" },
+                        if (st.isPr) "PR" else null,
+                    ).joinToString(" ")
+                }
+                appendLine("- $name: ${line(done)}")
+                val before = db.sessions().recentDoneSets(id).filter { it.sessionId != sessionId }
+                val last = before.filter { it.sessionId == before.firstOrNull()?.sessionId }
+                if (last.isNotEmpty()) appendLine("  last time: ${line(last)}")
+            }
+        }
+        val language = if (java.util.Locale.getDefault().language == "ar") "formal Modern Standard Arabic (Western digits)" else "English"
+        val system = """
+            You are a friendly strength coach writing a 10-second debrief of a workout that was just finished.
+            Reply with ONLY a JSON object: {"score": 4-10, "summary": one short sentence, "highlights": [1-2 short items citing real numbers],
+            "watch": [0-1 short item: a stall, a pain/hard note, or low readiness], "nextTime": [1 short, concrete tip]}.
+            Finishing counts: never score below 4. Be specific, warm and brief. Write in $language.
+        """.trimIndent()
+        val turns = listOf("user" to payload)
+        val text = withTimeoutOrNull(DEBRIEF_TIMEOUT_MS) {
+            val fromGroq = if (groqKey.isBlank()) null else suspendRunCatching { groq.streamChat(groqKey, groqModel(), system, turns) {} }.getOrNull()
+            fromGroq ?: gemini.generate(requireKey(), models(), system, turns, jsonOutput = true, fast = true)
+        } ?: return@suspendRunCatching null
+        WorkoutDebrief.parse(text)?.also { d -> db.sessions().update(session.copy(debrief = WorkoutDebrief.encode(d))) }
+    }.getOrNull()
 
     /** "Tuesday: Dips → Push-up" lines for a change-only card, in the app language. */
     private fun describeChanges(base: PlanDraft, patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
@@ -676,6 +727,7 @@ class CoachRepository(
 
     private companion object {
         const val TAG = "FQ-AI"
+        const val DEBRIEF_TIMEOUT_MS = 10_000L
 
         val CORE_RULES = """
             You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Sports Science, Calisthenics & Gym Coach).
