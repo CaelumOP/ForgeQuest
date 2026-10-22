@@ -1,7 +1,10 @@
 package com.forgequest.app.domain
 
+import com.forgequest.app.data.db.ExerciseEntity
+import com.forgequest.app.data.db.SetEntity
 import java.time.DayOfWeek
 import java.time.LocalDate
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 
@@ -167,25 +170,121 @@ object Xp {
 // ---------------------------------------------------------------- Recovery
 
 data class MuscleRecovery(
-    /** 0 = fully recovered, 1 = just trained hard. */
+    /** 0 = fully recovered, 1 = just trained hard (4+ full working sets). */
     val fatigue: Float,
     val hoursUntilReady: Int,
 )
 
 object Recovery {
     const val WINDOW_HOURS = 48f
+    /** Number of full working sets on a primary muscle that constitutes a 100 % (48-hour) session stimulus. */
+    private const val FULL_SESSION_EFFECTIVE_SETS = 4f
+    private val HIGH_SKILL_LOW_REP_IDS = setOf(
+        "muscle_up", "pistol_squat", "handstand_push_up", "tuck_planche",
+        "pseudo_planche_push_up", "tuck_front_lever", "front_lever_row", "back_lever_tuck", "nordic_curl",
+    )
 
     /**
-     * [hits] = (muscle, trainedAtMillis, weight) where weight is 1 for a primary muscle, 0.5 for secondary.
-     * Fatigue fades linearly over 48 h; the freshest, hardest hit wins.
+     * Converts a session's completed sets into realistic per-muscle stimulus weights in (0, 1].
+     * - 0 reps / 0 seconds -> 0 stimulus (ignored).
+     * - 1 bodyweight rep (e.g. 1 push-up) -> ~0.10 of a working set -> 0.025 stimulus (~1.2 h recovery).
+     * - 1 full working set (10 reps or 30 s hold) -> 0.25 primary stimulus (12 h recovery, 25 % fatigue).
+     * - 2 full working sets -> 0.50 primary stimulus (24 h recovery, 50 % fatigue).
+     * - 4+ full working sets -> 1.00 primary stimulus (48 h recovery, 100 % fatigue).
+     * - Warm-up block sets are weighted at 25 % of a main set so jumping jacks never mark calves red for 48 hours.
+     */
+    fun sessionHits(
+        sets: List<SetEntity>,
+        exercises: Map<String, ExerciseEntity>,
+        sessionFinishedAt: Map<Long, Long>,
+    ): List<Triple<Muscle, Long, Float>> {
+        val result = mutableListOf<Triple<Muscle, Long, Float>>()
+        for ((sessionId, sessionSets) in sets.groupBy { it.sessionId }) {
+            val finishedAt = sessionFinishedAt[sessionId] ?: continue
+            val stimulusByMuscle = mutableMapOf<Muscle, Float>()
+            for (set in sessionSets) {
+                if (!set.done) continue
+                val ex = exercises[set.exerciseId] ?: continue
+                val eff = effectiveSetEffort(set, ex)
+                if (eff <= 0f) continue
+                val primaryDelta = eff / FULL_SESSION_EFFECTIVE_SETS
+                val secondaryDelta = primaryDelta * 0.5f
+                for (m in ex.primary) {
+                    stimulusByMuscle[m] = (stimulusByMuscle[m] ?: 0f) + primaryDelta
+                }
+                for (m in ex.secondary) {
+                    stimulusByMuscle[m] = (stimulusByMuscle[m] ?: 0f) + secondaryDelta
+                }
+            }
+            for ((muscle, totalStimulus) in stimulusByMuscle) {
+                val clamped = totalStimulus.coerceIn(0f, 1f)
+                if (clamped >= 0.02f) {
+                    result += Triple(muscle, finishedAt, clamped)
+                }
+            }
+        }
+        return result
+    }
+
+    /**
+     * Effective working-set equivalent for a single logged set:
+     * - Standard full working set = 1.0f.
+     * - 1 rep on a bodyweight exercise = 0.10f (so 1 rep is 1/10th of a set, not a full workout).
+     */
+    internal fun effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): Float {
+        val rawEffort = when (ex.kind) {
+            ExerciseKind.HOLD -> {
+                val sec = set.seconds ?: 0
+                if (sec <= 0) return 0f
+                val refSec = if (ex.id in HIGH_SKILL_LOW_REP_IDS) 12f else 30f
+                (sec / refSec).coerceIn(0.08f, 1.25f)
+            }
+            ExerciseKind.WEIGHTED -> {
+                val r = set.reps ?: 0
+                if (r <= 0) return 0f
+                val w = set.weightKg ?: 0f
+                // Heavy low-rep sets (3-6 reps with external load) still count as a full working set.
+                val refReps = if (w > 0f) 6f else 10f
+                (r / refReps).coerceIn(0.15f, 1.25f)
+            }
+            ExerciseKind.REPS -> {
+                val r = set.reps ?: 0
+                if (r <= 0) return 0f
+                val hasExtraWeight = (set.weightKg ?: 0f) > 0f
+                val refReps = when {
+                    ex.id in HIGH_SKILL_LOW_REP_IDS -> 4f
+                    hasExtraWeight -> 6f
+                    else -> 10f
+                }
+                (r / refReps).coerceIn(0.08f, 1.25f)
+            }
+        }
+        val blockFactor = if (set.block.equals("Warm-up", ignoreCase = true) || ex.id == "jumping_jacks") 0.25f else 1.0f
+        val noteLower = set.note.lowercase()
+        val rpeFactor = when {
+            "rir 0" in noteLower || "rpe 10" in noteLower || "failure" in noteLower || "فشل" in noteLower -> 1.15f
+            "rir 3" in noteLower || "easy" in noteLower || "سهل" in noteLower -> 0.80f
+            else -> 1.0f
+        }
+        return (rawEffort * blockFactor * rpeFactor).coerceIn(0f, 1.35f)
+    }
+
+    /**
+     * [hits] = (muscle, trainedAtMillis, weight) where weight in (0, 1] is the session stimulus
+     * (1.0 = full primary session needing 48 h, 0.5 = secondary/moderate session needing 24 h,
+     * 0.25 = single working set needing 12 h).
+     * Fatigue clears at a constant physiological rate of 1 / 48 per hour; the highest remaining fatigue wins.
      */
     fun compute(hits: List<Triple<Muscle, Long, Float>>, now: Long): Map<Muscle, MuscleRecovery> {
         val result = mutableMapOf<Muscle, MuscleRecovery>()
         for ((muscle, at, weight) in hits) {
+            if (weight <= 0f) continue
             val hours = (now - at) / 3_600_000f
-            if (hours < 0 || hours >= WINDOW_HOURS) continue
-            val fatigue = weight * (1f - hours / WINDOW_HOURS)
-            val ready = ((WINDOW_HOURS - hours) * weight).toInt().coerceAtLeast(1)
+            val effectiveWeight = weight.coerceIn(0f, 1f)
+            val window = WINDOW_HOURS * effectiveWeight
+            if (hours < 0f || hours >= window) continue
+            val fatigue = effectiveWeight * (1f - hours / window)
+            val ready = (window - hours).toInt().coerceAtLeast(1)
             val prev = result[muscle]
             if (prev == null || fatigue > prev.fatigue) result[muscle] = MuscleRecovery(fatigue, ready)
         }
@@ -196,14 +295,34 @@ object Recovery {
 // ---------------------------------------------------------------- Personal records
 
 object Records {
-    /** Comparable score for one set. Weighted sets use estimated 1RM so 5×100 kg beats 8×80 kg. */
-    fun score(kind: ExerciseKind, reps: Int?, seconds: Int?, weightKg: Float?): Float = when (kind) {
-        ExerciseKind.REPS -> (reps ?: 0).toFloat()
-        ExerciseKind.HOLD -> (seconds ?: 0).toFloat()
-        ExerciseKind.WEIGHTED -> {
-            val w = weightKg ?: 0f
-            val r = reps ?: 0
-            if (w <= 0f) r / 100f else w * (1f + r / 30f)
+    /**
+     * Comparable score for one set:
+     * - WEIGHTED sets use an Epley 1RM model with linear scaling up to 12 reps and logarithmic diminishing
+     *   returns above 12 reps so 5×100 kg beats 8×80 kg and 35×20 kg never falsely beats heavy strength sets.
+     * - REPS and HOLD sets also credit added external weight (e.g. weighted vest or dip belt on calisthenics)
+     *   so progressing from bodyweight to +10 kg is recognized as a personal record.
+     */
+    fun score(kind: ExerciseKind, reps: Int?, seconds: Int?, weightKg: Float?): Float {
+        val extraKg = (weightKg ?: 0f).coerceAtLeast(0f)
+        return when (kind) {
+            ExerciseKind.REPS -> {
+                val r = (reps ?: 0).coerceAtLeast(0)
+                if (r == 0) 0f else r.toFloat() + extraKg * 0.35f
+            }
+            ExerciseKind.HOLD -> {
+                val s = (seconds ?: 0).coerceAtLeast(0)
+                if (s == 0) 0f else s.toFloat() + extraKg * 1.0f
+            }
+            ExerciseKind.WEIGHTED -> {
+                val r = (reps ?: 0).coerceAtLeast(0)
+                if (r == 0) return 0f
+                if (extraKg <= 0f) {
+                    r / 100f
+                } else {
+                    val effectiveReps = if (r <= 12) r.toFloat() else 12f + 3f * ln(1f + (r - 12).toFloat())
+                    extraKg * (1f + effectiveReps / 30f)
+                }
+            }
         }
     }
 

@@ -1045,7 +1045,7 @@
     <string name="zone_4">شديد جدًا</string>
     <string name="zone_5">أقصى</string>
     <string name="update_title">التحقق من التحديثات</string>
-    <string name="update_hint">الإصدار %1$s · اضغط للحصول على أحدث إصدار</string>
+    <string name="update_hint">الإصدار الحالي: v%1$s · اضغط للتحقق من التحديثات</string>
     <string name="update_checking">جارٍ التحقق من التحديثات…</string>
     <string name="update_latest">لديك أحدث إصدار.</string>
     <string name="update_failed">تعذّر التحقق من التحديثات. تحقّق من اتصالك وأعد المحاولة.</string>

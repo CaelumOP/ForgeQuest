@@ -1,12 +1,5 @@
 package com.forgequest.app.ui.onboarding
 
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.focus.focusRequester
-import com.forgequest.app.R
-
-import androidx.compose.ui.res.stringResource
-
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -22,6 +15,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,12 +44,16 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -63,24 +62,28 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.forgequest.app.AppContainer
+import com.forgequest.app.R
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.prefs.BodyType
+import com.forgequest.app.data.seed.ExerciseCatalog
+import com.forgequest.app.data.seed.StarterPlans
+import com.forgequest.app.domain.EquipmentPreset
+import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.WeightUnit
-import com.forgequest.app.data.seed.StarterPlans
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.IconCircle
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
-import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import java.util.Locale
 
 data class OnboardingState(
     val step: Int = 0,
@@ -94,6 +97,7 @@ data class OnboardingState(
     val protein: Int = 135,
     val goalsTouched: Boolean = false,
     val planIndex: Int = 0,
+    val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
     val apiKey: String = "",
     val checkingKey: Boolean = false,
     val keyMessage: String? = null,
@@ -130,18 +134,40 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
-    private val emptyPlan by lazy { PlanDraft(app.str(R.string.onb_my_plan), app.str(R.string.onb_my_plan_desc), (1..7).map { PlanDraftDay(it, app.str(R.string.today_rest_day), isRest = true) }) }
+    private val emptyPlan by lazy {
+        PlanDraft(
+            app.str(R.string.onb_my_plan),
+            app.str(R.string.onb_my_plan_desc),
+            (1..7).map { PlanDraftDay(it, app.str(R.string.today_rest_day), isRest = true) },
+        )
+    }
 
     fun finish() {
         val s = state.value
         viewModelScope.launch {
             if (s.keyOk) app.settings.setApiKey(s.apiKey)
-            val plan = StarterPlans.all.getOrNull(s.planIndex) ?: emptyPlan
             app.workouts.seedLibrary()
-            app.workouts.applyPlan(plan, if (plan === emptyPlan) "manual" else "starter")
+            val selectedPlan = StarterPlans.all.getOrNull(s.planIndex) ?: emptyPlan
+            val catalogById = ExerciseCatalog.all.associateBy { it.id }
+            val adaptedPlan = if (selectedPlan === emptyPlan) {
+                emptyPlan
+            } else {
+                ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment).first
+            }
+            app.workouts.applyPlan(adaptedPlan, if (selectedPlan === emptyPlan) "manual" else "starter")
             app.progress.logWeight(s.weightKg)
             app.settings.update {
-                it.copy(onboarded = true, name = s.name.trim(), bodyType = s.bodyType, kcalGoal = s.kcal, proteinGoal = s.protein, unit = s.unit.label, heightCm = s.heightCm, birthYear = if (s.age > 0) java.time.Year.now().value - s.age else 0)
+                it.copy(
+                    onboarded = true,
+                    name = s.name.trim(),
+                    bodyType = s.bodyType,
+                    kcalGoal = s.kcal.coerceAtLeast(Nutrition.MIN_SAFE_KCAL),
+                    proteinGoal = s.protein.coerceAtLeast(60),
+                    unit = s.unit.code,
+                    heightCm = s.heightCm,
+                    birthYear = if (s.age > 0) java.time.Year.now().value - s.age else 0,
+                    equipment = s.equipmentPreset.encode(),
+                )
             }
         }
     }
@@ -261,8 +287,8 @@ private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
     GoalRow(stringResource(R.string.weight_body), s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = if (s.unit == WeightUnit.KG) 0.5f else 1f, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
     GoalRow(stringResource(R.string.profile_height), if (s.heightCm > 0f) s.heightCm else 170f, { vm.setBody(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
     GoalRow(stringResource(R.string.profile_age), if (s.age > 0) s.age.toFloat() else 25f, { vm.setBody(age = it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
-    GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt(), goalsTouched = true) } }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
-    GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt(), goalsTouched = true) } }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
+    GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt().coerceAtLeast(60), goalsTouched = true) } }, step = 5f, min = 60f, max = 400f, unit = stringResource(R.string.unit_g))
+    GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt().coerceAtLeast(Nutrition.MIN_SAFE_KCAL), goalsTouched = true) } }, step = 50f, min = Nutrition.MIN_SAFE_KCAL.toFloat(), max = 6000f, unit = stringResource(R.string.unit_kcal))
     Spacer(Modifier.height(4.dp))
     Text(stringResource(R.string.onb_tap_number), style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
     Spacer(Modifier.height(8.dp))
@@ -285,17 +311,43 @@ private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     val c = Fit.colors
+    val isArabic = Locale.getDefault().language == "ar"
     Title(stringResource(R.string.onb_plan_title), stringResource(R.string.onb_plan_body))
+
+    Text(
+        text = if (isArabic) "معدات التدريب المتوفرة لديك" else "Your available equipment",
+        style = MaterialTheme.typography.titleSmall,
+        color = c.textPrimary,
+    )
+    Spacer(Modifier.height(8.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        EquipmentPreset.entries.forEach { preset ->
+            ChoiceChip(
+                text = if (isArabic) preset.labelAr else preset.labelEn,
+                selected = s.equipmentPreset == preset,
+                onClick = { vm.update { it.copy(equipmentPreset = preset) } },
+            )
+        }
+    }
+    Spacer(Modifier.height(20.dp))
+
     val options = StarterPlans.all.map { it.name to it.description } + (stringResource(R.string.onb_start_empty) to stringResource(R.string.onb_start_empty_desc))
     options.forEachIndexed { index, (name, desc) ->
         val selected = s.planIndex == index
         Row(
             Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card)
                 .then(if (selected) Modifier.border(2.dp, c.teal, RoundedCornerShape(20.dp)) else Modifier)
-                .clickable { vm.update { it.copy(planIndex = index) } }
+                .clickable {
+                    val autoPreset = when (index) {
+                        2 -> EquipmentPreset.FULL_GYM
+                        else -> s.equipmentPreset
+                    }
+                    vm.update { it.copy(planIndex = index, equipmentPreset = autoPreset) }
+                }
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

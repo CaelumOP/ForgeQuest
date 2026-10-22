@@ -100,7 +100,8 @@ object Readiness {
     fun baseline(values: List<Double>, floorSd: Double): Baseline? {
         if (values.size < MIN_BASELINE_DAYS) return null
         val mean = values.average()
-        val sd = sqrt(values.sumOf { (it - mean) * (it - mean) } / values.size)
+        val denom = (values.size - 1).coerceAtLeast(1)
+        val sd = sqrt(values.sumOf { (it - mean) * (it - mean) } / denom)
         return Baseline(mean, maxOf(sd, floorSd), values.size)
     }
 

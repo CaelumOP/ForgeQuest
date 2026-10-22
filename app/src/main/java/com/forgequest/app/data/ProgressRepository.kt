@@ -12,7 +12,6 @@ import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.domain.BadgeStats
 import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.LevelInfo
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.MuscleRecovery
@@ -22,10 +21,12 @@ import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.domain.Xp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.shareIn
+import kotlin.math.max
 
 data class DayNutrition(val epochDay: Long, val kcal: Int, val protein: Float, val carbs: Float = 0f)
 
@@ -80,7 +81,7 @@ class ProgressRepository(
     val snapshot: Flow<ProgressSnapshot> = combine(
         raw, settingsRepo.settings, workouts.activePlan, db.weights().observeAll(),
     ) { r, settings, plan, weights -> build(r, settings, plan, weights) }.flowOn(Dispatchers.Default)
-        .shareIn(scope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), replay = 1)
+        .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     private fun build(r: Raw, settings: Settings, plan: ActivePlan?, weights: List<WeightEntity>): ProgressSnapshot {
         val today = Dates.today()
@@ -95,22 +96,20 @@ class ProgressRepository(
             today = today,
         )
 
-        val sessionById = r.sessions.associateBy { it.id }
-        val hits = r.sets.mapNotNull { set ->
-            val ex = exercises[set.exerciseId] ?: return@mapNotNull null
-            val at = sessionById[set.sessionId]?.finishedAt ?: return@mapNotNull null
-            ex to at
-        }.distinct().flatMap { (ex, at) ->
-            ex.primary.map { Triple(it, at, 1f) } + ex.secondary.map { Triple(it, at, 0.5f) }
-        }
-        val recovery = Recovery.compute(hits, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val recentFinishedAt = r.sessions
+            .mapNotNull { s -> s.finishedAt?.takeIf { now - it in 0L..(49L * 3_600_000L) }?.let { s.id to it } }
+            .toMap()
+        val recentSets = if (recentFinishedAt.isEmpty()) emptyList() else r.sets.filter { it.sessionId in recentFinishedAt }
+        val hits = Recovery.sessionHits(recentSets, exercises, recentFinishedAt)
+        val recovery = Recovery.compute(hits, now)
 
         val byDay = r.meals.groupBy { it.epochDay }.map { (day, meals) ->
             DayNutrition(day, meals.sumOf { it.kcal }, meals.sumOf { it.protein.toDouble() }.toFloat(), meals.sumOf { it.carbs.toDouble() }.toFloat())
         }.sortedBy { it.epochDay }
         val todayNutrition = byDay.firstOrNull { it.epochDay == today } ?: DayNutrition(today, 0, 0f)
 
-        val stats = statsFor(r, exercises, streak.best, byDay, settings.proteinGoal)
+        val stats = statsFor(r, streak.best, byDay, settings.proteinGoal)
         val level = Xp.levelFor(
             Xp.total(r.sessions.size, r.sets.size, r.sets.count { it.isPr }, r.badges.size)
         )
@@ -122,7 +121,6 @@ class ProgressRepository(
 
     private fun statsFor(
         r: Raw,
-        exercises: Map<String, ExerciseEntity>,
         bestStreak: Int,
         byDay: List<DayNutrition>,
         proteinGoal: Int,
@@ -131,16 +129,23 @@ class ProgressRepository(
         val bestSeconds = mutableMapOf<String, Int>()
         val bestWeight = mutableMapOf<String, Float>()
         for (s in r.sets) {
-            val kind = exercises[s.exerciseId]?.kind ?: ExerciseKind.REPS
             s.reps?.let { bestReps.merge(s.exerciseId, it, ::maxOf) }
             s.seconds?.let { bestSeconds.merge(s.exerciseId, it, ::maxOf) }
-            if (kind == ExerciseKind.WEIGHTED) s.weightKg?.let { bestWeight.merge(s.exerciseId, it, ::maxOf) }
+            s.weightKg?.takeIf { it > 0f }?.let { bestWeight.merge(s.exerciseId, it, ::maxOf) }
         }
-        val hitDays = byDay.filter { it.protein >= proteinGoal }.map { it.epochDay }.toSet()
-        var run = 0
-        var day = Dates.today()
-        if (day !in hitDays) day -= 1
-        while (day in hitDays) { run++; day-- }
+        val hitDaysSorted = byDay.filter { it.protein >= proteinGoal }.map { it.epochDay }.distinct().sorted()
+        var bestProteinRun = 0
+        var currentRun = 0
+        var prevDay: Long? = null
+        for (d in hitDaysSorted) {
+            if (prevDay != null && d == prevDay + 1L) {
+                currentRun++
+            } else {
+                currentRun = 1
+            }
+            bestProteinRun = max(bestProteinRun, currentRun)
+            prevDay = d
+        }
         return BadgeStats(
             workouts = r.sessions.size,
             bestStreakWeeks = bestStreak,
@@ -149,7 +154,7 @@ class ProgressRepository(
             bestWeight = bestWeight,
             mealsLogged = r.mealCount,
             mealsScanned = r.scannedCount,
-            proteinGoalDaysInARow = run,
+            proteinGoalDaysInARow = bestProteinRun,
         )
     }
 

@@ -3,7 +3,13 @@ package com.forgequest.app.domain
 import java.util.Locale
 
 /** Display unit for weights. Everything is stored in kilograms; only the screen converts. */
-enum class WeightUnit(private val code: String, private val arabic: String, private val perKg: Float, val loadStep: Float, val bodyStep: Float) {
+enum class WeightUnit(
+    val code: String,
+    private val arabic: String,
+    private val perKg: Float,
+    val loadStep: Float,
+    val bodyStep: Float,
+) {
     KG("kg", "كغ", 1f, 2.5f, 0.1f),
     LB("lb", "رطل", 2.2046225f, 5f, 0.2f);
 
@@ -22,4 +28,16 @@ enum class WeightUnit(private val code: String, private val arabic: String, priv
 
     /** Just the number, e.g. for compact "8×60" labels. */
     fun number(kg: Float, decimals: Int = 1): String = "%.${decimals}f".format(Locale.US, fromKg(kg)).removeSuffix(".0")
+
+    companion object {
+        /** Resolves both canonical codes ("kg", "lb") and localized labels ("كغ", "رطل") safely. */
+        fun fromCodeOrLabel(raw: String?): WeightUnit {
+            val cleaned = raw?.trim().orEmpty()
+            return if (cleaned.equals("lb", ignoreCase = true) || cleaned.equals("lbs", ignoreCase = true) || cleaned == "رطل") {
+                LB
+            } else {
+                KG
+            }
+        }
+    }
 }

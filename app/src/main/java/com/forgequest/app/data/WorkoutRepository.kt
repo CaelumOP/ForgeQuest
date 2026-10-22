@@ -1,9 +1,8 @@
 package com.forgequest.app.data
 
+import androidx.room.withTransaction
 import com.forgequest.app.AppText
 import com.forgequest.app.R
-
-import androidx.room.withTransaction
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.PlanDayEntity
@@ -15,6 +14,7 @@ import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Records
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,7 +22,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.math.max
 
 data class PlanDayWithItems(val day: PlanDayEntity, val items: List<PlanItemEntity>)
 data class ActivePlan(val plan: PlanEntity, val days: List<PlanDayWithItems>) {
@@ -43,28 +45,44 @@ class WorkoutRepository(private val db: AppDatabase) {
     private val plans = db.plans()
     private val sessions = db.sessions()
     private val exercises = db.exercises()
+    private val seedMutex = Mutex()
+    @Volatile private var lastSeededLang: String? = null
 
-    suspend fun seedLibrary() {
-        exercises.insertAll(ExerciseCatalog.all)
-        // Built-in names follow the app's language; a name the person changed is left alone.
+    suspend fun seedLibrary() = seedMutex.withLock {
         val arabic = java.util.Locale.getDefault().language == "ar"
-        for (builtIn in ExerciseCatalog.all) {
-            val existing = exercises.byId(builtIn.id) ?: continue
-            if (existing.custom) continue
-            val ar = com.forgequest.app.data.seed.ExerciseNamesAr.byId[builtIn.id] ?: continue
-            val wanted = if (arabic) ar else builtIn.name
-            if (existing.name != wanted && (existing.name == ar || existing.name == builtIn.name)) exercises.upsert(existing.copy(name = wanted))
-        }
-        // Plans saved from the starter set too, so "Day 1 · Core + upper body" reads in the app's language.
-        for ((en, ar) in com.forgequest.app.data.seed.StarterPlans.arabic) {
-            val (from, to) = if (arabic) en to ar else ar to en
-            plans.renamePlans(from, to); plans.redescribePlans(from, to); plans.retitleDays(from, to); plans.renoteDays(from, to)
-        }
-        // Keep built-in video links fresh without touching user edits on custom exercises.
-        for (builtIn in ExerciseCatalog.all) {
-            val existing = exercises.byId(builtIn.id) ?: continue
-            if (!existing.custom && existing.videoUrl == null && builtIn.videoUrl != null) {
-                exercises.upsert(existing.copy(videoUrl = builtIn.videoUrl))
+        val langTag = if (arabic) "ar" else "en"
+        db.withTransaction {
+            exercises.insertAll(ExerciseCatalog.all)
+            val existingById = exercises.all().associateBy { it.id }
+            val toUpsert = mutableListOf<ExerciseEntity>()
+
+            for (builtIn in ExerciseCatalog.all) {
+                val existing = existingById[builtIn.id] ?: continue
+                if (existing.custom) continue
+                val ar = com.forgequest.app.data.seed.ExerciseNamesAr.byId[builtIn.id]
+                val wantedName = if (arabic && ar != null) ar else builtIn.name
+                val nameNeedsUpdate = existing.name != wantedName && (existing.name == ar || existing.name == builtIn.name)
+                val videoNeedsUpdate = existing.videoUrl == null && builtIn.videoUrl != null
+                if (nameNeedsUpdate || videoNeedsUpdate) {
+                    toUpsert += existing.copy(
+                        name = if (nameNeedsUpdate) wantedName else existing.name,
+                        videoUrl = if (videoNeedsUpdate) builtIn.videoUrl else existing.videoUrl,
+                    )
+                }
+            }
+            if (toUpsert.isNotEmpty()) {
+                exercises.upsertAll(toUpsert)
+            }
+
+            if (lastSeededLang != langTag) {
+                for ((en, ar) in com.forgequest.app.data.seed.StarterPlans.arabic) {
+                    val (from, to) = if (arabic) en to ar else ar to en
+                    plans.renamePlans(from, to)
+                    plans.redescribePlans(from, to)
+                    plans.retitleDays(from, to)
+                    plans.renoteDays(from, to)
+                }
+                lastSeededLang = langTag
             }
         }
     }
@@ -84,7 +102,8 @@ class WorkoutRepository(private val db: AppDatabase) {
     /** Saves [draft] as the active plan, creating custom exercises for ids the library doesn't know. */
     suspend fun applyPlan(draft: PlanDraft, source: String): Long = db.withTransaction {
         for (day in draft.days) for (item in day.items) {
-            if (exercises.byId(item.exerciseId) == null) {
+            val existing = exercises.byId(item.exerciseId)
+            if (existing == null) {
                 val kind = runCatching { ExerciseKind.valueOf(item.kind ?: "") }.getOrElse {
                     if (item.seconds != null) ExerciseKind.HOLD else if (item.weightKg != null) ExerciseKind.WEIGHTED else ExerciseKind.REPS
                 }
@@ -94,14 +113,13 @@ class WorkoutRepository(private val db: AppDatabase) {
                         id = item.exerciseId,
                         name = item.name ?: item.exerciseId.replace('_', ' ').replaceFirstChar { it.uppercase() },
                         kind = kind,
-                        primary = muscles.take(2),
+                        primary = muscles.take(2).ifEmpty { listOf(Muscle.ABS) },
                         secondary = muscles.drop(2),
                         videoUrl = item.videoUrl,
                         custom = true,
                     )
                 )
             } else if (!item.videoUrl.isNullOrBlank()) {
-                val existing = exercises.byId(item.exerciseId)!!
                 val builtInLink = ExerciseCatalog.all.firstOrNull { it.id == existing.id }?.videoUrl
                 val userEdited = existing.videoUrl != null && existing.videoUrl != builtInLink
                 if (existing.videoUrl != item.videoUrl && !(userEdited && item.videoUrl == builtInLink)) {
@@ -179,6 +197,13 @@ class WorkoutRepository(private val db: AppDatabase) {
     suspend fun deletePlanItem(id: Long) = plans.deleteItem(id)
     suspend fun restorePlanItem(item: PlanItemEntity) = plans.restoreItem(item)
     suspend fun updatePlanDay(day: PlanDayEntity) = plans.updateDay(day)
+
+    /** Swaps an exercise on a plan day while translating its set/rep/hold/weight prescription biomechanically. */
+    suspend fun swapPlanItem(item: PlanItemEntity, newExerciseId: String) = db.withTransaction {
+        val newEx = exercises.byId(newExerciseId) ?: return@withTransaction
+        val translated = ExerciseSwapEngine.translatePlanItem(item, newEx)
+        plans.updateItem(translated)
+    }
 
     suspend fun addPlanItem(dayId: Long, exerciseId: String) {
         val ex = exercises.byId(exerciseId) ?: return
@@ -265,13 +290,68 @@ class WorkoutRepository(private val db: AppDatabase) {
         id
     }
 
+    /**
+     * Prefills today's sets from the user's most recent completed session of [ex], applying double-progression
+     * overload when every set in the previous session hit the top of the prescribed target range without
+     * failure/discomfort notes.
+     */
     private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
         val kind = ex?.kind ?: ExerciseKind.REPS
         val recent = ex?.let { sessions.recentDoneSets(it.id) }.orEmpty()
-        val lastSession = recent.filter { it.sessionId == recent.firstOrNull()?.sessionId }
+        val lastSession = recent.filter { it.sessionId == recent.firstOrNull()?.sessionId }.sortedBy { it.setIndex }
         val count = item?.sets ?: 3
+
+        val isWarmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || ex?.id == "jumping_jacks"
+        val hadStrainOrPainNote = lastSession.any { s ->
+            val n = s.note.lowercase()
+            "rir 0" in n || "rpe 10" in n || "fail" in n || "pain" in n || "twinge" in n || "hurt" in n || "صعب" in n || "ألم" in n
+        }
+        val completedAllSetsLastTime = !isWarmup && lastSession.size >= count && !hadStrainOrPainNote
+
+        val targetMinReps = item?.repsMin ?: 8
+        val targetMaxReps = item?.repsMax ?: item?.repsMin ?: 12
+        val targetHoldSec = item?.seconds ?: 30
+
+        val hitTopAllSets = completedAllSetsLastTime && when (kind) {
+            ExerciseKind.HOLD -> lastSession.all { (it.seconds ?: 0) >= targetHoldSec }
+            ExerciseKind.REPS, ExerciseKind.WEIGHTED -> lastSession.all { (it.reps ?: 0) >= targetMaxReps }
+        }
+
         return (0 until count).map { i ->
             val last = lastSession.getOrNull(i) ?: lastSession.lastOrNull()
+            val lastWeight = last?.weightKg ?: item?.weightKg ?: 0f
+            val (prefillReps, prefillSeconds, prefillWeight) = when (kind) {
+                ExerciseKind.HOLD -> {
+                    val baseSec = last?.seconds ?: item?.seconds ?: 30
+                    val nextSec = if (hitTopAllSets) (baseSec + 5).coerceAtMost(3600) else baseSec
+                    val w = if (item?.weightKg != null || last?.weightKg != null) lastWeight else null
+                    Triple(null, nextSec, w)
+                }
+                ExerciseKind.WEIGHTED -> {
+                    val baseReps = last?.reps ?: item?.repsMin ?: 10
+                    val hasRange = item?.repsMin != null && item.repsMax != null && item.repsMax > item.repsMin
+                    if (hitTopAllSets && lastWeight > 0f && hasRange) {
+                        // Double progression: top of rep range reached across all sets -> add 2.5 kg and reset to repsMin.
+                        Triple(targetMinReps, null, (lastWeight + 2.5f).coerceAtMost(999f))
+                    } else if (hitTopAllSets && lastWeight > 0f) {
+                        Triple(baseReps, null, (lastWeight + 2.5f).coerceAtMost(999f))
+                    } else {
+                        val nextReps = if (completedAllSetsLastTime && baseReps < targetMaxReps) baseReps + 1 else baseReps
+                        Triple(nextReps, null, lastWeight)
+                    }
+                }
+                ExerciseKind.REPS -> {
+                    val baseReps = last?.reps ?: item?.repsMin ?: 10
+                    val nextReps = if (completedAllSetsLastTime && baseReps < targetMaxReps + 2) {
+                        (baseReps + 1).coerceAtMost(999)
+                    } else {
+                        baseReps
+                    }
+                    val w = if (item?.weightKg != null || (last?.weightKg != null && last.weightKg > 0f)) lastWeight else null
+                    Triple(nextReps, null, w)
+                }
+            }
+
             SetEntity(
                 sessionId = sessionId,
                 exerciseId = ex?.id ?: item?.exerciseId ?: "",
@@ -280,9 +360,9 @@ class WorkoutRepository(private val db: AppDatabase) {
                 circuit = item?.circuit ?: false,
                 setIndex = i,
                 targetLabel = targetLabel(kind, item),
-                reps = if (kind == ExerciseKind.HOLD) null else last?.reps ?: item?.repsMin ?: 10,
-                seconds = if (kind == ExerciseKind.HOLD) last?.seconds ?: item?.seconds ?: 30 else null,
-                weightKg = if (kind == ExerciseKind.WEIGHTED || item?.weightKg != null) last?.weightKg ?: item?.weightKg ?: 0f else null,
+                reps = prefillReps,
+                seconds = prefillSeconds,
+                weightKg = prefillWeight,
                 restSeconds = item?.restSeconds ?: 90,
             )
         }
@@ -318,16 +398,27 @@ class WorkoutRepository(private val db: AppDatabase) {
         sessions.insertSets(buildSetsFor(sessionId, position, null, ex))
     }
 
-    /** Replaces the exercise at [itemPosition] keeping the set count and block. */
+    /** Replaces the exercise at [itemPosition] keeping the set count, block, and translating prescription targets. */
     suspend fun swapExercise(sessionId: Long, itemPosition: Int, newExerciseId: String) = db.withTransaction {
         val ex = exercises.byId(newExerciseId) ?: return@withTransaction
         val old = sessions.sets(sessionId).filter { it.itemPosition == itemPosition }
         if (old.isEmpty()) return@withTransaction
-        old.forEach { sessions.deleteSet(it.id) }
+        sessions.deleteSetsAtPosition(sessionId, itemPosition)
         val template = old.first()
-        val fresh = buildSetsFor(sessionId, itemPosition, null, ex).take(old.size).let { built ->
-            if (built.size < old.size) built + List(old.size - built.size) { i -> built.last().copy(setIndex = built.size + i) } else built
-        }.map { it.copy(block = template.block, circuit = template.circuit, restSeconds = template.restSeconds) }
+        val syntheticItem = PlanItemEntity(
+            dayId = 0,
+            position = itemPosition,
+            exerciseId = newExerciseId,
+            block = template.block,
+            circuit = template.circuit,
+            sets = old.size,
+            repsMin = if (ex.kind == ExerciseKind.HOLD) null else (template.reps ?: 10),
+            repsMax = if (ex.kind == ExerciseKind.HOLD) null else max(template.reps ?: 10, 12),
+            seconds = if (ex.kind == ExerciseKind.HOLD) (template.seconds ?: 30) else null,
+            weightKg = if (ex.kind == ExerciseKind.WEIGHTED) 0f else null,
+            restSeconds = template.restSeconds,
+        )
+        val fresh = buildSetsFor(sessionId, itemPosition, syntheticItem, ex)
         sessions.insertSets(fresh)
     }
 
@@ -336,12 +427,18 @@ class WorkoutRepository(private val db: AppDatabase) {
         sessions.delete(sessionId)
     }
 
-    /** Closes the session, drops unticked sets and flags new personal records. */
-    suspend fun finishSession(sessionId: Long): FinishResult = db.withTransaction {
+    /**
+     * Closes the session, optionally ticking all remaining sets first ([tickAll] = true),
+     * drops unticked sets in a single query, and flags new personal records.
+     */
+    suspend fun finishSession(sessionId: Long, tickAll: Boolean = false): FinishResult = db.withTransaction {
         val session = sessions.byId(sessionId) ?: return@withTransaction FinishResult("", 0, emptyList(), 0)
-        val all = sessions.sets(sessionId)
-        all.filter { !it.done }.forEach { sessions.deleteSet(it.id) }
-        val done = all.filter { it.done }
+        if (tickAll) {
+            sessions.markAllSetsDone(sessionId)
+        } else {
+            sessions.deleteUntickedSetsOf(sessionId)
+        }
+        val done = sessions.sets(sessionId).filter { it.done }
 
         val prNames = mutableListOf<String>()
         for ((exerciseId, setsOfExercise) in done.groupBy { it.exerciseId }) {
@@ -393,16 +490,23 @@ class WorkoutRepository(private val db: AppDatabase) {
         affected.forEach { recomputeRecords(it) }
     }
 
-    /** Replays the exercise's whole history so PR tags stay truthful after an edit or delete. */
+    /** Replays the exercise's whole history in chronological order so PR tags stay truthful after an edit or delete. */
     private suspend fun recomputeRecords(exerciseId: String) {
         val ex = exercises.byId(exerciseId) ?: return
         val all = sessions.recentDoneSetsAll(exerciseId)
-        val finishedAt = sessions.finished().associate { it.id to (it.finishedAt ?: 0L) }
-        val ordered = all.groupBy { it.sessionId }.entries.sortedBy { finishedAt[it.key] ?: 0L }.map { it.value }
+        val sessionById = sessions.finished().associateBy { it.id }
+        val ordered = all.groupBy { it.sessionId }.entries
+            .sortedWith(
+                compareBy<Map.Entry<Long, List<SetEntity>>> { sessionById[it.key]?.epochDay ?: 0L }
+                    .thenBy { sessionById[it.key]?.startedAt ?: 0L }
+                    .thenBy { sessionById[it.key]?.finishedAt ?: 0L }
+            )
+            .map { it.value }
         val records = Records.personalRecords(ex.kind, ordered, { it.reps }, { it.seconds }, { it.weightKg })
-        for (set in all) {
+        val toUpdate = all.mapNotNull { set ->
             val shouldBe = set in records
-            if (set.isPr != shouldBe) sessions.updateSet(set.copy(isPr = shouldBe))
+            if (set.isPr != shouldBe) set.copy(isPr = shouldBe) else null
         }
+        if (toUpdate.isNotEmpty()) sessions.updateSets(toUpdate)
     }
 }

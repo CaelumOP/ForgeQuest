@@ -6,11 +6,12 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
-import com.forgequest.app.domain.Records
-import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.LevelInfo
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.Records
+import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +67,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val exercises: StateFlow<Map<String, ExerciseEntity>> = repo.library.map { list -> list.associateBy { it.id } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
-    val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
+    val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
+
+    val userEquipment: StateFlow<Set<Equipment>> = app.settings.settings.map { it.configuredEquipment }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     /**
      * What each exercise looked like last time, set by set, shown beside today's sets the way Strong and Hevy
@@ -93,16 +98,29 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             }
         }
         viewModelScope.launch {
+            var lastSecond = -1L
             while (isActive) {
-                now.value = System.currentTimeMillis()
+                val currentMillis = System.currentTimeMillis()
+                val currentSecond = currentMillis / 1000L
+                if (currentSecond != lastSecond) {
+                    lastSecond = currentSecond
+                    now.value = currentMillis
+                }
                 rest.value?.let { r ->
-                    if (now.value >= r.endsAt) {
+                    if (currentMillis >= r.endsAt) {
                         rest.value = null
+                        now.value = currentMillis
                         app.haptics.setDone()
                         app.notifier.restOver(r.nextExercise)
                     }
                 }
-                hold.value?.let { holdCue(it, it.elapsed(now.value)) }
+                hold.value?.let { h ->
+                    val elapsedSec = h.elapsed(currentMillis)
+                    if (elapsedSec != h.elapsed(now.value)) {
+                        now.value = currentMillis
+                    }
+                    holdCue(h, elapsedSec)
+                }
                 delay(250)
             }
         }
@@ -129,7 +147,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun addRest(seconds: Int) {
-        rest.value = rest.value?.let { it.copy(totalSeconds = it.totalSeconds + seconds, endsAt = it.endsAt + seconds * 1000L) }
+        rest.value = rest.value?.let { it.copy(totalSeconds = (it.totalSeconds + seconds).coerceAtLeast(15), endsAt = it.endsAt + seconds * 1000L) }
         rest.value?.let { app.notifier.showRest(it.endsAt, it.nextExercise) }
         app.haptics.tick()
     }
@@ -262,44 +280,41 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     }
 
     /** For when you did the work but didn't tick along (Strong offers the same on finish). */
-    fun tickAllAndFinish() {
-        val pending = sets.value.filter { !it.done }
-        viewModelScope.launch {
-            pending.forEach { repo.updateSet(it.copy(done = true)) }
-            finish()
-        }
-    }
+    fun tickAllAndFinish() = finish(tickAll = true)
 
-    fun finish() {
+    fun finish(tickAll: Boolean = false) {
         val s = currentSession ?: return
         if (finishing.value) return
         finishing.value = true
         rest.value = null
         app.notifier.cancelRest()
         viewModelScope.launch {
-            val before = app.progress.snapshot.first().level
-            val result = repo.finishSession(s.id)
-            val badges = app.progress.evaluateBadges()
-            val snap = app.progress.snapshot.first()
-            val after = snap.level
-            val today = com.forgequest.app.domain.Dates.todayDayOfWeek()
-            val nextUp = snap.plan?.days.orEmpty()
-                .filter { !it.day.isRest && it.items.isNotEmpty() }
-                .minByOrNull { (it.day.dayOfWeek - today + 7 - 1) % 7 }
-                ?.let { it.day.dayOfWeek to it.day.title }
-            app.haptics.celebrate()
-            summary.value = WorkoutSummary(
-                title = result.sessionTitle,
-                doneSets = result.doneSets,
-                minutes = ((System.currentTimeMillis() - s.startedAt) / 60_000).toInt().coerceAtLeast(1),
-                prs = result.prs,
-                newBadges = badges,
-                xpGained = after.totalXp - before.totalXp,
-                before = before,
-                after = after,
-                nextUp = nextUp,
-            )
-            finishing.value = false
+            try {
+                val before = app.progress.snapshot.first().level
+                val result = repo.finishSession(s.id, tickAll = tickAll)
+                val badges = app.progress.evaluateBadges()
+                val snap = app.progress.snapshot.first()
+                val after = snap.level
+                val today = com.forgequest.app.domain.Dates.todayDayOfWeek()
+                val nextUp = snap.plan?.days.orEmpty()
+                    .filter { !it.day.isRest && it.items.isNotEmpty() }
+                    .minByOrNull { (it.day.dayOfWeek - today + 7 - 1) % 7 }
+                    ?.let { it.day.dayOfWeek to it.day.title }
+                app.haptics.celebrate()
+                summary.value = WorkoutSummary(
+                    title = result.sessionTitle,
+                    doneSets = result.doneSets,
+                    minutes = ((System.currentTimeMillis() - s.startedAt) / 60_000).toInt().coerceAtLeast(1),
+                    prs = result.prs,
+                    newBadges = badges,
+                    xpGained = after.totalXp - before.totalXp,
+                    before = before,
+                    after = after,
+                    nextUp = nextUp,
+                )
+            } finally {
+                finishing.value = false
+            }
         }
     }
 

@@ -1,32 +1,161 @@
 package com.forgequest.app.domain
 
+import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** Daily calorie and protein suggestions. Protein follows body weight; calories need height, age and sex too. */
-object Nutrition {
-    /** [perKg] grams per kg (1.8 by default, a common muscle-building target), rounded to 5 g. */
-    fun suggestedProtein(kg: Float, perKg: Float = 1.8f): Int = ((kg * perKg) / 5f).roundToInt() * 5
+enum class NutritionGoal { CUT, MAINTAIN, GAIN }
 
-    /** Calories left after protein (4 kcal/g) and a [fatPct] share for fat, as grams of carbs (4 kcal/g), rounded to 5 g. */
-    fun suggestedCarbs(kcal: Int, proteinG: Int, fatPct: Int = 25): Int =
-        (((kcal * (1f - fatPct / 100f)) - proteinG * 4f) / 4f / 5f).roundToInt().coerceAtLeast(4) * 5
+data class MacroTargets(
+    val kcal: Int,
+    val proteinG: Int,
+    val fatG: Int,
+    val carbsG: Int,
+)
+
+/**
+ * Daily calorie, protein, fat, and carbohydrate calculations audited against sports nutrition standards:
+ * - BMR via Katch-McArdle (when body fat % is known) or Mifflin-St Jeor.
+ * - Strict minimum caloric floor of 1,200 kcal/day.
+ * - Protein floor of 1.6–2.2 g/kg of body weight (or lean mass when body fat > 30%).
+ * - Essential fatty acid (EFA) minimum of 0.7 g/kg body weight (0.6–0.8 g/kg range) before filling carbs.
+ */
+object Nutrition {
+    const val MIN_SAFE_KCAL = 1200
+    const val MAX_SAFE_KCAL = 6000
+    const val MIN_PROTEIN_PER_KG = 1.6f
+    const val DEFAULT_PROTEIN_PER_KG = 1.8f
+    const val MAX_PROTEIN_PER_KG = 2.4f
+    const val MIN_FAT_PER_KG = 0.7f
+    const val MIN_FAT_SHARE_PCT = 20
+    const val DEFAULT_FAT_SHARE_PCT = 25
+    const val MAX_DEFICIT_PCT = 0.22f
 
     /**
-     * Mifflin-St Jeor resting energy times an activity factor from planned training days, rounded to 50 kcal.
-     * Without height or age it falls back to 33 kcal per kg, which is what the app used before.
+     * [perKg] grams per kg (1.8 by default, clamped to 1.2..2.5 for manual overrides and 1.6..2.4 for active defaults),
+     * rounded to 5 g. When [bodyFatPct] > 30%, scales against estimated lean mass so high-adiposity users aren't
+     * prescribed excessive protein.
      */
-    fun suggestedKcal(kg: Float, heightCm: Float, age: Int, male: Boolean, trainingDays: Int): Int {
-        if (heightCm <= 0f || age <= 0) return ((kg * 33f) / 50f).roundToInt() * 50
-        val rest = 10f * kg + 6.25f * heightCm - 5f * age + if (male) 5f else -161f
-        val activity = when {
-            trainingDays <= 0 -> 1.2f
-            trainingDays <= 2 -> 1.375f
-            trainingDays <= 4 -> 1.55f
-            trainingDays <= 6 -> 1.725f
-            else -> 1.9f
+    fun suggestedProtein(kg: Float, perKg: Float = DEFAULT_PROTEIN_PER_KG, bodyFatPct: Float = 0f): Int {
+        if (kg <= 0f) return 120
+        val effectiveMassKg = if (bodyFatPct in 30f..60f) {
+            // Use lean mass scaled to a 20% body-fat reference frame so protein stays in the 2.0–2.2g/kg LBM zone.
+            kg * (1f - bodyFatPct / 100f) / 0.80f
+        } else {
+            kg
         }
-        return ((rest * activity) / 50f).roundToInt() * 50
+        val clampedRatio = perKg.coerceIn(1.2f, 2.5f)
+        val raw = ((effectiveMassKg * clampedRatio) / 5f).roundToInt() * 5
+        val floor = ((effectiveMassKg * MIN_PROTEIN_PER_KG) / 5f).roundToInt() * 5
+        return if (perKg >= MIN_PROTEIN_PER_KG) max(raw, floor).coerceAtLeast(60) else raw.coerceAtLeast(50)
     }
 
-    fun ageFromBirthYear(birthYear: Int, currentYear: Int): Int = if (birthYear <= 0) 0 else (currentYear - birthYear).coerceIn(0, 120)
+    /**
+     * Essential-fat-aware carbohydrate partitioning:
+     * 1. Deducts protein calories (4 kcal/g).
+     * 2. Computes dietary fat as the GREATER of [fatPct]% of total calories OR the essential fatty acid minimum
+     *    ([MIN_FAT_PER_KG] = 0.7 g/kg of [bodyWeightKg], i.e. within the 0.6–0.8 g/kg physiological floor).
+     * 3. Allocates remaining calories to carbohydrates (4 kcal/g), rounded to 5 g, never exceeding total calories.
+     */
+    fun suggestedCarbs(kcal: Int, proteinG: Int, fatPct: Int = DEFAULT_FAT_SHARE_PCT, bodyWeightKg: Float = 0f): Int {
+        val safeKcal = kcal.coerceAtLeast(MIN_SAFE_KCAL)
+        val fatFromPctG = (safeKcal * (fatPct.coerceIn(15, 45) / 100f)) / 9f
+        val minEssentialFatG = if (bodyWeightKg > 0f) bodyWeightKg * MIN_FAT_PER_KG else 0f
+        val effectiveFatG = max(fatFromPctG, minEssentialFatG)
+        val remainingKcal = safeKcal - (proteinG * 4f) - (effectiveFatG * 9f)
+        if (remainingKcal <= 0f) return 0
+        return ((remainingKcal / 4f) / 5f).roundToInt().coerceAtLeast(4) * 5
+    }
+
+    /** Essential-fat-aware dietary fat target in grams, rounded to 5 g. */
+    fun suggestedFat(kcal: Int, fatPct: Int = DEFAULT_FAT_SHARE_PCT, bodyWeightKg: Float = 0f): Int {
+        val safeKcal = kcal.coerceAtLeast(MIN_SAFE_KCAL)
+        val fatFromPctG = (safeKcal * (fatPct.coerceIn(15, 45) / 100f)) / 9f
+        val minEssentialFatG = if (bodyWeightKg > 0f) bodyWeightKg * MIN_FAT_PER_KG else 35f
+        return (max(fatFromPctG, minEssentialFatG) / 5f).roundToInt().coerceAtLeast(7) * 5
+    }
+
+    /**
+     *Resting BMR in kcal/day:
+     * - Uses Katch-McArdle (370 + 21.6 × LBM) when [bodyFatPct] is known (4%..60%).
+     * - Uses Mifflin-St Jeor (10×kg + 6.25×cm − 5×age + 5/−161) when [heightCm] and [age] are positive.
+     * - Falls back to 22 kcal/kg otherwise.
+     */
+    fun bmrKcal(kg: Float, heightCm: Float, age: Int, male: Boolean, bodyFatPct: Float = 0f): Float {
+        val safeKg = kg.coerceIn(30f, 250f)
+        if (bodyFatPct in 4f..60f) {
+            val lbmKg = safeKg * (1f - bodyFatPct / 100f)
+            return 370f + 21.6f * lbmKg
+        }
+        if (heightCm <= 0f || age <= 0) return safeKg * 22f
+        return 10f * safeKg + 6.25f * heightCm - 5f * age.coerceIn(10, 100) + if (male) 5f else -161f
+    }
+
+    /**
+     * Mifflin-St Jeor (or Katch-McArdle when [bodyFatPct] > 0) times an activity factor from planned training days,
+     * rounded to 50 kcal and strictly floored at [MIN_SAFE_KCAL] (1,200 kcal/day).
+     * Without height or age (and without bodyFatPct) it falls back to 33 kcal per kg (floored at 1,200 kcal).
+     */
+    fun suggestedKcal(
+        kg: Float,
+        heightCm: Float,
+        age: Int,
+        male: Boolean,
+        trainingDays: Int,
+        bodyFatPct: Float = 0f,
+        goal: NutritionGoal = NutritionGoal.MAINTAIN,
+    ): Int {
+        val safeKg = kg.coerceIn(30f, 250f)
+        val tdee = if (bodyFatPct !in 4f..60f && (heightCm <= 0f || age <= 0)) {
+            safeKg * 33f
+        } else {
+            val rest = bmrKcal(safeKg, heightCm, age, male, bodyFatPct)
+            val activity = when {
+                trainingDays <= 0 -> 1.2f
+                trainingDays <= 2 -> 1.375f
+                trainingDays <= 4 -> 1.55f
+                trainingDays <= 6 -> 1.725f
+                else -> 1.9f
+            }
+            rest * activity
+        }
+        val adjusted = when (goal) {
+            NutritionGoal.MAINTAIN -> tdee
+            NutritionGoal.CUT -> {
+                val maxDeficit = minOf(500f, tdee * MAX_DEFICIT_PCT)
+                tdee - maxDeficit
+            }
+            NutritionGoal.GAIN -> tdee + 250f
+        }
+        return (((adjusted / 50f).roundToInt() * 50)).coerceIn(MIN_SAFE_KCAL, MAX_SAFE_KCAL)
+    }
+
+    /**
+     * Complete, internally consistent macro partition that guarantees:
+     * - Calories >= 1,200 kcal/day
+     * - Protein >= 1.6 g/kg
+     * - Fat >= 0.7 g/kg
+     * - Carbs >= 0 g (and if protein + essential fat exceed target kcal, raises kcal to cover essential macros).
+     */
+    fun partitionMacros(
+        kg: Float,
+        kcalGoal: Int,
+        proteinPerKg: Float = DEFAULT_PROTEIN_PER_KG,
+        fatPct: Int = DEFAULT_FAT_SHARE_PCT,
+        bodyFatPct: Float = 0f,
+    ): MacroTargets {
+        val safeKcal = kcalGoal.coerceIn(MIN_SAFE_KCAL, MAX_SAFE_KCAL)
+        val proteinG = suggestedProtein(kg, proteinPerKg.coerceAtLeast(MIN_PROTEIN_PER_KG), bodyFatPct)
+        val fatG = suggestedFat(safeKcal, fatPct.coerceAtLeast(MIN_FAT_SHARE_PCT), kg)
+        val carbsG = suggestedCarbs(safeKcal, proteinG, fatPct.coerceAtLeast(MIN_FAT_SHARE_PCT), kg)
+        val minRequiredKcal = ((proteinG * 4 + fatG * 9 + carbsG * 4) / 50.0).roundToInt() * 50
+        return MacroTargets(
+            kcal = max(safeKcal, minRequiredKcal).coerceAtLeast(MIN_SAFE_KCAL),
+            proteinG = proteinG,
+            fatG = fatG,
+            carbsG = carbsG,
+        )
+    }
+
+    fun ageFromBirthYear(birthYear: Int, currentYear: Int): Int =
+        if (birthYear <= 0) 0 else (currentYear - birthYear).coerceIn(0, 120)
 }

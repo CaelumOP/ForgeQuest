@@ -1,24 +1,10 @@
 package com.forgequest.app.ui.workouts
 
-import com.forgequest.app.data.plan.PlanJson
-import androidx.compose.material.icons.rounded.SmartDisplay
-import com.forgequest.app.ui.blockLabel
-import com.forgequest.app.R
-
-import androidx.compose.ui.res.pluralStringResource
-
-import androidx.compose.ui.res.stringResource
-
 import androidx.compose.foundation.background
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.Role
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,21 +17,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,13 +40,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -70,14 +57,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
+import com.forgequest.app.R
 import com.forgequest.app.container
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.ai.AiError
@@ -86,18 +79,21 @@ import com.forgequest.app.data.db.PlanDayEntity
 import com.forgequest.app.data.db.PlanEntity
 import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.plan.PlanDraft
+import com.forgequest.app.data.plan.PlanJson
 import com.forgequest.app.data.seed.StarterPlans
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
-import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.components.FitCard
-import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
-import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.NumberStepper
+import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -105,6 +101,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -116,6 +113,16 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     val message = MutableStateFlow<String?>(null)
 
     fun preview(draft: PlanDraft) { pending.value = draft }
+
+    fun adaptPending(exercises: Map<String, ExerciseEntity>, userEquipment: Set<Equipment>) {
+        val draft = pending.value ?: return
+        val (adapted, count) = ExerciseSwapEngine.adaptPlanToEquipment(draft, exercises, userEquipment)
+        pending.value = adapted
+        if (count > 0) {
+            val isAr = Locale.getDefault().language == "ar"
+            message.value = if (isAr) "تم استبدال $count تمارين لتناسب معداتك" else "Adapted $count exercises to your equipment"
+        }
+    }
 
     fun applyPending(source: String) {
         val draft = pending.value ?: return
@@ -141,6 +148,10 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun updateItem(item: PlanItemEntity) = viewModelScope.launch { app.workouts.updatePlanItem(item) }
+    fun swapItem(item: PlanItemEntity, newExerciseId: String) = viewModelScope.launch {
+        app.workouts.swapPlanItem(item, newExerciseId)
+    }
+
     val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
 
     fun deleteItem(item: PlanItemEntity, name: String) = viewModelScope.launch {
@@ -166,6 +177,10 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         val id = app.workouts.addCustomExercise(name, kind, listOf(muscle), null)
         app.workouts.addPlanItem(dayId, id)
     }
+    fun createAndSwapExercise(name: String, kind: ExerciseKind, muscle: Muscle, item: PlanItemEntity) = viewModelScope.launch {
+        val id = app.workouts.addCustomExercise(name, kind, listOf(muscle), null)
+        app.workouts.swapPlanItem(item, id)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,6 +198,7 @@ fun PlanEditorScreen(nav: NavHostController) {
     var selectedDay by rememberSaveable { mutableIntStateOf(Dates.todayDayOfWeek()) }
     var picker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PlanItemEntity?>(null) }
+    var swappingItem by remember { mutableStateOf<PlanItemEntity?>(null) }
     var templates by remember { mutableStateOf(false) }
     var changePlan by remember { mutableStateOf(false) }
     var paste by remember { mutableStateOf(false) }
@@ -206,6 +222,7 @@ fun PlanEditorScreen(nav: NavHostController) {
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val day = s.plan?.day(selectedDay)
+    val userEquipment = s.settings.configuredEquipment
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -217,7 +234,7 @@ fun PlanEditorScreen(nav: NavHostController) {
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
-            com.forgequest.app.ui.components.TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
+            TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 (1..7).forEach { dow ->
@@ -273,7 +290,12 @@ fun PlanEditorScreen(nav: NavHostController) {
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                     )
                                 }
-                                IconButton(onClick = { vm.deleteItem(item, ex?.name ?: item.exerciseId) }) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary) }
+                                IconButton(onClick = { swappingItem = item }) {
+                                    Icon(Icons.Rounded.SwapHoriz, contentDescription = stringResource(R.string.live_swap_exercise), tint = c.teal)
+                                }
+                                IconButton(onClick = { vm.deleteItem(item, ex?.name ?: item.exerciseId) }) {
+                                    Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary)
+                                }
                             }
                         }
                     }
@@ -293,6 +315,27 @@ fun PlanEditorScreen(nav: NavHostController) {
             onPick = { vm.addItem(day.day.id, it.id); picker = false },
             onCreate = { n, k, m -> vm.createExercise(n, k, m, day.day.id); picker = false },
             onDismiss = { picker = false },
+            userEquipment = userEquipment,
+        )
+    }
+
+    swappingItem?.let { itemToSwap ->
+        val srcEx = s.exercises[itemToSwap.exerciseId]
+        ExercisePickerSheet(
+            title = stringResource(R.string.live_swap_exercise),
+            library = library,
+            onPick = { picked ->
+                vm.swapItem(itemToSwap, picked.id)
+                swappingItem = null
+            },
+            onCreate = { n, k, m ->
+                vm.createAndSwapExercise(n, k, m, itemToSwap)
+                swappingItem = null
+            },
+            onDismiss = { swappingItem = null },
+            initialMuscle = srcEx?.primary?.firstOrNull(),
+            sourceExercise = srcEx,
+            userEquipment = userEquipment,
         )
     }
 
@@ -301,16 +344,22 @@ fun PlanEditorScreen(nav: NavHostController) {
         val siblings = day?.items?.sortedBy { it.position }.orEmpty()
         val index = siblings.indexOfFirst { it.id == item.id }
         ItemEditorSheet(
-            item, kind, s.exercises[item.exerciseId]?.name ?: item.exerciseId, s.settings.weightUnit,
-            canMoveUp = index > 0, canMoveDown = index >= 0 && index < siblings.lastIndex,
+            item = item,
+            kind = kind,
+            name = s.exercises[item.exerciseId]?.name ?: item.exerciseId,
+            unit = s.settings.weightUnit,
+            canMoveUp = index > 0,
+            canMoveDown = index >= 0 && index < siblings.lastIndex,
             onMove = { delta -> vm.move(item, delta); editing = null },
-            onSave = { vm.updateItem(it); editing = null }, onDismiss = { editing = null },
+            onSwap = { editing = null; swappingItem = item },
+            onSave = { vm.updateItem(it); editing = null },
+            onDismiss = { editing = null },
         )
     }
 
     if (changePlan) {
         // Most used first; each choice has an ⓘ that explains what it does.
-        val context = androidx.compose.ui.platform.LocalContext.current
+        val context = LocalContext.current
         val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
         val copied = stringResource(R.string.plan_prompt_copied)
         ModalBottomSheet(onDismissRequest = { changePlan = false }, containerColor = c.card) {
@@ -318,13 +367,13 @@ fun PlanEditorScreen(nav: NavHostController) {
                 Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
                 ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
                     Row(Modifier.padding(start = 70.dp, end = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        com.forgequest.app.ui.components.TonalPill(stringResource(R.string.plan_gemini_copy), onClick = {
+                        TonalPill(stringResource(R.string.plan_gemini_copy), onClick = {
                             // The app copies res/raw/plan_prompt.txt, mirrored in docs/prompts/plan-from-youtube.md.
                             val prompt = context.resources.openRawResource(R.raw.plan_prompt).bufferedReader().use { it.readText() }
                             clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
                             if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copied) }
                         }, icon = Icons.Rounded.ContentCopy)
-                        com.forgequest.app.ui.components.TonalPill(stringResource(R.string.plan_gemini_paste), onClick = { changePlan = false; paste = true }, icon = Icons.Rounded.ContentPaste)
+                        TonalPill(stringResource(R.string.plan_gemini_paste), onClick = { changePlan = false; paste = true }, icon = Icons.Rounded.ContentPaste)
                     }
                 }
                 ChoiceRow(Icons.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_info), onClick = { changePlan = false; templates = true })
@@ -447,7 +496,14 @@ fun PlanEditorScreen(nav: NavHostController) {
     }
 
     pending?.let { draft ->
-        PlanPreviewSheet(draft, s.exercises, onApply = { vm.applyPending("manual") }, onDismiss = { vm.pending.value = null })
+        PlanPreviewSheet(
+            draft = draft,
+            exercises = s.exercises,
+            userEquipment = userEquipment,
+            onAdapt = { vm.adaptPending(s.exercises, userEquipment) },
+            onApply = { vm.applyPending("manual") },
+            onDismiss = { vm.pending.value = null },
+        )
     }
 
     if (renaming && day != null) {
@@ -464,19 +520,6 @@ fun PlanEditorScreen(nav: NavHostController) {
             confirmButton = { TextButton(onClick = { vm.rename(day.day, title.trim().ifEmpty { workoutLabel }); renaming = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
             dismissButton = { TextButton(onClick = { renaming = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
-    }
-}
-
-@Composable
-private fun ActionRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
-    val c = Fit.colors
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconCircle(icon, c.teal, c.tealTrack, 40.dp)
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        }
     }
 }
 
@@ -518,6 +561,7 @@ private fun ItemEditorSheet(
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     onMove: (Int) -> Unit,
+    onSwap: () -> Unit,
     onSave: (PlanItemEntity) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -525,7 +569,10 @@ private fun ItemEditorSheet(
     var draft by remember { mutableStateOf(item) }
     ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-            Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz)
+            }
             Spacer(Modifier.height(16.dp))
             EditorRow(if (draft.circuit) stringResource(R.string.plan_rounds) else stringResource(R.string.live_sets), draft.sets.toFloat(), { draft = draft.copy(sets = it.toInt()) }, step = 1f, min = 1f, max = 10f)
             if (kind == ExerciseKind.HOLD) {
@@ -582,8 +629,21 @@ private fun EditorRow(label: String, value: Float, onChange: (Float) -> Unit, st
 /** Shows a whole proposed week before it replaces the current plan. Used by the plan editor and coach. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlanPreviewSheet(draft: PlanDraft, exercises: Map<String, ExerciseEntity>, onApply: () -> Unit, onDismiss: () -> Unit) {
+fun PlanPreviewSheet(
+    draft: PlanDraft,
+    exercises: Map<String, ExerciseEntity>,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+    userEquipment: Set<Equipment> = emptySet(),
+    onAdapt: (() -> Unit)? = null,
+) {
     val c = Fit.colors
+    val isArabic = Locale.getDefault().language == "ar"
+    val incompatibleCount = remember(draft, exercises, userEquipment) {
+        if (userEquipment.isEmpty() || userEquipment.containsAll(Equipment.entries)) 0
+        else ExerciseSwapEngine.adaptPlanToEquipment(draft, exercises, userEquipment).second
+    }
+
     ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
             Text(draft.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
@@ -605,6 +665,16 @@ fun PlanPreviewSheet(draft: PlanDraft, exercises: Map<String, ExerciseEntity>, o
                         }
                     }
                 }
+            }
+            if (incompatibleCount > 0 && onAdapt != null) {
+                Spacer(Modifier.height(12.dp))
+                TonalPill(
+                    text = if (isArabic) "تكييف مع معداتي ($incompatibleCount استبدال)" else "Adapt to my equipment ($incompatibleCount swaps)",
+                    onClick = onAdapt,
+                    icon = Icons.Rounded.SwapHoriz,
+                    tint = c.teal,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.plan_replaces), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

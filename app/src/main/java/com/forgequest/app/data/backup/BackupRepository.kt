@@ -20,6 +20,7 @@ import com.forgequest.app.data.db.WeightEntity
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.data.prefs.Settings
 import com.forgequest.app.data.prefs.SettingsRepository
+import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -51,18 +52,38 @@ data class BackupSettings(
     val carbsGoal: Int = 250,
     val proteinPerKg: Float = 1.8f,
     val fatSharePct: Int = 25,
+    val equipment: String = "",
+    val bodyFatPct: Float = 0f,
 ) {
     companion object {
         fun from(s: Settings) = BackupSettings(
-            s.name, s.bodyType.name, s.kcalGoal, s.proteinGoal, s.weeklyTargetOverride, s.handLengthCm, s.palmWidthCm, s.coachNotes,
-            s.theme, s.hapticsEnabled, s.unit, s.reminderHour, s.heightCm, s.birthYear, s.trackCarbs, s.carbsGoal, s.proteinPerKg, s.fatSharePct,
+            name = s.name,
+            bodyType = s.bodyType.name,
+            kcalGoal = s.kcalGoal.coerceAtLeast(1200),
+            proteinGoal = s.proteinGoal,
+            weeklyTargetOverride = s.weeklyTargetOverride,
+            handLengthCm = s.handLengthCm,
+            palmWidthCm = s.palmWidthCm,
+            coachNotes = s.coachNotes,
+            theme = s.theme,
+            hapticsEnabled = s.hapticsEnabled,
+            unit = WeightUnit.fromCodeOrLabel(s.unit).code,
+            reminderHour = s.reminderHour,
+            heightCm = s.heightCm,
+            birthYear = s.birthYear,
+            trackCarbs = s.trackCarbs,
+            carbsGoal = s.carbsGoal,
+            proteinPerKg = s.proteinPerKg,
+            fatSharePct = s.fatSharePct,
+            equipment = s.equipment,
+            bodyFatPct = s.bodyFatPct,
         )
     }
 
     fun applyTo(s: Settings) = s.copy(
         name = name,
         bodyType = runCatching { BodyType.valueOf(bodyType) }.getOrDefault(s.bodyType),
-        kcalGoal = kcalGoal,
+        kcalGoal = kcalGoal.coerceAtLeast(1200),
         proteinGoal = proteinGoal,
         weeklyTargetOverride = weeklyTargetOverride,
         handLengthCm = handLengthCm,
@@ -70,7 +91,7 @@ data class BackupSettings(
         coachNotes = coachNotes,
         theme = theme,
         hapticsEnabled = hapticsEnabled,
-        unit = unit,
+        unit = WeightUnit.fromCodeOrLabel(unit).code,
         reminderHour = reminderHour,
         heightCm = heightCm,
         birthYear = birthYear,
@@ -78,6 +99,8 @@ data class BackupSettings(
         carbsGoal = carbsGoal,
         proteinPerKg = proteinPerKg,
         fatSharePct = fatSharePct,
+        equipment = equipment,
+        bodyFatPct = bodyFatPct,
     )
 }
 

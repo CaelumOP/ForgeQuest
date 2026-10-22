@@ -1,17 +1,5 @@
 package com.forgequest.app.ui.profile
 
-import androidx.compose.material.icons.rounded.SystemUpdate
-
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.SaveAlt
-import com.forgequest.app.R
-import com.forgequest.app.ui.localTitle
-import com.forgequest.app.ui.localDescription
-import com.forgequest.app.ui.localSummary
-
-import androidx.compose.ui.res.stringResource
-
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -19,13 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.material.icons.rounded.MonitorHeart
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,37 +23,41 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
-import androidx.compose.material.icons.rounded.Cloud
-import androidx.compose.material.icons.rounded.ShowChart
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Psychology
-import androidx.compose.material.icons.rounded.Undo
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.Restaurant
-import androidx.compose.material.icons.rounded.SportsGymnastics
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.MonitorWeight
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PanTool
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.Restaurant
+import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.ShowChart
+import androidx.compose.material.icons.rounded.SportsGymnastics
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -84,6 +70,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,6 +78,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -99,34 +90,45 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
+import com.forgequest.app.R
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.ai.AiError
-import com.forgequest.app.data.drive.DriveAuth
-import com.forgequest.app.data.drive.DriveError
 import com.forgequest.app.data.backup.BackupError
 import com.forgequest.app.data.backup.BackupFile
+import com.forgequest.app.data.db.ExerciseEntity
+import com.forgequest.app.data.drive.DriveAuth
+import com.forgequest.app.data.drive.DriveError
 import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
+import com.forgequest.app.domain.Equipment
+import com.forgequest.app.domain.EquipmentPreset
+import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
-import com.forgequest.app.ui.components.SegmentedTabs
-import com.forgequest.app.ui.components.FitSwitch
-import com.forgequest.app.ui.components.toast
+import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
-import com.forgequest.app.ui.components.PillButton
-import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.NumberStepper
+import com.forgequest.app.ui.components.PillButton
+import com.forgequest.app.ui.components.ProgressLine
+import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.toast
+import com.forgequest.app.ui.localDescription
+import com.forgequest.app.ui.localSummary
+import com.forgequest.app.ui.localTitle
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.LineChart
 import com.forgequest.app.ui.workouts.PlanPreviewSheet
+import com.forgequest.app.ui.workouts.localName
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -134,7 +136,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
-import kotlin.math.roundToInt
+import java.util.Locale
 
 class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -151,12 +153,34 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
     private var afterConsent: (suspend (String) -> Unit)? = null
 
-    fun setBodyMeasures(heightCm: Float? = null, birthYear: Int? = null) = viewModelScope.launch {
-        app.settings.update { it.copy(heightCm = heightCm ?: it.heightCm, birthYear = birthYear ?: it.birthYear) }
+    fun setBodyMeasures(heightCm: Float? = null, birthYear: Int? = null, bodyFatPct: Float? = null) = viewModelScope.launch {
+        app.settings.update {
+            it.copy(
+                heightCm = heightCm ?: it.heightCm,
+                birthYear = birthYear ?: it.birthYear,
+                bodyFatPct = bodyFatPct ?: it.bodyFatPct,
+            )
+        }
+    }
+
+    fun setEquipment(encoded: String) = viewModelScope.launch {
+        app.settings.update { it.copy(equipment = encoded) }
+    }
+
+    fun toggleEquipmentItem(eq: Equipment, current: Set<Equipment>) = viewModelScope.launch {
+        if (eq == Equipment.BODYWEIGHT) return@launch
+        val base = current.ifEmpty { setOf(Equipment.BODYWEIGHT) }
+        val updated = (if (eq in base) base - eq else base + eq) + Equipment.BODYWEIGHT
+        app.settings.update { it.copy(equipment = updated.joinToString(",") { e -> e.name }) }
     }
 
     fun setRatios(perKg: Float? = null, fatPct: Int? = null) = viewModelScope.launch {
-        app.settings.update { it.copy(proteinPerKg = perKg ?: it.proteinPerKg, fatSharePct = fatPct ?: it.fatSharePct) }
+        app.settings.update {
+            it.copy(
+                proteinPerKg = (perKg ?: it.proteinPerKg).coerceIn(Nutrition.MIN_PROTEIN_PER_KG, 2.5f),
+                fatSharePct = (fatPct ?: it.fatSharePct).coerceIn(Nutrition.MIN_FAT_SHARE_PCT, 45),
+            )
+        }
     }
 
     fun refreshHealth() = viewModelScope.launch { app.health.refresh(force = true) }
@@ -196,8 +220,8 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun updateGoals(kcal: Int? = null, protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
         app.settings.update { s ->
             s.copy(
-                kcalGoal = kcal ?: s.kcalGoal,
-                proteinGoal = protein ?: s.proteinGoal,
+                kcalGoal = (kcal ?: s.kcalGoal).coerceAtLeast(Nutrition.MIN_SAFE_KCAL),
+                proteinGoal = (protein ?: s.proteinGoal).coerceAtLeast(60),
                 weeklyTargetOverride = weekly ?: s.weeklyTargetOverride,
             )
         }
@@ -216,7 +240,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun setLock(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(biometricLock = on) } }
 
     fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
-    fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = unit) } }
+    fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = WeightUnit.fromCodeOrLabel(unit).code) } }
     fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
@@ -439,6 +463,12 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     fun disableDocs() = viewModelScope.launch { app.settings.update { it.copy(driveDocsEnabled = false) } }
 
+    fun adaptDocPlan(exercises: Map<String, ExerciseEntity>, userEquipment: Set<Equipment>) {
+        val doc = docPreview.value ?: return
+        val (adapted, _) = ExerciseSwapEngine.adaptPlanToEquipment(doc.plan, exercises, userEquipment)
+        docPreview.value = doc.copy(plan = adapted)
+    }
+
     fun applyDoc() {
         val doc = docPreview.value ?: return
         docPreview.value = null
@@ -469,6 +499,7 @@ fun ProfileScreen(nav: NavHostController) {
     val snackbar = LocalSnackbar.current
     val context = LocalContext.current
     val c = Fit.colors
+    val isArabic = Locale.getDefault().language == "ar"
     var keyDialog by remember { mutableStateOf(false) }
     var weightDialog by remember { mutableStateOf(false) }
     var handDialog by remember { mutableStateOf(false) }
@@ -492,7 +523,7 @@ fun ProfileScreen(nav: NavHostController) {
         if (granted.containsAll(probe.permissions)) runHealthCheck() else hcPerms.launch(probe.permissions)
     }
     val health by vm.app.health.state.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(Unit) { vm.app.health.refresh() }
+    LaunchedEffect(Unit) { vm.app.health.refresh() }
     val healthAccess = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) { vm.refreshHealth() }
     val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTo) }
     LaunchedEffect(shareUri) {
@@ -508,6 +539,7 @@ fun ProfileScreen(nav: NavHostController) {
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val settings = s.settings
+    val configuredEq = settings.configuredEquipment
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
@@ -554,7 +586,6 @@ fun ProfileScreen(nav: NavHostController) {
 
         // Badges
         FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.BADGES) }) {
-            val owned = s.badges.associateBy { it.id }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.profile_badges), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -600,7 +631,7 @@ fun ProfileScreen(nav: NavHostController) {
         val thisYear = java.time.Year.now().value
         val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
 
-        // About you: what the calorie suggestion and the muscle map are built from
+        // About you: what the calorie suggestion (Mifflin-St Jeor / Katch-McArdle) and the muscle map are built from
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
@@ -619,8 +650,62 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(8.dp))
             SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
             SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
+            SettingStepper(
+                label = if (isArabic) "نسبة الدهون % (اختياري)" else "Body fat % (optional)",
+                value = settings.bodyFatPct,
+                onChange = { vm.setBodyMeasures(bodyFatPct = if (it < 4f) 0f else it) },
+                step = 0.5f,
+                min = 0f,
+                max = 55f,
+                unit = "%",
+                decimals = 1,
+            )
             if (settings.heightCm <= 0f || age <= 0) {
                 Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.gold)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Training equipment
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (isArabic) "معدات التدريب" else "Training equipment",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = c.textPrimary,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        text = if (isArabic) "يستخدمها المدرب ومحرّر التمارين لاختيار البدائل المناسبة" else "Used by the AI coach and exercise swapper",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.textSecondary,
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            val activePreset = remember(settings.equipment) { EquipmentPreset.fromEncoded(settings.equipment) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                EquipmentPreset.entries.forEach { preset ->
+                    ChoiceChip(
+                        text = if (isArabic) preset.labelAr else preset.labelEn,
+                        selected = activePreset == preset,
+                        onClick = { vm.setEquipment(preset.encode()) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Equipment.entries.forEach { eq ->
+                    val on = eq == Equipment.BODYWEIGHT || eq in configuredEq
+                    ChoiceChip(
+                        text = eq.localName(),
+                        selected = on,
+                        onClick = { vm.toggleEquipmentItem(eq, configuredEq) },
+                    )
+                }
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -639,7 +724,6 @@ fun ProfileScreen(nav: NavHostController) {
                 }
             }
             if (connected) {
-                // What Health Connect holds, as a file to share when something looks off.
                 TextButton(onClick = { startHealthCheck() }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
             }
         }
@@ -655,7 +739,7 @@ fun ProfileScreen(nav: NavHostController) {
 
         SettingsSection(stringResource(R.string.settings_section_goals))
 
-        // Goals: each target sits with its suggestion
+        // Goals: each target sits with its physiologically validated suggestion
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.TrackChanges, c.gold, c.goldTrack)
@@ -663,28 +747,70 @@ fun ProfileScreen(nav: NavHostController) {
                 Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(12.dp))
-            SettingStepper(stringResource(R.string.profile_daily_calories), settings.kcalGoal.toFloat(), { vm.updateGoals(kcal = it.toInt()) }, step = 50f, min = 1000f, max = 6000f, unit = stringResource(R.string.unit_kcal))
+            SettingStepper(
+                stringResource(R.string.profile_daily_calories),
+                settings.kcalGoal.toFloat(),
+                { vm.updateGoals(kcal = it.toInt()) },
+                step = 50f,
+                min = Nutrition.MIN_SAFE_KCAL.toFloat(),
+                max = Nutrition.MAX_SAFE_KCAL.toFloat(),
+                unit = stringResource(R.string.unit_kcal),
+            )
             val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
-            val suggested = s.latestWeight?.let { Nutrition.suggestedKcal(it, settings.heightCm, age, settings.bodyType == BodyType.MALE, trainingDaysForKcal) }
+            val hasBodyStats = (settings.heightCm > 0f && age > 0) || settings.bodyFatPct in 4f..60f
+            val suggested = s.latestWeight?.let {
+                Nutrition.suggestedKcal(
+                    kg = it,
+                    heightCm = settings.heightCm,
+                    age = age,
+                    male = settings.bodyType == BodyType.MALE,
+                    trainingDays = trainingDaysForKcal,
+                    bodyFatPct = settings.bodyFatPct,
+                )
+            }
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     when {
-                        settings.heightCm <= 0f || age <= 0 -> stringResource(R.string.goals_suggest_missing)
+                        !hasBodyStats -> stringResource(R.string.goals_suggest_missing)
                         suggested != null -> stringResource(R.string.goals_suggested, "%,d".format(suggested), trainingDaysForKcal)
                         else -> stringResource(R.string.goals_suggest_missing)
                     },
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f),
                 )
-                if (suggested != null && settings.heightCm > 0f && age > 0 && suggested != settings.kcalGoal) {
+                if (suggested != null && hasBodyStats && suggested != settings.kcalGoal) {
                     Spacer(Modifier.width(8.dp))
                     TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(kcal = suggested) })
                 }
             }
-            SettingStepper(stringResource(R.string.profile_daily_protein), settings.proteinGoal.toFloat(), { vm.updateGoals(protein = it.toInt()) }, step = 5f, min = 40f, max = 400f, unit = stringResource(R.string.unit_g))
-            SettingStepper(stringResource(R.string.profile_protein_per_kg), settings.proteinPerKg, { vm.setRatios(perKg = it) }, step = 0.1f, min = 1.2f, max = 2.5f, unit = stringResource(R.string.unit_g_per_kg), decimals = 1)
-            s.latestWeight?.let { kg -> Nutrition.suggestedProtein(kg, settings.proteinPerKg) }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
+            SettingStepper(
+                stringResource(R.string.profile_daily_protein),
+                settings.proteinGoal.toFloat(),
+                { vm.updateGoals(protein = it.toInt()) },
+                step = 5f,
+                min = 60f,
+                max = 400f,
+                unit = stringResource(R.string.unit_g),
+            )
+            SettingStepper(
+                stringResource(R.string.profile_protein_per_kg),
+                settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG),
+                { vm.setRatios(perKg = it) },
+                step = 0.1f,
+                min = Nutrition.MIN_PROTEIN_PER_KG,
+                max = 2.5f,
+                unit = stringResource(R.string.unit_g_per_kg),
+                decimals = 1,
+            )
+            s.latestWeight?.let { kg ->
+                Nutrition.suggestedProtein(kg, settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct)
+            }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.goals_protein_suggested, suggestedProtein, "%.1f".format(settings.proteinPerKg)), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+                    Text(
+                        stringResource(R.string.goals_protein_suggested, suggestedProtein, "%.1f".format(settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG))),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.textSecondary,
+                        modifier = Modifier.weight(1f),
+                    )
                     Spacer(Modifier.width(8.dp))
                     TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(protein = suggestedProtein) })
                 }
@@ -696,14 +822,31 @@ fun ProfileScreen(nav: NavHostController) {
             }
             if (settings.trackCarbs) {
                 SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
-                // The person picks the fat share, so low-carb and high-carb styles are one stepper away.
-                SettingStepper(stringResource(R.string.profile_fat_share), settings.fatSharePct.toFloat(), { vm.setRatios(fatPct = it.toInt()) }, step = 5f, min = 15f, max = 40f, unit = "%")
-                val suggested = Nutrition.suggestedCarbs(settings.kcalGoal, settings.proteinGoal, settings.fatSharePct)
-                if (suggested != settings.carbsGoal) {
+                SettingStepper(
+                    stringResource(R.string.profile_fat_share),
+                    settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT).toFloat(),
+                    { vm.setRatios(fatPct = it.toInt()) },
+                    step = 5f,
+                    min = Nutrition.MIN_FAT_SHARE_PCT.toFloat(),
+                    max = 40f,
+                    unit = "%",
+                )
+                val suggestedCarbs = Nutrition.suggestedCarbs(
+                    kcal = settings.kcalGoal,
+                    proteinG = settings.proteinGoal,
+                    fatPct = settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT),
+                    bodyWeightKg = s.latestWeight ?: 0f,
+                )
+                if (suggestedCarbs != settings.carbsGoal && suggestedCarbs > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.profile_carbs_suggested, suggested, settings.fatSharePct), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        Text(
+                            stringResource(R.string.profile_carbs_suggested, suggestedCarbs, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textSecondary,
+                            modifier = Modifier.weight(1f),
+                        )
                         Spacer(Modifier.width(8.dp))
-                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.setCarbs(goal = suggested) })
+                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.setCarbs(goal = suggestedCarbs) })
                     }
                 }
             }
@@ -715,7 +858,6 @@ fun ProfileScreen(nav: NavHostController) {
                 }
                 Stepper(
                     "$weeklyShown",
-                    // Going below the plan's count sets an explicit target; landing back on the plan's count clears it.
                     onMinus = { vm.updateGoals(weekly = (weeklyShown - 1).coerceAtLeast(1).let { if (it == planDays) 0 else it }) },
                     onPlus = { vm.updateGoals(weekly = (weeklyShown + 1).coerceAtMost(7).let { if (it == planDays) 0 else it }) },
                     minValueWidth = 84.dp,
@@ -749,7 +891,7 @@ fun ProfileScreen(nav: NavHostController) {
             SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { vm.setBridge(it) }
             if (settings.bridgeEnabled) {
                 Spacer(Modifier.height(10.dp))
-                val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", java.util.Locale.getDefault())
+                val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", Locale.getDefault())
                 fun at(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).format(fmt)
                 Text(
                     (if (settings.bridgeLastWrite > 0) stringResource(R.string.bridge_wrote, at(settings.bridgeLastWrite)) else stringResource(R.string.bridge_never_wrote)) + " · " +
@@ -767,7 +909,6 @@ fun ProfileScreen(nav: NavHostController) {
                     })
                 }
                 Spacer(Modifier.height(8.dp))
-                // Without Drive access, the same exchange works by hand.
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TonalPill(stringResource(R.string.bridge_copy_data), onClick = {
                         bridgeScope.launch {
@@ -852,13 +993,17 @@ fun ProfileScreen(nav: NavHostController) {
                 languages.indexOf(com.forgequest.app.AppLocale.current(context)).coerceAtLeast(0),
                 onSelect = { i ->
                     com.forgequest.app.AppLocale.set(context, languages[i])
-                    (context as? android.app.Activity)?.recreate()
+                    (context as? Activity)?.recreate()
                 },
             )
             Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.profile_weights), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
             Spacer(Modifier.height(6.dp))
-            SegmentedTabs(listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)), if (settings.unit == "lb") 1 else 0, onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") })
+            SegmentedTabs(
+                listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)),
+                if (settings.weightUnit == WeightUnit.LB) 1 else 0,
+                onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") },
+            )
             Row(Modifier.fillMaxWidth().padding(top = 10.dp).toggleable(settings.hapticsEnabled, role = Role.Switch) { vm.setHaptics(it) }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.profile_vibration), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
@@ -1184,7 +1329,14 @@ fun ProfileScreen(nav: NavHostController) {
     }
 
     docPreview?.let { doc ->
-        PlanPreviewSheet(doc.plan, s.exercises, onApply = vm::applyDoc, onDismiss = { vm.docPreview.value = null })
+        PlanPreviewSheet(
+            draft = doc.plan,
+            exercises = s.exercises,
+            userEquipment = configuredEq,
+            onAdapt = { vm.adaptDocPlan(s.exercises, configuredEq) },
+            onApply = vm::applyDoc,
+            onDismiss = { vm.docPreview.value = null },
+        )
     }
 }
 
@@ -1228,7 +1380,7 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
 @Composable
 private fun SettingsSection(title: String) {
     Text(
-        title.uppercase(java.util.Locale.getDefault()),
+        title.uppercase(Locale.getDefault()),
         style = MaterialTheme.typography.labelLarge,
         color = Fit.colors.textSecondary,
         modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp).semantics { heading() },

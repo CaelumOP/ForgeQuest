@@ -29,6 +29,9 @@ interface ExerciseDao {
     @Upsert
     suspend fun upsert(item: ExerciseEntity)
 
+    @Upsert
+    suspend fun upsertAll(items: List<ExerciseEntity>)
+
     @Query("DELETE FROM exercises WHERE id = :id")
     suspend fun delete(id: String)
 
@@ -202,11 +205,20 @@ interface SessionDao {
     @Update
     suspend fun updateSets(sets: List<SetEntity>)
 
+    @Query("UPDATE sets SET done = 1 WHERE sessionId = :sessionId AND done = 0")
+    suspend fun markAllSetsDone(sessionId: Long)
+
     @Query("DELETE FROM sets WHERE id = :id")
     suspend fun deleteSet(id: Long)
 
     @Query("DELETE FROM sets WHERE sessionId = :sessionId")
     suspend fun deleteSetsOf(sessionId: Long)
+
+    @Query("DELETE FROM sets WHERE sessionId = :sessionId AND done = 0")
+    suspend fun deleteUntickedSetsOf(sessionId: Long)
+
+    @Query("DELETE FROM sets WHERE sessionId = :sessionId AND itemPosition = :itemPosition")
+    suspend fun deleteSetsAtPosition(sessionId: Long, itemPosition: Int)
 }
 
 @Dao
@@ -365,4 +377,7 @@ interface ReadinessDao {
 
     @Query("SELECT * FROM readiness_days ORDER BY epochDay")
     suspend fun all(): List<ReadinessDayEntity>
+
+    @Query("SELECT * FROM readiness_days ORDER BY epochDay")
+    fun observeAll(): Flow<List<ReadinessDayEntity>>
 }

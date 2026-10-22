@@ -12,13 +12,15 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.forgequest.app.domain.Equipment
+import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -72,7 +74,7 @@ data class Settings(
     /** Optional, for the calorie estimate. 0 means not given. */
     val heightCm: Float = 0f,
     val birthYear: Int = 0,
-    /** Carbs are off unless the person turns them on in Profile â†’ Goals. */
+    /** Carbs are off unless the person turns them on in Profile -> Goals. */
     val trackCarbs: Boolean = false,
     /** Fitbit readiness on Home through Health Connect; off hides the card everywhere. */
     val healthEnabled: Boolean = true,
@@ -81,9 +83,18 @@ data class Settings(
     val proteinPerKg: Float = 1.8f,
     /** Share of calories kept for fat when suggesting carbs, in percent. */
     val fatSharePct: Int = 25,
+    /** Comma-separated Equipment enum names or preset id; empty means not yet specified. */
+    val equipment: String = "",
+    /** Optional body fat percentage (4..60) for Katch-McArdle lean-mass BMR; 0 means not set. */
+    val bodyFatPct: Float = 0f,
 ) {
     val weightUnit: WeightUnit
-        get() = if (unit.equals("lb", ignoreCase = true)) WeightUnit.LB else WeightUnit.KG
+        get() = WeightUnit.fromCodeOrLabel(unit)
+
+    /** Available equipment set from explicit setting or inferred from coachNotes; empty if unknown. */
+    val configuredEquipment: Set<Equipment>
+        get() = ExerciseSwapEngine.parseEquipmentSet(equipment)
+            .ifEmpty { ExerciseSwapEngine.inferEquipmentFromText(coachNotes).orEmpty() }
 }
 
 private val Context.dataStore by preferencesDataStore("settings")
@@ -130,6 +141,8 @@ class SettingsRepository(private val context: Context) {
         val carbsGoal = intPreferencesKey("carbs_goal")
         val proteinPerKg = floatPreferencesKey("protein_per_kg")
         val fatShare = intPreferencesKey("fat_share_pct")
+        val equipment = stringPreferencesKey("equipment")
+        val bodyFatPct = floatPreferencesKey("body_fat_pct")
     }
 
     /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
@@ -140,47 +153,53 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun current(): Settings = settings.first()
 
-    private fun Preferences.toSettings() = Settings(
-        onboarded = this[K.onboarded] ?: false,
-        name = this[K.name] ?: "",
-        bodyType = runCatching { BodyType.valueOf(this[K.bodyType] ?: "MALE") }.getOrDefault(BodyType.MALE),
-        kcalGoal = this[K.kcal] ?: 2200,
-        proteinGoal = this[K.protein] ?: 140,
-        weeklyTargetOverride = this[K.weeklyTarget] ?: 0,
-        handLengthCm = this[K.hand] ?: 0f,
-        palmWidthCm = this[K.palm] ?: 0f,
-        fastModel = this[K.fastModel] ?: "",
-        smartModel = this[K.smartModel] ?: "",
-        liteModel = this[K.liteModel] ?: "",
-        modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
-        coachModel = this[K.coachModel] ?: "auto",
-        groqModel = this[K.groqModel] ?: "",
-        lastCheckinWeek = this[K.lastCheckin] ?: -1,
-        driveEmail = this[K.driveEmail] ?: "",
-        lastBackupAt = this[K.lastBackup] ?: 0,
-        bridgeEnabled = this[K.bridgeEnabled] ?: false,
-        bridgeDataId = this[K.bridgeDataId] ?: "",
-        bridgeLastWrite = this[K.bridgeLastWrite] ?: 0,
-        bridgeLastReplyModified = this[K.bridgeLastReplyModified] ?: 0,
-        bridgeLastReadAt = this[K.bridgeLastReadAt] ?: 0,
-        bridgeToday = this[K.bridgeToday] ?: "",
-        bridgeIssues = this[K.bridgeIssues] ?: "",
-        lastDocImportModified = this[K.lastDocImport] ?: 0,
-        coachNotes = this[K.coachNotes] ?: "",
-        driveDocsEnabled = this[K.driveDocs] ?: false,
-        theme = this[K.theme] ?: "system",
-        hapticsEnabled = this[K.haptics] ?: true,
-        unit = this[K.unit] ?: "kg",
-        reminderHour = this[K.reminderHour] ?: -1,
-        biometricLock = this[K.biometric] ?: false,
-        heightCm = this[K.height] ?: 0f,
-        birthYear = this[K.birthYear] ?: 0,
-        trackCarbs = this[K.trackCarbs] ?: false,
-        healthEnabled = this[K.healthEnabled] ?: true,
-        carbsGoal = this[K.carbsGoal] ?: 250,
-        proteinPerKg = this[K.proteinPerKg] ?: 1.8f,
-        fatSharePct = this[K.fatShare] ?: 25,
-    )
+    private fun Preferences.toSettings(): Settings {
+        val rawUnit = this[K.unit] ?: "kg"
+        val normalizedUnit = WeightUnit.fromCodeOrLabel(rawUnit).code
+        return Settings(
+            onboarded = this[K.onboarded] ?: false,
+            name = this[K.name] ?: "",
+            bodyType = runCatching { BodyType.valueOf(this[K.bodyType] ?: "MALE") }.getOrDefault(BodyType.MALE),
+            kcalGoal = (this[K.kcal] ?: 2200).coerceAtLeast(1200),
+            proteinGoal = this[K.protein] ?: 140,
+            weeklyTargetOverride = this[K.weeklyTarget] ?: 0,
+            handLengthCm = this[K.hand] ?: 0f,
+            palmWidthCm = this[K.palm] ?: 0f,
+            fastModel = this[K.fastModel] ?: "",
+            smartModel = this[K.smartModel] ?: "",
+            liteModel = this[K.liteModel] ?: "",
+            modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
+            coachModel = this[K.coachModel] ?: "auto",
+            groqModel = this[K.groqModel] ?: "",
+            lastCheckinWeek = this[K.lastCheckin] ?: -1,
+            driveEmail = this[K.driveEmail] ?: "",
+            lastBackupAt = this[K.lastBackup] ?: 0,
+            bridgeEnabled = this[K.bridgeEnabled] ?: false,
+            bridgeDataId = this[K.bridgeDataId] ?: "",
+            bridgeLastWrite = this[K.bridgeLastWrite] ?: 0,
+            bridgeLastReplyModified = this[K.bridgeLastReplyModified] ?: 0,
+            bridgeLastReadAt = this[K.bridgeLastReadAt] ?: 0,
+            bridgeToday = this[K.bridgeToday] ?: "",
+            bridgeIssues = this[K.bridgeIssues] ?: "",
+            lastDocImportModified = this[K.lastDocImport] ?: 0,
+            coachNotes = this[K.coachNotes] ?: "",
+            driveDocsEnabled = this[K.driveDocs] ?: false,
+            theme = this[K.theme] ?: "system",
+            hapticsEnabled = this[K.haptics] ?: true,
+            unit = normalizedUnit,
+            reminderHour = this[K.reminderHour] ?: -1,
+            biometricLock = this[K.biometric] ?: false,
+            heightCm = this[K.height] ?: 0f,
+            birthYear = this[K.birthYear] ?: 0,
+            trackCarbs = this[K.trackCarbs] ?: false,
+            healthEnabled = this[K.healthEnabled] ?: true,
+            carbsGoal = this[K.carbsGoal] ?: 250,
+            proteinPerKg = this[K.proteinPerKg] ?: 1.8f,
+            fatSharePct = this[K.fatShare] ?: 25,
+            equipment = this[K.equipment] ?: "",
+            bodyFatPct = this[K.bodyFatPct] ?: 0f,
+        )
+    }
 
     suspend fun update(transform: (Settings) -> Settings) {
         context.dataStore.edit { p ->
@@ -188,7 +207,7 @@ class SettingsRepository(private val context: Context) {
             p[K.onboarded] = s.onboarded
             p[K.name] = s.name
             p[K.bodyType] = s.bodyType.name
-            p[K.kcal] = s.kcalGoal
+            p[K.kcal] = s.kcalGoal.coerceAtLeast(1200)
             p[K.protein] = s.proteinGoal
             p[K.weeklyTarget] = s.weeklyTargetOverride
             p[K.hand] = s.handLengthCm
@@ -214,7 +233,7 @@ class SettingsRepository(private val context: Context) {
             p[K.driveDocs] = s.driveDocsEnabled
             p[K.theme] = s.theme
             p[K.haptics] = s.hapticsEnabled
-            p[K.unit] = s.unit
+            p[K.unit] = WeightUnit.fromCodeOrLabel(s.unit).code
             p[K.reminderHour] = s.reminderHour
             p[K.biometric] = s.biometricLock
             p[K.height] = s.heightCm
@@ -224,6 +243,8 @@ class SettingsRepository(private val context: Context) {
             p[K.carbsGoal] = s.carbsGoal
             p[K.proteinPerKg] = s.proteinPerKg
             p[K.fatShare] = s.fatSharePct
+            p[K.equipment] = s.equipment
+            p[K.bodyFatPct] = s.bodyFatPct
         }
     }
 

@@ -1,16 +1,10 @@
 package com.forgequest.app.ui.workouts
 
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.ExpandMore
-import com.forgequest.app.ui.blockLabel
-import com.forgequest.app.R
-
-import androidx.compose.ui.res.pluralStringResource
-
-import androidx.compose.ui.res.stringResource
-
-import com.forgequest.app.ui.localTitle
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -19,21 +13,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.rememberLauncherForActivityResult
-import android.os.Build
-import android.Manifest
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.Role
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,26 +33,31 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.ViewAgenda
-import androidx.compose.material.icons.rounded.CenterFocusStrong
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -83,24 +72,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.blockLabel
+import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
+import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
-import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.localTitle
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.LiveWorkoutViewModel.Field
+import java.util.Locale
 
 /** One visual group: a circuit block (shown round by round) or a single straight-sets exercise. */
 private sealed interface Group {
@@ -145,6 +145,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val sets by vm.sets.collectAsState()
     val exercises by vm.exercises.collectAsState()
     val library by vm.library.collectAsState()
+    val userEquipment by vm.userEquipment.collectAsState()
     val rest by vm.rest.collectAsState()
     val now by vm.now.collectAsState()
     val summary by vm.summary.collectAsState()
@@ -298,6 +299,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     }
 
     picker?.let { mode ->
+        val swappingEx = (mode as? PickerMode.Swap)?.let { m ->
+            sets.firstOrNull { it.itemPosition == m.position }?.let { exercises[it.exerciseId] }
+        }
         ExercisePickerSheet(
             title = if (mode is PickerMode.Swap) stringResource(R.string.live_swap_exercise) else stringResource(R.string.live_add_exercise),
             library = library,
@@ -310,7 +314,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 picker = null
             },
             onDismiss = { picker = null },
-            initialMuscle = (mode as? PickerMode.Swap)?.let { m -> sets.firstOrNull { it.itemPosition == m.position }?.let { exercises[it.exerciseId]?.primary?.firstOrNull() } },
+            initialMuscle = swappingEx?.primary?.firstOrNull(),
+            sourceExercise = swappingEx,
+            userEquipment = userEquipment,
         )
     }
 }
@@ -563,22 +569,64 @@ private fun SetRow(
     }
 }
 
-/** Long-press a set to jot something down: how it felt, a variation, a niggle. */
+/** Long-press a set to jot something down or tap a quick RPE/RIR chip for automatic load progression & recovery tuning. */
 @Composable
 fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     val c = Fit.colors
     var text by remember { mutableStateOf(initial) }
+    val isArabic = Locale.getDefault().language == "ar"
+    val quickTags = remember(isArabic) {
+        if (isArabic) {
+            listOf(
+                "سهل · RIR 3+" to "سهل · RIR 3+",
+                "متوازن · RIR 1-2" to "متوازن · RIR 1-2",
+                "أقصى جهد · RIR 0" to "أقصى جهد · RIR 0",
+                "انزعاج مفصل" to "ألم خفيف / انزعاج",
+            )
+        } else {
+            listOf(
+                "Easy · RIR 3+" to "Easy · RIR 3+",
+                "Solid · RIR 1-2" to "Solid · RIR 1-2",
+                "Max · RIR 0" to "Max effort · RIR 0",
+                "Joint niggle" to "Joint twinge / pain",
+            )
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = c.card,
         title = { Text(stringResource(R.string.live_note_title), color = c.textPrimary) },
         text = {
-            OutlinedTextField(
-                value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = RoundedCornerShape(16.dp),
-                placeholder = { Text(stringResource(R.string.live_note_hint)) },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    quickTags.forEach { (chipLabel, tagValue) ->
+                        val active = text.contains(tagValue, ignoreCase = true)
+                        ChoiceChip(
+                            text = chipLabel,
+                            selected = active,
+                            onClick = {
+                                text = if (active) {
+                                    text.replace(tagValue, "").trim().trim('·', ',', ' ')
+                                } else if (text.isBlank()) {
+                                    tagValue
+                                } else {
+                                    "$tagValue · $text".take(120)
+                                }
+                            },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                    placeholder = { Text(stringResource(R.string.live_note_hint)) },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
         confirmButton = { TextButton(onClick = { onSave(text) }) { Text(stringResource(R.string.action_save), color = c.teal) } },
         dismissButton = {

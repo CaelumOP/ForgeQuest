@@ -948,7 +948,7 @@
     <string name="zone_4">Very hard</string>
     <string name="zone_5">Max</string>
     <string name="update_title">Check for updates</string>
-    <string name="update_hint">Version %1$s · tap to get the newest one</string>
+    <string name="update_hint">Current version: v%1$s · Tap to check for updates</string>
     <string name="update_checking">Checking for updates…</string>
     <string name="update_latest">You have the latest version.</string>
     <string name="update_failed">Couldn\'t check for updates. Check your connection and try again.</string>
