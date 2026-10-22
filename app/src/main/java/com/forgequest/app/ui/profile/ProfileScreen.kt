@@ -7,6 +7,24 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.RadioButtonChecked
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -626,8 +644,7 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
-        SettingsSection(stringResource(R.string.settings_section_body))
-
+        // Body weight stays out: it is logged often.
         // Body weight
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -647,542 +664,563 @@ fun ProfileScreen(nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
+        // Shortcuts to the screens that used to sit among the settings
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ShortcutCard(Icons.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f)) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
+            ShortcutCard(Icons.Rounded.FitnessCenter, c.blue, c.blueTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f)) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
+        }
+        Spacer(Modifier.height(12.dp))
+
         val planDays = s.plan?.trainingDays?.size ?: 0
         val thisYear = java.time.Year.now().value
         val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
-
-        // About you: what the calorie suggestion (Mifflin-St Jeor / Katch-McArdle) and the muscle map are built from
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_about_you), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.profile_about_you_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            SegmentedTabs(
-                listOf(stringResource(R.string.body_male), stringResource(R.string.body_female)),
-                if (settings.bodyType == BodyType.FEMALE) 1 else 0,
-                onSelect = { vm.setBody(if (it == 1) BodyType.FEMALE else BodyType.MALE) },
-            )
-            Spacer(Modifier.height(8.dp))
-            SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
-            SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
-            SettingStepper(
-                label = if (isArabic) "نسبة الدهون % (اختياري)" else "Body fat % (optional)",
-                value = settings.bodyFatPct,
-                onChange = { vm.setBodyMeasures(bodyFatPct = if (it < 4f) 0f else it) },
-                step = 0.5f,
-                min = 0f,
-                max = 55f,
-                unit = "%",
-                decimals = 1,
-            )
-            if (settings.heightCm <= 0f || age <= 0) {
-                Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.gold)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Training equipment
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = if (isArabic) "معدات التدريب" else "Training equipment",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = c.textPrimary,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Text(
-                        text = if (isArabic) "يستخدمها المدرب ومحرّر التمارين لاختيار البدائل المناسبة" else "Used by the AI coach and exercise swapper",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = c.textSecondary,
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            val activePreset = remember(settings.equipment) { EquipmentPreset.fromEncoded(settings.equipment) }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EquipmentPreset.entries.forEach { preset ->
-                    ChoiceChip(
-                        text = if (isArabic) preset.labelAr else preset.labelEn,
-                        selected = activePreset == preset,
-                        onClick = { vm.setEquipment(preset.encode()) },
-                    )
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Equipment.entries.forEach { eq ->
-                    val on = eq == Equipment.BODYWEIGHT || eq in configuredEq
-                    ChoiceChip(
-                        text = eq.localName(),
-                        selected = on,
-                        onClick = { vm.toggleEquipmentItem(eq, configuredEq) },
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Fitbit readiness (optional): the only place it's switched on, connected or off.
         val connected = settings.healthEnabled && (health is com.forgequest.app.data.health.HealthState.Ready || health is com.forgequest.app.data.health.HealthState.Loading)
-        FitCard {
-            SwitchHeader(
-                Icons.Rounded.MonitorHeart, c.coral, c.coralTrack, stringResource(R.string.profile_health_title),
-                stringResource(if (connected) R.string.profile_health_on else R.string.profile_health_hint), connected,
-            ) { on ->
-                when {
-                    !on -> vm.setHealth(false)
-                    probe.status() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE -> context.toast(context.getString(R.string.hc_unavailable))
-                    else -> { vm.setHealth(true); healthAccess.launch(vm.app.health.requestPermissions()) }
-                }
-            }
-            if (connected) {
-                TextButton(onClick = { startHealthCheck() }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
-            }
+        val canLock = remember {
+            androidx.biometric.BiometricManager.from(context).canAuthenticate(
+                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+            ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
         }
-        Spacer(Modifier.height(12.dp))
+        val activePreset = remember(settings.equipment) { EquipmentPreset.fromEncoded(settings.equipment) }
+        // Settings fold into categories; which ones are open is remembered on the phone.
+        val uiPrefs = remember { context.getSharedPreferences("profile_ui", android.content.Context.MODE_PRIVATE) }
+        var openGroups by remember { mutableStateOf(uiPrefs.getStringSet("open_groups", null)?.toSet() ?: emptySet()) }
+        fun toggleGroup(id: String) {
+            openGroups = if (id in openGroups) openGroups - id else openGroups + id
+            uiPrefs.edit().putStringSet("open_groups", openGroups).apply()
+        }
+        fun summary(vararg parts: String?) = parts.filterNotNull().filter { it.isNotBlank() }.joinToString(" · ")
 
-        // Hand + body
-        SettingsRow(
-            Icons.Rounded.PanTool, c.purple, c.purpleTrack,
-            stringResource(R.string.profile_hand_size),
-            if (settings.handLengthCm > 0f) stringResource(R.string.profile_hand_value, "%.1f".format(settings.handLengthCm), "%.1f".format(settings.palmWidthCm)) else stringResource(R.string.profile_hand_hint),
-        ) { handDialog = true }
-        Spacer(Modifier.height(12.dp))
+        SettingsSection(stringResource(R.string.settings_section_settings))
 
-        SettingsSection(stringResource(R.string.settings_section_goals))
-
-        // Goals: each target sits with its physiologically validated suggestion
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.TrackChanges, c.gold, c.goldTrack)
-                Spacer(Modifier.width(14.dp))
-                Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-            }
-            val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
-            val hasBodyStats = (settings.heightCm > 0f && age > 0) || settings.bodyFatPct in 4f..60f
-            fun kcalFor(goal: NutritionGoal) = s.latestWeight?.let {
-                Nutrition.suggestedKcal(
-                    kg = it,
-                    heightCm = settings.heightCm,
-                    age = age,
-                    male = settings.bodyType == BodyType.MALE,
-                    trainingDays = trainingDaysForKcal,
-                    bodyFatPct = settings.bodyFatPct,
-                    goal = goal,
-                )
-            }
-            fun proteinFor(perKg: Float) = s.latestWeight?.let { Nutrition.suggestedProtein(it, perKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct) }
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.goal_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-            Row(Modifier.padding(top = 8.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NutritionGoal.entries.forEach { g ->
-                    ChoiceChip(stringResource(g.labelRes), settings.nutritionGoal == g, {
-                        if (g != settings.nutritionGoal) {
-                            // Targets still on the old suggestion follow the new goal; numbers set by hand stay put.
-                            val oldPerKg = Nutrition.proteinPerKgFor(settings.nutritionGoal)
-                            val perKg = if (settings.proteinPerKg == oldPerKg) Nutrition.proteinPerKgFor(g) else settings.proteinPerKg
-                            val kcal = kcalFor(g)?.takeIf { hasBodyStats && kcalFor(settings.nutritionGoal) == settings.kcalGoal }
-                            val protein = proteinFor(perKg)?.takeIf { proteinFor(settings.proteinPerKg) == settings.proteinGoal }
-                            val oldCarbs = Nutrition.suggestedCarbs(settings.kcalGoal, settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
-                            val carbs = if (settings.trackCarbs && oldCarbs == settings.carbsGoal) {
-                                Nutrition.suggestedCarbs(kcal ?: settings.kcalGoal, protein ?: settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
-                            } else null
-                            vm.setGoal(g, perKg, kcal, protein, carbs)
-                        }
-                    })
-                }
-            }
-            val trend = Nutrition.weightTrendNote(settings.nutritionGoal, settings.goalSetDay, s.weights.map { it.epochDay to it.kg }, Dates.today())
-            if (trend != null) {
-                Text(
-                    stringResource(if (trend == WeightTrend.CUT_TOO_FAST) R.string.goal_trend_cut_fast else R.string.goal_trend_gain_stalled),
-                    style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
-            SettingStepper(
-                stringResource(R.string.profile_daily_calories),
-                settings.kcalGoal.toFloat(),
-                { vm.updateGoals(kcal = it.toInt()) },
-                step = 50f,
-                min = Nutrition.MIN_SAFE_KCAL.toFloat(),
-                max = Nutrition.MAX_SAFE_KCAL.toFloat(),
-                unit = stringResource(R.string.unit_kcal),
-            )
-            val suggested = kcalFor(settings.nutritionGoal)
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    when {
-                        !hasBodyStats -> stringResource(R.string.goals_suggest_missing)
-                        suggested != null -> stringResource(R.string.goals_suggested, "%,d".format(suggested), trainingDaysForKcal)
-                        else -> stringResource(R.string.goals_suggest_missing)
-                    },
-                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f),
-                )
-                if (suggested != null && hasBodyStats && suggested != settings.kcalGoal) {
-                    Spacer(Modifier.width(8.dp))
-                    TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(kcal = suggested) })
-                }
-            }
-            SettingStepper(
-                stringResource(R.string.profile_daily_protein),
-                settings.proteinGoal.toFloat(),
-                { vm.updateGoals(protein = it.toInt()) },
-                step = 5f,
-                min = 60f,
-                max = 400f,
-                unit = stringResource(R.string.unit_g),
-            )
-            SettingStepper(
-                stringResource(R.string.profile_protein_per_kg),
-                settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG),
-                { vm.setRatios(perKg = it) },
-                step = 0.1f,
-                min = Nutrition.MIN_PROTEIN_PER_KG,
-                max = 2.5f,
-                unit = stringResource(R.string.unit_g_per_kg),
-                decimals = 1,
-            )
-            s.latestWeight?.let { kg ->
-                Nutrition.suggestedProtein(kg, settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct)
-            }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
+        SettingsGroup(
+            Icons.Rounded.Accessibility, c.coral, c.coralTrack, stringResource(R.string.settings_group_body),
+            if (settings.heightCm <= 0f || age <= 0) summary(stringResource(R.string.summary_body_not_set), if (connected) stringResource(R.string.summary_fitbit_on) else null)
+            else summary(
+                stringResource(if (settings.bodyType == BodyType.FEMALE) R.string.body_female else R.string.body_male),
+                "${settings.heightCm.toInt()} ${stringResource(R.string.unit_cm)}",
+                "$age ${stringResource(R.string.unit_years)}",
+                if (connected) stringResource(R.string.summary_fitbit_on) else null,
+            ),
+            open = "body" in openGroups, onToggle = { toggleGroup("body") },
+        ) {
+            FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.goals_protein_suggested, suggestedProtein, "%.1f".format(settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG))),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = c.textSecondary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(protein = suggestedProtein) })
+                    IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.profile_about_you), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.profile_about_you_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                SegmentedTabs(
+                    listOf(stringResource(R.string.body_male), stringResource(R.string.body_female)),
+                    if (settings.bodyType == BodyType.FEMALE) 1 else 0,
+                    onSelect = { vm.setBody(if (it == 1) BodyType.FEMALE else BodyType.MALE) },
+                )
+                Spacer(Modifier.height(8.dp))
+                SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
+                SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
+                SettingStepper(
+                    label = if (isArabic) "نسبة الدهون % (اختياري)" else "Body fat % (optional)",
+                    value = settings.bodyFatPct,
+                    onChange = { vm.setBodyMeasures(bodyFatPct = if (it < 4f) 0f else it) },
+                    step = 0.5f,
+                    min = 0f,
+                    max = 55f,
+                    unit = "%",
+                    decimals = 1,
+                )
+                if (settings.heightCm <= 0f || age <= 0) {
+                    Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.gold)
                 }
             }
-            // The whole row toggles, not just the switch.
-            Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                FitSwitch(settings.trackCarbs, null)
+            FitCard {
+                SwitchHeader(
+                    Icons.Rounded.MonitorHeart, c.coral, c.coralTrack, stringResource(R.string.profile_health_title),
+                    stringResource(if (connected) R.string.profile_health_on else R.string.profile_health_hint), connected,
+                ) { on ->
+                    when {
+                        !on -> vm.setHealth(false)
+                        probe.status() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE -> context.toast(context.getString(R.string.hc_unavailable))
+                        else -> { vm.setHealth(true); healthAccess.launch(vm.app.health.requestPermissions()) }
+                    }
+                }
+                if (connected) {
+                    TextButton(onClick = { startHealthCheck() }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
+                }
             }
-            if (settings.trackCarbs) {
-                SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
+            SettingsRow(
+                Icons.Rounded.PanTool, c.purple, c.purpleTrack,
+                stringResource(R.string.profile_hand_size),
+                if (settings.handLengthCm > 0f) stringResource(R.string.profile_hand_value, "%.1f".format(settings.handLengthCm), "%.1f".format(settings.palmWidthCm)) else stringResource(R.string.profile_hand_hint),
+            ) { handDialog = true }
+        }
+
+        SettingsGroup(
+            Icons.Rounded.TrackChanges, c.gold, c.goldTrack, stringResource(R.string.settings_group_goals),
+            summary(
+                stringResource(settings.nutritionGoal.labelRes),
+                "%,d %s".format(settings.kcalGoal, stringResource(R.string.unit_kcal)),
+                "${settings.proteinGoal} ${stringResource(R.string.unit_g)}",
+                stringResource(R.string.summary_per_week, if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride),
+            ),
+            open = "goals" in openGroups, onToggle = { toggleGroup("goals") },
+        ) {
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.TrackChanges, c.gold, c.goldTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                }
+                val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
+                val hasBodyStats = (settings.heightCm > 0f && age > 0) || settings.bodyFatPct in 4f..60f
+                fun kcalFor(goal: NutritionGoal) = s.latestWeight?.let {
+                    Nutrition.suggestedKcal(
+                        kg = it,
+                        heightCm = settings.heightCm,
+                        age = age,
+                        male = settings.bodyType == BodyType.MALE,
+                        trainingDays = trainingDaysForKcal,
+                        bodyFatPct = settings.bodyFatPct,
+                        goal = goal,
+                    )
+                }
+                fun proteinFor(perKg: Float) = s.latestWeight?.let { Nutrition.suggestedProtein(it, perKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct) }
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.goal_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                Row(Modifier.padding(top = 8.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NutritionGoal.entries.forEach { g ->
+                        ChoiceChip(stringResource(g.labelRes), settings.nutritionGoal == g, {
+                            if (g != settings.nutritionGoal) {
+                                // Targets still on the old suggestion follow the new goal; numbers set by hand stay put.
+                                val oldPerKg = Nutrition.proteinPerKgFor(settings.nutritionGoal)
+                                val perKg = if (settings.proteinPerKg == oldPerKg) Nutrition.proteinPerKgFor(g) else settings.proteinPerKg
+                                val kcal = kcalFor(g)?.takeIf { hasBodyStats && kcalFor(settings.nutritionGoal) == settings.kcalGoal }
+                                val protein = proteinFor(perKg)?.takeIf { proteinFor(settings.proteinPerKg) == settings.proteinGoal }
+                                val oldCarbs = Nutrition.suggestedCarbs(settings.kcalGoal, settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
+                                val carbs = if (settings.trackCarbs && oldCarbs == settings.carbsGoal) {
+                                    Nutrition.suggestedCarbs(kcal ?: settings.kcalGoal, protein ?: settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
+                                } else null
+                                vm.setGoal(g, perKg, kcal, protein, carbs)
+                            }
+                        })
+                    }
+                }
+                val trend = Nutrition.weightTrendNote(settings.nutritionGoal, settings.goalSetDay, s.weights.map { it.epochDay to it.kg }, Dates.today())
+                if (trend != null) {
+                    Text(
+                        stringResource(if (trend == WeightTrend.CUT_TOO_FAST) R.string.goal_trend_cut_fast else R.string.goal_trend_gain_stalled),
+                        style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
                 SettingStepper(
-                    stringResource(R.string.profile_fat_share),
-                    settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT).toFloat(),
-                    { vm.setRatios(fatPct = it.toInt()) },
+                    stringResource(R.string.profile_daily_calories),
+                    settings.kcalGoal.toFloat(),
+                    { vm.updateGoals(kcal = it.toInt()) },
+                    step = 50f,
+                    min = Nutrition.MIN_SAFE_KCAL.toFloat(),
+                    max = Nutrition.MAX_SAFE_KCAL.toFloat(),
+                    unit = stringResource(R.string.unit_kcal),
+                )
+                val suggested = kcalFor(settings.nutritionGoal)
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        when {
+                            !hasBodyStats -> stringResource(R.string.goals_suggest_missing)
+                            suggested != null -> stringResource(R.string.goals_suggested, "%,d".format(suggested), trainingDaysForKcal)
+                            else -> stringResource(R.string.goals_suggest_missing)
+                        },
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f),
+                    )
+                    if (suggested != null && hasBodyStats && suggested != settings.kcalGoal) {
+                        Spacer(Modifier.width(8.dp))
+                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(kcal = suggested) })
+                    }
+                }
+                SettingStepper(
+                    stringResource(R.string.profile_daily_protein),
+                    settings.proteinGoal.toFloat(),
+                    { vm.updateGoals(protein = it.toInt()) },
                     step = 5f,
-                    min = Nutrition.MIN_FAT_SHARE_PCT.toFloat(),
-                    max = 40f,
-                    unit = "%",
+                    min = 60f,
+                    max = 400f,
+                    unit = stringResource(R.string.unit_g),
                 )
-                val suggestedCarbs = Nutrition.suggestedCarbs(
-                    kcal = settings.kcalGoal,
-                    proteinG = settings.proteinGoal,
-                    fatPct = settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT),
-                    bodyWeightKg = s.latestWeight ?: 0f,
+                SettingStepper(
+                    stringResource(R.string.profile_protein_per_kg),
+                    settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG),
+                    { vm.setRatios(perKg = it) },
+                    step = 0.1f,
+                    min = Nutrition.MIN_PROTEIN_PER_KG,
+                    max = 2.5f,
+                    unit = stringResource(R.string.unit_g_per_kg),
+                    decimals = 1,
                 )
-                if (suggestedCarbs != settings.carbsGoal && suggestedCarbs > 0) {
+                s.latestWeight?.let { kg ->
+                    Nutrition.suggestedProtein(kg, settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct)
+                }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            stringResource(R.string.profile_carbs_suggested, suggestedCarbs, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT)),
+                            stringResource(R.string.goals_protein_suggested, suggestedProtein, "%.1f".format(settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG))),
                             style = MaterialTheme.typography.bodySmall,
                             color = c.textSecondary,
                             modifier = Modifier.weight(1f),
                         )
                         Spacer(Modifier.width(8.dp))
-                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.setCarbs(goal = suggestedCarbs) })
+                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(protein = suggestedProtein) })
                     }
                 }
-            }
-            val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_workouts_per_week), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    if (settings.weeklyTargetOverride == 0) Text(stringResource(R.string.profile_from_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                // The whole row toggles, not just the switch.
+                Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    FitSwitch(settings.trackCarbs, null)
                 }
-                Stepper(
-                    "$weeklyShown",
-                    onMinus = { vm.updateGoals(weekly = (weeklyShown - 1).coerceAtLeast(1).let { if (it == planDays) 0 else it }) },
-                    onPlus = { vm.updateGoals(weekly = (weeklyShown + 1).coerceAtMost(7).let { if (it == planDays) 0 else it }) },
-                    minValueWidth = 84.dp,
-                )
-            }
-            Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        }
-        Spacer(Modifier.height(12.dp))
-
-        SettingsSection(stringResource(R.string.settings_section_coach))
-
-        FitCard {
-            Row(
-                Modifier.fillMaxWidth().toggleable(settings.debriefEnabled, role = Role.Switch) { vm.setDebrief(it) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.debrief_setting), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    Text(stringResource(R.string.debrief_setting_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-                FitSwitch(settings.debriefEnabled, null)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // AI key
-        SettingsRow(
-            Icons.Rounded.Key, c.blue, c.blueTrack,
-            stringResource(R.string.profile_ai_key),
-            if (apiKey.isBlank()) stringResource(R.string.profile_key_not_set) else stringResource(R.string.profile_key_connected),
-        ) { keyDialog = true }
-        Spacer(Modifier.height(12.dp))
-        SettingsRow(
-            Icons.Rounded.Bolt, c.gold, c.goldTrack,
-            stringResource(R.string.groq_key_title),
-            if (groqKey.isBlank()) stringResource(R.string.groq_key_off) else stringResource(R.string.groq_key_on),
-        ) { groqDialog = true }
-        Spacer(Modifier.height(12.dp))
-
-        // Gemini app bridge (owner feature): data out twice a day, the big model's brief back in.
-        var pasteOpen by remember { mutableStateOf(false) }
-        val bridgeScope = rememberCoroutineScope()
-        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-        FitCard {
-            SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { vm.setBridge(it) }
-            if (settings.bridgeEnabled) {
-                Spacer(Modifier.height(10.dp))
-                val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", Locale.getDefault())
-                fun at(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).format(fmt)
-                Text(
-                    (if (settings.bridgeLastWrite > 0) stringResource(R.string.bridge_wrote, at(settings.bridgeLastWrite)) else stringResource(R.string.bridge_never_wrote)) + " · " +
-                        (if (settings.bridgeLastReadAt > 0) stringResource(R.string.bridge_read, at(settings.bridgeLastReadAt)) else stringResource(R.string.bridge_never_read)),
-                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                )
-                if (settings.bridgeIssues.isNotBlank()) Text(stringResource(R.string.bridge_issues, settings.bridgeIssues), style = MaterialTheme.typography.bodySmall, color = c.coral)
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncBridge)
-                    TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
-                        val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
-                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
-                        context.toast(context.getString(R.string.bridge_prompt_copied))
-                    })
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalPill(stringResource(R.string.bridge_copy_data), onClick = {
-                        bridgeScope.launch {
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(vm.bridgeData()))
-                            context.toast(context.getString(R.string.bridge_data_copied))
+                if (settings.trackCarbs) {
+                    SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
+                    SettingStepper(
+                        stringResource(R.string.profile_fat_share),
+                        settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT).toFloat(),
+                        { vm.setRatios(fatPct = it.toInt()) },
+                        step = 5f,
+                        min = Nutrition.MIN_FAT_SHARE_PCT.toFloat(),
+                        max = 40f,
+                        unit = "%",
+                    )
+                    val suggestedCarbs = Nutrition.suggestedCarbs(
+                        kcal = settings.kcalGoal,
+                        proteinG = settings.proteinGoal,
+                        fatPct = settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT),
+                        bodyWeightKg = s.latestWeight ?: 0f,
+                    )
+                    if (suggestedCarbs != settings.carbsGoal && suggestedCarbs > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.profile_carbs_suggested, suggestedCarbs, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.textSecondary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            TonalPill(stringResource(R.string.goals_use), onClick = { vm.setCarbs(goal = suggestedCarbs) })
                         }
-                    }, tint = c.textSecondary)
-                    TonalPill(stringResource(R.string.bridge_paste), onClick = { pasteOpen = true }, tint = c.textSecondary)
+                    }
                 }
-            }
-        }
-        if (pasteOpen) {
-            var text by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { pasteOpen = false },
-                containerColor = c.card,
-                title = { Text(stringResource(R.string.bridge_paste_title), color = c.textPrimary) },
-                text = {
-                    OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth().height(220.dp), placeholder = { Text("FORGEQUEST-REPLY v1 …") })
-                },
-                confirmButton = { TextButton(onClick = { vm.pasteBridgeReply(text); pasteOpen = false }, enabled = text.isNotBlank()) { Text(stringResource(R.string.bridge_paste_apply), color = c.teal) } },
-                dismissButton = { TextButton(onClick = { pasteOpen = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Coach memory
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(
-                        if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
-                        else stringResource(R.string.profile_memory_hint),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.profile_workouts_per_week), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                        if (settings.weeklyTargetOverride == 0) Text(stringResource(R.string.profile_from_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    Stepper(
+                        "$weeklyShown",
+                        onMinus = { vm.updateGoals(weekly = (weeklyShown - 1).coerceAtLeast(1).let { if (it == planDays) 0 else it }) },
+                        onPlus = { vm.updateGoals(weekly = (weeklyShown + 1).coerceAtMost(7).let { if (it == planDays) 0 else it }) },
+                        minValueWidth = 84.dp,
                     )
                 }
-                TonalPill(stringResource(R.string.action_add), onClick = { notesDialog = true })
+                Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
-            val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
-            if (notes.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                notes.forEach { note ->
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
-                        Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+        }
+
+        SettingsGroup(
+            Icons.Rounded.FitnessCenter, c.teal, c.tealTrack, stringResource(R.string.settings_group_training),
+            summary(
+                when {
+                    activePreset != null -> activePreset.shortLabel()
+                    configuredEq.isEmpty() -> stringResource(R.string.summary_equipment_unset)
+                    else -> stringResource(R.string.equipment_custom)
+                },
+                if (settings.reminderHour < 0) stringResource(R.string.summary_reminder_off) else stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour)),
+            ),
+            open = "training" in openGroups, onToggle = { toggleGroup("training") },
+        ) {
+            EquipmentCard(activePreset, configuredEq, onPreset = { vm.setEquipment(it.encode()) }, onItem = { vm.toggleEquipmentItem(it, configuredEq) })
+            FitCard {
+                SwitchHeader(
+                    Icons.Rounded.Notifications, c.gold, c.goldTrack, stringResource(R.string.profile_reminder),
+                    if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
+                    settings.reminderHour >= 0,
+                ) { vm.setReminder(if (it) 18 else -1) }
+                if (settings.reminderHour >= 0) {
+                    var typingHour by remember { mutableStateOf(false) }
+                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.profile_time), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                        Stepper(
+                            "%02d:00".format(settings.reminderHour),
+                            onMinus = { vm.setReminder((settings.reminderHour + 23) % 24) },
+                            onPlus = { vm.setReminder((settings.reminderHour + 1) % 24) },
+                            minValueWidth = 72.dp,
+                            onValueClick = { typingHour = true },
+                        )
+                    }
+                    if (typingHour) {
+                        NumberEntryDialog(stringResource(R.string.profile_reminder_hour), settings.reminderHour.toFloat(), "h", 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
                     }
                 }
             }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        SettingsSection(stringResource(R.string.settings_section_app))
-
-        // Appearance & feel
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Palette, c.blue, c.blueTrack)
-                Spacer(Modifier.width(14.dp))
-                Text(stringResource(R.string.profile_appearance), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-            }
-            Spacer(Modifier.height(14.dp))
-            Text(stringResource(R.string.profile_theme), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-            Spacer(Modifier.height(6.dp))
-            SegmentedTabs(
-                listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_light), stringResource(R.string.theme_dark)),
-                when (settings.theme) { "light" -> 1; "dark" -> 2; else -> 0 },
-                onSelect = { vm.setTheme(listOf("system", "light", "dark")[it]) },
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.profile_language), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-            Spacer(Modifier.height(6.dp))
-            val languages = listOf(com.forgequest.app.AppLocale.SYSTEM, "en", "ar")
-            SegmentedTabs(
-                listOf(stringResource(R.string.language_system), "English", "العربية"),
-                languages.indexOf(com.forgequest.app.AppLocale.current(context)).coerceAtLeast(0),
-                onSelect = { i ->
-                    com.forgequest.app.AppLocale.set(context, languages[i])
-                    (context as? Activity)?.recreate()
-                },
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.profile_weights), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-            Spacer(Modifier.height(6.dp))
-            SegmentedTabs(
-                listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)),
-                if (settings.weightUnit == WeightUnit.LB) 1 else 0,
-                onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") },
-            )
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp).toggleable(settings.hapticsEnabled, role = Role.Switch) { vm.setHaptics(it) }, verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_vibration), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    Text(stringResource(R.string.profile_vibration_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            FitCard {
+                Row(Modifier.fillMaxWidth().toggleable(settings.hapticsEnabled, role = Role.Switch) { vm.setHaptics(it) }, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.profile_vibration), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                        Text(stringResource(R.string.profile_vibration_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    FitSwitch(settings.hapticsEnabled, null)
                 }
-                FitSwitch(settings.hapticsEnabled, null)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Reminders
-        FitCard {
-            SwitchHeader(
-                Icons.Rounded.Notifications, c.gold, c.goldTrack, stringResource(R.string.profile_reminder),
-                if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
-                settings.reminderHour >= 0,
-            ) { vm.setReminder(if (it) 18 else -1) }
-            if (settings.reminderHour >= 0) {
-                var typingHour by remember { mutableStateOf(false) }
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.profile_time), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                    Stepper(
-                        "%02d:00".format(settings.reminderHour),
-                        onMinus = { vm.setReminder((settings.reminderHour + 23) % 24) },
-                        onPlus = { vm.setReminder((settings.reminderHour + 1) % 24) },
-                        minValueWidth = 72.dp,
-                        onValueClick = { typingHour = true },
-                    )
-                }
-                if (typingHour) {
-                    NumberEntryDialog(stringResource(R.string.profile_reminder_hour), settings.reminderHour.toFloat(), "h", 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    Modifier.fillMaxWidth().toggleable(settings.debriefEnabled, role = Role.Switch) { vm.setDebrief(it) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.debrief_setting), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                        Text(stringResource(R.string.debrief_setting_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    FitSwitch(settings.debriefEnabled, null)
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
 
-        // App lock
-        FitCard {
-            val canLock = remember {
-                androidx.biometric.BiometricManager.from(context).canAuthenticate(
-                    androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
-                ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
-            }
-            SwitchHeader(
-                Icons.Rounded.Lock, c.coral, c.coralTrack, stringResource(R.string.profile_app_lock),
-                stringResource(if (!canLock) R.string.profile_lock_unavailable else if (settings.biometricLock) R.string.profile_lock_on else R.string.profile_lock_off),
-                settings.biometricLock && canLock, enabled = canLock,
-            ) { vm.setLock(it) }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        SettingsSection(stringResource(R.string.settings_section_data))
-
-        // Local backup file
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_backup_file), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.profile_your_data_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        SettingsGroup(
+            Icons.Rounded.Psychology, c.purple, c.purpleTrack, stringResource(R.string.settings_group_coach),
+            summary(
+                stringResource(if (apiKey.isBlank()) R.string.summary_gemini_off else R.string.summary_gemini_on),
+                stringResource(if (groqKey.isBlank()) R.string.summary_groq_off else R.string.summary_groq_on),
+            ),
+            open = "coach" in openGroups, onToggle = { toggleGroup("coach") },
+        ) {
+            SettingsRow(
+                Icons.Rounded.Key, c.blue, c.blueTrack,
+                stringResource(R.string.profile_ai_key),
+                if (apiKey.isBlank()) stringResource(R.string.profile_key_not_set) else stringResource(R.string.profile_key_connected),
+            ) { keyDialog = true }
+            SettingsRow(
+                Icons.Rounded.Bolt, c.gold, c.goldTrack,
+                stringResource(R.string.groq_key_title),
+                if (groqKey.isBlank()) stringResource(R.string.groq_key_off) else stringResource(R.string.groq_key_on),
+            ) { groqDialog = true }
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                        Text(
+                            if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
+                            else stringResource(R.string.profile_memory_hint),
+                            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                        )
+                    }
+                    TonalPill(stringResource(R.string.action_add), onClick = { notesDialog = true })
+                }
+                val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
+                if (notes.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    notes.forEach { note ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
+                            Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PillButton(stringResource(R.string.profile_save_file), onClick = { saveLauncher.launch(vm.app.backup.exportFileName()) }, icon = Icons.Rounded.SaveAlt)
-                TonalPill(stringResource(R.string.profile_share_file), onClick = vm::exportData, icon = Icons.Rounded.Share)
-                TonalPill(stringResource(R.string.profile_import), onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
-                if (safetyCopies.isNotEmpty()) TonalPill(stringResource(R.string.profile_undo_restore), onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Drive
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Cloud, c.teal, c.tealTrack)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.drive_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+            var pasteOpen by remember { mutableStateOf(false) }
+            val bridgeScope = rememberCoroutineScope()
+            val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+            FitCard {
+                SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { vm.setBridge(it) }
+                if (settings.bridgeEnabled) {
+                    Spacer(Modifier.height(10.dp))
+                    val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", Locale.getDefault())
+                    fun at(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).format(fmt)
                     Text(
-                        when {
-                            settings.driveEmail.isBlank() -> stringResource(R.string.drive_hint)
-                            settings.lastBackupAt > 0 -> stringResource(R.string.drive_backed_up_at, settings.driveEmail, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt)))
-                            else -> settings.driveEmail
-                        },
+                        (if (settings.bridgeLastWrite > 0) stringResource(R.string.bridge_wrote, at(settings.bridgeLastWrite)) else stringResource(R.string.bridge_never_wrote)) + " · " +
+                            (if (settings.bridgeLastReadAt > 0) stringResource(R.string.bridge_read, at(settings.bridgeLastReadAt)) else stringResource(R.string.bridge_never_read)),
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                    if (settings.bridgeIssues.isNotBlank()) Text(stringResource(R.string.bridge_issues, settings.bridgeIssues), style = MaterialTheme.typography.bodySmall, color = c.coral)
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncBridge)
+                        TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
+                            val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
+                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                            context.toast(context.getString(R.string.bridge_prompt_copied))
+                        })
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TonalPill(stringResource(R.string.bridge_copy_data), onClick = {
+                            bridgeScope.launch {
+                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(vm.bridgeData()))
+                                context.toast(context.getString(R.string.bridge_data_copied))
+                            }
+                        }, tint = c.textSecondary)
+                        TonalPill(stringResource(R.string.bridge_paste), onClick = { pasteOpen = true }, tint = c.textSecondary)
+                    }
+                }
+            }
+            if (pasteOpen) {
+                var text by remember { mutableStateOf("") }
+                AlertDialog(
+                    onDismissRequest = { pasteOpen = false },
+                    containerColor = c.card,
+                    title = { Text(stringResource(R.string.bridge_paste_title), color = c.textPrimary) },
+                    text = {
+                        OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth().height(220.dp), placeholder = { Text("FORGEQUEST-REPLY v1 …") })
+                    },
+                    confirmButton = { TextButton(onClick = { vm.pasteBridgeReply(text); pasteOpen = false }, enabled = text.isNotBlank()) { Text(stringResource(R.string.bridge_paste_apply), color = c.teal) } },
+                    dismissButton = { TextButton(onClick = { pasteOpen = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+                )
+            }
+        }
+
+        SettingsGroup(
+            Icons.Rounded.Palette, c.blue, c.blueTrack, stringResource(R.string.settings_group_app),
+            summary(
+                stringResource(when (settings.theme) { "light" -> R.string.theme_light; "dark" -> R.string.theme_dark; else -> R.string.theme_system }),
+                when (com.forgequest.app.AppLocale.current(context)) { "en" -> "English"; "ar" -> "العربية"; else -> stringResource(R.string.language_system) },
+                settings.weightUnit.label,
+                if (settings.biometricLock && canLock) stringResource(R.string.summary_lock_on) else null,
+            ),
+            open = "app" in openGroups, onToggle = { toggleGroup("app") },
+        ) {
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Palette, c.blue, c.blueTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Text(stringResource(R.string.profile_appearance), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(stringResource(R.string.profile_theme), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Spacer(Modifier.height(6.dp))
+                SegmentedTabs(
+                    listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_light), stringResource(R.string.theme_dark)),
+                    when (settings.theme) { "light" -> 1; "dark" -> 2; else -> 0 },
+                    onSelect = { vm.setTheme(listOf("system", "light", "dark")[it]) },
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.profile_language), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Spacer(Modifier.height(6.dp))
+                val languages = listOf(com.forgequest.app.AppLocale.SYSTEM, "en", "ar")
+                SegmentedTabs(
+                    listOf(stringResource(R.string.language_system), "English", "العربية"),
+                    languages.indexOf(com.forgequest.app.AppLocale.current(context)).coerceAtLeast(0),
+                    onSelect = { i ->
+                        com.forgequest.app.AppLocale.set(context, languages[i])
+                        (context as? Activity)?.recreate()
+                    },
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.profile_weights), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                Spacer(Modifier.height(6.dp))
+                SegmentedTabs(
+                    listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)),
+                    if (settings.weightUnit == WeightUnit.LB) 1 else 0,
+                    onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") },
+                )
+            }
+            FitCard {
+                SwitchHeader(
+                    Icons.Rounded.Lock, c.coral, c.coralTrack, stringResource(R.string.profile_app_lock),
+                    stringResource(if (!canLock) R.string.profile_lock_unavailable else if (settings.biometricLock) R.string.profile_lock_on else R.string.profile_lock_off),
+                    settings.biometricLock && canLock, enabled = canLock,
+                ) { vm.setLock(it) }
+            }
+            SettingsRow(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
+                nav.navigate(com.forgequest.app.ui.Routes.TOUR)
+            }
+        }
+
+        SettingsGroup(
+            Icons.Rounded.Cloud, c.teal, c.tealTrack, stringResource(R.string.settings_group_backup),
+            when {
+                settings.driveEmail.isBlank() -> stringResource(R.string.summary_drive_off)
+                settings.lastBackupAt > 0 -> stringResource(R.string.summary_drive_last, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt)))
+                else -> stringResource(R.string.summary_drive_none)
+            },
+            open = "backup" in openGroups, onToggle = { toggleGroup("backup") },
+        ) {
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.profile_backup_file), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.profile_your_data_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PillButton(stringResource(R.string.profile_save_file), onClick = { saveLauncher.launch(vm.app.backup.exportFileName()) }, icon = Icons.Rounded.SaveAlt)
+                    TonalPill(stringResource(R.string.profile_share_file), onClick = vm::exportData, icon = Icons.Rounded.Share)
+                    TonalPill(stringResource(R.string.profile_import), onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
+                    if (safetyCopies.isNotEmpty()) TonalPill(stringResource(R.string.profile_undo_restore), onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
+                }
+            }
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Cloud, c.teal, c.tealTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.drive_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                        Text(
+                            when {
+                                settings.driveEmail.isBlank() -> stringResource(R.string.drive_hint)
+                                settings.lastBackupAt > 0 -> stringResource(R.string.drive_backed_up_at, settings.driveEmail, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt)))
+                                else -> settings.driveEmail
+                            },
+                            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                if (settings.driveEmail.isBlank()) {
+                    PillButton(stringResource(R.string.drive_connect), onClick = vm::connectDrive, modifier = Modifier.fillMaxWidth())
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PillButton(stringResource(R.string.drive_back_up_now), onClick = vm::backupNow)
+                        TonalPill(if (settings.driveDocsEnabled) stringResource(R.string.drive_import_doc) else stringResource(R.string.drive_import_doc_first), onClick = vm::importDoc)
+                        if (settings.driveDocsEnabled) TonalPill(stringResource(R.string.drive_stop_docs), onClick = vm::disableDocs, tint = c.textSecondary)
+                        TonalPill(stringResource(R.string.action_restore), onClick = vm::restore)
+                        TonalPill(stringResource(R.string.drive_disconnect), onClick = vm::disconnectDrive, tint = c.textSecondary)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        if (settings.driveDocsEnabled) stringResource(R.string.drive_docs_on_hint)
+                        else stringResource(R.string.drive_docs_off_hint),
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            if (settings.driveEmail.isBlank()) {
-                PillButton(stringResource(R.string.drive_connect), onClick = vm::connectDrive, modifier = Modifier.fillMaxWidth())
-            } else {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PillButton(stringResource(R.string.drive_back_up_now), onClick = vm::backupNow)
-                    TonalPill(if (settings.driveDocsEnabled) stringResource(R.string.drive_import_doc) else stringResource(R.string.drive_import_doc_first), onClick = vm::importDoc)
-                    if (settings.driveDocsEnabled) TonalPill(stringResource(R.string.drive_stop_docs), onClick = vm::disableDocs, tint = c.textSecondary)
-                    TonalPill(stringResource(R.string.action_restore), onClick = vm::restore)
-                    TonalPill(stringResource(R.string.drive_disconnect), onClick = vm::disconnectDrive, tint = c.textSecondary)
+        }
+
+        SettingsGroup(
+            Icons.Rounded.Info, c.textSecondary, c.cardHigh, stringResource(R.string.settings_group_about),
+            stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),
+            open = "about" in openGroups, onToggle = { toggleGroup("about") },
+        ) {
+            SettingsRow(Icons.Rounded.SystemUpdate, c.teal, c.tealTrack, stringResource(R.string.update_title), stringResource(R.string.update_hint, com.forgequest.app.BuildConfig.VERSION_NAME)) { vm.checkUpdate() }
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    if (settings.driveDocsEnabled) stringResource(R.string.drive_docs_on_hint)
-                    else stringResource(R.string.drive_docs_off_hint),
-                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                )
+                Spacer(Modifier.height(10.dp))
+                TonalPill(stringResource(R.string.profile_hemo_youtube), onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/@HemoCalisthenics")))
+                }, icon = Icons.Rounded.OpenInNew)
             }
         }
-        Spacer(Modifier.height(12.dp))
-
-        SettingsSection(stringResource(R.string.settings_section_more))
-
-        // Updates from GitHub, for an app installed outside the Play Store
-        SettingsRow(Icons.Rounded.SystemUpdate, c.teal, c.tealTrack, stringResource(R.string.update_title), stringResource(R.string.update_hint, com.forgequest.app.BuildConfig.VERSION_NAME)) { vm.checkUpdate() }
-        Spacer(Modifier.height(12.dp))
         val latest by vm.update.collectAsState()
         latest?.let { v ->
             AlertDialog(
@@ -1194,46 +1232,7 @@ fun ProfileScreen(nav: NavHostController) {
                 dismissButton = { TextButton(onClick = { vm.update.value = null }) { Text(stringResource(R.string.update_later), color = c.textSecondary) } },
             )
         }
-
-        // App tour, the same slides as the first run
-        SettingsRow(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
-            nav.navigate(com.forgequest.app.ui.Routes.TOUR)
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Progress
-        SettingsRow(
-            Icons.Rounded.ShowChart, c.teal, c.tealTrack,
-            stringResource(R.string.profile_progress_title),
-            stringResource(R.string.profile_progress_hint),
-        ) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
-        Spacer(Modifier.height(12.dp))
-
-        // Exercise library
-        SettingsRow(
-            Icons.Rounded.FitnessCenter, c.teal, c.tealTrack,
-            stringResource(R.string.profile_exercise_library),
-            stringResource(R.string.profile_exercise_library_hint),
-        ) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
-        Spacer(Modifier.height(12.dp))
-
-        // About
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    Text(stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            TonalPill(stringResource(R.string.profile_hemo_youtube), onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/@HemoCalisthenics")))
-            }, icon = Icons.Rounded.OpenInNew)
-        }
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(20.dp))
     }
 
     if (keyDialog) {
@@ -1486,5 +1485,157 @@ private fun SettingStepper(label: String, value: Float, onChange: (Float) -> Uni
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
         NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp)
+    }
+}
+/**
+ * A folding settings category: one card with an icon, a title and a one-line summary of the current values,
+ * so most of the time the summary is enough and the group stays shut. Tap to open the cards inside.
+ */
+@Composable
+private fun SettingsGroup(
+    icon: ImageVector,
+    tint: androidx.compose.ui.graphics.Color,
+    track: androidx.compose.ui.graphics.Color,
+    title: String,
+    summary: String,
+    open: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val c = Fit.colors
+    val turn by animateFloatAsState(if (open) 180f else 0f, label = "chevron")
+    val state = stringResource(if (open) R.string.cd_group_open else R.string.cd_group_closed)
+    FitCard(
+        modifier = Modifier.semantics { stateDescription = state },
+        onClick = onToggle,
+        padding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconCircle(icon, tint, track)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.rotate(turn))
+        }
+    }
+    AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+        // Indented a little so the cards read as belonging to the category above them.
+        Column(Modifier.padding(start = 12.dp, top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+/** Half-width card that opens another screen. */
+@Composable
+private fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconCircle(icon, tint, track, size = 40.dp)
+            Spacer(Modifier.width(12.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** "Home gym" out of "Home gym (barbell, dumbbells, bar)": the items are listed on their own line. */
+private fun EquipmentPreset.shortLabel(): String =
+    (if (Locale.getDefault().language == "ar") labelAr else labelEn).substringBefore(" (")
+
+/**
+ * Equipment in two clearly separate steps: (1) one ready-made setup, picked like a radio button,
+ * (2) the single items, ticked like checkboxes. Ticking an item that no setup matches shows "Custom mix".
+ */
+@Composable
+private fun EquipmentCard(active: EquipmentPreset?, configured: Set<Equipment>, onPreset: (EquipmentPreset) -> Unit, onItem: (Equipment) -> Unit) {
+    val c = Fit.colors
+    FitCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.equipment_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                Text(stringResource(R.string.equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+        }
+
+        EquipmentStep(1, stringResource(R.string.equipment_step_setup), stringResource(R.string.equipment_step_setup_hint))
+        Column(Modifier.selectableGroup()) {
+            EquipmentPreset.entries.forEach { preset ->
+                val items = preset.equipment.filter { it != Equipment.BODYWEIGHT }
+                ChoiceRow(
+                    title = preset.shortLabel(),
+                    subtitle = if (items.isEmpty()) stringResource(R.string.equipment_no_items) else items.joinToString(" · ") { it.localName() },
+                    selected = active == preset,
+                    radio = true,
+                    onClick = { onPreset(preset) },
+                )
+            }
+            if (active == null && configured.isNotEmpty()) {
+                ChoiceRow(stringResource(R.string.equipment_custom), stringResource(R.string.equipment_custom_hint), selected = true, radio = true, onClick = null)
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.material3.HorizontalDivider(color = c.divider)
+        EquipmentStep(2, stringResource(R.string.equipment_step_items), stringResource(R.string.equipment_step_items_hint))
+        Equipment.entries.forEach { eq ->
+            val always = eq == Equipment.BODYWEIGHT
+            ChoiceRow(
+                title = eq.localName(),
+                subtitle = if (always) stringResource(R.string.equipment_always) else null,
+                selected = always || eq in configured,
+                radio = false,
+                onClick = if (always) null else ({ onItem(eq) }),
+            )
+        }
+    }
+}
+
+@Composable
+private fun EquipmentStep(number: Int, title: String, hint: String) {
+    val c = Fit.colors
+    Row(Modifier.padding(top = 16.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(24.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {
+            Text("$number", style = MaterialTheme.typography.labelMedium, color = c.teal, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        }
+    }
+}
+
+/** One full-width option row with a radio circle or a checkbox; the whole row is the touch target. */
+@Composable
+private fun ChoiceRow(title: String, subtitle: String?, selected: Boolean, radio: Boolean, onClick: (() -> Unit)?) {
+    val c = Fit.colors
+    val shape = RoundedCornerShape(14.dp)
+    val base = Modifier.fillMaxWidth().padding(vertical = 2.dp).clip(shape).background(if (selected) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent)
+    val touch = when {
+        onClick == null -> base
+        radio -> base.selectable(selected, role = Role.RadioButton, onClick = onClick)
+        else -> base.toggleable(selected, role = Role.Checkbox) { onClick() }
+    }
+    Row(touch.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            when {
+                radio && selected -> Icons.Rounded.RadioButtonChecked
+                radio -> Icons.Rounded.RadioButtonUnchecked
+                selected -> Icons.Rounded.CheckBox
+                else -> Icons.Rounded.CheckBoxOutlineBlank
+            },
+            contentDescription = null,
+            tint = if (selected) c.teal else c.textSecondary,
+            modifier = Modifier.size(22.dp).alpha(if (onClick == null && !radio) 0.6f else 1f),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
     }
 }

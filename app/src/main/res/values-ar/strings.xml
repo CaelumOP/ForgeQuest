@@ -1141,4 +1141,40 @@
     <string name="debrief_journal">المدرب %1$d/10: %2$s</string>
     <string name="debrief_setting">ملخص ما بعد التمرين</string>
     <string name="debrief_setting_hint">مراجعة قصيرة بالذكاء الاصطناعي مع تقييم ونصيحة بعد كل تمرين</string>
+    <!-- الملف الشخصي: فئات الإعدادات القابلة للطي -->
+    <string name="settings_section_settings">الإعدادات</string>
+    <string name="settings_group_body">الجسم والصحة</string>
+    <string name="settings_group_goals">الأهداف والتغذية</string>
+    <string name="settings_group_training">التدريب</string>
+    <string name="settings_group_coach">المدرب والذكاء الاصطناعي</string>
+    <string name="settings_group_app">التطبيق والمظهر</string>
+    <string name="settings_group_backup">النسخ الاحتياطي والمزامنة</string>
+    <string name="settings_group_about">حول التطبيق</string>
+    <string name="cd_group_open">مفتوحة</string>
+    <string name="cd_group_closed">مغلقة</string>
+    <string name="summary_body_not_set">لم يُحدَّد الطول والعمر بعد</string>
+    <string name="summary_fitbit_on">Fitbit متصل</string>
+    <string name="summary_per_week">%1$d في الأسبوع</string>
+    <string name="summary_reminder_at">تذكير %1$s</string>
+    <string name="summary_reminder_off">دون تذكير</string>
+    <string name="summary_equipment_unset">لم تُحدَّد المعدات</string>
+    <string name="summary_gemini_on">Gemini متصل</string>
+    <string name="summary_gemini_off">مفتاح Gemini غير مضاف</string>
+    <string name="summary_groq_on">Groq مفعَّل</string>
+    <string name="summary_groq_off">Groq غير مفعَّل</string>
+    <string name="summary_lock_on">قفل التطبيق مفعَّل</string>
+    <string name="summary_drive_off">Google Drive غير متصل</string>
+    <string name="summary_drive_last">Drive · آخر نسخة %1$s</string>
+    <string name="summary_drive_none">Drive متصل · لا توجد نسخة بعد</string>
+    <!-- الملف الشخصي: اختيار المعدات -->
+    <string name="equipment_title">معدات التدريب</string>
+    <string name="equipment_hint">لا يقترح المدرب ومبدّل التمارين إلا ما يمكنك أداؤه بهذه المعدات.</string>
+    <string name="equipment_step_setup">اختر بيئة تدريبك</string>
+    <string name="equipment_step_setup_hint">اختر الأقرب إلى المكان الذي تتدرب فيه.</string>
+    <string name="equipment_step_items">عدّل العناصر منفردة</string>
+    <string name="equipment_step_items_hint">حدّد ما تملكه، وألغِ تحديد ما لا تملكه.</string>
+    <string name="equipment_custom">مزيج مخصّص</string>
+    <string name="equipment_custom_hint">اختيارك الخاص من العناصر أدناه</string>
+    <string name="equipment_no_items">لا تحتاج إلى معدات</string>
+    <string name="equipment_always">مشمول دائمًا</string>
 </resources>

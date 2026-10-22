@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "2.6.0",
+  "versionCode": 9,
+  "versionName": "2.7.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Cut, Maintain or Gain goal, calmer weight increases, Easy/OK/Hard/Pain set tags, sick and travel days that protect your streak, safer coach plan edits, and a short AI debrief after each workout."
+  "notes": "Tidier Profile: settings now sit in seven folding categories with a one-line summary each, and a clearer equipment picker (pick your setup, then tick single items)."
 }
