@@ -18,7 +18,7 @@ import java.io.IOException
 
 /** What `apk/version.json` in the repo says about the newest build. */
 @Serializable
-data class LatestVersion(val versionCode: Int, val versionName: String, val apk: String, val notes: String = "")
+data class LatestVersion(val versionCode: Int, val versionName: String, val apk: String, val notes: String = "", val critical: Boolean = false)
 
 /**
  * Updates for an app installed outside the Play Store: read the version file next to the APK on GitHub, and if it's
@@ -28,20 +28,41 @@ class UpdateChecker(private val context: Context, private val http: OkHttpClient
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The newer version, or null when this one is the latest. Throws [IOException] when offline. */
-    suspend fun check(): LatestVersion? = withContext(Dispatchers.IO) {
+    suspend fun check(): LatestVersion? = fetch().takeIf { it.versionCode > BuildConfig.VERSION_CODE }
+
+    /** Whatever version.json says right now, newer or not. */
+    suspend fun fetch(): LatestVersion = withContext(Dispatchers.IO) {
         val body = http.newCall(Request.Builder().url(VERSION_URL).header("Cache-Control", "no-cache").build()).execute().use { r ->
             if (!r.isSuccessful) throw IOException("HTTP ${r.code}")
             r.body!!.string()
         }
-        json.decodeFromString(LatestVersion.serializer(), body).takeIf { it.versionCode > BuildConfig.VERSION_CODE }
+        parse(body)
     }
 
-    /** Downloads the APK into the shared cache folder and returns it. */
-    suspend fun download(latest: LatestVersion): File = withContext(Dispatchers.IO) {
+    fun parse(body: String): LatestVersion = json.decodeFromString(LatestVersion.serializer(), body)
+    fun encode(latest: LatestVersion): String = json.encodeToString(LatestVersion.serializer(), latest)
+
+    /** Downloads the APK into the shared cache folder and returns it. [onProgress] gets 0..1, or -1 when the size is unknown. */
+    suspend fun download(latest: LatestVersion, onProgress: (Float) -> Unit = {}): File = withContext(Dispatchers.IO) {
         val file = File(File(context.cacheDir, "export").apply { mkdirs() }, "ForgeQuest-${latest.versionName}.apk")
         http.newCall(Request.Builder().url(latest.apk).build()).execute().use { r ->
             if (!r.isSuccessful) throw IOException("HTTP ${r.code}")
-            file.outputStream().use { out -> r.body!!.byteStream().copyTo(out) }
+            val body = r.body!!
+            val total = body.contentLength()
+            file.outputStream().use { out ->
+                val input = body.byteStream()
+                val buf = ByteArray(64 * 1024)
+                var done = 0L
+                var lastPct = -1
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    done += n
+                    val pct = if (total > 0) (done * 100 / total).toInt() else -1
+                    if (pct != lastPct) { lastPct = pct; onProgress(if (pct < 0) -1f else pct / 100f) }
+                }
+            }
         }
         file
     }
