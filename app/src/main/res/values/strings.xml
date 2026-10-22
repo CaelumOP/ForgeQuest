@@ -1016,4 +1016,15 @@
     <string name="welcome_back_body">Good to see you again. Ease in with one set fewer per exercise today?</string>
     <string name="welcome_back_ease_in">Ease in</string>
     <string name="welcome_back_full">Full session</string>
+    <string name="coach_fixing_plan">Checking the plan…</string>
+    <string name="coach_plan_dropped">Removed \"%1$s\": no matching exercise in your library.</string>
+    <string name="coach_plan_replaced">Replaced \"%1$s\" with %2$s from your library.</string>
+    <string name="coach_plan_unreadable">I couldn\'t build a plan from this reply. Ask again and I\'ll retry.</string>
+    <string name="coach_change_swap">%1$s: %2$s → %3$s</string>
+    <string name="coach_change_add">%1$s: add %2$s</string>
+    <string name="coach_change_remove">%1$s: remove %2$s</string>
+    <string name="coach_change_edit">%1$s: adjust %2$s</string>
+    <string name="coach_stale_title">Your plan changed</string>
+    <string name="coach_stale_body">You edited your plan after the coach suggested this one. Applying it will replace those edits.</string>
+    <string name="coach_stale_apply">Apply anyway</string>
 </resources>

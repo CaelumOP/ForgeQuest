@@ -1117,4 +1117,15 @@
     <string name="welcome_back_body">سعداء بعودتك. هل تبدأ بهدوء بمجموعة أقل لكل تمرين اليوم؟</string>
     <string name="welcome_back_ease_in">ابدأ بهدوء</string>
     <string name="welcome_back_full">الجلسة كاملة</string>
+    <string name="coach_fixing_plan">جارٍ التحقق من الخطة…</string>
+    <string name="coach_plan_dropped">حُذف «%1$s» لعدم وجود تمرين مطابق في مكتبتك.</string>
+    <string name="coach_plan_replaced">استُبدل «%1$s» بتمرين %2$s من مكتبتك.</string>
+    <string name="coach_plan_unreadable">تعذّر إنشاء خطة من هذا الرد. اطلبها مرة أخرى لأعيد المحاولة.</string>
+    <string name="coach_change_swap">%1$s: %2$s ← %3$s</string>
+    <string name="coach_change_add">%1$s: إضافة %2$s</string>
+    <string name="coach_change_remove">%1$s: حذف %2$s</string>
+    <string name="coach_change_edit">%1$s: تعديل %2$s</string>
+    <string name="coach_stale_title">تغيّرت خطتك</string>
+    <string name="coach_stale_body">عدّلت خطتك بعد أن اقترح المدرب هذه الخطة، وتطبيقها سيستبدل تعديلاتك.</string>
+    <string name="coach_stale_apply">طبّقها على أي حال</string>
 </resources>

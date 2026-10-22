@@ -10,10 +10,15 @@ import com.forgequest.app.data.ai.GroqClient
 import com.forgequest.app.data.ai.ModelStore
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.ChatEntity
+import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.plan.CoachMemory
 import com.forgequest.app.data.plan.PlanDraft
+import com.forgequest.app.data.plan.PlanHash
 import com.forgequest.app.data.plan.PlanJson
+import com.forgequest.app.data.plan.PlanPatch
+import com.forgequest.app.data.plan.PlanPatches
+import com.forgequest.app.data.plan.PlanValidator
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Badges
@@ -133,7 +138,15 @@ class CoachRepository(
             )
             _lastAnswer.value = provider to firstText
             Log.i(TAG, "send→first text ${firstText} ms, send→done ${SystemClock.elapsedRealtime() - tapped} ms via $provider (plan=$shouldEmitPlanJson, intake=$needsEquipmentIntake)")
-            saveReply(reply, knownEquipment)
+            saveReply(reply, knownEquipment) { problems ->
+                // One silent repair round: the coach sees exactly what was wrong and resends only the JSON.
+                _draft.value = PlanJson.strip(reply) + "\n\n_" + AppText.get(R.string.coach_fixing_plan) + "_"
+                gemini.generate(
+                    apiKey = requireKey(), models = models(), system = system,
+                    turns = turns + ("model" to reply) + ("user" to repairRequest(problems)),
+                    lowThinking = true,
+                )
+            }
         } catch (e: AiError.Partial) {
             if (PlanJson.strip(e.text).length > 40) saveReply(e.text, knownEquipment)
             saveError(e)
@@ -186,8 +199,55 @@ class CoachRepository(
         chat.insert(ChatEntity(role = "coach", text = text, kind = "error", detail = detail, createdAt = System.currentTimeMillis()))
     }
 
-    private suspend fun saveReply(reply: String, availableEquipment: Set<Equipment>) {
-        val rawPlan = PlanJson.extract(reply)
+    /** Result of reading a reply's plan or change block against the library and the current plan. */
+    private class PlanCheck(val draft: PlanDraft?, val errors: List<String>, val unknownIds: Set<String>, val broken: Boolean)
+
+    private fun checkPlan(reply: String, library: Map<String, ExerciseEntity>, current: PlanDraft?): PlanCheck? {
+        val currentHash = current?.let(PlanHash::of)
+        PlanJson.extractPatch(reply)?.let { patch ->
+            if (current == null) return PlanCheck(null, listOf("There is no current plan to change; send the full plan instead."), emptySet(), true)
+            val out = PlanPatches.apply(current, patch, library)
+            return PlanCheck(out.draft, out.errors, emptySet(), out.draft == null)
+        }
+        PlanJson.extract(reply)?.let { draft ->
+            val v = PlanValidator.validate(draft, library)
+            return PlanCheck(v.draft.copy(basedOnHash = currentHash), v.errors, v.unknownIds, false)
+        }
+        return if (PlanJson.hasBrokenBlock(reply)) PlanCheck(null, listOf("The JSON block could not be parsed; check brackets, quotes and commas."), emptySet(), true) else null
+    }
+
+    private fun repairRequest(problems: List<String>) = buildString {
+        appendLine("REPAIR REQUEST (automatic, from the app): your last plan JSON has these problems:")
+        problems.take(12).forEach { appendLine("- $it") }
+        append("Reply with ONLY the corrected ```json block (same shape as before), no other text.")
+    }
+
+    /**
+     * Saves the coach's reply. A plan or change block is checked first; when it has problems and [repair] is
+     * given, the coach is asked once to fix them. Ids that are still unknown become the closest library exercise
+     * (noted under the reply), and a block that stays unreadable says so instead of silently vanishing.
+     */
+    private suspend fun saveReply(reply: String, availableEquipment: Set<Equipment>, repair: (suspend (List<String>) -> String)? = null) {
+        val snap = progress.snapshot.first()
+        val current = snap.plan?.toDraft()
+        val first = checkPlan(reply, snap.exercises, current)
+        val retried = if (first != null && first.errors.isNotEmpty() && repair != null) {
+            suspendRunCatching { repair(first.errors) }.getOrNull()?.let { checkPlan(it, snap.exercises, current) }
+        } else null
+        val check = if (retried != null && first != null && (retried.draft != null || first.draft == null) && retried.errors.size <= first.errors.size) retried else first
+        val extraNotes = mutableListOf<String>()
+        var checked = check?.draft
+        if (checked != null && check != null && check.unknownIds.isNotEmpty()) {
+            val (replaced, swaps) = PlanValidator.replaceUnknown(checked, check.unknownIds, snap.exercises.values.toList(), availableEquipment)
+            checked = replaced
+            swaps.forEach { (old, new) ->
+                extraNotes += if (new.isBlank()) AppText.get(R.string.coach_plan_dropped, old) else AppText.get(R.string.coach_plan_replaced, old, new)
+            }
+        }
+        if (check != null && checked == null) extraNotes += AppText.get(R.string.coach_plan_unreadable)
+        val patch = checked?.patch
+        if (patch != null && current != null) extraNotes += describeChanges(current, patch, snap.exercises)
+        val rawPlan = checked
         val notes = CoachMemory.extract(reply)
         if (notes.isNotEmpty()) {
             val inferredEq = ExerciseSwapEngine.inferEquipmentFromText(*notes.toTypedArray())
@@ -207,29 +267,51 @@ class CoachRepository(
         } else {
             rawPlan
         }
+        val prose = PlanJson.strip(reply).ifBlank { AppText.get(R.string.coach_plan_fallback) }
         chat.insert(
             ChatEntity(
                 role = "coach",
-                text = PlanJson.strip(reply).ifBlank { AppText.get(R.string.coach_plan_fallback) },
+                text = if (extraNotes.isEmpty()) prose else prose + "\n\n" + extraNotes.joinToString("\n") { "• $it" },
                 planJson = adaptedPlan?.let(PlanJson::encode),
                 createdAt = System.currentTimeMillis(),
             )
         )
     }
 
-    suspend fun applyPlan(messageId: Long): Boolean {
-        val msg = chat.byId(messageId) ?: return false
-        val plan = msg.planJson?.let(PlanJson::decode) ?: return false
-        val eq = settings.current().configuredEquipment
-        val finalPlan = if (eq.isNotEmpty()) {
-            val lib = progress.snapshot.first().exercises
-            ExerciseSwapEngine.adaptPlanToEquipment(plan, lib, eq).first
-        } else {
-            plan
+    enum class ApplyResult { APPLIED, STALE, FAILED }
+
+    /**
+     * Applies a coach plan card. If the plan was edited since the card was made, a change-only card is re-run on
+     * the current plan; a full plan returns [ApplyResult.STALE] so the screen can ask first ([force] skips that).
+     */
+    suspend fun applyPlan(messageId: Long, force: Boolean = false): ApplyResult {
+        val msg = chat.byId(messageId) ?: return ApplyResult.FAILED
+        var plan = msg.planJson?.let(PlanJson::decode) ?: return ApplyResult.FAILED
+        val snap = progress.snapshot.first()
+        val current = snap.plan?.toDraft()
+        if (!force && plan.basedOnHash != null && current != null && PlanHash.of(current) != plan.basedOnHash) {
+            val patch = plan.patch ?: return ApplyResult.STALE
+            plan = PlanPatches.apply(current, patch, snap.exercises).draft ?: return ApplyResult.STALE
         }
-        workouts.applyPlan(finalPlan, "coach")
+        val eq = settings.current().configuredEquipment
+        val finalPlan = if (eq.isNotEmpty()) ExerciseSwapEngine.adaptPlanToEquipment(plan, snap.exercises, eq).first else plan
+        workouts.applyPlan(finalPlan.copy(basedOnHash = null, patch = null), "coach")
         chat.update(msg.copy(planApplied = true))
-        return true
+        return ApplyResult.APPLIED
+    }
+
+    /** "Tuesday: Dips → Push-up" lines for a change-only card, in the app language. */
+    private fun describeChanges(base: PlanDraft, patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
+        fun name(id: String?) = id?.let { PlanValidator.canonicalId(it, null, library) ?: it }?.let { library[it]?.name ?: it }.orEmpty()
+        return patch.changes.map { c ->
+            val day = Dates.dayName(c.dayOfWeek.coerceIn(1, 7))
+            when (c.type) {
+                "swap" -> AppText.get(R.string.coach_change_swap, day, name(c.exerciseId), name(c.newExerciseId))
+                "add" -> AppText.get(R.string.coach_change_add, day, name(c.newExerciseId))
+                "remove" -> AppText.get(R.string.coach_change_remove, day, name(c.exerciseId))
+                else -> AppText.get(R.string.coach_change_edit, day, name(c.exerciseId))
+            }
+        }
     }
 
     /** Turns free text (pasted, or exported from Google Docs) into a plan. */
@@ -304,7 +386,13 @@ class CoachRepository(
 
     private suspend fun groqModel(): String = settings.current().groqModel.ifBlank { GroqClient.FALLBACK_MODEL }
 
-    private fun wantsPlan(text: String) = PlanIntent.matches(text)
+    /** A plan request, or an edit ("swap dips on Tuesday") that names a day or an exercise in the current plan. */
+    private suspend fun wantsPlan(text: String): Boolean {
+        val snap = progress.snapshot.first()
+        val names = snap.plan?.days.orEmpty().flatMap { it.items }.map { it.exerciseId }.distinct()
+            .flatMap { id -> listOfNotNull(id.replace('_', ' '), snap.exercises[id]?.name) }
+        return PlanIntent.matches(text, names)
+    }
 
     /** Script of the person's latest message, so the reply never drifts into another language. */
     internal fun languageOf(text: String): String = when {
@@ -341,7 +429,7 @@ class CoachRepository(
             }
             plan -> {
                 appendLine("When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a ```json code block at the very end.")
-                appendLine(planSchemaInstructions(availableEquipment))
+                appendLine(planSchemaInstructions(availableEquipment, progress.snapshot.first().plan?.toDraft()))
             }
             else -> {
                 appendLine("Never write plan JSON in this reply. If they want a new or changed weekly plan, outline it in a few lines and tell them to say \"make it my plan\" (in Arabic: \"اعمل لي الخطة\") to get one they can apply.")
@@ -356,7 +444,7 @@ class CoachRepository(
         if (replyLanguage == "Arabic") append(" Write formal Modern Standard Arabic (الفصحى), not dialect: natural Arabic phrasing, not translated English; use the Arabic comma (،) and question mark (؟). Keep exercise names in English in parentheses the first time, and write numbers as Western digits (0-9).")
     }
 
-    fun planSchemaInstructions(availableEquipment: Set<Equipment> = emptySet()): String {
+    fun planSchemaInstructions(availableEquipment: Set<Equipment> = emptySet(), current: PlanDraft? = null): String {
         val allowed = availableEquipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
         val allowedCatalog = ExerciseCatalog.all.filter { ex ->
             ExerciseSwapEngine.profileFor(ex).equipment in allowed
@@ -376,7 +464,18 @@ class CoachRepository(
             For an exercise not in that list, invent a snake_case id that strictly uses their available equipment and set name, kind and muscles (from: ${Muscle.entries.joinToString(", ") { it.name }}).
             Keep the JSON short: for ids from the list leave out name, kind and muscles; omit "note" unless needed; one-sentence description.
             Use "seconds" for holds, "repsMin"/"repsMax" for reps. Items with the same block and circuit=true are done round by round.
-        """.trimIndent()
+        """.trimIndent() + (current?.let { plan ->
+            val lines = plan.days.sortedBy { it.dayOfWeek }.filter { it.items.isNotEmpty() }.joinToString("\n") { d ->
+                "  ${d.dayOfWeek}: " + d.items.joinToString(", ") { i ->
+                    i.exerciseId + " " + i.sets + "x" + (i.seconds?.let { "${it}s" } ?: listOfNotNull(i.repsMin, i.repsMax).distinct().joinToString("-"))
+                }
+            }
+            "\n\n" + """
+                SMALL CHANGES: when the user wants to adjust the current plan (swap, add or remove a few exercises, or change sets/reps/seconds/weight/rest) and not a whole new week, send ONLY the changes instead of the full plan, as a ```json block at the very end:
+                {"changes": [{"type": "swap"|"add"|"remove"|"edit", "dayOfWeek": 1-7, "exerciseId": current id (swap/remove/edit), "newExerciseId": id (swap/add), "sets": int, "repsMin": int, "repsMax": int, "seconds": int, "weightKg": number, "restSeconds": int}]}
+                Only include the fields that change. Use ids from the list above. Current plan (dayOfWeek: exerciseId setsxreps):
+            """.trimIndent() + "\n" + lines
+        }.orEmpty())
     }
 
     /**
@@ -604,9 +703,23 @@ internal object PlanIntent {
     private val arabicPlan = Regex("جدول|برنامج|خطة|خطه|روتين|سبليت")
     private val arabicAction = Regex("اعمل|سوي|سوّي|ابني|اكتب|صمم|غير|غيّر|عدل|عدّل|بدل|جديد|اعطني|عطني|ابغى|أبغى|بدي|عايز|حضر|جهز")
 
-    fun matches(text: String): Boolean {
+    private val editAction = Regex("""\b(swap|replace|remove|drop|add|switch|substitute|more|less|fewer|extra)\b""")
+    private val arabicEdit = Regex("بدل|بدّل|استبدل|احذف|أضف|اضف|زد|قلل|أنقص|غير|غيّر")
+    private val dayWord = Regex("""\b(mon|tue|wed|thu|fri|sat|sun)(day|s|sday|nesday|rsday|urday)?\b""")
+    private val arabicDay = Regex("الاثنين|الإثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|السبت|الأحد|الاحد")
+
+    /**
+     * True for "make me a new plan" and also for edits like "swap dips on Tuesday" or "add more pull-ups":
+     * an edit verb plus a day name or an exercise from the current plan ([planExercises], lowercase or not).
+     */
+    fun matches(text: String, planExercises: Collection<String> = emptyList()): Boolean {
         val t = text.lowercase()
-        return (planWord.containsMatchIn(t) || arabicPlan.containsMatchIn(t)) && (action.containsMatchIn(t) || arabicAction.containsMatchIn(t))
+        if ((planWord.containsMatchIn(t) || arabicPlan.containsMatchIn(t)) && (action.containsMatchIn(t) || arabicAction.containsMatchIn(t))) return true
+        val edit = editAction.containsMatchIn(t) || arabicEdit.containsMatchIn(t)
+        if (!edit) return false
+        val mentionsDay = dayWord.containsMatchIn(t) || arabicDay.containsMatchIn(t)
+        val mentionsExercise = planExercises.any { n -> n.length >= 3 && n.lowercase() in t }
+        return mentionsDay || mentionsExercise
     }
 
     /** True when the preceding user turn asked for a plan, the coach asked an intake question, and the user just answered it. */

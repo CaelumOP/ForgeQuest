@@ -11,6 +11,8 @@ import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.plan.PlanDraft
+import com.forgequest.app.data.plan.PlanDraftDay
+import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Dates
@@ -38,6 +40,26 @@ data class ActivePlan(val plan: PlanEntity, val days: List<PlanDayWithItems>) {
     val trainingDays: Set<Int> get() = days.filter { !it.day.isRest && it.items.isNotEmpty() }.map { it.day.dayOfWeek }.toSet()
 }
 
+/** The active plan in the same shape as a proposal, for comparing (PlanHash) and applying coach changes. */
+fun ActivePlan.toDraft(): PlanDraft = PlanDraft(
+    name = plan.name,
+    description = plan.description,
+    days = days.sortedBy { it.day.dayOfWeek }.map { d ->
+        PlanDraftDay(
+            dayOfWeek = d.day.dayOfWeek,
+            title = d.day.title,
+            isRest = d.day.isRest,
+            note = d.day.note,
+            items = d.items.sortedBy { it.position }.map { i ->
+                PlanDraftItem(
+                    exerciseId = i.exerciseId, block = i.block, circuit = i.circuit, sets = i.sets, repsMin = i.repsMin,
+                    repsMax = i.repsMax, seconds = i.seconds, weightKg = i.weightKg, restSeconds = i.restSeconds, note = i.note,
+                )
+            },
+        )
+    },
+)
+
 data class FinishResult(
     val sessionTitle: String,
     val doneSets: Int,
@@ -45,8 +67,8 @@ data class FinishResult(
     val xpGained: Int,
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
 /** [settings] gives progression the weight unit and the readiness switch; without it (tests) steps are in kg. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class WorkoutRepository(private val db: AppDatabase, private val settings: SettingsRepository? = null) {
 
     private val plans = db.plans()

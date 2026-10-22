@@ -14,6 +14,18 @@ object PlanJson {
             ?.let { draft -> draft.copy(days = draft.days.filter { it.dayOfWeek in 1..7 }.distinctBy { it.dayOfWeek }) }
     }
 
+    /** A small-edit block: ```json {"changes": [...]} ```, or null. */
+    fun extractPatch(text: String): PlanPatch? {
+        val block = fenced.findAll(text).map { it.groupValues[1] }.lastOrNull { "\"changes\"" in it } ?: return null
+        return runCatching { json.decodeFromString(PlanPatch.serializer(), block) }.getOrNull()?.takeIf { it.changes.isNotEmpty() }
+    }
+
+    /** True when the reply carries a plan or change block that could not be read: worth one repair round. */
+    fun hasBrokenBlock(text: String): Boolean {
+        val blocks = Regex("""```(?:json)?\s*([\s\S]*?)```""").findAll(text).map { it.groupValues[1] }.toList()
+        return blocks.any { "\"days\"" in it || "\"changes\"" in it } && extract(text) == null && extractPatch(text) == null
+    }
+
     /** A pasted plan that is already JSON (with or without a ```json fence), so it needs no AI round trip. */
     fun parsePasted(text: String): PlanDraft? {
         val t = text.trim()

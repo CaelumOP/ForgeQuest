@@ -11,6 +11,10 @@ data class PlanDraft(
     val name: String,
     val description: String = "",
     val days: List<PlanDraftDay>,
+    /** Fingerprint of the active plan this proposal was built on (see PlanHash); null for imports and starters. */
+    val basedOnHash: String? = null,
+    /** Set when the coach proposed only changes: applying re-runs them on the current plan if it changed since. */
+    val patch: PlanPatch? = null,
 )
 
 @Serializable
