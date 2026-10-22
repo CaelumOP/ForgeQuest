@@ -442,6 +442,12 @@ class CoachRepository(
         if (missed.isNotEmpty()) sb.append("; missed planned days: ${missed.joinToString(", ")}")
         if (upcoming.isNotEmpty()) sb.append("; still to come: ${upcoming.joinToString(", ")}")
         sb.append("\n")
+        val recentTags = snap.dayTags.filterKeys { it >= today - 13 }.toSortedMap()
+        if (recentTags.isNotEmpty()) {
+            sb.append("- Excused days (last 2 weeks; never treat these as missed, be kind about them): ")
+            sb.append(recentTags.entries.joinToString(", ") { (d, t) -> "${LocalDate.ofEpochDay(d).format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.ENGLISH))} ${t.name.lowercase()}" })
+            sb.append("\n")
+        }
         val todayPlan = snap.plan?.day(Dates.todayDayOfWeek())
         sb.append("- Today: ")
         when {

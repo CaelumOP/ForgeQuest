@@ -1002,4 +1002,18 @@
     <string name="effort_hard">Hard</string>
     <string name="effort_pain">Pain</string>
     <string name="rx_hold_ceiling">ready for a harder version or added weight</string>
+    <string name="daytag_title">Excuse this day</string>
+    <string name="daytag_body">Mark %1$s so it does not count against your week, and its reminder stays quiet.</string>
+    <string name="daytag_sick">Sick</string>
+    <string name="daytag_injured">Injured</string>
+    <string name="daytag_travel">Travelling</string>
+    <string name="daytag_rest">Resting</string>
+    <string name="daytag_clear">Remove</string>
+    <string name="cd_excused">Excused</string>
+    <string name="today_excused">Excused today: %1$s. Rest well.</string>
+    <string name="today_cant_train">Can\'t train today?</string>
+    <string name="welcome_back_title">Welcome back</string>
+    <string name="welcome_back_body">Good to see you again. Ease in with one set fewer per exercise today?</string>
+    <string name="welcome_back_ease_in">Ease in</string>
+    <string name="welcome_back_full">Full session</string>
 </resources>

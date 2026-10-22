@@ -7,6 +7,7 @@ import com.forgequest.app.R
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.domain.BadgeCategory
 import com.forgequest.app.domain.BadgeDef
+import com.forgequest.app.domain.DayTag
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.SetEffort
@@ -110,6 +111,15 @@ val SetEffort.labelRes: Int
         SetEffort.OK -> R.string.effort_ok
         SetEffort.HARD -> R.string.effort_hard
         SetEffort.PAIN -> R.string.effort_pain
+    }
+
+@get:StringRes
+val DayTag.labelRes: Int
+    get() = when (this) {
+        DayTag.SICK -> R.string.daytag_sick
+        DayTag.INJURED -> R.string.daytag_injured
+        DayTag.TRAVEL -> R.string.daytag_travel
+        DayTag.REST -> R.string.daytag_rest
     }
 
 @get:StringRes

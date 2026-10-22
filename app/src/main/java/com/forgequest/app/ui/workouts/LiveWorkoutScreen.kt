@@ -222,6 +222,18 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     TextButton(onClick = { confirmExit = true }) { Text(stringResource(R.string.live_discard), color = c.textSecondary) }
                 }
             }
+            val welcomeBack by vm.welcomeBack.collectAsState()
+            AnimatedVisibility(welcomeBack && doneCount == 0) {
+                FitCard(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
+                    Text(stringResource(R.string.welcome_back_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.welcome_back_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TonalPill(stringResource(R.string.welcome_back_ease_in), onClick = vm::easeIn)
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(onClick = vm::dismissWelcomeBack) { Text(stringResource(R.string.welcome_back_full), color = c.textSecondary) }
+                    }
+                }
+            }
             if (focus && groups.isNotEmpty()) {
                 // Focus mode: one exercise per page with larger text; moves on by itself when an exercise is finished.
                 val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = current.coerceAtLeast(0)) { groups.size }

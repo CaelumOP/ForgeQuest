@@ -1103,4 +1103,18 @@
     <string name="effort_hard">صعب</string>
     <string name="effort_pain">ألم</string>
     <string name="rx_hold_ceiling">جاهز لنسخة أصعب أو وزن إضافي</string>
+    <string name="daytag_title">إعفاء هذا اليوم</string>
+    <string name="daytag_body">ضع علامة على يوم %1$s كي لا يُحتسب على أسبوعك، ولا يصلك تذكيره.</string>
+    <string name="daytag_sick">مريض</string>
+    <string name="daytag_injured">مصاب</string>
+    <string name="daytag_travel">مسافر</string>
+    <string name="daytag_rest">راحة</string>
+    <string name="daytag_clear">إزالة</string>
+    <string name="cd_excused">معفى</string>
+    <string name="today_excused">معفى اليوم: %1$s. استرح جيدًا.</string>
+    <string name="today_cant_train">لا تستطيع التمرين اليوم؟</string>
+    <string name="welcome_back_title">مرحبًا بعودتك</string>
+    <string name="welcome_back_body">سعداء بعودتك. هل تبدأ بهدوء بمجموعة أقل لكل تمرين اليوم؟</string>
+    <string name="welcome_back_ease_in">ابدأ بهدوء</string>
+    <string name="welcome_back_full">الجلسة كاملة</string>
 </resources>

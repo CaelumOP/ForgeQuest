@@ -6,6 +6,8 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.Nudges
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
@@ -87,6 +89,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val finishing = MutableStateFlow(false)
 
     init {
+        viewModelScope.launch { checkWelcomeBack() }
         viewModelScope.launch {
             sets.collect { list ->
                 val missing = list.map { it.exerciseId }.distinct().filter { it !in previous.value }
@@ -262,6 +265,28 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun addRound(positions: List<Int>) = currentSession?.let { s ->
         viewModelScope.launch { positions.forEach { repo.addSet(s.id, it) } }
     }
+
+    /** First workout back after a sick or injured day, or after the reminders backed off: offer to ease in. */
+    val welcomeBack = MutableStateFlow(false)
+
+    private suspend fun checkWelcomeBack() {
+        val snap = app.progress.snapshot.first()
+        val days = snap.sessions.map { it.epochDay }.toSet()
+        val today = Dates.today()
+        welcomeBack.value = Nudges.welcomeBack(today, days, snap.dayTags, snap.plan?.trainingDays ?: emptySet(), days.minOrNull() ?: today)
+    }
+
+    /** One set fewer for every exercise that still has more than 2 and hasn't started; nothing else changes. */
+    fun easeIn() {
+        welcomeBack.value = false
+        val byExercise = sets.value.groupBy { it.itemPosition }
+        viewModelScope.launch {
+            byExercise.values.filter { group -> group.size > 2 && group.none { it.done } }
+                .forEach { group -> repo.removeSet(group.maxBy { it.setIndex }.id) }
+        }
+    }
+
+    fun dismissWelcomeBack() { welcomeBack.value = false }
 
     fun removeLastSet(itemPosition: Int) {
         val last = sets.value.filter { it.itemPosition == itemPosition }.maxByOrNull { it.setIndex } ?: return

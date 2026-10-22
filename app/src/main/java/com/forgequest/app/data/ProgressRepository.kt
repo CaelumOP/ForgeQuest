@@ -2,6 +2,7 @@
 
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.BadgeEntity
+import com.forgequest.app.data.db.DayNoteEntity
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.MealEntity
 import com.forgequest.app.data.db.SessionEntity
@@ -12,6 +13,7 @@ import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.domain.BadgeStats
 import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.DayTag
 import com.forgequest.app.domain.LevelInfo
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.MuscleRecovery
@@ -44,9 +46,12 @@ data class ProgressSnapshot(
     val doneSets: List<SetEntity>,
     val exercises: Map<String, ExerciseEntity>,
     val stats: BadgeStats,
+    /** Excused days (sick, injured, travel, rest) by epoch day. */
+    val dayTags: Map<Long, DayTag> = emptyMap(),
 ) {
     val latestWeight: Float? get() = weights.lastOrNull()?.kg
     val workoutDoneToday: Boolean get() = sessions.any { it.epochDay == Dates.today() }
+    val excusedToday: DayTag? get() = dayTags[Dates.today()]
 }
 
 class ProgressRepository(
@@ -63,16 +68,26 @@ class ProgressRepository(
         val meals: List<MealEntity>,
         val mealCount: Int,
         val scannedCount: Int,
+        val dayNotes: List<DayNoteEntity>,
+    )
+
+    private data class Training(
+        val sessions: List<SessionEntity>,
+        val sets: List<SetEntity>,
+        val exercises: List<ExerciseEntity>,
+        val dayNotes: List<DayNoteEntity>,
     )
 
     /** Only the last [NUTRITION_DAYS] days of meals are loaded; totals come from COUNT queries so badges still see everything. */
     private val raw: Flow<Raw> = combine(
-        combine(db.sessions().observeFinished(), db.sessions().observeAllDoneSets(), db.exercises().observeAll()) { s, sets, ex -> Triple(s, sets, ex) },
+        combine(db.sessions().observeFinished(), db.sessions().observeAllDoneSets(), db.exercises().observeAll(), db.dayNotes().observeSince(0)) { s, sets, ex, notes ->
+            Training(s, sets, ex, notes)
+        },
         db.badges().observeAll(),
         db.food().observeMealsSince(Dates.today() - NUTRITION_DAYS),
         db.food().observeMealCount(),
         db.food().observeScannedCount(),
-    ) { (s, sets, ex), b, m, count, scanned -> Raw(s, sets, ex, b, m, count, scanned) }
+    ) { t, b, m, count, scanned -> Raw(t.sessions, t.sets, t.exercises, b, m, count, scanned, t.dayNotes) }
 
     /**
      * Rebuilt on every change and off the main thread: with years of data this is real work. Shared, so the
@@ -88,12 +103,14 @@ class ProgressRepository(
         val exercises = r.exercises.associateBy { it.id }
         val workoutDays = r.sessions.map { it.epochDay }.toSet()
         val start = minOf(workoutDays.minOrNull() ?: today, today)
+        val dayTags = r.dayNotes.mapNotNull { n -> DayTag.parse(n.tag)?.let { n.epochDay to it } }.toMap()
         val streak = StreakCalculator.compute(
             workoutDays = workoutDays,
             plannedTrainingDays = plan?.trainingDays ?: emptySet(),
             targetOverride = settings.weeklyTargetOverride,
             startEpochDay = start,
             today = today,
+            excusedDays = dayTags.keys,
         )
 
         val now = System.currentTimeMillis()
@@ -115,7 +132,7 @@ class ProgressRepository(
         )
         return ProgressSnapshot(
             settings, plan, streak, level, recovery, r.badges, todayNutrition, byDay, weights,
-            r.sessions, r.sets, exercises, stats,
+            r.sessions, r.sets, exercises, stats, dayTags,
         )
     }
 
@@ -172,8 +189,21 @@ class ProgressRepository(
 
     suspend fun markBadgesSeen() = db.badges().markAllSeen()
 
-    private companion object { const val NUTRITION_DAYS = 90L }
 
     suspend fun logWeight(kg: Float) =
         db.weights().upsert(WeightEntity(Dates.today(), (kg * 10).toInt() / 10f, System.currentTimeMillis()))
+
+    /** Excuses [epochDay] (today or up to [EXCUSE_BACK_DAYS] days back); null [tag] takes the excuse away. */
+    suspend fun setDayTag(epochDay: Long, tag: DayTag?) {
+        if (epochDay > Dates.today() || epochDay < Dates.today() - EXCUSE_BACK_DAYS) return
+        if (tag == null) db.dayNotes().delete(epochDay)
+        else db.dayNotes().upsert(DayNoteEntity(epochDay, tag.name, updatedAt = System.currentTimeMillis()))
+    }
+
+    companion object {
+        private const val NUTRITION_DAYS = 90L
+
+        /** Today plus the last 3 days can be excused, so it can't be used to rewrite history. */
+        const val EXCUSE_BACK_DAYS = 3L
+    }
 }

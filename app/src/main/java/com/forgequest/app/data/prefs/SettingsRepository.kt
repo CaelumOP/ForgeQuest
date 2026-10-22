@@ -92,8 +92,6 @@ data class Settings(
     val nutritionGoal: NutritionGoal = NutritionGoal.MAINTAIN,
     /** Epoch day the goal was last changed, so the weight-trend note waits for real data under the new goal. */
     val goalSetDay: Long = 0,
-    /** Epoch day the reminder back-off began after 3 missed planned days; -1 when reminders run normally. */
-    val remindersPausedSince: Long = -1,
     /** AI debrief card after each workout (Profile > Coach and AI). */
     val debriefEnabled: Boolean = true,
 ) {
@@ -154,7 +152,6 @@ class SettingsRepository(private val context: Context) {
         val bodyFatPct = floatPreferencesKey("body_fat_pct")
         val nutritionGoal = stringPreferencesKey("nutrition_goal")
         val goalSetDay = longPreferencesKey("goal_set_day")
-        val remindersPausedSince = longPreferencesKey("reminders_paused_since")
         val debrief = booleanPreferencesKey("debrief_enabled")
     }
 
@@ -213,7 +210,6 @@ class SettingsRepository(private val context: Context) {
             bodyFatPct = this[K.bodyFatPct] ?: 0f,
             nutritionGoal = runCatching { NutritionGoal.valueOf(this[K.nutritionGoal] ?: "MAINTAIN") }.getOrDefault(NutritionGoal.MAINTAIN),
             goalSetDay = this[K.goalSetDay] ?: 0,
-            remindersPausedSince = this[K.remindersPausedSince] ?: -1,
             debriefEnabled = this[K.debrief] ?: true,
         )
     }
@@ -264,7 +260,6 @@ class SettingsRepository(private val context: Context) {
             p[K.bodyFatPct] = s.bodyFatPct
             p[K.nutritionGoal] = s.nutritionGoal.name
             p[K.goalSetDay] = s.goalSetDay
-            p[K.remindersPausedSince] = s.remindersPausedSince
             p[K.debrief] = s.debriefEnabled
         }
     }
