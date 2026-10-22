@@ -32,7 +32,7 @@ class AppContainer(context: Context) {
     val gemini = GeminiClient(http)
     val groq = com.forgequest.app.data.ai.GroqClient(http)
     val models = ModelStore(settings, gemini)
-    val workouts = WorkoutRepository(db)
+    val workouts = WorkoutRepository(db, settings)
     val progress = ProgressRepository(db, settings, workouts, appScope)
     val food = FoodRepository(context, db, settings, gemini, models)
     val health = com.forgequest.app.data.health.HealthRepository(context, settings, db)

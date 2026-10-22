@@ -14,6 +14,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseSwapEngine
+import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,6 +88,12 @@ data class Settings(
     val equipment: String = "",
     /** Optional body fat percentage (4..60) for Katch-McArdle lean-mass BMR; 0 means not set. */
     val bodyFatPct: Float = 0f,
+    /** Cut, Maintain or Gain: drives the calorie and protein suggestions and what the coach aims for. */
+    val nutritionGoal: NutritionGoal = NutritionGoal.MAINTAIN,
+    /** Epoch day the goal was last changed, so the weight-trend note waits for real data under the new goal. */
+    val goalSetDay: Long = 0,
+    /** AI debrief card after each workout (Profile > Coach and AI). */
+    val debriefEnabled: Boolean = true,
 ) {
     val weightUnit: WeightUnit
         get() = WeightUnit.fromCodeOrLabel(unit)
@@ -143,6 +150,9 @@ class SettingsRepository(private val context: Context) {
         val fatShare = intPreferencesKey("fat_share_pct")
         val equipment = stringPreferencesKey("equipment")
         val bodyFatPct = floatPreferencesKey("body_fat_pct")
+        val nutritionGoal = stringPreferencesKey("nutrition_goal")
+        val goalSetDay = longPreferencesKey("goal_set_day")
+        val debrief = booleanPreferencesKey("debrief_enabled")
     }
 
     /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
@@ -198,6 +208,9 @@ class SettingsRepository(private val context: Context) {
             fatSharePct = this[K.fatShare] ?: 25,
             equipment = this[K.equipment] ?: "",
             bodyFatPct = this[K.bodyFatPct] ?: 0f,
+            nutritionGoal = runCatching { NutritionGoal.valueOf(this[K.nutritionGoal] ?: "MAINTAIN") }.getOrDefault(NutritionGoal.MAINTAIN),
+            goalSetDay = this[K.goalSetDay] ?: 0,
+            debriefEnabled = this[K.debrief] ?: true,
         )
     }
 
@@ -245,6 +258,9 @@ class SettingsRepository(private val context: Context) {
             p[K.fatShare] = s.fatSharePct
             p[K.equipment] = s.equipment
             p[K.bodyFatPct] = s.bodyFatPct
+            p[K.nutritionGoal] = s.nutritionGoal.name
+            p[K.goalSetDay] = s.goalSetDay
+            p[K.debrief] = s.debriefEnabled
         }
     }
 

@@ -146,6 +146,14 @@ class PlanIntentTest {
         assertFalse(PlanIntent.matches("I planned to rest tomorrow"))
         assertFalse(PlanIntent.matches("كيف أتحسن في العقلة؟"))
     }
+
+    @Test
+    fun editsNamingADayOrPlanExerciseCount() {
+        assertTrue(PlanIntent.matches("My shoulder hurts on dips, can we swap them on Tuesday?"))
+        assertTrue(PlanIntent.matches("Add more pull-ups please", listOf("Pull-ups", "dips")))
+        assertTrue(PlanIntent.matches("استبدل تمرين الضغط يوم الثلاثاء"))
+        assertFalse(PlanIntent.matches("Should I add salt to my eggs?", listOf("dips")))
+    }
 }
 
 class CoachMemoryTest {

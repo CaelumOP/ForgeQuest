@@ -200,3 +200,48 @@ class PersonalRecordsTest {
         assertEquals(setOf(9), prs(listOf(8), emptyList(), listOf(9)))
     }
 }
+
+class ExcusedDaysTest {
+    private val hemoDays = setOf(1, 2, 3, 5, 6)
+    private val mon1 = LocalDate.of(2026, 10, 5).toEpochDay()
+
+    @Test
+    fun excusedPlannedDayLowersTheTargetAndShowsAsExcused() {
+        // Wednesday sick, four other planned days done: the week still counts.
+        val done = setOf(mon1, mon1 + 1, mon1 + 4, mon1 + 5)
+        val s = StreakCalculator.compute(done, hemoDays, 0, mon1, mon1 + 6, excusedDays = setOf(mon1 + 2))
+        assertEquals(4, s.targetThisWeek)
+        assertTrue(s.hitThisWeek)
+        assertEquals(DayState.EXCUSED, s.days[2])
+    }
+
+    @Test
+    fun fullyExcusedWeekNeitherCountsNorBreaks() {
+        val week1 = setOf(mon1, mon1 + 1, mon1 + 2, mon1 + 4, mon1 + 5)
+        val sickWeek = (mon1 + 7..mon1 + 13).toSet()
+        val week3 = week1.map { it + 14 }.toSet()
+        val s = StreakCalculator.compute(week1 + week3, hemoDays, 0, mon1, mon1 + 20, excusedDays = sickWeek)
+        assertEquals(2, s.weeks)
+    }
+
+    @Test
+    fun remindersBackOffAfterThreeMissesAndExcusedDaysStayQuiet() {
+        // Last workout Monday; Tue, Wed, Fri missed -> Saturday is the 4th planned day: no nudge.
+        val sat = mon1 + 5
+        val missed = Nudges.missedInARow(sat, hemoDays, setOf(mon1), emptySet(), mon1)
+        assertEquals(3, missed)
+        assertFalse(Nudges.shouldRemind(plannedToday = true, doneToday = false, excusedToday = false, missedInARow = missed))
+        // An excused Wednesday breaks the run.
+        assertEquals(1, Nudges.missedInARow(sat, hemoDays, setOf(mon1), setOf(mon1 + 2), mon1))
+        assertFalse(Nudges.shouldRemind(plannedToday = true, doneToday = false, excusedToday = true, missedInARow = 0))
+        assertTrue(Nudges.shouldRemind(plannedToday = true, doneToday = false, excusedToday = false, missedInARow = 1))
+    }
+
+    @Test
+    fun welcomeBackOnlyAfterSicknessInjuryOrBackOff() {
+        val fri = mon1 + 4
+        assertTrue(Nudges.welcomeBack(fri, setOf(mon1), mapOf(mon1 + 2 to DayTag.SICK), hemoDays, mon1))
+        assertFalse(Nudges.welcomeBack(fri, setOf(mon1), mapOf(mon1 + 1 to DayTag.TRAVEL, mon1 + 2 to DayTag.TRAVEL), hemoDays, mon1))
+        assertFalse(Nudges.welcomeBack(mon1 + 1, setOf(mon1), emptyMap(), hemoDays, mon1))
+    }
+}

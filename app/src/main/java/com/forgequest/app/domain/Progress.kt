@@ -33,7 +33,14 @@ object Dates {
 
 // ---------------------------------------------------------------- Weekly streak
 
-enum class DayState { DONE, REST, MISSED, TODAY_PLANNED, UPCOMING, OFF }
+enum class DayState { DONE, REST, MISSED, TODAY_PLANNED, UPCOMING, OFF, EXCUSED }
+
+/** Why a day was excused. Sick and Injured also offer an easier first session back. */
+enum class DayTag { SICK, INJURED, TRAVEL, REST;
+    companion object {
+        fun parse(raw: String?): DayTag? = entries.firstOrNull { it.name == raw }
+    }
+}
 
 data class WeeklyStreak(
     /** Consecutive weeks (ending this week if hit, otherwise last week) where the target was reached. */
@@ -63,19 +70,26 @@ object StreakCalculator {
         targetOverride: Int,
         startEpochDay: Long,
         today: Long,
+        excusedDays: Set<Long> = emptySet(),
     ): WeeklyStreak {
         val fullTarget = if (targetOverride > 0) targetOverride else max(1, plannedTrainingDays.size)
         val thisWeek = Dates.weekStart(today)
         val firstWeek = Dates.weekStart(startEpochDay)
 
-        fun targetFor(weekStart: Long): Int {
-            if (weekStart != firstWeek) return fullTarget
-            val remainingPlanned = (startEpochDay..weekStart + 6).count { Dates.dayOfWeek(it) in plannedTrainingDays }
-            // Joined after the last planned day of the week: that week is free, it neither counts nor breaks.
-            return min(fullTarget, remainingPlanned)
-        }
-
         fun doneIn(weekStart: Long) = workoutDays.count { it in weekStart..weekStart + 6 }
+
+        fun targetFor(weekStart: Long): Int {
+            val base = if (weekStart != firstWeek) {
+                fullTarget
+            } else {
+                val remainingPlanned = (startEpochDay..weekStart + 6).count { Dates.dayOfWeek(it) in plannedTrainingDays }
+                // Joined after the last planned day of the week: that week is free, it neither counts nor breaks.
+                min(fullTarget, remainingPlanned)
+            }
+            // Each excused planned day (sick, travel...) lowers the week's target; a fully excused week is free.
+            val excused = (weekStart..weekStart + 6).count { it in excusedDays && it !in workoutDays && Dates.dayOfWeek(it) in plannedTrainingDays }
+            return (base - excused).coerceAtLeast(0)
+        }
 
         val doneThisWeek = doneIn(thisWeek)
         val targetThisWeek = targetFor(thisWeek)
@@ -110,6 +124,7 @@ object StreakCalculator {
             val planned = dow in plannedTrainingDays
             when {
                 day in workoutDays -> DayState.DONE
+                day in excusedDays && day <= today -> DayState.EXCUSED
                 day == today && planned -> DayState.TODAY_PLANNED
                 day > today && planned -> DayState.UPCOMING
                 day < startEpochDay -> DayState.OFF
@@ -118,6 +133,45 @@ object StreakCalculator {
             }
         }
         return WeeklyStreak(streak, max(best, streak), doneThisWeek, targetThisWeek, days)
+    }
+}
+
+// ---------------------------------------------------------------- Reminders & comebacks
+
+object Nudges {
+    /** After this many planned days missed in a row (not excused), reminders pause until a workout or a tag. */
+    const val MAX_MISSES = 3
+
+    /** Planned days missed back to back, counting back from yesterday; a workout or an excused day ends the run. */
+    fun missedInARow(today: Long, plannedTrainingDays: Set<Int>, workoutDays: Set<Long>, excusedDays: Set<Long>, startEpochDay: Long): Int {
+        var count = 0
+        var day = today - 1
+        while (day >= startEpochDay && day >= today - 14) {
+            if (day in workoutDays || day in excusedDays) break
+            if (Dates.dayOfWeek(day) in plannedTrainingDays) count++
+            day--
+        }
+        return count
+    }
+
+    fun shouldRemind(plannedToday: Boolean, doneToday: Boolean, excusedToday: Boolean, missedInARow: Int): Boolean =
+        plannedToday && !doneToday && !excusedToday && missedInARow < MAX_MISSES
+
+    /**
+     * True for the first workout back after a sick or injured day since the last workout, or after a reminder
+     * back-off: the session then offers a one-tap "Ease in" (one set fewer, never below 2).
+     */
+    fun welcomeBack(
+        today: Long,
+        workoutDays: Set<Long>,
+        tags: Map<Long, DayTag>,
+        plannedTrainingDays: Set<Int>,
+        startEpochDay: Long,
+    ): Boolean {
+        val lastWorkout = workoutDays.filter { it < today }.maxOrNull() ?: return false
+        if (workoutDays.contains(today)) return false
+        val illSince = (lastWorkout + 1 until today).any { tags[it] == DayTag.SICK || tags[it] == DayTag.INJURED }
+        return illSince || missedInARow(today, plannedTrainingDays, workoutDays, tags.keys, startEpochDay) >= MAX_MISSES
     }
 }
 
@@ -261,7 +315,10 @@ object Recovery {
         }
         val blockFactor = if (set.block.equals("Warm-up", ignoreCase = true) || ex.id == "jumping_jacks") 0.25f else 1.0f
         val noteLower = set.note.lowercase()
+        val chip = SetEffort.parse(set.effort.ifBlank { null })
         val rpeFactor = when {
+            set.effort.isNotBlank() && (chip == SetEffort.HARD || chip == SetEffort.PAIN) -> 1.15f
+            set.effort.isNotBlank() && chip == SetEffort.EASY -> 0.80f
             "rir 0" in noteLower || "rpe 10" in noteLower || "failure" in noteLower || "فشل" in noteLower -> 1.15f
             "rir 3" in noteLower || "easy" in noteLower || "سهل" in noteLower -> 0.80f
             else -> 1.0f

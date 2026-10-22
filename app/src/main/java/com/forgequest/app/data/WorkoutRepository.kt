@@ -11,12 +11,20 @@ import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.plan.PlanDraft
+import com.forgequest.app.data.plan.PlanDraftDay
+import com.forgequest.app.data.plan.PlanDraftItem
+import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.DayCall
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.Progression
+import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
+import com.forgequest.app.domain.SetEffort
+import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -32,6 +40,26 @@ data class ActivePlan(val plan: PlanEntity, val days: List<PlanDayWithItems>) {
     val trainingDays: Set<Int> get() = days.filter { !it.day.isRest && it.items.isNotEmpty() }.map { it.day.dayOfWeek }.toSet()
 }
 
+/** The active plan in the same shape as a proposal, for comparing (PlanHash) and applying coach changes. */
+fun ActivePlan.toDraft(): PlanDraft = PlanDraft(
+    name = plan.name,
+    description = plan.description,
+    days = days.sortedBy { it.day.dayOfWeek }.map { d ->
+        PlanDraftDay(
+            dayOfWeek = d.day.dayOfWeek,
+            title = d.day.title,
+            isRest = d.day.isRest,
+            note = d.day.note,
+            items = d.items.sortedBy { it.position }.map { i ->
+                PlanDraftItem(
+                    exerciseId = i.exerciseId, block = i.block, circuit = i.circuit, sets = i.sets, repsMin = i.repsMin,
+                    repsMax = i.repsMax, seconds = i.seconds, weightKg = i.weightKg, restSeconds = i.restSeconds, note = i.note,
+                )
+            },
+        )
+    },
+)
+
 data class FinishResult(
     val sessionTitle: String,
     val doneSets: Int,
@@ -39,8 +67,9 @@ data class FinishResult(
     val xpGained: Int,
 )
 
+/** [settings] gives progression the weight unit and the readiness switch; without it (tests) steps are in kg. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class WorkoutRepository(private val db: AppDatabase) {
+class WorkoutRepository(private val db: AppDatabase, private val settings: SettingsRepository? = null) {
 
     private val plans = db.plans()
     private val sessions = db.sessions()
@@ -291,67 +320,30 @@ class WorkoutRepository(private val db: AppDatabase) {
     }
 
     /**
-     * Prefills today's sets from the user's most recent completed session of [ex], applying double-progression
-     * overload when every set in the previous session hit the top of the prescribed target range without
-     * failure/discomfort notes.
+     * Prefills today's sets from the last two finished sessions of [ex] using [Progression]: load and reps
+     * only go up after clean sessions, never on a low-readiness day, and in the person's own unit.
      */
     private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
         val kind = ex?.kind ?: ExerciseKind.REPS
         val recent = ex?.let { sessions.recentDoneSets(it.id) }.orEmpty()
-        val lastSession = recent.filter { it.sessionId == recent.firstOrNull()?.sessionId }.sortedBy { it.setIndex }
-        val count = item?.sets ?: 3
-
+        val sessionIds = recent.map { it.sessionId }.distinct()
+        fun past(id: Long?) = recent.filter { it.sessionId == id }.sortedBy { it.setIndex }
+            .map { Progression.PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
         val isWarmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || ex?.id == "jumping_jacks"
-        val hadStrainOrPainNote = lastSession.any { s ->
-            val n = s.note.lowercase()
-            "rir 0" in n || "rpe 10" in n || "fail" in n || "pain" in n || "twinge" in n || "hurt" in n || "صعب" in n || "ألم" in n
+        val s = settings?.current()
+        val result = Progression.next(
+            kind = kind,
+            target = item?.let { Progression.Target(it.sets, it.repsMin, it.repsMax, it.seconds, it.weightKg) },
+            last = past(sessionIds.getOrNull(0)),
+            previous = past(sessionIds.getOrNull(1)),
+            unit = s?.weightUnit ?: WeightUnit.KG,
+            lowReadiness = s?.healthEnabled == true && lowReadinessToday(),
+            warmup = isWarmup,
+        )
+        val label = targetLabel(kind, item).let { base ->
+            if (result.holdCeilingReached) listOf(base, AppText.get(R.string.rx_hold_ceiling)).filter { it.isNotBlank() }.joinToString(" · ") else base
         }
-        val completedAllSetsLastTime = !isWarmup && lastSession.size >= count && !hadStrainOrPainNote
-
-        val targetMinReps = item?.repsMin ?: 8
-        val targetMaxReps = item?.repsMax ?: item?.repsMin ?: 12
-        val targetHoldSec = item?.seconds ?: 30
-
-        val hitTopAllSets = completedAllSetsLastTime && when (kind) {
-            ExerciseKind.HOLD -> lastSession.all { (it.seconds ?: 0) >= targetHoldSec }
-            ExerciseKind.REPS, ExerciseKind.WEIGHTED -> lastSession.all { (it.reps ?: 0) >= targetMaxReps }
-        }
-
-        return (0 until count).map { i ->
-            val last = lastSession.getOrNull(i) ?: lastSession.lastOrNull()
-            val lastWeight = last?.weightKg ?: item?.weightKg ?: 0f
-            val (prefillReps, prefillSeconds, prefillWeight) = when (kind) {
-                ExerciseKind.HOLD -> {
-                    val baseSec = last?.seconds ?: item?.seconds ?: 30
-                    val nextSec = if (hitTopAllSets) (baseSec + 5).coerceAtMost(3600) else baseSec
-                    val w = if (item?.weightKg != null || last?.weightKg != null) lastWeight else null
-                    Triple(null, nextSec, w)
-                }
-                ExerciseKind.WEIGHTED -> {
-                    val baseReps = last?.reps ?: item?.repsMin ?: 10
-                    val hasRange = item?.repsMin != null && item.repsMax != null && item.repsMax > item.repsMin
-                    if (hitTopAllSets && lastWeight > 0f && hasRange) {
-                        // Double progression: top of rep range reached across all sets -> add 2.5 kg and reset to repsMin.
-                        Triple(targetMinReps, null, (lastWeight + 2.5f).coerceAtMost(999f))
-                    } else if (hitTopAllSets && lastWeight > 0f) {
-                        Triple(baseReps, null, (lastWeight + 2.5f).coerceAtMost(999f))
-                    } else {
-                        val nextReps = if (completedAllSetsLastTime && baseReps < targetMaxReps) baseReps + 1 else baseReps
-                        Triple(nextReps, null, lastWeight)
-                    }
-                }
-                ExerciseKind.REPS -> {
-                    val baseReps = last?.reps ?: item?.repsMin ?: 10
-                    val nextReps = if (completedAllSetsLastTime && baseReps < targetMaxReps + 2) {
-                        (baseReps + 1).coerceAtMost(999)
-                    } else {
-                        baseReps
-                    }
-                    val w = if (item?.weightKg != null || (last?.weightKg != null && last.weightKg > 0f)) lastWeight else null
-                    Triple(nextReps, null, w)
-                }
-            }
-
+        return result.sets.mapIndexed { i, p ->
             SetEntity(
                 sessionId = sessionId,
                 exerciseId = ex?.id ?: item?.exerciseId ?: "",
@@ -359,13 +351,19 @@ class WorkoutRepository(private val db: AppDatabase) {
                 block = item?.block ?: "Main",
                 circuit = item?.circuit ?: false,
                 setIndex = i,
-                targetLabel = targetLabel(kind, item),
-                reps = prefillReps,
-                seconds = prefillSeconds,
-                weightKg = prefillWeight,
+                targetLabel = label,
+                reps = p.reps,
+                seconds = p.seconds,
+                weightKg = p.weightKg,
                 restSeconds = item?.restSeconds ?: 90,
             )
         }
+    }
+
+    /** Today's Fitbit recovery says ease off or recover (below 50); no data means train as normal. */
+    private suspend fun lowReadinessToday(): Boolean {
+        val day = db.readiness().get(Dates.today()) ?: return false
+        return Readiness.call(day.recovery).let { it == DayCall.EASE_OFF || it == DayCall.RECOVER }
     }
 
     fun targetLabel(kind: ExerciseKind, item: PlanItemEntity?): String {

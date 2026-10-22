@@ -506,7 +506,7 @@ object ExerciseSwapEngine {
         return draft.copy(days = adaptedDays) to swapsCount
     }
 
-    private fun translateDraftItem(item: PlanDraftItem, target: ExerciseEntity): PlanDraftItem = when (target.kind) {
+    fun translateDraftItem(item: PlanDraftItem, target: ExerciseEntity): PlanDraftItem = when (target.kind) {
         ExerciseKind.HOLD -> item.copy(
             exerciseId = target.id,
             name = null,

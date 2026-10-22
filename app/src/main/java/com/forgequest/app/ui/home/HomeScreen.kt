@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
@@ -32,11 +35,14 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,15 +64,19 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
 import com.forgequest.app.data.PlanDayWithItems
+import com.forgequest.app.data.ProgressRepository
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.DayTag
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.components.ChoiceChip
+import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ConcentricRings
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.Sparkline
@@ -99,6 +109,8 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 
     suspend fun startToday(day: PlanDayWithItems?) = app.workouts.startSession(day)
+
+    fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,6 +129,7 @@ fun HomeScreen(nav: NavHostController) {
     val updateBanner by vm.app.updateNotice.banner.collectAsState()
     val whatsNew by vm.app.updateNotice.whatsNew.collectAsState()
     var weightSheet by remember { mutableStateOf(false) }
+    var tagDay by remember { mutableStateOf<Long?>(null) }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
 
@@ -157,7 +170,10 @@ fun HomeScreen(nav: NavHostController) {
             }
             Spacer(Modifier.height(12.dp))
         }
-        StreakCard(s.streak)
+        tagDay?.let { day ->
+            DayTagDialog(day, s.dayTags[day], onPick = { vm.setDayTag(day, it); tagDay = null }, onDismiss = { tagDay = null })
+        }
+        StreakCard(s.streak, onDayClick = { day -> tagDay = day })
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(12.dp))
@@ -168,6 +184,8 @@ fun HomeScreen(nav: NavHostController) {
             exerciseNames = today?.items?.mapNotNull { s.exercises[it.exerciseId]?.name }?.distinct().orEmpty(),
             hasOpenSession = open != null,
             doneToday = s.workoutDoneToday,
+            excused = s.excusedToday,
+            onCantTrain = { tagDay = Dates.today() },
             onStart = {
                 scope.launch {
                     vm.startToday(today?.takeIf { !it.day.isRest })
@@ -339,7 +357,7 @@ private fun ProgressCard(s: ProgressSnapshot, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun StreakCard(streak: WeeklyStreak) {
+private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
     val c = Fit.colors
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -387,8 +405,16 @@ private fun StreakCard(streak: WeeklyStreak) {
         }
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            val today = Dates.today()
+            val weekStart = Dates.weekStart(today)
             streak.days.forEachIndexed { i, state ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val day = weekStart + i
+                // Today and the last 3 days can be excused (sick, travel...) with a tap; workouts can't.
+                val canTag = day in (today - ProgressRepository.EXCUSE_BACK_DAYS)..today && state != DayState.DONE && state != DayState.OFF
+                Column(
+                    Modifier.clip(RoundedCornerShape(12.dp)).let { if (canTag) it.clickable(onClickLabel = stringResource(R.string.daytag_title)) { onDayClick(day) } else it },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     DayCircle(state)
                     Spacer(Modifier.height(6.dp))
                     Text(Dates.shortDayLetters[i], style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
@@ -417,7 +443,38 @@ private fun DayCircle(state: DayState) {
             Icon(Icons.Rounded.Bedtime, contentDescription = stringResource(R.string.cd_rest), tint = c.blue, modifier = Modifier.size(16.dp))
         }
         DayState.OFF -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh.copy(alpha = 0.5f)))
+        DayState.EXCUSED -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Pause, contentDescription = stringResource(R.string.cd_excused), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+        }
     }
+}
+
+/** Sick, injured, travelling or resting: the day stops counting against the week, and its reminder stays quiet. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DayTagDialog(epochDay: Long, current: DayTag?, onPick: (DayTag?) -> Unit, onDismiss: () -> Unit) {
+    val c = Fit.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        title = { Text(stringResource(R.string.daytag_title), color = c.textPrimary) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.daytag_body, Dates.dayName(Dates.dayOfWeek(epochDay))),
+                    style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
+                )
+                Spacer(Modifier.height(12.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DayTag.entries.forEach { t -> ChoiceChip(stringResource(t.labelRes), current == t, { onPick(t) }) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+        dismissButton = if (current != null) {
+            { TextButton(onClick = { onPick(null) }) { Text(stringResource(R.string.daytag_clear), color = c.coral) } }
+        } else null,
+    )
 }
 
 @Composable
@@ -426,6 +483,8 @@ private fun TodayCard(
     exerciseNames: List<String>,
     hasOpenSession: Boolean,
     doneToday: Boolean,
+    excused: DayTag?,
+    onCantTrain: () -> Unit,
     onStart: () -> Unit,
     onOpenPlan: () -> Unit,
 ) {
@@ -457,6 +516,7 @@ private fun TodayCard(
                     when {
                         hasOpenSession -> stringResource(R.string.today_resume_hint)
                         doneToday -> stringResource(R.string.today_done)
+                        excused != null -> stringResource(R.string.today_excused, stringResource(excused.labelRes))
                         noPlan -> stringResource(R.string.today_no_plan_hint)
                         isRest -> day?.day?.note?.ifBlank { null } ?: stringResource(R.string.today_rest_hint)
                         else -> pluralStringResource(R.plurals.today_exercises, exerciseNames.size, exerciseNames.size, exerciseNames.take(3).joinToString(stringResource(R.string.list_separator)))
@@ -473,6 +533,11 @@ private fun TodayCard(
                 doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
                 noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
                 !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
+            }
+        }
+        if (!isRest && !hasOpenSession && !doneToday && excused == null) {
+            TextButton(onClick = onCantTrain, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(R.string.today_cant_train), color = c.textSecondary, style = MaterialTheme.typography.labelLarge)
             }
         }
     }

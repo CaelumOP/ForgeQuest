@@ -75,6 +75,8 @@ data class SessionEntity(
     val finishedAt: Long? = null,
     /** Free-text journal note: how it went, how you slept. */
     val note: String = "",
+    /** The AI debrief card as JSON (see data/plan/Debrief.kt); empty when there is none. */
+    val debrief: String = "",
 )
 
 @Serializable
@@ -97,6 +99,8 @@ data class SetEntity(
     val restSeconds: Int = 60,
     /** Free text for this set: "felt easy", "left knee twinge", "used the green band". */
     val note: String = "",
+    /** One-tap effort: a SetEffort name ("EASY", "OK", "HARD", "PAIN"), or empty when not tapped (counts as OK). */
+    val effort: String = "",
 )
 
 @Serializable
@@ -173,6 +177,17 @@ class Converters {
     fun stringToMuscles(value: String): List<Muscle> =
         value.split(",").filter { it.isNotBlank() }.mapNotNull { runCatching { Muscle.valueOf(it) }.getOrNull() }
 }
+
+/** A day the person excused (sick, injured, travelling, resting): it never counts as missed. */
+@Serializable
+@Entity(tableName = "day_notes")
+data class DayNoteEntity(
+    @PrimaryKey val epochDay: Long,
+    /** A DayTag name. */
+    val tag: String,
+    val note: String = "",
+    val updatedAt: Long,
+)
 
 /** One day's Fitbit readiness, saved so the formulas can later be tuned against workouts and "I feel great" taps. */
 @Entity(tableName = "readiness_days")

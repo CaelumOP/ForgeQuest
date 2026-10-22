@@ -154,6 +154,13 @@ fun HistoryScreen(nav: NavHostController) {
                         items(daySessions, key = { it.id }) { session ->
                             Column(Modifier.padding(start = 8.dp)) {
                                 SessionRow(session, setsBySession[session.id].orEmpty(), s.exercises) { nav.navigate(Routes.session(session.id)) }
+                                com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)?.let { d ->
+                                    Text(
+                                        stringResource(R.string.debrief_journal, d.score, d.summary),
+                                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                                        modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 8.dp),
+                                    )
+                                }
                                 TextButton(onClick = { noteFor = session }) {
                                     Text(
                                         session.note.ifBlank { stringResource(R.string.journal_add_note) },

@@ -102,13 +102,17 @@ import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
+import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.EquipmentPreset
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
+import com.forgequest.app.domain.NutritionGoal
+import com.forgequest.app.domain.WeightTrend
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
@@ -212,6 +216,22 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { it.copy(healthEnabled = enabled) }
         app.health.refresh(force = true)
     }
+
+    /** Switches Cut / Maintain / Gain; null targets are the ones the person set by hand and stay as they are. */
+    fun setGoal(goal: NutritionGoal, proteinPerKg: Float, kcal: Int?, protein: Int?, carbs: Int?) = viewModelScope.launch {
+        app.settings.update { s ->
+            s.copy(
+                nutritionGoal = goal,
+                goalSetDay = Dates.today(),
+                proteinPerKg = proteinPerKg.coerceIn(Nutrition.MIN_PROTEIN_PER_KG, 2.5f),
+                kcalGoal = (kcal ?: s.kcalGoal).coerceAtLeast(Nutrition.MIN_SAFE_KCAL),
+                proteinGoal = (protein ?: s.proteinGoal).coerceAtLeast(60),
+                carbsGoal = carbs ?: s.carbsGoal,
+            )
+        }
+    }
+
+    fun setDebrief(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(debriefEnabled = on) } }
 
     fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
@@ -746,7 +766,47 @@ fun ProfileScreen(nav: NavHostController) {
                 Spacer(Modifier.width(14.dp))
                 Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
             }
+            val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
+            val hasBodyStats = (settings.heightCm > 0f && age > 0) || settings.bodyFatPct in 4f..60f
+            fun kcalFor(goal: NutritionGoal) = s.latestWeight?.let {
+                Nutrition.suggestedKcal(
+                    kg = it,
+                    heightCm = settings.heightCm,
+                    age = age,
+                    male = settings.bodyType == BodyType.MALE,
+                    trainingDays = trainingDaysForKcal,
+                    bodyFatPct = settings.bodyFatPct,
+                    goal = goal,
+                )
+            }
+            fun proteinFor(perKg: Float) = s.latestWeight?.let { Nutrition.suggestedProtein(it, perKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct) }
             Spacer(Modifier.height(12.dp))
+            Text(stringResource(R.string.goal_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            Row(Modifier.padding(top = 8.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NutritionGoal.entries.forEach { g ->
+                    ChoiceChip(stringResource(g.labelRes), settings.nutritionGoal == g, {
+                        if (g != settings.nutritionGoal) {
+                            // Targets still on the old suggestion follow the new goal; numbers set by hand stay put.
+                            val oldPerKg = Nutrition.proteinPerKgFor(settings.nutritionGoal)
+                            val perKg = if (settings.proteinPerKg == oldPerKg) Nutrition.proteinPerKgFor(g) else settings.proteinPerKg
+                            val kcal = kcalFor(g)?.takeIf { hasBodyStats && kcalFor(settings.nutritionGoal) == settings.kcalGoal }
+                            val protein = proteinFor(perKg)?.takeIf { proteinFor(settings.proteinPerKg) == settings.proteinGoal }
+                            val oldCarbs = Nutrition.suggestedCarbs(settings.kcalGoal, settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
+                            val carbs = if (settings.trackCarbs && oldCarbs == settings.carbsGoal) {
+                                Nutrition.suggestedCarbs(kcal ?: settings.kcalGoal, protein ?: settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
+                            } else null
+                            vm.setGoal(g, perKg, kcal, protein, carbs)
+                        }
+                    })
+                }
+            }
+            val trend = Nutrition.weightTrendNote(settings.nutritionGoal, settings.goalSetDay, s.weights.map { it.epochDay to it.kg }, Dates.today())
+            if (trend != null) {
+                Text(
+                    stringResource(if (trend == WeightTrend.CUT_TOO_FAST) R.string.goal_trend_cut_fast else R.string.goal_trend_gain_stalled),
+                    style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
             SettingStepper(
                 stringResource(R.string.profile_daily_calories),
                 settings.kcalGoal.toFloat(),
@@ -756,18 +816,7 @@ fun ProfileScreen(nav: NavHostController) {
                 max = Nutrition.MAX_SAFE_KCAL.toFloat(),
                 unit = stringResource(R.string.unit_kcal),
             )
-            val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
-            val hasBodyStats = (settings.heightCm > 0f && age > 0) || settings.bodyFatPct in 4f..60f
-            val suggested = s.latestWeight?.let {
-                Nutrition.suggestedKcal(
-                    kg = it,
-                    heightCm = settings.heightCm,
-                    age = age,
-                    male = settings.bodyType == BodyType.MALE,
-                    trainingDays = trainingDaysForKcal,
-                    bodyFatPct = settings.bodyFatPct,
-                )
-            }
+            val suggested = kcalFor(settings.nutritionGoal)
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     when {
@@ -868,6 +917,20 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         SettingsSection(stringResource(R.string.settings_section_coach))
+
+        FitCard {
+            Row(
+                Modifier.fillMaxWidth().toggleable(settings.debriefEnabled, role = Role.Switch) { vm.setDebrief(it) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.debrief_setting), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                    Text(stringResource(R.string.debrief_setting_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                FitSwitch(settings.debriefEnabled, null)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
 
         // AI key
         SettingsRow(

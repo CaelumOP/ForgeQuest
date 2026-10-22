@@ -109,13 +109,7 @@ object Nutrition {
             safeKg * 33f
         } else {
             val rest = bmrKcal(safeKg, heightCm, age, male, bodyFatPct)
-            val activity = when {
-                trainingDays <= 0 -> 1.2f
-                trainingDays <= 2 -> 1.375f
-                trainingDays <= 4 -> 1.55f
-                trainingDays <= 6 -> 1.725f
-                else -> 1.9f
-            }
+            val activity = activityFactor(trainingDays)
             rest * activity
         }
         val adjusted = when (goal) {
@@ -127,6 +121,23 @@ object Nutrition {
             NutritionGoal.GAIN -> tdee + 250f
         }
         return (((adjusted / 50f).roundToInt() * 50)).coerceIn(MIN_SAFE_KCAL, MAX_SAFE_KCAL)
+    }
+
+    /**
+     * Activity multiplier from planned training days. Resistance sessions burn less than the classic "very active"
+     * tables assume, so 6–7 lifting days stop at 1.65 and there is no 1.9 tier (that one is for physical jobs).
+     */
+    fun activityFactor(trainingDays: Int): Float = when {
+        trainingDays <= 0 -> 1.2f
+        trainingDays <= 3 -> 1.375f
+        trainingDays <= 5 -> 1.55f
+        else -> 1.65f
+    }
+
+    /** Protein per kg behind the suggestion: a cut keeps more protein to hold on to muscle. */
+    fun proteinPerKgFor(goal: NutritionGoal): Float = when (goal) {
+        NutritionGoal.CUT -> 2.0f
+        NutritionGoal.MAINTAIN, NutritionGoal.GAIN -> DEFAULT_PROTEIN_PER_KG
     }
 
     /**
@@ -158,4 +169,30 @@ object Nutrition {
 
     fun ageFromBirthYear(birthYear: Int, currentYear: Int): Int =
         if (birthYear <= 0) 0 else (currentYear - birthYear).coerceIn(0, 120)
+
+    /**
+     * A gentle weekly note on the weight trend under the current goal, or null when there's nothing to say.
+     * Needs weigh-ins spanning at least [MIN_TREND_DAYS] days since the goal was set, so first-week water
+     * loss on a cut never triggers a false warning. [weights] are (epochDay, kg) pairs in any order.
+     */
+    fun weightTrendNote(goal: NutritionGoal, goalSetDay: Long, weights: List<Pair<Long, Float>>, today: Long): WeightTrend? {
+        if (goal == NutritionGoal.MAINTAIN) return null
+        val since = weights.filter { it.first >= goalSetDay && it.first <= today }.sortedBy { it.first }
+        if (since.size < 3) return null
+        val spanDays = since.last().first - since.first().first
+        if (spanDays < MIN_TREND_DAYS) return null
+        // Average the first and last few weigh-ins so one salty dinner doesn't decide it.
+        val head = since.take(3).map { it.second }.average().toFloat()
+        val tail = since.takeLast(3).map { it.second }.average().toFloat()
+        val weeklyChangePct = (tail - head) / head * 100f / (spanDays / 7f)
+        return when (goal) {
+            NutritionGoal.CUT -> if (weeklyChangePct < -1f) WeightTrend.CUT_TOO_FAST else null
+            NutritionGoal.GAIN -> if (spanDays >= 21 && weeklyChangePct <= 0.05f) WeightTrend.GAIN_STALLED else null
+            NutritionGoal.MAINTAIN -> null
+        }
+    }
+
+    const val MIN_TREND_DAYS = 14
 }
+
+enum class WeightTrend { CUT_TOO_FAST, GAIN_STALLED }

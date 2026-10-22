@@ -78,6 +78,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
+import com.forgequest.app.data.CoachRepository
 import com.forgequest.app.data.db.ChatEntity
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.plan.PlanDraft
@@ -129,10 +130,17 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun apply(message: ChatEntity) = viewModelScope.launch {
-        if (app.coach.applyPlan(message.id)) {
-            app.haptics.celebrate()
-            applied.value = app.str(R.string.coach_plan_applied)
+    /** A card made before the plan was edited by hand; the screen asks before overwriting those edits. */
+    val staleCard = MutableStateFlow<ChatEntity?>(null)
+
+    fun apply(message: ChatEntity, force: Boolean = false) = viewModelScope.launch {
+        when (app.coach.applyPlan(message.id, force)) {
+            CoachRepository.ApplyResult.APPLIED -> {
+                app.haptics.celebrate()
+                applied.value = app.str(R.string.coach_plan_applied)
+            }
+            CoachRepository.ApplyResult.STALE -> staleCard.value = message
+            CoachRepository.ApplyResult.FAILED -> Unit
         }
     }
 
@@ -315,6 +323,18 @@ fun CoachScreen(nav: NavHostController) {
             text = { Text(stringResource(R.string.coach_clear_body), color = c.textSecondary) },
             confirmButton = { TextButton(onClick = { confirmClear = false; vm.clear() }) { Text(stringResource(R.string.action_clear), color = c.coral) } },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+        )
+    }
+
+    val stale by vm.staleCard.collectAsState()
+    stale?.let { m ->
+        AlertDialog(
+            onDismissRequest = { vm.staleCard.value = null },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.coach_stale_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.coach_stale_body), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = { vm.staleCard.value = null; vm.apply(m, force = true) }) { Text(stringResource(R.string.coach_stale_apply), color = c.coral) } },
+            dismissButton = { TextButton(onClick = { vm.staleCard.value = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
 

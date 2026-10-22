@@ -86,7 +86,10 @@ import androidx.navigation.NavHostController
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.SetEffort
+import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.blockLabel
@@ -163,7 +166,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
-        WorkoutCompleteScreen(sum, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        val debrief by vm.debrief.collectAsState()
+        val debriefLoading by vm.debriefLoading.collectAsState()
+        WorkoutCompleteScreen(sum, debrief, debriefLoading, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -218,6 +223,18 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                         )
                     }
                     TextButton(onClick = { confirmExit = true }) { Text(stringResource(R.string.live_discard), color = c.textSecondary) }
+                }
+            }
+            val welcomeBack by vm.welcomeBack.collectAsState()
+            AnimatedVisibility(welcomeBack && doneCount == 0) {
+                FitCard(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
+                    Text(stringResource(R.string.welcome_back_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.welcome_back_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TonalPill(stringResource(R.string.welcome_back_ease_in), onClick = vm::easeIn)
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(onClick = vm::dismissWelcomeBack) { Text(stringResource(R.string.welcome_back_full), color = c.textSecondary) }
+                    }
                 }
             }
             if (focus && groups.isNotEmpty()) {
@@ -483,6 +500,9 @@ private fun SetRow(
     if (noteDialog) {
         SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
     }
+    val effortSetId by vm.effortSetId.collectAsState()
+    val effort = SetEffort.parse(set.effort.ifBlank { null })
+    Column {
     Row(
         Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor)
             .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
@@ -520,6 +540,14 @@ private fun SetRow(
                 if (set.isPr) {
                     Spacer(Modifier.width(6.dp))
                     PrTag()
+                }
+                if (set.effort.isNotBlank() && effort != SetEffort.OK) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(effort.labelRes),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (effort) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                    )
                 }
             }
             if (set.note.isNotBlank()) {
@@ -566,6 +594,20 @@ private fun SetRow(
         }
         Spacer(Modifier.width(6.dp))
         MorphCheck(set.done) { vm.toggle(set) }
+    }
+    // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
+    AnimatedVisibility(visible = set.done && effortSetId == set.id) {
+        Row(Modifier.padding(start = 8.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            SetEffort.entries.forEach { e ->
+                ChoiceChip(
+                    stringResource(e.labelRes),
+                    set.effort == e.name,
+                    { vm.setEffort(set, e) },
+                    accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                )
+            }
+        }
+    }
     }
 }
 
@@ -736,14 +778,14 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
 }
 
 @Composable
-private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
+private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?, debriefLoading: Boolean, onDone: () -> Unit) {
     val c = Fit.colors
     var filled by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { filled = true }
     val leveledUp = sum.after.level > sum.before.level
     BackHandler(onBack = onDone)
     Column(
-        Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().padding(24.dp),
+        Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(32.dp))
@@ -805,7 +847,35 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, onDone: () -> Unit) {
                 }
             }
         }
-        Spacer(Modifier.weight(1f))
+        AnimatedVisibility(debrief != null || debriefLoading) {
+            Column {
+                Spacer(Modifier.height(12.dp))
+                DebriefCard(debrief)
+            }
+        }
+        Spacer(Modifier.height(24.dp))
         PillButton(stringResource(R.string.home_done), onClick = onDone, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** The coach's take on the workout: score, what went well, one thing to watch, one tip. Null shows it loading. */
+@Composable
+fun DebriefCard(d: WorkoutDebrief?) {
+    val c = Fit.colors
+    FitCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            if (d != null) Text(stringResource(R.string.debrief_score, d.score), style = MaterialTheme.typography.titleMedium, color = c.gold)
+        }
+        Spacer(Modifier.height(6.dp))
+        if (d == null) {
+            Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        } else {
+            Text(d.summary, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            // Green for what went well, gold for what to watch, blue for next time.
+            d.highlights.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(top = 4.dp)) }
+            d.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(top = 4.dp)) }
+            d.nextTime.forEach { Text(stringResource(R.string.debrief_next_time, it), style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.padding(top = 4.dp)) }
+        }
     }
 }
