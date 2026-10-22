@@ -87,6 +87,8 @@ import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.SetEffort
+import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.blockLabel
@@ -483,6 +485,9 @@ private fun SetRow(
     if (noteDialog) {
         SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
     }
+    val effortSetId by vm.effortSetId.collectAsState()
+    val effort = SetEffort.parse(set.effort.ifBlank { null })
+    Column {
     Row(
         Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor)
             .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
@@ -520,6 +525,14 @@ private fun SetRow(
                 if (set.isPr) {
                     Spacer(Modifier.width(6.dp))
                     PrTag()
+                }
+                if (set.effort.isNotBlank() && effort != SetEffort.OK) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(effort.labelRes),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (effort) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                    )
                 }
             }
             if (set.note.isNotBlank()) {
@@ -566,6 +579,20 @@ private fun SetRow(
         }
         Spacer(Modifier.width(6.dp))
         MorphCheck(set.done) { vm.toggle(set) }
+    }
+    // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
+    AnimatedVisibility(visible = set.done && effortSetId == set.id) {
+        Row(Modifier.padding(start = 8.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            SetEffort.entries.forEach { e ->
+                ChoiceChip(
+                    stringResource(e.labelRes),
+                    set.effort == e.name,
+                    { vm.setEffort(set, e) },
+                    accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                )
+            }
+        }
+    }
     }
 }
 

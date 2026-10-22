@@ -507,6 +507,9 @@ class CoachRepository(
                 sb.append("  ${LocalDate.ofEpochDay(session.epochDay)} ${session.title}${minutes?.let { " ($it min)" } ?: ""}: $summary\n")
                 val notes = sets.filter { it.note.isNotBlank() }.take(4).joinToString("; ") { "${snap.exercises[it.exerciseId]?.name ?: it.exerciseId}: ${it.note}" }
                 if (notes.isNotEmpty()) sb.append("    notes: $notes\n")
+                val felt = sets.filter { it.effort == "HARD" || it.effort == "PAIN" }.take(4)
+                    .joinToString("; ") { "${snap.exercises[it.exerciseId]?.name ?: it.exerciseId} set ${it.setIndex + 1}: ${it.effort.lowercase()}" }
+                if (felt.isNotEmpty()) sb.append("    felt: $felt\n")
             }
         }
 

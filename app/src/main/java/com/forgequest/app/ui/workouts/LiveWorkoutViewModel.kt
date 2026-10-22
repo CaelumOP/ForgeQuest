@@ -6,6 +6,7 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.LevelInfo
@@ -126,8 +127,12 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
+    /** The set just ticked: only it shows the Easy · OK · Hard · Pain chips, so they fade once you move on. */
+    val effortSetId = MutableStateFlow<Long?>(null)
+
     fun toggle(set: SetEntity) {
         val done = !set.done
+        effortSetId.value = if (done) set.id else null
         if (done) app.haptics.setDone() else app.haptics.tick()
         viewModelScope.launch { repo.updateSet(set.copy(done = done)) }
         if (done && set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set)) else if (!done) skipRest()
@@ -241,6 +246,12 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             newBest.value = set.id
             viewModelScope.launch { delay(1400); if (newBest.value == set.id) newBest.value = null }
         }
+    }
+
+    /** Tapping the chosen chip again clears it back to "not tapped" (counts as OK). */
+    fun setEffort(set: SetEntity, effort: SetEffort) = viewModelScope.launch {
+        app.haptics.tick()
+        repo.updateSet(set.copy(effort = if (set.effort == effort.name) "" else effort.name))
     }
 
     fun setNote(set: SetEntity, note: String) = viewModelScope.launch { repo.updateSet(set.copy(note = note.trim().take(120))) }

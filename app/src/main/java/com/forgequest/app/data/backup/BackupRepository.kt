@@ -8,6 +8,7 @@ import com.forgequest.app.data.WorkoutRepository
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.BadgeEntity
 import com.forgequest.app.data.db.ChatEntity
+import com.forgequest.app.data.db.DayNoteEntity
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.FoodEntity
 import com.forgequest.app.data.db.MealEntity
@@ -131,6 +132,8 @@ data class BackupFile(
     val chat: List<ChatEntity>,
     val badges: List<BadgeEntity>,
     val settings: BackupSettings? = null,
+    /** Excused days; older backups have none. */
+    val dayNotes: List<DayNoteEntity> = emptyList(),
 ) {
     /** One line a person can read before deciding to restore. */
     fun summary(): String {
@@ -170,6 +173,7 @@ class BackupRepository(
             sessions = b.sessions(), sets = b.sets(), foods = b.foods(), meals = b.meals(), weights = b.weights(),
             chat = b.chat(), badges = b.badges(),
             settings = BackupSettings.from(settings.current()),
+            dayNotes = b.dayNotes(),
         )
     }
 
@@ -187,7 +191,7 @@ class BackupRepository(
                 // Photos aren't part of a backup, so drop paths that don't exist on this phone.
                 file.foods.map { it.copy(photoPath = it.photoPath?.takeIf { p -> File(p).exists() }) },
                 file.meals.map { it.copy(photoPath = it.photoPath?.takeIf { p -> File(p).exists() }) },
-                file.weights, file.chat, file.badges,
+                file.weights, file.chat, file.badges, file.dayNotes,
             )
         }
         file.settings?.let { restored -> settings.update { restored.applyTo(it) } }

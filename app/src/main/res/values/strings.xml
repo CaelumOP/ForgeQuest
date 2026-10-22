@@ -997,4 +997,9 @@
     <string name="goal_gain">Build muscle</string>
     <string name="goal_trend_cut_fast">You are losing more than 1% of your weight a week. Eating a little more will protect your muscle.</string>
     <string name="goal_trend_gain_stalled">Your weight has not moved for three weeks. Add a small snack a day to keep building.</string>
+    <string name="effort_easy">Easy</string>
+    <string name="effort_ok">OK</string>
+    <string name="effort_hard">Hard</string>
+    <string name="effort_pain">Pain</string>
+    <string name="rx_hold_ceiling">ready for a harder version or added weight</string>
 </resources>

@@ -329,17 +329,18 @@ interface BackupDao {
     @Query("SELECT * FROM weights") suspend fun weights(): List<WeightEntity>
     @Query("SELECT * FROM chat") suspend fun chat(): List<ChatEntity>
     @Query("SELECT * FROM badges") suspend fun badges(): List<BadgeEntity>
+    @Query("SELECT * FROM day_notes") suspend fun dayNotes(): List<DayNoteEntity>
 
     @Transaction
     suspend fun replaceAll(
         exercises: List<ExerciseEntity>, plans: List<PlanEntity>, days: List<PlanDayEntity>, items: List<PlanItemEntity>,
         sessions: List<SessionEntity>, sets: List<SetEntity>, foods: List<FoodEntity>, meals: List<MealEntity>,
-        weights: List<WeightEntity>, chat: List<ChatEntity>, badges: List<BadgeEntity>,
+        weights: List<WeightEntity>, chat: List<ChatEntity>, badges: List<BadgeEntity>, dayNotes: List<DayNoteEntity>,
     ) {
         clearExercises(); clearPlans(); clearDays(); clearItems(); clearSessions(); clearSets()
-        clearFoods(); clearMeals(); clearWeights(); clearChat(); clearBadges()
+        clearFoods(); clearMeals(); clearWeights(); clearChat(); clearBadges(); clearDayNotes()
         putExercises(exercises); putPlans(plans); putDays(days); putItems(items); putSessions(sessions); putSets(sets)
-        putFoods(foods); putMeals(meals); putWeights(weights); putChat(chat); putBadges(badges)
+        putFoods(foods); putMeals(meals); putWeights(weights); putChat(chat); putBadges(badges); putDayNotes(dayNotes)
     }
 
     @Query("DELETE FROM exercises") suspend fun clearExercises()
@@ -353,6 +354,7 @@ interface BackupDao {
     @Query("DELETE FROM weights") suspend fun clearWeights()
     @Query("DELETE FROM chat") suspend fun clearChat()
     @Query("DELETE FROM badges") suspend fun clearBadges()
+    @Query("DELETE FROM day_notes") suspend fun clearDayNotes()
 
     @Insert suspend fun putExercises(v: List<ExerciseEntity>)
     @Insert suspend fun putPlans(v: List<PlanEntity>)
@@ -365,6 +367,25 @@ interface BackupDao {
     @Insert suspend fun putWeights(v: List<WeightEntity>)
     @Insert suspend fun putChat(v: List<ChatEntity>)
     @Insert suspend fun putBadges(v: List<BadgeEntity>)
+    @Insert suspend fun putDayNotes(v: List<DayNoteEntity>)
+}
+
+@Dao
+interface DayNoteDao {
+    @Query("SELECT * FROM day_notes WHERE epochDay = :day")
+    suspend fun get(day: Long): DayNoteEntity?
+
+    @Query("SELECT * FROM day_notes WHERE epochDay >= :from ORDER BY epochDay")
+    fun observeSince(from: Long): Flow<List<DayNoteEntity>>
+
+    @Query("SELECT * FROM day_notes WHERE epochDay >= :from ORDER BY epochDay")
+    suspend fun since(from: Long): List<DayNoteEntity>
+
+    @Upsert
+    suspend fun upsert(note: DayNoteEntity)
+
+    @Query("DELETE FROM day_notes WHERE epochDay = :day")
+    suspend fun delete(day: Long)
 }
 
 @Dao

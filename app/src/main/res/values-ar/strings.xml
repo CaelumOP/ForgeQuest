@@ -1098,4 +1098,9 @@
     <string name="goal_gain">زيادة الكتلة</string>
     <string name="goal_trend_cut_fast">تفقد أكثر من 1% من وزنك أسبوعيًا، وزيادة طعامك قليلًا تحمي عضلاتك.</string>
     <string name="goal_trend_gain_stalled">لم يتغير وزنك منذ ثلاثة أسابيع، فأضف وجبة خفيفة يوميًا لتواصل البناء.</string>
+    <string name="effort_easy">سهل</string>
+    <string name="effort_ok">مناسب</string>
+    <string name="effort_hard">صعب</string>
+    <string name="effort_pain">ألم</string>
+    <string name="rx_hold_ceiling">جاهز لنسخة أصعب أو وزن إضافي</string>
 </resources>
