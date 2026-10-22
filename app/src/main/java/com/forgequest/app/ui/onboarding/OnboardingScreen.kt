@@ -70,10 +70,13 @@ import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.StarterPlans
 import com.forgequest.app.domain.EquipmentPreset
+import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
+import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
@@ -96,6 +99,7 @@ data class OnboardingState(
     val kcal: Int = 2500,
     val protein: Int = 135,
     val goalsTouched: Boolean = false,
+    val goal: NutritionGoal = NutritionGoal.MAINTAIN,
     val planIndex: Int = 0,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
     val apiKey: String = "",
@@ -112,7 +116,13 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     fun setWeight(kg: Float) = state.update { s ->
         val w = kg.coerceIn(30f, 250f)
         if (s.goalsTouched) s.copy(weightKg = w)
-        else s.copy(weightKg = w, protein = suggestedProtein(w)).let { it.copy(kcal = suggestedKcal(it)) }
+        else s.copy(weightKg = w, protein = suggestedProtein(w, s.goal)).let { it.copy(kcal = suggestedKcal(it)) }
+    }
+
+    /** Cut, Maintain or Gain: refreshes both suggestions unless the person already set goals by hand. */
+    fun setGoal(goal: NutritionGoal) = state.update { s ->
+        val next = s.copy(goal = goal)
+        if (s.goalsTouched) next else next.copy(protein = suggestedProtein(s.weightKg, goal)).let { it.copy(kcal = suggestedKcal(it)) }
     }
 
     fun next() = state.update { it.copy(step = (it.step + 1).coerceAtMost(LAST_STEP)) }
@@ -167,6 +177,9 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                     heightCm = s.heightCm,
                     birthYear = if (s.age > 0) java.time.Year.now().value - s.age else 0,
                     equipment = s.equipmentPreset.encode(),
+                    nutritionGoal = s.goal,
+                    goalSetDay = Dates.today(),
+                    proteinPerKg = Nutrition.proteinPerKgFor(s.goal),
                 )
             }
         }
@@ -174,7 +187,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
 
     companion object {
         const val LAST_STEP = 3
-        fun suggestedProtein(kg: Float) = Nutrition.suggestedProtein(kg)
+        fun suggestedProtein(kg: Float, goal: NutritionGoal) = Nutrition.suggestedProtein(kg, Nutrition.proteinPerKgFor(goal))
     }
 
     /** Height or age changed: refresh the calorie suggestion unless the person already set goals by hand. */
@@ -185,7 +198,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
 
     private fun suggestedKcal(s: OnboardingState): Int {
         val days = StarterPlans.all.getOrNull(s.planIndex)?.days?.count { !it.isRest && it.items.isNotEmpty() } ?: 3
-        return Nutrition.suggestedKcal(s.weightKg, s.heightCm, s.age, s.bodyType == BodyType.MALE, days)
+        return Nutrition.suggestedKcal(s.weightKg, s.heightCm, s.age, s.bodyType == BodyType.MALE, days, goal = s.goal)
     }
 }
 
@@ -280,6 +293,10 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
 @Composable
 private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
     Title(stringResource(R.string.onb_goals_title), stringResource(R.string.onb_goals_body))
+    Text(stringResource(R.string.goal_title), style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary)
+    Row(Modifier.padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        NutritionGoal.entries.forEach { g -> ChoiceChip(stringResource(g.labelRes), s.goal == g, { vm.setGoal(g) }) }
+    }
     Row(Modifier.padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.unit_kilograms), s.unit == WeightUnit.KG, { vm.update { it.copy(unit = WeightUnit.KG) } })
         ChoiceChip(stringResource(R.string.unit_pounds), s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })

@@ -8,6 +8,7 @@ import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.domain.BadgeCategory
 import com.forgequest.app.domain.BadgeDef
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.NutritionGoal
 
 /*
  * Screen text for domain types. The domain keeps English names because the coach prompt and the unit tests
@@ -100,6 +101,14 @@ val FoodCategory.labelRes: Int
 
 @Composable
 fun FoodCategory.localLabel(): String = stringResource(labelRes)
+
+@get:StringRes
+val NutritionGoal.labelRes: Int
+    get() = when (this) {
+        NutritionGoal.CUT -> R.string.goal_cut
+        NutritionGoal.MAINTAIN -> R.string.goal_maintain
+        NutritionGoal.GAIN -> R.string.goal_gain
+    }
 
 @Composable
 fun com.forgequest.app.domain.RankInfo.localTitle(): String = stringResource(

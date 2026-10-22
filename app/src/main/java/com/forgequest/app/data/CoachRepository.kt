@@ -24,8 +24,10 @@ import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Nutrition
+import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.Trends
+import com.forgequest.app.domain.WeightTrend
 import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -415,6 +417,17 @@ class CoachRepository(
 
         val target = if (s.weeklyTargetOverride > 0) s.weeklyTargetOverride else snap.plan?.trainingDays?.size ?: 0
         sb.append("- Goals: ${s.kcalGoal} kcal and ${s.proteinGoal} g protein per day; $target workouts per week\n")
+        val goalText = when (s.nutritionGoal) {
+            NutritionGoal.CUT -> "CUT (lose fat while keeping muscle and strength: keep protein high, aim to hold lifts steady, a moderate deficit)"
+            NutritionGoal.MAINTAIN -> "MAINTAIN (keep body weight steady while getting stronger)"
+            NutritionGoal.GAIN -> "GAIN (build muscle with a small surplus: push progressive overload)"
+        }
+        sb.append("- Body goal: $goalText\n")
+        when (Nutrition.weightTrendNote(s.nutritionGoal, s.goalSetDay, snap.weights.map { it.epochDay to it.kg }, today)) {
+            WeightTrend.CUT_TOO_FAST -> sb.append("- Weight trend: losing more than 1% of body weight a week on the cut; suggest eating a little more\n")
+            WeightTrend.GAIN_STALLED -> sb.append("- Weight trend: no gain for 3+ weeks on the gain goal; suggest a little more food\n")
+            null -> Unit
+        }
 
         // This week
         val streak = snap.streak

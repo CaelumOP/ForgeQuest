@@ -20,6 +20,7 @@ import com.forgequest.app.data.db.WeightEntity
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.data.prefs.Settings
 import com.forgequest.app.data.prefs.SettingsRepository
+import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,6 +55,9 @@ data class BackupSettings(
     val fatSharePct: Int = 25,
     val equipment: String = "",
     val bodyFatPct: Float = 0f,
+    val nutritionGoal: String = "MAINTAIN",
+    val goalSetDay: Long = 0,
+    val debriefEnabled: Boolean = true,
 ) {
     companion object {
         fun from(s: Settings) = BackupSettings(
@@ -77,6 +81,9 @@ data class BackupSettings(
             fatSharePct = s.fatSharePct,
             equipment = s.equipment,
             bodyFatPct = s.bodyFatPct,
+            nutritionGoal = s.nutritionGoal.name,
+            goalSetDay = s.goalSetDay,
+            debriefEnabled = s.debriefEnabled,
         )
     }
 
@@ -101,6 +108,9 @@ data class BackupSettings(
         fatSharePct = fatSharePct,
         equipment = equipment,
         bodyFatPct = bodyFatPct,
+        nutritionGoal = runCatching { NutritionGoal.valueOf(nutritionGoal) }.getOrDefault(s.nutritionGoal),
+        goalSetDay = goalSetDay,
+        debriefEnabled = debriefEnabled,
     )
 }
 
