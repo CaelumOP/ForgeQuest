@@ -40,6 +40,7 @@ class AppContainer(context: Context) {
     val backup = BackupRepository(context, db, settings, workouts)
     val drive = DriveSync(context, settings, workouts, coach, backup, http)
     val updates = com.forgequest.app.data.update.UpdateChecker(context, http)
+    val updateNotice = com.forgequest.app.data.update.UpdateNotice(context, updates, appScope)
     val bridge = com.forgequest.app.data.bridge.GeminiBridge(context, settings, db, coach, health, drive)
     val haptics = Haptics(context)
     val notifier = Notifier(context)

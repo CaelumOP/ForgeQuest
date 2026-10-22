@@ -124,6 +124,10 @@ fun HomeScreen(nav: NavHostController) {
     val health by vm.health.collectAsState()
     // Fitbit numbers through Health Connect: re-read whenever Home opens, and right after access is granted.
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.refreshHealth() }
+    // Every time the app comes to the front; the notice itself only goes online every 6 hours.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.app.updateNotice.refresh(); onPauseOrDispose { } }
+    val updateBanner by vm.app.updateNotice.banner.collectAsState()
+    val whatsNew by vm.app.updateNotice.whatsNew.collectAsState()
     var weightSheet by remember { mutableStateOf(false) }
     var tagDay by remember { mutableStateOf<Long?>(null) }
 
@@ -134,6 +138,8 @@ fun HomeScreen(nav: NavHostController) {
     ) {
         Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(8.dp))
+        updateBanner?.let { UpdateCard(it, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later) }
+        whatsNew?.let { WhatsNewCard(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
         NutritionRings(s)
         Spacer(Modifier.height(16.dp))
         StatRow(s, onWeight = { weightSheet = true })
