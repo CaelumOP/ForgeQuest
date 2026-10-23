@@ -24,6 +24,23 @@ Keep `forgequest-release.jks` and `keystore.properties` out of git (they are ign
 Updates must be signed with the same key, or Android refuses to install over the old version. For the Drive setup
 below, use this key's SHA-1 (`keytool -list -v -keystore forgequest-release.jks`) instead of the debug one.
 
+## Cloud builds (GitHub Actions)
+
+`.github/workflows/android.yml` runs the unit tests and builds the release APK on every PR (download it from the run's
+Artifacts). After a merge to main it commits the APK to `apk/ForgeQuest.apk`, but only when `versionCode` equals
+`apk/version.json`, the APK is signed with the same key as the committed one, and it is newer. So a release is just: bump
+`versionCode`/`versionName` in `app/build.gradle.kts` and `apk/version.json` in the PR, then merge.
+
+It signs with four repo secrets (Settings → Secrets and variables → Actions): `KEYSTORE_BASE64` (the .jks as base64),
+`KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. From PowerShell, in the folder holding `forgequest-release.jks`:
+
+```
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\forgequest-release.jks")) | gh secret set KEYSTORE_BASE64 -R CaelumOP/ForgeQuest
+gh secret set KEYSTORE_PASSWORD -R CaelumOP/ForgeQuest   # paste when asked
+gh secret set KEY_ALIAS -R CaelumOP/ForgeQuest -b forgequest
+gh secret set KEY_PASSWORD -R CaelumOP/ForgeQuest        # paste when asked
+```
+
 ## AI features (meal scan + coach)
 
 Each person uses their own free Gemini key:
