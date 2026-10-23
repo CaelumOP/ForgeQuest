@@ -92,6 +92,13 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val debriefLoading = MutableStateFlow(false)
     val finishing = MutableStateFlow(false)
 
+    /**
+     * First workout back after a sick or injured day, or after the reminders backed off: offer to ease in.
+     * Declared before init: viewModelScope starts coroutines immediately, so checkWelcomeBack() can write it
+     * while the constructor is still running.
+     */
+    val welcomeBack = MutableStateFlow(false)
+
     init {
         viewModelScope.launch { checkWelcomeBack() }
         viewModelScope.launch {
@@ -269,9 +276,6 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun addRound(positions: List<Int>) = currentSession?.let { s ->
         viewModelScope.launch { positions.forEach { repo.addSet(s.id, it) } }
     }
-
-    /** First workout back after a sick or injured day, or after the reminders backed off: offer to ease in. */
-    val welcomeBack = MutableStateFlow(false)
 
     private suspend fun checkWelcomeBack() {
         val snap = app.progress.snapshot.first()
