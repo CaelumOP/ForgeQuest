@@ -24,6 +24,29 @@ Keep `forgequest-release.jks` and `keystore.properties` out of git (they are ign
 Updates must be signed with the same key, or Android refuses to install over the old version. For the Drive setup
 below, use this key's SHA-1 (`keytool -list -v -keystore forgequest-release.jks`) instead of the debug one.
 
+## Cloud builds (GitHub Actions)
+
+`.github/workflows/android.yml` runs the unit tests and builds the release APK on every PR (download it from the run's
+Artifacts). After a merge to main it commits the APK to `apk/ForgeQuest.apk`, but only when `versionCode` equals
+`apk/version.json`, the APK is signed with the same key as the committed one, and it is newer. So a release is just: bump
+`versionCode`/`versionName` in `app/build.gradle.kts` and `apk/version.json` in the PR, then merge.
+
+It signs with four repo secrets (Settings → Secrets and variables → Actions): `KEYSTORE_BASE64` (the keystore file as
+base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Use the key that signed the APK already on phones, or updates
+won't install. Today that is the debug key of the PC that built the first releases (SHA-1 `A9:32:CB:…:75:53`, the one
+registered for Drive sign-in). From PowerShell on that PC:
+
+```
+$ks = "$env:USERPROFILE\.android\debug.keystore"
+[Convert]::ToBase64String([IO.File]::ReadAllBytes($ks)) | gh secret set KEYSTORE_BASE64 -R CaelumOP/ForgeQuest
+gh secret set KEYSTORE_PASSWORD -R CaelumOP/ForgeQuest -b android
+gh secret set KEY_ALIAS -R CaelumOP/ForgeQuest -b androiddebugkey
+gh secret set KEY_PASSWORD -R CaelumOP/ForgeQuest -b android
+```
+
+Back that `debug.keystore` up somewhere safe: if it is lost, no one can update the installed app. The workflow refuses to
+publish an APK whose signer differs from the committed one.
+
 ## AI features (meal scan + coach)
 
 Each person uses their own free Gemini key:
