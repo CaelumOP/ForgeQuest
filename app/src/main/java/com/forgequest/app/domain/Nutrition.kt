@@ -181,10 +181,15 @@ object Nutrition {
         if (since.size < 3) return null
         val spanDays = since.last().first - since.first().first
         if (spanDays < MIN_TREND_DAYS) return null
-        // Average the first and last few weigh-ins so one salty dinner doesn't decide it.
-        val head = since.take(3).map { it.second }.average().toFloat()
-        val tail = since.takeLast(3).map { it.second }.average().toFloat()
-        val weeklyChangePct = (tail - head) / head * 100f / (spanDays / 7f)
+        // Average the first and last few weigh-ins so one salty dinner doesn't decide it. The two groups never share
+        // a weigh-in, and the change is spread over the days between their middles, so few weigh-ins don't shrink it.
+        val n = minOf(3, since.size / 2)
+        val headGroup = since.take(n)
+        val tailGroup = since.takeLast(n)
+        val head = headGroup.map { it.second }.average().toFloat()
+        val tail = tailGroup.map { it.second }.average().toFloat()
+        val betweenDays = (tailGroup.map { it.first }.average() - headGroup.map { it.first }.average()).toFloat()
+        val weeklyChangePct = (tail - head) / head * 100f / (betweenDays / 7f)
         return when (goal) {
             NutritionGoal.CUT -> if (weeklyChangePct < -1f) WeightTrend.CUT_TOO_FAST else null
             NutritionGoal.GAIN -> if (spanDays >= 21 && weeklyChangePct <= 0.05f) WeightTrend.GAIN_STALLED else null

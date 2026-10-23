@@ -78,20 +78,23 @@ object StreakCalculator {
         startEpochDay: Long,
         today: Long,
         excusedDays: Set<Long> = emptySet(),
+        /** Targets saved for finished weeks (Monday epoch day to days); a plan change never rewrites them. */
+        lockedTargets: Map<Long, Int> = emptyMap(),
     ): WeeklyStreak {
-        val fullTarget = if (targetOverride > 0) targetOverride else max(1, plannedTrainingDays.size)
+        val fullTarget = fullTarget(plannedTrainingDays, targetOverride)
         val thisWeek = Dates.weekStart(today)
         val firstWeek = Dates.weekStart(startEpochDay)
 
         fun doneIn(weekStart: Long) = workoutDays.count { it in weekStart..weekStart + 6 }
 
         fun targetFor(weekStart: Long): Int {
+            val weekTarget = lockedTargets[weekStart] ?: fullTarget
             val base = if (weekStart != firstWeek) {
-                fullTarget
+                weekTarget
             } else {
                 val remainingPlanned = (startEpochDay..weekStart + 6).count { Dates.dayOfWeek(it) in plannedTrainingDays }
                 // Joined after the last planned day of the week: that week is free, it neither counts nor breaks.
-                min(fullTarget, remainingPlanned)
+                min(weekTarget, remainingPlanned)
             }
             // Each excused planned day (sick, travel...) lowers the week's target; a fully excused week is free.
             val excused = (weekStart..weekStart + 6).count { it in excusedDays && it !in workoutDays && Dates.dayOfWeek(it) in plannedTrainingDays }
@@ -141,6 +144,16 @@ object StreakCalculator {
         }
         return WeeklyStreak(streak, max(best, streak), doneThisWeek, targetThisWeek, days)
     }
+
+    fun fullTarget(plannedTrainingDays: Set<Int>, targetOverride: Int): Int =
+        if (targetOverride > 0) targetOverride else max(1, plannedTrainingDays.size)
+
+    /** Finished weeks since [startEpochDay] with no saved target yet, each given today's [fullTarget] to save. */
+    fun weeksToLock(locked: Map<Long, Int>, fullTarget: Int, startEpochDay: Long, today: Long): Map<Long, Int> =
+        generateSequence(Dates.weekStart(startEpochDay)) { it + 7 }
+            .takeWhile { it < Dates.weekStart(today) }
+            .filter { it !in locked }
+            .associateWith { fullTarget }
 }
 
 // ---------------------------------------------------------------- Reminders & comebacks

@@ -199,6 +199,8 @@ class BackupRepository(
             )
         }
         file.settings?.let { restored -> settings.update { restored.applyTo(it) } }
+        // The restored history has its own weeks; they are locked again from it on the next build.
+        settings.clearWeekTargets()
         workouts.seedLibrary()
     }
 

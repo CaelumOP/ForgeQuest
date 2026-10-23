@@ -383,6 +383,7 @@
     <string name="drive_connected_backed_up">Google Drive connected and backed up</string>
     <string name="drive_backing_up">Backing up…</string>
     <string name="drive_backed_up">Backed up to Google Drive</string>
+    <string name="drive_err_nothing_to_back_up">This phone has no workouts yet, so your Drive backup was kept. Tap Restore to bring it here.</string>
     <string name="drive_reading_backup">Reading your Drive backup…</string>
     <string name="restore_src_drive">Google Drive</string>
     <string name="backup_preparing">Preparing your backup…</string>

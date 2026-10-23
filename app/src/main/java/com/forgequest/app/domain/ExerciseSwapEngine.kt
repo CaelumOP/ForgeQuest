@@ -39,38 +39,55 @@ fun inferEquipmentFromText(vararg texts: String): Set<Equipment>? {
     val combined = texts.joinToString("\n").lowercase()
     if (combined.isBlank()) return null
 
-    if (Regex("""\b(full gym|commercial gym|gym member|all equipment|نادي متكامل|مشترك في نادي|في النادي|جيم كامل)\b""").containsMatchIn(combined)) {
+    if (words("""full gym|commercial gym|gym member|all equipment|نادي متكامل|مشترك في نادي|في النادي|جيم كامل""").containsMatchIn(combined)) {
         return Equipment.entries.toSet()
     }
-    if (Regex("""\b(no equipment|bodyweight only|pure bodyweight|nothing at home|بدون معدات|وزن الجسم فقط|وزن جسمي فقط|ما عندي معدات|لا أملك معدات)\b""").containsMatchIn(combined)) {
+    if (words("""no equipment|bodyweight only|pure bodyweight|nothing at home|بدون معدات|وزن الجسم فقط|وزن جسمي فقط|ما عندي معدات|لا أملك معدات""").containsMatchIn(combined)) {
         return setOf(Equipment.BODYWEIGHT)
     }
 
     val found = mutableSetOf<Equipment>()
-    if (Regex("""\b(pull-?up bar|chin-?up bar|doorway bar|عقلة|بار عقلة)\b""").containsMatchIn(combined)) {
+    if (words("""pull-?up bar|chin-?up bar|doorway bar|عقلة|بار عقلة""").hasPositive(combined)) {
         found += Equipment.PULL_UP_BAR
     }
-    if (Regex("""\b(dip bar|parallel bar|rings|gymnastic rings|متوازي|حلقات)\b""").containsMatchIn(combined)) {
+    if (words("""dip bar|parallel bar|rings|gymnastic rings|متوازي|حلقات""").hasPositive(combined)) {
         found += Equipment.DIP_BARS_OR_BENCH
     }
-    if (Regex("""\b(dumbbell|dumbbells|دمبل|دامبل)\b""").containsMatchIn(combined)) {
+    if (words("""dumbbell|dumbbells|دمبل|دامبل""").hasPositive(combined)) {
         found += Equipment.DUMBBELLS
     }
-    if (Regex("""\b(kettlebell|kettlebells|كيتل بيل|كيتلبيل)\b""").containsMatchIn(combined)) {
+    if (words("""kettlebell|kettlebells|كيتل بيل|كيتلبيل""").hasPositive(combined)) {
         found += Equipment.KETTLEBELL
     }
-    if (Regex("""\b(barbell|squat rack|power rack|bench press|بار|راك)\b""").containsMatchIn(combined)) {
+    // Not a lone «بار»: «بار عقلة» is a pull-up bar.
+    if (words("""barbell|squat rack|power rack|bench press|باربل|بار حديد|بار أولمبي|راك""").hasPositive(combined)) {
         found += Equipment.BARBELL_RACK
     }
-    if (Regex("""\b(cable|cables|lat pulldown|leg press|smith machine|كيبل|كوابل|أجهزة)\b""").containsMatchIn(combined)) {
+    // Not a lone «أجهزة»: it means any device.
+    if (words("""cable|cables|lat pulldown|leg press|smith machine|كيبل|كوابل|أجهزة النادي|أجهزة الجيم""").hasPositive(combined)) {
         found += Equipment.CABLES_MACHINES
     }
-    if (Regex("""\b(calisthenics|home workout|at home|في البيت|في المنزل|كاليستنكس)\b""").containsMatchIn(combined) && found.isEmpty()) {
-        if (Regex("""\b(bodyweight|وزن الجسم)\b""").containsMatchIn(combined)) {
+    if (words("""calisthenics|home workout|at home|في البيت|في المنزل|كاليستنكس""").containsMatchIn(combined) && found.isEmpty()) {
+        if (words("""bodyweight|وزن الجسم""").containsMatchIn(combined)) {
             return setOf(Equipment.BODYWEIGHT)
         }
     }
     return if (found.isNotEmpty()) found + Equipment.BODYWEIGHT else null
+}
+
+/**
+ * Whole words or phrases from [alternatives] ("a|b c"). Spelled out instead of `\b`, which newer Java and
+ * JavaScript treat as English-only, so Arabic words would never match.
+ */
+private fun words(alternatives: String) = Regex("""(?<![\p{L}\p{N}_])($alternatives)(?![\p{L}\p{N}_])""")
+
+private val NEGATION = words("""no|not|don['’]?t|doesn['’]?t|without|never|بدون|لا|ما|ليس|ماعندي|مافي""")
+private val CLAUSE_BREAK = Regex("""[.,،;!?؟\n]|(?<![\p{L}])(but|لكن|ولكن|بل|بس)(?![\p{L}])""")
+
+/** True when some match is not negated in its own clause: "no dumbbells" and «ما عندي دمبل» don't count. */
+private fun Regex.hasPositive(text: String): Boolean = findAll(text).any { m ->
+    val before = text.substring(maxOf(0, m.range.first - 30), m.range.first).split(CLAUSE_BREAK).last()
+    !NEGATION.containsMatchIn(before)
 }
 
 /** Quick presets for Onboarding and Profile settings. */
@@ -273,9 +290,9 @@ object ExerciseSwapEngine {
         "back_lever_tuck" to prof(Equipment.PULL_UP_BAR, MovementPattern.UPPER_BACK_PULL, JointAngle.HIGH_EXTERNAL_ROTATION, "tuck_front_lever", "dip", "pseudo_planche_push_up"),
 
         // Weighted calisthenics
-        "weighted_pull_up" to prof(Equipment.BARBELL_RACK, MovementPattern.VERTICAL_PULL, JointAngle.OVERHEAD_PRONATED, "pull_up", "weighted_chin_up", "lat_pulldown", "chin_up"),
-        "weighted_chin_up" to prof(Equipment.BARBELL_RACK, MovementPattern.VERTICAL_PULL, JointAngle.OVERHEAD_SUPINATED, "chin_up", "weighted_pull_up", "lat_pulldown", "pull_up"),
-        "weighted_dip" to prof(Equipment.BARBELL_RACK, MovementPattern.DIP_PUSH, JointAngle.DECLINE_DOWNWARD, "dip", "bench_press", "db_bench_press", "weighted_push_up"),
+        "weighted_pull_up" to prof(Equipment.PULL_UP_BAR, MovementPattern.VERTICAL_PULL, JointAngle.OVERHEAD_PRONATED, "pull_up", "weighted_chin_up", "lat_pulldown", "chin_up"),
+        "weighted_chin_up" to prof(Equipment.PULL_UP_BAR, MovementPattern.VERTICAL_PULL, JointAngle.OVERHEAD_SUPINATED, "chin_up", "weighted_pull_up", "lat_pulldown", "pull_up"),
+        "weighted_dip" to prof(Equipment.DIP_BARS_OR_BENCH, MovementPattern.DIP_PUSH, JointAngle.DECLINE_DOWNWARD, "dip", "bench_press", "db_bench_press", "weighted_push_up"),
         "weighted_push_up" to prof(Equipment.BODYWEIGHT, MovementPattern.HORIZONTAL_PUSH, JointAngle.FLAT_HORIZONTAL, "push_up", "bench_press", "db_bench_press", "pseudo_planche_push_up"),
 
         // Gym (Barbell, Dumbbells, Cables & Machines)
@@ -463,7 +480,9 @@ object ExerciseSwapEngine {
                 repsMin = oldItem.repsMin ?: 8,
                 repsMax = oldItem.repsMax ?: 12,
                 seconds = null,
-                weightKg = oldItem.weightKg ?: 0f,
+                // Never carry a load across exercises (100 kg back squat is not a 100 kg goblet squat): the first
+                // session starts from the new exercise's own history, like translateDraftItem.
+                weightKg = 0f,
                 restSeconds = max(oldItem.restSeconds, 90),
             )
         }

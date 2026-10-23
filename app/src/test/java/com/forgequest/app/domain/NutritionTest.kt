@@ -37,6 +37,16 @@ class NutritionTest {
     }
 
     @Test
+    fun weightTrendWithFewWeighInsSeesTheRealChange() {
+        // Three weigh-ins used to be averaged into the same number twice, so a real gain read as "stalled".
+        val gaining = listOf(0L to 70f, 10L to 71f, 21L to 72f)
+        assertEquals(null, Nutrition.weightTrendNote(NutritionGoal.GAIN, 0, gaining, 21))
+        // 2.5 % a week with three weigh-ins: too fast
+        val fastCut = listOf(0L to 80f, 7L to 78f, 14L to 76f)
+        assertEquals(WeightTrend.CUT_TOO_FAST, Nutrition.weightTrendNote(NutritionGoal.CUT, 0, fastCut, 14))
+    }
+
+    @Test
     fun fallsBackToPerKgWithoutHeightOrAge() {
         assertEquals(2500, Nutrition.suggestedKcal(75f, 0f, 25, true, 5))
         assertEquals(135, Nutrition.suggestedProtein(75f))

@@ -104,13 +104,22 @@ class ProgressRepository(
         val workoutDays = r.sessions.map { it.epochDay }.toSet()
         val start = minOf(workoutDays.minOrNull() ?: today, today)
         val dayTags = r.dayNotes.mapNotNull { n -> DayTag.parse(n.tag)?.let { n.epochDay to it } }.toMap()
+        val plannedDays = plan?.trainingDays ?: emptySet()
+        // Lock each finished week's target the first time it is seen, so a later plan change keeps past streaks.
+        val locked = settingsRepo.weekTargets().let { saved ->
+            if (plan == null) return@let saved
+            val fresh = StreakCalculator.weeksToLock(saved, StreakCalculator.fullTarget(plannedDays, settings.weeklyTargetOverride), start, today)
+            if (fresh.isNotEmpty()) settingsRepo.saveWeekTargets(fresh)
+            saved + fresh
+        }
         val streak = StreakCalculator.compute(
             workoutDays = workoutDays,
-            plannedTrainingDays = plan?.trainingDays ?: emptySet(),
+            plannedTrainingDays = plannedDays,
             targetOverride = settings.weeklyTargetOverride,
             startEpochDay = start,
             today = today,
             excusedDays = dayTags.keys,
+            lockedTargets = locked,
         )
 
         val now = System.currentTimeMillis()

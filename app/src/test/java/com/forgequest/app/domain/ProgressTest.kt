@@ -15,6 +15,22 @@ class StreakCalculatorTest {
     private val mon1 = day(2026, 10, 5)
 
     @Test
+    fun lockedTargetsKeepPastWeeksAfterAPlanChange() {
+        // Two full weeks on a Mon/Wed/Fri plan, then the plan grows to five days.
+        val threeDays = setOf(1, 3, 5)
+        val done = (0..1).flatMap { w -> listOf(0, 2, 4).map { mon1 + 7 * w + it } }.toSet()
+        val today = mon1 + 14
+        val locked = StreakCalculator.weeksToLock(emptyMap(), StreakCalculator.fullTarget(threeDays, 0), mon1, today)
+        assertEquals(mapOf(mon1 to 3, mon1 + 7 to 3), locked)
+        // Judged by the new plan, both past weeks would count as missed.
+        assertEquals(0, StreakCalculator.compute(done, hemoDays, 0, mon1, today).weeks)
+        val s = StreakCalculator.compute(done, hemoDays, 0, mon1, today, lockedTargets = locked)
+        assertEquals(2, s.weeks)
+        assertEquals(5, s.targetThisWeek)
+        assertTrue(StreakCalculator.weeksToLock(locked, 5, mon1, today).isEmpty())
+    }
+
+    @Test
     fun fullWeeksCountAndCurrentWeekDoesNotBreakTheStreak() {
         val done = (0..4).map { mon1 + listOf(0, 1, 2, 4, 5)[it] } + (0..4).map { mon1 + 7 + listOf(0, 1, 2, 4, 5)[it] }
         val today = mon1 + 14 // Monday of week 3, nothing done yet
