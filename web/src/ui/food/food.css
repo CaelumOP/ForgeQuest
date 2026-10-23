@@ -1,0 +1,66 @@
+.food { display: flex; flex-direction: column; gap: 10px; padding-block-end: 24px; }
+.food-has-bar { padding-block-end: 96px; }
+.food-head { display: flex; align-items: center; gap: 8px; padding-block-start: 4px; flex-wrap: wrap; }
+.food-head-fill { flex: 1; min-inline-size: 0; }
+.food-note { margin: 0; font-size: 12px; line-height: 16px; color: var(--text-2); }
+.food-day { display: flex; align-items: center; }
+.food-day-mid { flex: 1; display: flex; flex-direction: column; align-items: center; min-inline-size: 0; }
+.food-day-label { font-size: 16px; font-weight: 500; color: var(--text); }
+.food-day-back { min-block-size: 44px; padding-inline: 12px; border: 0; background: none; color: var(--teal); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.food-day .kit-iconbtn:disabled { opacity: 0.35; }
+.food .mirror { display: inline-flex; }
+[dir="rtl"] .food .mirror { transform: scaleX(-1); }
+.food-rings { display: flex; justify-content: space-around; gap: 8px; }
+.food-ring { display: flex; flex-direction: column; align-items: center; gap: 6px; min-inline-size: 0; }
+.food-ring-num { font-size: 16px; font-weight: 600; line-height: 20px; }
+.food-ring-lbl { font-size: 12px; line-height: 16px; color: var(--text-2); text-align: center; }
+.food-ring-goal { font-size: 12px; line-height: 16px; color: var(--text-2); }
+.food-week-title { font-size: 14px; font-weight: 500; margin: 0; }
+.food-week-sub { font-size: 12px; line-height: 16px; color: var(--text-2); margin: 2px 0 12px; }
+.food-week-bars { display: flex; gap: 6px; align-items: flex-end; }
+.food-week-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--text-2); }
+.food-week-col.today { color: var(--text); }
+.food-week-bar { inline-size: 100%; block-size: 32px; border-radius: 6px; background: var(--teal-track); display: flex; align-items: flex-end; overflow: hidden; }
+.food-week-fill { inline-size: 100%; background: var(--teal); }
+.food-week-fill.low { opacity: 0.55; }
+.food-tabs { display: flex; gap: 6px; overflow-x: auto; padding-block: 2px; scrollbar-width: none; }
+.food-tabs::-webkit-scrollbar { display: none; }
+.food-tab { position: relative; flex: 0 0 auto; min-block-size: 44px; padding-inline: 14px; border: 0; border-radius: 22px; background: var(--card-high); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.food-tab[aria-selected="true"] { background: var(--teal); color: var(--on-teal); }
+.food-tab-dot { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--gold); }
+.food-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.food-empty h3 { margin: 0; font-size: 15px; font-weight: 500; }
+.food-empty p { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }
+.food-row { display: flex; align-items: center; gap: 4px; border-radius: 20px; background: var(--card); padding-inline: 4px 4px; transition: background 0.15s; }
+.food-row.on { background: var(--teal-track); }
+.food-row-main { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 12px; min-block-size: 64px; padding: 8px; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.food-check { flex: 0 0 26px; inline-size: 26px; block-size: 26px; border-radius: 50%; background: var(--card-high); display: grid; place-items: center; color: var(--on-teal); }
+.food-row.on .food-check { background: var(--teal); }
+.food-row-text { min-inline-size: 0; display: flex; flex-direction: column; }
+.food-row-name { display: flex; align-items: center; gap: 4px; font-size: 16px; line-height: 22px; }
+.food-row-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.food-row-name svg { flex: 0 0 auto; color: var(--gold); }
+.food-row-sub { font-size: 13px; line-height: 18px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.food-qty { display: flex; align-items: center; }
+.food-qty output { min-inline-size: 36px; text-align: center; font-weight: 600; font-size: 15px; }
+.food-meal { display: flex; align-items: center; gap: 8px; border-radius: 16px; background: var(--card); padding-block: 4px; padding-inline: 14px 4px; }
+.food-meal-text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
+.food-meal-name { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.food-meal-sub { font-size: 13px; color: var(--text-2); }
+.food-meal-nums { display: flex; flex-direction: column; align-items: flex-end; font-size: 14px; font-weight: 500; }
+.food-kcal { color: var(--blue); }
+.food-prot { color: var(--teal); font-size: 13px; }
+.food-logged-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-block-start: 12px; }
+.food-logged-head h2 { margin: 0; font-size: 16px; font-weight: 500; }
+.food-bar { position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 20; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--bg); }
+.food-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.food-recent { display: flex; gap: 8px; overflow-x: auto; padding-block-end: 4px; }
+.food-recent .kit-chip { flex: 0 0 auto; }
+.food-switch-row { display: flex; align-items: center; justify-content: space-between; min-block-size: 44px; gap: 12px; }
+.food-switch { inline-size: 52px; block-size: 32px; border-radius: 16px; border: 0; background: var(--card-high); position: relative; cursor: pointer; padding: 0; }
+.food-switch::after { content: ""; position: absolute; inset-block-start: 4px; inset-inline-start: 4px; inline-size: 24px; block-size: 24px; border-radius: 50%; background: var(--text-2); transition: inset-inline-start 0.15s; }
+.food-switch[aria-checked="true"] { background: var(--teal); }
+.food-switch[aria-checked="true"]::after { inset-inline-start: 24px; background: var(--on-teal); }
+.food-sheet-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.food-snack { position: fixed; inset-inline: 16px; inset-block-end: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 4px 16px; padding-inline: 16px 4px; border-radius: 14px; background: var(--text); color: var(--bg); font-size: 14px; }
+.food-snack button { min-block-size: 44px; padding-inline: 14px; border: 0; background: none; color: var(--teal-on-inv, var(--bg)); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }

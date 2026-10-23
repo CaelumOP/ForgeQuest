@@ -1,0 +1,12 @@
+{
+  "food_w_scan_soon": "مسح الوجبات بالذكاء الاصطناعي قريبًا.",
+  "food_w_edit": "تعديل {1}",
+  "food_w_qty": "عدد حصص {1}",
+  "food_w_more": "إضافة حصة",
+  "food_w_less": "إزالة حصة",
+  "food_w_week_bar": "{1}: {2} غ بروتين",
+  "food_w_pinned_switch": "تثبيت في الأعلى",
+  "food_w_ring_kcal": "السعرات",
+  "food_w_over": "فوق الهدف",
+  "food_w_day_nav": "اليوم"
+}
