@@ -26,6 +26,8 @@
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- "Open Fitbit to sync" on the readiness card. -->
+        <package android:name="com.fitbit.FitbitMobile" />
     </queries>
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 

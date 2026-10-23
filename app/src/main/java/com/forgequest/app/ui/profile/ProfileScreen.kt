@@ -749,6 +749,11 @@ fun ProfileScreen(nav: NavHostController) {
                 if (connected) {
                     TextButton(onClick = { startHealthCheck() }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
                 }
+                // Switched on here but access was taken back in Health Connect: say so rather than look switched off.
+                if (settings.healthEnabled && health == com.forgequest.app.data.health.HealthState.NeedsAccess) {
+                    Text(stringResource(R.string.ready_reconnect_body), style = MaterialTheme.typography.bodySmall, color = c.gold)
+                    TextButton(onClick = { healthAccess.launch(vm.app.health.requestPermissions()) }) { Text(stringResource(R.string.ready_reconnect), color = c.gold) }
+                }
             }
             SettingsRow(
                 Icons.Rounded.PanTool, c.purple, c.purpleTrack,
@@ -837,6 +842,15 @@ fun ProfileScreen(nav: NavHostController) {
                         Spacer(Modifier.width(8.dp))
                         TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(kcal = suggested) })
                     }
+                }
+                // What the Fitbit measured against what the formula guesses, once there are two weeks of it.
+                val fitbitKcal = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day?.kcalAvg14
+                val maintain = kcalFor(NutritionGoal.MAINTAIN)
+                if (fitbitKcal != null && maintain != null && hasBodyStats) {
+                    Text(
+                        stringResource(R.string.goals_fitbit_burn, "%,d".format(maintain), "%,d".format(fitbitKcal)),
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 6.dp),
+                    )
                 }
                 SettingStepper(
                     stringResource(R.string.profile_daily_protein),

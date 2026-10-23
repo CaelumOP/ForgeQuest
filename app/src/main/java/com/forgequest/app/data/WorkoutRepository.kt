@@ -307,14 +307,18 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
 
     fun observeSets(sessionId: Long): Flow<List<SetEntity>> = sessions.observeSets(sessionId)
 
-    suspend fun startSession(day: PlanDayWithItems?): Long = db.withTransaction {
+    /** [lighter]: a low-recovery day, so each exercise with two or more sets loses its last one. */
+    suspend fun startSession(day: PlanDayWithItems?, lighter: Boolean = false): Long = db.withTransaction {
         sessions.open()?.let { return@withTransaction it.id }
         val now = System.currentTimeMillis()
         val id = sessions.insert(
             SessionEntity(planDayId = day?.day?.id, title = day?.day?.title ?: AppText.get(R.string.quick_workout_title), epochDay = Dates.today(), startedAt = now)
         )
         val sets = mutableListOf<SetEntity>()
-        day?.items?.forEach { item -> sets += buildSetsFor(id, item.position, item, exercises.byId(item.exerciseId)) }
+        day?.items?.forEach { item ->
+            val built = buildSetsFor(id, item.position, item, exercises.byId(item.exerciseId))
+            sets += if (lighter && built.size > 1) built.dropLast(1) else built
+        }
         if (sets.isNotEmpty()) sessions.insertSets(sets)
         id
     }

@@ -22,8 +22,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.MonitorHeart
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -39,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,12 +65,62 @@ import java.util.Locale
 
 /** Whoop-style card: sleep, recovery and strain dials from the Fitbit, and what that means for today. */
 @Composable
-fun ReadinessCard(state: HealthState, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit) {
-    when (state) {
+fun ReadinessCard(
+    state: HealthState,
+    enabled: Boolean,
+    onFeltGreat: (Boolean) -> Unit,
+    onOpen: (ReadinessKind) -> Unit,
+    onRefresh: () -> Unit,
+    onReconnect: () -> Unit,
+) {
+    when {
         // Not connected: nothing on Home; Profile › Your body › Fitbit readiness connects it.
-        HealthState.Unavailable, HealthState.Loading, HealthState.NeedsAccess -> Unit
-        is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, onFeltGreat, onOpen) else NoDataCard()
+        !enabled || state == HealthState.Unavailable -> Unit
+        // Same height as the full card, so Home doesn't jump when the numbers arrive.
+        state == HealthState.Loading -> {
+            FitCard {
+                Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = Fit.colors.textSecondary)
+                Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Fit.colors.textSecondary) }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        state == HealthState.NeedsAccess -> MessageCard(stringResource(R.string.ready_reconnect_body), stringResource(R.string.ready_reconnect), onReconnect)
+        state == HealthState.Failed -> MessageCard(stringResource(R.string.ready_failed_body), stringResource(R.string.ready_try_again), onRefresh)
+        state is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, onFeltGreat, onOpen, onRefresh) else NoDataCard(onRefresh)
     }
+}
+
+@Composable
+private fun MessageCard(body: String, action: String, onAction: () -> Unit) {
+    val c = Fit.colors
+    FitCard {
+        Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+        Spacer(Modifier.height(4.dp))
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        Spacer(Modifier.height(10.dp))
+        PillButton(action, onAction)
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+/** The card's title with a refresh button: after syncing the Fitbit app, one tap reads the new night. */
+@Composable
+private fun TitleRow(onRefresh: () -> Unit) {
+    val c = Fit.colors
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.weight(1f))
+        IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.ready_refresh), tint = c.textSecondary, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+/** Opens the Fitbit app so it syncs last night; nothing shows if it isn't installed. */
+@Composable
+private fun OpenFitbitButton() {
+    val context = LocalContext.current
+    val launch = remember { context.packageManager.getLaunchIntentForPackage("com.fitbit.FitbitMobile") } ?: return
+    TextButton(onClick = { runCatching { context.startActivity(launch) } }) { Text(stringResource(R.string.ready_open_fitbit), color = Fit.colors.gold) }
 }
 
 private fun recoveryColor(recovery: Int): Color = recoveryTint(recovery)
@@ -75,12 +129,12 @@ private val SleepColor = SleepTint
 private val StrainColor = StrainTint
 
 @Composable
-private fun NoDataCard() {
+private fun NoDataCard(onRefresh: () -> Unit) {
     val c = Fit.colors
     FitCard {
-        Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-        Spacer(Modifier.height(4.dp))
+        TitleRow(onRefresh)
         Text(stringResource(R.string.ready_no_data), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        OpenFitbitButton()
     }
     Spacer(Modifier.height(12.dp))
 }
@@ -110,7 +164,7 @@ private fun Dial(fraction: Float, color: Color, value: String, label: String, si
 private fun hm(min: Int) = stringResource(R.string.dur_hm, min / 60, min % 60)
 
 @Composable
-private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit) {
+private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit, onRefresh: () -> Unit) {
     val c = Fit.colors
     val recColor = recoveryColor(d.recovery)
     val (title, body) = when (d.call) {
@@ -122,8 +176,13 @@ private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit, onOpen: (Re
     }
     val target = Readiness.strainTarget(d.recovery)
     FitCard {
-        Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-        Spacer(Modifier.height(12.dp))
+        TitleRow(onRefresh)
+        // Before Fitbit has synced last night, these are yesterday's numbers: say so instead of passing them off as today's.
+        if (d.epochDay < LocalDate.now().toEpochDay() && java.time.LocalTime.now().hour >= 6) {
+            Text(stringResource(R.string.ready_yesterday), style = MaterialTheme.typography.bodySmall, color = c.gold)
+            OpenFitbitButton()
+        }
+        Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
             Dial((d.sleepPerf ?: 0) / 100f, SleepColor, d.sleepPerf?.let { "$it%" } ?: "—", stringResource(R.string.ready_sleep), 84.dp, 8.dp, false) { onOpen(ReadinessKind.SLEEP) }
             Dial(d.recovery / 100f, recColor, "${d.recovery}%", stringResource(R.string.ready_recovery), 116.dp, 11.dp, true) { onOpen(ReadinessKind.RECOVERY) }

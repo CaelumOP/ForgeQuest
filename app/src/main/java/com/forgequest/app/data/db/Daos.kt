@@ -330,17 +330,21 @@ interface BackupDao {
     @Query("SELECT * FROM chat") suspend fun chat(): List<ChatEntity>
     @Query("SELECT * FROM badges") suspend fun badges(): List<BadgeEntity>
     @Query("SELECT * FROM day_notes") suspend fun dayNotes(): List<DayNoteEntity>
+    @Query("SELECT * FROM readiness_days") suspend fun readinessDays(): List<ReadinessDayEntity>
 
     @Transaction
     suspend fun replaceAll(
         exercises: List<ExerciseEntity>, plans: List<PlanEntity>, days: List<PlanDayEntity>, items: List<PlanItemEntity>,
         sessions: List<SessionEntity>, sets: List<SetEntity>, foods: List<FoodEntity>, meals: List<MealEntity>,
         weights: List<WeightEntity>, chat: List<ChatEntity>, badges: List<BadgeEntity>, dayNotes: List<DayNoteEntity>,
+        readinessDays: List<ReadinessDayEntity>,
     ) {
         clearExercises(); clearPlans(); clearDays(); clearItems(); clearSessions(); clearSets()
         clearFoods(); clearMeals(); clearWeights(); clearChat(); clearBadges(); clearDayNotes()
         putExercises(exercises); putPlans(plans); putDays(days); putItems(items); putSessions(sessions); putSets(sets)
         putFoods(foods); putMeals(meals); putWeights(weights); putChat(chat); putBadges(badges); putDayNotes(dayNotes)
+        // Backups from before 2.8.0 have no readiness history; keep this phone's rather than wipe it.
+        if (readinessDays.isNotEmpty()) { clearReadiness(); putReadiness(readinessDays) }
     }
 
     @Query("DELETE FROM exercises") suspend fun clearExercises()
@@ -355,6 +359,8 @@ interface BackupDao {
     @Query("DELETE FROM chat") suspend fun clearChat()
     @Query("DELETE FROM badges") suspend fun clearBadges()
     @Query("DELETE FROM day_notes") suspend fun clearDayNotes()
+    @Query("DELETE FROM readiness_days") suspend fun clearReadiness()
+    @Insert suspend fun putReadiness(v: List<ReadinessDayEntity>)
 
     @Insert suspend fun putExercises(v: List<ExerciseEntity>)
     @Insert suspend fun putPlans(v: List<PlanEntity>)

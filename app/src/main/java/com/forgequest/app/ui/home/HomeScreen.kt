@@ -41,6 +41,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -105,10 +106,10 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
 
     fun logWeight(kg: Float) = viewModelScope.launch { app.progress.logWeight(kg) }
     val health = app.health.state
-    fun refreshHealth() = viewModelScope.launch { app.health.refresh() }
+    fun refreshHealth(force: Boolean = false) = viewModelScope.launch { app.health.refresh(force) }
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 
-    suspend fun startToday(day: PlanDayWithItems?) = app.workouts.startSession(day)
+    suspend fun startToday(day: PlanDayWithItems?, lighter: Boolean = false) = app.workouts.startSession(day, lighter)
 
     fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
 }
@@ -122,10 +123,12 @@ fun HomeScreen(nav: NavHostController) {
     val c = Fit.colors
     val scope = rememberCoroutineScope()
     val health by vm.health.collectAsState()
-    // Fitbit numbers through Health Connect: re-read whenever Home opens, and right after access is granted.
-    androidx.compose.runtime.LaunchedEffect(Unit) { vm.refreshHealth() }
-    // Every time the app comes to the front; the notice itself only goes online every 6 hours.
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.app.updateNotice.refresh(); onPauseOrDispose { } }
+    // Every time the app comes to the front (back from the Fitbit app too): Fitbit numbers through Health Connect, reused
+    // for a few minutes unless still waiting on last night; the update notice only goes online every 6 hours.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.refreshHealth(); vm.app.updateNotice.refresh(); onPauseOrDispose { } }
+    val healthAccess = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
+    ) { vm.refreshHealth(force = true) }
     val updateBanner by vm.app.updateNotice.banner.collectAsState()
     val whatsNew by vm.app.updateNotice.whatsNew.collectAsState()
     var weightSheet by remember { mutableStateOf(false) }
@@ -160,7 +163,10 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        ReadinessCard(health, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") })
+        ReadinessCard(
+            health, enabled = s.settings.healthEnabled, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") },
+            onRefresh = { vm.refreshHealth(force = true) }, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
+        )
         // Today's line from the owner's Gemini automation, when the bridge is on.
         if (s.settings.bridgeEnabled && s.settings.bridgeToday.isNotBlank()) {
             FitCard {
@@ -192,6 +198,17 @@ fun HomeScreen(nav: NavHostController) {
                     nav.navigate(Routes.LIVE)
                 }
             },
+            // A red or low-yellow Fitbit morning offers a lighter session or a rest day, one tap each.
+            lowRecovery = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day
+                ?.takeIf { it.hasData && it.epochDay == Dates.today() && it.call in setOf(com.forgequest.app.domain.DayCall.EASE_OFF, com.forgequest.app.domain.DayCall.RECOVER) }
+                ?.recovery,
+            onStartLighter = {
+                scope.launch {
+                    vm.startToday(today?.takeIf { !it.day.isRest }, lighter = true)
+                    nav.navigate(Routes.LIVE)
+                }
+            },
+            onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
             onOpenPlan = { nav.goToTab(Routes.WORKOUTS) },
         )
         Spacer(Modifier.height(24.dp))
@@ -487,6 +504,9 @@ private fun TodayCard(
     onCantTrain: () -> Unit,
     onStart: () -> Unit,
     onOpenPlan: () -> Unit,
+    lowRecovery: Int? = null,
+    onStartLighter: () -> Unit = {},
+    onRestToday: () -> Unit = {},
 ) {
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
@@ -533,6 +553,14 @@ private fun TodayCard(
                 doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
                 noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
                 !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
+            }
+        }
+        if (lowRecovery != null && !isRest && !hasOpenSession && !doneToday && excused == null) {
+            Spacer(Modifier.height(10.dp))
+            Text(stringResource(R.string.today_low_recovery, lowRecovery), style = MaterialTheme.typography.bodySmall, color = c.gold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                AssistChip(onClick = onStartLighter, label = { Text(stringResource(R.string.today_start_lighter)) })
+                AssistChip(onClick = onRestToday, label = { Text(stringResource(R.string.today_rest_instead)) })
             }
         }
         if (!isRest && !hasOpenSession && !doneToday && excused == null) {
