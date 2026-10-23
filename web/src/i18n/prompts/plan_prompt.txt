@@ -1,0 +1,70 @@
+You are building a training plan for my workout app.
+
+WHAT I WANT: <optional: YouTube playlist or video links, and/or a description, e.g. "4 days a week, fat loss">
+
+Before writing the plan, check you know these five things. If any is missing from what I wrote, ask me about all the
+missing ones in one short message and wait for my answers:
+1. Where I train: full gym, home with some equipment (which: dumbbells, kettlebells, pull-up bar, bands…), or bodyweight only.
+2. How many days a week I can train.
+3. My level: beginner, intermediate or advanced.
+4. My goal: muscle, strength, fat loss, or general fitness.
+5. How long one session can be.
+
+IF I GAVE YOUTUBE LINKS: watch every video and copy what the coach actually does and says on screen, not general
+knowledge. Use my five answers only to fill gaps the videos leave.
+IF I GAVE NO LINKS: design the plan yourself from my answers, using only equipment I have.
+
+What to produce: one JSON object in a single ```json code block. Shape:
+
+{"name": string, "description": string, "days": [
+  {"dayOfWeek": 1-7, "title": string, "isRest": boolean, "note": string, "items": [
+    {"exerciseId": string, "name": string, "kind": "REPS"|"HOLD"|"WEIGHTED", "muscles": [string],
+     "block": string, "circuit": boolean, "sets": int, "repsMin": int|null, "repsMax": int|null,
+     "seconds": int|null, "weightKg": number|null, "restSeconds": int, "note": string, "videoUrl": string}
+  ]}
+]}
+
+Rules:
+1. dayOfWeek: 1 = Monday … 7 = Sunday. Include all 7 days; rest days get "isRest": true, an empty items list and a short
+   note. Title training days like "Day 2 · Upper body". With links, put the coach's days in his order starting Monday.
+   Without links, spread the training days so the same muscles are not trained two days in a row.
+2. Blocks: use "Warm-up", "Core", "Main", "Legs" and "Cool-down". With links, follow how the coach structures the session;
+   without links, choose them yourself. Exercises done one after another and repeated as rounds get "circuit": true, and
+   "sets" is the number of rounds (3–4 → use 3). A warm-up done as straight sets (e.g. jumping jacks 10 × 5) gets
+   "circuit": false and "sets": 5.
+3. Reps vs holds: timed holds (planks, dead hang, carries) use "kind": "HOLD" and "seconds"; everything else uses
+   "repsMin" and "repsMax" (equal for a single number). Lifts with dumbbells, kettlebells, barbells or machines use
+   "kind": "WEIGHTED" with "weightKg": null, so I enter my own weight. A bodyweight move done with extra load (a plate on
+   the back, a weighted vest) keeps its kind and gets "weightKg" with the load. "restSeconds": 30 for circuit items,
+   60 for bodyweight straight sets, 90–120 for weighted lifts, unless the coach says otherwise.
+4. exerciseId: snake_case, English, stable. Reuse these ids when the movement is the same (same stance, same grip):
+   Bodyweight: jumping_jacks plank_shoulder_taps burpee incline_hollow_plank incline_reverse_plank hip_bridge crunch
+   superman_hold knee_scapular_push_up scapular_australian_pull_up bent_leg_bench_dip scapular_australian_chin_up
+   knee_push_up australian_pull_up reverse_grip_bench_dip australian_chin_up wide_knee_push_up dead_hang
+   incline_diamond_knee_push_up half_squat half_wide_squat half_narrow_squat calf_raise_turned_out calf_raise push_up
+   diamond_push_up pike_push_up pull_up chin_up negative_pull_up dip squat lunge bulgarian_split_squat pistol_squat
+   nordic_curl plank hollow_hold hanging_knee_raise hanging_leg_raise muscle_up l_sit handstand_hold handstand_push_up
+   tuck_planche pseudo_planche_push_up tuck_front_lever front_lever_row back_lever_tuck tibialis_raise
+   Weighted: weighted_pull_up weighted_chin_up weighted_dip weighted_push_up bench_press incline_db_press overhead_press
+   lateral_raise face_pull barbell_row lat_pulldown seated_cable_row deadlift romanian_deadlift back_squat leg_press
+   leg_extension leg_curl hip_thrust standing_calf_raise bicep_curl hammer_curl tricep_pushdown skull_crusher shrug
+   cable_crunch db_bench_press db_shoulder_press db_row db_lunge russian_twist
+   Kettlebell: kb_swing goblet_squat kb_deadlift kb_clean kb_press kb_snatch kb_row turkish_get_up farmers_carry
+   For any other movement invent a new snake_case id (e.g. "incline_pike_push_up") and fill "name" (short English
+   name), "kind" and "muscles". Muscles come only from: CHEST SHOULDERS BICEPS TRICEPS FOREARMS ABS OBLIQUES TRAPS
+   UPPER_BACK LOWER_BACK GLUTES QUADS HAMSTRINGS ADDUCTORS CALVES TIBIALIS. List the main muscle first, at most three.
+   Keep "name" in English; the app translates exercise names itself.
+5. videoUrl: only when I gave you video links. Then, for every item, the link to the exact moment the coach first
+   demonstrates that exercise, as https://www.youtube.com/watch?v=VIDEOID&t=SSSs where SSS is whole seconds from the
+   start of that day's video. Take the timestamp from the on-screen label or the first clear demonstration, not from the
+   intro; if you are unsure between two moments, choose the earlier one. If I gave no links, leave videoUrl out
+   entirely; never invent or search for a link.
+6. "description": two sentences on how rounds and rest work and when to move up a level (in the coach's own terms when
+   I gave links). "note" on an item only for a cue that matters (e.g. "3 s hold at the top"). Write "description",
+   "title" and "note" in the language I write to you in.
+7. With links: do not add exercises the coach doesn't show, do not pad sets, and do not round his numbers; if something
+   is unclear in the video, say so in a "note" rather than guessing. Without links: fit the plan to my session length
+   and level.
+
+Nothing before the JSON. After it, only if I gave links, add one short list of any timestamps you were unsure about so I
+can check them; otherwise nothing after the JSON either.
