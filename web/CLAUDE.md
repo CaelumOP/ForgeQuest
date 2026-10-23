@@ -14,7 +14,9 @@ Preact + TypeScript + Vite, Dexie (IndexedDB), vite-plugin-pwa, Vitest. No backe
 - `src/app.tsx`: hash router (`#/progress`). Never use path routes: GitHub Pages would 404 on reload.
 - `src/domain/`: pure TypeScript ports of `app/src/main/java/com/forgequest/app/domain/`. No DOM, no storage. Each file has a `.test.ts` with the Android test cases.
 - `src/data/`: Dexie tables (same field names as the Room entities, so backups move between apps), Drive, AI clients.
-- `src/ui/`: screens and components.
+- `src/routes.ts`: every screen and its `#/` route (param after the second slash). Only the manager edits it.
+- `src/ui/<feature>/`: one folder per screen group. `src/ui/kit/`: shared components (import from `../kit`); use them, don't restyle.
+- `src/data/settings.ts`, `workouts.ts`, `progress.ts`, `food.ts`, `live.ts`: the only way screens read or write data.
 - `src/i18n/`: `en.json` / `ar.json`, generated from `app/src/main/res/values*/strings.xml`. Never hand-edit; re-run the export script.
 
 ## Rules
