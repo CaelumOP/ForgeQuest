@@ -6,9 +6,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "export:android": "node scripts/export-android.mjs",
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
     "dexie": "^4.4.7",
     "preact": "^11.0.2"
   },

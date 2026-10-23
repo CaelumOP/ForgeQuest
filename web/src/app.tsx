@@ -1,25 +1,68 @@
 import { useEffect, useState } from 'preact/hooks'
 import { AiCheck } from './dev/AiCheck'
+import { t, useLang } from './i18n'
+import { InstallGate, needsInstallGate } from './ui/InstallGate'
+import { goBack, useRoute } from './ui/nav'
+import { TabBar } from './ui/TabBar'
+import { TopBar } from './ui/TopBar'
+import { AboutScreen, CoachScreen, FoodScreen, HomeScreen, NotFoundScreen, ProfileScreen, WorkoutsScreen } from './ui/screens'
 
-// Hash routes (#/progress) so GitHub Pages never 404s on a reload (decision 6).
-function useRoute() {
-  const [route, setRoute] = useState(location.hash.slice(1) || '/')
-  useEffect(() => {
-    const onChange = () => setRoute(location.hash.slice(1) || '/')
-    addEventListener('hashchange', onChange)
-    return () => removeEventListener('hashchange', onChange)
-  }, [])
-  return route
+const tabScreens: Record<string, { title: string; Screen: () => preact.JSX.Element }> = {
+  '/': { title: 'tab_home', Screen: HomeScreen },
+  '/workouts': { title: 'tab_workouts', Screen: WorkoutsScreen },
+  '/food': { title: 'tab_food', Screen: FoodScreen },
+  '/coach': { title: 'tab_coach', Screen: CoachScreen },
+  '/profile': { title: 'tab_profile', Screen: ProfileScreen },
 }
 
+const pushedScreens: Record<string, { title: string; Screen: () => preact.JSX.Element }> = {
+  '/about': { title: 'settings_group_about', Screen: AboutScreen },
+  '/check': { title: 'screen_ai_check', Screen: AiCheck },
+}
+
+const isField = (el: EventTarget | null) => el instanceof HTMLElement && el.matches('input, textarea, select')
+
+/** True while a text field has focus, so the tab bar gets out of the keyboard's way. */
+function useFieldFocused() {
+  const [focused, setFocused] = useState(false)
+  useEffect(() => {
+    const onIn = (e: FocusEvent) => setFocused(isField(e.target))
+    const onOut = (e: FocusEvent) => setFocused(isField(e.relatedTarget))
+    addEventListener('focusin', onIn)
+    addEventListener('focusout', onOut)
+    return () => {
+      removeEventListener('focusin', onIn)
+      removeEventListener('focusout', onOut)
+    }
+  }, [])
+  return focused
+}
+
+// Decided once per load: an installed app never turns back into a Safari tab.
+const gated = needsInstallGate()
+
 export function App() {
+  useLang() // re-render everything when the language changes
   const route = useRoute()
-  if (route === '/check') return <AiCheck />
+  const fieldFocused = useFieldFocused()
+  if (gated) return <InstallGate />
+
+  const tab = tabScreens[route]
+  if (tab) {
+    return (
+      <div class="shell">
+        <TopBar title={t(tab.title)} />
+        <main class="scroll"><tab.Screen /></main>
+        {!fieldFocused && <TabBar route={route} />}
+      </div>
+    )
+  }
+  const pushed = pushedScreens[route]
+  const Scroll = route === '/check' ? 'div' : 'main' // AiCheck brings its own <main>
   return (
-    <main class="page">
-      <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={96} height={96} />
-      <h1>ForgeQuest</h1>
-      <p class="muted">Coming soon. / قريبًا.</p>
-    </main>
+    <div class="shell">
+      <TopBar title={t(pushed?.title ?? 'screen_not_found')} onBack={goBack} />
+      <Scroll class="scroll">{pushed ? <pushed.Screen /> : <NotFoundScreen />}</Scroll>
+    </div>
   )
 }
