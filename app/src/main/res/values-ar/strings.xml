@@ -25,7 +25,7 @@
     </plurals>
     <string name="weight_log_title">تسجيل الوزن</string>
     <string name="weight_body">وزن الجسم</string>
-    <string name="stepper_tap_to_type">اضغط الرقم لكتابته</string>
+    <string name="stepper_tap_to_type">اضغط على الرقم لكتابته</string>
     <string name="action_save">حفظ</string>
     <string name="home_good_morning">صباح الخير</string>
     <string name="home_good_afternoon">مساء الخير</string>
@@ -149,18 +149,18 @@
     <string name="badge_protein_30_desc">حقّق هدف البروتين 30 يومًا متتاليًا</string>
     <string name="muscle_chest">الصدر</string>
     <string name="muscle_shoulders">الأكتاف</string>
-    <string name="muscle_biceps">العضلة ذات الرأسين</string>
-    <string name="muscle_triceps">العضلة ثلاثية الرؤوس</string>
+    <string name="muscle_biceps">ذات الرأسين</string>
+    <string name="muscle_triceps">ثلاثية الرؤوس</string>
     <string name="muscle_forearms">الساعد</string>
     <string name="muscle_abs">البطن</string>
     <string name="muscle_obliques">الجوانب</string>
     <string name="muscle_traps">شبه المنحرفة</string>
     <string name="muscle_upper_back">الظهريات وأعلى الظهر</string>
     <string name="muscle_lower_back">أسفل الظهر</string>
-    <string name="muscle_glutes">الألوية</string>
-    <string name="muscle_quads">الفخذ الأمامية</string>
-    <string name="muscle_hamstrings">الفخذ الخلفية</string>
-    <string name="muscle_adductors">الفخذ الداخلية</string>
+    <string name="muscle_glutes">الأرداف</string>
+    <string name="muscle_quads">مقدمة الفخذ</string>
+    <string name="muscle_hamstrings">خلفية الفخذ</string>
+    <string name="muscle_adductors">باطن الفخذ</string>
     <string name="muscle_calves">بطّة الساق</string>
     <string name="muscle_tibialis">قصبة الساق</string>
     <string name="badge_cat_consistency">الالتزام</string>
@@ -191,12 +191,12 @@
     <string name="workouts_rest_hint">تنمو العضلات في وقت الراحة. استرخِ، وتمدّد، وامشِ قليلًا.</string>
     <string name="workouts_add_exercises">إضافة تمارين لهذا اليوم</string>
     <plurals name="workouts_circuit_rounds">
-        <item quantity="zero">دائرة · 0 جولات</item>
-        <item quantity="one">دائرة · جولة واحدة</item>
-        <item quantity="two">دائرة · جولتان</item>
-        <item quantity="few">دائرة · %1$d جولات</item>
-        <item quantity="many">دائرة · %1$d جولةً</item>
-        <item quantity="other">دائرة · %1$d جولة</item>
+        <item quantity="zero">تمرين دائري · 0 جولات</item>
+        <item quantity="one">تمرين دائري · جولة واحدة</item>
+        <item quantity="two">تمرين دائري · جولتان</item>
+        <item quantity="few">تمرين دائري · %1$d جولات</item>
+        <item quantity="many">تمرين دائري · %1$d جولةً</item>
+        <item quantity="other">تمرين دائري · %1$d جولة</item>
     </plurals>
     <string name="cd_watch_form">مشاهدة الأداء الصحيح</string>
     <string name="workouts_start">بدء التمرين</string>
@@ -208,8 +208,8 @@
     <string name="map_back">الخلف</string>
     <string name="map_fully_recovered">%1$s · تعافت تمامًا</string>
     <string name="map_recovering_detail">%1$s · تعافت %2$d%% · تستعد بعد %3$d س</string>
-    <string name="map_all_fresh_tap">كل العضلات مستعدة. اضغط عضلة لعرض التفاصيل.</string>
-    <string name="map_tap_hint">اضغط عضلة لعرض التفاصيل</string>
+    <string name="map_all_fresh_tap">كل العضلات مستعدة. اضغط على عضلة لعرض التفاصيل.</string>
+    <string name="map_tap_hint">اضغط على عضلة لعرض التفاصيل</string>
     <string name="map_just_trained">مُرِّنت للتو</string>
     <string name="map_recovering">في طور التعافي</string>
     <string name="map_almost_ready">تكاد تستعد</string>
@@ -223,7 +223,7 @@
     <string name="food_cat_breakfast">الفطور</string>
     <string name="food_cat_lunch">الغداء</string>
     <string name="food_cat_dinner">العشاء</string>
-    <string name="food_cat_snacks">خفيفة</string>
+    <string name="food_cat_snacks">وجبات خفيفة</string>
     <string name="food_cat_drinks">المشروبات</string>
     <string name="food_logged_name">سُجّل %1$s</string>
     <plurals name="food_logged_items">
@@ -247,7 +247,7 @@
     <string name="food_logged_today">سُجّل اليوم</string>
     <string name="food_logged_that_day">سُجّل في ذلك اليوم</string>
     <string name="food_quick_log">تسجيل سريع</string>
-    <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد الأطعمة أعلاه، أو صوّر طبقك، أو سجّل وجبة عابرة.</string>
+    <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد من أطعمتك أعلاه، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
     <string name="food_nothing_that_day">لم يُسجَّل شيء في هذا اليوم.</string>
     <plurals name="food_log_selection">
         <item quantity="zero">تسجيل %1$d · %2$d سعرة · %3$d غ بروتين</item>
@@ -267,7 +267,7 @@
     <string name="cd_next_day">اليوم التالي</string>
     <string name="food_protein_of_goal">⁦%1$d / %2$d⁩ غ</string>
     <string name="label_protein">البروتين</string>
-    <string name="food_calories_surplus">السعرات · زيادة</string>
+    <string name="food_calories_surplus">سعرات زائدة</string>
     <string name="food_last_7_days">آخر 7 أيام</string>
     <plurals name="food_week_summary">
         <item quantity="zero">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت الهدف %3$d من %4$d يوم مسجّل</item>
@@ -299,9 +299,9 @@
     <string name="food_pin_top">تثبيت في الأعلى</string>
     <string name="ai_err_missing_key">أضف مفتاح Gemini المجاني من الملف الشخصي لاستخدام هذه الميزة.</string>
     <string name="ai_err_invalid_key">رُفض مفتاح Gemini. راجعه في الملف الشخصي ← مفتاح Gemini.</string>
-    <string name="ai_err_rate_limited">نفد الحد المجاني لـGemini مؤقتًا. أعد المحاولة بعد دقيقة.</string>
+    <string name="ai_err_rate_limited">نفد الحد المجاني لـ Gemini مؤقتًا. أعد المحاولة بعد دقيقة.</string>
     <string name="ai_err_offline">لا يوجد اتصال بالإنترنت. تحقّق من اتصالك وأعد المحاولة.</string>
-    <string name="ai_err_network">تعذّر الاتصال بـGemini. أعد المحاولة.</string>
+    <string name="ai_err_network">تعذّر الاتصال بـ Gemini. أعد المحاولة.</string>
     <string name="ai_err_timeout">لم يُجب Gemini في الوقت المحدد. أعد المحاولة.</string>
     <string name="ai_err_coach_timeout">لم يُجب المدرب في الوقت المحدد. أعد المحاولة.</string>
     <string name="ai_err_blocked">تعذّر على Gemini الإجابة عن هذا. أعد الصياغة أو جرّب صورة أخرى.</string>
@@ -338,7 +338,7 @@
     <string name="scan_logged_summary">سُجّل %1$s · %2$d سعرة · %3$d غ بروتين</string>
     <string name="cd_close">إغلاق</string>
     <string name="scan_camera_off">الوصول إلى الكاميرا متوقف</string>
-    <string name="scan_camera_denied">أُوقف إذن الكاميرا لـForgeQuest. فعّله من إعدادات التطبيق، أو اختر صورة من المعرض.</string>
+    <string name="scan_camera_denied">أُوقف إذن الكاميرا لـ ForgeQuest. فعّله من إعدادات التطبيق، أو اختر صورة من المعرض.</string>
     <string name="scan_camera_ask">اسمح باستخدام الكاميرا لتصوير وجباتك، أو اختر صورة من المعرض.</string>
     <string name="scan_open_settings">فتح إعدادات التطبيق</string>
     <string name="scan_allow_camera">السماح بالكاميرا</string>
@@ -353,7 +353,7 @@
     <string name="scan_open_profile">فتح الملف الشخصي</string>
     <string name="action_try_again">إعادة المحاولة</string>
     <string name="scan_grams_title">%1$s: كم غرامًا؟</string>
-    <string name="scan_tap_name">اضغط الاسم لتغييره</string>
+    <string name="scan_tap_name">اضغط على الاسم لتغييره</string>
     <string name="scan_hand_scaled">قُدّرت الكميات بالاستعانة بحجم يدك</string>
     <string name="cd_included">مضمّن</string>
     <string name="cd_excluded">مستبعد</string>
@@ -367,7 +367,7 @@
     <string name="scan_log_meal">تسجيل الوجبة</string>
     <string name="coach_plan_applied">طُبّقت الخطة الجديدة. راجعها في تبويب التمارين.</string>
     <string name="coach_suggest_week">راجع أسبوعي</string>
-    <string name="coach_suggest_pull_up">كيف أوصل لأول عقلة؟</string>
+    <string name="coach_suggest_pull_up">كيف أصل إلى أول عقلة؟</string>
     <string name="coach_suggest_plan">أعدّ لي خطة من 4 أيام</string>
     <string name="coach_suggest_breakfast">أفكار فطور عالي البروتين</string>
     <string name="cd_more">المزيد</string>
@@ -500,7 +500,7 @@
     <string name="profile_reminder_hour">ساعة التذكير (0–23)</string>
     <string name="profile_coach_memory">ما يتذكره المدرب</string>
     <string name="profile_memory_empty">أخبر المدرب بإصاباتك أو معدّاتك أو تفضيلاتك، وسيحفظها هنا.</string>
-    <string name="profile_memory_hint">يستعين بها في كل محادثة. اضغط سطرًا لحذفه.</string>
+    <string name="profile_memory_hint">يستعين بها في كل محادثة. اضغط على أي سطر لحذفه.</string>
     <string name="action_add">إضافة</string>
     <string name="profile_app_lock">قفل التطبيق</string>
     <string name="profile_lock_unavailable">فعّل قفل الشاشة أو البصمة على هاتفك أولًا.</string>
@@ -533,7 +533,7 @@
     <string name="profile_hemo_youtube">Hemo Calisthenics على يوتيوب</string>
     <string name="key_dialog_title">مفتاح Gemini</string>
     <string name="key_dialog_body">احصل على مفتاح مجاني من Google AI Studio والصقه هنا، ويبقى مشفّرًا على هذا الهاتف.</string>
-    <string name="key_dialog_privacy">تُرسل صور الوجبات وبيانات تمرينك إلى Google Gemini بهذا المفتاح، والمفاتيح المجانية تتيح لـGoogle استخدامها لتحسين نماذجها.</string>
+    <string name="key_dialog_privacy">تُرسل صور الوجبات وبيانات تمرينك إلى Google Gemini بهذا المفتاح، والمفاتيح المجانية تتيح لـ Google استخدامها لتحسين نماذجها.</string>
     <string name="key_dialog_open_studio">فتح Google AI Studio</string>
     <string name="key_paste">لصق المفتاح</string>
     <string name="key_paste_new">لصق مفتاح جديد</string>
@@ -556,14 +556,14 @@
     <string name="action_back">رجوع</string>
     <string name="action_continue">التالي</string>
     <string name="onb_lets_go">لنبدأ</string>
-    <string name="onb_skip">التخطي الآن</string>
+    <string name="onb_skip">ليس الآن</string>
     <string name="onb_welcome_title">مرحبًا بك في ForgeQuest</string>
     <string name="onb_welcome_body">تمرّن، وتغذَّ جيدًا، وشاهد مستواك يرتفع. أولًا، بمَ نناديك؟</string>
     <string name="onb_your_name">اسمك</string>
     <string name="onb_body_for_map">الجسم في خريطة العضلات</string>
     <string name="onb_goals_title">جسمك وأهدافك</string>
     <string name="onb_goals_body">نقترح أهدافًا بناءً على وزنك، ويمكنك تعديلها متى شئت من الملف الشخصي.</string>
-    <string name="onb_tap_number">اضغط أي رقم لكتابته.</string>
+    <string name="onb_tap_number">اضغط على أي رقم لكتابته.</string>
     <string name="onb_protein_hint">البروتين المقترح: نحو 1.8 غ لكل كيلوغرام من وزنك، وهو هدف شائع لبناء العضلات.</string>
     <string name="onb_plan_title">اختر خطة البداية</string>
     <string name="onb_plan_body">يمكنك تعديلها، أو طلب تغييرها من المدرب، أو استيراد خطتك لاحقًا.</string>
@@ -573,16 +573,16 @@
     <string name="onb_ai_title">تفعيل ميزات الذكاء الاصطناعي</string>
     <string name="onb_ai_body">يعمل تصوير الوجبات والمدرب على Google Gemini. المفتاح الشخصي مجاني، وإعداده يستغرق دقيقة تقريبًا.</string>
     <string name="onb_ai_step1">افتح Google AI Studio وسجّل الدخول بحساب Google.</string>
-    <string name="onb_ai_step2">اضغط «Create API key» ثم انسخه.</string>
+    <string name="onb_ai_step2">اضغط على «Create API key» ثم انسخه.</string>
     <string name="onb_ai_step3">الصقه أدناه.</string>
     <string name="onb_get_key">الحصول على مفتاح مجاني</string>
     <string name="onb_key_label">مفتاح Gemini API</string>
     <string name="onb_checking">جارٍ التحقق…</string>
     <string name="onb_check_key">التحقق من المفتاح</string>
-    <string name="onb_privacy">يبقى مفتاحك مشفّرًا على هذا الهاتف. تُرسل صور الوجبات وبيانات تمرينك إلى Google Gemini بهذا المفتاح، والمفاتيح المجانية تتيح لـGoogle استخدامها لتحسين نماذجها.</string>
+    <string name="onb_privacy">يبقى مفتاحك مشفّرًا على هذا الهاتف. تُرسل صور الوجبات وبيانات تمرينك إلى Google Gemini بهذا المفتاح، والمفاتيح المجانية تتيح لـ Google استخدامها لتحسين نماذجها.</string>
     <string name="cd_back">رجوع</string>
     <string name="hist_empty_title">لا توجد تمارين بعد</string>
-    <string name="hist_empty_body">تظهر التمارين المكتملة هنا. اضغط أيًّا منها لتعديل مجموعة أو حذفها.</string>
+    <string name="hist_empty_body">تظهر التمارين المكتملة هنا. اضغط على أيٍّ منها لتعديل مجموعة أو حذفها.</string>
     <string name="hist_go_workouts">الانتقال إلى التمارين</string>
     <string name="hist_month_pattern">MMMM yyyy</string>
     <plurals name="hist_sets">
@@ -618,7 +618,14 @@
     </plurals>
     <string name="action_keep">إبقاء</string>
     <string name="cd_minimize">تصغير</string>
-    <string name="live_header">%1$d:%2$02d · %3$d من %4$d مجموعات</string>
+    <plurals name="live_header">
+        <item quantity="zero">%1$d:%2$02d · %3$d من %4$d مجموعات</item>
+        <item quantity="one">%1$d:%2$02d · %3$d من مجموعة واحدة</item>
+        <item quantity="two">%1$d:%2$02d · %3$d من مجموعتين</item>
+        <item quantity="few">%1$d:%2$02d · %3$d من %4$d مجموعات</item>
+        <item quantity="many">%1$d:%2$02d · %3$d من %4$d مجموعة</item>
+        <item quantity="other">%1$d:%2$02d · %3$d من %4$d مجموعة</item>
+    </plurals>
     <string name="live_discard">إلغاء التمرين</string>
     <string name="live_add_exercise">إضافة تمرين</string>
     <string name="live_saving">جارٍ الحفظ…</string>
@@ -648,17 +655,17 @@
     <string name="cd_options">خيارات</string>
     <string name="live_add_set">إضافة مجموعة</string>
     <string name="live_remove_last_set">حذف آخر مجموعة</string>
-    <string name="live_circuit">دائرة</string>
+    <string name="live_circuit">تمرين دائري</string>
     <string name="live_circuit_hint">مجموعة من كل تمرين، ثم كرّر. اضغط مطوّلًا على مجموعة لإضافة ملاحظة.</string>
     <string name="live_round">الجولة %1$d من %2$d</string>
-    <string name="live_round_done">\" · اكتملت\"</string>
+    <string name="live_round_done">" · اكتملت"</string>
     <string name="live_add_round">إضافة جولة</string>
     <string name="live_note_title">ملاحظة لهذه المجموعة</string>
     <string name="live_note_hint">كانت سهلة؛ زد الوزن في المرة القادمة</string>
     <string name="cd_set_done">اكتملت المجموعة</string>
     <string name="live_pr">رقم قياسي</string>
     <string name="live_rest">راحة</string>
-    <string name="live_skip">تخطٍّ</string>
+    <string name="live_skip">تجاوز</string>
     <string name="live_complete">اكتمل التمرين</string>
     <string name="live_sets">مجموعات</string>
     <string name="live_xp">XP</string>
@@ -708,7 +715,7 @@
     <string name="lib_merge_title">دمج %1$s في…</string>
     <string name="lib_delete_body">لا يمكن الحذف إلا إذا لم يستخدمه أي تمرين أو خطة؛ وإلا فادمجه في تمرين آخر ليبقى سجلك سليمًا.</string>
     <string name="lib_custom">مخصص</string>
-    <string name="detail_bad_link">هذا ليس رابط ويب. الصق رابطًا يبدأ بـhttps://</string>
+    <string name="detail_bad_link">هذا ليس رابط ويب. الصق رابطًا يبدأ بـ ⁦https://⁩</string>
     <string name="metric_max_reps">أقصى تكرارات</string>
     <string name="metric_total_reps">مجموع التكرارات</string>
     <string name="metric_max_hold">أطول ثبات</string>
@@ -745,17 +752,17 @@
     <string name="plan_import_docs_hint">يقرأ مستند «ForgeQuest plan». فعّله من الملف الشخصي ← Google Drive.</string>
     <string name="cd_move_day">النقل إلى يوم آخر</string>
     <plurals name="plan_circuit_rounds">
-        <item quantity="zero">دائرة، 0 جولات</item>
-        <item quantity="one">دائرة، جولة واحدة</item>
-        <item quantity="two">دائرة، جولتان</item>
-        <item quantity="few">دائرة، %1$d جولات</item>
-        <item quantity="many">دائرة، %1$d جولةً</item>
-        <item quantity="other">دائرة، %1$d جولة</item>
+        <item quantity="zero">تمرين دائري، 0 جولات</item>
+        <item quantity="one">تمرين دائري، جولة واحدة</item>
+        <item quantity="two">تمرين دائري، جولتان</item>
+        <item quantity="few">تمرين دائري، %1$d جولات</item>
+        <item quantity="many">تمرين دائري، %1$d جولةً</item>
+        <item quantity="other">تمرين دائري، %1$d جولة</item>
     </plurals>
     <string name="plan_rest_seconds">راحة %1$d ث</string>
     <string name="plan_add_to_day">إضافة إلى %1$s</string>
     <string name="plan_ready_made_title">خطط جاهزة</string>
-    <string name="plan_previous_tap">اضغط إحداها لتعود خطتك.</string>
+    <string name="plan_previous_tap">اضغط على إحداها لتعود خطتك.</string>
     <string name="plan_src_coach">من المدرب</string>
     <string name="plan_src_docs">من Google Docs</string>
     <string name="plan_src_starter">جاهزة</string>
@@ -771,8 +778,8 @@
     <string name="plan_rounds">الجولات</string>
     <string name="plan_reps_min">التكرارات (الأدنى)</string>
     <string name="plan_reps_max">التكرارات (الأقصى)</string>
-    <string name="plan_part_circuit">جزء من دائرة</string>
-    <string name="plan_circuit_hint">تُؤدّى جولةً جولة مع تمارين الدائرة الأخرى في «%1$s»</string>
+    <string name="plan_part_circuit">ضمن تمرين دائري</string>
+    <string name="plan_circuit_hint">تُؤدّى جولةً جولة مع تمارين التمرين الدائري الأخرى في «%1$s»</string>
     <string name="plan_order">الترتيب</string>
     <string name="plan_move_up">تحريك للأعلى</string>
     <string name="plan_move_down">تحريك للأسفل</string>
@@ -857,14 +864,14 @@
     <string name="progress_legend_workout">تمرين</string>
     <string name="progress_legend_record">يوم رقم قياسي</string>
     <string name="progress_then_now">قبل والآن</string>
-    <string name="progress_then_now_hint">بداية هذه الفترة → اليوم</string>
+    <string name="progress_then_now_hint">بداية هذه الفترة ← اليوم</string>
     <string name="progress_per_week">%1$d / أسبوع</string>
     <string name="progress_all_time">منذ البداية</string>
-    <string name="progress_total_workouts">تمرين</string>
-    <string name="progress_total_reps">تكرار</string>
-    <string name="progress_total_hours">تدريب</string>
-    <string name="progress_total_records">رقم قياسي</string>
-    <string name="progress_total_lifted">مرفوعة</string>
+    <string name="progress_total_workouts">التمارين</string>
+    <string name="progress_total_reps">التكرارات</string>
+    <string name="progress_total_hours">ساعات التدريب</string>
+    <string name="progress_total_records">الأرقام القياسية</string>
+    <string name="progress_total_lifted">رُفعت إجمالًا</string>
     <string name="progress_empty_title">تبدأ رسومك بعد أول تمرين</string>
     <string name="progress_empty_body">أنهِ جلسة واحدة لتمتلئ هذه الصفحة باتجاهاتك وأرقامك القياسية وانتظامك.</string>
     <string name="progress_need_more">جلستان من %1$s ويظهر الخط.</string>
@@ -897,7 +904,7 @@
     <string name="food_carbs_of_goal">⁦%1$d / %2$d⁩ غ</string>
     <string name="label_carbs">الكربوهيدرات</string>
     <string name="label_carbs_g">الكربوهيدرات (غ)</string>
-    <string name="food_week_carbs">\" · %1$d غ كربوهيدرات\"</string>
+    <string name="food_week_carbs">" · %1$d غ كربوهيدرات"</string>
     <string name="food_g_carbs">%1$d غ كربوهيدرات</string>
     <string name="profile_track_carbs">تتبّع الكربوهيدرات</string>
     <string name="profile_daily_carbs">الكربوهيدرات اليومية</string>
@@ -964,12 +971,12 @@
     <string name="band_all_out">أقصى جهد</string>
     <string name="profile_health_title">جاهزية Fitbit</string>
     <string name="profile_health_hint">متوقف · فعّله لتحصل على التعافي والنوم والإجهاد من Fitbit عبر Health Connect</string>
-    <string name="ready_tap_hint">اضغط أي دائرة لعرض التفاصيل</string>
+    <string name="ready_tap_hint">اضغط على أي دائرة لعرض التفاصيل</string>
     <string name="profile_health_on">متصل · التعافي والنوم والإجهاد في الرئيسية</string>
     <string name="profile_body_not_set">لم تُحدَّد بعد، وهذه قيم افتراضية. اضغط + أو − لتحديد قيمك.</string>
     <string name="profile_version">الإصدار %1$s</string>
     <string name="home_good_night">طابت ليلتك</string>
-    <string name="tour_skip">تخطٍّ</string>
+    <string name="tour_skip">تجاوز</string>
     <string name="tour_next">التالي</string>
     <string name="tour_start">لنبدأ الإعداد</string>
     <string name="tour_done">تم</string>
@@ -1053,13 +1060,13 @@
     <string name="update_no_notes">إصلاحات وتحسينات.</string>
     <string name="update_now">تحديث</string>
     <string name="update_later">لاحقًا</string>
-    <string name="update_allow">اسمح لـForgeQuest بتثبيت التحديثات، ثم اضغط «تحديث» مجددًا.</string>
+    <string name="update_allow">اسمح لـ ForgeQuest بتثبيت التحديثات، ثم اضغط على «تحديث» مجددًا.</string>
     <string name="update_downloading">جارٍ تنزيل التحديث…</string>
     <string name="update_banner_title">يتوفّر تحديث جديد!</string>
     <string name="update_critical_title">تحديث مهم</string>
     <string name="update_critical_hint">يُصلح هذا التحديث مشكلةً مهمة، فيُرجى تثبيته في أقرب وقت.</string>
     <string name="update_progress">جارٍ التنزيل… %1$d%%</string>
-    <string name="update_download_failed">لم يكتمل التنزيل. تحقّق من اتصالك ثم اضغط «تحديث» مجددًا.</string>
+    <string name="update_download_failed">لم يكتمل التنزيل. تحقّق من اتصالك ثم اضغط على «تحديث» مجددًا.</string>
     <string name="whats_new_title">الجديد في الإصدار %1$s</string>
     <string name="cd_start_hold">ابدأ المؤقّت</string>
     <string name="hold_get_ready">استعدّ</string>
@@ -1091,9 +1098,9 @@
     </plurals>
     <string name="plan_change">تغيير الخطة</string>
     <string name="plan_gemini">إنشاء خطة باستخدام Gemini</string>
-    <string name="plan_gemini_copy">١. نسخ الطلب</string>
-    <string name="plan_gemini_paste">٢. لصق الخطة</string>
-    <string name="plan_gemini_info">ينسخ طلبًا لتطبيق Gemini. الصقه هناك مع روابط يوتيوب أو وصف لما تريد، فيسألك Gemini عن معدّاتك ومستواك ثم يردّ بخطة. انسخ ردّه واضغط «لصق الخطة».</string>
+    <string name="plan_gemini_copy">1. نسخ الطلب</string>
+    <string name="plan_gemini_paste">2. لصق الخطة</string>
+    <string name="plan_gemini_info">ينسخ طلبًا لتطبيق Gemini. الصقه هناك مع روابط يوتيوب أو وصف لما تريد، فيسألك Gemini عن معدّاتك ومستواك ثم يردّ بخطة. انسخ ردّه واضغط على «لصق الخطة».</string>
     <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
     <string name="plan_previous_info">خطط استخدمتها من قبل. يمكنك العودة إلى أيّ منها في أي وقت، ويبقى سجل تمارينك كما هو.</string>
     <string name="plan_docs_info">يحمّل خطة من مستند Google «ForgeQuest plan» في Drive، كالذي تكتبه أتمتة Gemini. يفتح الملف الشخصي حيث يُربط Google Drive.</string>
@@ -1184,7 +1191,7 @@
     <string name="ready_try_again">حاول مجددًا</string>
     <string name="ready_refresh">تحديث</string>
     <string name="ready_open_fitbit">افتح Fitbit للمزامنة</string>
-    <string name="ready_yesterday">هذه نتيجة الأمس، إذ لم يصل نوم الليلة الماضية إلى التطبيق بعد. زامِن Fitbit ثم اضغط زر التحديث.</string>
+    <string name="ready_yesterday">هذه نتيجة الأمس، إذ لم يصل نوم الليلة الماضية إلى التطبيق بعد. زامِن Fitbit ثم اضغط على زر التحديث.</string>
     <string name="unit_brpm">نفَسًا/دقيقة</string>
     <string name="ready_gap">يقظة بين فترتَي النوم: %1$s – %2$s</string>
     <string name="ready_earned_other_workouts">تمارين أخرى · %1$d%%</string>
@@ -1208,16 +1215,68 @@
     <!-- وجبات من Gemini -->
     <string name="meals_title">وجبات من Gemini</string>
     <string name="meals_hint">يضيف Gem «ForgeQuest Food» كل وجبة إلى المستند «ForgeQuest meals from Gemini» في Drive، وتنتظر الوجبات الجديدة تأكيدك في تبويب الطعام.</string>
-    <string name="meals_copy_gem">نسخ تعليمات الـGem</string>
+    <string name="meals_copy_gem">نسخ تعليمات الـ Gem</string>
     <string name="meals_syncing">جارٍ البحث عن وجبات…</string>
     <string name="meals_synced">وجبات جديدة من Gemini في تبويب الطعام: %d</string>
     <string name="meals_none_new">لا توجد وجبات جديدة من Gemini</string>
     <string name="meals_paste">لصق من Gemini</string>
-    <string name="meals_paste_wrong">انسخ إجابة الـGem كاملة أولًا، ثم اضغط «لصق».</string>
+    <string name="meals_paste_wrong">انسخ إجابة الـ Gem كاملة أولًا، ثم اضغط على «لصق».</string>
     <string name="meals_share_wrong">لا يبدو هذا وجبة بتنسيق ForgeQuest.</string>
     <string name="meals_already_logged">هذه الوجبة مسجَّلة من قبل.</string>
     <string name="meals_share_label">تسجيل الوجبة في ForgeQuest</string>
     <string name="meals_inbox_title">من Gemini (%d)</string>
     <string name="meals_inbox_hint">اضغط على وجبة لمراجعتها وتسجيلها.</string>
     <string name="meals_dismiss">تجاهل</string>
+
+    <!-- Arabic audit fixes -->
+    <string name="unit_ms">م.ث</string>
+    <string name="unit_bpm">نبضة/دقيقة</string>
+    <string name="unit_h">س</string>
+    <string name="ready_under_1_min">أقل من دقيقة</string>
+    <string name="progress_date_pattern">d MMM</string>
+    <string name="cd_select">تحديد</string>
+    <string name="cd_deselect">إلغاء التحديد</string>
+    <string name="cd_edit">تعديل</string>
+    <string name="picker_my_equipment">معداتي</string>
+    <string name="picker_best_swaps">أفضل البدائل المطابقة حركيًا</string>
+    <string name="profile_body_fat_optional" formatted="false">نسبة الدهون % (اختياري)</string>
+    <string name="onb_available_equipment">معدات التدريب المتوفرة لديك</string>
+    <string name="live_tag_easy">سهل · RIR 3+</string>
+    <string name="live_tag_solid">متوازن · RIR 1-2</string>
+    <string name="live_tag_max">أقصى جهد · RIR 0</string>
+    <string name="live_tag_max_note">أقصى جهد · RIR 0</string>
+    <string name="live_tag_joint">انزعاج مفصل</string>
+    <string name="live_tag_joint_note">ألم خفيف / انزعاج</string>
+    <plurals name="home_month_workouts">
+        <item quantity="zero">لا تمارين</item>
+        <item quantity="one">تمرين واحد</item>
+        <item quantity="two">تمرينان</item>
+        <item quantity="few">%1$d تمارين</item>
+        <item quantity="many">%1$d تمرينًا</item>
+        <item quantity="other">%1$d تمرين</item>
+    </plurals>
+    <plurals name="home_month_records">
+        <item quantity="zero">لا أرقام قياسية</item>
+        <item quantity="one">رقم قياسي واحد</item>
+        <item quantity="two">رقمان قياسيان</item>
+        <item quantity="few">%1$d أرقام قياسية</item>
+        <item quantity="many">%1$d رقمًا قياسيًا</item>
+        <item quantity="other">%1$d رقم قياسي</item>
+    </plurals>
+    <plurals name="plan_adapted_swaps">
+        <item quantity="zero">لم يُستبدل أي تمرين</item>
+        <item quantity="one">استُبدل تمرين واحد ليناسب معداتك</item>
+        <item quantity="two">استُبدل تمرينان ليناسبا معداتك</item>
+        <item quantity="few">استُبدلت %1$d تمارين لتناسب معداتك</item>
+        <item quantity="many">استُبدل %1$d تمرينًا ليناسب معداتك</item>
+        <item quantity="other">استُبدل %1$d تمرين ليناسب معداتك</item>
+    </plurals>
+    <plurals name="plan_adapt_button">
+        <item quantity="zero">تكييف مع معداتي</item>
+        <item quantity="one">تكييف مع معداتي (استبدال تمرين واحد)</item>
+        <item quantity="two">تكييف مع معداتي (استبدال تمرينين)</item>
+        <item quantity="few">تكييف مع معداتي (استبدال %1$d تمارين)</item>
+        <item quantity="many">تكييف مع معداتي (استبدال %1$d تمرينًا)</item>
+        <item quantity="other">تكييف مع معداتي (استبدال %1$d تمرين)</item>
+    </plurals>
 </resources>

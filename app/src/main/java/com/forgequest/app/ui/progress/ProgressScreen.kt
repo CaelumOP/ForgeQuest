@@ -69,6 +69,7 @@ import com.forgequest.app.ui.components.TrendChart
 import com.forgequest.app.ui.components.rememberReveal
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.Manrope
+import com.forgequest.app.ui.theme.NumberFont
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -130,7 +131,8 @@ fun ProgressScreen(nav: NavHostController) {
     val unit = s.settings.weightUnit
     val d = remember(s, range) { Derived(s, range, unit) }
     val reveal = rememberReveal(range)
-    val dateFmt = remember { DateTimeFormatter.ofPattern("MMM d") }
+    val datePattern = stringResource(R.string.progress_date_pattern)
+    val dateFmt = remember(datePattern) { DateTimeFormatter.ofPattern(datePattern) }
     val dateLabel: (Long) -> String = { LocalDate.ofEpochDay(it).format(dateFmt) }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
@@ -203,7 +205,7 @@ fun ProgressScreen(nav: NavHostController) {
                 Row(Modifier.fillMaxWidth()) {
                     Total("%,d".format(d.lifetime.workouts), stringResource(R.string.progress_total_workouts), Modifier.weight(1f))
                     Total("%,d".format(d.lifetime.reps), stringResource(R.string.progress_total_reps), Modifier.weight(1f))
-                    Total("${d.lifetime.minutes / 60} h", stringResource(R.string.progress_total_hours), Modifier.weight(1f))
+                    Total("${d.lifetime.minutes / 60} ${stringResource(R.string.unit_h)}", stringResource(R.string.progress_total_hours), Modifier.weight(1f))
                     Total("%,d".format(d.lifetime.records), stringResource(R.string.progress_total_records), Modifier.weight(1f))
                 }
                 if (d.lifetime.kgLifted > 0f) {
@@ -283,13 +285,14 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
     val c = Fit.colors
     data class Tile(val label: String, val value: String, val delta: String?, val positive: Boolean, val spark: List<Float>, val color: Color)
     val tiles = mutableListOf<Tile>()
+    val sUnit = stringResource(R.string.unit_s)
     d.topIds.take(3).forEach { id ->
         val ex = s.exercises[id] ?: return@forEach
         val pts = d.series[id].orEmpty()
         val latest = pts.lastOrNull()?.value ?: return@forEach
         val pair = Trends.thenNow(pts, d.from)
-        val delta = pair?.let { (then, now) -> formatDelta(now - then, ex.kind, unit) }
-        tiles += Tile(stringResource(R.string.progress_tile_best, ex.name), formatValue(latest, ex.kind, unit), delta, pair != null && pair.second > pair.first, d.inRange(pts).ifEmpty { pts }.takeLast(12).map { it.value }, c.chartStrength)
+        val delta = pair?.let { (then, now) -> formatDelta(now - then, ex.kind, unit, sUnit) }
+        tiles += Tile(stringResource(R.string.progress_tile_best, ex.name), formatValue(latest, ex.kind, unit, sUnit), delta, pair != null && pair.second > pair.first, d.inRange(pts).ifEmpty { pts }.takeLast(12).map { it.value }, c.chartStrength)
     }
     if (d.weightAvg.size >= 2) {
         val pts = d.inRange(d.weightAvg).ifEmpty { d.weightAvg.takeLast(2) }
@@ -317,7 +320,7 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
                     Text(t.label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(t.value, fontFamily = Manrope, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                        Text(t.value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
                         t.delta?.let { Spacer(Modifier.width(6.dp)); DeltaChip(it, t.positive) }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -364,10 +367,11 @@ private fun ThenNowCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit) {
     val c = Fit.colors
     data class Pair3(val then: String, val now: String, val label: String, val up: Boolean)
     val rows = mutableListOf<Pair3>()
+    val sUnit = stringResource(R.string.unit_s)
     d.topIds.take(3).forEach { id ->
         val ex = s.exercises[id] ?: return@forEach
         val (then, now) = Trends.thenNow(d.series[id].orEmpty(), d.from) ?: return@forEach
-        rows += Pair3(formatValue(then, ex.kind, unit), formatValue(now, ex.kind, unit), ex.name, now > then)
+        rows += Pair3(formatValue(then, ex.kind, unit, sUnit), formatValue(now, ex.kind, unit, sUnit), ex.name, now > then)
     }
     if (d.weeklyWorkouts.size >= 2) {
         val then = d.weeklyWorkouts.first(); val now = d.weeklyWorkouts.last()
@@ -381,11 +385,11 @@ private fun ThenNowCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit) {
         Spacer(Modifier.height(6.dp))
         rows.forEach { r ->
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(r.then, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = c.textSecondary, modifier = Modifier.weight(1f))
-                Text("→", fontWeight = FontWeight.Bold, color = if (r.up) c.chartGain else c.textSecondary)
+                Text(r.then, fontFamily = NumberFont, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = c.textSecondary, modifier = Modifier.weight(1f))
+                Text(if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) "←" else "→", fontWeight = FontWeight.Bold, color = if (r.up) c.chartGain else c.textSecondary)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1.4f)) {
-                    Text(r.now, fontFamily = Manrope, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = if (r.up) c.chartGain else c.textPrimary)
+                    Text(r.now, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = if (r.up) c.chartGain else c.textPrimary)
                     Text(r.label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -397,7 +401,7 @@ private fun ThenNowCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit) {
 private fun Total(value: String, label: String, modifier: Modifier) {
     val c = Fit.colors
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontFamily = Manrope, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1)
+        Text(value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1)
         Text(label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1)
     }
 }
@@ -411,17 +415,17 @@ private fun LegendDot(color: Color, label: String) {
     }
 }
 
-private fun formatValue(v: Float, kind: ExerciseKind, unit: WeightUnit): String = when (kind) {
-    ExerciseKind.HOLD -> "${v.roundToInt()} s"
+private fun formatValue(v: Float, kind: ExerciseKind, unit: WeightUnit, sUnit: String): String = when (kind) {
+    ExerciseKind.HOLD -> "${v.roundToInt()} $sUnit"
     ExerciseKind.WEIGHTED -> unit.format(v, 0)
     ExerciseKind.REPS -> "${v.roundToInt()}"
 }
 
-private fun formatDelta(diff: Float, kind: ExerciseKind, unit: WeightUnit): String? {
+private fun formatDelta(diff: Float, kind: ExerciseKind, unit: WeightUnit, sUnit: String): String? {
     if (abs(diff) < 0.01f) return null
     val sign = if (diff > 0) "+" else "−"
     return when (kind) {
-        ExerciseKind.HOLD -> "$sign${abs(diff).roundToInt()} s"
+        ExerciseKind.HOLD -> "$sign${abs(diff).roundToInt()} $sUnit"
         ExerciseKind.WEIGHTED -> "$sign${unit.number(abs(diff), 0)} ${unit.label}"
         ExerciseKind.REPS -> "$sign${abs(diff).roundToInt()}"
     }

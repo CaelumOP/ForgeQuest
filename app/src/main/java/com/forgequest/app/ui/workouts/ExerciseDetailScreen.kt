@@ -168,6 +168,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             Spacer(Modifier.height(12.dp))
             if (history.isNotEmpty()) {
                 FitCard {
+                    val sUnit = stringResource(R.string.unit_s)
                     Text(stringResource(R.string.detail_history), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     history.reversed().take(20).forEach { (session, sets) ->
                         Spacer(Modifier.height(4.dp))
@@ -182,7 +183,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                             Text(
                                 sets.joinToString("  ") { set ->
                                     when (kind) {
-                                        ExerciseKind.HOLD -> "${set.seconds}s"
+                                        ExerciseKind.HOLD -> "${set.seconds}$sUnit"
                                         ExerciseKind.WEIGHTED -> "${set.reps}×${unit.number(set.weightKg ?: 0f)}"
                                         ExerciseKind.REPS -> "${set.reps}"
                                     }

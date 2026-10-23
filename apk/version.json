@@ -1,6 +1,6 @@
 {
-  "versionCode": 12,
-  "versionName": "2.9.0",
+  "versionCode": 13,
+  "versionName": "2.9.1",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Meals from Gemini: a dedicated Gemini Gem estimates your meal photos and adds them to a Google Doc, and new meals wait under From Gemini on the Food tab for you to confirm. You can also share a Gem answer straight to ForgeQuest or paste it on the camera screen, and the same meal is never logged twice. Gemini meals are saved to My foods by default so you build your own food list. Also fixes a crash when starting or resuming a workout."
+  "notes": "Better Arabic: charts and bars now line up with the right day in Arabic, day names are no longer cut off, arrows point the right way, and units, labels and wording read as proper formal Arabic. Also fixes stray quote marks and number styles in a few Arabic screens."
 }

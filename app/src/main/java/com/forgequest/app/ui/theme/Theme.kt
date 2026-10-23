@@ -138,6 +138,11 @@ val Manrope = FontFamily(
     Font(R.font.manrope, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
 )
 
+/** Manrope for numbers, but the system face in Arabic, where the text often carries an Arabic unit Manrope lacks. */
+val NumberFont: FontFamily
+    @Composable @ReadOnlyComposable get() =
+        if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar") FontFamily.Default else Manrope
+
 private val FitTypography = Typography(
     displaySmall = TextStyle(fontFamily = Manrope, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
     headlineMedium = TextStyle(fontFamily = Manrope, fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp),

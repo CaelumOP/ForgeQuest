@@ -213,7 +213,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(stringResource(R.string.live_header, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(pluralStringResource(R.plurals.live_header, sets.size, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         nextSet?.let { n -> exercises[n.exerciseId]?.let { Text(stringResource(R.string.live_now, it.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
                     }
                     IconButton(onClick = { focus = !focus; prefs.edit().putBoolean("focus", focus).apply() }) {
@@ -616,24 +616,12 @@ private fun SetRow(
 fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     val c = Fit.colors
     var text by remember { mutableStateOf(initial) }
-    val isArabic = Locale.getDefault().language == "ar"
-    val quickTags = remember(isArabic) {
-        if (isArabic) {
-            listOf(
-                "سهل · RIR 3+" to "سهل · RIR 3+",
-                "متوازن · RIR 1-2" to "متوازن · RIR 1-2",
-                "أقصى جهد · RIR 0" to "أقصى جهد · RIR 0",
-                "انزعاج مفصل" to "ألم خفيف / انزعاج",
-            )
-        } else {
-            listOf(
-                "Easy · RIR 3+" to "Easy · RIR 3+",
-                "Solid · RIR 1-2" to "Solid · RIR 1-2",
-                "Max · RIR 0" to "Max effort · RIR 0",
-                "Joint niggle" to "Joint twinge / pain",
-            )
-        }
-    }
+    val quickTags = listOf(
+        stringResource(R.string.live_tag_easy) to stringResource(R.string.live_tag_easy),
+        stringResource(R.string.live_tag_solid) to stringResource(R.string.live_tag_solid),
+        stringResource(R.string.live_tag_max) to stringResource(R.string.live_tag_max_note),
+        stringResource(R.string.live_tag_joint) to stringResource(R.string.live_tag_joint_note),
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = c.card,

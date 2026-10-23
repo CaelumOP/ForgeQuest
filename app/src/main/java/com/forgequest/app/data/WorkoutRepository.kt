@@ -90,7 +90,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 if (existing.custom) continue
                 val ar = com.forgequest.app.data.seed.ExerciseNamesAr.byId[builtIn.id]
                 val wantedName = if (arabic && ar != null) ar else builtIn.name
-                val nameNeedsUpdate = existing.name != wantedName && (existing.name == ar || existing.name == builtIn.name)
+                val nameNeedsUpdate = existing.name != wantedName && (existing.name == ar || existing.name == builtIn.name || existing.name == com.forgequest.app.data.seed.ExerciseNamesAr.previous[builtIn.id])
                 val videoNeedsUpdate = existing.videoUrl == null && builtIn.videoUrl != null
                 if (nameNeedsUpdate || videoNeedsUpdate) {
                     toUpsert += existing.copy(

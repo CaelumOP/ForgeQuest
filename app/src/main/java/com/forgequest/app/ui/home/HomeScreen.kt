@@ -90,6 +90,7 @@ import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.Manrope
+import com.forgequest.app.ui.theme.NumberFont
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -289,7 +290,7 @@ private fun NutritionRings(s: ProgressSnapshot) {
                 // Units under the numbers: without them "66 / 1,005" read like a score (Google Fit labels its ring centre too).
                 Text("${s.today.protein.roundToInt()}", fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
                 Text(stringResource(R.string.home_center_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Text(stringResource(R.string.home_center_kcal, "%,d".format(s.today.kcal)), fontFamily = Manrope, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.home_center_kcal, "%,d".format(s.today.kcal)), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -362,7 +363,7 @@ private fun ProgressCard(s: ProgressSnapshot, onOpen: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.home_progress_card), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Text(
-                    "$monthWorkouts ${stringResource(R.string.progress_total_workouts)} · $monthRecords ${stringResource(R.string.progress_total_records)}",
+                    pluralStringResource(R.plurals.home_month_workouts, monthWorkouts, monthWorkouts) + " · " + pluralStringResource(R.plurals.home_month_records, monthRecords, monthRecords),
                     style = MaterialTheme.typography.titleSmall, color = c.textPrimary,
                 )
                 Text(stringResource(R.string.home_progress_open), style = MaterialTheme.typography.labelMedium, color = c.chartGain)

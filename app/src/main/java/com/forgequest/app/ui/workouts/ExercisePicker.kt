@@ -164,7 +164,7 @@ fun ExercisePickerSheet(
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (configuredEq.isNotEmpty() && configuredEq.size < Equipment.entries.size) {
                     ChoiceChip(
-                        text = if (isArabic) "معداتي" else "My equipment",
+                        text = stringResource(R.string.picker_my_equipment),
                         selected = onlyMyEquipment && selectedEquipment == null,
                         onClick = { onlyMyEquipment = !onlyMyEquipment; selectedEquipment = null },
                     )
@@ -215,7 +215,7 @@ fun ExercisePickerSheet(
                     if (topSwaps.isNotEmpty()) {
                         item(key = "header_swaps") {
                             Text(
-                                text = if (isArabic) "أفضل البدائل الميكانيكية الحيوية" else "Best biomechanical matches",
+                                text = stringResource(R.string.picker_best_swaps),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = c.teal,
                                 fontWeight = FontWeight.SemiBold,

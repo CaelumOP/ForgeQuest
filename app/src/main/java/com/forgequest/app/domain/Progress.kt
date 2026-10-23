@@ -29,6 +29,13 @@ object Dates {
 
     fun dayName(dayOfWeek: Int): String =
         DayOfWeek.of(dayOfWeek).getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+
+    /** "Mon" in English; the full name in Arabic, where cutting it leaves only «ال». */
+    fun dayAbbrev(dayOfWeek: Int): String = dayName(dayOfWeek).let { if (java.util.Locale.getDefault().language == "ar") it else it.take(3) }
+
+    /** "Mon" in English, one letter in Arabic: for tight day strips. */
+    fun dayChip(dayOfWeek: Int): String =
+        if (java.util.Locale.getDefault().language == "ar") shortDayLetters[dayOfWeek - 1] else dayName(dayOfWeek).take(3)
 }
 
 // ---------------------------------------------------------------- Weekly streak

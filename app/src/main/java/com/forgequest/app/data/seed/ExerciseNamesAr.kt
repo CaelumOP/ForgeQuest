@@ -9,7 +9,7 @@ object ExerciseNamesAr {
         "incline_hollow_plank" to "البلانك المجوّف المائل",
         "incline_reverse_plank" to "البلانك العكسي المائل",
         "hip_bridge" to "جسر الورك",
-        "crunch" to "الطحن البطني",
+        "crunch" to "الكرانش",
         "superman_hold" to "ثبات سوبرمان",
         "knee_scapular_push_up" to "ضغط لوح الكتف على الركبتين",
         "scapular_australian_pull_up" to "سحب أسترالي للوح الكتف",
@@ -75,9 +75,9 @@ object ExerciseNamesAr {
         "bicep_curl" to "ثني الذراع بالدمبل",
         "hammer_curl" to "ثني المطرقة",
         "tricep_pushdown" to "دفع الترايسبس للأسفل",
-        "skull_crusher" to "تمرين الجمجمة",
+        "skull_crusher" to "تمديد الترايسبس مستلقيًا",
         "shrug" to "هزّ الكتفين",
-        "cable_crunch" to "الطحن البطني بالكابل",
+        "cable_crunch" to "الكرانش بالكابل",
         "tibialis_raise" to "رفع مقدمة القدم",
         "kb_swing" to "أرجحة الكيتل بيل",
         "goblet_squat" to "القرفصاء الكأسية",
@@ -93,5 +93,12 @@ object ExerciseNamesAr {
         "db_row" to "التجديف بالدمبل",
         "db_lunge" to "الطعن بالدمبل",
         "russian_twist" to "الالتواء الروسي",
+    )
+
+    /** Names shipped before, so installs that still show them get the new name. */
+    val previous = mapOf(
+        "crunch" to "الطحن البطني",
+        "skull_crusher" to "تمرين الجمجمة",
+        "cable_crunch" to "الطحن البطني بالكابل",
     )
 }
