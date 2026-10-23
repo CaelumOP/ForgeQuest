@@ -356,11 +356,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     after = after,
                     nextUp = nextUp,
                 )
-                // In its own job so a slow or failed debrief never holds up the summary.
-                if (snap.settings.debriefEnabled) viewModelScope.launch {
+                // In its own job so a slow or failed debrief never holds up the summary. App scope, not viewModelScope:
+                // leaving this screen must not cancel it, since it saves to the workout's journal entry.
+                if (snap.settings.debriefEnabled) {
                     debriefLoading.value = true
-                    debrief.value = app.coach.generateDebrief(s.id)
-                    debriefLoading.value = false
+                    app.appScope.launch {
+                        debrief.value = app.coach.generateDebrief(s.id)
+                        debriefLoading.value = false
+                    }
                 }
             } finally {
                 finishing.value = false

@@ -340,6 +340,9 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
+            com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)?.let { d ->
+                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(d) }
+            }
             items(groups, key = { it.first().itemPosition }) { group ->
                 val ex = exercises[group.first().exerciseId]
                 val kind = ex?.kind ?: ExerciseKind.REPS

@@ -2,5 +2,5 @@
   "versionCode": 15,
   "versionName": "2.9.3",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Smarter suggestions: after a painful set on a light weight, the app can raise the load again later. Workouts you log for a past day no longer confuse the next suggestion or hide personal records. Notes like \"easy\" or «صعب» on old sets now count the same way everywhere. Plus behind-the-scenes cleanups and more tests."
+  "notes": "The coach's workout debrief now finishes even if you leave the screen, and you can read the full debrief any time on that workout's page in your journal. Smarter suggestions: after a painful set on a light weight, the app can raise the load again later. Workouts you log for a past day no longer confuse the next suggestion or hide personal records. Notes like \"easy\" or «صعب» on old sets now count the same way everywhere. Plus behind-the-scenes cleanups and more tests."
 }

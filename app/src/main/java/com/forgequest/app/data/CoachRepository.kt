@@ -349,7 +349,8 @@ class CoachRepository(
             val fromGroq = if (groqKey.isBlank()) null else suspendRunCatching { groq.streamChat(groqKey, groqModel(), system, turns) {} }.getOrNull()
             fromGroq ?: gemini.generate(requireKey(), models(), system, turns, jsonOutput = true, fast = true)
         } ?: return@suspendRunCatching null
-        WorkoutDebrief.parse(text)?.also { d -> db.sessions().update(session.copy(debrief = WorkoutDebrief.encode(d))) }
+        // Re-read the workout so a note added while the coach was writing isn't overwritten.
+        WorkoutDebrief.parse(text)?.also { d -> db.sessions().byId(sessionId)?.let { db.sessions().update(it.copy(debrief = WorkoutDebrief.encode(d))) } }
     }.getOrNull()
 
     /** "Tuesday: Dips → Push-up" lines for a change-only card, in the app language. */
