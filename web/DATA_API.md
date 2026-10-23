@@ -25,4 +25,4 @@ getFoods() / useFoods(); getMealsOn(day) / useMealsOn(day); saveFood(row); delet
 Card, SectionHeader, Button(variant filled|tonal|text, loading), IconButton(label), Chip, ChipGroup(single|multiple), ListRow(title, subtitle, icon, trailing, href|onClick), Stat(value, label, accent), EmptyState, Ring(value 0..1, color/track CSS var names, label), LineChart / BarChart(data {label, value}[], title), Sheet(open, onClose, title), Dialog(confirm), toast(msg), TextField, NumberField, Stepper, Markdown(text). Icons: src/ui/icons.tsx.
 
 ## Strings
-t(key, ...args) and plural(key, n) from src/i18n. Use the Android keys (src/i18n/en.json). Add web-only keys to web-en.json / web-ar.json in formal Arabic, prefixed with your feature (e.g. "live_…").
+t(key, ...args) and plural(key, n) from src/i18n. Use the Android keys (src/i18n/en.json). Web-only keys go in YOUR OWN pair `src/i18n/web/<feature>.en.json` + `.ar.json` (formal Arabic), keys prefixed with your feature (e.g. "live_…"). Never edit another feature's file.

@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'preact/hooks'
 import en from './en.json'
 import ar from './ar.json'
-import webEn from './web-en.json'
-import webAr from './web-ar.json'
 
 export type Lang = 'en' | 'ar'
 type Entry = string | Record<string, string>
 type Table = Record<string, Entry>
 
 // Web-only strings (install gate, etc.) override the generated Android tables.
+// Web-only strings: one file pair per feature in ./web/<feature>.<lang>.json, so workers never share a file.
+const webFiles = import.meta.glob<Table>('./web/*.json', { eager: true, import: 'default' })
+function webTable(lang: Lang): Table {
+  return Object.assign({}, ...Object.entries(webFiles).filter(([p]) => p.endsWith(`.${lang}.json`)).map(([, t]) => t))
+}
+
 const tables: Record<Lang, Table> = {
-  en: { ...(en as Table), ...webEn },
-  ar: { ...(ar as Table), ...webAr },
+  en: { ...(en as Table), ...webTable('en') },
+  ar: { ...(ar as Table), ...webTable('ar') },
 }
 
 const KEY = 'fq.lang'
