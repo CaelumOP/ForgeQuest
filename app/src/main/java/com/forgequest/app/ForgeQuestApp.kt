@@ -42,6 +42,7 @@ class AppContainer(context: Context) {
     val updates = com.forgequest.app.data.update.UpdateChecker(context, http)
     val updateNotice = com.forgequest.app.data.update.UpdateNotice(context, updates, appScope)
     val bridge = com.forgequest.app.data.bridge.GeminiBridge(context, settings, db, coach, health, drive)
+    val meals = com.forgequest.app.data.bridge.MealInbox(context, db, drive)
     val haptics = Haptics(context)
     val notifier = Notifier(context)
 
@@ -64,7 +65,13 @@ class ForgeQuestApp : Application() {
         container.appScope.launch { com.forgequest.app.data.suspendRunCatching { container.food.deleteOrphanPhotos() } }
         container.appScope.launch { container.settings.settings.collect { container.haptics.enabled = it.hapticsEnabled } }
         DriveSyncWorker.schedule(this)
-        container.appScope.launch { if (container.settings.current().bridgeEnabled) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(this@ForgeQuestApp) }
+        container.appScope.launch { container.settings.current().let { if (it.bridgeEnabled || it.geminiMealsEnabled) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(this@ForgeQuestApp) } }
+        // New meals from the Gemini Gem wait in the Food tab inbox by the time the person looks.
+        container.appScope.launch {
+            if (container.settings.current().geminiMealsEnabled) {
+                container.drive.silentToken()?.let { token -> com.forgequest.app.data.suspendRunCatching { container.meals.sync(token) } }
+            }
+        }
         container.appScope.launch { ReminderWorker.schedule(this@ForgeQuestApp, container.settings.current().reminderHour) }
     }
 }

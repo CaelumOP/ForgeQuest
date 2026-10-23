@@ -398,6 +398,25 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     suspend fun bridgeData(): String = app.bridge.dataText()
 
+    // ------------------------------------------------------------ Meals from the Gemini Gem
+
+    fun setGeminiMeals(on: Boolean) = viewModelScope.launch {
+        app.settings.update { it.copy(geminiMealsEnabled = on) }
+        val s = app.settings.current()
+        if (s.bridgeEnabled || s.geminiMealsEnabled) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(app.appContext)
+        else com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
+        if (on) syncMeals()
+    }
+
+    fun syncMeals() = withDrive(app.str(R.string.meals_syncing)) { token ->
+        if (app.settings.current().driveEmail.isBlank()) {
+            val email = app.drive.accountEmail(token)
+            app.settings.update { it.copy(driveEmail = email.ifBlank { app.str(R.string.drive_connected) }) }
+        }
+        val added = app.meals.sync(token)
+        message.value = if (added > 0) app.str(R.string.meals_synced, added) else app.str(R.string.meals_none_new)
+    }
+
     fun pasteBridgeReply(text: String) = viewModelScope.launch {
         val reply = app.bridge.applyText(text)
         message.value = if (reply.ok) app.str(R.string.bridge_read_ok) else app.str(R.string.bridge_read_issues, reply.issues.joinToString(", "))
@@ -1075,6 +1094,23 @@ fun ProfileScreen(nav: NavHostController) {
                             }
                         }, tint = c.textSecondary)
                         TonalPill(stringResource(R.string.bridge_paste), onClick = { pasteOpen = true }, tint = c.textSecondary)
+                    }
+                }
+            }
+            FitCard {
+                SwitchHeader(Icons.Rounded.Restaurant, c.teal, c.tealTrack, stringResource(R.string.meals_title), stringResource(R.string.meals_hint), settings.geminiMealsEnabled) { vm.setGeminiMeals(it) }
+                if (settings.geminiMealsEnabled) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncMeals)
+                        TonalPill(stringResource(R.string.meals_copy_gem), onClick = {
+                            // The person's own hand size goes in as the ruler, or the line goes when it isn't set.
+                            val hand = if (settings.handLengthCm > 0f) "MY HAND: length ${settings.handLengthCm} cm, palm width ${settings.palmWidthCm} cm." else ""
+                            val prompt = context.resources.openRawResource(R.raw.food_gem_prompt).bufferedReader().use { it.readText() }
+                                .replace(Regex("MY HAND:[^\n]*\n"), if (hand.isBlank()) "" else hand + " When my hand is in the photo, use it as an exact ruler.\n")
+                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                            context.toast(context.getString(R.string.bridge_prompt_copied))
+                        })
                     }
                 }
             }

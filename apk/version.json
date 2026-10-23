@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "2.8.1",
+  "versionCode": 12,
+  "versionName": "2.9.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "The What's new popup now shows the real notes for each version instead of old 2.6 notes. Includes everything from 2.8.0: Fitbit sleep and readiness fixes, recovery and sleep trend in Progress, lighter-session or rest-day choice on low-recovery mornings, other apps' workouts under Strain, Fitbit calorie average in Goals."
+  "notes": "Meals from Gemini: a dedicated Gemini Gem estimates your meal photos and adds them to a Google Doc, and new meals wait under From Gemini on the Food tab for you to confirm. You can also share a Gem answer straight to ForgeQuest or paste it on the camera screen, and the same meal is never logged twice. Gemini meals are saved to My foods by default so you build your own food list. Also fixes a crash when starting or resuming a workout."
 }

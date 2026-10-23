@@ -62,6 +62,8 @@ data class Settings(
     val bridgeLastReadAt: Long = 0,
     val bridgeToday: String = "",
     val bridgeIssues: String = "",
+    /** Meals from the owner's "ForgeQuest Food" Gem, read from a Drive Doc into the Food tab inbox. */
+    val geminiMealsEnabled: Boolean = false,
     val lastDocImportModified: Long = 0,
     /** The person separately allowed reading their Drive to import a "Workout Plan" doc. */
     val driveDocsEnabled: Boolean = false,
@@ -134,6 +136,7 @@ class SettingsRepository(private val context: Context) {
         val bridgeLastReadAt = longPreferencesKey("bridge_last_read_at")
         val bridgeToday = stringPreferencesKey("bridge_today")
         val bridgeIssues = stringPreferencesKey("bridge_issues")
+        val geminiMeals = booleanPreferencesKey("gemini_meals_enabled")
         val coachNotes = stringPreferencesKey("coach_notes")
         val driveDocs = booleanPreferencesKey("drive_docs_enabled")
         val theme = stringPreferencesKey("theme")
@@ -191,6 +194,7 @@ class SettingsRepository(private val context: Context) {
             bridgeLastReadAt = this[K.bridgeLastReadAt] ?: 0,
             bridgeToday = this[K.bridgeToday] ?: "",
             bridgeIssues = this[K.bridgeIssues] ?: "",
+            geminiMealsEnabled = this[K.geminiMeals] ?: false,
             lastDocImportModified = this[K.lastDocImport] ?: 0,
             coachNotes = this[K.coachNotes] ?: "",
             driveDocsEnabled = this[K.driveDocs] ?: false,
@@ -241,6 +245,7 @@ class SettingsRepository(private val context: Context) {
             p[K.bridgeLastReadAt] = s.bridgeLastReadAt
             p[K.bridgeToday] = s.bridgeToday
             p[K.bridgeIssues] = s.bridgeIssues
+            p[K.geminiMeals] = s.geminiMealsEnabled
             p[K.lastDocImport] = s.lastDocImportModified
             p[K.coachNotes] = s.coachNotes
             p[K.driveDocs] = s.driveDocsEnabled

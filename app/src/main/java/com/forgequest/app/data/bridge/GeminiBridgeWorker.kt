@@ -12,14 +12,19 @@ import com.forgequest.app.container
 import com.forgequest.app.data.drive.DriveError
 import java.util.concurrent.TimeUnit
 
-/** Twice a day: refresh "ForgeQuest data" and pick up a new "ForgeQuest from Gemini". Silent; never asks for consent. */
+/**
+ * Twice a day: refresh "ForgeQuest data" and pick up a new "ForgeQuest from Gemini", and read new meals from the
+ * Gem's meals Doc into the Food tab inbox. Each part runs only when turned on. Silent; never asks for consent.
+ */
 class GeminiBridgeWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext.container
-        if (!app.settings.current().bridgeEnabled) return Result.success()
+        val s = app.settings.current()
+        if (!s.bridgeEnabled && !s.geminiMealsEnabled) return Result.success()
         val token = app.drive.silentToken() ?: return Result.success()
         return try {
-            app.bridge.sync(token)
+            if (s.geminiMealsEnabled) app.meals.sync(token)
+            if (s.bridgeEnabled) app.bridge.sync(token)
             Result.success()
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             throw e

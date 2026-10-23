@@ -47,6 +47,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.CameraAlt
@@ -91,6 +92,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.forgequest.app.AppContainer
+import com.forgequest.app.data.bridge.GeminiMeal
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
@@ -139,7 +141,32 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     val message = MutableStateFlow<String?>(null)
 
     /** Called whenever the screen is shown, so a tab left open overnight moves on to the new day. */
-    fun onShown() { if (followToday) day.value = Dates.today() }
+    fun onShown() {
+        if (followToday) day.value = Dates.today()
+        syncGeminiMeals()
+    }
+
+    // ------------------------------------------------------------ Meals from the Gemini Gem
+
+    val geminiMeals: StateFlow<List<GeminiMeal>> = app.meals.pending
+
+    /** Quietly checks the Gem's meals Doc; at most every two minutes, and never asks to sign in. */
+    private fun syncGeminiMeals() = viewModelScope.launch {
+        if (!app.settings.current().geminiMealsEnabled) return@launch
+        val now = System.currentTimeMillis()
+        if (now - lastMealSync < 2 * 60 * 1000L) return@launch
+        lastMealSync = now
+        val token = app.drive.silentToken() ?: return@launch
+        com.forgequest.app.data.suspendRunCatching { app.meals.sync(token) }
+    }
+
+    fun reviewMeal(meal: GeminiMeal) { app.meals.review.value = meal }
+
+    fun dismissMeal(meal: GeminiMeal) = viewModelScope.launch { app.meals.markHandled(meal.mealId) }
+
+    private companion object {
+        var lastMealSync = 0L
+    }
 
     fun shiftDay(delta: Int) {
         val next = (day.value + delta).coerceAtMost(Dates.today())
@@ -219,6 +246,7 @@ fun FoodScreen(nav: NavHostController) {
     var photoFor by remember { mutableStateOf<FoodEntity?>(null) }
 
     val undo by vm.undo.collectAsState()
+    val geminiMeals by vm.geminiMeals.collectAsState()
     val day by vm.day.collectAsState()
     var confirmDeleteFood by remember { mutableStateOf<FoodEntity?>(null) }
     var quickLog by remember { mutableStateOf(false) }
@@ -260,6 +288,7 @@ fun FoodScreen(nav: NavHostController) {
             item {
                 DayPicker(day, isToday, onPrev = { vm.shiftDay(-1) }, onNext = { vm.shiftDay(1) }, onToday = vm::goToToday)
             }
+            if (geminiMeals.isNotEmpty()) item { GeminiInbox(geminiMeals, onOpen = vm::reviewMeal, onDismiss = { vm.dismissMeal(it) }) }
             snap?.let { s -> item { DayTotals(s, day, meals) } }
             if (isToday) snap?.let { s -> item { WeekCard(s) } }
             item {
@@ -347,6 +376,44 @@ fun FoodScreen(nav: NavHostController) {
             onRemove = if (food.photoPath != null) ({ vm.save(food.copy(photoPath = null)); photoFor = null }) else null,
             onDismiss = { photoFor = null },
         )
+    }
+}
+
+/** Meals from the Gemini Gem waiting for a tap: open one to check it on the review sheet, or dismiss it. */
+@Composable
+private fun GeminiInbox(meals: List<GeminiMeal>, onOpen: (GeminiMeal) -> Unit, onDismiss: (GeminiMeal) -> Unit) {
+    val c = Fit.colors
+    FitCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = c.purple, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.meals_inbox_title, meals.size), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(R.string.meals_inbox_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        Spacer(Modifier.height(8.dp))
+        meals.forEach { meal ->
+            val day = meal.epochDay()
+            val whenLabel = when (day) {
+                Dates.today() -> stringResource(R.string.day_today)
+                Dates.today() - 1 -> stringResource(R.string.day_yesterday)
+                else -> LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern)))
+            } + (meal.localTime()?.let { " · " + it.format(DateTimeFormatter.ofPattern("HH:mm")) } ?: "")
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp)).background(c.cardHigh)
+                    .clickable { onOpen(meal) }.padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(meal.dish, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(whenLabel, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Text(stringResource(R.string.food_kcal, meal.kcal), style = MaterialTheme.typography.labelLarge, color = c.blue)
+                IconButton(onClick = { onDismiss(meal) }) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.meals_dismiss), tint = c.textSecondary, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
     }
 }
 

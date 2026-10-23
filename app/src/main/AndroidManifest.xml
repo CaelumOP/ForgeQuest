@@ -58,6 +58,20 @@
             </intent-filter>
         </activity>
 
+        <!-- "Share to ForgeQuest" for a meal estimate copied from the Gemini Gem -->
+        <activity
+            android:name=".ShareMealActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/meals_share_label"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"

@@ -33,6 +33,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -146,6 +147,10 @@ private fun MainScaffold() {
     val route = backStack?.destination?.route
     val showBar = tabs.any { it.route == route }
     val c = Fit.colors
+    // A Gemini meal shared into the app or picked in the Food tab inbox opens on the scan screen's review sheet.
+    val context = LocalContext.current
+    val review by context.container.meals.review.collectAsState()
+    LaunchedEffect(review) { if (review != null && route != Routes.SCAN) nav.navigate(Routes.SCAN) { launchSingleTop = true } }
 
     CompositionLocalProvider(LocalSnackbar provides snackbar) {
         Scaffold(

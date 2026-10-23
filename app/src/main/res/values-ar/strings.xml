@@ -1205,4 +1205,19 @@
     <string name="today_start_lighter">مجموعة أقل</string>
     <string name="today_rest_instead">استرِح اليوم</string>
     <string name="goals_fitbit_burn">تقدير المعادلة: %1$s سعرة يوميًا · متوسط Fitbit لأربعة عشر يومًا: %2$s سعرة</string>
+    <!-- وجبات من Gemini -->
+    <string name="meals_title">وجبات من Gemini</string>
+    <string name="meals_hint">يضيف Gem «ForgeQuest Food» كل وجبة إلى المستند «ForgeQuest meals from Gemini» في Drive، وتنتظر الوجبات الجديدة تأكيدك في تبويب الطعام.</string>
+    <string name="meals_copy_gem">نسخ تعليمات الـGem</string>
+    <string name="meals_syncing">جارٍ البحث عن وجبات…</string>
+    <string name="meals_synced">وجبات جديدة من Gemini في تبويب الطعام: %d</string>
+    <string name="meals_none_new">لا توجد وجبات جديدة من Gemini</string>
+    <string name="meals_paste">لصق من Gemini</string>
+    <string name="meals_paste_wrong">انسخ إجابة الـGem كاملة أولًا، ثم اضغط «لصق».</string>
+    <string name="meals_share_wrong">لا يبدو هذا وجبة بتنسيق ForgeQuest.</string>
+    <string name="meals_already_logged">هذه الوجبة مسجَّلة من قبل.</string>
+    <string name="meals_share_label">تسجيل الوجبة في ForgeQuest</string>
+    <string name="meals_inbox_title">من Gemini (%d)</string>
+    <string name="meals_inbox_hint">اضغط على وجبة لمراجعتها وتسجيلها.</string>
+    <string name="meals_dismiss">تجاهل</string>
 </resources>
