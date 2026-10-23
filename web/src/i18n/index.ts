@@ -6,7 +6,6 @@ export type Lang = 'en' | 'ar'
 type Entry = string | Record<string, string>
 type Table = Record<string, Entry>
 
-// Web-only strings (install gate, etc.) override the generated Android tables.
 // Web-only strings: one file pair per feature in ./web/<feature>.<lang>.json, so workers never share a file.
 const webFiles = import.meta.glob<Table>('./web/*.json', { eager: true, import: 'default' })
 function webTable(lang: Lang): Table {
