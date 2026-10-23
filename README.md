@@ -14,8 +14,7 @@ track protein and calories, and ask an AI coach, all without an account.
 
 [**Download the APK**](https://github.com/CaelumOP/ForgeQuest/raw/main/apk/ForgeQuest.apk) ·
 [Privacy](PRIVACY.md) ·
-[Setup guide](docs/SETUP.md) ·
-[Spec](SPEC.md)
+[Setup guide](docs/SETUP.md)
 
 </div>
 
