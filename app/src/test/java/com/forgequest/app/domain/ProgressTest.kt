@@ -1,5 +1,7 @@
 package com.forgequest.app.domain
 
+import com.forgequest.app.data.db.ExerciseEntity
+import com.forgequest.app.data.db.SetEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -156,6 +158,22 @@ class RecoveryTest {
             now,
         )
         assertEquals(1f - 10f / 48f, r.getValue(Muscle.BICEPS).fatigue, 0.001f)
+    }
+
+    @Test
+    fun noteWordsMatchProgressionWordList() {
+        val ex = ExerciseEntity("bench", "Bench", ExerciseKind.WEIGHTED, listOf(Muscle.CHEST), emptyList())
+        fun set(note: String, effort: String = "") = SetEntity(
+            sessionId = 1, exerciseId = "bench", itemPosition = 0, block = "Main", circuit = false, setIndex = 0,
+            targetLabel = "", reps = 6, weightKg = 60f, done = true, note = note, effort = effort,
+        )
+        // 6 reps with load is exactly one working set, so the factor shows through.
+        assertEquals(1.0f, Recovery.effectiveSetEffort(set(""), ex), 0.001f)
+        assertEquals(1.15f, Recovery.effectiveSetEffort(set("صعب"), ex), 0.001f)
+        assertEquals(0.80f, Recovery.effectiveSetEffort(set("سهل"), ex), 0.001f)
+        assertEquals(1.15f, Recovery.effectiveSetEffort(set("left knee twinge"), ex), 0.001f)
+        // a tapped chip wins over the note
+        assertEquals(0.80f, Recovery.effectiveSetEffort(set("صعب", effort = "EASY"), ex), 0.001f)
     }
 }
 

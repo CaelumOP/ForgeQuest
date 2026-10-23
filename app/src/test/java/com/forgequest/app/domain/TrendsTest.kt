@@ -1,5 +1,6 @@
 package com.forgequest.app.domain
 
+import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import org.junit.Assert.assertEquals
@@ -74,5 +75,20 @@ class TrendsTest {
         assertEquals(listOf(1, 1), Trends.proteinDaysPerWeek(nutrition, 140, 2, today))
         assertEquals(50, Trends.percentChange(6f, 9f))
         assertNull(Trends.percentChange(0f, 3f))
+    }
+
+    @Test
+    fun aLiftWithNoImprovementOverTwoWeeksIsStalled() {
+        val days = listOf(today - 20, today - 10, today)
+        val sessions = days.mapIndexed { i, d -> SessionEntity(id = i + 1L, planDayId = null, title = "Day", epochDay = d, startedAt = 0L) }
+        val sets = sessions.map { s ->
+            SetEntity(sessionId = s.id, exerciseId = "bench_press", itemPosition = 0, block = "Main", circuit = false, setIndex = 0, targetLabel = "", reps = 5, weightKg = 80f, done = true)
+        }
+        val bench = ExerciseEntity("bench_press", "Bench press", ExerciseKind.WEIGHTED, listOf(Muscle.CHEST), emptyList())
+        val report = Trends.analyzeFatigueAndPlateaus(sessions, sets, mapOf(bench.id to bench), today = today)
+        val lift = report.stalledLifts.single()
+        assertEquals("bench_press", lift.exerciseId)
+        assertEquals(3, lift.sessionsCount)
+        assertEquals(20, lift.spanDays)
     }
 }

@@ -215,10 +215,6 @@ data class SwapCandidate(
 
 object ExerciseSwapEngine {
 
-    fun parseEquipmentSet(raw: String): Set<Equipment> = com.forgequest.app.domain.parseEquipmentSet(raw)
-
-    fun inferEquipmentFromText(vararg texts: String): Set<Equipment>? = com.forgequest.app.domain.inferEquipmentFromText(*texts)
-
     private fun prof(
         eq: Equipment,
         pat: MovementPattern,
@@ -512,9 +508,9 @@ object ExerciseSwapEngine {
                 )
                 val prof = profileFor(ex)
                 if (prof.equipment in allowed) return@map item
-                val replacement = rankSubstitutes(ex, allExercises, allowed)
-                    .firstOrNull { it.matchesUserEquipment && it.exercise.id !in usedInDay }
-                    ?: rankSubstitutes(ex, allExercises, allowed).firstOrNull { it.matchesUserEquipment }
+                val ranked = rankSubstitutes(ex, allExercises, allowed)
+                val replacement = ranked.firstOrNull { it.matchesUserEquipment && it.exercise.id !in usedInDay }
+                    ?: ranked.firstOrNull { it.matchesUserEquipment }
                     ?: return@map item
                 swapsCount++
                 usedInDay += replacement.exercise.id

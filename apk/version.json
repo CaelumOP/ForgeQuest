@@ -1,6 +1,6 @@
 {
-  "versionCode": 14,
-  "versionName": "2.9.2",
+  "versionCode": 15,
+  "versionName": "2.9.3",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Safer and fairer: connecting Google Drive on a new phone no longer replaces your old backup before you restore it. Changing your plan no longer resets the weekly streak you already earned. Weight-trend tips are right even if you weigh in only a few times. Weighted pull-ups and dips stay in calisthenics plans, swapping an exercise no longer carries over the old weight, and the coach reads the equipment you mention (in English or Arabic, including \"I don't have...\") correctly."
+  "notes": "The coach's workout debrief now finishes even if you leave the screen, and you can read the full debrief any time on that workout's page in your journal. Smarter suggestions: after a painful set on a light weight, the app can raise the load again later. Workouts you log for a past day no longer confuse the next suggestion or hide personal records. Notes like \"easy\" or «صعب» on old sets now count the same way everywhere. Plus behind-the-scenes cleanups and more tests."
 }

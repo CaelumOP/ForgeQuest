@@ -74,5 +74,29 @@ class ProgressionTest {
         assertEquals(SetEffort.HARD, SetEffort.of("", "RIR 0"))
         assertEquals(SetEffort.EASY, SetEffort.of("EASY", "fail"))
         assertEquals(SetEffort.OK, SetEffort.of("", ""))
+        assertEquals(SetEffort.EASY, SetEffort.of("", "سهل"))
+        assertEquals(SetEffort.EASY, SetEffort.of("", "felt easy, RIR 3"))
+        assertEquals(SetEffort.HARD, SetEffort.of("", "وصلت إلى فشل"))
+    }
+
+    @Test
+    fun painAtTheSmallestLoadKeepsOneStepSoItCanClimbAgain() {
+        val t = Progression.Target(3, 10, 15, null, 2.5f)
+        val pain = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 2.5f, effort = SetEffort.PAIN))
+        assertEquals(2.5f, pain.sets[0].weightKg!!, 0.01f)
+        assertTrue(pain.sets[0].weightKg!! > 0f)
+        // and a clean top-of-range session from there still loads up
+        assertEquals(5f, next(ExerciseKind.WEIGHTED, t, sets(3, 15, 2.5f)).sets[0].weightKg!!, 0.01f)
+        // pounds: 5 lb with pain stays at 5 lb
+        val lb = WeightUnit.LB
+        val p = next(ExerciseKind.WEIGHTED, t, sets(3, 12, lb.toKg(5f), effort = SetEffort.PAIN), unit = lb)
+        assertEquals(5f, lb.fromKg(p.sets[0].weightKg!!), 0.01f)
+    }
+
+    @Test
+    fun easySetsProgressLikeOk() {
+        val t = Progression.Target(3, 8, 12, null, 40f)
+        val r = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.EASY))
+        assertEquals(42.5f, r.sets[0].weightKg!!, 0.01f)
     }
 }

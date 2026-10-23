@@ -5,13 +5,6 @@ import kotlin.math.roundToInt
 
 enum class NutritionGoal { CUT, MAINTAIN, GAIN }
 
-data class MacroTargets(
-    val kcal: Int,
-    val proteinG: Int,
-    val fatG: Int,
-    val carbsG: Int,
-)
-
 /**
  * Daily calorie, protein, fat, and carbohydrate calculations audited against sports nutrition standards:
  * - BMR via Katch-McArdle (when body fat % is known) or Mifflin-St Jeor.
@@ -24,7 +17,6 @@ object Nutrition {
     const val MAX_SAFE_KCAL = 6000
     const val MIN_PROTEIN_PER_KG = 1.6f
     const val DEFAULT_PROTEIN_PER_KG = 1.8f
-    const val MAX_PROTEIN_PER_KG = 2.4f
     const val MIN_FAT_PER_KG = 0.7f
     const val MIN_FAT_SHARE_PCT = 20
     const val DEFAULT_FAT_SHARE_PCT = 25
@@ -45,8 +37,7 @@ object Nutrition {
         }
         val clampedRatio = perKg.coerceIn(1.2f, 2.5f)
         val raw = ((effectiveMassKg * clampedRatio) / 5f).roundToInt() * 5
-        val floor = ((effectiveMassKg * MIN_PROTEIN_PER_KG) / 5f).roundToInt() * 5
-        return if (perKg >= MIN_PROTEIN_PER_KG) max(raw, floor).coerceAtLeast(60) else raw.coerceAtLeast(50)
+        return if (perKg >= MIN_PROTEIN_PER_KG) raw.coerceAtLeast(60) else raw.coerceAtLeast(50)
     }
 
     /**
@@ -64,14 +55,6 @@ object Nutrition {
         val remainingKcal = safeKcal - (proteinG * 4f) - (effectiveFatG * 9f)
         if (remainingKcal <= 0f) return 0
         return ((remainingKcal / 4f) / 5f).roundToInt().coerceAtLeast(4) * 5
-    }
-
-    /** Essential-fat-aware dietary fat target in grams, rounded to 5 g. */
-    fun suggestedFat(kcal: Int, fatPct: Int = DEFAULT_FAT_SHARE_PCT, bodyWeightKg: Float = 0f): Int {
-        val safeKcal = kcal.coerceAtLeast(MIN_SAFE_KCAL)
-        val fatFromPctG = (safeKcal * (fatPct.coerceIn(15, 45) / 100f)) / 9f
-        val minEssentialFatG = if (bodyWeightKg > 0f) bodyWeightKg * MIN_FAT_PER_KG else 35f
-        return (max(fatFromPctG, minEssentialFatG) / 5f).roundToInt().coerceAtLeast(7) * 5
     }
 
     /**
@@ -138,33 +121,6 @@ object Nutrition {
     fun proteinPerKgFor(goal: NutritionGoal): Float = when (goal) {
         NutritionGoal.CUT -> 2.0f
         NutritionGoal.MAINTAIN, NutritionGoal.GAIN -> DEFAULT_PROTEIN_PER_KG
-    }
-
-    /**
-     * Complete, internally consistent macro partition that guarantees:
-     * - Calories >= 1,200 kcal/day
-     * - Protein >= 1.6 g/kg
-     * - Fat >= 0.7 g/kg
-     * - Carbs >= 0 g (and if protein + essential fat exceed target kcal, raises kcal to cover essential macros).
-     */
-    fun partitionMacros(
-        kg: Float,
-        kcalGoal: Int,
-        proteinPerKg: Float = DEFAULT_PROTEIN_PER_KG,
-        fatPct: Int = DEFAULT_FAT_SHARE_PCT,
-        bodyFatPct: Float = 0f,
-    ): MacroTargets {
-        val safeKcal = kcalGoal.coerceIn(MIN_SAFE_KCAL, MAX_SAFE_KCAL)
-        val proteinG = suggestedProtein(kg, proteinPerKg.coerceAtLeast(MIN_PROTEIN_PER_KG), bodyFatPct)
-        val fatG = suggestedFat(safeKcal, fatPct.coerceAtLeast(MIN_FAT_SHARE_PCT), kg)
-        val carbsG = suggestedCarbs(safeKcal, proteinG, fatPct.coerceAtLeast(MIN_FAT_SHARE_PCT), kg)
-        val minRequiredKcal = ((proteinG * 4 + fatG * 9 + carbsG * 4) / 50.0).roundToInt() * 50
-        return MacroTargets(
-            kcal = max(safeKcal, minRequiredKcal).coerceAtLeast(MIN_SAFE_KCAL),
-            proteinG = proteinG,
-            fatG = fatG,
-            carbsG = carbsG,
-        )
     }
 
     fun ageFromBirthYear(birthYear: Int, currentYear: Int): Int =

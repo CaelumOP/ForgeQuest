@@ -178,11 +178,11 @@ interface SessionDao {
     @Query("SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id WHERE ss.finishedAt IS NOT NULL AND s.done = 1")
     suspend fun allDoneSets(): List<SetEntity>
 
-    /** Most recent finished sets of one exercise, newest session first. Used to prefill. */
+    /** Most recent finished sets of one exercise, latest workout date first (not latest logged). Used to prefill. */
     @Query(
         "SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id " +
             "WHERE ss.finishedAt IS NOT NULL AND s.done = 1 AND s.exerciseId = :exerciseId " +
-            "ORDER BY ss.finishedAt DESC, s.setIndex ASC LIMIT 20"
+            "ORDER BY ss.epochDay DESC, ss.startedAt DESC, s.setIndex ASC LIMIT 20"
     )
     suspend fun recentDoneSets(exerciseId: String): List<SetEntity>
 
