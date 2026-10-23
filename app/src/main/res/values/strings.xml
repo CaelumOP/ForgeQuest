@@ -545,7 +545,10 @@
     </plurals>
     <string name="action_keep">Keep</string>
     <string name="cd_minimize">Minimize</string>
-    <string name="live_header">%1$d:%2$02d · %3$d of %4$d sets</string>
+    <plurals name="live_header">
+        <item quantity="one">%1$d:%2$02d · %3$d of %4$d set</item>
+        <item quantity="other">%1$d:%2$02d · %3$d of %4$d sets</item>
+    </plurals>
     <string name="live_discard">Discard</string>
     <string name="live_add_exercise">Add exercise</string>
     <string name="live_saving">Saving…</string>
@@ -1120,4 +1123,40 @@
     <string name="meals_inbox_title">From Gemini (%d)</string>
     <string name="meals_inbox_hint">Tap a meal to check it and log it.</string>
     <string name="meals_dismiss">Dismiss</string>
+
+    <!-- Arabic audit fixes -->
+    <string name="unit_ms">ms</string>
+    <string name="unit_bpm">bpm</string>
+    <string name="unit_h">h</string>
+    <string name="ready_under_1_min">&lt;1 min</string>
+    <string name="progress_date_pattern">MMM d</string>
+    <string name="cd_select">select</string>
+    <string name="cd_deselect">deselect</string>
+    <string name="cd_edit">edit</string>
+    <string name="picker_my_equipment">My equipment</string>
+    <string name="picker_best_swaps">Best biomechanical matches</string>
+    <string name="profile_body_fat_optional" formatted="false">Body fat % (optional)</string>
+    <string name="onb_available_equipment">Your available equipment</string>
+    <string name="live_tag_easy">Easy · RIR 3+</string>
+    <string name="live_tag_solid">Solid · RIR 1-2</string>
+    <string name="live_tag_max">Max · RIR 0</string>
+    <string name="live_tag_max_note">Max effort · RIR 0</string>
+    <string name="live_tag_joint">Joint niggle</string>
+    <string name="live_tag_joint_note">Joint twinge / pain</string>
+    <plurals name="home_month_workouts">
+        <item quantity="one">%1$d workout</item>
+        <item quantity="other">%1$d workouts</item>
+    </plurals>
+    <plurals name="home_month_records">
+        <item quantity="one">%1$d record</item>
+        <item quantity="other">%1$d records</item>
+    </plurals>
+    <plurals name="plan_adapted_swaps">
+        <item quantity="one">Adapted %1$d exercise to your equipment</item>
+        <item quantity="other">Adapted %1$d exercises to your equipment</item>
+    </plurals>
+    <plurals name="plan_adapt_button">
+        <item quantity="one">Adapt to my equipment (%1$d swap)</item>
+        <item quantity="other">Adapt to my equipment (%1$d swaps)</item>
+    </plurals>
 </resources>

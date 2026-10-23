@@ -741,7 +741,7 @@ fun ProfileScreen(nav: NavHostController) {
                 SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
                 SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
                 SettingStepper(
-                    label = if (isArabic) "نسبة الدهون % (اختياري)" else "Body fat % (optional)",
+                    label = stringResource(R.string.profile_body_fat_optional),
                     value = settings.bodyFatPct,
                     onChange = { vm.setBodyMeasures(bodyFatPct = if (it < 4f) 0f else it) },
                     step = 0.5f,
@@ -988,7 +988,7 @@ fun ProfileScreen(nav: NavHostController) {
                         )
                     }
                     if (typingHour) {
-                        NumberEntryDialog(stringResource(R.string.profile_reminder_hour), settings.reminderHour.toFloat(), "h", 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
+                        NumberEntryDialog(stringResource(R.string.profile_reminder_hour), settings.reminderHour.toFloat(), stringResource(R.string.unit_h), 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
                     }
                 }
             }

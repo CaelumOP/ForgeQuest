@@ -30,11 +30,13 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.forgequest.app.R
 import com.forgequest.app.domain.TrendPoint
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.ui.theme.Fit
@@ -112,6 +114,7 @@ fun TrendChart(
 ) {
     val c = Fit.colors
     val measurer = rememberTextMeasurer()
+    val prLabel = stringResource(R.string.live_pr)
     var scrub by remember { mutableIntStateOf(-1) }
     val labelStyle = TextStyle(fontSize = 10.sp, color = c.textSecondary)
     Column(modifier) {
@@ -170,7 +173,7 @@ fun TrendChart(
                 val pt = points[scrub]
                 drawLine(c.textSecondary, Offset(x(pt.epochDay), top), Offset(x(pt.epochDay), bottom), 1f)
                 drawCircle(c.textPrimary, 5.dp.toPx(), Offset(x(pt.epochDay), y(pt.value)))
-                val text = "${format(pt.value)} · ${dateLabel(pt.epochDay)}${if (pt.isRecord) " · PR" else ""}"
+                val text = "${format(pt.value)} · ${dateLabel(pt.epochDay)}${if (pt.isRecord) " · $prLabel" else ""}"
                 val m = measurer.measure(text, TextStyle(fontSize = 12.sp, color = c.textPrimary))
                 val bx = (x(pt.epochDay) - m.size.width / 2f).coerceIn(left, right - m.size.width)
                 drawRoundRect(c.cardHigh, Offset(bx - 8.dp.toPx(), 0f), Size(m.size.width + 16.dp.toPx(), m.size.height + 6.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))

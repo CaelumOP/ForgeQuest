@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -119,8 +120,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         val (adapted, count) = ExerciseSwapEngine.adaptPlanToEquipment(draft, exercises, userEquipment)
         pending.value = adapted
         if (count > 0) {
-            val isAr = Locale.getDefault().language == "ar"
-            message.value = if (isAr) "تم استبدال $count تمارين لتناسب معداتك" else "Adapted $count exercises to your equipment"
+            message.value = app.plural(R.plurals.plan_adapted_swaps, count, count)
         }
     }
 
@@ -246,7 +246,7 @@ fun PlanEditorScreen(nav: NavHostController) {
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(Dates.dayName(dow).take(3), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(Dates.dayChip(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -638,7 +638,6 @@ fun PlanPreviewSheet(
     onAdapt: (() -> Unit)? = null,
 ) {
     val c = Fit.colors
-    val isArabic = Locale.getDefault().language == "ar"
     val incompatibleCount = remember(draft, exercises, userEquipment) {
         if (userEquipment.isEmpty() || userEquipment.containsAll(Equipment.entries)) 0
         else ExerciseSwapEngine.adaptPlanToEquipment(draft, exercises, userEquipment).second
@@ -654,7 +653,7 @@ fun PlanPreviewSheet(
             Spacer(Modifier.height(12.dp))
             draft.days.sortedBy { it.dayOfWeek }.forEach { d ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                    Text(Dates.dayName(d.dayOfWeek).take(3), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.width(44.dp))
+                    Text(Dates.dayAbbrev(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                         if (!d.isRest && d.items.isNotEmpty()) {
@@ -669,7 +668,7 @@ fun PlanPreviewSheet(
             if (incompatibleCount > 0 && onAdapt != null) {
                 Spacer(Modifier.height(12.dp))
                 TonalPill(
-                    text = if (isArabic) "تكييف مع معداتي ($incompatibleCount استبدال)" else "Adapt to my equipment ($incompatibleCount swaps)",
+                    text = pluralStringResource(R.plurals.plan_adapt_button, incompatibleCount, incompatibleCount),
                     onClick = onAdapt,
                     icon = Icons.Rounded.SwapHoriz,
                     tint = c.teal,

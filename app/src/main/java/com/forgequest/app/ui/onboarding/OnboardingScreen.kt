@@ -336,7 +336,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     Title(stringResource(R.string.onb_plan_title), stringResource(R.string.onb_plan_body))
 
     Text(
-        text = if (isArabic) "معدات التدريب المتوفرة لديك" else "Your available equipment",
+        text = stringResource(R.string.onb_available_equipment),
         style = MaterialTheme.typography.titleSmall,
         color = c.textPrimary,
     )

@@ -612,7 +612,7 @@ class CoachRepository(
             sb.append("- Current plan: ${plan.plan.name} (source: ${plan.plan.source})\n")
             plan.days.forEach { d ->
                 if (d.day.isRest) {
-                    sb.append("  ${Dates.dayName(d.day.dayOfWeek).take(3)}: rest\n")
+                    sb.append("  ${Dates.dayAbbrev(d.day.dayOfWeek)}: rest\n")
                 } else {
                     val names = d.items.joinToString(", ") { item ->
                         val ex = snap.exercises[item.exerciseId]
@@ -624,7 +624,7 @@ class CoachRepository(
                         }
                         "${ex?.name ?: item.exerciseId}${if (per.isNotEmpty()) " ${item.sets}×$per" else ""}"
                     }
-                    sb.append("  ${Dates.dayName(d.day.dayOfWeek).take(3)}: ${d.day.title}: $names\n")
+                    sb.append("  ${Dates.dayAbbrev(d.day.dayOfWeek)}: ${d.day.title}: $names\n")
                 }
             }
         } ?: sb.append("- No plan set yet\n")

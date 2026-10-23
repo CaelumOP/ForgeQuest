@@ -45,10 +45,12 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.navigation.NavHostController
@@ -164,7 +166,10 @@ private fun MetricRow(label: String, value: String, usual: String?, better: Bool
     }
 }
 
-private fun dayLetter(epochDay: Long) = LocalDate.ofEpochDay(epochDay).dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3)
+// One letter in Arabic, where short day names are the full names and cutting them leaves only «ال».
+private fun dayLetter(epochDay: Long) = LocalDate.ofEpochDay(epochDay).dayOfWeek.let { d ->
+    if (Locale.getDefault().language == "ar") d.getDisplayName(TextStyle.NARROW, Locale.getDefault()) else d.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3)
+}
 
 /**
  * Seven days with a value axis on the right and an optional dotted target, like Google Health's week view. Bars for
@@ -174,6 +179,8 @@ private fun dayLetter(epochDay: Long) = LocalDate.ofEpochDay(epochDay).dayOfWeek
 private fun WeekChart(values: List<Float?>, days: List<Long>, maxY: Float, ticks: List<Float>, tickLabel: (Float) -> String, target: Float?, line: Boolean, valueLabel: (Float) -> String, colorFor: (Float) -> Color) {
     val c = Fit.colors
     val grid = c.divider
+    // The value and day rows below flip in Arabic, so the bars must too.
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Row(Modifier.fillMaxWidth().height(200.dp)) {
         Canvas(Modifier.weight(1f).fillMaxHeight().padding(vertical = 8.dp)) {
             val w = size.width
@@ -186,7 +193,7 @@ private fun WeekChart(values: List<Float?>, days: List<Long>, maxY: Float, ticks
             val slot = w / values.size
             var prev: Offset? = null
             values.forEachIndexed { i, v ->
-                val cx = slot * i + slot / 2
+                val cx = (slot * i + slot / 2).let { if (rtl) w - it else it }
                 if (v == null) { prev = null; return@forEachIndexed }
                 if (line) {
                     val p = Offset(cx, y(v))
@@ -266,8 +273,10 @@ private fun RecoveryDay(d: DayReadiness) {
     )
     BigNumber("${d.recovery}%", null, callBody, tint)
     SectionTitle(stringResource(R.string.ready_contributors))
-    MetricRow(stringResource(R.string.ready_c_hrv), d.hrv?.let { "${it.toInt()} ms" } ?: "—", d.hrvUsual?.let { "${it.toInt()} ms" }, d.hrv?.let { h -> d.hrvUsual?.let { h >= it } })
-    MetricRow(stringResource(R.string.ready_c_rhr), d.rhr?.let { "${it.toInt()} bpm" } ?: "—", d.rhrUsual?.let { "${it.toInt()} bpm" }, d.rhr?.let { r -> d.rhrUsual?.let { r <= it } })
+    val ms = stringResource(R.string.unit_ms)
+    val bpm = stringResource(R.string.unit_bpm)
+    MetricRow(stringResource(R.string.ready_c_hrv), d.hrv?.let { "${it.toInt()} $ms" } ?: "—", d.hrvUsual?.let { "${it.toInt()} $ms" }, d.hrv?.let { h -> d.hrvUsual?.let { h >= it } })
+    MetricRow(stringResource(R.string.ready_c_rhr), d.rhr?.let { "${it.toInt()} $bpm" } ?: "—", d.rhrUsual?.let { "${it.toInt()} $bpm" }, d.rhr?.let { r -> d.rhrUsual?.let { r <= it } })
     val brpm = stringResource(R.string.unit_brpm)
     MetricRow(stringResource(R.string.ready_c_resp), d.resp?.let { "%.1f %s".format(Locale.US, it, brpm) } ?: "—", d.respUsual?.let { "%.1f %s".format(Locale.US, it, brpm) }, d.resp?.let { r -> d.respUsual?.let { r <= it } })
     MetricRow(stringResource(R.string.ready_c_sleep), d.sleepPerf?.let { "$it%" } ?: "—", null, d.sleepPerf?.let { it >= 85 })
@@ -374,7 +383,8 @@ private fun SleepWeek(d: DayReadiness) {
     val avgMin = d.week.mapNotNull { it.sleepMin }.takeIf { it.isNotEmpty() }?.average()?.toInt()
     BigNumber(avgMin?.let { hm(it) } ?: "—", stringResource(R.string.ready_week_avg_night), null, SleepTint)
     Spacer(Modifier.height(16.dp))
-    WeekChart(hours, d.week.map { it.epochDay }, 10f, listOf(0f, 4f, 8f, 10f), { "${it.toInt()}h" }, Readiness.BASE_NEED_MIN / 60f, false, { h -> (h * 60).roundToInt().let { "${it / 60}:" + "%02d".format(Locale.US, it % 60) } }) { SleepTint }
+    val hUnit = stringResource(R.string.unit_h)
+    WeekChart(hours, d.week.map { it.epochDay }, 10f, listOf(0f, 4f, 8f, 10f), { "${it.toInt()}$hUnit" }, Readiness.BASE_NEED_MIN / 60f, false, { h -> (h * 60).roundToInt().let { "${it / 60}:" + "%02d".format(Locale.US, it % 60) } }) { SleepTint }
 }
 
 // ---------------------------------------------------------------- strain
@@ -389,12 +399,15 @@ private fun StrainDay(d: DayReadiness) {
     BigNumber("%.1f".format(Locale.US, d.strain), stringResource(R.string.ready_of_21, band), stringResource(R.string.ready_target_sentence, target.start.toInt(), target.endInclusive.toInt()), StrainTint)
     Spacer(Modifier.height(16.dp))
     // Progress toward 21 with today's target band marked.
+    // Fills from the start side, like the share bars below.
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Canvas(Modifier.fillMaxWidth().height(14.dp)) {
         drawRoundRect(c.cardHigh, Offset.Zero, size, CornerRadius(size.height / 2))
         val x0 = (target.start / 21).toFloat() * size.width
         val x1 = (target.endInclusive / 21).toFloat() * size.width
-        drawRoundRect(TargetGreen.copy(alpha = 0.35f), Offset(x0, 0f), Size(x1 - x0, size.height), CornerRadius(size.height / 2))
-        drawRoundRect(StrainTint, Offset.Zero, Size((d.strain / 21).toFloat() * size.width, size.height), CornerRadius(size.height / 2))
+        drawRoundRect(TargetGreen.copy(alpha = 0.35f), Offset(if (rtl) size.width - x1 else x0, 0f), Size(x1 - x0, size.height), CornerRadius(size.height / 2))
+        val fill = (d.strain / 21).toFloat().coerceIn(0f, 1f) * size.width
+        drawRoundRect(StrainTint, Offset(if (rtl) size.width - fill else 0f, 0f), Size(fill, size.height), CornerRadius(size.height / 2))
     }
     SectionTitle(stringResource(R.string.ready_how_earned))
     ShareBar(stringResource(R.string.ready_earned_workouts, (d.workoutShare * 100).toInt()), d.workoutShare, StrainTint)
@@ -408,7 +421,7 @@ private fun StrainDay(d: DayReadiness) {
     SectionTitle(stringResource(R.string.ready_zones))
     val names = listOf(R.string.zone_1, R.string.zone_2, R.string.zone_3, R.string.zone_4, R.string.zone_5)
     d.zoneMin.forEachIndexed { i, m ->
-        MetricRow(stringResource(names[i]), if (m < 1 && m > 0) "<1 min" else stringResource(R.string.ready_minutes, m.toInt()), null, null)
+        MetricRow(stringResource(names[i]), if (m < 1 && m > 0) stringResource(R.string.ready_under_1_min) else stringResource(R.string.ready_minutes, m.toInt()), null, null)
     }
     SectionTitle(stringResource(R.string.ready_activity))
     MetricRow(stringResource(R.string.ready_c_steps), "%,d".format(Locale.US, d.steps), null, null)
