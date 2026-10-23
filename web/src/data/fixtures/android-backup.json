@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "createdAt": 1761200000000,
+  "exercises": [
+    {"id": "bench_press", "name": "Bench press", "kind": "WEIGHTED", "primary": ["CHEST"], "secondary": ["SHOULDERS", "TRICEPS"], "videoUrl": null, "custom": false},
+    {"id": "plank", "name": "Plank", "kind": "HOLD", "primary": ["ABS"], "secondary": ["OBLIQUES"], "videoUrl": "https://www.youtube.com/watch?v=pSHjTRCQxIw", "custom": false}
+  ],
+  "plans": [
+    {"id": 1, "name": "Starter strength", "description": "Three days a week, full body.", "source": "starter", "active": true, "createdAt": 1760000000000}
+  ],
+  "planDays": [
+    {"id": 1, "planId": 1, "dayOfWeek": 1, "title": "Push + core", "isRest": false, "note": ""}
+  ],
+  "planItems": [
+    {"id": 1, "dayId": 1, "position": 0, "exerciseId": "bench_press", "block": "Main", "circuit": false, "sets": 3, "repsMin": 6, "repsMax": 10, "seconds": null, "weightKg": 60.0, "restSeconds": 120, "note": "Pause on the chest."}
+  ],
+  "sessions": [
+    {"id": 1, "planDayId": 1, "title": "Push + core", "epochDay": 20380, "startedAt": 1760889600000, "finishedAt": 1760893200000, "note": "Slept well.", "debrief": ""},
+    {"id": 2, "planDayId": null, "title": "Quick core", "epochDay": 20381, "startedAt": 1760976000000, "finishedAt": null, "note": "", "debrief": ""}
+  ],
+  "sets": [
+    {"id": 1, "sessionId": 1, "exerciseId": "bench_press", "itemPosition": 0, "block": "Main", "circuit": false, "setIndex": 0, "targetLabel": "6-10 reps", "reps": 8, "seconds": null, "weightKg": 60.0, "done": true, "isPr": false, "restSeconds": 120, "note": "", "effort": "OK"},
+    {"id": 2, "sessionId": 1, "exerciseId": "bench_press", "itemPosition": 0, "block": "Main", "circuit": false, "setIndex": 1, "targetLabel": "6-10 reps", "reps": 7, "seconds": null, "weightKg": 62.5, "done": true, "isPr": true, "restSeconds": 120, "note": "felt heavy", "effort": "HARD"},
+    {"id": 3, "sessionId": 2, "exerciseId": "plank", "itemPosition": 0, "block": "Core", "circuit": false, "setIndex": 0, "targetLabel": "45 s", "reps": null, "seconds": 45, "weightKg": null, "done": false, "isPr": false, "restSeconds": 60, "note": "", "effort": ""}
+  ],
+  "foods": [
+    {"id": 1, "name": "Greek yogurt", "category": "BREAKFAST", "kcal": 130, "protein": 17.0, "serving": "170 g cup", "carbs": 6.0, "photoPath": null, "pinned": true, "createdAt": 1760100000000}
+  ],
+  "meals": [
+    {"id": 1, "epochDay": 20380, "loggedAt": 1760860800000, "name": "Greek yogurt", "category": "BREAKFAST", "kcal": 130, "protein": 17.0, "quantity": 1.5, "carbs": 6.0, "photoPath": null, "foodId": 1}
+  ],
+  "weights": [
+    {"epochDay": 20379, "kg": 81.4, "loggedAt": 1760770000000},
+    {"epochDay": 20381, "kg": 81.1, "loggedAt": 1760943000000}
+  ],
+  "chat": [
+    {"id": 1, "role": "coach", "text": "Nice work on the bench today.", "planJson": null, "planApplied": false, "kind": "chat", "createdAt": 1760893300000, "detail": ""}
+  ],
+  "badges": [
+    {"id": "first_workout", "unlockedAt": 1760893200000, "seen": true}
+  ],
+  "settings": {"name": "Omar", "bodyType": "MALE", "kcalGoal": 2400, "proteinGoal": 150, "weeklyTargetOverride": 0, "handLengthCm": 0.0, "palmWidthCm": 0.0, "coachNotes": "Left knee is sensitive.", "theme": "dark", "hapticsEnabled": true, "unit": "kg", "reminderHour": 18, "heightCm": 178.0, "birthYear": 1995, "trackCarbs": true, "carbsGoal": 250, "proteinPerKg": 1.8, "fatSharePct": 25, "equipment": "dumbbells,bench", "bodyFatPct": 0.0, "nutritionGoal": "MAINTAIN", "goalSetDay": 20370, "debriefEnabled": true},
+  "dayNotes": [
+    {"epochDay": 20382, "tag": "SICK", "note": "Cold.", "updatedAt": 1761040000000}
+  ],
+  "readinessDays": []
+}
