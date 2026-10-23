@@ -204,6 +204,23 @@ class DriveSync(
         call(token, Request.Builder().url("$API/files/${doc["id"]!!.jsonPrimitive.content}/export?mimeType=text/plain").get()) to modified
     }
 
+    data class DocText(val id: String, val text: String, val modifiedAt: Long)
+
+    /** Like [newestDoc], with the Doc's id so the caller can rewrite it. */
+    suspend fun readDoc(token: String, name: String, sinceMillis: Long, placeholder: String): DocText? = withContext(Dispatchers.IO) {
+        val q = "mimeType='application/vnd.google-apps.document' and name='$name' and trashed=false"
+        val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime)"
+        val doc = json.parseToJsonElement(call(token, Request.Builder().url(url).get())).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject
+        if (doc == null) {
+            upsertTextDoc(token, name, placeholder, null)
+            return@withContext null
+        }
+        val modified = doc["modifiedTime"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it).toEpochMilli() } ?: 0L
+        if (modified <= sinceMillis) return@withContext null
+        val id = doc["id"]!!.jsonPrimitive.content
+        DocText(id, call(token, Request.Builder().url("$API/files/$id/export?mimeType=text/plain").get()), modified)
+    }
+
     private fun call(token: String, builder: Request.Builder): String {
         val response = try {
             http.newCall(builder.header("Authorization", "Bearer $token").build()).execute()

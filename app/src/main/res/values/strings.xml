@@ -1104,4 +1104,20 @@
     <string name="today_start_lighter">One set less</string>
     <string name="today_rest_instead">Rest today</string>
     <string name="goals_fitbit_burn">Formula estimate: %1$s kcal a day · Fitbit 14-day average: %2$s kcal</string>
+    <!-- Meals from the Gemini Gem -->
+    <string name="meals_title">Meals from Gemini</string>
+    <string name="meals_hint">Your \"ForgeQuest Food\" Gem adds each meal to \"ForgeQuest meals from Gemini\" in Drive. New meals wait on the Food tab for you to confirm.</string>
+    <string name="meals_copy_gem">Copy Gem instructions</string>
+    <string name="meals_syncing">Checking for meals…</string>
+    <string name="meals_synced">%d new meals from Gemini on the Food tab</string>
+    <string name="meals_none_new">No new meals from Gemini</string>
+    <string name="meals_doc_placeholder" translatable="false">ForgeQuest meals from Gemini. The ForgeQuest Food Gem adds one block per meal below this line, and the ForgeQuest app reads them. Do not edit by hand.</string>
+    <string name="meals_paste">Paste from Gemini</string>
+    <string name="meals_paste_wrong">Copy the Gem\'s whole answer first, then tap Paste.</string>
+    <string name="meals_share_wrong">That doesn\'t look like a ForgeQuest meal.</string>
+    <string name="meals_already_logged">This meal is already logged.</string>
+    <string name="meals_share_label">Log meal in ForgeQuest</string>
+    <string name="meals_inbox_title">From Gemini (%d)</string>
+    <string name="meals_inbox_hint">Tap a meal to check it and log it.</string>
+    <string name="meals_dismiss">Dismiss</string>
 </resources>

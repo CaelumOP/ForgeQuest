@@ -34,6 +34,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.components.FitSwitch
 import android.content.Intent
 import com.forgequest.app.ui.components.NumberEntryDialog
@@ -63,6 +64,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.FlashlightOff
 import androidx.compose.material.icons.rounded.FlashlightOn
 import androidx.compose.material.icons.rounded.Key
@@ -106,6 +108,9 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.forgequest.app.AppContainer
 import com.forgequest.app.data.FoodScan
+import com.forgequest.app.data.bridge.GeminiMeal
+import com.forgequest.app.data.bridge.MealFormat
+import com.forgequest.app.data.bridge.MealInbox
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
@@ -129,7 +134,8 @@ import kotlin.math.roundToInt
 sealed interface ScanState {
     data object Camera : ScanState
     data class Analyzing(val photo: String) : ScanState
-    data class Result(val photo: String?, val scan: FoodScan) : ScanState
+    /** [gemini] is set for a meal from the Gemini Gem (inbox, share or paste); it logs on the day it was eaten. */
+    data class Result(val photo: String?, val scan: FoodScan, val gemini: GeminiMeal? = null) : ScanState
     data class Failed(val photo: String?, val message: String, val keyProblem: Boolean = false) : ScanState
     /** The photo went to another AI app; its copied answer is read from the clipboard on return. */
     data class Outside(val photo: String, val wrongFormat: Boolean = false) : ScanState
@@ -162,6 +168,28 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
 
     private var scanJob: Job? = null
     private var prompt: String? = null
+
+    init {
+        // A Gemini meal to review: opened from the Food tab inbox, or shared into the app.
+        viewModelScope.launch {
+            app.meals.review.collect { meal ->
+                if (meal != null) {
+                    app.meals.review.value = null
+                    scanJob?.cancel()
+                    state.value = ScanState.Result(null, meal.toScan(), meal)
+                }
+            }
+        }
+    }
+
+    /** "Paste from Gemini" on the camera: reads a copied Gem answer. [problem] gets a message when it can't be used. */
+    fun paste(text: String?, problem: (Int) -> Unit) = viewModelScope.launch {
+        val meal = text?.let { MealFormat.parseOne(it) } ?: return@launch problem(R.string.meals_paste_wrong)
+        if (app.meals.offer(meal) == MealInbox.Offer.ALREADY_LOGGED) return@launch problem(R.string.meals_already_logged)
+        // offer() gives id-less meals an id; review the stored copy so logging clears it from the inbox.
+        val stored = app.meals.stored(meal)
+        state.value = ScanState.Result(null, stored.toScan(), stored)
+    }
 
     fun analyze(photo: String) {
         state.value = ScanState.Analyzing(photo)
@@ -216,9 +244,14 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
         viewModelScope.launch { app.food.discardPhoto(photo) }
     }
 
-    fun log(photo: String?, name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float, saveToFoods: Boolean, pin: Boolean) {
+    fun log(photo: String?, name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float, saveToFoods: Boolean, pin: Boolean, gemini: GeminiMeal? = null) {
         viewModelScope.launch {
-            app.food.logScannedMeal(name, category, kcal, protein, photo, carbs)
+            if (gemini != null) {
+                app.food.logOnce(name, category, kcal, protein, photo, gemini.epochDay(), carbs)
+                app.meals.markHandled(gemini.mealId)
+            } else {
+                app.food.logScannedMeal(name, category, kcal, protein, photo, carbs)
+            }
             if (saveToFoods) {
                 app.food.saveFood(FoodEntity(name = name, category = category, kcal = kcal, protein = protein, carbs = carbs, serving = app.str(R.string.scan_default_serving), photoPath = photo, pinned = pin, createdAt = System.currentTimeMillis()))
             }
@@ -243,7 +276,8 @@ fun ScanScreen(nav: NavHostController) {
             vm.loggedSummary?.let { snackbar.showSnackbar(it) }
         }
     }
-    BackHandler { if (state is ScanState.Camera) nav.popBackStack() else vm.retake() }
+    // A Gemini meal has no photo to retake, so back leaves the screen.
+    BackHandler { if (state is ScanState.Camera || (state as? ScanState.Result)?.gemini != null) nav.popBackStack() else vm.retake() }
 
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -267,13 +301,17 @@ fun ScanScreen(nav: NavHostController) {
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when (val s = state) {
-            ScanState.Camera -> CameraView(onCaptured = vm::analyzeBytes, onPicked = vm::analyzeUri, onClose = { nav.popBackStack() })
+            ScanState.Camera -> CameraView(
+                onCaptured = vm::analyzeBytes, onPicked = vm::analyzeUri, onClose = { nav.popBackStack() },
+                onPaste = { vm.paste(clipboard.getText()?.text) { res -> context.toast(context.getString(res)) } },
+            )
             is ScanState.Analyzing -> FrozenPhoto(s.photo) { ScanningOverlay(onAskOutside = { askOutside(s.photo) }) }
             is ScanState.Result -> FrozenPhoto(s.photo) {
                 val carbsOn = vm.app.settings.settings.collectAsState(initial = null).value?.trackCarbs == true
-                ResultSheet(s.scan, vm.app.food.categoryForNow(), carbsOn, onRetake = vm::retake) { name, cat, kcal, protein, carbs, save, pin ->
-                    vm.log(s.photo, name, cat, kcal, protein, carbs, save, pin)
-                }
+                // A different meal arriving while the sheet is open starts with fresh edits.
+                androidx.compose.runtime.key(s.gemini?.mealId) { ResultSheet(s.scan, s.gemini?.category() ?: vm.app.food.categoryForNow(), carbsOn, saveByDefault = s.gemini != null, onRetake = vm::retake) { name, cat, kcal, protein, carbs, save, pin ->
+                    vm.log(s.photo, name, cat, kcal, protein, carbs, save, pin, s.gemini)
+                } }
             }
             is ScanState.Failed -> FrozenPhoto(s.photo) {
                 ErrorCard(
@@ -304,7 +342,7 @@ private fun CircleButton(icon: androidx.compose.ui.graphics.vector.ImageVector, 
 }
 
 @Composable
-private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.Uri) -> Unit, onClose: () -> Unit) {
+private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.Uri) -> Unit, onClose: () -> Unit, onPaste: () -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
@@ -386,7 +424,9 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
                 style = MaterialTheme.typography.bodySmall, color = if (captureFailed) Fit.colors.coral else Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 40.dp),
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(12.dp))
+            TonalPill(stringResource(R.string.meals_paste), onClick = onPaste, icon = Icons.Rounded.ContentPaste, tint = Color.White)
+            Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = 36.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                     Box(
@@ -533,6 +573,7 @@ private fun ResultSheet(
     scan: FoodScan,
     defaultCategory: FoodCategory,
     carbsOn: Boolean,
+    saveByDefault: Boolean,
     onRetake: () -> Unit,
     onLog: (String, FoodCategory, Int, Float, Float, Boolean, Boolean) -> Unit,
 ) {
@@ -544,7 +585,7 @@ private fun ResultSheet(
     var portion by remember { mutableStateOf(Portion.NORMAL) }
     var fat by remember { mutableStateOf(CookingFat.LIGHT) }
     var category by remember { mutableStateOf(defaultCategory) }
-    var save by remember { mutableStateOf(false) }
+    var save by remember { mutableStateOf(saveByDefault) }
     var pin by remember { mutableStateOf(false) }
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
