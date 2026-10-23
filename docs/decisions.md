@@ -12,3 +12,4 @@ One line each: date, decision, why. Full plan: /mnt/project-files/plans/forgeque
 8. 2026-10-23: Android audit items 1-6 fixed in Android 2.9.2 first, then the domain port starts from main. Items 7, 8, 9, 11, 14, 15 fixed during the port.
 9. 2026-10-23: Install gate: Safari shows "Add to Home Screen" before onboarding, because Safari and Home Screen apps keep separate storage.
 10. 2026-10-23: One JS bundle, everything precached. Updates install automatically until step 18 adds the "Update ready" prompt.
+11. 2026-10-23: Restoring a backup must also clear the saved weekly streak targets (Android 2.9.2 keeps them in settings, not in the backup); do this when the web settings store is built.
