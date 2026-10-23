@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,20 +78,18 @@ fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit) {
     Spacer(Modifier.height(12.dp))
 }
 
-/** Shown once, the first time a new version opens: what changed. */
+/** Shown once, the first time a new version opens: the release notes from version.json. */
 @Composable
-fun WhatsNewCard(v: LatestVersion, onDismiss: () -> Unit) {
+fun WhatsNewDialog(v: LatestVersion, onDismiss: () -> Unit) {
     val c = Fit.colors
-    FitCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconCircle(Icons.Rounded.NewReleases, c.purple, c.purpleTrack, size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.whats_new_title, v.versionName), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(v.notes.ifBlank { stringResource(R.string.update_no_notes) }, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        Spacer(Modifier.height(12.dp))
-        TonalPill(stringResource(R.string.action_ok), onClick = onDismiss, modifier = Modifier.fillMaxWidth())
-    }
-    Spacer(Modifier.height(12.dp))
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        icon = { IconCircle(Icons.Rounded.NewReleases, c.purple, c.purpleTrack, size = 40.dp) },
+        title = { Text(stringResource(R.string.whats_new_title, v.versionName), style = MaterialTheme.typography.titleLarge, color = c.textPrimary) },
+        text = {
+            Text(v.notes, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.verticalScroll(rememberScrollState()))
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok), color = c.teal) } },
+    )
 }

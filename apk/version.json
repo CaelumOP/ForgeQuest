@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "2.8.0",
+  "versionCode": 11,
+  "versionName": "2.8.1",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Fitbit fixes: split nights no longer count time awake as time in bed, yesterday's score is labelled as such, the card refreshes when you come back from Fitbit and has a refresh button, readiness history is now in backups. New: recovery and sleep trend in Progress, a lighter-session or rest-day choice on low-recovery mornings, other apps' workouts named under Strain, Fitbit calorie average in Goals."
+  "notes": "The What's new popup now shows the real notes for each version instead of old 2.6 notes. Includes everything from 2.8.0: Fitbit sleep and readiness fixes, recovery and sleep trend in Progress, lighter-session or rest-day choice on low-recovery mornings, other apps' workouts under Strain, Fitbit calorie average in Goals."
 }

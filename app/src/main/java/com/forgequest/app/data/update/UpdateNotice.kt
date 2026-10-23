@@ -34,8 +34,8 @@ class UpdateNotice(context: Context, private val checker: UpdateChecker, private
                 prefs.edit().putLong(LAST_CHECK, System.currentTimeMillis()).putString(CACHED, checker.encode(it)).apply()
             }.getOrNull() ?: cached()
         } else cached()
-        if (justUpdated) _whatsNew.value = latest?.takeIf { it.versionCode == BuildConfig.VERSION_CODE }
-            ?: LatestVersion(BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME, apk = "")
+        // The notes come from version.json only, so they can't go stale; offline or without notes, nothing is shown.
+        if (justUpdated) _whatsNew.value = latest?.takeIf { it.versionCode == BuildConfig.VERSION_CODE && it.notes.isNotBlank() }
         val current = _banner.value
         _banner.value = latest?.takeIf { it.versionCode > BuildConfig.VERSION_CODE && !snoozed(it) }
             ?.let { if (current?.latest == it) current else UpdateBanner(it) }
