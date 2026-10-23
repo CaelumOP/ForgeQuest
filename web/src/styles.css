@@ -1,0 +1,43 @@
+/* Colors from the Android theme (ui/theme/Theme.kt). */
+:root {
+  color-scheme: light dark;
+  --bg: #f6f8fc;
+  --card: #ffffff;
+  --text: #1f1f1f;
+  --text-2: #5f6368;
+  --teal: #00705f;
+  --on-teal: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131314;
+    --card: #1e1f20;
+    --text: #e3e3e3;
+    --text-2: #9aa0a6;
+    --teal: #5cd6c0;
+    --on-teal: #00382e;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overscroll-behavior-y: none; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.muted { color: var(--text-2); margin: 0; }
+label { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 420px; }
+/* 16px stops iPhone zooming into inputs. */
+input { font-size: 16px; padding: 12px; border-radius: 12px; border: 1px solid var(--text-2); background: var(--card); color: var(--text); }
+button { min-height: 44px; padding: 0 24px; border: 0; border-radius: 22px; background: var(--teal); color: var(--on-teal); font-size: 16px; font-weight: 600; }
