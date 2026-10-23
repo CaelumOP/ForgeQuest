@@ -142,7 +142,7 @@ fun HomeScreen(nav: NavHostController) {
         Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(8.dp))
         updateBanner?.let { UpdateCard(it, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later) }
-        whatsNew?.let { WhatsNewCard(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
+        whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
         NutritionRings(s)
         Spacer(Modifier.height(16.dp))
         StatRow(s, onWeight = { weightSheet = true })

@@ -37,7 +37,6 @@ import androidx.fragment.app.FragmentActivity
 import com.forgequest.app.ui.AppRoot
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
-import com.forgequest.app.ui.components.WhatsNewGate
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeQuestTheme
 import kotlinx.coroutines.launch
@@ -80,9 +79,6 @@ class MainActivity : FragmentActivity() {
                     LockScreen(onUnlock = ::authenticate)
                 } else {
                     AppRoot()
-                    if (settings?.onboarded == true) {
-                        WhatsNewGate()
-                    }
                 }
             }
         }
