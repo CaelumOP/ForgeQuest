@@ -105,9 +105,15 @@ class DriveSync(
 
     // ------------------------------------------------------------ Backup
 
-    suspend fun backup(token: String) = withContext(Dispatchers.IO) {
-        val content = backups.encode(backups.build())
+    /**
+     * Uploads this phone's data over the Drive backup. Returns false, writing nothing, when this phone has no workouts,
+     * meals or weights and Drive already holds a backup: a new phone must never wipe the old backup before Restore.
+     */
+    suspend fun backup(token: String): Boolean = withContext(Dispatchers.IO) {
+        val file = backups.build()
         val existing = findBackupId(token)
+        if (existing != null && file.sessions.isEmpty() && file.meals.isEmpty() && file.weights.isEmpty()) return@withContext false
+        val content = backups.encode(file)
         val metadata = if (existing == null) """{"name":"$BACKUP_NAME","parents":["appDataFolder"]}""" else """{"name":"$BACKUP_NAME"}"""
         val multipart = MultipartBody.Builder().setType("multipart/related".toMediaType())
             .addPart(metadata.toRequestBody("application/json; charset=UTF-8".toMediaType()))
@@ -120,6 +126,7 @@ class DriveSync(
         }
         call(token, request)
         settings.update { it.copy(lastBackupAt = System.currentTimeMillis()) }
+        true
     }
 
     /** Downloads the Drive backup without applying it, so the person can read what's in it first. */

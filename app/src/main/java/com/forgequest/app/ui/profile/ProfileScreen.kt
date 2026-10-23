@@ -425,13 +425,12 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun connectDrive() = withDrive(app.str(R.string.drive_connecting)) { token ->
         val email = app.drive.accountEmail(token)
         app.settings.update { it.copy(driveEmail = email.ifBlank { app.str(R.string.drive_connected) }) }
-        app.drive.backup(token)
-        message.value = app.str(R.string.drive_connected_backed_up)
+        // An empty phone keeps the Drive backup untouched so it can still be restored.
+        message.value = app.str(if (app.drive.backup(token)) R.string.drive_connected_backed_up else R.string.drive_err_nothing_to_back_up)
     }
 
     fun backupNow() = withDrive(app.str(R.string.drive_backing_up)) { token ->
-        app.drive.backup(token)
-        message.value = app.str(R.string.drive_backed_up)
+        message.value = app.str(if (app.drive.backup(token)) R.string.drive_backed_up else R.string.drive_err_nothing_to_back_up)
     }
 
     fun restore() = withDrive(app.str(R.string.drive_reading_backup)) { token ->

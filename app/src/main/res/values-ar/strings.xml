@@ -448,6 +448,7 @@
     <string name="drive_connected_backed_up">رُبط Google Drive وأُخذت نسخة احتياطية</string>
     <string name="drive_backing_up">جارٍ النسخ الاحتياطي…</string>
     <string name="drive_backed_up">حُفظت نسخة في Google Drive</string>
+    <string name="drive_err_nothing_to_back_up">لا توجد تمارين على هذا الهاتف بعد، لذا أُبقيت نسختك الاحتياطية في Google Drive كما هي. اضغط «استرجاع» لنقلها إلى هنا.</string>
     <string name="drive_reading_backup">جارٍ قراءة نسختك من Google Drive…</string>
     <string name="restore_src_drive">Google Drive</string>
     <string name="backup_preparing">جارٍ تجهيز النسخة الاحتياطية…</string>

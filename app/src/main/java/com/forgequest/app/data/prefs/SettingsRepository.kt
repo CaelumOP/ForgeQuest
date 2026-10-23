@@ -269,6 +269,18 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    // --- Weekly streak targets of finished weeks, keyed by Monday's epoch day. Restore clears them. ---
+
+    private val streakPrefs = context.getSharedPreferences("streak_targets", Context.MODE_PRIVATE)
+
+    fun weekTargets(): Map<Long, Int> =
+        streakPrefs.all.mapNotNull { (week, target) -> week.toLongOrNull()?.let { w -> (target as? Int)?.let { w to it } } }.toMap()
+
+    fun saveWeekTargets(targets: Map<Long, Int>) =
+        streakPrefs.edit().apply { targets.forEach { (week, target) -> putInt(week.toString(), target) } }.apply()
+
+    fun clearWeekTargets() = streakPrefs.edit().clear().apply()
+
     // --- Gemini API key: encrypted with a hardware-backed Keystore key, kept out of cloud backups. ---
 
     private val keyPrefs = context.getSharedPreferences("secure_key", Context.MODE_PRIVATE)
