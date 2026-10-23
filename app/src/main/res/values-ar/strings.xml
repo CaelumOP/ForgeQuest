@@ -950,7 +950,7 @@
     <string name="ready_c_rhr">نبض الراحة</string>
     <string name="ready_c_resp">معدل التنفس</string>
     <string name="ready_c_sleep">أداء النوم</string>
-    <string name="ready_recovery_explain">يُقارَن بآخر 30 يومًا لك. تقلّب نبض القلب أهم العوامل، ويُحسب بمتوسط 7 أيام كي لا تقلب ليلةٌ شاذة النتيجة. الأخضر 67 فأكثر، والأصفر 34–66، والأحمر دون ذلك.</string>
+    <string name="ready_recovery_explain">يُقارَن بآخر 60 يومًا لك. تقلّب نبض القلب أهم العوامل، ويُحسب بمتوسط 7 أيام كي لا تقلب ليلةٌ شاذة النتيجة. الأخضر 67 فأكثر، والأصفر 34–66، والأحمر دون ذلك.</string>
     <string name="ready_c_tonight">المطلوب الليلة</string>
     <string name="ready_debt">يشمل %1$s من دين النوم المتراكم من الليالي القصيرة الأخيرة.</string>
     <string name="ready_c_steps">الخطوات</string>
@@ -1177,4 +1177,32 @@
     <string name="equipment_custom_hint">اختيارك الخاص من العناصر أدناه</string>
     <string name="equipment_no_items">لا تحتاج إلى معدات</string>
     <string name="equipment_always">مشمول دائمًا</string>
+    <!-- 2.8.0 Fitbit readiness -->
+    <string name="ready_reconnect_body">أُوقِف وصول التطبيق إلى بيانات Fitbit في Health Connect. أعِد الربط لترى جاهزيتك.</string>
+    <string name="ready_reconnect">إعادة الربط</string>
+    <string name="ready_failed_body">تعذّرت قراءة بيانات Fitbit هذه المرة.</string>
+    <string name="ready_try_again">حاول مجددًا</string>
+    <string name="ready_refresh">تحديث</string>
+    <string name="ready_open_fitbit">افتح Fitbit للمزامنة</string>
+    <string name="ready_yesterday">هذه نتيجة الأمس، إذ لم يصل نوم الليلة الماضية إلى التطبيق بعد. زامِن Fitbit ثم اضغط زر التحديث.</string>
+    <string name="unit_brpm">نفَسًا/دقيقة</string>
+    <string name="ready_gap">يقظة بين فترتَي النوم: %1$s – %2$s</string>
+    <string name="ready_earned_other_workouts">تمارين أخرى · %1$d%%</string>
+    <string name="ex_type_running">الجري</string>
+    <string name="ex_type_walking">المشي</string>
+    <string name="ex_type_cycling">ركوب الدراجة</string>
+    <string name="ex_type_football">كرة القدم</string>
+    <string name="ex_type_swimming">السباحة</string>
+    <string name="ex_type_hiking">المشي الجبلي</string>
+    <string name="ex_type_strength">تمارين القوة</string>
+    <string name="ex_type_workout">تمرين</string>
+    <string name="progress_recovery_title">التعافي والنوم</string>
+    <string name="progress_recovery_hint">من Fitbit، مع متوسط 7 أيام</string>
+    <string name="progress_avg_recovery">متوسط التعافي</string>
+    <string name="progress_avg_hrv">متوسط تقلّب النبض</string>
+    <string name="progress_avg_sleep">متوسط النوم</string>
+    <string name="today_low_recovery">تعافيك منخفض اليوم (%1$d%%). أتخفّف التمرين أم تستريح؟</string>
+    <string name="today_start_lighter">مجموعة أقل</string>
+    <string name="today_rest_instead">استرِح اليوم</string>
+    <string name="goals_fitbit_burn">تقدير المعادلة: %1$s سعرة يوميًا · متوسط Fitbit لأربعة عشر يومًا: %2$s سعرة</string>
 </resources>

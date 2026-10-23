@@ -28,9 +28,12 @@ data class SleepPiece(
     val asleepMin get() = deepMin + remMin + lightMin + unstagedMin
 }
 
-/** A night after duplicates are dropped and split chunks (2:00–6:00 then 8:00–11:30) are joined. */
-data class Night(val start: Instant, val end: Instant, val deepMin: Int, val remMin: Int, val lightMin: Int, val awakeMin: Int, val asleepMin: Int, val segments: List<Seg> = emptyList()) {
-    val inBedMin get() = ((end.epochSecond - start.epochSecond) / 60).toInt()
+/**
+ * A night after duplicates are dropped and split chunks (2:00–6:00 then 8:00–11:30) are joined. [gaps] are the times up
+ * between chunks; they don't count as time in bed.
+ */
+data class Night(val start: Instant, val end: Instant, val deepMin: Int, val remMin: Int, val lightMin: Int, val awakeMin: Int, val asleepMin: Int, val segments: List<Seg> = emptyList(), val gaps: List<Pair<Instant, Instant>> = emptyList()) {
+    val inBedMin get() = ((end.epochSecond - start.epochSecond - gaps.sumOf { it.second.epochSecond - it.first.epochSecond }) / 60).toInt()
 }
 
 /** The day's main night plus any naps that ended the same day. */
@@ -73,12 +76,24 @@ object Readiness {
             if (last != null && p.start.epochSecond - last.maxOf { it.end.epochSecond } <= JOIN_GAP_SECONDS) last += p else groups += mutableListOf(p)
         }
         return groups.map { g ->
-            Night(g.minOf { it.start }, g.maxOf { it.end }, g.sumOf { it.deepMin }, g.sumOf { it.remMin }, g.sumOf { it.lightMin }, g.sumOf { it.awakeMin }, g.sumOf { it.asleepMin }, g.flatMap { it.segments }.sortedBy { it.start })
+            Night(g.minOf { it.start }, g.maxOf { it.end }, g.sumOf { it.deepMin }, g.sumOf { it.remMin }, g.sumOf { it.lightMin }, g.sumOf { it.awakeMin }, g.sumOf { it.asleepMin }, g.flatMap { it.segments }.sortedBy { it.start }, gapsBetween(g))
         }.groupBy { it.end.atZone(zone).toLocalDate() }.mapValues { (_, list) ->
             // The biggest sleep that ended that day is the night; the rest were naps.
             val night = list.maxBy { it.asleepMin }
             SleepDay(night, list.filter { it !== night }.sumOf { it.asleepMin })
         }
+    }
+
+    /** Stretches of the night covered by none of the chunks. */
+    private fun gapsBetween(chunks: List<SleepPiece>): List<Pair<Instant, Instant>> {
+        val gaps = mutableListOf<Pair<Instant, Instant>>()
+        val sorted = chunks.sortedBy { it.start }
+        var coveredTo = sorted.first().end
+        for (p in sorted) {
+            if (p.start > coveredTo) gaps += coveredTo to p.start
+            if (p.end > coveredTo) coveredTo = p.end
+        }
+        return gaps
     }
 
     fun nights(pieces: List<SleepPiece>, zone: ZoneId): Map<LocalDate, Night> = sleepDays(pieces, zone).mapValues { it.value.night }
@@ -149,7 +164,8 @@ object Readiness {
 
     // ---------- Strain ----------
 
-    fun hrMax(age: Int): Int = if (age in 10..100) 220 - age else 190
+    /** Tanaka's 208 − 0.7 × age, closer than 220 − age, especially past 40. */
+    fun hrMax(age: Int): Int = if (age in 10..100) (208 - 0.7 * age).roundToInt() else 190
 
     /**
      * Minutes in five heart-rate-reserve zones (20/40/60/75/90 % of the gap between resting and max): light movement,

@@ -190,6 +190,7 @@ data class DayNoteEntity(
 )
 
 /** One day's Fitbit readiness, saved so the formulas can later be tuned against workouts and "I feel great" taps. */
+@Serializable
 @Entity(tableName = "readiness_days")
 data class ReadinessDayEntity(
     @PrimaryKey val epochDay: Long,

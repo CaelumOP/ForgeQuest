@@ -23,6 +23,15 @@ class ReadinessTest {
         val night = Readiness.nights(pieces, zone)[LocalDate.of(2026, 10, 16)]!!
         assertEquals(62 + 44 + 124 + 33 + 84 + 96, night.asleepMin)
         assertEquals(95, night.deepMin)
+        // The 05:58–07:55 stretch awake is not time in bed: 3h59m + 3h37m.
+        assertEquals(239 + 217, night.inBedMin)
+        assertEquals(listOf(at("2026-10-16T02:58:00Z") to at("2026-10-16T04:55:00Z")), night.gaps)
+    }
+
+    @Test fun maxHeartRateUsesTanaka() {
+        assertEquals(187, Readiness.hrMax(30))
+        assertEquals(173, Readiness.hrMax(50))
+        assertEquals(190, Readiness.hrMax(0))
     }
 
     @Test fun napDoesNotReplaceTheNightButIsCounted() {

@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.navigation.NavHostController
 import com.forgequest.app.R
 import com.forgequest.app.container
@@ -65,6 +66,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Which metric a detail page shows. */
 enum class ReadinessKind { RECOVERY, SLEEP, STRAIN }
@@ -169,7 +171,7 @@ private fun dayLetter(epochDay: Long) = LocalDate.ofEpochDay(epochDay).dayOfWeek
  * amounts, a joined line for strain.
  */
 @Composable
-private fun WeekChart(values: List<Float?>, days: List<Long>, maxY: Float, ticks: List<Float>, tickLabel: (Float) -> String, target: Float?, line: Boolean, colorFor: (Float) -> Color) {
+private fun WeekChart(values: List<Float?>, days: List<Long>, maxY: Float, ticks: List<Float>, tickLabel: (Float) -> String, target: Float?, line: Boolean, valueLabel: (Float) -> String, colorFor: (Float) -> Color) {
     val c = Fit.colors
     val grid = c.divider
     Row(Modifier.fillMaxWidth().height(200.dp)) {
@@ -204,6 +206,13 @@ private fun WeekChart(values: List<Float?>, days: List<Long>, maxY: Float, ticks
             }
         }
     }
+    // Each day's value under its bar, so the chart reads without guessing from the grid.
+    Row(Modifier.fillMaxWidth().padding(end = 44.dp)) {
+        values.forEach { v ->
+            Text(v?.let(valueLabel) ?: "", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = v?.let(colorFor) ?: c.textSecondary,
+                modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
+        }
+    }
     Row(Modifier.fillMaxWidth().padding(end = 44.dp)) {
         days.forEach { Text(dayLetter(it), style = MaterialTheme.typography.labelSmall, color = c.textSecondary, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
     }
@@ -215,6 +224,18 @@ private fun WeekChart(values: List<Float?>, days: List<Long>, maxY: Float, ticks
             Text(stringResource(R.string.ready_target_legend), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
     }
+}
+
+/** Names for the workout types other apps record most; anything else is just "Workout". */
+private fun exerciseName(type: Int): Int = when (type) {
+    ExerciseSessionRecord.EXERCISE_TYPE_RUNNING, ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> R.string.ex_type_running
+    ExerciseSessionRecord.EXERCISE_TYPE_WALKING -> R.string.ex_type_walking
+    ExerciseSessionRecord.EXERCISE_TYPE_BIKING, ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> R.string.ex_type_cycling
+    ExerciseSessionRecord.EXERCISE_TYPE_SOCCER -> R.string.ex_type_football
+    ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL, ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_OPEN_WATER -> R.string.ex_type_swimming
+    ExerciseSessionRecord.EXERCISE_TYPE_HIKING -> R.string.ex_type_hiking
+    ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING, ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING -> R.string.ex_type_strength
+    else -> R.string.ex_type_workout
 }
 
 /** A labelled share bar, like Google Health's "How you earned cardio load". */
@@ -247,7 +268,8 @@ private fun RecoveryDay(d: DayReadiness) {
     SectionTitle(stringResource(R.string.ready_contributors))
     MetricRow(stringResource(R.string.ready_c_hrv), d.hrv?.let { "${it.toInt()} ms" } ?: "—", d.hrvUsual?.let { "${it.toInt()} ms" }, d.hrv?.let { h -> d.hrvUsual?.let { h >= it } })
     MetricRow(stringResource(R.string.ready_c_rhr), d.rhr?.let { "${it.toInt()} bpm" } ?: "—", d.rhrUsual?.let { "${it.toInt()} bpm" }, d.rhr?.let { r -> d.rhrUsual?.let { r <= it } })
-    MetricRow(stringResource(R.string.ready_c_resp), d.resp?.let { "%.1f".format(Locale.US, it) } ?: "—", d.respUsual?.let { "%.1f".format(Locale.US, it) }, d.resp?.let { r -> d.respUsual?.let { r <= it } })
+    val brpm = stringResource(R.string.unit_brpm)
+    MetricRow(stringResource(R.string.ready_c_resp), d.resp?.let { "%.1f %s".format(Locale.US, it, brpm) } ?: "—", d.respUsual?.let { "%.1f %s".format(Locale.US, it, brpm) }, d.resp?.let { r -> d.respUsual?.let { r <= it } })
     MetricRow(stringResource(R.string.ready_c_sleep), d.sleepPerf?.let { "$it%" } ?: "—", null, d.sleepPerf?.let { it >= 85 })
     if (d.baselineNights < Readiness.MIN_BASELINE_DAYS) {
         Spacer(Modifier.height(8.dp))
@@ -261,7 +283,7 @@ private fun RecoveryWeek(d: DayReadiness) {
     val avg = vals.filterNotNull().takeIf { it.isNotEmpty() }?.average()?.toInt()
     BigNumber(avg?.let { "$it%" } ?: "—", stringResource(R.string.ready_week_avg), null, avg?.let { recoveryTint(it) } ?: Fit.colors.textPrimary)
     Spacer(Modifier.height(16.dp))
-    WeekChart(vals, d.week.map { it.epochDay }, 100f, listOf(0f, 33f, 67f, 100f), { "${it.toInt()}" }, null, false) { recoveryTint(it.toInt()) }
+    WeekChart(vals, d.week.map { it.epochDay }, 100f, listOf(0f, 33f, 67f, 100f), { "${it.toInt()}" }, null, false, { "${it.toInt()}%" }) { recoveryTint(it.toInt()) }
 }
 
 // ---------------------------------------------------------------- sleep
@@ -276,23 +298,33 @@ private fun SleepDay(d: DayReadiness) {
     val efficiency = if (n.inBedMin > 0) (100 * n.asleepMin / n.inBedMin) else 0
     Text(stringResource(R.string.ready_sleep_sentence, d.sleepPerf ?: 0, hm(d.sleepNeedLastNight), hm(n.inBedMin), efficiency), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
     SectionTitle(stringResource(R.string.ready_stages_title))
-    Hypnogram(n.start, n.end, n.segments, listOf(n.awakeMin, n.remMin, n.lightMin, n.deepMin))
+    Hypnogram(n.start, n.end, n.segments, listOf(n.awakeMin, n.remMin, n.lightMin, n.deepMin), n.gaps)
     SectionTitle(stringResource(R.string.ready_c_tonight))
     BigNumber(hm(d.sleepNeedTonight), null, if (d.debtMin > 0) stringResource(R.string.ready_debt, hm(d.debtMin)) else null, c.textPrimary)
 }
 
 /** Lanes for awake, REM, light and deep with each stretch drawn at its time, like Google Health's sleep timeline. */
 @Composable
-private fun Hypnogram(start: Instant, end: Instant, segments: List<com.forgequest.app.domain.Seg>, minutes: List<Int>) {
+private fun Hypnogram(start: Instant, end: Instant, segments: List<com.forgequest.app.domain.Seg>, minutes: List<Int>, gaps: List<Pair<Instant, Instant>>) {
     val c = Fit.colors
     val total = (end.epochSecond - start.epochSecond).coerceAtLeast(1).toFloat()
     val lanes = listOf(0 to R.string.ready_stage_awake, 3 to R.string.ready_stage_rem, 1 to R.string.ready_stage_light, 2 to R.string.ready_stage_deep)
+    // REM, light and deep as a share of time asleep, so a good or thin night of deep sleep is easy to spot.
+    val asleep = minutes.drop(1).sum()
     lanes.forEachIndexed { i, (stage, label) ->
-        Text(stringResource(label) + " · " + hm(minutes[i]), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        val share = if (stage != 0 && asleep > 0) " (" + (100 * minutes[i] / asleep) + "%)" else ""
+        Text(stringResource(label) + " · " + hm(minutes[i]) + share, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         Spacer(Modifier.height(6.dp))
         val color = StageColors[stage]
         Canvas(Modifier.fillMaxWidth().height(22.dp)) {
             drawRoundRect(c.cardHigh, Offset.Zero, size, CornerRadius(size.height / 2))
+            // Time up between two chunks of a split night: dashed, so it reads as a break rather than missing data.
+            gaps.forEach { (a, b) ->
+                val x0 = (a.epochSecond - start.epochSecond) / total * size.width
+                val x1 = (b.epochSecond - start.epochSecond) / total * size.width
+                drawLine(c.textSecondary.copy(alpha = 0.5f), Offset(x0, size.height / 2), Offset(x1, size.height / 2), strokeWidth = 2.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())))
+            }
             segments.filter { it.stage == stage }.forEach { s ->
                 val x0 = (s.start.epochSecond - start.epochSecond) / total * size.width
                 val x1 = (s.end.epochSecond - start.epochSecond) / total * size.width
@@ -304,6 +336,26 @@ private fun Hypnogram(start: Instant, end: Instant, segments: List<com.forgeques
     if (segments.isEmpty()) Text(stringResource(R.string.ready_no_stages), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     val zone = ZoneId.systemDefault()
     val fmt = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+    // A time mark every two hours between falling asleep and waking.
+    val hourFmt = DateTimeFormatter.ofPattern("h a", Locale.getDefault())
+    val firstMark = start.atZone(zone).truncatedTo(java.time.temporal.ChronoUnit.HOURS).plusHours(1).let { if (it.hour % 2 == 1) it.plusHours(1) else it }
+    val marks = generateSequence(firstMark) { it.plusHours(2) }.takeWhile { it.toInstant() < end }.toList()
+    if (marks.isNotEmpty()) {
+        // Left to right like the lanes above, which are drawn the same way in Arabic.
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
+            BoxWithConstraints(Modifier.fillMaxWidth().height(18.dp)) {
+                marks.forEach { m ->
+                    val frac = (m.toEpochSecond() - start.epochSecond) / total
+                    // Skip marks that would sit on the edge labels below.
+                    if (frac in 0.08f..0.92f) Text(m.format(hourFmt), style = MaterialTheme.typography.labelSmall, color = c.textSecondary,
+                        modifier = Modifier.offset(x = maxWidth * frac - 14.dp))
+                }
+            }
+        }
+    }
+    gaps.forEach { (a, b) ->
+        Text(stringResource(R.string.ready_gap, a.atZone(zone).format(fmt), b.atZone(zone).format(fmt)), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+    }
     Row(Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f)) {
             Text(start.atZone(zone).format(fmt), style = MaterialTheme.typography.labelMedium, color = c.textPrimary)
@@ -322,7 +374,7 @@ private fun SleepWeek(d: DayReadiness) {
     val avgMin = d.week.mapNotNull { it.sleepMin }.takeIf { it.isNotEmpty() }?.average()?.toInt()
     BigNumber(avgMin?.let { hm(it) } ?: "—", stringResource(R.string.ready_week_avg_night), null, SleepTint)
     Spacer(Modifier.height(16.dp))
-    WeekChart(hours, d.week.map { it.epochDay }, 10f, listOf(0f, 4f, 8f, 10f), { "${it.toInt()}h" }, Readiness.BASE_NEED_MIN / 60f, false) { SleepTint }
+    WeekChart(hours, d.week.map { it.epochDay }, 10f, listOf(0f, 4f, 8f, 10f), { "${it.toInt()}h" }, Readiness.BASE_NEED_MIN / 60f, false, { h -> (h * 60).roundToInt().let { "${it / 60}:" + "%02d".format(Locale.US, it % 60) } }) { SleepTint }
 }
 
 // ---------------------------------------------------------------- strain
@@ -346,7 +398,13 @@ private fun StrainDay(d: DayReadiness) {
     }
     SectionTitle(stringResource(R.string.ready_how_earned))
     ShareBar(stringResource(R.string.ready_earned_workouts, (d.workoutShare * 100).toInt()), d.workoutShare, StrainTint)
-    ShareBar(stringResource(R.string.ready_earned_other, (100 - (d.workoutShare * 100).toInt())), 1f - d.workoutShare, StrainTint.copy(alpha = 0.6f))
+    val fq = (d.workoutShare * 100).toInt()
+    val other = (d.otherShare * 100).toInt()
+    if (d.otherWorkouts.isNotEmpty() || other > 0) {
+        val named = d.otherWorkouts.map { (it.title ?: stringResource(exerciseName(it.exerciseType))) + " " + stringResource(R.string.ready_minutes, it.minutes) }.joinToString(" · ")
+        ShareBar(stringResource(R.string.ready_earned_other_workouts, other) + if (named.isNotEmpty()) "\n$named" else "", d.otherShare, StrainTint.copy(alpha = 0.8f))
+    }
+    ShareBar(stringResource(R.string.ready_earned_other, (100 - fq - other).coerceAtLeast(0)), (1f - d.workoutShare - d.otherShare).coerceAtLeast(0f), StrainTint.copy(alpha = 0.6f))
     SectionTitle(stringResource(R.string.ready_zones))
     val names = listOf(R.string.zone_1, R.string.zone_2, R.string.zone_3, R.string.zone_4, R.string.zone_5)
     d.zoneMin.forEachIndexed { i, m ->
@@ -363,5 +421,5 @@ private fun StrainWeek(d: DayReadiness) {
     val avg = vals.average()
     BigNumber("%.1f".format(Locale.US, avg), stringResource(R.string.ready_week_avg), null, StrainTint)
     Spacer(Modifier.height(16.dp))
-    WeekChart(vals, d.week.map { it.epochDay }, 21f, listOf(0f, 7f, 14f, 21f), { "${it.toInt()}" }, Readiness.strainTarget(d.recovery).start.toFloat(), true) { StrainTint }
+    WeekChart(vals, d.week.map { it.epochDay }, 21f, listOf(0f, 7f, 14f, 21f), { "${it.toInt()}" }, Readiness.strainTarget(d.recovery).start.toFloat(), true, { "%.1f".format(Locale.US, it) }) { StrainTint }
 }

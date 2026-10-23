@@ -853,7 +853,7 @@
     <string name="ready_c_rhr">Resting heart rate</string>
     <string name="ready_c_resp">Breathing rate</string>
     <string name="ready_c_sleep">Sleep performance</string>
-    <string name="ready_recovery_explain">Compared with your own last 30 days. HRV matters most and uses a 7-day average, so one odd night doesn\'t swing it. Green 67+, yellow 34–66, red below.</string>
+    <string name="ready_recovery_explain">Compared with your own last 60 days. HRV matters most and uses a 7-day average, so one odd night doesn\'t swing it. Green 67+, yellow 34–66, red below.</string>
     <string name="ready_c_tonight">Need tonight</string>
     <string name="ready_debt">Includes %1$s of sleep debt from recent short nights.</string>
     <string name="ready_c_steps">Steps</string>
@@ -1076,4 +1076,32 @@
     <string name="equipment_custom_hint">Your own choice of items below</string>
     <string name="equipment_no_items">No equipment needed</string>
     <string name="equipment_always">Always included</string>
+    <!-- 2.8.0 Fitbit readiness -->
+    <string name="ready_reconnect_body">Fitbit access was turned off in Health Connect. Reconnect to see your readiness.</string>
+    <string name="ready_reconnect">Reconnect</string>
+    <string name="ready_failed_body">Couldn\'t read your Fitbit data this time.</string>
+    <string name="ready_try_again">Try again</string>
+    <string name="ready_refresh">Refresh</string>
+    <string name="ready_open_fitbit">Open Fitbit to sync</string>
+    <string name="ready_yesterday">Yesterday\'s score: last night\'s sleep hasn\'t reached the app yet. Sync Fitbit, then tap refresh.</string>
+    <string name="unit_brpm">breaths/min</string>
+    <string name="ready_gap">Up between sleeps: %1$s – %2$s</string>
+    <string name="ready_earned_other_workouts">Other workouts · %1$d%%</string>
+    <string name="ex_type_running">Running</string>
+    <string name="ex_type_walking">Walking</string>
+    <string name="ex_type_cycling">Cycling</string>
+    <string name="ex_type_football">Football</string>
+    <string name="ex_type_swimming">Swimming</string>
+    <string name="ex_type_hiking">Hiking</string>
+    <string name="ex_type_strength">Strength training</string>
+    <string name="ex_type_workout">Workout</string>
+    <string name="progress_recovery_title">Recovery and sleep</string>
+    <string name="progress_recovery_hint">From your Fitbit, with the 7-day average</string>
+    <string name="progress_avg_recovery">Avg recovery</string>
+    <string name="progress_avg_hrv">Avg HRV</string>
+    <string name="progress_avg_sleep">Avg sleep</string>
+    <string name="today_low_recovery">Recovery is low today (%1$d%%). Go lighter or rest?</string>
+    <string name="today_start_lighter">One set less</string>
+    <string name="today_rest_instead">Rest today</string>
+    <string name="goals_fitbit_burn">Formula estimate: %1$s kcal a day · Fitbit 14-day average: %2$s kcal</string>
 </resources>
