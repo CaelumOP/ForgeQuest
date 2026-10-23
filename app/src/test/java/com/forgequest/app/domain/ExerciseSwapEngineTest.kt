@@ -2,6 +2,10 @@ package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.PlanItemEntity
+import com.forgequest.app.data.plan.PlanDraft
+import com.forgequest.app.data.plan.PlanDraftDay
+import com.forgequest.app.data.plan.PlanDraftItem
+import com.forgequest.app.data.seed.ExerciseCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -35,5 +39,28 @@ class ExerciseSwapEngineTest {
         assertEquals(setOf(Equipment.BARBELL_RACK, Equipment.BODYWEIGHT), inferEquipmentFromText("I don't have dumbbells, but I have a barbell"))
         assertEquals(setOf(Equipment.BODYWEIGHT), inferEquipmentFromText("بدون معدات"))
         assertEquals(null, inferEquipmentFromText("ما عندي أجهزة"))
+    }
+
+    @Test
+    fun rankSubstitutesPutsAnOwnedSquatFirst() {
+        val squat = ExerciseCatalog.all.first { it.id == "back_squat" }
+        val top = ExerciseSwapEngine.rankSubstitutes(squat, ExerciseCatalog.all, EquipmentPreset.DUMBBELLS_AND_BAR.equipment).first()
+        assertTrue(top.exercise.id, top.matchesUserEquipment)
+        assertTrue(top.profile.pattern.name, top.profile.pattern == MovementPattern.SQUAT_BILATERAL || top.profile.pattern == MovementPattern.SQUAT_UNILATERAL)
+    }
+
+    @Test
+    fun adaptPlanSwapsABenchPressForABodyweightMove() {
+        val bodyweight = EquipmentPreset.BODYWEIGHT_ONLY.equipment
+        val draft = PlanDraft(
+            name = "Test",
+            days = listOf(PlanDraftDay(dayOfWeek = 1, title = "Push", items = listOf(PlanDraftItem(exerciseId = "bench_press", repsMin = 5, repsMax = 8, weightKg = 80f)))),
+        )
+        val (adapted, swaps) = ExerciseSwapEngine.adaptPlanToEquipment(draft, ExerciseCatalog.all.associateBy { it.id }, bodyweight)
+        assertEquals(1, swaps)
+        val newId = adapted.days.single().items.single().exerciseId
+        assertTrue(newId != "bench_press")
+        val replacement = ExerciseCatalog.all.first { it.id == newId }
+        assertEquals(Equipment.BODYWEIGHT, ExerciseSwapEngine.profileFor(replacement).equipment)
     }
 }

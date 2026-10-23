@@ -334,14 +334,10 @@ object Recovery {
             }
         }
         val blockFactor = if (set.block.equals("Warm-up", ignoreCase = true) || ex.id == "jumping_jacks") 0.25f else 1.0f
-        val noteLower = set.note.lowercase()
-        val chip = SetEffort.parse(set.effort.ifBlank { null })
-        val rpeFactor = when {
-            set.effort.isNotBlank() && (chip == SetEffort.HARD || chip == SetEffort.PAIN) -> 1.15f
-            set.effort.isNotBlank() && chip == SetEffort.EASY -> 0.80f
-            "rir 0" in noteLower || "rpe 10" in noteLower || "failure" in noteLower || "فشل" in noteLower -> 1.15f
-            "rir 3" in noteLower || "easy" in noteLower || "سهل" in noteLower -> 0.80f
-            else -> 1.0f
+        val rpeFactor = when (SetEffort.of(set.effort, set.note)) {
+            SetEffort.HARD, SetEffort.PAIN -> 1.15f
+            SetEffort.EASY -> 0.80f
+            SetEffort.OK -> 1.0f
         }
         return (rawEffort * blockFactor * rpeFactor).coerceIn(0f, 1.35f)
     }

@@ -151,20 +151,9 @@ class DriveSync(
      * reports [DriveError.NoDoc] so the person knows where to write the plan. Null when unchanged since [sinceMillis].
      */
     suspend fun fetchPlanDoc(token: String, sinceMillis: Long = 0): DocPlan? = withContext(Dispatchers.IO) {
-        val q = "mimeType='application/vnd.google-apps.document' and name='$PLAN_DOC' and trashed=false"
-        val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,name,modifiedTime)"
-        val body = call(token, Request.Builder().url(url).get())
-        val doc = json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject
-        if (doc == null) {
-            upsertTextDoc(token, PLAN_DOC, context.getString(R.string.drive_plan_doc_template), null)
-            throw DriveError.NoDoc
-        }
-        val id = doc["id"]!!.jsonPrimitive.content
-        val name = doc["name"]?.jsonPrimitive?.contentOrNull ?: "Workout Plan"
-        val modified = doc["modifiedTime"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it).toEpochMilli() } ?: 0L
-        if (modified <= sinceMillis) return@withContext null
-        val text = call(token, Request.Builder().url("$API/files/$id/export?mimeType=text/plain").get())
-        DocPlan(name, modified, coach.parsePlanText(text))
+        val found = findNewestDoc(token, PLAN_DOC, sinceMillis, context.getString(R.string.drive_plan_doc_template)) { throw DriveError.NoDoc }
+            ?: return@withContext null
+        DocPlan(found.name ?: "Workout Plan", found.modifiedAt, coach.parsePlanText(found.text))
     }
 
     suspend fun applyDocPlan(doc: DocPlan) {
@@ -199,33 +188,36 @@ class DriveSync(
      * can still read it with the file-only scope.
      */
     suspend fun newestDoc(token: String, name: String, sinceMillis: Long, placeholder: String? = null): Pair<String, Long>? = withContext(Dispatchers.IO) {
-        val q = "mimeType='application/vnd.google-apps.document' and name='$name' and trashed=false"
-        val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime)"
-        val doc = json.parseToJsonElement(call(token, Request.Builder().url(url).get())).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject
-        if (doc == null) {
-            if (placeholder != null) upsertTextDoc(token, name, placeholder, null)
-            return@withContext null
-        }
-        val modified = doc["modifiedTime"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it).toEpochMilli() } ?: 0L
-        if (modified <= sinceMillis) return@withContext null
-        call(token, Request.Builder().url("$API/files/${doc["id"]!!.jsonPrimitive.content}/export?mimeType=text/plain").get()) to modified
+        findNewestDoc(token, name, sinceMillis, placeholder)?.let { it.text to it.modifiedAt }
     }
 
     data class DocText(val id: String, val text: String, val modifiedAt: Long)
 
     /** Like [newestDoc], with the Doc's id so the caller can rewrite it. */
     suspend fun readDoc(token: String, name: String, sinceMillis: Long, placeholder: String): DocText? = withContext(Dispatchers.IO) {
+        findNewestDoc(token, name, sinceMillis, placeholder)?.let { DocText(it.id, it.text, it.modifiedAt) }
+    }
+
+    private class FoundDoc(val id: String, val name: String?, val text: String, val modifiedAt: Long)
+
+    /**
+     * Finds the newest non-trashed Doc called [name]. When none exists it is created from [placeholder] (if given),
+     * [onMissing] runs, and null is returned. Also null when the Doc isn't newer than [sinceMillis].
+     */
+    private suspend fun findNewestDoc(token: String, name: String, sinceMillis: Long, placeholder: String?, onMissing: () -> Unit = {}): FoundDoc? {
         val q = "mimeType='application/vnd.google-apps.document' and name='$name' and trashed=false"
-        val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime)"
+        val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,name,modifiedTime)"
         val doc = json.parseToJsonElement(call(token, Request.Builder().url(url).get())).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject
         if (doc == null) {
-            upsertTextDoc(token, name, placeholder, null)
-            return@withContext null
+            if (placeholder != null) upsertTextDoc(token, name, placeholder, null)
+            onMissing()
+            return null
         }
         val modified = doc["modifiedTime"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it).toEpochMilli() } ?: 0L
-        if (modified <= sinceMillis) return@withContext null
+        if (modified <= sinceMillis) return null
         val id = doc["id"]!!.jsonPrimitive.content
-        DocText(id, call(token, Request.Builder().url("$API/files/$id/export?mimeType=text/plain").get()), modified)
+        val text = call(token, Request.Builder().url("$API/files/$id/export?mimeType=text/plain").get())
+        return FoundDoc(id, doc["name"]?.jsonPrimitive?.contentOrNull, text, modified)
     }
 
     private fun call(token: String, builder: Request.Builder): String {

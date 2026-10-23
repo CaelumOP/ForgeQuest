@@ -442,10 +442,15 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         }
         val done = sessions.sets(sessionId).filter { it.done }
 
+        // Only workouts dated before this one count, so a backdated log is compared against its own past.
+        val earlier = sessions.finished()
+            .filter { it.epochDay < session.epochDay || (it.epochDay == session.epochDay && it.startedAt < session.startedAt) }
+            .map { it.id }.toSet()
         val prNames = mutableListOf<String>()
         for ((exerciseId, setsOfExercise) in done.groupBy { it.exerciseId }) {
             val ex = exercises.byId(exerciseId) ?: continue
             val previousBest = sessions.recentDoneSetsAll(exerciseId)
+                .filter { it.sessionId in earlier }
                 .maxOfOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) }
                 ?: continue // first time doing it: nothing to beat yet
             val best = setsOfExercise.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) } ?: continue

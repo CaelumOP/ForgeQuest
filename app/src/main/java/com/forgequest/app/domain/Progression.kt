@@ -77,7 +77,8 @@ object Progression {
                             )
                         )
                     when {
-                        pain && lastWeight > 0f -> Prefill(baseReps, null, stepDown(lastWeight, unit))
+                        // Never below one load step: at 0 kg every load-up rule above is off, so the weight could never climb back.
+                        pain && lastWeight > 0f -> Prefill(baseReps, null, stepDown(lastWeight, unit).coerceAtLeast(minOf(lastWeight, unit.toKg(unit.loadStep))))
                         loadUp && hasRange -> Prefill(repsMin, null, stepUp(lastWeight, unit))
                         loadUp -> Prefill(baseReps, null, stepUp(lastWeight, unit))
                         mayProgress && baseReps < repsMax -> Prefill(baseReps + 1, null, lastWeight)

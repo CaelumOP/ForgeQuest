@@ -28,6 +28,7 @@ import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
+import com.forgequest.app.domain.inferEquipmentFromText
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.NutritionGoal
@@ -87,14 +88,14 @@ class CoachRepository(
         val history = answeredHistory(rawRecent)
 
         // Persist any equipment explicitly mentioned in the user's message.
-        val newlyInferredEq = ExerciseSwapEngine.inferEquipmentFromText(trimmed)
+        val newlyInferredEq = inferEquipmentFromText(trimmed)
         if (newlyInferredEq != null && settings.current().equipment.isBlank()) {
             settings.update { it.copy(equipment = newlyInferredEq.joinToString(",") { e -> e.name }) }
         }
 
         val currentSettings = settings.current()
         val knownEquipment = currentSettings.configuredEquipment
-            .ifEmpty { ExerciseSwapEngine.inferEquipmentFromText(currentSettings.coachNotes, trimmed).orEmpty() }
+            .ifEmpty { inferEquipmentFromText(currentSettings.coachNotes, trimmed).orEmpty() }
 
         val replyingToIntake = PlanIntent.isReplyToIntake(history, trimmed)
         val wantsPlan = wantsPlan(trimmed) || (replyingToIntake && knownEquipment.isNotEmpty())
@@ -252,7 +253,7 @@ class CoachRepository(
         val rawPlan = checked
         val notes = CoachMemory.extract(reply)
         if (notes.isNotEmpty()) {
-            val inferredEq = ExerciseSwapEngine.inferEquipmentFromText(*notes.toTypedArray())
+            val inferredEq = inferEquipmentFromText(*notes.toTypedArray())
             settings.update { s ->
                 val mergedNotes = CoachMemory.merge(s.coachNotes, notes)
                 val updatedEq = if (s.equipment.isBlank() && inferredEq != null) {
@@ -406,7 +407,7 @@ class CoachRepository(
 
     suspend fun setNotes(notes: String) = settings.update {
         val cleaned = notes.lines().map(String::trim).filter { l -> l.isNotBlank() }.joinToString("\n")
-        val inferred = ExerciseSwapEngine.inferEquipmentFromText(cleaned)
+        val inferred = inferEquipmentFromText(cleaned)
         it.copy(
             coachNotes = cleaned,
             equipment = if (it.equipment.isBlank() && inferred != null) inferred.joinToString(",") { e -> e.name } else it.equipment,

@@ -13,7 +13,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.forgequest.app.domain.Equipment
-import com.forgequest.app.domain.ExerciseSwapEngine
+import com.forgequest.app.domain.inferEquipmentFromText
+import com.forgequest.app.domain.parseEquipmentSet
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
@@ -102,8 +103,8 @@ data class Settings(
 
     /** Available equipment set from explicit setting or inferred from coachNotes; empty if unknown. */
     val configuredEquipment: Set<Equipment>
-        get() = ExerciseSwapEngine.parseEquipmentSet(equipment)
-            .ifEmpty { ExerciseSwapEngine.inferEquipmentFromText(coachNotes).orEmpty() }
+        get() = parseEquipmentSet(equipment)
+            .ifEmpty { inferEquipmentFromText(coachNotes).orEmpty() }
 }
 
 private val Context.dataStore by preferencesDataStore("settings")
