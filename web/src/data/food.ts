@@ -34,12 +34,16 @@ export async function logFoods(selection: ReadonlyArray<readonly [FoodRow, numbe
   })));
 }
 
-/** One meal that isn't saved to the food list: a restaurant plate, a snack you won't repeat. */
+/** photoPath of a scanned meal whose photo isn't kept (the web never stores photos), so "Snap & log" still counts it. Same value as Android. */
+export const SCANNED_NO_PHOTO = 'scan:no-photo';
+
+/** One meal that isn't saved to the food list: a restaurant plate, a snack you won't repeat. `scanned` marks a photo scan. */
 export async function logOnce(
-  name: string, category: FoodCategory, kcal: number, protein: number, epochDay = todayEpochDay(), carbs = 0,
+  name: string, category: FoodCategory, kcal: number, protein: number, epochDay = todayEpochDay(), carbs = 0, scanned = false,
 ): Promise<void> {
   await putMeal({
-    epochDay, loggedAt: Date.now(), name: name.trim(), category, kcal, protein, quantity: 1, carbs, photoPath: null, foodId: null,
+    epochDay, loggedAt: Date.now(), name: name.trim(), category, kcal, protein, quantity: 1, carbs,
+    photoPath: scanned ? SCANNED_NO_PHOTO : null, foodId: null,
   });
 }
 

@@ -73,7 +73,7 @@ describe('backup', () => {
     await applyBackup(decodeBackup(JSON.stringify(f)));
     const out = await buildBackup(null);
     expect(out.foods[0].photoPath).toBeNull();
-    expect(out.meals[0].photoPath).toBeNull();
+    expect(out.meals[0].photoPath).toBe('scan:no-photo'); // keeps "Snap & log" counting
   });
 
   it('fills Kotlin defaults for missing fields and rejects missing required ones', () => {

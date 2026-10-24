@@ -21,6 +21,10 @@ import {
   adjustRest, holdElapsed, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
   type HoldTimer, type RestTimer,
 } from './timers'
+import { evaluateBadges, getProgressSnapshot } from '../../data/progress'
+import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { nextUpDay, workoutMinutes, type WorkoutSummaryData } from './summary'
+import { WorkoutSummary } from './WorkoutSummary'
 import './live.css'
 
 /**
@@ -57,6 +61,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const [confirmFinish, setConfirmFinish] = useState(false)
   const [confirmExit, setConfirmExit] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [summary, setDone] = useState<WorkoutSummaryData | null>(null)
   const [previous, setPrevious] = useState<Map<string, SetRow[]>>(new Map())
 
   const restRef = useRef(rest); restRef.current = rest
@@ -147,6 +152,9 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   }, [doneCount])
   useEffect(() => { if (current >= 0) setPage(current) }, [current])
 
+  if (summary) {
+    return <WorkoutSummary sum={summary} onDone={() => { location.hash = '#/' }} onView={() => { location.hash = `#/session/${summary.sessionId}` }} />
+  }
   if (!session) {
     if (finishing) return <div class="shell" />
     return (
@@ -206,10 +214,18 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     setFinishing(true)
     setRestSaved(null); setHoldSaved(null)
     try {
+      const startedAt = session.startedAt
+      const before = (await getProgressSnapshot()).level
       const result = await finishSession(sid, tickAll)
+      const badges = await evaluateBadges()
+      const snap = await getProgressSnapshot()
       if (hapticsOn) buzz([60, 40, 120])
       onWorkoutFinished(sid, result)
-      location.hash = `#/session/${sid}`
+      setDone({
+        sessionId: sid, title: result.sessionTitle, doneSets: result.doneSets, minutes: workoutMinutes(startedAt, Date.now()),
+        prs: result.prs, newBadges: badges, xpGained: snap.level.totalXp - before.totalXp, before, after: snap.level,
+        nextUp: nextUpDay(snap.plan?.days ?? [], dayOfWeek(todayEpochDay())),
+      })
     } catch {
       toast(t('live_web_save_failed'))
       setFinishing(false)

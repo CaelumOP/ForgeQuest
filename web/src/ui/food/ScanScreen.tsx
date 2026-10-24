@@ -54,7 +54,7 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
     const protein = tot.protein
     const carbs = tot.carbs
     try {
-      await logOnce(name, cat, kcal, protein, todayEpochDay(), carbs)
+      await logOnce(name, cat, kcal, protein, todayEpochDay(), carbs, true)
       if (save) await saveFood({ name, category: cat, kcal, protein, carbs, serving: t('scan_default_serving'), photoPath: null, pinned: pin, createdAt: Date.now() })
       toast(t('scan_logged_summary', name, kcal, Math.round(protein)) + (await badgeSuffix()))
       onLogged()

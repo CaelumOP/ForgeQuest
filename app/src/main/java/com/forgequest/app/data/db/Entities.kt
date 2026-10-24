@@ -203,3 +203,6 @@ data class ReadinessDayEntity(
     val feltGreat: Boolean,
     val updatedAt: Long,
 )
+
+/** photoPath of a scanned meal whose photo isn't on this phone (web scans, or restored from a backup), so the "Snap & log" badge still counts it. */
+const val SCANNED_NO_PHOTO = "scan:no-photo"
