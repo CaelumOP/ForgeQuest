@@ -55,3 +55,32 @@ export const holdExtra = (h: HoldTimer, now: number): number => Math.max(0, hold
 
 /** Seconds to save when Stop is pressed: held time, 0..3600. 0 means nothing to save. */
 export const holdSaved = (h: HoldTimer, now: number): number => Math.min(3600, Math.max(0, holdElapsed(h, now)))
+
+// ---------------------------------------------------------------- Saved timers (survive a reload or a locked phone)
+
+export type SavedTimers = { sessionId: number; rest: RestTimer | null; hold: HoldTimer | null }
+export type TimerStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+export const TIMERS_KEY = 'fq.live.timers'
+const HOLD_STALE_MS = 2 * 60 * 60 * 1000
+
+export function saveTimers(store: TimerStore | null, s: SavedTimers): void {
+  try {
+    if (!store) return
+    if (!s.rest && !s.hold) store.removeItem(TIMERS_KEY)
+    else store.setItem(TIMERS_KEY, JSON.stringify(s))
+  } catch { /* storage blocked: the timers just won't survive a reload */ }
+}
+
+/** Timers saved for this session. A rest that already ended and a long-forgotten hold are dropped. */
+export function loadTimers(store: TimerStore | null, sessionId: number, now: number): { rest: RestTimer | null; hold: HoldTimer | null } {
+  const none = { rest: null, hold: null }
+  try {
+    const raw = store?.getItem(TIMERS_KEY)
+    if (!raw) return none
+    const s = JSON.parse(raw) as SavedTimers
+    if (!s || s.sessionId !== sessionId) return none
+    const rest = s.rest && typeof s.rest.endsAt === 'number' && !restDone(s.rest, now) ? s.rest : null
+    const hold = s.hold && typeof s.hold.startsAt === 'number' && now - s.hold.startsAt < HOLD_STALE_MS ? s.hold : null
+    return { rest, hold }
+  } catch { return none }
+}

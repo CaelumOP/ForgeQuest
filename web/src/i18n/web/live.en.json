@@ -1,0 +1,9 @@
+{
+  "live_web_empty_title": "No workout in progress",
+  "live_web_empty_body": "Start a workout from the Workouts tab and it will show up here.",
+  "live_web_empty_cta": "Go to Workouts",
+  "live_web_save_failed": "Could not save. Please try again.",
+  "live_web_progress": "Workout progress",
+  "live_web_prev": "Previous exercise",
+  "live_web_next": "Next exercise"
+}
