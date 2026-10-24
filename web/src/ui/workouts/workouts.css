@@ -93,3 +93,15 @@ div.wk-choice-main { cursor: default; }
 .wk-hist-date { flex: 0 0 42%; color: var(--text-2); font-size: 14px; }
 .wk-hist-sets { flex: 1; font-size: 14px; font-variant-numeric: tabular-nums; }
 .wk-pr { padding: 1px 6px; border-radius: 8px; font-size: 11px; font-weight: 600; background: var(--gold-track); color: var(--gold); }
+
+/* Muscle → exercises sheet, tier badges, harder-version note */
+.wk-msub { margin: 0 0 8px; color: var(--text-2); font-size: 14px; line-height: 1.45; }
+.wk-note-gold { margin: 4px 0 12px; padding: 12px; border-radius: 12px; background: var(--gold-track); color: var(--text); font-size: 14px; line-height: 1.45; }
+.wk-sheet-h { margin: 16px 0 4px; color: var(--text-2); font-size: 14px; font-weight: 600; }
+.wk-tier { display: inline-block; padding-block: 4px; padding-inline: 10px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.wk-tier-foundation { background: var(--teal-track); color: var(--teal); }
+.wk-tier-intermediate { background: var(--gold-track); color: var(--gold); }
+.wk-tier-advanced { background: var(--coral-track); color: var(--coral); }
+.wk-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-block: 2px; }
+.wk-chips::-webkit-scrollbar { display: none; }
+.wk-chips .kit-chip { flex: none; white-space: nowrap; line-height: 1.4; }

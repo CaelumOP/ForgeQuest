@@ -45,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -66,6 +67,7 @@ import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.MuscleExercises
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.Routes
@@ -111,6 +113,7 @@ fun WorkoutsScreen(nav: NavHostController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedDay by rememberSaveable { mutableIntStateOf(Dates.todayDayOfWeek()) }
+    var muscleSheet by remember { mutableStateOf<com.forgequest.app.domain.Muscle?>(null) }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val plan = s.plan
@@ -187,7 +190,21 @@ fun WorkoutsScreen(nav: NavHostController) {
             Text(stringResource(R.string.recovery_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             Text(stringResource(R.string.recovery_subtitle), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             Spacer(Modifier.height(16.dp))
-            MuscleRecoveryMap(s.recovery, s.settings.bodyType)
+            val library = remember(s.exercises) { s.exercises.values.toList() }
+            val planIds = remember(plan) { plan?.days.orEmpty().flatMap { d -> d.items.map { it.exerciseId } }.toSet() }
+            val equipment = s.settings.configuredEquipment
+            MuscleRecoveryMap(
+                s.recovery, s.settings.bodyType,
+                exerciseCount = { MuscleExercises.list(it, library, planIds, equipment).size },
+                onSeeExercises = { muscleSheet = it },
+            )
+            muscleSheet?.let { m ->
+                MuscleExercisesSheet(
+                    m, library, planIds, equipment, s.recovery[m],
+                    onOpen = { id -> muscleSheet = null; nav.navigate(Routes.exercise(id)) },
+                    onDismiss = { muscleSheet = null },
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         TonalPill(stringResource(R.string.workouts_quick), onClick = {

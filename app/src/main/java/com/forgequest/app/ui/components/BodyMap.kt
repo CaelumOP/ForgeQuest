@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -126,6 +128,9 @@ fun MuscleRecoveryMap(
     recovery: Map<Muscle, MuscleRecovery>,
     bodyType: BodyType,
     modifier: Modifier = Modifier,
+    /** How many exercises a muscle has; with it, a chip row and a "See exercises" button appear. */
+    exerciseCount: ((Muscle) -> Int)? = null,
+    onSeeExercises: (Muscle) -> Unit = {},
 ) {
     val context = LocalContext.current
     val art by produceState<BodyArt?>(null, bodyType) { value = BodyArtLoader.load(context, bodyType) }
@@ -150,6 +155,13 @@ fun MuscleRecoveryMap(
             }
         }
         }
+        if (exerciseCount != null) {
+            // Every muscle as a chip too: small ones (forearms, tibialis) are hard to hit on the picture.
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Muscle.entries.forEach { m -> ChoiceChip(m.localLabel(), selected == m, { selected = if (selected == m) null else m }) }
+            }
+        }
         Spacer(Modifier.height(12.dp))
         val info = selected?.let { m ->
             val r = recovery[m]
@@ -161,6 +173,14 @@ fun MuscleRecoveryMap(
             contentAlignment = Alignment.Center,
         ) {
             Text(info, style = MaterialTheme.typography.labelLarge, color = c.textPrimary, textAlign = TextAlign.Center, maxLines = 2)
+        }
+        val chosen = selected
+        if (chosen != null && exerciseCount != null) {
+            Spacer(Modifier.height(8.dp))
+            TonalPill(
+                stringResource(R.string.muscle_see_exercises, chosen.localLabel(), exerciseCount(chosen)),
+                onClick = { onSeeExercises(chosen) }, modifier = Modifier.fillMaxWidth(), tint = c.teal,
+            )
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {

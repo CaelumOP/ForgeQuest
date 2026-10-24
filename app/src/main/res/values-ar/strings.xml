@@ -1335,4 +1335,26 @@
     <string name="cal_creep_body">لم يتغير وزنك تقريبًا منذ 4 أسابيع. إن كنت تأكل قرب هدفك فجرّب %1$s سعرة، أو أضف نحو 2,000 خطوة يوميًا.</string>
     <string name="cal_steps_title">أصبحت تتحرك أقل</string>
     <string name="cal_steps_body">انخفضت خطواتك اليومية منذ بدأت خسارة الدهون. قلة الحركة دون انتباه استجابة طبيعية للحمية، ومشي 15 دقيقة يحافظ على خسارة الدهون دون تقليل الطعام.</string>
+    <!-- العضلات والتمارين، المستويات، النسخة الأصعب -->
+    <string name="muscle_see_exercises">تمارين %1$s (%2$d)</string>
+    <string name="muscle_in_plan">في خطتك</string>
+    <string name="muscle_more">تمارين أخرى</string>
+    <string name="muscle_my_equipment">معداتي</string>
+    <string name="muscle_all_equipment">كل المعدات</string>
+    <string name="muscle_recovering_note">ما زالت في طور الاستشفاء، وتجهز بعد نحو %1$d ساعة. تنمو العضلات في أثناء الراحة؛ شاهد طريقة الأداء الآن، أو استبدل تمرينًا لحصتك القادمة.</string>
+    <string name="muscle_shown_with">تُعرض مع %1$s إلى أن تُضاف تمارين أخرى.</string>
+    <string name="muscle_main">العضلة الأساسية</string>
+    <string name="muscle_also">تعمل عليها أيضًا</string>
+    <string name="muscle_none">لا تمارين لمعداتك بعد. اختر «كل المعدات» لترى البقية.</string>
+    <string name="muscles_all">الكل</string>
+    <string name="tier_foundation">تأسيسي</string>
+    <string name="tier_intermediate">متوسط</string>
+    <string name="tier_advanced">متقدم</string>
+    <string name="swap_into_plan">ضعه في خطتي</string>
+    <string name="swap_into_plan_hint">يحل محل %1$s، وهو التمرين الوحيد في خطتك الذي يؤدي الحركة نفسها.</string>
+    <string name="swap_into_plan_done">حلّ %1$s محل %2$s في خطتك</string>
+    <string name="harder_ready">صار %1$s سهلًا عليك. أمستعد لـ%2$s؟</string>
+    <string name="harder_tempo">صار %1$s سهلًا عليك. أبطئ الحركة: 3 ثوانٍ في النزول، ثم توقف ثانية واحدة.</string>
+    <string name="harder_switch">بدّل</string>
+    <string name="harder_switched">أصبح %1$s في خطتك</string>
 </resources>

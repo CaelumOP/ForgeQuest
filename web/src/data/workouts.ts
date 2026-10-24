@@ -4,7 +4,7 @@ import {
   db, putSession, putSet, deleteSet,
   type ExerciseRow, type PlanDayRow, type PlanItemRow, type PlanRow, type SessionRow, type SetRow,
 } from './db';
-import { loadSettings, weightUnit } from './settings';
+import { configuredEquipment, loadSettings, weightUnit } from './settings';
 import { EXERCISE_CATALOG } from './seed/exercise-catalog';
 import { EXERCISE_NAMES_AR } from './seed/exercise-names-ar';
 import { STARTER_PLANS_AR, type PlanDraft } from './seed/starter-plans';
@@ -14,6 +14,7 @@ import { effortOf } from '../domain/effort';
 import { translatePlanItem } from '../domain/exercise-swap-engine';
 import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
 import { personalRecords, recordScore, totalXp } from '../domain/progress';
+import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
 import { nextPrefill, type PastSet } from '../domain/progression';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
@@ -379,6 +380,38 @@ export async function swapExercise(sessionId: number, itemPosition: number, newE
   };
   const fresh = await buildSetsFor(sessionId, itemPosition, synthetic, ex);
   if (fresh.length) await db.sets.bulkAdd(fresh);
+}
+
+/** Puts `newId` in place of `oldId` on every plan day of the active plan, translating sets and reps. */
+export async function swapIntoPlan(oldId: string, newId: string): Promise<void> {
+  const plan = await getActivePlan();
+  for (const item of plan?.days.flatMap((d) => d.items).filter((i) => i.exerciseId === oldId) ?? []) await swapPlanItem(item, newId);
+}
+
+/** A harder version replaces an easy move: today's sets at its positions, and the plan day the workout came from. */
+export async function stepUp(sessionId: number, oldId: string, newId: string): Promise<void> {
+  const session = await db.sessions.get(sessionId);
+  const positions = [...new Set((await getSets(sessionId)).filter((s) => s.exerciseId === oldId).map((s) => s.itemPosition))];
+  for (const p of positions) await swapExercise(sessionId, p, newId);
+  if (session?.planDayId == null) return;
+  for (const item of await db.planItems.where('dayId').equals(session.planDayId).toArray()) {
+    if (item.exerciseId === oldId) await swapPlanItem(item, newId);
+  }
+}
+
+/**
+ * "Ready for a harder version" for one exercise of the open workout, from its last two finished sessions: undefined
+ * when not ready, `{ next: null }` when there is no harder move (the screen suggests a slower tempo).
+ */
+export async function harderHint(ex: ExerciseRow, warmup: boolean, openSessionId: number): Promise<{ next: ExerciseRow | null } | undefined> {
+  if (ex.kind !== 'REPS' || warmup || ex.id === 'jumping_jacks') return undefined;
+  const recent = (await recentDoneSets(ex.id)).filter((s) => s.sessionId !== openSessionId);
+  const ids = [...new Set(recent.map((s) => s.sessionId))];
+  const past = (id: number | undefined): PastSet[] => recent.filter((s) => s.sessionId === id)
+    .map((s) => ({ reps: s.reps, seconds: s.seconds, weightKg: s.weightKg, effort: effortOf(s.effort, s.note) }));
+  if (!readyForHarder(past(ids[0]), past(ids[1]))) return undefined;
+  const next = harderVersion(ex, await getLibrary(), configuredEquipment(await loadSettings()));
+  return { next: (next as ExerciseRow | null) ?? null };
 }
 
 /** Throws away an unfinished workout and its sets. */

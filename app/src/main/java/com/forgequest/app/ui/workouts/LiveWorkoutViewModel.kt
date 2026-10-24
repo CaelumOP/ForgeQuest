@@ -11,6 +11,8 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Nudges
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.Equipment
+import com.forgequest.app.domain.ExerciseTiers
+import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.LevelInfo
 import com.forgequest.app.domain.Muscle
@@ -35,6 +37,9 @@ data class OpenSession(val session: SessionEntity?)
 data class RestTimer(val totalSeconds: Int, val endsAt: Long, val nextExercise: String? = null)
 
 /** A timed hold in progress: a 3-second get-ready, then the clock runs from [startsAt] towards [target]. */
+/** A bodyweight move that has become easy: [next] is the harder version, or null to suggest a slower tempo. */
+data class HarderHint(val next: ExerciseEntity?)
+
 data class HoldTimer(val setId: Long, val exerciseName: String, val target: Int, val startsAt: Long) {
     /** Whole seconds held so far; negative during the get-ready. */
     fun elapsed(now: Long): Int = Math.floorDiv(now - startsAt, 1000L).toInt()
@@ -82,6 +87,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
      * show a "Previous" column. Loaded once per exercise as exercises appear in the session.
      */
     val previous = MutableStateFlow<Map<String, List<SetEntity>>>(emptyMap())
+    /** Exercise id → "ready for a harder version", from its last two finished sessions. */
+    val harder = MutableStateFlow<Map<String, HarderHint>>(emptyMap())
 
     val rest = MutableStateFlow<RestTimer?>(null)
     val hold = MutableStateFlow<HoldTimer?>(null)
@@ -105,11 +112,12 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             sets.collect { list ->
                 val missing = list.map { it.exerciseId }.distinct().filter { it !in previous.value }
                 if (missing.isEmpty()) return@collect
-                val loaded = missing.associateWith { id ->
-                    val recent = app.db.sessions().recentDoneSets(id).filter { it.sessionId != currentSession?.id }
+                val recentById = missing.associateWith { id -> app.db.sessions().recentDoneSets(id).filter { it.sessionId != currentSession?.id } }
+                val loaded = recentById.mapValues { (_, recent) ->
                     recent.filter { it.sessionId == recent.firstOrNull()?.sessionId }.sortedBy { it.setIndex }
                 }
                 previous.value = previous.value + loaded
+                harder.value = harder.value + harderHints(recentById, list)
             }
         }
         viewModelScope.launch {
@@ -300,6 +308,27 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val last = sets.value.filter { it.itemPosition == itemPosition }.maxByOrNull { it.setIndex } ?: return
         if (sets.value.count { it.itemPosition == itemPosition } <= 1) return
         viewModelScope.launch { repo.removeSet(last.id) }
+    }
+
+    private suspend fun harderHints(recentById: Map<String, List<SetEntity>>, sets: List<SetEntity>): Map<String, HarderHint> {
+        val library = repo.library.first()
+        val byId = library.associateBy { it.id }
+        val equipment = app.settings.current().configuredEquipment
+        return recentById.mapNotNull { (id, recent) ->
+            val ex = byId[id]?.takeIf { it.kind == ExerciseKind.REPS && it.id != "jumping_jacks" } ?: return@mapNotNull null
+            if (sets.any { it.exerciseId == id && it.block.equals("Warm-up", ignoreCase = true) }) return@mapNotNull null
+            val sessionIds = recent.map { it.sessionId }.distinct()
+            fun past(sid: Long?) = recent.filter { it.sessionId == sid }.map { Progression.PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
+            if (!ExerciseTiers.readyForHarder(past(sessionIds.getOrNull(0)), past(sessionIds.getOrNull(1)))) return@mapNotNull null
+            id to HarderHint(ExerciseTiers.harderVersion(ex, library, equipment))
+        }.toMap()
+    }
+
+    /** Switches an easy move for its harder version, today and on the plan day this workout came from. */
+    fun stepUp(oldId: String, newId: String) = currentSession?.let { s ->
+        val positions = sets.value.filter { it.exerciseId == oldId }.map { it.itemPosition }.distinct()
+        harder.value = harder.value - oldId
+        viewModelScope.launch { repo.stepUp(s, positions, oldId, newId) }
     }
 
     fun swap(itemPosition: Int, exerciseId: String) = currentSession?.let { s ->
