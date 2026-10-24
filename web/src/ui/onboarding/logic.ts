@@ -28,6 +28,9 @@ export const initialState = (): OnbState => ({
   goalsTouched: false, goal: 'MAINTAIN', planIndex: 0, preset: 'CALISTHENICS_PARK',
 })
 
+/** Height and age are needed before the goals step can continue, so the calorie target always uses them. */
+export const bodyStatsReady = (s: OnbState): boolean => s.heightCm >= 120 && s.heightCm <= 230 && s.age >= 10 && s.age <= 100
+
 /** Training days of the chosen starter plan (3 when starting empty), for the calorie suggestion. */
 export type DaysOf = (planIndex: number) => number
 

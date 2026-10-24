@@ -9,9 +9,9 @@ import { todayEpochDay } from '../../domain/dates'
 import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
 import { MIN_SAFE_KCAL, NUTRITION_GOALS } from '../../domain/nutrition'
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, ChipGroup, Stepper, TextField } from '../kit'
+import { Button, Card, ChipGroup, NumberField, Stat, Stepper, TextField } from '../kit'
 import { CheckCircleIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
-import { LAST_STEP, initialState, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
+import { LAST_STEP, bodyStatsReady, initialState, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
 import './onboarding.css'
 
 const GEMINI_MODELS = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
@@ -88,7 +88,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
           <Button variant="text" onClick={() => go(-1)}>{t('action_back')}</Button>
           <span class="onb-spacer" />
           {s.step < LAST_STEP
-            ? <Button onClick={() => go(1)} disabled={s.step === 1 && !s.name.trim()}>{t('action_continue')}</Button>
+            ? <Button onClick={() => go(1)} disabled={(s.step === 1 && !s.name.trim()) || (s.step === 2 && !bodyStatsReady(s))}>{t('action_continue')}</Button>
             : <Button onClick={finish} loading={saving}>{check.ok ? t('onb_lets_go') : t('onb_skip')}</Button>}
         </div>
       )}
@@ -155,24 +155,46 @@ function StepGoals({ s, update }: StepProps) {
         <Stepper label={t('weight_body')} value={shownWeight} step={bodyStep(unit)} min={fromKg(unit, 30)} max={fromKg(unit, 250)}
           format={(n) => `${n.toFixed(1)} ${unitLabel(unit, ar)}`} onChange={(v) => update((c) => setWeight(c, toKg(unit, v), trainingDaysOf))} />
       </Row>
-      <Row label={t('profile_height')}>
-        <Stepper label={t('profile_height')} value={s.heightCm > 0 ? s.heightCm : 170} min={120} max={230} format={(n) => `${n} ${t('unit_cm')}`}
-          onChange={(v) => update((c) => withSuggestions({ ...c, heightCm: v }, trainingDaysOf))} />
-      </Row>
-      <Row label={t('profile_age')}>
-        <Stepper label={t('profile_age')} value={s.age > 0 ? s.age : 25} min={10} max={100} format={(n) => `${n} ${t('unit_years')}`}
-          onChange={(v) => update((c) => withSuggestions({ ...c, age: v }, trainingDaysOf))} />
-      </Row>
-      <Row label={t('profile_daily_protein')}>
-        <Stepper label={t('profile_daily_protein')} value={s.protein} step={5} min={60} max={400} format={(n) => `${n} ${t('unit_g')}`}
-          onChange={(v) => update((c) => ({ ...c, protein: v, goalsTouched: true }))} />
-      </Row>
-      <Row label={t('profile_daily_calories')}>
-        <Stepper label={t('profile_daily_calories')} value={s.kcal} step={50} min={MIN_SAFE_KCAL} max={6000} format={(n) => `${n} ${t('unit_kcal')}`}
-          onChange={(v) => update((c) => ({ ...c, kcal: v, goalsTouched: true }))} />
-      </Row>
-      <p class="onb-note">{t('onb_protein_hint')}</p>
+      <div class="onb-pair">
+        <NumberField label={t('profile_height')} unit={t('unit_cm')} hint={t('onb_web_height_hint')} value={s.heightCm || null} min={120} max={230}
+          onChange={(v) => update((c) => withSuggestions({ ...c, heightCm: v ?? 0 }, trainingDaysOf))} />
+        <NumberField label={t('profile_age')} unit={t('unit_years')} value={s.age || null} min={10} max={100}
+          onChange={(v) => update((c) => withSuggestions({ ...c, age: v ?? 0 }, trainingDaysOf))} />
+      </div>
+      <Target s={s} update={update} />
     </>
+  )
+}
+
+/** The calculated calories and protein, read-only until the person taps Adjust. */
+function Target({ s, update }: StepProps) {
+  const [editing, setEditing] = useState(false)
+  if (!bodyStatsReady(s)) return <p class="onb-note">{t('onb_web_target_missing')}</p>
+  const num = (n: number) => new Intl.NumberFormat(getLang()).format(n)
+  return (
+    <Card>
+      <div class="onb-target-head">
+        <h2 class="onb-h2">{t('onb_web_target_title')}</h2>
+        {!editing && <Button variant="text" onClick={() => setEditing(true)}>{t('onb_web_adjust')}</Button>}
+      </div>
+      <div class="onb-target-stats">
+        <Stat value={`${num(s.kcal)} ${t('unit_kcal')}`} label={t('profile_daily_calories')} accent="blue" />
+        <Stat value={`${num(s.protein)} ${t('unit_g')}`} label={t('profile_daily_protein')} accent="teal" />
+      </div>
+      {editing && (
+        <>
+          <Row label={t('profile_daily_calories')}>
+            <Stepper label={t('profile_daily_calories')} value={s.kcal} step={50} min={MIN_SAFE_KCAL} max={6000} format={(n) => `${num(n)}`}
+              onChange={(v) => update((c) => ({ ...c, kcal: v, goalsTouched: true }))} />
+          </Row>
+          <Row label={t('profile_daily_protein')}>
+            <Stepper label={t('profile_daily_protein')} value={s.protein} step={5} min={60} max={400} format={(n) => `${n} ${t('unit_g')}`}
+              onChange={(v) => update((c) => ({ ...c, protein: v, goalsTouched: true }))} />
+          </Row>
+        </>
+      )}
+      <p class="onb-note">{s.goalsTouched ? t('onb_web_target_custom') : t('onb_web_target_body', trainingDaysOf(s.planIndex))}</p>
+    </Card>
   )
 }
 

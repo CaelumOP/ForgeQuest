@@ -23,11 +23,11 @@
 .food-week-bar { inline-size: 100%; block-size: 32px; border-radius: 6px; background: var(--teal-track); display: flex; align-items: flex-end; overflow: hidden; }
 .food-week-fill { inline-size: 100%; background: var(--teal); }
 .food-week-fill.low { opacity: 0.55; }
-.food-tabs { display: flex; gap: 6px; overflow-x: auto; padding-block: 2px; scrollbar-width: none; }
-.food-tabs::-webkit-scrollbar { display: none; }
-.food-tab { position: relative; flex: 0 0 auto; min-block-size: 44px; padding-inline: 14px; border: 0; border-radius: 22px; background: var(--card-high); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+/* Five equal tabs that always fit the screen (no sideways scroll, nothing cut off). Long names wrap. */
+.food-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 26px; background: var(--card-high); }
+.food-tab { position: relative; min-inline-size: 0; min-block-size: 44px; padding-block: 4px; padding-inline: 4px; border: 0; border-radius: 22px; background: none; color: var(--text); font: inherit; font-size: 13px; line-height: 16px; font-weight: 500; text-wrap: balance; overflow-wrap: anywhere; cursor: pointer; }
 .food-tab[aria-selected="true"] { background: var(--teal); color: var(--on-teal); }
-.food-tab-dot { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--gold); }
+.food-tab-dot { position: absolute; inset-block-start: 5px; inset-inline-end: 6px; inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--gold); }
 .food-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
 .food-empty h3 { margin: 0; font-size: 15px; font-weight: 500; }
 .food-empty p { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }

@@ -86,14 +86,29 @@ export function NumberField({ label, value, onChange, error, hint, unit, min, ma
 }
 
 export type StepperProps = { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; label: string; format?: (n: number) => string }
-/** Minus / number / plus with 44px targets; `label` names it for screen readers. */
+/** Minus / number / plus with 44px targets; `label` names it for screen readers. Tap the number to type one. */
 export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, label, format }: StepperProps) {
+  const [draft, setDraft] = useState<string | null>(null)
   const set = (n: number) => onChange(Math.min(max, Math.max(min, Math.round(n * 1000) / 1000)))
   const shown = format ? format(value) : String(value)
+  const commit = () => {
+    const n = draft == null ? NaN : parseNumber(draft)
+    if (Number.isFinite(n)) set(n)
+    setDraft(null)
+  }
   return (
     <div class="kit-stepper" role="group" aria-label={label}>
       <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_decrease', shown)} disabled={value <= min} onClick={() => set(value - step)}><RemoveIcon /></button>
-      <output class="kit-stepper-val" aria-live="polite">{shown}</output>
+      {draft == null
+        ? <button type="button" class="kit-stepper-val" aria-label={`${label}: ${shown}`} onClick={() => setDraft(String(value))}>{shown}</button>
+        : <input
+            class="kit-stepper-input" aria-label={label} value={draft} autoFocus
+            inputMode={Number.isInteger(step) && Number.isInteger(min) ? 'numeric' : 'decimal'} enterKeyHint="done"
+            onFocus={(e) => (e.target as HTMLInputElement).select()}
+            onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setDraft(null) }}
+          />}
       <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_increase', shown)} disabled={value >= max} onClick={() => set(value + step)}><AddIcon /></button>
     </div>
   )
