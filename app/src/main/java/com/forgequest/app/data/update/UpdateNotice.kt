@@ -7,9 +7,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 /** The Home banner's state. [progress] is null until a download starts, then 0..1, or -1 while the size is unknown. */
-data class UpdateBanner(val latest: LatestVersion, val progress: Float? = null, val needsPermission: Boolean = false, val failed: Boolean = false)
+data class UpdateBanner(val latest: LatestVersion, val progress: Float? = null, val needsPermission: Boolean = false, val failed: Boolean = false, val notReady: Boolean = false)
 
 /**
  * "There's an update!" without anyone having to tell people: whenever Home opens, look at version.json (at most every
@@ -56,7 +57,7 @@ class UpdateNotice(context: Context, private val checker: UpdateChecker, private
         suspendRunCatching { checker.download(b.latest) { p -> _banner.value = _banner.value?.copy(progress = p) } }
             // The banner stays: if the installer is cancelled, Update works again.
             .onSuccess { _banner.value = UpdateBanner(b.latest); checker.install(it) }
-            .onFailure { _banner.value = UpdateBanner(b.latest, failed = true) }
+            .onFailure { _banner.value = UpdateBanner(b.latest, failed = true, notReady = it is UpdateChecker.NotPublishedYet || (it as? IOException)?.message == "HTTP 404") }
     }
 
     /** Hide for 3 days, or until a newer version than this one comes out. */

@@ -16,7 +16,10 @@ import okhttp3.Request
 import java.io.File
 import java.io.IOException
 
-/** What `apk/version.json` in the repo says about the newest build. */
+/**
+ * What `apk/version.json` in the repo says about the newest build. [apk] is the GitHub Release file, which only exists
+ * once CI has published that version.
+ */
 @Serializable
 data class LatestVersion(val versionCode: Int, val versionName: String, val apk: String, val notes: String = "", val critical: Boolean = false)
 
@@ -64,8 +67,18 @@ class UpdateChecker(private val context: Context, private val http: OkHttpClient
                 }
             }
         }
+        // version.json can go live minutes before the APK it names (and a CDN may still hand out the old one): never
+        // install something older than promised.
+        val info = context.packageManager.getPackageArchiveInfo(file.path, 0)
+        if (info == null || androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(info) < latest.versionCode) {
+            file.delete()
+            throw NotPublishedYet()
+        }
         file
     }
+
+    /** The download was an older build: the new one is still being published. */
+    class NotPublishedYet : IOException("APK not published yet")
 
     /** Android asks once whether ForgeQuest may install apps; until allowed, this opens that setting instead. */
     fun canInstall(): Boolean = Build.VERSION.SDK_INT < 26 || context.packageManager.canRequestPackageInstalls()

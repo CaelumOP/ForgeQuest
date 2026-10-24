@@ -29,6 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The app downloads the APK from version.json's "apk" link. It must be this version's GitHub Release file: that
+      # only exists once this workflow has published it, so phones can never fetch an older APK by mistake.
+      - name: Check version.json download link
+        run: |
+          NAME=$(jq -r .versionName apk/version.json)
+          WANT="https://github.com/${{ github.repository }}/releases/download/v$NAME/ForgeQuest-v$NAME.apk"
+          if [ "$(jq -r .apk apk/version.json)" != "$WANT" ]; then echo "::error::apk/version.json \"apk\" must be $WANT"; exit 1; fi
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
