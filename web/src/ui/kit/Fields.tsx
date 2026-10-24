@@ -91,14 +91,16 @@ export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, la
   const [draft, setDraft] = useState<string | null>(null)
   const set = (n: number) => onChange(Math.min(max, Math.max(min, Math.round(n * 1000) / 1000)))
   const shown = format ? format(value) : String(value)
+  const typed = draft == null ? NaN : parseNumber(draft)
+  // While typing, − and + step from the typed number (the blur that saves it hasn't re-rendered yet).
+  const base = Number.isFinite(typed) ? typed : value
   const commit = () => {
-    const n = draft == null ? NaN : parseNumber(draft)
-    if (Number.isFinite(n)) set(n)
+    if (Number.isFinite(typed)) set(typed)
     setDraft(null)
   }
   return (
     <div class="kit-stepper" role="group" aria-label={label}>
-      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_decrease', shown)} disabled={value <= min} onClick={() => set(value - step)}><RemoveIcon /></button>
+      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_decrease', shown)} disabled={value <= min} onClick={() => set(base - step)}><RemoveIcon /></button>
       {draft == null
         ? <button type="button" class="kit-stepper-val" aria-label={`${label}: ${shown}`} onClick={() => setDraft(String(value))}>{shown}</button>
         : <input
@@ -109,7 +111,7 @@ export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, la
             onBlur={commit}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setDraft(null) }}
           />}
-      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_increase', shown)} disabled={value >= max} onClick={() => set(value + step)}><AddIcon /></button>
+      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_increase', shown)} disabled={value >= max} onClick={() => set(base + step)}><AddIcon /></button>
     </div>
   )
 }

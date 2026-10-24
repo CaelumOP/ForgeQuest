@@ -9,6 +9,7 @@ import { goBack, useRoute } from './ui/nav'
 import { NotFoundScreen } from './ui/screens'
 import { TabBar } from './ui/TabBar'
 import { BackupPill } from './ui/BackupPill'
+import { UpdatePill } from './ui/UpdatePill'
 import { TopBar } from './ui/TopBar'
 import { OnboardingScreen } from './ui/onboarding/OnboardingScreen'
 import { Tour, markTourSeen, tourSeen } from './ui/onboarding/Tour'
@@ -48,6 +49,7 @@ export function App() {
       <div class="shell">
         <TopBar title={t(route.title)} />
         <main class="scroll"><route.Screen /></main>
+        {!fieldFocused && <UpdatePill />}
         {!fieldFocused && <BackupPill />}
         {!fieldFocused && <TabBar route={path} />}
         <ToastHost />
