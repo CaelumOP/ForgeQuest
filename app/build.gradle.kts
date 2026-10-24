@@ -51,7 +51,7 @@ android {
             isShrinkResources = isMinifyEnabled
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else {
-                logger.warn("ForgeQuest: no keystore.properties found, signing the release APK with the DEBUG key. See README → Release signing.")
+                logger.warn("ForgeQuest: no keystore.properties found, signing the release APK with this PC's debug key. Only the original PC's debug key can update installed apps; see docs/SETUP.md → Release signing.")
                 signingConfigs.getByName("debug")
             }
         }
