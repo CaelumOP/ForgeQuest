@@ -233,10 +233,10 @@ export function ProfileScreen() {
           <ChipGroup label={t('profile_about_you')} accent="coral" value={s.bodyType} onChange={(v) => void set({ bodyType: v })}
             options={[{ value: 'MALE', label: t('body_male') }, { value: 'FEMALE', label: t('body_female') }]} />
           <Setting label={t('profile_height')}>
-            <Stepper label={t('profile_height')} value={s.heightCm > 0 ? s.heightCm : 170} min={120} max={230} onChange={(v) => void set({ heightCm: v })} format={(n) => `${n} ${t('unit_cm')}`} />
+            <Stepper label={t('profile_height')} value={s.heightCm > 0 ? s.heightCm : 170} min={120} max={230} onChange={(v) => void set({ heightCm: v })} format={(n) => s.heightCm > 0 ? `${n} ${t('unit_cm')}` : `– ${t('unit_cm')}`} />
           </Setting>
           <Setting label={t('profile_age')}>
-            <Stepper label={t('profile_age')} value={age > 0 ? age : 25} min={10} max={100} onChange={(v) => void set({ birthYear: thisYear - v })} format={(n) => `${n} ${t('unit_years')}`} />
+            <Stepper label={t('profile_age')} value={age > 0 ? age : 25} min={10} max={100} onChange={(v) => void set({ birthYear: thisYear - v })} format={(n) => age > 0 ? `${n} ${t('unit_years')}` : `– ${t('unit_years')}`} />
           </Setting>
           <Setting label={t('profile_body_fat_optional')}>
             <Stepper label={t('profile_body_fat_optional')} value={s.bodyFatPct} min={0} max={55} step={0.5} onChange={(v) => void set({ bodyFatPct: v < 4 ? 0 : v })} format={(n) => `${n.toFixed(1)}%`} />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../data/settings'
-import { initialState, setWeight, settingsPatch, withSuggestions } from './logic'
+import { bodyStatsReady, initialState, setWeight, settingsPatch, withSuggestions } from './logic'
 
 const days = () => 3
 
@@ -26,5 +26,17 @@ describe('onboarding logic', () => {
     const out = settingsPatch(s, 20000, 2026, null)({ ...DEFAULT_SETTINGS, apiKey: 'old' })
     expect(out).toMatchObject({ onboarded: true, name: 'Sam', unit: 'lb', birthYear: 1996, kcalGoal: 1200, proteinGoal: 60, goalSetDay: 20000, apiKey: 'old' })
     expect(settingsPatch(s, 1, 2026, 'k')(DEFAULT_SETTINGS).apiKey).toBe('k')
+  })
+  it('needs real height and age before the goals step continues', () => {
+    expect(bodyStatsReady(initialState())).toBe(false)
+    expect(bodyStatsReady({ ...initialState(), heightCm: 175, age: 30 })).toBe(true)
+    expect(bodyStatsReady({ ...initialState(), heightCm: 1.75, age: 30 })).toBe(false)
+  })
+  it('uses height and age for calories once they are set', () => {
+    const noBody = withSuggestions(initialState(), days)
+    const tall = withSuggestions({ ...initialState(), heightCm: 190, age: 20 }, days)
+    const short = withSuggestions({ ...initialState(), heightCm: 155, age: 60 }, days)
+    expect(noBody.kcal).toBe(2500) // 75 kg x 33 kcal fallback
+    expect(tall.kcal).toBeGreaterThan(short.kcal)
   })
 })

@@ -47,3 +47,9 @@
 .tour-dots i { block-size: 8px; inline-size: 8px; border-radius: 4px; background: var(--card-high); transition: inline-size .2s; }
 .tour-dots i.on { inline-size: 22px; background: var(--teal); }
 @media (prefers-reduced-motion: reduce) { .onb-body { animation: none; } .onb-bar-fill, .tour-dots i { transition: none; } }
+.onb-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.onb-target-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 44px; }
+.onb-target-head .onb-h2 { margin: 0; }
+.onb-target-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-block: 8px 12px; }
+.onb .kit-card { display: flex; flex-direction: column; gap: 4px; }
+.onb .kit-card .onb-row { padding-inline: 0; background: none; }
