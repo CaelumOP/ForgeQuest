@@ -274,6 +274,8 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
 }
 .step-glyph { flex: none; display: inline-flex; color: var(--blue); }
 img.step-glyph { border-radius: 5px; }
+/* The Share glyph is a real button: 44px target, tinted so it reads as tappable. */
+button.step-share { align-items: center; justify-content: center; inline-size: 44px; min-block-size: 44px; padding: 0; border-radius: 22px; background: var(--card-high); color: var(--blue); }
 
 /* Dev screens (#/check). */
 .page { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 16px 24px; padding-inline: 16px; }
