@@ -9,20 +9,20 @@ Everything needed to build ForgeQuest, sign releases and set up the AI and Googl
 ./gradlew testDebugUnitTest    # streak, XP, recovery, records, plan parsing
 ```
 
-## Release signing (do this before anyone else installs)
+## Release signing
 
-Release APKs are signed with the debug key unless you create a real one. The debug key's password is public, so anyone
-holding the file could ship an update that installs over the app. Once, on your PC:
+ForgeQuest's release key is the debug keystore of the PC that built the first releases
+(`%USERPROFILE%\.android\debug.keystore`, SHA-1 `A9:32:CB:…:75:53`). Every APK on testers' phones is signed with it, and
+it's the SHA-1 registered for Drive sign-in, so it stays the key for good. Android refuses an update signed with a
+different key, so switching would make everyone uninstall (and lose their data) to update.
 
-```
-keytool -genkeypair -v -keystore forgequest-release.jks -alias forgequest -keyalg RSA -keysize 2048 -validity 10000
-cp keystore.properties.example keystore.properties   # then fill in the passwords
-./gradlew assembleRelease                              # → app/build/outputs/apk/release/app-release.apk
-```
+- **Cloud builds** sign with this key from the repo secrets (next section). This is the normal way to release.
+- **On that PC**, `./gradlew assembleRelease` signs with the same key on its own: with no `keystore.properties`, Gradle
+  falls back to the debug key (it logs a warning; that's expected). Output: `app/build/outputs/apk/release/app-release.apk`.
+- **On any other PC**, the local debug key is different, so a release APK built there won't install over the app.
 
-Keep `forgequest-release.jks` and `keystore.properties` out of git (they are ignored) and back them up somewhere safe.
-Updates must be signed with the same key, or Android refuses to install over the old version. For the Drive setup
-below, use this key's SHA-1 (`keytool -list -v -keystore forgequest-release.jks`) instead of the debug one.
+Back up `debug.keystore` somewhere safe. If it's lost, no one can update the installed app and Drive sign-in needs a
+new OAuth client.
 
 ## Cloud builds (GitHub Actions)
 
@@ -32,9 +32,8 @@ Artifacts). After a merge to main it commits the APK to `apk/ForgeQuest.apk`, bu
 `versionCode`/`versionName` in `app/build.gradle.kts` and `apk/version.json` in the PR, then merge.
 
 It signs with four repo secrets (Settings → Secrets and variables → Actions): `KEYSTORE_BASE64` (the keystore file as
-base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Use the key that signed the APK already on phones, or updates
-won't install. Today that is the debug key of the PC that built the first releases (SHA-1 `A9:32:CB:…:75:53`, the one
-registered for Drive sign-in). From PowerShell on that PC:
+base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. All four hold the release key above and were set on
+2026-10-23. Only if they're ever lost, set them again from PowerShell on that PC:
 
 ```
 $ks = "$env:USERPROFILE\.android\debug.keystore"
@@ -44,8 +43,7 @@ gh secret set KEY_ALIAS -R CaelumOP/ForgeQuest -b androiddebugkey
 gh secret set KEY_PASSWORD -R CaelumOP/ForgeQuest -b android
 ```
 
-Back that `debug.keystore` up somewhere safe: if it is lost, no one can update the installed app. The workflow refuses to
-publish an APK whose signer differs from the committed one.
+The workflow refuses to publish an APK whose signer differs from the committed one.
 
 ## AI features (meal scan + coach)
 
@@ -87,7 +85,10 @@ Google only lets an app use Drive after its owner registers it. You do this once
    - Package name: `com.forgequest.app`
    - SHA-1 certificate fingerprint (from this PC's debug signing key, which also signs the release APK):
      `A9:32:CB:ED:4F:AD:FD:9E:E8:15:8A:86:FD:C5:B6:17:2A:B9:75:53`
-5. Done. No code change or rebuild is needed. Until this is done, picking an account closes the sign-in straight away. In the app, go to **Profile → Google Drive → Connect**. Google will warn that the app is unverified; tap Continue.
+5. For the web app, create a second OAuth client ID: Application type **Web application**, Authorized JavaScript
+   origins `https://caelumop.github.io` and `http://localhost:5173`. Put its client ID (public, not a secret) in
+   `web/src/config.ts`. Done on 2026-10-23.
+6. Done. No code change or rebuild is needed for Android. Until this is done, picking an account closes the sign-in straight away. In the app, go to **Profile → Google Drive → Connect**. Google will warn that the app is unverified; tap Continue.
 
 Keep a copy of `C:\Users\Administrator\.android\debug.keystore`. APKs are signed with it, and the SHA-1 above belongs to it. If it's lost, you'd need a new OAuth client and everyone would have to reinstall.
 
