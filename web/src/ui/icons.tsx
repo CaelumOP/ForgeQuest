@@ -73,3 +73,8 @@ export const EditIcon = (p: IconProps) => <Icon d="M3 17.25V21h3.75L17.81 9.94l-
 export const PinIcon = (p: IconProps) => <Icon d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" {...p} />
 export const RestaurantIcon = (p: IconProps) => <Icon d={paths.restaurant} {...p} />
 export const PhotoLibraryIcon = (p: IconProps) => <Icon d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z" {...p} />
+
+export const KeyIcon = (p: IconProps) => <Icon d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" {...p} />
+/** Points to the right; the Coach CSS mirrors it in RTL. */
+export const SendIcon = (p: IconProps) => <Icon d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" {...p} />
+export const CalendarIcon = (p: IconProps) => <Icon d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" {...p} />

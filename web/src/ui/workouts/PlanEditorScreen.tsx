@@ -17,10 +17,11 @@ import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
 import { CopyIcon, DeleteIcon, DocIcon, DownIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
 import { blockLabel, dayName, isRestTitle, prescription } from './helpers'
+import { PastePlanSheet } from '../coach/PastePlanSheet'
 import './workouts.css'
 
 type Undo = { text: string; run: () => void | Promise<void> }
-type Panel = null | 'change' | 'templates' | 'previous' | 'move' | 'rename' | 'picker'
+type Panel = null | 'change' | 'templates' | 'previous' | 'move' | 'rename' | 'picker' | 'paste'
 
 export function PlanEditorScreen({ param }: { param?: string }) {
   const lang = useLang()
@@ -32,6 +33,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
   const [editing, setEditing] = useState<PlanItemRow | null>(null)
   const [swapping, setSwapping] = useState<PlanItemRow | null>(null)
   const [pending, setPending] = useState<PlanDraft | null>(null)
+  const pendingSource = useRef('starter')
   const [undo, setUndo] = useState<Undo | null>(null)
   const timer = useRef<number>(0)
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -65,7 +67,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
     if (!pending) return
     const draft = pending
     setPending(null)
-    await applyPlan(draft, 'starter')
+    await applyPlan(draft, pendingSource.current)
     toast(t('plan_switched_to', draft.name))
   }
 
@@ -164,11 +166,12 @@ export function PlanEditorScreen({ param }: { param?: string }) {
 
       <ChangePlanSheet
         open={panel === 'change'} onClose={() => setPanel(null)} hasPrevious={allPlans.length > 1}
-        onTemplates={() => setPanel('templates')} onPrevious={() => setPanel('previous')}
+        onTemplates={() => setPanel('templates')} onPrevious={() => setPanel('previous')} onPaste={() => setPanel('paste')}
       />
+      <PastePlanSheet open={panel === 'paste'} onClose={() => setPanel(null)} onParsed={(draft) => { pendingSource.current = 'manual'; setPanel(null); setPending(draft) }} />
       <TemplatesSheet
         open={panel === 'templates'} onClose={() => setPanel(null)}
-        onPick={(draft) => { setPanel(null); setPending(localizePlan(draft, getLang())) }}
+        onPick={(draft) => { pendingSource.current = 'starter'; setPanel(null); setPending(localizePlan(draft, getLang())) }}
       />
       <PreviousSheet
         open={panel === 'previous'} onClose={() => setPanel(null)} plans={allPlans}
@@ -299,14 +302,13 @@ function ChoiceRow({ icon, title, info, onClick, extra }: { icon: preact.Compone
   )
 }
 
-function ChangePlanSheet({ open, onClose, hasPrevious, onTemplates, onPrevious }: { open: boolean; onClose: () => void; hasPrevious: boolean; onTemplates: () => void; onPrevious: () => void }) {
+function ChangePlanSheet({ open, onClose, hasPrevious, onTemplates, onPrevious, onPaste }: { open: boolean; onClose: () => void; hasPrevious: boolean; onTemplates: () => void; onPrevious: () => void; onPaste: () => void }) {
   const copy = async () => {
     try { await navigator.clipboard.writeText(planPrompt); toast(t('plan_prompt_copied')) } catch { toast(t('workouts_web_copy_failed')) }
   }
   return (
     <Sheet open={open} onClose={onClose} title={t('plan_change')}>
-      {/* Coach worker: add the "2. Paste plan" button next to Copy once the pasted-plan parser exists (it opens a PlanPreviewSheet with the parsed draft). */}
-      <ChoiceRow icon={<SparkleIcon />} title={t('plan_gemini')} info={t('plan_gemini_info')} extra={<Button variant="tonal" icon={<CopyIcon size={18} />} onClick={copy}>{t('plan_gemini_copy')}</Button>} />
+      <ChoiceRow icon={<SparkleIcon />} title={t('plan_gemini')} info={t('plan_gemini_info')} extra={<><Button variant="tonal" icon={<CopyIcon size={18} />} onClick={copy}>{t('plan_gemini_copy')}</Button> <Button variant="tonal" icon={<DocIcon size={18} />} onClick={onPaste}>{t('plan_gemini_paste')}</Button></>} />
       <ChoiceRow icon={<ListIcon />} title={t('plan_ready_made')} info={t('plan_ready_made_info')} onClick={onTemplates} />
       {hasPrevious && <ChoiceRow icon={<HistoryIcon />} title={t('plan_previous')} info={t('plan_previous_info')} onClick={onPrevious} />}
       <ChoiceRow icon={<DocIcon />} title={t('plan_import_docs')} info={t('plan_docs_info')} onClick={() => { location.hash = '#/profile' }} />

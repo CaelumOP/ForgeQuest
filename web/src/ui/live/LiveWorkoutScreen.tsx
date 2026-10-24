@@ -10,6 +10,7 @@ import { weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
 import { Button, Card, Dialog, EmptyState, IconButton, Sheet, ListRow, toast } from '../kit'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
+import { runDebriefInBackground } from '../coach/debrief'
 import { blockLabel, openFormVideo } from '../workouts/helpers'
 import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
@@ -23,11 +24,10 @@ import {
 import './live.css'
 
 /**
- * TODO(coach): Android shows a workout-complete screen with the AI debrief after finishing (generateDebrief). On the web the Coach
- * worker owns that: call it from here (it runs after finishSession, before we navigate to '#/session/<id>').
- * The per-set effort chips (Easy, OK, Hard, Pain) are a local picker and are ported in SetRowView.
+ * After finishSession: the Coach's debrief of the workout (Android generateDebrief) runs in the background and is saved on the
+ * session row; the summary screen shows it when it arrives. The per-set effort chips (Easy, OK, Hard, Pain) are ported in SetRowView.
  */
-export function onWorkoutFinished(_sessionId: number, _result: FinishResult): void { /* hook for the Coach worker */ }
+export function onWorkoutFinished(sessionId: number, _result: FinishResult): void { runDebriefInBackground(sessionId) }
 
 const FOCUS_KEY = 'fq.live.focus'
 const store = (): Storage | null => { try { return sessionStorage } catch { return null } }
