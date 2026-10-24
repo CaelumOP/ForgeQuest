@@ -9,7 +9,7 @@ import { todayEpochDay } from '../../domain/dates'
 import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
 import { MIN_SAFE_KCAL, NUTRITION_GOALS } from '../../domain/nutrition'
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, Card, ChipGroup, NumberField, Stat, Stepper, TextField } from '../kit'
+import { Button, Card, ChipGroup, Stat, Stepper, TextField, parseNumber } from '../kit'
 import { CheckCircleIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
 import { LAST_STEP, bodyStatsReady, initialState, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
 import './onboarding.css'
@@ -77,9 +77,10 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
       <div class="onb-body" key={s.step}>
         {s.step === 0 && <StepLanguage onNext={() => go(1)} />}
         {s.step === 1 && <StepWelcome s={s} update={update} />}
-        {s.step === 2 && <StepGoals s={s} update={update} />}
+        {s.step === 2 && <StepBody s={s} update={update} />}
         {s.step === 3 && <StepPlan s={s} update={update} />}
-        {s.step === 4 && (
+        {s.step === 4 && <StepGoal s={s} update={update} />}
+        {s.step === 5 && (
           <StepKey value={key} onInput={(v) => { setKey(v.trim()); setCheck({ busy: false, ok: false, msg: null }) }} check={check} onCheck={runCheck} />
         )}
       </div>
@@ -138,28 +139,68 @@ function Row({ label, children }: { label: string; children: preact.ComponentChi
   return <div class="onb-row"><span class="onb-row-label">{label}</span>{children}</div>
 }
 
-function StepGoals({ s, update }: StepProps) {
+/** A whole number typed straight into a row (height, age). Reports 0 while empty or out of range. */
+function RowNumber({ label, unit, value, min, max, onChange }: { label: string; unit: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState(value > 0 ? String(value) : '')
+  return (
+    <label class="onb-row">
+      <span class="onb-row-label">{label}</span>
+      <span class="onb-num-wrap">
+        <input class="onb-num-input" inputMode="numeric" enterKeyHint="done" value={text} placeholder="–" aria-label={`${label} (${unit})`}
+          onInput={(e) => {
+            const v = (e.target as HTMLInputElement).value
+            setText(v)
+            const n = parseNumber(v)
+            onChange(Number.isInteger(n) && n >= min && n <= max ? n : 0)
+          }} />
+        <span class="onb-num-unit">{unit}</span>
+      </span>
+    </label>
+  )
+}
+
+/** Step 2: units, weight, height and age, one calm row each. */
+function StepBody({ s, update }: StepProps) {
   const ar = getLang() === 'ar'
   const unit = s.unit
   const shownWeight = Math.round(fromKg(unit, s.weightKg) * 10) / 10
-  const setUnit = (u: WeightUnit) => update((c) => ({ ...c, unit: u }))
   return (
     <>
-      <Title title={t('onb_goals_title')} body={t('onb_goals_body')} />
-      <h2 class="onb-h2">{t('goal_title')}</h2>
-      <ChipGroup label={t('goal_title')} value={s.goal} onChange={(g) => update((c) => withSuggestions({ ...c, goal: g }, trainingDaysOf))}
-        options={NUTRITION_GOALS.map((g) => ({ value: g, label: t(`goal_${g.toLowerCase()}`) }))} />
-      <ChipGroup label={t('weight_body')} value={unit} onChange={setUnit}
+      <Title title={t('onb_web_body_title')} body={t('onb_web_body_body')} />
+      <ChipGroup label={t('profile_weights')} value={unit} onChange={(u: WeightUnit) => update((c) => ({ ...c, unit: u }))}
         options={[{ value: 'KG', label: t('unit_kilograms') }, { value: 'LB', label: t('unit_pounds') }]} />
       <Row label={t('weight_body')}>
         <Stepper label={t('weight_body')} value={shownWeight} step={bodyStep(unit)} min={fromKg(unit, 30)} max={fromKg(unit, 250)}
           format={(n) => `${n.toFixed(1)} ${unitLabel(unit, ar)}`} onChange={(v) => update((c) => setWeight(c, toKg(unit, v), trainingDaysOf))} />
       </Row>
-      <div class="onb-pair">
-        <NumberField label={t('profile_height')} unit={t('unit_cm')} hint={t('onb_web_height_hint')} value={s.heightCm || null} min={120} max={230}
-          onChange={(v) => update((c) => withSuggestions({ ...c, heightCm: v ?? 0 }, trainingDaysOf))} />
-        <NumberField label={t('profile_age')} unit={t('unit_years')} value={s.age || null} min={10} max={100}
-          onChange={(v) => update((c) => withSuggestions({ ...c, age: v ?? 0 }, trainingDaysOf))} />
+      <RowNumber label={t('profile_height')} unit={t('unit_cm')} value={s.heightCm} min={120} max={230}
+        onChange={(v) => update((c) => withSuggestions({ ...c, heightCm: v }, trainingDaysOf))} />
+      <RowNumber label={t('profile_age')} unit={t('unit_years')} value={s.age} min={10} max={100}
+        onChange={(v) => update((c) => withSuggestions({ ...c, age: v }, trainingDaysOf))} />
+    </>
+  )
+}
+
+/** Step 4 (after the plan, so the target counts its training days): the goal and the calculated target. */
+function StepGoal({ s, update }: StepProps) {
+  const goals = NUTRITION_GOALS.map((g) => ({ name: t(`goal_${g.toLowerCase()}`), desc: t(`onb_web_goal_${g.toLowerCase()}_desc`), g }))
+  return (
+    <>
+      <Title title={t('goal_title')} body={t('onb_web_goal_body')} />
+      <div class="onb-plans" role="radiogroup" aria-label={t('goal_title')}>
+        {goals.map((o) => {
+          const on = s.goal === o.g
+          return (
+            <button key={o.g} type="button" role="radio" aria-checked={on} class={`onb-plan${on ? ' on' : ''}`}
+              onClick={() => update((c) => withSuggestions({ ...c, goal: o.g }, trainingDaysOf))}>
+              <span class="onb-plan-text">
+                <span class="onb-plan-name">{o.name}</span>
+                <span class="onb-plan-desc">{o.desc}</span>
+              </span>
+              <span class={`onb-radio${on ? ' on' : ''}`}>{on && <CheckCircleIcon />}</span>
+            </button>
+          )
+        })}
       </div>
       <Target s={s} update={update} />
     </>
