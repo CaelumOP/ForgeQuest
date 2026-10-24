@@ -15,6 +15,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.inferEquipmentFromText
 import com.forgequest.app.domain.parseEquipmentSet
+import com.forgequest.app.domain.CutPace
+import com.forgequest.app.domain.DayActivity
+import com.forgequest.app.domain.GainPace
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
@@ -97,6 +100,18 @@ data class Settings(
     val goalSetDay: Long = 0,
     /** AI debrief card after each workout (Profile > Coach and AI). */
     val debriefEnabled: Boolean = true,
+    /** How active a normal day is outside workouts (calorie plan v2); watch steps override it on Android. */
+    val dayActivity: DayActivity = DayActivity.SITTING,
+    val cutPace: CutPace = CutPace.STANDARD,
+    val gainPace: GainPace = GainPace.STANDARD,
+    /** Body weight when the calorie target was last set, so a 2.5 kg change can offer a fresh suggestion. 0 = unknown. */
+    val targetWeightKg: Float = 0f,
+    /** Epoch day the calorie target last changed (by hand or by a tap on a suggestion): updates wait 14 days after it. */
+    val targetSetDay: Long = 0,
+    /** Calorie suggestion cards on Home stay hidden until this epoch day ("Not now"). */
+    val calorieSnoozeUntil: Long = 0,
+    /** The one-time "more accurate calorie target" card was answered. */
+    val calorieV2Seen: Boolean = false,
 ) {
     val weightUnit: WeightUnit
         get() = WeightUnit.fromCodeOrLabel(unit)
@@ -157,6 +172,13 @@ class SettingsRepository(private val context: Context) {
         val nutritionGoal = stringPreferencesKey("nutrition_goal")
         val goalSetDay = longPreferencesKey("goal_set_day")
         val debrief = booleanPreferencesKey("debrief_enabled")
+        val dayActivity = stringPreferencesKey("day_activity")
+        val cutPace = stringPreferencesKey("cut_pace")
+        val gainPace = stringPreferencesKey("gain_pace")
+        val targetWeightKg = floatPreferencesKey("target_weight_kg")
+        val targetSetDay = longPreferencesKey("target_set_day")
+        val calorieSnoozeUntil = longPreferencesKey("calorie_snooze_until")
+        val calorieV2Seen = booleanPreferencesKey("calorie_v2_seen")
     }
 
     /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
@@ -216,6 +238,13 @@ class SettingsRepository(private val context: Context) {
             nutritionGoal = runCatching { NutritionGoal.valueOf(this[K.nutritionGoal] ?: "MAINTAIN") }.getOrDefault(NutritionGoal.MAINTAIN),
             goalSetDay = this[K.goalSetDay] ?: 0,
             debriefEnabled = this[K.debrief] ?: true,
+            dayActivity = DayActivity.parse(this[K.dayActivity]),
+            cutPace = CutPace.parse(this[K.cutPace]),
+            gainPace = GainPace.parse(this[K.gainPace]),
+            targetWeightKg = this[K.targetWeightKg] ?: 0f,
+            targetSetDay = this[K.targetSetDay] ?: 0,
+            calorieSnoozeUntil = this[K.calorieSnoozeUntil] ?: 0,
+            calorieV2Seen = this[K.calorieV2Seen] ?: false,
         )
     }
 
@@ -267,6 +296,13 @@ class SettingsRepository(private val context: Context) {
             p[K.nutritionGoal] = s.nutritionGoal.name
             p[K.goalSetDay] = s.goalSetDay
             p[K.debrief] = s.debriefEnabled
+            p[K.dayActivity] = s.dayActivity.name
+            p[K.cutPace] = s.cutPace.name
+            p[K.gainPace] = s.gainPace.name
+            p[K.targetWeightKg] = s.targetWeightKg
+            p[K.targetSetDay] = s.targetSetDay
+            p[K.calorieSnoozeUntil] = s.calorieSnoozeUntil
+            p[K.calorieV2Seen] = s.calorieV2Seen
         }
     }
 

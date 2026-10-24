@@ -7,7 +7,9 @@ import { useLive } from './live';
 import {
   inferEquipmentFromText, parseEquipmentSet, type Equipment,
 } from '../domain/exercise-swap-engine';
-import { NUTRITION_GOALS, type NutritionGoal } from '../domain/nutrition';
+import {
+  NUTRITION_GOALS, parseCutPace, parseDayActivity, parseGainPace, type CutPace, type DayActivity, type GainPace, type NutritionGoal,
+} from '../domain/nutrition';
 import { unitCode, unitFromCodeOrLabel, type WeightUnit } from '../domain/units';
 
 export type BodyType = 'MALE' | 'FEMALE';
@@ -51,6 +53,18 @@ export interface Settings {
   nutritionGoal: NutritionGoal;
   goalSetDay: number;
   debriefEnabled: boolean;
+  /** How active a normal day is outside workouts (calorie plan v2). */
+  dayActivity: DayActivity;
+  cutPace: CutPace;
+  gainPace: GainPace;
+  /** Body weight when the calorie target was last set (0 = unknown): a 2.5 kg change offers a fresh suggestion. */
+  targetWeightKg: number;
+  /** Epoch day the calorie target last changed: suggested updates wait 14 days after it. */
+  targetSetDay: number;
+  /** Calorie suggestion cards on Home stay hidden until this epoch day ("Not now"). */
+  calorieSnoozeUntil: number;
+  /** The one-time "more accurate calorie target" card was answered. */
+  calorieV2Seen: boolean;
   /** Gemini key. Never in a backup, never logged. */
   apiKey: string;
   /** Optional Groq key. Never in a backup, never logged. */
@@ -64,6 +78,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   theme: 'system', hapticsEnabled: true, unit: 'kg', reminderHour: -1, heightCm: 0, birthYear: 0,
   trackCarbs: false, carbsGoal: 250, proteinPerKg: 1.8, fatSharePct: 25, equipment: '', bodyFatPct: 0,
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true, apiKey: '', groqKey: '',
+  dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
+  calorieSnoozeUntil: 0, calorieV2Seen: false,
 } satisfies Settings);
 
 const SETTINGS_KEY = 'settings';
@@ -84,6 +100,7 @@ function normalize(raw: unknown): Settings {
     kcalGoal: Math.max(s.kcalGoal, 1200),
     unit: unitCode(unitFromCodeOrLabel(s.unit)),
     nutritionGoal: NUTRITION_GOALS.includes(s.nutritionGoal) ? s.nutritionGoal : 'MAINTAIN',
+    dayActivity: parseDayActivity(s.dayActivity), cutPace: parseCutPace(s.cutPace), gainPace: parseGainPace(s.gainPace),
     apiKey: s.apiKey.trim(),
     groqKey: s.groqKey.trim(),
   };
@@ -126,6 +143,7 @@ export function toBackupSettings(s: Settings): BackupSettings {
     birthYear: s.birthYear, trackCarbs: s.trackCarbs, carbsGoal: s.carbsGoal, proteinPerKg: s.proteinPerKg,
     fatSharePct: s.fatSharePct, equipment: s.equipment, bodyFatPct: s.bodyFatPct, nutritionGoal: s.nutritionGoal,
     goalSetDay: s.goalSetDay, debriefEnabled: s.debriefEnabled,
+    dayActivity: s.dayActivity, cutPace: s.cutPace, gainPace: s.gainPace, targetWeightKg: s.targetWeightKg, targetSetDay: s.targetSetDay,
   };
 }
 
@@ -142,6 +160,8 @@ export function fromBackupSettings(b: BackupSettings, s: Settings): Settings {
     proteinPerKg: b.proteinPerKg, fatSharePct: b.fatSharePct, equipment: b.equipment, bodyFatPct: b.bodyFatPct,
     nutritionGoal: (NUTRITION_GOALS as readonly string[]).includes(b.nutritionGoal) ? b.nutritionGoal : s.nutritionGoal,
     goalSetDay: b.goalSetDay, debriefEnabled: b.debriefEnabled,
+    dayActivity: parseDayActivity(b.dayActivity), cutPace: parseCutPace(b.cutPace), gainPace: parseGainPace(b.gainPace),
+    targetWeightKg: b.targetWeightKg, targetSetDay: b.targetSetDay,
   });
 }
 

@@ -5,19 +5,19 @@ import {
 
 describe('NutritionTest', () => {
   it('mifflinStJeorWithActivity', () => {
-    // 75 kg, 178 cm, 25-year-old man, 5 training days: rest 1742.5 × 1.55 = 2701 → 2700
-    expect(suggestedKcal(75, 178, 25, true, 5)).toBe(2700)
-    // same woman, 3 days: rest 1571.5 × 1.375 = 2161 → 2150
-    expect(suggestedKcal(75, 178, 25, false, 3)).toBe(2150)
-    // 6 lifting days stop at 1.65: 1742.5 × 1.65 = 2875 → 2900
-    expect(suggestedKcal(75, 178, 25, true, 6)).toBe(2900)
-    expect(activityFactor(7)).toBe(1.65)
+    // 75 kg, 178 cm, 25-year-old man, sitting, 5 training days: rest 1742.5 × (1.25 + 5 × 0.025) = 2396 → 2400
+    expect(suggestedKcal(75, 178, 25, true, 5)).toBe(2400)
+    // same woman, 3 days: rest 1576.5 × 1.325 = 2089 → 2100
+    expect(suggestedKcal(75, 178, 25, false, 3)).toBe(2100)
+    // 6 days: 1742.5 × 1.40 = 2440 → 2450
+    expect(suggestedKcal(75, 178, 25, true, 6)).toBe(2450)
+    expect(activityFactor(7)).toBeCloseTo(1.425, 5)
   })
 
   it('goalShiftsCaloriesAndProtein', () => {
-    // maintenance 2701: a cut takes 500 (less than 22 %), a gain adds 250
-    expect(suggestedKcal(75, 178, 25, true, 5, 0, 'CUT')).toBe(2200)
-    expect(suggestedKcal(75, 178, 25, true, 5, 0, 'GAIN')).toBe(2950)
+    // maintenance 2396: a Standard cut takes min(0.75 % of 75 kg × 1,100 = 619, 25 % = 599); a Standard gain adds 206
+    expect(suggestedKcal(75, 178, 25, true, 5, 0, 'CUT')).toBe(1800)
+    expect(suggestedKcal(75, 178, 25, true, 5, 0, 'GAIN')).toBe(2600)
     expect(proteinPerKgFor('CUT')).toBe(2.0)
     expect(proteinPerKgFor('GAIN')).toBe(1.8)
   })
@@ -35,13 +35,15 @@ describe('NutritionTest', () => {
 
   it('weightTrendWithFewWeighInsSeesTheRealChange', () => {
     // Three weigh-ins used to be averaged into the same number twice, so a real gain read as "stalled".
-    expect(weightTrendNote('GAIN', 0, [[0, 70], [10, 71], [21, 72]], 21)).toBeNull()
+    // ~1 % a week is a real gain, and faster than the Standard pace allows (0.5 %).
+    expect(weightTrendNote('GAIN', 0, [[0, 70], [10, 71], [21, 72]], 21)).toBe('GAIN_TOO_FAST')
     // 2.5 % a week with three weigh-ins: too fast
     expect(weightTrendNote('CUT', 0, [[0, 80], [7, 78], [14, 76]], 14)).toBe('CUT_TOO_FAST')
   })
 
   it('fallsBackToPerKgWithoutHeightOrAge', () => {
-    expect(suggestedKcal(75, 0, 25, true, 5)).toBe(2500)
+    // no height: 22 kcal/kg × 1.375 = 2269 → 2250
+    expect(suggestedKcal(75, 0, 25, true, 5)).toBe(2250)
     expect(suggestedProtein(75)).toBe(135)
     expect(suggestedProtein(75, 2.2)).toBe(165)
     // 2500 kcal, 135 g protein: 25 % fat (69.4 → 70 g) leaves 1330 kcal = 335 g.
