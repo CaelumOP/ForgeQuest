@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { t, useLang } from './i18n'
+import { loadSettings } from './data/settings'
+import { useLive } from './data/live'
 import { matchRoute } from './routes'
 import { InstallGate, needsInstallGate } from './ui/InstallGate'
 import { ToastHost } from './ui/kit'
@@ -7,6 +9,8 @@ import { goBack, useRoute } from './ui/nav'
 import { NotFoundScreen } from './ui/screens'
 import { TabBar } from './ui/TabBar'
 import { TopBar } from './ui/TopBar'
+import { OnboardingScreen } from './ui/onboarding/OnboardingScreen'
+import { Tour, markTourSeen, tourSeen } from './ui/onboarding/Tour'
 
 const isField = (el: EventTarget | null) => el instanceof HTMLElement && el.matches('input, textarea, select')
 
@@ -30,8 +34,13 @@ export function App() {
   useLang() // re-render everything when the language changes
   const path = useRoute()
   const fieldFocused = useFieldFocused()
+  const settings = useLive(loadSettings, [], null) // null until the first read, so a returning person never sees a flash of setup
+  const [tourOpen, setTourOpen] = useState(() => !tourSeen())
   if (gated) return <InstallGate />
+  if (!settings) return <div class="shell" />
+  if (!settings.onboarded) return <><OnboardingScreen onDone={() => undefined} /><ToastHost /></>
   const { route, param } = matchRoute(path)
+  const tour = tourOpen && <Tour finishLabel={t('tour_done')} onDone={() => { markTourSeen(); setTourOpen(false) }} />
 
   if (route?.tab) {
     return (
@@ -40,6 +49,7 @@ export function App() {
         <main class="scroll"><route.Screen /></main>
         {!fieldFocused && <TabBar route={path} />}
         <ToastHost />
+        {tour}
       </div>
     )
   }

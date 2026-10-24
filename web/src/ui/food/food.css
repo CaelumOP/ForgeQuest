@@ -64,3 +64,39 @@
 .food-sheet-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .food-snack { position: fixed; inset-inline: 16px; inset-block-end: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 4px 16px; padding-inline: 16px 4px; border-radius: 14px; background: var(--text); color: var(--bg); font-size: 14px; }
 .food-snack button { min-block-size: 44px; padding-inline: 14px; border: 0; background: none; color: var(--teal-on-inv, var(--bg)); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+/* Scan screen */
+.scan { display: flex; flex-direction: column; gap: 14px; }
+.scan-start { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding-block: 24px 8px; }
+.scan-start p { margin: 0; font-size: 14px; color: var(--text-2); max-inline-size: 360px; }
+.scan-file { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+.scan-photo { inline-size: 100%; max-block-size: 220px; object-fit: cover; border-radius: 20px; background: var(--card-high); }
+.scan-busy { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-block: 16px; font-size: 15px; }
+.scan-busy .kit-spinner { inline-size: 28px; block-size: 28px; }
+.scan-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.scan-actions > .kit-btn-filled { flex: 1; }
+.scan-fail h2 { margin: 0 0 6px; font-size: 16px; font-weight: 500; }
+.scan-fail p { margin: 0 0 14px; font-size: 14px; color: var(--text-2); }
+.scan-sum { display: flex; align-items: flex-start; gap: 12px; }
+.scan-dish { flex: 1; min-inline-size: 0; }
+.scan-dish input { inline-size: 100%; min-block-size: 44px; font-size: 18px; font-weight: 500; }
+.scan-nums { display: flex; flex-direction: column; align-items: flex-end; font-size: 14px; font-weight: 500; }
+.scan-nums .k { font-size: 16px; font-weight: 600; color: var(--blue); }
+.scan-nums .p { color: var(--teal); }
+.scan-nums .c { color: var(--purple); }
+.scan-item { display: flex; align-items: center; gap: 4px; border-radius: 16px; background: var(--card-high); padding-inline: 4px 12px; }
+.scan-item-tick { flex: 0 0 44px; inline-size: 44px; block-size: 44px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.scan-item-tick span { inline-size: 24px; block-size: 24px; border-radius: 50%; background: var(--card); display: grid; place-items: center; color: var(--on-teal); }
+.scan-item-tick[aria-pressed="true"] span { background: var(--teal); }
+.scan-item-main { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; min-block-size: 44px; justify-content: center; border: 0; background: none; padding: 4px 8px; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.scan-item-main.off { color: var(--text-2); }
+.scan-item-name { font-size: 15px; }
+.scan-item-sub { font-size: 12px; color: var(--text-2); }
+.scan-item-nums { display: flex; flex-direction: column; align-items: flex-end; font-size: 14px; font-weight: 500; }
+.scan-item-nums .k { color: var(--blue); }
+.scan-item-nums .p { color: var(--teal); font-size: 13px; }
+.scan-item-nums.off .k, .scan-item-nums.off .p { color: var(--text-2); }
+.scan-label { font-size: 13px; font-weight: 500; color: var(--text-2); margin: 0; }
+.scan-hand { margin: 0; font-size: 12px; color: var(--teal); }
+.scan-nokey { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.scan-nokey p { margin: 0; font-size: 14px; color: var(--text-2); }

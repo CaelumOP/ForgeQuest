@@ -1,5 +1,4 @@
 {
-  "food_w_scan_soon": "مسح الوجبات بالذكاء الاصطناعي قريبًا.",
   "food_w_edit": "تعديل {1}",
   "food_w_qty": "عدد حصص {1}",
   "food_w_more": "إضافة حصة",
@@ -8,5 +7,8 @@
   "food_w_pinned_switch": "تثبيت في الأعلى",
   "food_w_ring_kcal": "السعرات",
   "food_w_over": "فوق الهدف",
-  "food_w_day_nav": "اليوم"
+  "food_w_day_nav": "اليوم",
+  "food_w_take_photo": "التقاط صورة",
+  "food_w_photo_bad": "تعذّر فتح هذه الصورة. جرّب صورة أخرى.",
+  "food_w_scan_privacy": "تُرسل الصورة إلى Gemini بمفتاحك الخاص لتقدير الوجبة، ولا تُحفظ على هاتفك."
 }
