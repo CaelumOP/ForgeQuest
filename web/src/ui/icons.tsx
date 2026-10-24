@@ -65,3 +65,5 @@ export const RemoveIcon = (p: IconProps) => <Icon d="M19 13H5v-2h14z" {...p} />
 export const CheckIcon = (p: IconProps) => <Icon d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" {...p} />
 /** Points to the end side in LTR; wrap in `.forward` (see styles.css) to mirror in RTL. */
 export const ForwardChevron = (p: IconProps) => <span class="forward" style="display:inline-flex"><Icon d="M17.77 3.77L16 2 6 12l10 10 1.77-1.77L9.54 12z" {...p} /></span>
+export const MoreIcon = (p: IconProps) => <Icon d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" {...p} />
+export const ExpandMoreIcon = (p: IconProps) => <Icon d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" {...p} />
