@@ -6,6 +6,9 @@ import {
   type PlanDayRow, type PlanItemRow, type PlanRow, type ReadinessDayRow, type SessionRow, type SetRow,
   type WeightRow,
 } from './db';
+import { fromBackupSettings, loadSettings, toBackupSettings, updateSettings } from './settings';
+
+const currentBackupSettings = async (): Promise<BackupSettings> => toBackupSettings(await loadSettings());
 
 /** The person's settings (never the AI key). Same fields and defaults as Kotlin BackupSettings. */
 export interface BackupSettings {
@@ -163,9 +166,10 @@ async function readAll(settings: BackupSettings | null): Promise<BackupFile> {
   return shapeFile(raw);
 }
 
-/** Everything on this device plus `settings`, as a version 2 backup. */
-export function buildBackup(settings: BackupSettings | null): Promise<BackupFile> {
-  return db.transaction('r', TABLES, () => readAll(settings));
+/** Everything on this device plus `settings` (default: the saved settings, never the AI keys), as a version 2 backup. */
+export async function buildBackup(settings?: BackupSettings | null): Promise<BackupFile> {
+  const s = settings === undefined ? await currentBackupSettings() : settings;
+  return db.transaction('r', TABLES, () => readAll(s));
 }
 
 export function encodeBackup(file: BackupFile): string {
@@ -200,16 +204,19 @@ const KEEP_SAFETY_COPIES = 3;
 /**
  * Replaces everything on this device with `file`, in one transaction. First keeps a safety copy of
  * what is here now (latest 3), unless there are no sessions, meals or weights. Photos are dropped
- * (the web never stores them); readiness history stays when the file has none. Returns the file's
- * settings for the caller to save (null when it has none, e.g. a v1 file).
+ * (the web never stores them); readiness history stays when the file has none. The file's settings
+ * are saved through settings.ts (keys untouched) and the locked weekly streak targets are cleared, so
+ * they are locked again from the restored history (decision 11). Returns the file's settings (null
+ * when it has none, e.g. a v1 file).
  */
 export async function applyBackup(
   file: BackupFile,
-  currentSettings: BackupSettings | null = null,
+  currentSettings?: BackupSettings | null,
 ): Promise<BackupSettings | null> {
   const f = shapeFile(file);
-  await db.transaction('rw', [...TABLES, 'safetyCopies'], async () => {
-    const current = await readAll(currentSettings);
+  const before = currentSettings === undefined ? await currentBackupSettings() : currentSettings;
+  await db.transaction('rw', [...TABLES, 'safetyCopies', 'kv'], async () => {
+    const current = await readAll(before);
     if (current.sessions.length || current.meals.length || current.weights.length) {
       await db.safetyCopies.add({ createdAt: current.createdAt, json: encodeBackup(current) });
       const all = await db.safetyCopies.orderBy('createdAt').reverse().primaryKeys();
@@ -225,8 +232,11 @@ export async function applyBackup(
       await db.table(t).clear();
       await db.table(t).bulkAdd(rows[t]);
     }
+    await db.kv.delete('weekTargets');
   });
-  return f.settings;
+  const restored = f.settings;
+  if (restored) await updateSettings((s) => fromBackupSettings(restored, s));
+  return restored;
 }
 
 /** Pre-restore copies, newest first. */

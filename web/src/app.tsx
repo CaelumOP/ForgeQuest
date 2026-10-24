@@ -1,24 +1,12 @@
 import { useEffect, useState } from 'preact/hooks'
-import { AiCheck } from './dev/AiCheck'
 import { t, useLang } from './i18n'
+import { matchRoute } from './routes'
 import { InstallGate, needsInstallGate } from './ui/InstallGate'
+import { ToastHost } from './ui/kit'
 import { goBack, useRoute } from './ui/nav'
+import { NotFoundScreen } from './ui/screens'
 import { TabBar } from './ui/TabBar'
 import { TopBar } from './ui/TopBar'
-import { AboutScreen, CoachScreen, FoodScreen, HomeScreen, NotFoundScreen, ProfileScreen, WorkoutsScreen } from './ui/screens'
-
-const tabScreens: Record<string, { title: string; Screen: () => preact.JSX.Element }> = {
-  '/': { title: 'tab_home', Screen: HomeScreen },
-  '/workouts': { title: 'tab_workouts', Screen: WorkoutsScreen },
-  '/food': { title: 'tab_food', Screen: FoodScreen },
-  '/coach': { title: 'tab_coach', Screen: CoachScreen },
-  '/profile': { title: 'tab_profile', Screen: ProfileScreen },
-}
-
-const pushedScreens: Record<string, { title: string; Screen: () => preact.JSX.Element }> = {
-  '/about': { title: 'settings_group_about', Screen: AboutScreen },
-  '/check': { title: 'screen_ai_check', Screen: AiCheck },
-}
 
 const isField = (el: EventTarget | null) => el instanceof HTMLElement && el.matches('input, textarea, select')
 
@@ -30,10 +18,7 @@ function useFieldFocused() {
     const onOut = (e: FocusEvent) => setFocused(isField(e.relatedTarget))
     addEventListener('focusin', onIn)
     addEventListener('focusout', onOut)
-    return () => {
-      removeEventListener('focusin', onIn)
-      removeEventListener('focusout', onOut)
-    }
+    return () => { removeEventListener('focusin', onIn); removeEventListener('focusout', onOut) }
   }, [])
   return focused
 }
@@ -43,26 +28,28 @@ const gated = needsInstallGate()
 
 export function App() {
   useLang() // re-render everything when the language changes
-  const route = useRoute()
+  const path = useRoute()
   const fieldFocused = useFieldFocused()
   if (gated) return <InstallGate />
+  const { route, param } = matchRoute(path)
 
-  const tab = tabScreens[route]
-  if (tab) {
+  if (route?.tab) {
     return (
       <div class="shell">
-        <TopBar title={t(tab.title)} />
-        <main class="scroll"><tab.Screen /></main>
-        {!fieldFocused && <TabBar route={route} />}
+        <TopBar title={t(route.title)} />
+        <main class="scroll"><route.Screen /></main>
+        {!fieldFocused && <TabBar route={path} />}
+        <ToastHost />
       </div>
     )
   }
-  const pushed = pushedScreens[route]
-  const Scroll = route === '/check' ? 'div' : 'main' // AiCheck brings its own <main>
+  // "bare" screens (live workout, camera) draw their own header.
+  if (route?.bare) return <div class="shell"><route.Screen param={param} /><ToastHost /></div>
   return (
     <div class="shell">
-      <TopBar title={t(pushed?.title ?? 'screen_not_found')} onBack={goBack} />
-      <Scroll class="scroll">{pushed ? <pushed.Screen /> : <NotFoundScreen />}</Scroll>
+      <TopBar title={t(route?.title ?? 'screen_not_found')} onBack={goBack} />
+      <div class="scroll">{route ? <route.Screen param={param} /> : <NotFoundScreen />}</div>
+      <ToastHost />
     </div>
   )
 }

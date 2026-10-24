@@ -14,10 +14,6 @@ function Placeholder({ children }: { children?: ComponentChildren }) {
   )
 }
 
-export const HomeScreen = () => <Placeholder />
-export const WorkoutsScreen = () => <Placeholder />
-export const FoodScreen = () => <Placeholder />
-export const CoachScreen = () => <Placeholder />
 
 export function ProfileScreen() {
   const lang = useLang()

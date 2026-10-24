@@ -39,6 +39,8 @@ export interface DayNoteRow { epochDay: number; tag: string; note: string; updat
 export type ReadinessDayRow = ReadinessDayEntity;
 /** A backup of this device taken right before a restore (web stand-in for Android's backups/ folder). */
 export interface SafetyCopyRow { id?: number; createdAt: number; json: string }
+/** Small key-value rows: 'settings', 'weekTargets' (web stand-in for DataStore and SharedPreferences). */
+export interface KvRow { key: string; value: unknown }
 
 export class ForgeQuestDb extends Dexie {
   exercises!: Table<ExerciseRow, string>;
@@ -55,6 +57,7 @@ export class ForgeQuestDb extends Dexie {
   dayNotes!: Table<DayNoteRow, number>;
   readinessDays!: Table<ReadinessDayRow, number>;
   safetyCopies!: Table<SafetyCopyRow, number>;
+  kv!: Table<KvRow, string>;
 
   constructor(name = 'forgequest') {
     super(name);
@@ -75,6 +78,7 @@ export class ForgeQuestDb extends Dexie {
       readinessDays: 'epochDay',
       safetyCopies: '++id, createdAt',
     });
+    this.version(2).stores({ kv: 'key' });
   }
 }
 
