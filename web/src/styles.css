@@ -287,3 +287,6 @@ button.step-share { align-items: center; justify-content: center; inline-size: 4
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* "Tap to back up" (BackupPill.tsx): floats just above the tab bar. */
+.backup-pill { align-self: center; margin-block: 0 8px; min-block-size: 40px; padding-inline: 18px; border-radius: 20px; background: var(--teal-track); color: var(--teal); font-size: 14px; }

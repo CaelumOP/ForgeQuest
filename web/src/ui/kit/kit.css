@@ -80,7 +80,7 @@ html[dir='rtl'] .kit-chart-svg { transform: scaleX(-1); }
 .kit-sheet-title { margin: 0; font-size: 20px; line-height: 26px; font-weight: 600; }
 .kit-sheet-body { overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; padding-block-end: 8px; }
 .kit-dialog { inline-size: 100%; max-inline-size: 420px; border-radius: 28px; padding: 24px; display: flex; flex-direction: column; gap: 12px; animation: kit-fade 0.2s; }
-.kit-dialog-msg { margin: 0; color: var(--text-2); font-size: 14px; line-height: 20px; }
+.kit-dialog-msg { margin: 0; white-space: pre-line; color: var(--text-2); font-size: 14px; line-height: 20px; }
 .kit-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 @keyframes kit-fade { from { opacity: 0; } }
 @keyframes kit-rise { from { transform: translateY(32px); opacity: 0; } }

@@ -1,3 +1,13 @@
 {
+  "backup_web_file_hint": "احفظ نسخة في «الملفات»، أو استعد نسخة من أي من تطبيقَي ForgeQuest.",
+  "backup_web_file_title": "ملف النسخة الاحتياطية",
+  "backup_web_restore_file": "الاستعادة من ملف",
+  "backup_web_save_file": "حفظ ملف النسخة الاحتياطية",
+  "drive_web_hint": "يُنسخ احتياطيًا عند فتح التطبيق وبعد كل تمرين، في مجلد مخفي خاص بالتطبيق في Drive، ولا يُمسّ شيء آخر فيه. ويتشارك تطبيقا Android والويب النسخة نفسها.",
+  "drive_web_nothing_to_back_up": "لا بيانات على هذا الهاتف بعد، لذا أُبقيت نسختك في Drive كما هي.",
+  "drive_web_restore": "الاستعادة من Drive",
+  "drive_web_restore_confirm": "استعادة",
+  "drive_web_signin_cancelled": "لم يكتمل تسجيل الدخول إلى Google.",
+  "drive_web_tap_backup": "اضغط للنسخ الاحتياطي",
   "profile_web_key_body": "احصل على مفتاح مجاني من Google AI Studio ثم الصقه هنا. يبقى المفتاح في هذا المتصفح على هذا الهاتف ولا يُرسل إلا إلى Google."
 }

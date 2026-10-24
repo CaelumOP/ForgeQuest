@@ -1,6 +1,6 @@
 // Port of app/.../ui/profile/ProfileScreen.kt: rank, badges, body weight and the seven folding settings
 // sections. Web leaves out Health Connect/Fitbit, reminders, app lock, the tour, Gemini bridge, APK updates
-// and Drive (Backup shows "coming soon" until the Drive phase).
+// and the Drive Docs import. Backup (Drive + file) lives in BackupSection.tsx.
 import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
 import { getLang, plural, setLang, t, useLang, type Lang } from '../../i18n'
@@ -21,6 +21,7 @@ import {
   addNote, applyGoal, carbsFor, hasBodyStats, kcalFor, noteLines, proteinFor, removeNote, stepWeekly, summary,
   toggleEquipment, trainingDaysFor,
 } from './helpers'
+import { BackupSection, backupSummary } from './BackupSection'
 import './profile.css'
 
 
@@ -368,8 +369,8 @@ export function ProfileScreen() {
         </Card>
       </Group>
 
-      <Group id="backup" accent="teal" icon="backup" title={t('settings_group_backup')} open={isOpen('backup')} onToggle={() => toggle('backup')} sum={t('summary_drive_off')}>
-        <Card padded={false}><ListRow title={t('drive_title')} subtitle={t('placeholder_soon')} icon={<Glyph name="backup" />} /></Card>
+      <Group id="backup" accent="teal" icon="backup" title={t('settings_group_backup')} open={isOpen('backup')} onToggle={() => toggle('backup')} sum={backupSummary(s)}>
+        <BackupSection s={s} Title={({ title, hint }) => <CardTitle icon="backup" accent="teal" title={title} hint={hint} />} />
       </Group>
 
       <Group id="about" accent="text" icon="about" title={t('settings_group_about')} open={isOpen('about')} onToggle={() => toggle('about')} sum={t('profile_credits')}>

@@ -1,3 +1,13 @@
 {
+  "backup_web_file_hint": "Save a copy to Files, or restore one from either ForgeQuest app.",
+  "backup_web_file_title": "Backup file",
+  "backup_web_restore_file": "Restore from file",
+  "backup_web_save_file": "Save backup file",
+  "drive_web_hint": "Backs up when you open the app and after each workout, to a hidden app folder in your Drive. Nothing else in your Drive is touched. Android and web share the same backup.",
+  "drive_web_nothing_to_back_up": "Nothing on this phone yet, so your Drive backup was kept as it is.",
+  "drive_web_restore": "Restore from Drive",
+  "drive_web_restore_confirm": "Restore",
+  "drive_web_signin_cancelled": "Google sign-in didn’t finish.",
+  "drive_web_tap_backup": "Tap to back up",
   "profile_web_key_body": "Get a free key from Google AI Studio, then paste it here. It stays in this browser on this phone and is only sent to Google."
 }
