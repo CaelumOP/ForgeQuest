@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
-      contents: write # only used by the "Commit APK" step, which runs on main only
+      contents: write # only used by the "Commit APK" and "GitHub Release" steps, which run on main only
     steps:
       - uses: actions/checkout@v4
 
@@ -122,3 +122,21 @@ jobs:
           git pull --rebase origin main
           git push origin HEAD:main
           echo "::notice::Published versionCode $BUILT to apk/ForgeQuest.apk"
+
+      - name: GitHub Release for the published version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Runs after "Commit APK to main", so a version published by this run or an earlier one gets its release.
+          git pull --ff-only origin main || true
+          NAME=$(jq -r .versionName apk/version.json)
+          JSON=$(jq -r .versionCode apk/version.json)
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          COMMITTED=$("$BT/aapt2" dump badging apk/ForgeQuest.apk | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
+          if [ "$COMMITTED" != "$JSON" ]; then echo "::notice::apk/ForgeQuest.apk ($COMMITTED) isn't version.json's $JSON yet. No release."; exit 0; fi
+          if gh release view "v$NAME" >/dev/null 2>&1; then echo "::notice::Release v$NAME already exists."; exit 0; fi
+          cp apk/ForgeQuest.apk "$RUNNER_TEMP/ForgeQuest-v$NAME.apk"
+          jq -r .notes apk/version.json > "$RUNNER_TEMP/notes.md"
+          gh release create "v$NAME" "$RUNNER_TEMP/ForgeQuest-v$NAME.apk" --title "ForgeQuest v$NAME" --notes-file "$RUNNER_TEMP/notes.md" --target main
+          echo "::notice::Published GitHub Release v$NAME"
