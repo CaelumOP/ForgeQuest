@@ -65,7 +65,7 @@ fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit) {
             }
             else -> {
                 if (b.failed || b.needsPermission) {
-                    Text(stringResource(if (b.failed) R.string.update_download_failed else R.string.update_allow), style = MaterialTheme.typography.bodySmall, color = c.coral)
+                    Text(stringResource(if (b.notReady) R.string.update_not_ready else if (b.failed) R.string.update_download_failed else R.string.update_allow), style = MaterialTheme.typography.bodySmall, color = c.coral)
                     Spacer(Modifier.height(8.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

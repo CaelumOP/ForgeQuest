@@ -1237,4 +1237,5 @@
     <string name="harder_tempo">%1$s is getting easy. Slow it down: 3 seconds down, then a 1-second pause.</string>
     <string name="harder_switch">Switch</string>
     <string name="harder_switched">%1$s is now in your plan</string>
+    <string name="update_not_ready">This update is still being published. Try again in a few minutes.</string>
 </resources>

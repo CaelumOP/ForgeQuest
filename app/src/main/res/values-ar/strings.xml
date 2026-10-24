@@ -1357,4 +1357,5 @@
     <string name="harder_tempo">صار %1$s سهلًا عليك. أبطئ الحركة: 3 ثوانٍ في النزول، ثم توقف ثانية واحدة.</string>
     <string name="harder_switch">بدّل</string>
     <string name="harder_switched">أصبح %1$s في خطتك</string>
+    <string name="update_not_ready">ما زال هذا التحديث قيد النشر. حاول مرة أخرى بعد دقائق.</string>
 </resources>
