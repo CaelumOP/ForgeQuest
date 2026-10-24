@@ -1,0 +1,15 @@
+{
+  "workouts_web_filter_equipment": "تصفية حسب الأدوات",
+  "workouts_web_filter_muscle": "تصفية حسب العضلة",
+  "workouts_web_not_found": "هذا التمرين غير موجود في مكتبتك.",
+  "workouts_web_not_current": "{1} ليست خطتك الحالية.",
+  "workouts_web_activate": "اجعلها خطتي",
+  "workouts_web_days": "أيام الأسبوع",
+  "workouts_web_trend_cd": "اتجاه {1}",
+  "workouts_web_copy_failed": "تعذّر النسخ. حدّد النص وانسخه بنفسك.",
+  "workouts_web_no_matches": "لا يوجد ما يطابق بحثك.",
+  "workouts_web_link_saved": "تم حفظ الرابط",
+  "workouts_web_link_placeholder": "https://www.youtube.com/…",
+  "workouts_web_metric": "المقياس",
+  "workouts_web_dismiss": "إغلاق"
+}

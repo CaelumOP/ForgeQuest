@@ -1,0 +1,15 @@
+{
+  "workouts_web_filter_equipment": "Filter by equipment",
+  "workouts_web_filter_muscle": "Filter by muscle",
+  "workouts_web_not_found": "This exercise is not in your library.",
+  "workouts_web_not_current": "{1} is not your current plan.",
+  "workouts_web_activate": "Make this my plan",
+  "workouts_web_days": "Days of the week",
+  "workouts_web_trend_cd": "Trend for {1}",
+  "workouts_web_copy_failed": "Could not copy. Select the text and copy it yourself.",
+  "workouts_web_no_matches": "Nothing matches your search.",
+  "workouts_web_link_saved": "Link saved",
+  "workouts_web_link_placeholder": "https://www.youtube.com/…",
+  "workouts_web_metric": "Metric",
+  "workouts_web_dismiss": "Dismiss"
+}
