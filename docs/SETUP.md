@@ -29,7 +29,11 @@ new OAuth client.
 `.github/workflows/android.yml` runs the unit tests and builds the release APK on every PR (download it from the run's
 Artifacts). After a merge to main it commits the APK to `apk/ForgeQuest.apk`, but only when `versionCode` equals
 `apk/version.json`, the APK is signed with the same key as the committed one, and it is newer. So a release is just: bump
-`versionCode`/`versionName` in `app/build.gradle.kts` and `apk/version.json` in the PR, then merge.
+`versionCode`/`versionName` in `app/build.gradle.kts` and `apk/version.json` in the PR, then merge. In
+`version.json`, `apk` must be that version's release file,
+`https://github.com/CaelumOP/ForgeQuest/releases/download/vX.Y.Z/ForgeQuest-vX.Y.Z.apk` (CI fails the PR otherwise).
+The in-app updater downloads it, and it only exists once CI has published the release, so a phone can never pick up
+the previous APK in the minutes between the merge and the publish. The app also checks the APK's version before installing.
 
 It signs with four repo secrets (Settings → Secrets and variables → Actions): `KEYSTORE_BASE64` (the keystore file as
 base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. All four hold the release key above and were set on
