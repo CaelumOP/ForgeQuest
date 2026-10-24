@@ -86,6 +86,17 @@ import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import com.forgequest.app.domain.CutPace
+import com.forgequest.app.domain.DayActivity
+import com.forgequest.app.domain.GainPace
+import com.forgequest.app.ui.descRes
+import com.forgequest.app.ui.components.SegmentedTabs
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import java.util.Locale
 
 data class OnboardingState(
@@ -94,36 +105,48 @@ data class OnboardingState(
     val bodyType: BodyType = BodyType.MALE,
     val weightKg: Float = 75f,
     val unit: WeightUnit = WeightUnit.KG,
+    /** 0 until typed: height and age are required before the body step continues. */
     val heightCm: Float = 0f,
     val age: Int = 0,
+    val dayActivity: DayActivity = DayActivity.SITTING,
     val kcal: Int = 2500,
     val protein: Int = 135,
     val goalsTouched: Boolean = false,
     val goal: NutritionGoal = NutritionGoal.MAINTAIN,
+    val cutPace: CutPace = CutPace.STANDARD,
+    val gainPace: GainPace = GainPace.STANDARD,
     val planIndex: Int = 0,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
     val apiKey: String = "",
     val checkingKey: Boolean = false,
     val keyMessage: String? = null,
     val keyOk: Boolean = false,
-)
+) {
+    val male get() = bodyType == BodyType.MALE
+    val bodyReady get() = heightCm in 120f..230f && age in 10..100
+    /** Training days of the chosen starter plan (3 when starting empty), for the calorie suggestion. */
+    val trainingDays get() = StarterPlans.all.getOrNull(planIndex)?.days?.count { !it.isRest && it.items.isNotEmpty() } ?: 3
+    val floor get() = Nutrition.calorieFloor(weightKg, heightCm, age, male)
+    val burn get() = Nutrition.dailyBurn(weightKg, heightCm, age, male, trainingDays, base = dayActivity.base)
+    val fastBlocked get() = Nutrition.allowedCutPace(CutPace.AGGRESSIVE, weightKg, heightCm, age, male) != CutPace.AGGRESSIVE
+}
 
 class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     val state = MutableStateFlow(OnboardingState())
 
-    fun update(transform: (OnboardingState) -> OnboardingState) = state.update(transform)
-
-    fun setWeight(kg: Float) = state.update { s ->
-        val w = kg.coerceIn(30f, 250f)
-        if (s.goalsTouched) s.copy(weightKg = w)
-        else s.copy(weightKg = w, protein = suggestedProtein(w, s.goal)).let { it.copy(kcal = suggestedKcal(it)) }
+    /** Applies a change and refreshes both suggestions, unless the person already set the goals by hand. */
+    fun update(transform: (OnboardingState) -> OnboardingState) = state.update { s ->
+        val next = transform(s)
+        if (next.goalsTouched) next else next.copy(
+            protein = Nutrition.suggestedProtein(next.weightKg, Nutrition.proteinPerKgFor(next.goal, next.cutPace, next.gainPace), 0f, next.heightCm),
+            kcal = Nutrition.suggestedKcal(
+                next.weightKg, next.heightCm, next.age, next.male, next.trainingDays, goal = next.goal,
+                base = next.dayActivity.base, cutPace = next.cutPace, gainPace = next.gainPace,
+            ),
+        )
     }
 
-    /** Cut, Maintain or Gain: refreshes both suggestions unless the person already set goals by hand. */
-    fun setGoal(goal: NutritionGoal) = state.update { s ->
-        val next = s.copy(goal = goal)
-        if (s.goalsTouched) next else next.copy(protein = suggestedProtein(s.weightKg, goal)).let { it.copy(kcal = suggestedKcal(it)) }
-    }
+    fun setWeight(kg: Float) = update { it.copy(weightKg = kg.coerceIn(30f, 250f)) }
 
     fun next() = state.update { it.copy(step = (it.step + 1).coerceAtMost(LAST_STEP)) }
     fun back() = state.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }
@@ -171,7 +194,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                     onboarded = true,
                     name = s.name.trim(),
                     bodyType = s.bodyType,
-                    kcalGoal = s.kcal.coerceAtLeast(Nutrition.MIN_SAFE_KCAL),
+                    kcalGoal = s.kcal.coerceAtLeast(s.floor),
                     proteinGoal = s.protein.coerceAtLeast(60),
                     unit = s.unit.code,
                     heightCm = s.heightCm,
@@ -179,26 +202,22 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                     equipment = s.equipmentPreset.encode(),
                     nutritionGoal = s.goal,
                     goalSetDay = Dates.today(),
-                    proteinPerKg = Nutrition.proteinPerKgFor(s.goal),
+                    proteinPerKg = Nutrition.proteinPerKgFor(s.goal, s.cutPace, s.gainPace),
+                    dayActivity = s.dayActivity,
+                    cutPace = s.cutPace,
+                    gainPace = s.gainPace,
+                    targetWeightKg = s.weightKg,
+                    targetSetDay = Dates.today(),
+                    // A new person starts on the new suggestion, so the one-time "more accurate target" card never shows.
+                    calorieV2Seen = true,
                 )
             }
         }
     }
 
     companion object {
-        const val LAST_STEP = 3
-        fun suggestedProtein(kg: Float, goal: NutritionGoal) = Nutrition.suggestedProtein(kg, Nutrition.proteinPerKgFor(goal))
-    }
-
-    /** Height or age changed: refresh the calorie suggestion unless the person already set goals by hand. */
-    fun setBody(heightCm: Float = state.value.heightCm, age: Int = state.value.age) = state.update { s ->
-        val next = s.copy(heightCm = heightCm, age = age)
-        if (s.goalsTouched) next else next.copy(kcal = suggestedKcal(next))
-    }
-
-    private fun suggestedKcal(s: OnboardingState): Int {
-        val days = StarterPlans.all.getOrNull(s.planIndex)?.days?.count { !it.isRest && it.items.isNotEmpty() } ?: 3
-        return Nutrition.suggestedKcal(s.weightKg, s.heightCm, s.age, s.bodyType == BodyType.MALE, days, goal = s.goal)
+        /** Name, body, plan, goal, AI key. */
+        const val LAST_STEP = 4
     }
 }
 
@@ -227,8 +246,9 @@ fun OnboardingScreen() {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 when (step) {
                     0 -> StepWelcome(s, vm)
-                    1 -> StepGoals(s, vm)
+                    1 -> StepBody(s, vm)
                     2 -> StepPlan(s, vm)
+                    3 -> StepGoal(s, vm)
                     else -> StepKey(s, vm)
                 }
             }
@@ -236,8 +256,9 @@ fun OnboardingScreen() {
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             if (s.step > 0) TextButton(onClick = vm::back) { Text(stringResource(R.string.action_back), color = c.textSecondary) }
             Spacer(Modifier.weight(1f))
+            val canGo = when (s.step) { 0 -> s.name.isNotBlank(); 1 -> s.bodyReady; else -> true }
             when {
-                s.step < OnboardingViewModel.LAST_STEP -> PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = s.step != 0 || s.name.isNotBlank())
+                s.step < OnboardingViewModel.LAST_STEP -> PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = canGo)
                 else -> PillButton(if (s.keyOk) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_skip), onClick = vm::finish)
             }
         }
@@ -282,7 +303,7 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
         modifier = Modifier.fillMaxWidth().focusRequester(focus),
     )
     Spacer(Modifier.height(28.dp))
-    Text(stringResource(R.string.onb_body_for_map), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+    Text(stringResource(R.string.onb_body_type), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
     Spacer(Modifier.height(10.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.body_male), s.bodyType == BodyType.MALE, { vm.update { it.copy(bodyType = BodyType.MALE) } })
@@ -290,30 +311,160 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
     }
 }
 
+/** Step 2: units, weight, height and age (one calm row each), then the normal day outside workouts. */
 @Composable
-private fun StepGoals(s: OnboardingState, vm: OnboardingViewModel) {
-    Title(stringResource(R.string.onb_goals_title), stringResource(R.string.onb_goals_body))
-    Text(stringResource(R.string.goal_title), style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary)
-    Row(Modifier.padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        NutritionGoal.entries.forEach { g -> ChoiceChip(stringResource(g.labelRes), s.goal == g, { vm.setGoal(g) }) }
-    }
+private fun StepBody(s: OnboardingState, vm: OnboardingViewModel) {
+    Title(stringResource(R.string.onb_body_title), stringResource(R.string.onb_body_body))
     Row(Modifier.padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.unit_kilograms), s.unit == WeightUnit.KG, { vm.update { it.copy(unit = WeightUnit.KG) } })
         ChoiceChip(stringResource(R.string.unit_pounds), s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })
     }
-    GoalRow(stringResource(R.string.weight_body), s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = if (s.unit == WeightUnit.KG) 0.5f else 1f, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
-    GoalRow(stringResource(R.string.profile_height), if (s.heightCm > 0f) s.heightCm else 170f, { vm.setBody(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
-    GoalRow(stringResource(R.string.profile_age), if (s.age > 0) s.age.toFloat() else 25f, { vm.setBody(age = it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
-    GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt().coerceAtLeast(60), goalsTouched = true) } }, step = 5f, min = 60f, max = 400f, unit = stringResource(R.string.unit_g))
-    GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt().coerceAtLeast(Nutrition.MIN_SAFE_KCAL), goalsTouched = true) } }, step = 50f, min = Nutrition.MIN_SAFE_KCAL.toFloat(), max = 6000f, unit = stringResource(R.string.unit_kcal))
-    Spacer(Modifier.height(4.dp))
-    Text(stringResource(R.string.onb_tap_number), style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
+    GoalRow(stringResource(R.string.weight_body), s.unit.fromKg(s.weightKg), { vm.setWeight(s.unit.toKg(it)) }, step = s.unit.bodyStep, min = s.unit.fromKg(30f), max = s.unit.fromKg(250f), unit = s.unit.label, decimals = 1)
+    NumberRow(stringResource(R.string.profile_height), stringResource(R.string.unit_cm), s.heightCm.toInt(), 120..230) { v -> vm.update { it.copy(heightCm = v.toFloat()) } }
+    NumberRow(stringResource(R.string.profile_age), stringResource(R.string.unit_years), s.age, 10..100) { v -> vm.update { it.copy(age = v) } }
+    Spacer(Modifier.height(16.dp))
+    Text(stringResource(R.string.day_title), style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary)
     Spacer(Modifier.height(8.dp))
-    Text(
-        stringResource(R.string.onb_protein_hint),
-        style = MaterialTheme.typography.bodySmall,
-        color = Fit.colors.textSecondary,
-    )
+    DayActivity.entries.forEach { d ->
+        ChoiceCard(stringResource(d.labelRes), stringResource(d.descRes), s.dayActivity == d) { vm.update { it.copy(dayActivity = d) } }
+    }
+}
+
+/** A whole number typed straight into a row (height, age), Arabic digits too. Reports 0 while empty or out of range. */
+@Composable
+private fun NumberRow(label: String, unit: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
+    val c = Fit.colors
+    var text by remember { mutableStateOf(if (value > 0) value.toString() else "") }
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card).padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
+        OutlinedTextField(
+            value = text,
+            onValueChange = { v ->
+                text = v.filter { Character.isDigit(it) }.take(3)
+                val n = text.map { Character.getNumericValue(it) }.fold(0) { acc, d -> acc * 10 + d }.takeIf { text.isNotEmpty() }
+                onChange(if (n != null && n in range) n else 0)
+            },
+            placeholder = { Text("–", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            shape = RoundedCornerShape(14.dp),
+            colors = fieldColors(),
+            modifier = Modifier.width(96.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(unit, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.width(32.dp))
+    }
+}
+
+/** Big radio card with a title and a one-line description (goal, normal day). */
+@Composable
+private fun ChoiceCard(name: String, desc: String, selected: Boolean, onClick: () -> Unit) {
+    val c = Fit.colors
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card)
+            .then(if (selected) Modifier.border(2.dp, c.teal, RoundedCornerShape(20.dp)) else Modifier)
+            .clickable(onClick = onClick).padding(18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            Spacer(Modifier.height(4.dp))
+            Text(desc, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 3)
+        }
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.size(24.dp).clip(CircleShape).background(if (selected) c.teal else c.cardHigh), contentAlignment = Alignment.Center) {
+            if (selected) Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp))
+        }
+    }
+}
+
+/** Step 4 (after the plan, so the target counts its training days): the goal, its pace and the calculated target. */
+@Composable
+private fun StepGoal(s: OnboardingState, vm: OnboardingViewModel) {
+    val c = Fit.colors
+    Title(stringResource(R.string.goal_title), stringResource(R.string.goal_step_body))
+    NutritionGoal.entries.forEach { g ->
+        ChoiceCard(stringResource(g.labelRes), stringResource(g.descRes), s.goal == g) { vm.update { it.copy(goal = g) } }
+    }
+    when (s.goal) {
+        NutritionGoal.CUT -> {
+            Text(stringResource(R.string.pace_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            Spacer(Modifier.height(8.dp))
+            val paces = CutPace.entries
+            SegmentedTabs(
+                options = paces.map { stringResource(it.labelRes) },
+                selected = paces.indexOf(s.cutPace),
+                onSelect = { i -> vm.update { it.copy(cutPace = paces[i]) } },
+                subs = paces.map { stringResource(R.string.pace_week, s.unit.format(s.weightKg * it.weeklyPct / 100f)) },
+                disabled = if (s.fastBlocked) setOf(paces.indexOf(CutPace.AGGRESSIVE)) else emptySet(),
+            )
+            if (s.fastBlocked) Text(stringResource(R.string.pace_blocked), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+            Spacer(Modifier.height(12.dp))
+        }
+        NutritionGoal.GAIN -> {
+            Text(stringResource(R.string.pace_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            Spacer(Modifier.height(8.dp))
+            val paces = GainPace.entries
+            SegmentedTabs(
+                options = paces.map { stringResource(it.labelRes) },
+                selected = paces.indexOf(s.gainPace),
+                onSelect = { i -> vm.update { it.copy(gainPace = paces[i]) } },
+                subs = paces.map { stringResource(R.string.pace_month, s.unit.format(s.weightKg * it.weeklyPct * 4.35f / 100f)) },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+        NutritionGoal.MAINTAIN -> Unit
+    }
+    Target(s, vm)
+}
+
+/** The calculated calories and protein with the daily burn behind them; editable after a tap on Adjust. */
+@Composable
+private fun Target(s: OnboardingState, vm: OnboardingViewModel) {
+    val c = Fit.colors
+    if (!s.bodyReady) {
+        Text(stringResource(R.string.target_missing), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        return
+    }
+    var editing by remember { mutableStateOf(false) }
+    val nf = remember { java.text.NumberFormat.getIntegerInstance() }
+    val burn = (s.burn / 10f).roundToInt() * 10
+    // The difference keeps its sign next to the number in Arabic too (left-to-right isolate).
+    val diff = "⁦${if (s.kcal >= burn) "+" else "−"}${nf.format(abs(s.kcal - burn))}⁩"
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(c.card).padding(18.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.target_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
+            if (!editing) TextButton(onClick = { editing = true }) { Text(stringResource(R.string.target_adjust), color = c.teal) }
+        }
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("${nf.format(s.kcal)} ${stringResource(R.string.unit_kcal)}", style = MaterialTheme.typography.headlineSmall, color = c.blue)
+                Text(stringResource(R.string.profile_daily_calories), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("${s.protein} ${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.headlineSmall, color = c.teal)
+                Text(stringResource(R.string.profile_daily_protein), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+        }
+        if (editing) {
+            GoalRow(stringResource(R.string.profile_daily_calories), s.kcal.toFloat(), { v -> vm.update { it.copy(kcal = v.toInt().coerceAtLeast(s.floor), goalsTouched = true) } }, step = 50f, min = s.floor.toFloat(), max = 6000f, unit = stringResource(R.string.unit_kcal))
+            GoalRow(stringResource(R.string.profile_daily_protein), s.protein.toFloat(), { v -> vm.update { it.copy(protein = v.toInt().coerceAtLeast(60), goalsTouched = true) } }, step = 5f, min = 60f, max = 400f, unit = stringResource(R.string.unit_g))
+        }
+        Text(
+            if (s.goal == NutritionGoal.MAINTAIN) stringResource(R.string.target_burn_only, nf.format(burn))
+            else stringResource(R.string.target_burn, nf.format(burn), nf.format(s.kcal), diff),
+            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (s.goalsTouched) stringResource(R.string.target_custom) else stringResource(R.string.target_from, s.trainingDays, stringResource(s.dayActivity.labelRes)),
+            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+        )
+    }
 }
 
 @Composable

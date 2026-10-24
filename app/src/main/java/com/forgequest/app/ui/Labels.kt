@@ -130,6 +130,46 @@ val NutritionGoal.labelRes: Int
         NutritionGoal.GAIN -> R.string.goal_gain
     }
 
+@get:StringRes
+val NutritionGoal.descRes: Int
+    get() = when (this) {
+        NutritionGoal.CUT -> R.string.goal_cut_desc
+        NutritionGoal.MAINTAIN -> R.string.goal_maintain_desc
+        NutritionGoal.GAIN -> R.string.goal_gain_desc
+    }
+
+@get:StringRes
+val com.forgequest.app.domain.DayActivity.labelRes: Int
+    get() = when (this) {
+        com.forgequest.app.domain.DayActivity.SITTING -> R.string.day_sitting
+        com.forgequest.app.domain.DayActivity.MIXED -> R.string.day_mixed
+        com.forgequest.app.domain.DayActivity.PHYSICAL -> R.string.day_physical
+    }
+
+@get:StringRes
+val com.forgequest.app.domain.DayActivity.descRes: Int
+    get() = when (this) {
+        com.forgequest.app.domain.DayActivity.SITTING -> R.string.day_sitting_desc
+        com.forgequest.app.domain.DayActivity.MIXED -> R.string.day_mixed_desc
+        com.forgequest.app.domain.DayActivity.PHYSICAL -> R.string.day_physical_desc
+    }
+
+/** Shown as Gentle / Standard / Fast (AGGRESSIVE in code). */
+@get:StringRes
+val com.forgequest.app.domain.CutPace.labelRes: Int
+    get() = when (this) {
+        com.forgequest.app.domain.CutPace.GENTLE -> R.string.pace_gentle
+        com.forgequest.app.domain.CutPace.STANDARD -> R.string.pace_standard
+        com.forgequest.app.domain.CutPace.AGGRESSIVE -> R.string.pace_fast
+    }
+
+@get:StringRes
+val com.forgequest.app.domain.GainPace.labelRes: Int
+    get() = when (this) {
+        com.forgequest.app.domain.GainPace.SLOW -> R.string.pace_slow
+        com.forgequest.app.domain.GainPace.STANDARD -> R.string.pace_standard
+    }
+
 @Composable
 fun com.forgequest.app.domain.RankInfo.localTitle(): String = stringResource(
     when (letter) {
