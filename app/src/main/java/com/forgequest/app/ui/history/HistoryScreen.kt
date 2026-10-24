@@ -106,7 +106,8 @@ fun HistoryScreen(nav: NavHostController) {
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val setsBySession = s.doneSets.groupBy { it.sessionId }
     val unit by vm.unit.collectAsState()
-    val firstDay = remember { java.time.temporal.WeekFields.of(java.util.Locale.getDefault()).firstDayOfWeek }
+    // Weeks start on Monday, like the streak and weekly target (Dates.weekStart), so a journal week's count matches them.
+    val firstDay = java.time.DayOfWeek.MONDAY
     val weeks = remember(s.sessions) {
         s.sessions.sortedByDescending { it.startedAt }
             .groupBy { LocalDate.ofEpochDay(it.epochDay).with(java.time.temporal.TemporalAdjusters.previousOrSame(firstDay)) }
