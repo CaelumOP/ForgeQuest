@@ -11,6 +11,7 @@ import type { WeightUnit } from '../../domain/units'
 import { Button, Card, EmptyState } from '../kit'
 import { BedIcon, EditIcon, HistoryIcon, PlayCircleIcon, PlayIcon, RepeatIcon, Sparkline } from './glyphs'
 import { blockLabel, dayName, openFormVideo, prescription } from './helpers'
+import { BodyMap } from '../progress/BodyMap'
 import './workouts.css'
 
 const go = (hash: string) => { location.hash = hash }
@@ -104,6 +105,12 @@ export function WorkoutsScreen(_: { param?: string }) {
           unit={unit} trends={trends} onStart={() => start(day ?? null)}
         />
       )}
+
+      <Card>
+        <h2 class="wk-card-title">{t('recovery_title')}</h2>
+        <div class="wk-sub">{t('recovery_subtitle')}</div>
+        <BodyMap recovery={s.recovery} bodyType={s.settings.bodyType} />
+      </Card>
 
       <Button variant="tonal" block icon={<PlayIcon />} onClick={() => start(null)}>{t('workouts_quick')}</Button>
     </div>
