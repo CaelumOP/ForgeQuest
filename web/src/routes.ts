@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'preact'
 import { AiCheck } from './dev/AiCheck'
 import { KitGallery } from './dev/KitGallery'
+import { ViewportCheck } from './dev/ViewportCheck'
 import { CoachScreen } from './ui/coach/CoachScreen'
 import { FoodScreen } from './ui/food/FoodScreen'
 import { ScanScreen } from './ui/food/ScanScreen'
@@ -40,6 +41,7 @@ export const routes: Record<string, Route> = {
   '/about': { title: 'settings_group_about', Screen: AboutScreen },
   '/check': { title: 'screen_ai_check', Screen: AiCheck as Screen },
   '/kit': { title: 'screen_ai_check', Screen: KitGallery as Screen },
+  '/viewport': { title: 'screen_ai_check', Screen: ViewportCheck, bare: true },
 }
 
 /** "/exercise/back_squat" → the "/exercise" route and param "back_squat". */
