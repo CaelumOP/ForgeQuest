@@ -1,6 +1,6 @@
 // Pure helpers of the Profile screen (ports of the small lambdas in ProfileScreen.kt / ProfileViewModel).
 import {
-  MIN_FAT_SHARE_PCT, proteinPerKgFor, suggestedCarbs, suggestedKcal, suggestedProtein,
+  DAY_BASE, MIN_FAT_SHARE_PCT, proteinPerKgFor, suggestedCarbs, suggestedKcal, suggestedProtein,
   type NutritionGoal,
 } from '../../domain/nutrition'
 import { EQUIPMENT, type Equipment } from '../../domain/exercise-swap-engine'
@@ -39,26 +39,41 @@ export const hasBodyStats = (s: Settings, age: number): boolean => (s.heightCm >
 export function kcalFor(i: GoalInputs, goal: NutritionGoal): number | null {
   const { settings: s, latestKg } = i
   return latestKg == null ? null
-    : suggestedKcal(latestKg, s.heightCm, i.age, s.bodyType === 'MALE', trainingDaysFor(s, i.planDays), s.bodyFatPct, goal)
+    : suggestedKcal(latestKg, s.heightCm, i.age, s.bodyType === 'MALE', trainingDaysFor(s, i.planDays), s.bodyFatPct, goal,
+      { base: DAY_BASE[s.dayActivity], cutPace: s.cutPace, gainPace: s.gainPace })
 }
 
 export const proteinFor = (i: GoalInputs, perKg: number): number | null =>
-  i.latestKg == null ? null : suggestedProtein(i.latestKg, Math.max(perKg, 1.6), i.settings.bodyFatPct)
+  i.latestKg == null ? null : suggestedProtein(i.latestKg, Math.max(perKg, 1.6), i.settings.bodyFatPct, i.settings.heightCm)
 
 export const carbsFor = (i: GoalInputs, kcal: number, protein: number): number =>
   suggestedCarbs(kcal, protein, Math.max(i.settings.fatSharePct, MIN_FAT_SHARE_PCT), i.latestKg ?? 0)
 
-/** Switching goal: targets still on the old suggestion follow the new goal, numbers set by hand stay. */
-export function applyGoal(i: GoalInputs, goal: NutritionGoal, today: number): Settings {
+export type NutritionPatch = Partial<Pick<Settings, 'nutritionGoal' | 'cutPace' | 'gainPace' | 'dayActivity'>>
+
+/**
+ * Changing the goal, pace or normal day: targets still on the old suggestion follow the new one, numbers set by hand
+ * stay. A new goal restarts its clock (trend notes, diet break); a changed calorie target records when and at what weight.
+ */
+export function applyNutrition(i: GoalInputs, patch: NutritionPatch, today: number): Settings {
   const s = i.settings
-  if (goal === s.nutritionGoal) return s
-  const perKg = s.proteinPerKg === proteinPerKgFor(s.nutritionGoal) ? proteinPerKgFor(goal) : s.proteinPerKg
-  const kcal = hasBodyStats(s, i.age) && kcalFor(i, s.nutritionGoal) === s.kcalGoal ? kcalFor(i, goal) : null
-  const protein = proteinFor(i, s.proteinPerKg) === s.proteinGoal ? proteinFor(i, perKg) : null
+  const next: Settings = { ...s, ...patch }
+  const ni = { ...i, settings: next }
+  const oldPerKg = proteinPerKgFor(s.nutritionGoal, s.cutPace, s.gainPace)
+  const perKg = s.proteinPerKg === oldPerKg ? proteinPerKgFor(next.nutritionGoal, next.cutPace, next.gainPace) : s.proteinPerKg
+  const kcal = hasBodyStats(s, i.age) && kcalFor(i, s.nutritionGoal) === s.kcalGoal ? kcalFor(ni, next.nutritionGoal) : null
+  const protein = proteinFor(i, s.proteinPerKg) === s.proteinGoal ? proteinFor(ni, perKg) : null
   const oldCarbs = carbsFor(i, s.kcalGoal, s.proteinGoal)
-  const carbs = s.trackCarbs && oldCarbs === s.carbsGoal ? carbsFor(i, kcal ?? s.kcalGoal, protein ?? s.proteinGoal) : null
+  const carbs = s.trackCarbs && oldCarbs === s.carbsGoal ? carbsFor(ni, kcal ?? s.kcalGoal, protein ?? s.proteinGoal) : null
+  const kcalChanged = kcal != null && kcal !== s.kcalGoal
   return {
-    ...s, nutritionGoal: goal, goalSetDay: today, proteinPerKg: perKg,
-    kcalGoal: kcal ?? s.kcalGoal, proteinGoal: protein ?? s.proteinGoal, carbsGoal: carbs ?? s.carbsGoal,
+    ...next,
+    goalSetDay: next.nutritionGoal !== s.nutritionGoal ? today : s.goalSetDay,
+    proteinPerKg: perKg, kcalGoal: kcal ?? s.kcalGoal, proteinGoal: protein ?? s.proteinGoal, carbsGoal: carbs ?? s.carbsGoal,
+    targetSetDay: kcalChanged ? today : s.targetSetDay, targetWeightKg: kcalChanged ? i.latestKg ?? s.targetWeightKg : s.targetWeightKg,
   }
 }
+
+/** Switching goal (kept for its callers and tests). */
+export const applyGoal = (i: GoalInputs, goal: NutritionGoal, today: number): Settings =>
+  goal === i.settings.nutritionGoal ? i.settings : applyNutrition(i, { nutritionGoal: goal }, today)

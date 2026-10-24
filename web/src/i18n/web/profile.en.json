@@ -9,5 +9,9 @@
   "drive_web_restore_confirm": "Restore",
   "drive_web_signin_cancelled": "Google sign-in didn’t finish.",
   "drive_web_tap_backup": "Tap to back up",
+  "pf_web_bodyfat_hint": "Leave at 0 unless you have a DEXA or caliper reading. Smart scales can be off by 5–8 %.",
+  "pf_web_day_title": "Your normal day",
+  "pf_web_floor_hint": "The lowest target the app allows for you is {1} kcal.",
+  "pf_web_suggested": "Suggested {1} kcal from your weight, height, age, normal day ({3}) and {2} training days a week",
   "profile_web_key_body": "Get a free key from Google AI Studio, then paste it here. It stays in this browser on this phone and is only sent to Google."
 }
