@@ -64,11 +64,9 @@ object Readiness {
     fun sleepDays(pieces: List<SleepPiece>, zone: ZoneId): Map<LocalDate, SleepDay> {
         val kept = mutableListOf<SleepPiece>()
         for (p in pieces.sortedWith(compareByDescending<SleepPiece> { it.fromFitbit }.thenBy { it.start })) {
-            val dup = kept.any { k ->
-                val overlap = minOf(k.end, p.end).epochSecond - maxOf(k.start, p.start).epochSecond
-                overlap > 0.5 * (p.end.epochSecond - p.start.epochSecond)
-            }
-            if (!dup) kept += p
+            // Overlap with all kept pieces together: a full night from another app over Fitbit's two halves is a copy too.
+            val overlap = kept.sumOf { k -> (minOf(k.end, p.end).epochSecond - maxOf(k.start, p.start).epochSecond).coerceAtLeast(0) }
+            if (overlap <= 0.5 * (p.end.epochSecond - p.start.epochSecond)) kept += p
         }
         val groups = mutableListOf<MutableList<SleepPiece>>()
         for (p in kept.sortedBy { it.start }) {
@@ -147,7 +145,9 @@ object Readiness {
         if (rhr != null && rhrBase != null) add(0.25, zWithSwc(rhrBase.mean - rhr, rhrBase.sd))
         if (resp != null && respBase != null) add(0.10, zWithSwc(respBase.mean - resp, respBase.sd))
         if (sleepPerf != null) add(0.15, (sleepPerf - 85) / 15.0)
-        val z = if (weight > 0) sum / weight else 0.0
+        // At least half the full weight in the divisor: before HRV and resting-HR baselines exist (first days with a
+        // watch), one short night alone can't swing the score as if it were a full reading (6 h used to give 37 %).
+        val z = if (weight > 0) sum / maxOf(weight, 0.5) else 0.0
         return (100 / (1 + exp(-(1.4 * z + 0.4)))).roundToInt().coerceIn(1, 99)
     }
 

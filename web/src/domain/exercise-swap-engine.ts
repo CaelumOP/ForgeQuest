@@ -18,6 +18,9 @@ export const EQUIPMENT_LABEL: Record<Equipment, { en: string; ar: string }> = {
   CABLES_MACHINES: { en: 'Cables & gym machines', ar: 'أجهزة وكوابل النادي' },
 }
 
+/** Lowest score a plan auto-swap accepts: a related movement (18) plus some shared muscles, or the same pattern. */
+export const MIN_SWAP_SCORE = 30
+
 const allEquipment = (): Set<Equipment> => new Set(EQUIPMENT)
 const isEquipment = (raw: string): raw is Equipment => (EQUIPMENT as readonly string[]).includes(raw)
 
@@ -456,7 +459,9 @@ export function adaptPlanToEquipment<D extends { days: PlanDraftDay[] }>(
     const items = day.items.map((item) => {
       const ex = library.get(item.exerciseId) ?? fallbackExercise(item)
       if (allowed.has(profileFor(ex).equipment)) return item
-      const doable = rankSubstitutes(ex, allExercises, allowed).filter((c) => c.matchesUserEquipment)
+      // Only a real match (at least a related pattern or shared muscles): with none, keep the original rather than
+      // turning a curl into a push-up or a burpee (audit 2026-10-24).
+      const doable = rankSubstitutes(ex, allExercises, allowed).filter((c) => c.matchesUserEquipment && c.score >= MIN_SWAP_SCORE)
       const replacement = doable.find((c) => !usedInDay.has(c.exercise.id)) ?? doable[0]
       if (!replacement) return item
       swaps++

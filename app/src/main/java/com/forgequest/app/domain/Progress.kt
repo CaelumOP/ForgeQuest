@@ -162,11 +162,14 @@ object Nudges {
     /** After this many planned days missed in a row (not excused), reminders pause until a workout or a tag. */
     const val MAX_MISSES = 3
 
-    /** Planned days missed back to back, counting back from yesterday; a workout or an excused day ends the run. */
+    /**
+     * Planned days missed back to back, counting back from yesterday; a workout or an excused day ends the run.
+     * Looks back 4 weeks, so a 1-day-a-week plan can still reach [MAX_MISSES] (14 days held only 2).
+     */
     fun missedInARow(today: Long, plannedTrainingDays: Set<Int>, workoutDays: Set<Long>, excusedDays: Set<Long>, startEpochDay: Long): Int {
         var count = 0
         var day = today - 1
-        while (day >= startEpochDay && day >= today - 14) {
+        while (day >= startEpochDay && day >= today - 28) {
             if (day in workoutDays || day in excusedDays) break
             if (Dates.dayOfWeek(day) in plannedTrainingDays) count++
             day--
@@ -346,20 +349,23 @@ object Recovery {
      * [hits] = (muscle, trainedAtMillis, weight) where weight in (0, 1] is the session stimulus
      * (1.0 = full primary session needing 48 h, 0.5 = secondary/moderate session needing 24 h,
      * 0.25 = single working set needing 12 h).
-     * Fatigue clears at a constant physiological rate of 1 / 48 per hour; the highest remaining fatigue wins.
+     * Fatigue clears at a constant physiological rate of 1 / 48 per hour. Sessions add up: what's left of an earlier
+     * session plus the new one (capped at 1), so training a muscle twice in a day counts both (audit 2026-10-24).
      */
     fun compute(hits: List<Triple<Muscle, Long, Float>>, now: Long): Map<Muscle, MuscleRecovery> {
         val result = mutableMapOf<Muscle, MuscleRecovery>()
-        for ((muscle, at, weight) in hits) {
-            if (weight <= 0f) continue
-            val hours = (now - at) / 3_600_000f
-            val effectiveWeight = weight.coerceIn(0f, 1f)
-            val window = WINDOW_HOURS * effectiveWeight
-            if (hours < 0f || hours >= window) continue
-            val fatigue = effectiveWeight * (1f - hours / window)
-            val ready = (window - hours).toInt().coerceAtLeast(1)
-            val prev = result[muscle]
-            if (prev == null || fatigue > prev.fatigue) result[muscle] = MuscleRecovery(fatigue, ready)
+        for ((muscle, muscleHits) in hits.filter { it.third > 0f && it.second <= now }.groupBy { it.first }) {
+            var fatigue = 0f
+            var lastAt = Long.MIN_VALUE
+            for ((_, at, weight) in muscleHits.sortedBy { it.second }) {
+                if (lastAt != Long.MIN_VALUE) fatigue = (fatigue - (at - lastAt) / 3_600_000f / WINDOW_HOURS).coerceAtLeast(0f)
+                fatigue = (fatigue + weight.coerceIn(0f, 1f)).coerceAtMost(1f)
+                lastAt = at
+            }
+            fatigue -= (now - lastAt) / 3_600_000f / WINDOW_HOURS
+            if (fatigue <= 0f) continue
+            // + 0.001 so float noise never turns 36 h into 35.
+            result[muscle] = MuscleRecovery(fatigue, (fatigue * WINDOW_HOURS + 0.001f).toInt().coerceAtLeast(1))
         }
         return result
     }
@@ -374,8 +380,11 @@ object Records {
      *   returns above 12 reps so 5×100 kg beats 8×80 kg and 35×20 kg never falsely beats heavy strength sets.
      * - REPS and HOLD sets also credit added external weight (e.g. weighted vest or dip belt on calisthenics)
      *   so progressing from bodyweight to +10 kg is recognized as a personal record.
+     * - Weighted pull-ups, chin-ups, dips and push-ups move the body too, so their Epley score uses body + added
+     *   load (then takes the body back off): +10 kg × 10 beats +15 kg × 1. A fixed 75 kg reference body keeps one
+     *   person's sets in the right order without needing their weight (audit 2026-10-24).
      */
-    fun score(kind: ExerciseKind, reps: Int?, seconds: Int?, weightKg: Float?): Float {
+    fun score(kind: ExerciseKind, reps: Int?, seconds: Int?, weightKg: Float?, exerciseId: String = ""): Float {
         val extraKg = (weightKg ?: 0f).coerceAtLeast(0f)
         return when (kind) {
             ExerciseKind.REPS -> {
@@ -389,15 +398,21 @@ object Records {
             ExerciseKind.WEIGHTED -> {
                 val r = (reps ?: 0).coerceAtLeast(0)
                 if (r == 0) return 0f
-                if (extraKg <= 0f) {
+                val body = REFERENCE_BODY_KG * (BODY_SHARE[exerciseId] ?: 0f)
+                if (extraKg <= 0f && body <= 0f) {
                     r / 100f
                 } else {
                     val effectiveReps = if (r <= 12) r.toFloat() else 12f + 3f * ln(1f + (r - 12).toFloat())
-                    extraKg * (1f + effectiveReps / 30f)
+                    (body + extraKg) * (1f + effectiveReps / 30f) - body
                 }
             }
         }
     }
+
+    const val REFERENCE_BODY_KG = 75f
+
+    /** Share of body weight each rep moves: pull-ups, chin-ups and dips the whole body, push-ups about 65 %. */
+    private val BODY_SHARE = mapOf("weighted_pull_up" to 1f, "weighted_chin_up" to 1f, "weighted_dip" to 1f, "weighted_push_up" to 0.65f)
 
     /**
      * Which sets count as personal records when the whole history of one exercise is replayed in order.
@@ -411,13 +426,14 @@ object Records {
         reps: (T) -> Int?,
         seconds: (T) -> Int?,
         weightKg: (T) -> Float?,
+        exerciseId: String = "",
     ): Set<T> {
         val result = mutableSetOf<T>()
         var best: Float? = null
         for (sets in sessions) {
             if (sets.isEmpty()) continue
-            val top = sets.maxBy { score(kind, reps(it), seconds(it), weightKg(it)) }
-            val topScore = score(kind, reps(top), seconds(top), weightKg(top))
+            val top = sets.maxBy { score(kind, reps(it), seconds(it), weightKg(it), exerciseId) }
+            val topScore = score(kind, reps(top), seconds(top), weightKg(top), exerciseId)
             val previous = best
             if (previous != null && topScore > previous) result += top
             best = if (previous == null) topScore else max(previous, topScore)

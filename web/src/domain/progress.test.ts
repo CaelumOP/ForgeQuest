@@ -131,9 +131,16 @@ describe('RecoveryTest', () => {
     expect(computeRecovery([['TRICEPS', now, 0.5]], now).get('TRICEPS')!.fatigue).toBeCloseTo(0.5, 3)
   })
 
-  it('freshestHardestHitWins', () => {
+  it('sessionsAddUpInsteadOfTheHardestWinning', () => {
+    // 1.0 ten hours ago has 0.833 left when 0.5 more lands (capped at 1), then 2 h of clearing.
     const hits: MuscleHit[] = [['BICEPS', now - 2 * hour, 0.5], ['BICEPS', now - 10 * hour, 1]]
-    expect(computeRecovery(hits, now).get('BICEPS')!.fatigue).toBeCloseTo(1 - 10 / 48, 3)
+    expect(computeRecovery(hits, now).get('BICEPS')!.fatigue).toBeCloseTo(1 - 2 / 48, 3)
+  })
+
+  it('twoSessionsTwelveHoursApartNeedThirtySixHours', () => {
+    const r = computeRecovery([['CHEST', now - 12 * hour, 0.5], ['CHEST', now, 0.5]], now).get('CHEST')!
+    expect(r.fatigue).toBeCloseTo(0.75, 3)
+    expect(r.hoursUntilReady).toBe(36)
   })
 })
 
@@ -223,5 +230,22 @@ describe('web additions', () => {
   it('weeks start on Monday', () => {
     expect(dayOfWeek(mon1)).toBe(1)
     expect(dayOfWeek(0)).toBe(4) // 1970-01-01 was a Thursday
+  })
+})
+
+describe('audit 2026-10-24', () => {
+  it('weighted pull-ups count the body, so +10 kg x 10 beats +15 kg x 1', () => {
+    const tenReps = recordScore('WEIGHTED', 10, null, 10, 'weighted_pull_up')
+    const single = recordScore('WEIGHTED', 1, null, 15, 'weighted_pull_up')
+    expect(tenReps).toBeCloseTo(38.33, 1) // (75 + 10) x (1 + 10/30) - 75
+    expect(tenReps).toBeGreaterThan(single)
+    // a set with no added weight scores like a bodyweight set, not reps / 100
+    expect(recordScore('WEIGHTED', 8, null, 0, 'weighted_pull_up')).toBeCloseTo(20, 1)
+    // other weighted lifts are unchanged
+    expect(recordScore('WEIGHTED', 5, null, 100)).toBeCloseTo(116.67, 1)
+  })
+
+  it('a one-day-a-week plan can still reach three misses in a row', () => {
+    expect(missedInARow(30, days(6), days(), days(), 0)).toBeGreaterThanOrEqual(3)
   })
 })

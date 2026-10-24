@@ -232,7 +232,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     private val bestScores: StateFlow<Map<String, Float>> = app.progress.snapshot.map { snap ->
         snap.doneSets.groupBy { it.exerciseId }.mapValues { (id, sets) ->
             val kind = snap.exercises[id]?.kind ?: ExerciseKind.REPS
-            sets.maxOf { Records.score(kind, it.reps, it.seconds, it.weightKg) }
+            sets.maxOf { Records.score(kind, it.reps, it.seconds, it.weightKg, it.exerciseId) }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
@@ -255,7 +255,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     private fun checkBest(set: SetEntity, updated: SetEntity) {
         val kind = exercises.value[set.exerciseId]?.kind ?: ExerciseKind.REPS
         val best = bestScores.value[set.exerciseId] ?: return
-        if (Records.score(kind, updated.reps, updated.seconds, updated.weightKg) > best && celebrated.add(set.id)) {
+        if (Records.score(kind, updated.reps, updated.seconds, updated.weightKg, updated.exerciseId) > best && celebrated.add(set.id)) {
             app.haptics.celebrate()
             newBest.value = set.id
             viewModelScope.launch { delay(1400); if (newBest.value == set.id) newBest.value = null }

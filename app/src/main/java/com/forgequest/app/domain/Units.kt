@@ -1,6 +1,7 @@
 package com.forgequest.app.domain
 
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Display unit for weights. Everything is stored in kilograms; only the screen converts. */
 enum class WeightUnit(
@@ -23,11 +24,16 @@ enum class WeightUnit(
 
     /** "72.5 kg" / "160.0 lb" */
     // Isolated so the number and unit keep their order: left-to-right "72.5 kg", right-to-left "72.5 كغ".
-    fun format(kg: Float, decimals: Int = 1): String =
-        (if (isArabic) "\u2067%.${decimals}f %s\u2069" else "\u2066%.${decimals}f %s\u2069").format(Locale.US, fromKg(kg), label)
+    fun format(kg: Float, decimals: Int = 1): String = shown(kg, decimals).let { d ->
+        (if (isArabic) "\u2067%.${d}f %s\u2069" else "\u2066%.${d}f %s\u2069").format(Locale.US, fromKg(kg), label)
+    }
 
     /** Just the number, e.g. for compact "8×60" labels. */
-    fun number(kg: Float, decimals: Int = 1): String = "%.${decimals}f".format(Locale.US, fromKg(kg)).removeSuffix(".0")
+    fun number(kg: Float, decimals: Int = 1): String = "%.${shown(kg, decimals)}f".format(Locale.US, fromKg(kg)).removeSuffix(".0")
+
+    /** One decimal, except a quarter-kilo load (11.25 kg) keeps both, so it never shows as 11.3. */
+    private fun shown(kg: Float, decimals: Int): Int =
+        if (this == KG && decimals == 1 && (fromKg(kg) * 100).roundToInt() % 10 != 0) 2 else decimals
 
     companion object {
         /** Resolves both canonical codes ("kg", "lb") and localized labels ("كغ", "رطل") safely. */

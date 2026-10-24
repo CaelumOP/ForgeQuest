@@ -34,7 +34,8 @@ export function nextPrefill(
   const repsMin = target?.repsMin ?? 8
   const repsMax = target?.repsMax ?? target?.repsMin ?? 12
   const holdTarget = target?.seconds ?? 30
-  const hasRange = target?.repsMin != null && target.repsMax != null && target.repsMax > target.repsMin
+  // The default 8–12 is a range too, so it resets to 8 after a load step (audit 2026-10-24).
+  const hasRange = repsMax > repsMin
 
   const pain = last.some((s) => s.effort === 'PAIN')
   const strained = pain || last.some((s) => s.effort === 'HARD')
@@ -65,7 +66,8 @@ export function nextPrefill(
       case 'WEIGHTED': {
         // web: audit #9 (a pain step-down to 0 kg falls back to the plan's weight instead of staying at 0 for good)
         const weight = lastSet?.weightKg != null && lastSet.weightKg > 0 ? lastSet.weightKg : (target?.weightKg ?? 0)
-        const baseReps = lastSet?.reps ?? target?.repsMin ?? 10
+        // One failed set (4 of 8) starts next time at the bottom of the range, not below it.
+        const baseReps = lastSet?.reps != null ? Math.max(lastSet.reps, repsMin) : target?.repsMin ?? 10
         const loadUp = mayProgress && weight > 0 && hitTop(last) && (
           hasRange || (
             hitTop(previous) &&

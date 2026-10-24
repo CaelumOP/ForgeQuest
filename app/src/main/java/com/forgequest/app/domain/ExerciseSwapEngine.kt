@@ -214,6 +214,9 @@ data class SwapCandidate(
 )
 
 object ExerciseSwapEngine {
+    /** Lowest score a plan auto-swap accepts: a related movement (18) plus some shared muscles, or the same pattern. */
+    const val MIN_SWAP_SCORE = 30
+
 
     private fun prof(
         eq: Equipment,
@@ -509,9 +512,10 @@ object ExerciseSwapEngine {
                 val prof = profileFor(ex)
                 if (prof.equipment in allowed) return@map item
                 val ranked = rankSubstitutes(ex, allExercises, allowed)
-                val replacement = ranked.firstOrNull { it.matchesUserEquipment && it.exercise.id !in usedInDay }
-                    ?: ranked.firstOrNull { it.matchesUserEquipment }
-                    ?: return@map item
+                // Only a real match (at least a related pattern or shared muscles): with none, keep the original rather
+                // than turning a curl into a push-up or a burpee (audit 2026-10-24).
+                val fits = ranked.filter { it.matchesUserEquipment && it.score >= MIN_SWAP_SCORE }
+                val replacement = fits.firstOrNull { it.exercise.id !in usedInDay } ?: fits.firstOrNull() ?: return@map item
                 swapsCount++
                 usedInDay += replacement.exercise.id
                 translateDraftItem(item, replacement.exercise)

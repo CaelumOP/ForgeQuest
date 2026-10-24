@@ -24,7 +24,7 @@ function metricsFor(kind: ExerciseKind, wu: WeightUnit, arabic: boolean): Metric
     { label: t('metric_total_time'), unit: sec, value: (s) => sum(s, (x) => x.seconds ?? 0) },
   ]
   if (kind === 'WEIGHTED') return [
-    { label: t('metric_best_set'), unit: t('metric_est_1rm', u), value: (s) => fromKg(wu, max(s, (x) => recordScore(kind, x.reps, x.seconds, x.weightKg))) },
+    { label: t('metric_best_set'), unit: t('metric_est_1rm', u), value: (s) => fromKg(wu, max(s, (x) => recordScore(kind, x.reps, x.seconds, x.weightKg, x.exerciseId))) },
     { label: t('metric_max_weight'), unit: u, value: (s) => fromKg(wu, max(s, (x) => x.weightKg ?? 0)) },
     { label: t('metric_volume'), unit: u, value: (s) => fromKg(wu, sum(s, (x) => (x.weightKg ?? 0) * (x.reps ?? 0))) },
     { label: t('metric_max_reps'), unit: reps, value: (s) => max(s, (x) => x.reps ?? 0) },
