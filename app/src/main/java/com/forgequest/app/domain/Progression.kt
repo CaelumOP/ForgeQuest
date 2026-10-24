@@ -39,7 +39,8 @@ object Progression {
         val repsMin = target?.repsMin ?: 8
         val repsMax = target?.repsMax ?: target?.repsMin ?: 12
         val holdTarget = target?.seconds ?: 30
-        val hasRange = target?.repsMin != null && target.repsMax != null && target.repsMax > target.repsMin
+        // The default 8–12 is a range too, so it resets to 8 after a load step (audit 2026-10-24).
+        val hasRange = repsMax > repsMin
 
         val pain = last.any { it.effort == SetEffort.PAIN }
         val strained = pain || last.any { it.effort == SetEffort.HARD }
@@ -68,7 +69,8 @@ object Progression {
                     Prefill(null, next, w)
                 }
                 ExerciseKind.WEIGHTED -> {
-                    val baseReps = lastSet?.reps ?: target?.repsMin ?: 10
+                    // One failed set (4 of 8) starts next time at the bottom of the range, not below it.
+                    val baseReps = lastSet?.reps?.coerceAtLeast(repsMin) ?: target?.repsMin ?: 10
                     val loadUp = mayProgress && lastWeight > 0f && hitTop(last) && (
                         hasRange || (
                             hitTop(previous) &&

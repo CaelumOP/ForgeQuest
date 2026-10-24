@@ -97,7 +97,7 @@ private fun metricsFor(kind: ExerciseKind, wu: WeightUnit = WeightUnit.KG): List
         Metric(stringResource(R.string.metric_total_time), stringResource(R.string.unit_s)) { s, _ -> s.sumOf { it.seconds ?: 0 }.toFloat() },
     )
     ExerciseKind.WEIGHTED -> listOf(
-        Metric(stringResource(R.string.metric_best_set), stringResource(R.string.metric_est_1rm, wu.label)) { s, k -> wu.fromKg(s.maxOfOrNull { Records.score(k, it.reps, it.seconds, it.weightKg) } ?: 0f) },
+        Metric(stringResource(R.string.metric_best_set), stringResource(R.string.metric_est_1rm, wu.label)) { s, k -> wu.fromKg(s.maxOfOrNull { Records.score(k, it.reps, it.seconds, it.weightKg, it.exerciseId) } ?: 0f) },
         Metric(stringResource(R.string.metric_max_weight), wu.label) { s, _ -> wu.fromKg(s.maxOfOrNull { it.weightKg ?: 0f } ?: 0f) },
         Metric(stringResource(R.string.metric_volume), wu.label) { s, _ -> wu.fromKg(s.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat()) },
         Metric(stringResource(R.string.metric_max_reps), stringResource(R.string.unit_reps)) { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },

@@ -53,7 +53,7 @@ class NutritionTest {
         assertEquals(165, Nutrition.suggestedProtein(75f, perKg = 2.2f))
         // 2500 kcal, 135 g protein: 25 % fat leaves 1335 kcal = 335 g; 40 % fat leaves 960 kcal = 240 g.
         assertEquals(335, Nutrition.suggestedCarbs(2500, 135))
-        assertEquals(240, Nutrition.suggestedCarbs(2500, 135, fatPct = 40))
+        assertEquals(245, Nutrition.suggestedCarbs(2500, 135, fatPct = 40)) // fat rounded to 110 g first, as on web
         assertEquals(26, Nutrition.ageFromBirthYear(2000, 2026))
         assertEquals(0, Nutrition.ageFromBirthYear(0, 2026))
     }

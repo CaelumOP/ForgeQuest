@@ -25,3 +25,19 @@ describe('effortOf', () => {
     expect(parseEffort(null)).toBe('OK')
   })
 })
+
+describe('audit 2026-10-24: negated words', () => {
+  it('no pain, pain-free and without pain are not pain', () => {
+    expect(effortOf('', 'felt strong, no pain')).toBe('OK')
+    expect(effortOf('', 'pain-free today')).toBe('OK')
+    expect(effortOf('', 'without pain this time')).toBe('OK')
+    expect(effortOf('', 'بدون ألم')).toBe('OK')
+    expect(effortOf('', "didn't fail")).toBe('OK')
+  })
+  it('real pain still counts, also in a later clause and with an Arabic prefix', () => {
+    expect(effortOf('', 'sharp pain in left shoulder')).toBe('PAIN')
+    expect(effortOf('', 'no rest, knee pain')).toBe('PAIN')
+    expect(effortOf('', 'no pain at first but pain on the last rep')).toBe('PAIN')
+    expect(effortOf('', 'بألم في الركبة')).toBe('PAIN')
+  })
+})

@@ -94,3 +94,31 @@ describe('web additions', () => {
   })
 
 })
+
+describe('audit 2026-10-24', () => {
+  // Two lifts done the same way Mon/Wed/Fri for five weeks; checked on a Monday morning before training.
+  const bench: ExerciseEntity = { id: 'bench', name: 'Bench', kind: 'WEIGHTED', primary: ['CHEST'], secondary: [] }
+  const row: ExerciseEntity = { id: 'row', name: 'Row', kind: 'WEIGHTED', primary: ['UPPER_BACK'], secondary: [] }
+  const plank: ExerciseEntity = { id: 'plank', name: 'Plank', kind: 'HOLD', primary: ['ABS'], secondary: [] }
+  const lib = new Map([bench, row, plank].map((e) => [e.id, e]))
+  const trainingDays = Array.from({ length: 5 }, (_, w) => [0, 2, 4].map((d) => monday - 35 + 7 * w + d)).flat()
+  const sessions = trainingDays.map((d, i) => session(i + 1, d))
+  const lift = (sessionId: number, exerciseId: string, block = 'Main'): SetEntity =>
+    ({ ...set(sessionId, 8, false, exerciseId), block, weightKg: 60 })
+  const doneSets = sessions.flatMap((s) => [1, 2, 3].flatMap(() => [lift(s.id, 'bench'), lift(s.id, 'row')]))
+
+  it('the deload check still sees a full week on Monday', () => {
+    const report = analyzeFatigueAndPlateaus(sessions, doneSets, lib, monday)
+    expect(report.trainingLoadPct).toBe(100)
+    expect(report.stalledLifts.map((s) => s.exerciseId).sort()).toEqual(['bench', 'row'])
+    expect(report.needsDeload).toBe(true)
+  })
+
+  it('warm-ups are not counted and a held plank is not a stalled lift', () => {
+    const warmups = sessions.map((s) => lift(s.id, 'bench', 'Warm-up'))
+    const planks = sessions.map((s) => ({ ...set(s.id, 0, false, 'plank'), reps: null, seconds: 60 }))
+    const report = analyzeFatigueAndPlateaus(sessions, [...doneSets, ...warmups, ...planks], lib, monday)
+    expect(report.trainingLoadPct).toBe(100)
+    expect(report.stalledLifts.map((s) => s.exerciseId)).not.toContain('plank')
+  })
+})

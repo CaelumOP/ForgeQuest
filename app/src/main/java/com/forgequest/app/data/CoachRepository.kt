@@ -679,8 +679,8 @@ class CoachRepository(
             val old = sets.filter { (sessionDay[it.sessionId] ?: 0) in (today - 56)..(today - 21) }
             val new = sets.filter { (sessionDay[it.sessionId] ?: 0) > today - 21 }
             if (old.isEmpty() || new.isEmpty()) return@mapNotNull null
-            val bestOld = old.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) }
-            val bestNew = new.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) }
+            val bestOld = old.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
+            val bestNew = new.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
             "${ex.name} ${setLabel(ex.kind, bestOld)} → ${setLabel(ex.kind, bestNew)}"
         }
         if (trends.isNotEmpty()) sb.append("- Best set 3-8 weeks ago → best set in the last 3 weeks: ${trends.joinToString("; ")}\n")
@@ -688,7 +688,7 @@ class CoachRepository(
         // Personal bests
         val bests = byExercise.entries.mapNotNull { (id, sets) ->
             val ex = snap.exercises[id] ?: return@mapNotNull null
-            val best = sets.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) } ?: return@mapNotNull null
+            val best = sets.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) } ?: return@mapNotNull null
             Triple(ex.name, setLabel(ex.kind, best), sets.size)
         }.sortedByDescending { it.third }.take(12)
         if (bests.isNotEmpty()) sb.append("- Personal bests: ${bests.joinToString(", ") { "${it.first} ${it.second}" }}\n")

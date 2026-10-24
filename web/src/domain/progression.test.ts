@@ -83,3 +83,14 @@ describe('web additions', () => {
     expect(next('WEIGHTED', target(3, 8, 12, null, null), sets(3, 12, 0)).sets[0].weightKg).toBe(0)
   })
 })
+
+describe('audit 2026-10-24', () => {
+  it('the default 8-12 range resets to 8 after a load step', () => {
+    const r = nextPrefill('WEIGHTED', null, sets(3, 12, 60), [], 'KG', false, false)
+    expect(r.sets).toEqual(Array(3).fill({ reps: 8, seconds: null, weightKg: 62.5 }))
+  })
+  it('one failed weighted set starts next time at the bottom of the range', () => {
+    const last = [...sets(2, 10, 60), ...sets(1, 4, 60, null, 'HARD')]
+    expect(next('WEIGHTED', target(3, 8, 12, null, 60), last).sets.map((s) => s.reps)).toEqual([10, 10, 8])
+  })
+})

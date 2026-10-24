@@ -692,7 +692,7 @@ export function progressSummary(snap: ProgressSnapshot, today: number, readiness
   const sessionDay = new Map(snap.sessions.map((x) => [x.id!, x.epochDay]));
   const byEx = new Map<string, typeof done>();
   for (const x of done) byEx.set(x.exerciseId, [...(byEx.get(x.exerciseId) ?? []), x]);
-  const score = (kind: ExerciseKind, x: SetLike) => recordScore(kind, x.reps, x.seconds, x.weightKg);
+  const score = (kind: ExerciseKind, x: SetLike & { exerciseId?: string }) => recordScore(kind, x.reps, x.seconds, x.weightKg, x.exerciseId);
   const best = <T extends SetLike>(kind: ExerciseKind, list: T[]): T => list.reduce((m, x) => (score(kind, x) > score(kind, m) ? x : m));
   const trends = [...byEx.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 8).flatMap(([id, sets]) => {
     const e = ex.get(id);

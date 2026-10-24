@@ -84,3 +84,16 @@ describe('web additions', () => {
     expect(adapted.days[1]).toBe(days[1])
   })
 })
+
+describe('audit 2026-10-24', () => {
+  it('keeps a curl when no bodyweight move is a real match, instead of a push-up or burpee', () => {
+    const curl: PlanDraftItem = {
+      exerciseId: 'bicep_curl', name: null, kind: null, muscles: [], block: 'Main', circuit: false, sets: 3,
+      repsMin: 10, repsMax: 12, seconds: null, weightKg: null, restSeconds: 60, note: '', videoUrl: null,
+    }
+    const days: PlanDraftDay[] = [{ dayOfWeek: 1, title: 'Arms', isRest: false, note: '', items: [curl] }]
+    const [adapted, swaps] = adaptPlanToEquipment({ name: 'P', days }, LIBRARY, set('BODYWEIGHT'))
+    expect(swaps).toBe(0)
+    expect(adapted.days[0].items[0].exerciseId).toBe('bicep_curl')
+  })
+})

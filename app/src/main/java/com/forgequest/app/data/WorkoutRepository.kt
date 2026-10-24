@@ -451,10 +451,10 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             val ex = exercises.byId(exerciseId) ?: continue
             val previousBest = sessions.recentDoneSetsAll(exerciseId)
                 .filter { it.sessionId in earlier }
-                .maxOfOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) }
+                .maxOfOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
                 ?: continue // first time doing it: nothing to beat yet
-            val best = setsOfExercise.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg) } ?: continue
-            if (Records.score(ex.kind, best.reps, best.seconds, best.weightKg) > previousBest) {
+            val best = setsOfExercise.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) } ?: continue
+            if (Records.score(ex.kind, best.reps, best.seconds, best.weightKg, ex.id) > previousBest) {
                 sessions.updateSet(best.copy(isPr = true))
                 prNames += ex.name
             }
@@ -509,7 +509,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                     .thenBy { sessionById[it.key]?.finishedAt ?: 0L }
             )
             .map { it.value }
-        val records = Records.personalRecords(ex.kind, ordered, { it.reps }, { it.seconds }, { it.weightKg })
+        val records = Records.personalRecords(ex.kind, ordered, { it.reps }, { it.seconds }, { it.weightKg }, ex.id)
         val toUpdate = all.mapNotNull { set ->
             val shouldBe = set in records
             if (set.isPr != shouldBe) set.copy(isPr = shouldBe) else null

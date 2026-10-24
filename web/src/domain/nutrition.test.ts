@@ -67,3 +67,10 @@ describe('web additions', () => {
     expect(suggestedCarbs(1800, 150, 20, 100)).toBe(145)
   })
 })
+
+describe('audit 2026-10-24', () => {
+  it('carbs never push the day over its calorie goal', () => {
+    // 1,200 kcal - 150 g protein (600) - 60 g fat (540) leaves 60 kcal: 15 g carbs, not the old 20 g minimum.
+    expect(suggestedCarbs(1200, 150, 45)).toBe(15)
+  })
+})

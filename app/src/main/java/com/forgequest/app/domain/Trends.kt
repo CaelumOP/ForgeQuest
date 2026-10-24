@@ -38,6 +38,15 @@ object Trends {
         return starts.map { ws -> workoutDays.count { it in ws..ws + 6 } }
     }
 
+    /**
+     * Working sets (no warm-ups) in rolling 7-day windows of finished days (the last one ends yesterday), oldest first,
+     * for the deload check. Ending yesterday keeps a Mon/Wed/Fri week whole on a Monday morning.
+     */
+    fun rollingWeeklySets(sets: List<SetEntity>, sessionDay: Map<Long, Long>, weeks: Int, today: Long): List<Int> {
+        val days = sets.filterNot { it.block.equals("Warm-up", ignoreCase = true) }.mapNotNull { sessionDay[it.sessionId] }
+        return (weeks - 1 downTo 0).map { back -> val end = today - 1 - 7L * back; days.count { it in end - 6..end } }
+    }
+
     /** Sets done per week, same shape as [weeklyCounts]. */
     fun weeklySets(sets: List<SetEntity>, sessionDay: Map<Long, Long>, weeks: Int, today: Long): List<Int> {
         val thisWeek = Dates.weekStart(today)
@@ -67,7 +76,7 @@ object Trends {
         var best = Float.NEGATIVE_INFINITY
         var first = true
         return byDay.keys.sorted().map { day ->
-            val top = byDay.getValue(day).maxOf { Records.score(kind, it.reps, it.seconds, it.weightKg) }
+            val top = byDay.getValue(day).maxOf { Records.score(kind, it.reps, it.seconds, it.weightKg, it.exerciseId) }
             val record = !first && top > best
             if (top > best) best = top
             first = false
@@ -148,7 +157,8 @@ object Trends {
         today: Long,
     ): FatigueAndPlateauReport {
         val sessionDay = sessions.associate { it.id to it.epochDay }
-        val weekly = weeklySets(doneSets, sessionDay, 5, today)
+        // Rolling 7-day windows, not calendar weeks: on a Monday the calendar week has 0 sets and the check went blind.
+        val weekly = rollingWeeklySets(doneSets, sessionDay, 5, today)
         val loadPct = trainingLoad(weekly)
         val currentWeekSets = weekly.lastOrNull() ?: 0
 
@@ -162,6 +172,8 @@ object Trends {
         for ((exerciseId, exSets) in recentSets.groupBy { it.exerciseId }) {
             val ex = exercises[exerciseId] ?: continue
             if (ex.id == "jumping_jacks") continue
+            // A plank or dead hang held at the same time is maintenance, not a stalled lift.
+            if (ex.kind == ExerciseKind.HOLD && exSets.none { (it.weightKg ?: 0f) > 0f }) continue
             val series = bestSetSeries(exSets, ex.kind, sessionDay)
             if (series.size < 3) continue
             val span = (series.last().epochDay - series.first().epochDay).toInt()

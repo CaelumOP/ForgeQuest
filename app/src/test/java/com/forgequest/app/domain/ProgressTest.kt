@@ -151,13 +151,14 @@ class RecoveryTest {
     }
 
     @Test
-    fun freshestHardestHitWins() {
+    fun sessionsAddUpInsteadOfTheHardestWinning() {
         val now = 100 * hour
+        // 1.0 ten hours ago has 0.833 left when 0.5 more lands (capped at 1), then 2 h of clearing.
         val r = Recovery.compute(
             listOf(Triple(Muscle.BICEPS, now - 2 * hour, 0.5f), Triple(Muscle.BICEPS, now - 10 * hour, 1f)),
             now,
         )
-        assertEquals(1f - 10f / 48f, r.getValue(Muscle.BICEPS).fatigue, 0.001f)
+        assertEquals(1f - 2f / 48f, r.getValue(Muscle.BICEPS).fatigue, 0.001f)
     }
 
     @Test

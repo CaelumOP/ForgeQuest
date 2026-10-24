@@ -17,3 +17,14 @@ describe('units', () => {
     expect(unitFromCodeOrLabel(null)).toBe('KG')
   })
 })
+
+describe('audit 2026-10-24', () => {
+  it('quarter-kilo loads keep both decimals', () => {
+    expect(weightNumber('KG', 11.25)).toBe('11.25')
+    expect(weightNumber('KG', 62.5)).toBe('62.5')
+    expect(weightNumber('KG', 60)).toBe('60')
+    expect(weightNumber('LB', toKg('LB', 135))).toBe('135')
+    expect(formatWeight('KG', 11.75, false)).toBe('\u206611.75 kg\u2069')
+    expect(formatWeight('KG', 72.5, false)).toBe('\u206672.5 kg\u2069')
+  })
+})

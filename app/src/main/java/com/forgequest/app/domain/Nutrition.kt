@@ -51,10 +51,11 @@ object Nutrition {
         val safeKcal = kcal.coerceAtLeast(MIN_SAFE_KCAL)
         val fatFromPctG = (safeKcal * (fatPct.coerceIn(15, 45) / 100f)) / 9f
         val minEssentialFatG = if (bodyWeightKg > 0f) bodyWeightKg * MIN_FAT_PER_KG else 0f
-        val effectiveFatG = max(fatFromPctG, minEssentialFatG)
-        val remainingKcal = safeKcal - (proteinG * 4f) - (effectiveFatG * 9f)
+        // Fat rounded to 5 g first, so protein + fat + carbs add up to the goal; no carb minimum that could pass it.
+        val fatG = (max(fatFromPctG, minEssentialFatG) / 5f).roundToInt() * 5
+        val remainingKcal = safeKcal - (proteinG * 4f) - (fatG * 9f)
         if (remainingKcal <= 0f) return 0
-        return ((remainingKcal / 4f) / 5f).roundToInt().coerceAtLeast(4) * 5
+        return ((remainingKcal / 4f) / 5f).roundToInt() * 5
     }
 
     /**

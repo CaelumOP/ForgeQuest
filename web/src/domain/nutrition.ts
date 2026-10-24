@@ -48,7 +48,7 @@ export function suggestedCarbs(kcal: number, proteinG: number, fatPct = DEFAULT_
   const fatG = Math.round(f(Math.max(fatFromPctG, minEssentialFatG) / 5)) * 5
   const remainingKcal = f(f(safeKcal - f(proteinG * 4)) - f(fatG * 9))
   if (remainingKcal <= 0) return 0
-  return Math.max(Math.round(f(f(remainingKcal / 4) / 5)), 4) * 5
+  return Math.round(f(f(remainingKcal / 4) / 5)) * 5 // no minimum: 20 g could pass the calorie goal
 }
 
 /**

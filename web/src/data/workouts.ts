@@ -411,7 +411,7 @@ export function finishSession(sessionId: number, tickAll = false): Promise<Finis
     for (const [exerciseId, sets] of byExercise) {
       const ex = await db.exercises.get(exerciseId);
       if (!ex) continue;
-      const score = (s: SetRow) => recordScore(ex.kind, s.reps, s.seconds, s.weightKg);
+      const score = (s: SetRow) => recordScore(ex.kind, s.reps, s.seconds, s.weightKg, ex.id);
       const previous = (await recentDoneSetsAll(exerciseId)).filter((s) => earlier.has(s.sessionId));
       if (!previous.length) continue; // first time: nothing to beat yet
       const previousBest = Math.max(...previous.map(score));
@@ -483,7 +483,7 @@ export async function recomputeRecords(exerciseId: string): Promise<void> {
     const x = sess.get(a); const y = sess.get(b);
     return (x?.epochDay ?? 0) - (y?.epochDay ?? 0) || (x?.startedAt ?? 0) - (y?.startedAt ?? 0) || (x?.finishedAt ?? 0) - (y?.finishedAt ?? 0);
   }).map(([, v]) => v);
-  const records = personalRecords(ex.kind, ordered, (s) => s.reps, (s) => s.seconds, (s) => s.weightKg);
+  const records = personalRecords(ex.kind, ordered, (s) => s.reps, (s) => s.seconds, (s) => s.weightKg, ex.id);
   const changed = all.filter((s) => s.isPr !== records.has(s)).map((s) => ({ ...s, isPr: records.has(s) }));
   if (changed.length) await db.sets.bulkPut(changed);
 }

@@ -46,6 +46,18 @@ export function weeklyCounts(workoutDays: Iterable<number>, weeks: number, today
   return weekStarts(weeks, today).map((ws) => countIn(days, ws))
 }
 
+/**
+ * Working sets (no warm-ups) in rolling 7-day windows of finished days (the last one ends yesterday), oldest first,
+ * for the deload check. Ending yesterday keeps a Mon/Wed/Fri week whole on a Monday morning.
+ */
+export function rollingWeeklySets(sets: readonly SetEntity[], sessionDay: ReadonlyMap<number, number>, weeks: number, today: number): number[] {
+  const days = sets.flatMap((s) => {
+    const d = sessionDay.get(s.sessionId)
+    return d == null || s.block.toLowerCase() === 'warm-up' ? [] : [d]
+  })
+  return Array.from({ length: weeks }, (_, i) => today - 1 - 7 * (weeks - 1 - i)).map((end) => days.filter((d) => d >= end - 6 && d <= end).length)
+}
+
 /** Sets done per week, same shape as [weeklyCounts]. */
 export function weeklySets(sets: readonly SetEntity[], sessionDay: ReadonlyMap<number, number>, weeks: number, today: number): number[] {
   const days = sets.flatMap((s) => {
@@ -76,7 +88,7 @@ export function bestSetSeries(sets: readonly SetEntity[], kind: ExerciseKind, se
   for (const s of sets) {
     const day = sessionDay.get(s.sessionId)
     if (day == null || day < 0) continue
-    const score = recordScore(kind, s.reps, s.seconds, s.weightKg)
+    const score = recordScore(kind, s.reps, s.seconds, s.weightKg, s.exerciseId)
     const prev = byDay.get(day)
     if (prev == null || score > prev) byDay.set(day, score)
   }
@@ -166,7 +178,8 @@ export function analyzeFatigueAndPlateaus(
   readinessDays: readonly ReadinessDayEntity[] = [],
 ): FatigueAndPlateauReport {
   const sessionDay = new Map(sessions.map((s) => [s.id, s.epochDay]))
-  const weekly = weeklySets(doneSets, sessionDay, 5, today)
+  // Rolling 7-day windows, not calendar weeks: on a Monday the calendar week has 0 sets and the check went blind.
+  const weekly = rollingWeeklySets(doneSets, sessionDay, 5, today)
   const loadPct = trainingLoad(weekly)
   const currentWeekSets = weekly[weekly.length - 1] ?? 0
 
@@ -184,6 +197,8 @@ export function analyzeFatigueAndPlateaus(
   for (const [exerciseId, exSets] of byExercise) {
     const ex = exercises.get(exerciseId)
     if (!ex || ex.id === 'jumping_jacks') continue
+    // A plank or dead hang held at the same time is maintenance, not a stalled lift.
+    if (ex.kind === 'HOLD' && !exSets.some((s) => (s.weightKg ?? 0) > 0)) continue
     const series = bestSetSeries(exSets, ex.kind, sessionDay)
     if (series.length < 3) continue
     const span = series[series.length - 1].epochDay - series[0].epochDay

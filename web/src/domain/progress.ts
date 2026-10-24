@@ -149,7 +149,7 @@ export function missedInARow(
   startEpochDay: number,
 ): number {
   let count = 0
-  for (let day = today - 1; day >= startEpochDay && day >= today - 14; day--) {
+  for (let day = today - 1; day >= startEpochDay && day >= today - 28; day--) {
     if (workoutDays.has(day) || excusedDays.has(day)) break
     if (plannedTrainingDays.has(dayOfWeek(day))) count++
   }
@@ -312,21 +312,25 @@ export function effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): number {
 }
 
 /**
- * Fatigue per muscle at [now]. Each hit needs WINDOW_HOURS × weight hours (1.0 = 48 h, 0.5 = 24 h) and fades
- * linearly over it; the highest remaining fatigue wins.
+ * Fatigue per muscle at [now]. Fatigue clears at 1 / WINDOW_HOURS per hour. Sessions add up: what's left of an
+ * earlier session plus the new one (capped at 1), so training a muscle twice in a day counts both (audit 2026-10-24).
  */
 export function computeRecovery(hits: readonly MuscleHit[], now: number): Map<Muscle, MuscleRecovery> {
+  const byMuscle = new Map<Muscle, MuscleHit[]>()
+  for (const h of hits) if (h[2] > 0 && h[1] <= now) byMuscle.set(h[0], [...(byMuscle.get(h[0]) ?? []), h])
   const result = new Map<Muscle, MuscleRecovery>()
-  for (const [muscle, at, weight] of hits) {
-    if (weight <= 0) continue
-    const hours = f(f(now - at) / 3_600_000)
-    const w = clamp(f(weight), 0, 1)
-    const window = f(RECOVERY_WINDOW_HOURS * w)
-    if (hours < 0 || hours >= window) continue
-    const fatigue = f(w * f(1 - f(hours / window)))
-    const ready = Math.max(Math.trunc(f(window - hours)), 1)
-    const prev = result.get(muscle)
-    if (!prev || fatigue > prev.fatigue) result.set(muscle, { fatigue, hoursUntilReady: ready })
+  for (const [muscle, list] of byMuscle) {
+    let fatigue = 0
+    let lastAt: number | null = null
+    for (const [, at, weight] of [...list].sort((a, b) => a[1] - b[1])) {
+      if (lastAt != null) fatigue = Math.max(f(fatigue - f(f(f(at - lastAt) / 3_600_000) / RECOVERY_WINDOW_HOURS)), 0)
+      fatigue = Math.min(f(fatigue + clamp(f(weight), 0, 1)), 1)
+      lastAt = at
+    }
+    fatigue = f(fatigue - f(f(f(now - lastAt!) / 3_600_000) / RECOVERY_WINDOW_HOURS))
+    if (fatigue <= 0) continue
+    // + 0.001 so float noise never turns 36 h into 35.
+    result.set(muscle, { fatigue, hoursUntilReady: Math.max(Math.trunc(f(fatigue * RECOVERY_WINDOW_HOURS + f(0.001))), 1) })
   }
   return result
 }
@@ -338,8 +342,15 @@ export function computeRecovery(hits: readonly MuscleHit[], now: number): Map<Mu
  * - WEIGHTED: Epley-style estimate, linear up to 12 reps and logarithmic above, so 5×100 kg beats 8×80 kg.
  *   Without load it is reps / 100.
  * - REPS and HOLD also credit added weight (vest or belt), so going from bodyweight to +10 kg is a record.
+ * - Weighted pull-ups, chin-ups, dips and push-ups move the body too, so their Epley score uses body + added load
+ *   (then takes the body back off): +10 kg × 10 beats +15 kg × 1. A fixed 75 kg reference body keeps one person's
+ *   sets in the right order without needing their weight (audit 2026-10-24).
  */
-export function recordScore(kind: ExerciseKind, reps: number | null, seconds: number | null, weightKg: number | null): number {
+export const REFERENCE_BODY_KG = 75
+/** Share of body weight each rep moves: pull-ups, chin-ups and dips the whole body, push-ups about 65 %. */
+const BODY_SHARE: Record<string, number> = { weighted_pull_up: 1, weighted_chin_up: 1, weighted_dip: 1, weighted_push_up: f(0.65) }
+
+export function recordScore(kind: ExerciseKind, reps: number | null, seconds: number | null, weightKg: number | null, exerciseId = ''): number {
   const extraKg = Math.max(f(weightKg ?? 0), 0)
   if (kind === 'REPS') {
     const r = Math.max(reps ?? 0, 0)
@@ -351,9 +362,10 @@ export function recordScore(kind: ExerciseKind, reps: number | null, seconds: nu
   }
   const r = Math.max(reps ?? 0, 0)
   if (r === 0) return 0
-  if (extraKg <= 0) return f(r / 100)
+  const body = f(REFERENCE_BODY_KG * (BODY_SHARE[exerciseId] ?? 0))
+  if (extraKg <= 0 && body <= 0) return f(r / 100)
   const effectiveReps = r <= 12 ? r : f(12 + f(3 * f(Math.log(f(1 + (r - 12))))))
-  return f(extraKg * f(1 + f(effectiveReps / 30)))
+  return f(f(f(body + extraKg) * f(1 + f(effectiveReps / 30))) - body)
 }
 
 /**
@@ -367,8 +379,9 @@ export function personalRecords<T>(
   reps: (t: T) => number | null,
   seconds: (t: T) => number | null,
   weightKg: (t: T) => number | null,
+  exerciseId = '',
 ): Set<T> {
-  const score = (t: T) => recordScore(kind, reps(t), seconds(t), weightKg(t))
+  const score = (t: T) => recordScore(kind, reps(t), seconds(t), weightKg(t), exerciseId)
   const result = new Set<T>()
   let best: number | null = null
   for (const sets of sessions) {
