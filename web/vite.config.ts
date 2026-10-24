@@ -30,8 +30,9 @@ export default defineConfig({
     preact(),
     cspMeta,
     VitePWA({
-      // shortcut: updates install on next open until step 18 adds the "Update ready" prompt.
-      registerType: 'autoUpdate',
+      // A new version waits until the person taps "Update ready" (UpdatePill.tsx), so it never reloads mid-task.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['icon.svg', 'icon-180.png'],
       workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}'] },
       manifest: {

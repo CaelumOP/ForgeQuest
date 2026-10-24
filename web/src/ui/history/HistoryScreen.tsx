@@ -34,8 +34,9 @@ export function HistoryScreen(_: { param?: string }) {
   const names = new Map(library.map((e) => [e.id, e.name]))
   const bySession = new Map<number, SetRow[]>()
   for (const s of doneSets) bySession.set(s.sessionId, [...(bySession.get(s.sessionId) ?? []), s])
-  const weeks = groupWeeks(sessions, lang === 'ar' ? 6 : 0)
-  const thisWeek = weeks.length ? groupWeeks([{ epochDay: todayEpochDay(), startedAt: 0 } as SessionRow], lang === 'ar' ? 6 : 0)[0].start : 0
+  // Weeks start on Monday, like the streak, Home and Trends, so a journal week's count matches the weekly target.
+  const weeks = groupWeeks(sessions, 0)
+  const thisWeek = weeks.length ? groupWeeks([{ epochDay: todayEpochDay(), startedAt: 0 } as SessionRow], 0)[0].start : 0
 
   const saveNote = async () => {
     if (noteFor) await putSession({ ...noteFor, note: noteText.trim().slice(0, 300) })
