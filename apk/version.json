@@ -2,5 +2,5 @@
   "versionCode": 16,
   "versionName": "2.9.4",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Meals you scanned with a photo now still count toward the \"Snap & log\" badge after a backup restore, and scans from the ForgeQuest web app count too."
+  "notes": "Everything since 2.9.1. New: ForgeQuest now also runs on iPhone and in any browser at caelumop.github.io/ForgeQuest (add it to your Home Screen). Scanned meals now still count toward the \"Snap & log\" badge after a backup restore, and web scans count too. The coach's workout debrief finishes even if you leave the screen, and you can read it any time on that workout's page in your journal. Smarter suggestions: after a painful set on a light weight, the app can raise the load again later, and workouts logged for a past day no longer confuse suggestions or hide records. Safer and fairer: connecting Google Drive on a new phone no longer replaces your old backup before you restore it, changing your plan keeps the weekly streak you earned, and weight-trend tips are right even with few weigh-ins. Weighted pull-ups and dips stay in calisthenics plans, swapping an exercise no longer carries over the old weight, and the coach reads the equipment you mention in English or Arabic correctly. Plus cleanups and more tests."
 }
