@@ -294,7 +294,6 @@ function WeightSheet({ s, open, onClose }: { s: ProgressSnapshot; open: boolean;
       <div class="home-sheet">
         <Stepper label={t('weight_body')} value={Math.round(fromKg(unit, cur) * 10) / 10} step={bodyStep(unit)} min={fromKg(unit, 30)} max={fromKg(unit, 250)}
           onChange={(v) => setKg(toKg(unit, v))} format={shown} />
-        <div class="home-s">{t('stepper_tap_to_type')}</div>
         <Button block onClick={async () => { await logWeight(cur); close() }}>{t('action_save')}</Button>
       </div>
     </Sheet>
