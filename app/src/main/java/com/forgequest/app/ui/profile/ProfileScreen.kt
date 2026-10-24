@@ -830,10 +830,20 @@ fun ProfileScreen(nav: NavHostController) {
                         })
                     }
                 }
-                val trend = Nutrition.weightTrendNote(settings.nutritionGoal, settings.goalSetDay, s.weights.map { it.epochDay to it.kg }, Dates.today())
+                val trend = Nutrition.weightTrendNote(
+                    settings.nutritionGoal, settings.goalSetDay, s.weights.map { it.epochDay to it.kg }, Dates.today(),
+                    settings.cutPace, settings.gainPace, settings.bodyType == BodyType.FEMALE,
+                )
                 if (trend != null) {
                     Text(
-                        stringResource(if (trend == WeightTrend.CUT_TOO_FAST) R.string.goal_trend_cut_fast else R.string.goal_trend_gain_stalled),
+                        stringResource(
+                            when (trend) {
+                                WeightTrend.CUT_TOO_FAST -> R.string.goal_trend_cut_fast
+                                WeightTrend.GAIN_STALLED -> R.string.goal_trend_gain_stalled
+                                WeightTrend.GAIN_TOO_FAST -> R.string.goal_trend_gain_fast
+                                WeightTrend.DIET_BREAK_DUE -> R.string.goal_trend_diet_break
+                            },
+                        ),
                         style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(bottom = 4.dp),
                     )
                 }

@@ -18,6 +18,7 @@ export interface BackupSettings {
   unit: string; reminderHour: number; heightCm: number; birthYear: number; trackCarbs: boolean;
   carbsGoal: number; proteinPerKg: number; fatSharePct: number; equipment: string; bodyFatPct: number;
   nutritionGoal: string; goalSetDay: number; debriefEnabled: boolean;
+  dayActivity: string; cutPace: string; gainPace: string; targetWeightKg: number; targetSetDay: number;
 }
 
 export const DEFAULT_BACKUP_SETTINGS: Readonly<BackupSettings> = Object.freeze({
@@ -26,6 +27,7 @@ export const DEFAULT_BACKUP_SETTINGS: Readonly<BackupSettings> = Object.freeze({
   unit: 'kg', reminderHour: -1, heightCm: 0, birthYear: 0, trackCarbs: false,
   carbsGoal: 250, proteinPerKg: 1.8, fatSharePct: 25, equipment: '', bodyFatPct: 0,
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true,
+  dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
 });
 
 export interface BackupFile {

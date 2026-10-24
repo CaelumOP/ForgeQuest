@@ -36,7 +36,7 @@ describe('onboarding logic', () => {
     const noBody = withSuggestions(initialState(), days)
     const tall = withSuggestions({ ...initialState(), heightCm: 190, age: 20 }, days)
     const short = withSuggestions({ ...initialState(), heightCm: 155, age: 60 }, days)
-    expect(noBody.kcal).toBe(2500) // 75 kg x 33 kcal fallback
+    expect(noBody.kcal).toBe(2200) // no height: 22 kcal/kg x (1.25 + 3 x 0.025) = 2186
     expect(tall.kcal).toBeGreaterThan(short.kcal)
   })
 })

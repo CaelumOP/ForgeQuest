@@ -8,7 +8,7 @@ import type { PlanDraft } from './seed/starter-plans';
 import type { PlanDraftDay, PlanDraftItem, ExerciseEntity, SessionEntity } from '../domain/entities';
 import { EQUIPMENT, EQUIPMENT_LABEL, profileFor, rankSubstitutes, translateDraftItem, type Equipment } from '../domain/exercise-swap-engine';
 import { isExerciseKind, isMuscle, MUSCLES, MUSCLE_INFO, type ExerciseKind } from '../domain/muscle';
-import { MIN_SAFE_KCAL, weightTrendNote } from '../domain/nutrition';
+import { CUT_PACE, GAIN_PACE, MIN_SAFE_KCAL, MIN_SAFE_KCAL_MALE, weightTrendNote } from '../domain/nutrition';
 import { recordScore } from '../domain/progress';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { BADGES, BADGES_BY_ID } from '../domain/badges';
@@ -487,7 +487,7 @@ export function debriefSystem(lang: 'en' | 'ar'): string {
 export const CORE_RULES = `You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Sports Science, Calisthenics & Gym Coach).
 - Synthesize, do not just parrot stats back: connect the dots between Fitbit Readiness (recovery %, HRV vs baseline, resting HR, sleep debt, strain target), muscle recovery hours, training load / deload status, recent set performance, and daily protein/calorie intake.
 - Give concrete, actionable prescriptions: when asked about today's session or progression, specify exact set/rep/hold/weight adjustments based on recovery state and their last logged sets. If a deload or lift plateau is flagged in the summary, proactively prescribe a structured deload (cutting sets by 35-40% for 1 week) or a biomechanical exercise variation.
-- Strict sports nutrition guardrails: NEVER prescribe a daily calorie target below ${MIN_SAFE_KCAL} kcal/day or a deficit exceeding 22% of TDEE. Always maintain a protein floor of 1.6-2.2 g/kg and an essential dietary fat floor of at least 0.6-0.8 g/kg before allocating carbohydrates.
+- Strict sports nutrition guardrails: NEVER prescribe a daily calorie target below ${MIN_SAFE_KCAL_MALE} kcal/day for men or ${MIN_SAFE_KCAL} for women (and never under 85% of their BMR), or a loss faster than 1% of body weight a week (a deficit over 30% of TDEE). Always maintain a protein floor of 1.6-2.2 g/kg and an essential dietary fat floor of at least 0.6-0.8 g/kg before allocating carbohydrates.
 - Keep normal replies focused and punchy (120-250 words), using **bold** and clean bullet points, and go deeper when the user asks for analysis or meal/workout breakdowns.
 - Never shame food choices; going over calories is fuel, not failure.`;
 
@@ -620,9 +620,13 @@ export function progressSummary(snap: ProgressSnapshot, today: number, readiness
     : s.nutritionGoal === 'GAIN' ? 'GAIN (build muscle with a small surplus: push progressive overload)'
     : 'MAINTAIN (keep body weight steady while getting stronger)';
   out += `- Body goal: ${goalText}\n`;
-  const wt = weightTrendNote(s.nutritionGoal, s.goalSetDay, snap.weights.map((w) => [w.epochDay, w.kg] as const), today);
-  if (wt === 'CUT_TOO_FAST') out += '- Weight trend: losing more than 1% of body weight a week on the cut; suggest eating a little more\n';
+  if (s.nutritionGoal === 'CUT') out += `- Cut pace: ${s.cutPace.toLowerCase()} (${CUT_PACE[s.cutPace].weeklyPct}% of body weight a week)\n`;
+  if (s.nutritionGoal === 'GAIN') out += `- Gain pace: ${s.gainPace.toLowerCase()} (${GAIN_PACE[s.gainPace].weeklyPct}% of body weight a week)\n`;
+  const wt = weightTrendNote(s.nutritionGoal, s.goalSetDay, snap.weights.map((w) => [w.epochDay, w.kg] as const), today, s.cutPace, s.gainPace, s.bodyType === 'FEMALE');
+  if (wt === 'CUT_TOO_FAST') out += '- Weight trend: losing faster than the chosen cut pace allows; suggest eating a little more\n';
   if (wt === 'GAIN_STALLED') out += '- Weight trend: no gain for 3+ weeks on the gain goal; suggest a little more food\n';
+  if (wt === 'GAIN_TOO_FAST') out += '- Weight trend: gaining faster than the chosen pace; most of the extra is fat, suggest a little less food\n';
+  if (wt === 'DIET_BREAK_DUE') out += '- Diet break due: this cut has run its planned weeks; suggest 1-2 weeks at maintenance calories\n';
 
   const st = snap.streak;
   const missed = st.days.map((d, i) => (d === 'MISSED' ? dayLong(i + 1) : null)).filter((x): x is string => x != null);

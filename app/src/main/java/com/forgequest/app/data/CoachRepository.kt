@@ -575,9 +575,16 @@ class CoachRepository(
             NutritionGoal.GAIN -> "GAIN (build muscle with a small surplus: push progressive overload)"
         }
         sb.append("- Body goal: $goalText\n")
-        when (Nutrition.weightTrendNote(s.nutritionGoal, s.goalSetDay, snap.weights.map { it.epochDay to it.kg }, today)) {
-            WeightTrend.CUT_TOO_FAST -> sb.append("- Weight trend: losing more than 1% of body weight a week on the cut; suggest eating a little more\n")
+        when (s.nutritionGoal) {
+            NutritionGoal.CUT -> sb.append("- Cut pace: ${s.cutPace.name.lowercase()} (${s.cutPace.weeklyPct}% of body weight a week)\n")
+            NutritionGoal.GAIN -> sb.append("- Gain pace: ${s.gainPace.name.lowercase()} (${s.gainPace.weeklyPct}% of body weight a week)\n")
+            NutritionGoal.MAINTAIN -> Unit
+        }
+        when (Nutrition.weightTrendNote(s.nutritionGoal, s.goalSetDay, snap.weights.map { it.epochDay to it.kg }, today, s.cutPace, s.gainPace, s.bodyType.name == "FEMALE")) {
+            WeightTrend.CUT_TOO_FAST -> sb.append("- Weight trend: losing faster than the chosen cut pace allows; suggest eating a little more\n")
             WeightTrend.GAIN_STALLED -> sb.append("- Weight trend: no gain for 3+ weeks on the gain goal; suggest a little more food\n")
+            WeightTrend.GAIN_TOO_FAST -> sb.append("- Weight trend: gaining faster than the chosen pace; most of the extra is fat, suggest a little less food\n")
+            WeightTrend.DIET_BREAK_DUE -> sb.append("- Diet break due: this cut has run its planned weeks; suggest 1-2 weeks at maintenance calories\n")
             null -> Unit
         }
 
@@ -735,7 +742,7 @@ class CoachRepository(
             You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Sports Science, Calisthenics & Gym Coach).
             - Synthesize, do not just parrot stats back: connect the dots between Fitbit Readiness (recovery %, HRV vs baseline, resting HR, sleep debt, strain target), muscle recovery hours, training load / deload status, recent set performance, and daily protein/calorie intake.
             - Give concrete, actionable prescriptions: when asked about today's session or progression, specify exact set/rep/hold/weight adjustments based on recovery state and their last logged sets. If a deload or lift plateau is flagged in the summary, proactively prescribe a structured deload (cutting sets by 35-40% for 1 week) or a biomechanical exercise variation.
-            - Strict sports nutrition guardrails: NEVER prescribe a daily calorie target below ${Nutrition.MIN_SAFE_KCAL} kcal/day or a deficit exceeding 22% of TDEE. Always maintain a protein floor of 1.6-2.2 g/kg and an essential dietary fat floor of at least 0.6-0.8 g/kg before allocating carbohydrates.
+            - Strict sports nutrition guardrails: NEVER prescribe a daily calorie target below ${Nutrition.MIN_SAFE_KCAL_MALE} kcal/day for men or ${Nutrition.MIN_SAFE_KCAL} for women (and never under 85% of their BMR), or a loss faster than 1% of body weight a week (a deficit over 30% of TDEE). Always maintain a protein floor of 1.6-2.2 g/kg and an essential dietary fat floor of at least 0.6-0.8 g/kg before allocating carbohydrates.
             - Keep normal replies focused and punchy (120-250 words), using **bold** and clean bullet points, and go deeper when the user asks for analysis or meal/workout breakdowns.
             - Never shame food choices; going over calories is fuel, not failure.
         """.trimIndent()

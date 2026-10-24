@@ -39,7 +39,7 @@
   "badges": [
     {"id": "first_workout", "unlockedAt": 1760893200000, "seen": true}
   ],
-  "settings": {"name": "Omar", "bodyType": "MALE", "kcalGoal": 2400, "proteinGoal": 150, "weeklyTargetOverride": 0, "handLengthCm": 0.0, "palmWidthCm": 0.0, "coachNotes": "Left knee is sensitive.", "theme": "dark", "hapticsEnabled": true, "unit": "kg", "reminderHour": 18, "heightCm": 178.0, "birthYear": 1995, "trackCarbs": true, "carbsGoal": 250, "proteinPerKg": 1.8, "fatSharePct": 25, "equipment": "dumbbells,bench", "bodyFatPct": 0.0, "nutritionGoal": "MAINTAIN", "goalSetDay": 20370, "debriefEnabled": true},
+  "settings": {"name": "Omar", "bodyType": "MALE", "kcalGoal": 2400, "proteinGoal": 150, "weeklyTargetOverride": 0, "handLengthCm": 0.0, "palmWidthCm": 0.0, "coachNotes": "Left knee is sensitive.", "theme": "dark", "hapticsEnabled": true, "unit": "kg", "reminderHour": 18, "heightCm": 178.0, "birthYear": 1995, "trackCarbs": true, "carbsGoal": 250, "proteinPerKg": 1.8, "fatSharePct": 25, "equipment": "dumbbells,bench", "bodyFatPct": 0.0, "nutritionGoal": "MAINTAIN", "goalSetDay": 20370, "debriefEnabled": true,"dayActivity":"SITTING","cutPace":"STANDARD","gainPace":"STANDARD","targetWeightKg":0.0,"targetSetDay":0},
   "dayNotes": [
     {"epochDay": 20382, "tag": "SICK", "note": "Cold.", "updatedAt": 1761040000000}
   ],

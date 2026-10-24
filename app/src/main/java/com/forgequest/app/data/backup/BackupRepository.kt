@@ -23,6 +23,9 @@ import com.forgequest.app.data.db.WeightEntity
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.data.prefs.Settings
 import com.forgequest.app.data.prefs.SettingsRepository
+import com.forgequest.app.domain.CutPace
+import com.forgequest.app.domain.DayActivity
+import com.forgequest.app.domain.GainPace
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +64,11 @@ data class BackupSettings(
     val nutritionGoal: String = "MAINTAIN",
     val goalSetDay: Long = 0,
     val debriefEnabled: Boolean = true,
+    val dayActivity: String = "SITTING",
+    val cutPace: String = "STANDARD",
+    val gainPace: String = "STANDARD",
+    val targetWeightKg: Float = 0f,
+    val targetSetDay: Long = 0,
 ) {
     companion object {
         fun from(s: Settings) = BackupSettings(
@@ -87,6 +95,11 @@ data class BackupSettings(
             nutritionGoal = s.nutritionGoal.name,
             goalSetDay = s.goalSetDay,
             debriefEnabled = s.debriefEnabled,
+            dayActivity = s.dayActivity.name,
+            cutPace = s.cutPace.name,
+            gainPace = s.gainPace.name,
+            targetWeightKg = s.targetWeightKg,
+            targetSetDay = s.targetSetDay,
         )
     }
 
@@ -114,6 +127,11 @@ data class BackupSettings(
         nutritionGoal = runCatching { NutritionGoal.valueOf(nutritionGoal) }.getOrDefault(s.nutritionGoal),
         goalSetDay = goalSetDay,
         debriefEnabled = debriefEnabled,
+        dayActivity = DayActivity.parse(dayActivity),
+        cutPace = CutPace.parse(cutPace),
+        gainPace = GainPace.parse(gainPace),
+        targetWeightKg = targetWeightKg,
+        targetSetDay = targetSetDay,
     )
 }
 
