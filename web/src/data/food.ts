@@ -60,3 +60,19 @@ export async function dayTotals(epochDay = todayEpochDay()): Promise<DayTotals> 
   return totalsOf(await getMealsOn(epochDay));
 }
 export const useDayTotals = (epochDay = todayEpochDay()): DayTotals => useLive(() => dayTotals(epochDay), [epochDay], { kcal: 0, protein: 0, carbs: 0 });
+
+/** The latest of each one-off meal (quick log or scan) by name, newest first, max 8, for one-tap relogging. */
+export function recentOneOffsOf(meals: readonly MealRow[]): MealRow[] {
+  const seen = new Set<string>();
+  const out: MealRow[] = [];
+  for (const m of [...meals].filter((x) => x.foodId == null).sort((a, b) => b.loggedAt - a.loggedAt || (b.id ?? 0) - (a.id ?? 0))) {
+    const key = m.name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(m);
+    if (out.length === 8) break;
+  }
+  return out;
+}
+export const getRecentOneOffs = async (): Promise<MealRow[]> => recentOneOffsOf(await db.meals.filter((m) => m.foodId == null).toArray());
+export const useRecentOneOffs = (): MealRow[] => useLive(getRecentOneOffs, [], []);

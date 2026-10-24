@@ -1,5 +1,4 @@
 {
-  "food_w_scan_soon": "AI meal scan is coming soon.",
   "food_w_edit": "Edit {1}",
   "food_w_qty": "Servings of {1}",
   "food_w_more": "Add a serving",
@@ -8,5 +7,8 @@
   "food_w_pinned_switch": "Pin to top",
   "food_w_ring_kcal": "Calories",
   "food_w_over": "over",
-  "food_w_day_nav": "Day"
+  "food_w_day_nav": "Day",
+  "food_w_take_photo": "Take a photo",
+  "food_w_photo_bad": "Couldn't open that photo. Try another one.",
+  "food_w_scan_privacy": "The photo is sent to Gemini with your own key to estimate the meal. It is not saved on your phone."
 }
