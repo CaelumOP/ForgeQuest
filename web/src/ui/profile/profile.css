@@ -1,0 +1,61 @@
+.pf { gap: 12px; }
+.pf-row { display: flex; align-items: center; gap: 14px; }
+.pf-grow { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: 2px; }
+.pf-t { font-size: 16px; color: var(--text); }
+.pf-s { font-size: 13px; color: var(--text-2); }
+.pf-block { display: block; }
+.pf-warn { color: var(--gold); }
+.pf-h3 { margin: 0; font-size: 16px; font-weight: 500; color: var(--text); }
+.pf-name { margin: 0; font-size: 22px; line-height: 28px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-rank { font-size: 24px; font-weight: 700; color: var(--blue); }
+.pf-more { color: var(--teal); font-size: 14px; font-weight: 500; }
+.pf-xp { inline-size: 100%; block-size: 8px; margin-block: 16px 6px; border: 0; border-radius: 4px; background: var(--blue-track); accent-color: var(--blue); overflow: hidden; }
+.pf-xp::-webkit-progress-bar { background: var(--blue-track); }
+.pf-xp::-webkit-progress-value { background: var(--blue); border-radius: 4px; }
+.pf-xp::-moz-progress-bar { background: var(--blue); }
+.pf-stats { display: flex; margin-block-start: 12px; }
+.pf-stats > * { flex: 1; min-inline-size: 0; }
+.pf-new { margin-block: 12px 0; color: var(--purple); font-size: 14px; font-weight: 500; }
+.pf-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 12px; }
+.pf-badge { padding: 6px 12px; border-radius: 16px; background: var(--card-high); color: var(--text); font-size: 13px; }
+.pf-badge-new { background: var(--purple-track); color: var(--purple); }
+.pf-shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pf-short { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; font-weight: 500; }
+
+.pf-ic { inline-size: 44px; block-size: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.pf-coral { background: var(--coral-track); color: var(--coral); }
+.pf-gold { background: var(--gold-track); color: var(--gold); }
+.pf-teal { background: var(--teal-track); color: var(--teal); }
+.pf-purple { background: var(--purple-track); color: var(--purple); }
+.pf-blue { background: var(--blue-track); color: var(--blue); }
+.pf-text { background: var(--card-high); color: var(--text-2); }
+
+.pf-group { display: flex; flex-direction: column; gap: 12px; }
+.pf-ghead { display: flex; align-items: center; gap: 14px; inline-size: 100%; min-block-size: 64px; padding: 10px 16px; border: 0; border-radius: 24px; background: var(--card); color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.pf-ghead:active { background: var(--card-high); }
+.pf-gtext { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
+.pf-gtitle { font-size: 16px; font-weight: 500; }
+.pf-gsum { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-chevwrap { display: inline-flex; color: var(--text-2); transition: transform 0.15s; }
+.pf-up { transform: rotate(180deg); }
+.pf-gbody { display: flex; flex-direction: column; gap: 12px; }
+.pf-cardhead { display: flex; align-items: center; gap: 14px; margin-block-end: 8px; }
+
+.pf-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 6px; }
+.pf-setting > .pf-grow { min-inline-size: 140px; }
+.pf-card-gap, .pf .kit-card > .kit-chips, .pf .kit-card > .pf-t { margin-block-start: 8px; }
+.pf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pf-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 8px; }
+.pf-link { color: var(--teal); min-block-size: 44px; display: inline-flex; align-items: center; font-weight: 500; }
+.pf-sheet { display: flex; flex-direction: column; gap: 16px; align-items: center; }
+
+.pf-switchrow { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 56px; padding: 6px 0; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.pf-switch { inline-size: 52px; block-size: 32px; border-radius: 16px; background: var(--card-high); border: 2px solid var(--text-2); position: relative; flex: none; box-sizing: border-box; }
+.pf-knob { position: absolute; inset-block-start: 6px; inset-inline-start: 6px; inline-size: 16px; block-size: 16px; border-radius: 50%; background: var(--text-2); transition: inset-inline-start 0.15s; }
+.pf-switch-on { background: var(--teal); border-color: var(--teal); }
+.pf-switch-on .pf-knob { inset-inline-start: 22px; background: var(--on-teal); inline-size: 20px; block-size: 20px; inset-block-start: 4px; }
+
+.pf-note { display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 44px; padding: 6px 4px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.pf-note:active { background: var(--card-high); }
+.pf-bullet { color: var(--purple); inline-size: 16px; }
+.pf-x { color: var(--text-2); font-size: 20px; }
