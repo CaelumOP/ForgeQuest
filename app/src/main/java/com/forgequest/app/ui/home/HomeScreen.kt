@@ -148,6 +148,7 @@ fun HomeScreen(nav: NavHostController) {
         Spacer(Modifier.height(16.dp))
         StatRow(s, onWeight = { weightSheet = true })
         Spacer(Modifier.height(16.dp))
+        CalorieCardView(s, health, vm.app.settings)
 
         val unseen = s.badges.filter { !it.seen }.mapNotNull { Badges.byId[it.id] }
         if (unseen.isNotEmpty()) {

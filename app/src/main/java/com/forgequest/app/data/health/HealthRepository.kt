@@ -69,6 +69,8 @@ data class DayReadiness(
     val kcalBurned: Int,
     /** Average calories burned a day over the last 14 full days the watch was worn; null with fewer than 10 such days. */
     val kcalAvg14: Int? = null,
+    /** Steps per full day for the last 60 days (Health Connect merges sources): the calorie day base and step-drop check. */
+    val dailySteps: Map<Long, Long> = emptyMap(),
     val hrv: Double?,
     val hrvUsual: Double?,
     val rhr: Double?,
@@ -294,6 +296,14 @@ class HealthRepository(private val context: Context, private val settings: Setti
             ).mapNotNull { it.result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.takeIf { k -> k >= 1200 } }
         }.getOrDefault(emptyList())
         val kcalAvg14 = if (kcalDays.size >= 10) kcalDays.average().toInt() else null
+        val dailySteps = suspendRunCatching {
+            client.aggregateGroupByPeriod(
+                AggregateGroupByPeriodRequest(
+                    setOf(StepsRecord.COUNT_TOTAL),
+                    TimeRangeFilter.between(today.minusDays(60).atStartOfDay(), today.atStartOfDay()), java.time.Period.ofDays(1),
+                )
+            ).associate { it.startTime.toLocalDate().toEpochDay() to (it.result[StepsRecord.COUNT_TOTAL] ?: 0L) }
+        }.getOrDefault(emptyMap())
 
         val night = nightOf(day)
         // The day runs from waking to the next sleep, so strain after midnight still adds to it.
@@ -336,6 +346,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
             steps = totals?.get(StepsRecord.COUNT_TOTAL) ?: 0L,
             kcalBurned = totals?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories?.toInt() ?: 0,
             kcalAvg14 = kcalAvg14,
+            dailySteps = dailySteps,
             hrv = hrvFor(day), hrvUsual = usual.first,
             rhr = rhrFor(day), rhrUsual = usual.second,
             resp = respFor(day), respUsual = respUsual,

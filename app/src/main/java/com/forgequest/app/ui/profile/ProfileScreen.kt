@@ -120,7 +120,10 @@ import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Badges
+import com.forgequest.app.domain.CutPace
+import com.forgequest.app.domain.DayActivity
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.GainPace
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.EquipmentPreset
 import com.forgequest.app.domain.ExerciseSwapEngine
@@ -130,7 +133,9 @@ import com.forgequest.app.domain.WeightTrend
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.descRes
 import com.forgequest.app.ui.labelRes
+import com.forgequest.app.ui.CalorieUi
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
@@ -235,18 +240,18 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.health.refresh(force = true)
     }
 
-    /** Switches Cut / Maintain / Gain; null targets are the ones the person set by hand and stay as they are. */
-    fun setGoal(goal: NutritionGoal, proteinPerKg: Float, kcal: Int?, protein: Int?, carbs: Int?) = viewModelScope.launch {
-        app.settings.update { s ->
-            s.copy(
-                nutritionGoal = goal,
-                goalSetDay = Dates.today(),
-                proteinPerKg = proteinPerKg.coerceIn(Nutrition.MIN_PROTEIN_PER_KG, 2.5f),
-                kcalGoal = (kcal ?: s.kcalGoal).coerceAtLeast(Nutrition.MIN_SAFE_KCAL),
-                proteinGoal = (protein ?: s.proteinGoal).coerceAtLeast(60),
-                carbsGoal = carbs ?: s.carbsGoal,
-            )
-        }
+    /** Goal, pace or normal day; targets still on the old suggestion follow the new one, numbers set by hand stay. */
+    fun setNutrition(change: (com.forgequest.app.data.prefs.Settings) -> com.forgequest.app.data.prefs.Settings) = viewModelScope.launch {
+        val snap = snapshot.value ?: return@launch
+        val steps = CalorieUi.stepsBase(app.health.state.value, snap.sessions)
+        app.settings.update { CalorieUi.applyNutrition(it, snap.latestWeight, snap.plan?.trainingDays?.size ?: 0, steps, Dates.today(), change) }
+    }
+
+    /** A calorie target set here: never below the person's floor, remembered with the day and weight it was set at. */
+    fun setKcal(kcal: Int) = viewModelScope.launch {
+        val snap = snapshot.value
+        val floor = snap?.let { CalorieUi.inputs(it, app.health.state.value) }?.let(CalorieUi::floor) ?: Nutrition.MIN_SAFE_KCAL
+        app.settings.update { CalorieUi.withTarget(it, kcal.coerceIn(floor, Nutrition.MAX_SAFE_KCAL), snap?.latestWeight, Dates.today()) }
     }
 
     fun setDebrief(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(debriefEnabled = on) } }
@@ -255,10 +260,9 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
     }
 
-    fun updateGoals(kcal: Int? = null, protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
+    fun updateGoals(protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
         app.settings.update { s ->
             s.copy(
-                kcalGoal = (kcal ?: s.kcalGoal).coerceAtLeast(Nutrition.MIN_SAFE_KCAL),
                 proteinGoal = (protein ?: s.proteinGoal).coerceAtLeast(60),
                 weeklyTargetOverride = weekly ?: s.weeklyTargetOverride,
             )
@@ -692,6 +696,8 @@ fun ProfileScreen(nav: NavHostController) {
         val planDays = s.plan?.trainingDays?.size ?: 0
         val thisYear = java.time.Year.now().value
         val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
+        val steps = CalorieUi.stepsBase(health, s.sessions)
+        val calInputs = CalorieUi.inputs(settings, s.latestWeight, planDays, steps, thisYear)
         val connected = settings.healthEnabled && (health is com.forgequest.app.data.health.HealthState.Ready || health is com.forgequest.app.data.health.HealthState.Loading)
         val canLock = remember {
             androidx.biometric.BiometricManager.from(context).canAuthenticate(
@@ -717,6 +723,7 @@ fun ProfileScreen(nav: NavHostController) {
                 stringResource(if (settings.bodyType == BodyType.FEMALE) R.string.body_female else R.string.body_male),
                 "${settings.heightCm.toInt()} ${stringResource(R.string.unit_cm)}",
                 "$age ${stringResource(R.string.unit_years)}",
+                stringResource(settings.dayActivity.labelRes),
                 if (connected) stringResource(R.string.summary_fitbit_on) else null,
             ),
             open = "body" in openGroups, onToggle = { toggleGroup("body") },
@@ -737,8 +744,17 @@ fun ProfileScreen(nav: NavHostController) {
                     onSelect = { vm.setBody(if (it == 1) BodyType.FEMALE else BodyType.MALE) },
                 )
                 Spacer(Modifier.height(8.dp))
-                SettingStepper(stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) }, step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm))
-                SettingStepper(stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) }, step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years))
+                // Not set yet: a dash, not a made-up 170 cm / 25 years that looks like a real value.
+                SettingStepper(
+                    stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) },
+                    step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm),
+                    placeholder = if (settings.heightCm > 0f) null else "– ${stringResource(R.string.unit_cm)}",
+                )
+                SettingStepper(
+                    stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) },
+                    step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years),
+                    placeholder = if (age > 0) null else "– ${stringResource(R.string.unit_years)}",
+                )
                 SettingStepper(
                     label = stringResource(R.string.profile_body_fat_optional),
                     value = settings.bodyFatPct,
@@ -749,7 +765,24 @@ fun ProfileScreen(nav: NavHostController) {
                     unit = "%",
                     decimals = 1,
                 )
+                Text(stringResource(R.string.profile_bodyfat_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.day_short_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                Spacer(Modifier.height(8.dp))
+                SegmentedTabs(
+                    DayActivity.entries.map { stringResource(it.labelRes) },
+                    DayActivity.entries.indexOf(settings.dayActivity),
+                    onSelect = { i -> vm.setNutrition { it.copy(dayActivity = DayActivity.entries[i]) } },
+                    wrap = true,
+                )
+                Spacer(Modifier.height(6.dp))
+                // With a watch, the steps decide; the choice above is the fallback for days it isn't worn.
+                Text(
+                    steps?.let { stringResource(R.string.steps_using, "%,d".format(it.avgSteps)) } ?: stringResource(settings.dayActivity.descRes),
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                )
                 if (settings.heightCm <= 0f || age <= 0) {
+                    Spacer(Modifier.height(6.dp))
                     Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.gold)
                 }
             }
@@ -796,39 +829,54 @@ fun ProfileScreen(nav: NavHostController) {
                     Spacer(Modifier.width(14.dp))
                     Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 }
-                val trainingDaysForKcal = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else planDays
-                val hasBodyStats = (settings.heightCm > 0f && age > 0) || settings.bodyFatPct in 4f..60f
-                fun kcalFor(goal: NutritionGoal) = s.latestWeight?.let {
-                    Nutrition.suggestedKcal(
-                        kg = it,
-                        heightCm = settings.heightCm,
-                        age = age,
-                        male = settings.bodyType == BodyType.MALE,
-                        trainingDays = trainingDaysForKcal,
-                        bodyFatPct = settings.bodyFatPct,
-                        goal = goal,
-                    )
-                }
-                fun proteinFor(perKg: Float) = s.latestWeight?.let { Nutrition.suggestedProtein(it, perKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct) }
+                val trainingDaysForKcal = CalorieUi.trainingDays(settings, planDays)
+                val hasBodyStats = CalorieUi.hasBodyStats(settings, age)
+                fun kcalFor(goal: NutritionGoal) = calInputs?.let { CalorieUi.suggestion(it, settings, goal) }
+                val floor = calInputs?.let(CalorieUi::floor) ?: Nutrition.MIN_SAFE_KCAL
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.goal_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                 Row(Modifier.padding(top = 8.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NutritionGoal.entries.forEach { g ->
                         ChoiceChip(stringResource(g.labelRes), settings.nutritionGoal == g, {
-                            if (g != settings.nutritionGoal) {
-                                // Targets still on the old suggestion follow the new goal; numbers set by hand stay put.
-                                val oldPerKg = Nutrition.proteinPerKgFor(settings.nutritionGoal)
-                                val perKg = if (settings.proteinPerKg == oldPerKg) Nutrition.proteinPerKgFor(g) else settings.proteinPerKg
-                                val kcal = kcalFor(g)?.takeIf { hasBodyStats && kcalFor(settings.nutritionGoal) == settings.kcalGoal }
-                                val protein = proteinFor(perKg)?.takeIf { proteinFor(settings.proteinPerKg) == settings.proteinGoal }
-                                val oldCarbs = Nutrition.suggestedCarbs(settings.kcalGoal, settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
-                                val carbs = if (settings.trackCarbs && oldCarbs == settings.carbsGoal) {
-                                    Nutrition.suggestedCarbs(kcal ?: settings.kcalGoal, protein ?: settings.proteinGoal, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT), s.latestWeight ?: 0f)
-                                } else null
-                                vm.setGoal(g, perKg, kcal, protein, carbs)
-                            }
+                            if (g != settings.nutritionGoal) vm.setNutrition { it.copy(nutritionGoal = g) }
                         })
                     }
+                }
+                val kg = s.latestWeight
+                when (settings.nutritionGoal) {
+                    NutritionGoal.CUT -> {
+                        val paces = CutPace.entries
+                        val fastBlocked = kg != null &&
+                            Nutrition.allowedCutPace(CutPace.AGGRESSIVE, kg, settings.heightCm, age, settings.bodyType == BodyType.MALE, settings.bodyFatPct) != CutPace.AGGRESSIVE
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.pace_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Spacer(Modifier.height(8.dp))
+                        SegmentedTabs(
+                            options = paces.map { stringResource(it.labelRes) },
+                            selected = paces.indexOf(settings.cutPace),
+                            onSelect = { i -> vm.setNutrition { it.copy(cutPace = paces[i]) } },
+                            subs = if (kg == null) emptyList() else paces.map { stringResource(R.string.pace_week, settings.weightUnit.format(kg * it.weeklyPct / 100f)) },
+                            disabled = if (fastBlocked) setOf(paces.indexOf(CutPace.AGGRESSIVE)) else emptySet(),
+                            wrap = true,
+                        )
+                        if (fastBlocked) Text(stringResource(R.string.pace_blocked), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    NutritionGoal.GAIN -> {
+                        val paces = GainPace.entries
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.pace_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Spacer(Modifier.height(8.dp))
+                        SegmentedTabs(
+                            options = paces.map { stringResource(it.labelRes) },
+                            selected = paces.indexOf(settings.gainPace),
+                            onSelect = { i -> vm.setNutrition { it.copy(gainPace = paces[i]) } },
+                            subs = if (kg == null) emptyList() else paces.map { stringResource(R.string.pace_month, settings.weightUnit.format(kg * it.weeklyPct * 4.35f / 100f)) },
+                            wrap = true,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    NutritionGoal.MAINTAIN -> Unit
                 }
                 val trend = Nutrition.weightTrendNote(
                     settings.nutritionGoal, settings.goalSetDay, s.weights.map { it.epochDay to it.kg }, Dates.today(),
@@ -850,9 +898,9 @@ fun ProfileScreen(nav: NavHostController) {
                 SettingStepper(
                     stringResource(R.string.profile_daily_calories),
                     settings.kcalGoal.toFloat(),
-                    { vm.updateGoals(kcal = it.toInt()) },
+                    { vm.setKcal(it.toInt()) },
                     step = 50f,
-                    min = Nutrition.MIN_SAFE_KCAL.toFloat(),
+                    min = floor.toFloat(),
                     max = Nutrition.MAX_SAFE_KCAL.toFloat(),
                     unit = stringResource(R.string.unit_kcal),
                 )
@@ -861,15 +909,18 @@ fun ProfileScreen(nav: NavHostController) {
                     Text(
                         when {
                             !hasBodyStats -> stringResource(R.string.goals_suggest_missing)
-                            suggested != null -> stringResource(R.string.goals_suggested, "%,d".format(suggested), trainingDaysForKcal)
+                            suggested != null -> stringResource(R.string.profile_suggested_v2, "%,d".format(suggested), trainingDaysForKcal, stringResource(settings.dayActivity.labelRes))
                             else -> stringResource(R.string.goals_suggest_missing)
                         },
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f),
                     )
                     if (suggested != null && hasBodyStats && suggested != settings.kcalGoal) {
                         Spacer(Modifier.width(8.dp))
-                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(kcal = suggested) })
+                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.setKcal(suggested) })
                     }
+                }
+                if (settings.kcalGoal <= floor) {
+                    Text(stringResource(R.string.profile_floor_hint, "%,d".format(floor)), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
                 }
                 // What the Fitbit measured against what the formula guesses, once there are two weeks of it.
                 val fitbitKcal = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day?.kcalAvg14
@@ -900,7 +951,7 @@ fun ProfileScreen(nav: NavHostController) {
                     decimals = 1,
                 )
                 s.latestWeight?.let { kg ->
-                    Nutrition.suggestedProtein(kg, settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct)
+                    Nutrition.suggestedProtein(kg, settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct, settings.heightCm)
                 }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -1539,11 +1590,11 @@ private fun SettingsRow(icon: ImageVector, tint: androidx.compose.ui.graphics.Co
 }
 
 @Composable
-private fun SettingStepper(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String = "", decimals: Int = 0) {
+private fun SettingStepper(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String = "", decimals: Int = 0, placeholder: String? = null) {
     val c = Fit.colors
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp)
+        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp, placeholder = placeholder)
     }
 }
 /**

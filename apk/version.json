@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "2.9.5",
+  "versionCode": 18,
+  "versionName": "2.10.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "Smarter numbers after a full check of the app’s math. A note like “no pain” no longer counts as pain. After a weight increase, reps start again at the bottom of your range, and one failed set no longer holds the next session below it. Weighted pull-ups and dips now count your body, so their records are fair. Training a muscle twice in a day now shows both sessions on the recovery map. In your first days with a watch, one short night no longer pulls readiness down, and a night saved by two apps is no longer counted twice. The plateau and deload check now works on every day of the week, and changing your equipment no longer swaps curls for push-ups. Carbs never push you over your calorie goal, quarter-kilo weights show as 11.25 kg, and journal weeks start on Monday, like your streak."
+  "notes": "More accurate calorie targets. Gym sessions no longer count as being on your feet all day: tell the app about your normal day (or let your watch's steps decide), and pick a weekly pace for your cut or gain. Your target never drops below a safe floor for your body. Home shows one calorie card when something needs a look: a more accurate target, your real daily burn from 3 weeks of food and weight logs, a gentler pace when training dips on a cut, a fresh suggestion after a 2.5 kg change, or a nudge when your steps drop. Setup now asks about your body, normal day and pace, like the web app."
 }

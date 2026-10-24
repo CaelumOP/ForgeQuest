@@ -40,6 +40,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
@@ -79,6 +81,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -201,17 +204,31 @@ fun SegmentedTabs(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     dots: Set<Int> = emptySet(),
+    /** Optional smaller second line under each label (e.g. "~0.6 kg a week"); labels may then wrap to 2 lines. */
+    subs: List<String> = emptyList(),
+    disabled: Set<Int> = emptySet(),
+    /** Long labels wrap to 2 lines instead of being cut off. */
+    wrap: Boolean = false,
 ) {
     val c = Fit.colors
-    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(c.cardHigh).padding(4.dp)) {
+    val tall = subs.isNotEmpty() || wrap
+    // Tall segments share one height, so a one-line option is as tall as a wrapped one.
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh).padding(4.dp)) {
         options.forEachIndexed { i, label ->
             val isSel = i == selected
+            val off = i in disabled
             Box(
-                Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (isSel) c.teal else Color.Transparent)
-                    .selectable(selected = isSel, role = Role.Tab) { onSelect(i) }.padding(vertical = 9.dp, horizontal = 4.dp),
+                Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(if (tall) 20 else 50)).background(if (isSel) c.teal else Color.Transparent)
+                    .selectable(selected = isSel, enabled = !off, role = Role.Tab) { onSelect(i) }
+                    .alpha(if (off) 0.4f else 1f).padding(vertical = 9.dp, horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (tall) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(label, style = MaterialTheme.typography.labelMedium, color = if (isSel) c.onTeal else c.textPrimary, maxLines = 2, textAlign = TextAlign.Center)
+                        subs.getOrNull(i)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = if (isSel) c.onTeal else c.textSecondary, maxLines = 1, textAlign = TextAlign.Center) }
+                    }
+                } else Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         label,
                         style = MaterialTheme.typography.labelMedium,
@@ -335,6 +352,8 @@ fun NumberStepper(
     valueColor: Color = Fit.colors.textPrimary,
     minValueWidth: Dp = 40.dp,
     onTick: (() -> Unit)? = null,
+    /** Shown instead of the number until a value is set (e.g. "– cm"). */
+    placeholder: String? = null,
 ) {
     var editing by remember { mutableStateOf(false) }
     // Shown value runs ahead of the stored one, so holding ± keeps counting even while the database write
@@ -352,7 +371,7 @@ fun NumberStepper(
         onTick?.invoke()
         onValueChange(next)
     }
-    val shown = formatNumber(local, decimals) + if (unit.isNotEmpty()) " $unit" else ""
+    val shown = placeholder ?: (formatNumber(local, decimals) + if (unit.isNotEmpty()) " $unit" else "")
     Stepper(
         value = shown,
         onMinus = { commit(local - step) },
