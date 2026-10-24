@@ -1215,4 +1215,26 @@
     <string name="cal_creep_body">Your weight has barely moved in 4 weeks. If you have been eating near your target, try %1$s kcal, or add about 2,000 steps a day.</string>
     <string name="cal_steps_title">You are moving less</string>
     <string name="cal_steps_body">Your daily steps have dropped since your cut began. Moving less without noticing is a normal response to dieting; a 15-minute walk keeps fat loss going without eating less.</string>
+    <!-- Muscle → exercises, tiers, harder version -->
+    <string name="muscle_see_exercises">See %1$s exercises (%2$d)</string>
+    <string name="muscle_in_plan">In your plan</string>
+    <string name="muscle_more">More exercises</string>
+    <string name="muscle_my_equipment">My equipment</string>
+    <string name="muscle_all_equipment">All equipment</string>
+    <string name="muscle_recovering_note">Still recovering, ready in about %1$d h. Muscles grow while they rest: watch the form now, or swap an exercise for your next session.</string>
+    <string name="muscle_shown_with">Shown with %1$s until more exercises are added.</string>
+    <string name="muscle_main">Main muscle</string>
+    <string name="muscle_also">Also works it</string>
+    <string name="muscle_none">Nothing for your equipment yet. Switch to All equipment to see the rest.</string>
+    <string name="muscles_all">All</string>
+    <string name="tier_foundation">Foundation</string>
+    <string name="tier_intermediate">Intermediate</string>
+    <string name="tier_advanced">Advanced</string>
+    <string name="swap_into_plan">Swap into my plan</string>
+    <string name="swap_into_plan_hint">Replaces %1$s, the one exercise in your plan doing the same movement.</string>
+    <string name="swap_into_plan_done">%1$s replaced %2$s in your plan</string>
+    <string name="harder_ready">%1$s is getting easy. Ready for %2$s?</string>
+    <string name="harder_tempo">%1$s is getting easy. Slow it down: 3 seconds down, then a 1-second pause.</string>
+    <string name="harder_switch">Switch</string>
+    <string name="harder_switched">%1$s is now in your plan</string>
 </resources>

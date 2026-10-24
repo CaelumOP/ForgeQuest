@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CenterFocusStrong
@@ -95,6 +96,7 @@ import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
@@ -417,9 +419,37 @@ private fun StraightCard(
                 }
             }
         }
+        ex?.let { HarderNote(it, vm) }
         Spacer(Modifier.height(4.dp))
         g.sets.forEach { set ->
             SetRow(label = "${set.setIndex + 1}", sublabel = null, set = set, kind = ex?.kind ?: ExerciseKind.REPS, vm = vm, previous = prev[set.exerciseId]?.getOrNull(set.setIndex))
+        }
+    }
+}
+
+/** "Wide knee push-up is getting easy": one tap switches to the harder version, or a tempo tip when there is none. */
+@Composable
+private fun HarderNote(ex: ExerciseEntity, vm: LiveWorkoutViewModel) {
+    val c = Fit.colors
+    val hints by vm.harder.collectAsState()
+    val hint = hints[ex.id] ?: return
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp).clip(RoundedCornerShape(12.dp)).background(c.tealTrack).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.AutoMirrored.Rounded.TrendingUp, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        val next = hint.next
+        Text(
+            if (next != null) stringResource(R.string.harder_ready, ex.name, next.name)
+            else stringResource(R.string.harder_tempo, ex.name),
+            style = MaterialTheme.typography.bodySmall, color = c.textPrimary, modifier = Modifier.weight(1f),
+        )
+        if (next != null) {
+            Spacer(Modifier.width(8.dp))
+            val done = stringResource(R.string.harder_switched, next.name)
+            TextButton(onClick = { vm.stepUp(ex.id, next.id); context.toast(done) }) { Text(stringResource(R.string.harder_switch), color = c.teal) }
         }
     }
 }
@@ -442,6 +472,7 @@ private fun CircuitCard(
             Text(stringResource(R.string.live_circuit), style = MaterialTheme.typography.labelMedium, color = c.teal)
         }
         Text(stringResource(R.string.live_circuit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        g.rounds.firstOrNull().orEmpty().mapNotNull { exercises[it.exerciseId] }.distinctBy { it.id }.forEach { HarderNote(it, vm) }
         val prev by vm.previous.collectAsState()
         g.rounds.forEachIndexed { r, round ->
             val roundDone = round.all { it.done }

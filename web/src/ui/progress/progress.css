@@ -75,6 +75,9 @@ html[dir='rtl'] .pg-spark { transform: scaleX(-1); }
 .bm-muscle { transition: fill .4s; cursor: pointer; }
 .bm-outline { fill: none; stroke: var(--body-outline); stroke-width: 1.2px; pointer-events: none; }
 .bm-selected { fill: none; stroke: var(--text); stroke-width: 2px; pointer-events: none; }
+.bm-chips { display: flex; gap: 8px; inline-size: 100%; overflow-x: auto; scrollbar-width: none; padding-block: 2px; }
+.bm-chips::-webkit-scrollbar { display: none; }
+.bm-chips .kit-chip { flex: none; white-space: nowrap; line-height: 1.4; }
 .bm-info { margin: 0; inline-size: 100%; box-sizing: border-box; padding: 10px 16px; border-radius: 999px; background: var(--card-high); color: var(--text); font-size: 14px; font-weight: 500; text-align: center; }
 .bm-legend { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 8px 12px; inline-size: 100%; margin: 0; padding: 0; list-style: none; }
 .bm-legend li { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); }

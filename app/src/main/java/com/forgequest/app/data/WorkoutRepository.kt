@@ -424,6 +424,12 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         sessions.insertSets(fresh)
     }
 
+    /** A harder version replaces an easy move: today's sets at [positions], and the plan day the workout came from. */
+    suspend fun stepUp(session: SessionEntity, positions: List<Int>, oldId: String, newId: String) = db.withTransaction {
+        positions.forEach { swapExercise(session.id, it, newId) }
+        session.planDayId?.let { dayId -> plans.items(dayId).filter { it.exerciseId == oldId }.forEach { swapPlanItem(it, newId) } }
+    }
+
     suspend fun discardSession(sessionId: Long) = db.withTransaction {
         sessions.deleteSetsOf(sessionId)
         sessions.delete(sessionId)

@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import type { ExerciseRow } from '../../data/db'
 import { useLibrary } from '../../data/workouts'
-import { ListRow } from '../kit'
+import { Chip, ListRow } from '../kit'
+import { MUSCLES, type Muscle } from '../../domain/muscle'
 import { ExerciseEditor } from './ExerciseEditor'
 import { SearchIcon } from './glyphs'
 import { kindLabel, musclesLabel } from './helpers'
@@ -12,9 +13,11 @@ import './workouts.css'
 export function LibraryScreen(_: { param?: string }) {
   const library = useLibrary()
   const [query, setQuery] = useState('')
+  const [muscle, setMuscle] = useState<Muscle | null>(null)
   const [editing, setEditing] = useState<ExerciseRow | null>(null)
   const q = query.trim().toLowerCase()
   const match = library.filter((e) => !q || e.name.toLowerCase().includes(q))
+    .filter((e) => !muscle || e.primary.includes(muscle) || e.secondary.includes(muscle))
   const byName = (a: ExerciseRow, b: ExerciseRow) => a.name.localeCompare(b.name)
   const custom = match.filter((e) => e.custom).sort(byName)
   const builtIn = match.filter((e) => !e.custom).sort(byName)
@@ -34,6 +37,10 @@ export function LibraryScreen(_: { param?: string }) {
       <div class="wk-search">
         <SearchIcon size={20} />
         <input type="search" value={query} placeholder={t('lib_search')} aria-label={t('lib_search')} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} />
+      </div>
+      <div class="wk-chips" role="group" aria-label={t('muscles_all')}>
+        <Chip label={t('muscles_all')} selected={muscle === null} onClick={() => setMuscle(null)} />
+        {MUSCLES.map((m) => <Chip key={m} label={t(`muscle_${m.toLowerCase()}`)} selected={muscle === m} onClick={() => setMuscle(muscle === m ? null : m)} />)}
       </div>
       {custom.length > 0 ? (
         <>

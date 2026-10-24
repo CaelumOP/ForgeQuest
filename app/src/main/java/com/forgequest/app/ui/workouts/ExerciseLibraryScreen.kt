@@ -103,6 +103,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
     val snackbar = LocalSnackbar.current
     val c = Fit.colors
     var query by remember { mutableStateOf("") }
+    var muscle by remember { mutableStateOf<Muscle?>(null) }
     var editing by remember { mutableStateOf<ExerciseEntity?>(null) }
     var merging by remember { mutableStateOf<ExerciseEntity?>(null) }
     var confirmDelete by remember { mutableStateOf<ExerciseEntity?>(null) }
@@ -111,6 +112,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
     LaunchedEffect(editing?.id) { editing?.let { vm.loadUsage(it.id) } }
 
     val filtered = library.filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
+        .filter { ex -> muscle.let { m -> m == null || m in ex.primary || m in ex.secondary } }
     val custom = filtered.filter { it.custom }.sortedBy { it.name }
     val builtIn = filtered.filter { !it.custom }.sortedBy { it.name }
 
@@ -131,6 +133,13 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
             ),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ChoiceChip(stringResource(R.string.muscles_all), muscle == null, { muscle = null })
+            Muscle.entries.forEach { m -> ChoiceChip(m.localLabel(), muscle == m, { muscle = if (muscle == m) null else m }) }
+        }
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)) {
             if (custom.isNotEmpty()) {
                 item { Text(stringResource(R.string.lib_yours), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) }

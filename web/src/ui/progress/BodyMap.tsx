@@ -5,6 +5,7 @@ import { t } from '../../i18n'
 import { MUSCLES, muscleFromSlug, type Muscle } from '../../domain/muscle'
 import type { MuscleRecovery } from '../../domain/progress'
 import art from './body_map.json'
+import { Button, Chip } from '../kit'
 import { recoveryFill } from './helpers'
 import './progress.css'
 
@@ -35,8 +36,14 @@ function Figure({ view, recovery, selected, onTap, name }: {
   )
 }
 
-/** Front and back figures (front on the start-left, back on the right in every language), a detail pill and the legend. */
-export function BodyMap({ recovery, bodyType }: { recovery: Map<Muscle, MuscleRecovery>; bodyType: 'MALE' | 'FEMALE' }) {
+/**
+ * Front and back figures (front on the start-left, back on the right in every language), a detail pill and the legend.
+ * With `exerciseCount`, every muscle is also a chip and a picked muscle gets a "See exercises" button.
+ */
+export function BodyMap({ recovery, bodyType, exerciseCount, onSeeExercises }: {
+  recovery: Map<Muscle, MuscleRecovery>; bodyType: 'MALE' | 'FEMALE'
+  exerciseCount?: (m: Muscle) => number; onSeeExercises?: (m: Muscle) => void
+}) {
   const [selected, setSelected] = useState<Muscle | null>(null)
   const body = (art as unknown as Art)[bodyType === 'FEMALE' ? 'female' : 'male']
   const tap = (m: Muscle) => setSelected((s) => (s === m ? null : m))
@@ -61,17 +68,26 @@ export function BodyMap({ recovery, bodyType }: { recovery: Map<Muscle, MuscleRe
           </div>
         ))}
       </div>
+      {exerciseCount && (
+        // Small muscles (forearms, tibialis) are hard to hit on the picture.
+        <div class="bm-chips" role="group" aria-label={t('recovery_title')}>
+          {MUSCLES.map((m) => <Chip key={m} label={label(m)} selected={selected === m} onClick={() => tap(m)} />)}
+        </div>
+      )}
       <p class="bm-info" aria-live="polite">{info}</p>
+      {selected && exerciseCount && onSeeExercises && (
+        <Button variant="tonal" block onClick={() => onSeeExercises(selected)}>{t('muscle_see_exercises', label(selected), exerciseCount(selected))}</Button>
+      )}
       <ul class="bm-legend">
         {([['--coral', 'map_just_trained'], ['--gold', 'map_recovering'], ['--teal', 'map_almost_ready'], ['--muscle-rest', 'map_fresh']] as const).map(([c, k]) => (
           <li key={k}><span class="pg-dot" style={{ background: `var(${c})` }} aria-hidden="true" />{t(k)}</li>
         ))}
       </ul>
-      <div class="kit-sr" aria-hidden="false">
+      {!exerciseCount && <div class="kit-sr" aria-hidden="false">
         {MUSCLES.map((m) => (
           <button key={m} type="button" onClick={() => tap(m)}>{label(m)}</button>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }

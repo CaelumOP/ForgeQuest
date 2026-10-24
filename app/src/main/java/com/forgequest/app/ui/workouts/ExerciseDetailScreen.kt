@@ -1,6 +1,7 @@
 package com.forgequest.app.ui.workouts
 
 import com.forgequest.app.R
+import com.forgequest.app.data.db.ExerciseEntity
 
 import androidx.compose.ui.res.stringResource
 
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -58,6 +60,8 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.ExerciseTiers
+import com.forgequest.app.domain.MuscleExercises
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.Records
 import com.forgequest.app.ui.LocalSnackbar
@@ -81,6 +85,13 @@ class ExerciseDetailViewModel(val app: AppContainer) : ViewModel() {
     val message = MutableStateFlow<String?>(null)
     fun setVideo(id: String, url: String) = viewModelScope.launch {
         if (!app.workouts.setVideoUrl(id, url)) message.value = app.str(R.string.detail_bad_link)
+    }
+
+    /** Puts [new] in place of [old] on every plan day that has it, translating sets and reps. */
+    fun swapIntoPlan(old: ExerciseEntity, new: ExerciseEntity) = viewModelScope.launch {
+        val items = snapshot.value?.plan?.days.orEmpty().flatMap { it.items }.filter { it.exerciseId == old.id }
+        items.forEach { app.workouts.swapPlanItem(it, new.id) }
+        message.value = app.str(R.string.swap_into_plan_done, new.name, old.name)
     }
 }
 
@@ -143,6 +154,17 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton(stringResource(R.string.cd_watch_form), onClick = { openFormVideo(context, ex) }, icon = Icons.Rounded.PlayArrow, container = c.blueTrack, content = c.blue)
                 TonalPill(if (ex?.videoUrl.isNullOrBlank()) stringResource(R.string.detail_add_link) else stringResource(R.string.detail_change_link), onClick = { editLink = true }, icon = Icons.Rounded.Link)
+            }
+            ex?.let { ExerciseTiers.of(it) }?.let {
+                Spacer(Modifier.height(12.dp))
+                TierBadge(it)
+            }
+            // Only when the plan has exactly one exercise doing the same movement, so there is nothing to choose.
+            val planExercises = s.plan?.days.orEmpty().flatMap { d -> d.items.mapNotNull { s.exercises[it.exerciseId] } }
+            if (ex != null) MuscleExercises.planSwapTarget(ex, planExercises)?.let { old ->
+                Spacer(Modifier.height(12.dp))
+                TonalPill(stringResource(R.string.swap_into_plan), onClick = { vm.swapIntoPlan(old, ex) }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.SwapHoriz, tint = c.teal)
+                Text(stringResource(R.string.swap_into_plan_hint, old.name), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp))
             }
             Spacer(Modifier.height(16.dp))
             FitCard {

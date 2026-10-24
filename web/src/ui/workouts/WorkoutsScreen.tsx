@@ -2,7 +2,7 @@ import { useMemo, useState } from 'preact/hooks'
 import { getLang, plural, t, useLang } from '../../i18n'
 import type { ExerciseRow } from '../../data/db'
 import { useProgress } from '../../data/progress'
-import { weightUnit } from '../../data/settings'
+import { configuredEquipment, weightUnit } from '../../data/settings'
 import { startSession, useOpenSession, type PlanDayWithItems } from '../../data/workouts'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import type { SetEntity } from '../../domain/entities'
@@ -12,6 +12,10 @@ import { Button, Card, EmptyState } from '../kit'
 import { BedIcon, EditIcon, HistoryIcon, PlayCircleIcon, PlayIcon, RepeatIcon, Sparkline } from './glyphs'
 import { blockLabel, dayName, openFormVideo, prescription } from './helpers'
 import { BodyMap } from '../progress/BodyMap'
+import type { Equipment } from '../../domain/exercise-swap-engine'
+import type { Muscle } from '../../domain/muscle'
+import { listSize, muscleExercises } from '../../domain/muscle-exercises'
+import { MuscleSheet } from './MuscleSheet'
 import './workouts.css'
 
 const go = (hash: string) => { location.hash = hash }
@@ -23,6 +27,10 @@ export function WorkoutsScreen(_: { param?: string }) {
   const today = dayOfWeek(todayEpochDay())
   const [selected, setSelected] = useState(today)
   const [starting, setStarting] = useState(false)
+  const [muscle, setMuscle] = useState<Muscle | null>(null)
+  const library = useMemo(() => (s ? [...s.exercises.values()] : []), [s?.exercises])
+  const planIds = useMemo(() => new Set(s?.plan?.days.flatMap((d) => d.items.map((i) => i.exerciseId)) ?? []), [s?.plan])
+  const equipment = useMemo(() => (s ? configuredEquipment(s.settings) : new Set<Equipment>()), [s?.settings])
 
   // Best set per session for every exercise on the plan, so the plan reads like a progress board.
   const trends = useMemo(() => {
@@ -109,8 +117,11 @@ export function WorkoutsScreen(_: { param?: string }) {
       <Card>
         <h2 class="wk-card-title">{t('recovery_title')}</h2>
         <div class="wk-sub">{t('recovery_subtitle')}</div>
-        <BodyMap recovery={s.recovery} bodyType={s.settings.bodyType} />
+        <BodyMap recovery={s.recovery} bodyType={s.settings.bodyType} onSeeExercises={setMuscle}
+          exerciseCount={(m) => listSize(muscleExercises(m, library, planIds, equipment))} />
       </Card>
+      <MuscleSheet muscle={muscle} library={library} planIds={planIds} equipment={equipment}
+        recovery={muscle ? s.recovery.get(muscle) : undefined} onClose={() => setMuscle(null)} />
 
       <Button variant="tonal" block icon={<PlayIcon />} onClick={() => start(null)}>{t('workouts_quick')}</Button>
     </div>

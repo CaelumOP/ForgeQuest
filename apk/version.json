@@ -1,6 +1,6 @@
 {
-  "versionCode": 18,
-  "versionName": "2.10.0",
+  "versionCode": 19,
+  "versionName": "2.11.0",
   "apk": "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/ForgeQuest.apk",
-  "notes": "More accurate calorie targets. Gym sessions no longer count as being on your feet all day: tell the app about your normal day (or let your watch's steps decide), and pick a weekly pace for your cut or gain. Your target never drops below a safe floor for your body. Home shows one calorie card when something needs a look: a more accurate target, your real daily burn from 3 weeks of food and weight logs, a gentler pace when training dips on a cut, a fresh suggestion after a 2.5 kg change, or a nudge when your steps drop. Setup now asks about your body, normal day and pace, like the web app."
+  "notes": "Tap a muscle to see its exercises. On the Workouts tab, tap a muscle on the body map (or its chip below it) and tap See exercises: the ones in your plan come first, then the rest for your equipment, each marked Foundation, Intermediate or Advanced. If the muscle is still recovering, the list says so. An exercise page can now swap that exercise into your plan when there is one clear match. When a bodyweight move gets easy (15+ reps on every set, two workouts in a row), the workout offers its harder version with one tap, or a slower tempo when there is none. The exercise library can now be filtered by muscle."
 }

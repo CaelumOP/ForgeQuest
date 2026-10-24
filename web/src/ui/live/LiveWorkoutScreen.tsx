@@ -3,7 +3,7 @@ import { getLang, plural, t, useLang } from '../../i18n'
 import type { ExerciseRow, SetRow } from '../../data/db'
 import { configuredEquipment, useSettings, weightUnit } from '../../data/settings'
 import {
-  addCustomExercise, addExercise, addSet, discardSession, finishSession, recentDoneSets, removeSet, swapExercise, updateSet,
+  addCustomExercise, addExercise, addSet, discardSession, finishSession, harderHint, recentDoneSets, removeSet, stepUp, swapExercise, updateSet,
   useLibrary, useOpenSession, useSets, type FinishResult,
 } from '../../data/workouts'
 import { weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
@@ -64,6 +64,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const [finishing, setFinishing] = useState(false)
   const [summary, setDone] = useState<WorkoutSummaryData | null>(null)
   const [previous, setPrevious] = useState<Map<string, SetRow[]>>(new Map())
+  const [harder, setHarder] = useState<Map<string, Hint>>(new Map())
 
   const restRef = useRef(rest); restRef.current = rest
   const holdRef = useRef(hold); holdRef.current = hold
@@ -135,6 +136,22 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     })).then((rows) => { if (live) setPrevious((m) => new Map([...m, ...rows])) })
     return () => { live = false }
   }, [sets.map((s) => s.exerciseId).join('|'), session?.id])
+
+  // A bodyweight move that has become easy offers its harder version (or a slower tempo); checked once per exercise.
+  const hintChecked = useRef(new Set<string>())
+  useEffect(() => {
+    if (!session?.id || exercises.size === 0) return
+    const ids = [...new Set(sets.map((s) => s.exerciseId))].filter((id) => !hintChecked.current.has(id))
+    ids.forEach((id) => hintChecked.current.add(id))
+    void Promise.all(ids.map(async (id) => {
+      const ex = exercises.get(id)
+      const warmup = sets.some((s) => s.exerciseId === id && s.block.toLowerCase() === 'warm-up')
+      return [id, ex ? await harderHint(ex, warmup, session.id!) : undefined] as const
+    })).then((rows) => {
+      const ready = rows.filter((r): r is readonly [string, Hint] => r[1] !== undefined)
+      if (ready.length) setHarder((m) => new Map([...m, ...ready]))
+    })
+  }, [sets.map((s) => s.exerciseId).join('|'), session?.id, exercises.size])
 
   const groups = useMemo(() => groupSetsByExercise(sets), [sets])
   const doneCount = sets.filter((s) => s.done).length
@@ -249,7 +266,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const header = plural('live_header', sets.length, Math.floor(elapsed / 60), String(elapsed % 60).padStart(2, '0'), doneCount, sets.length)
   const cardFor = (g: Group, forceOpen: boolean) => (
     <GroupCard key={g.key} g={g} forceOpen={forceOpen} exercises={exercises} previous={previous} unit={unit} effortSetId={effortSetId}
-      onChange={save} onToggle={toggle} onStartHold={beginHold}
+      onChange={save} onToggle={toggle} onStartHold={beginHold} harder={harder}
+      onStepUp={(oldId, next) => {
+        setHarder((m) => { const n = new Map(m); n.delete(oldId); return n })
+        void stepUp(sid, oldId, next.id).then(() => toast(t('harder_switched', next.name)))
+      }}
       onMenu={(position, swapOnly) => setMenu({ position, swapOnly })}
       onAddRound={(positions) => { void (async () => { for (const pos of positions) await addSet(sid, pos) })() }} />
   )
@@ -366,6 +387,21 @@ function setSummary(set: SetRow, kind: ExerciseRow['kind'], unit: WeightUnit): s
 type CardProps = {
   g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; unit: WeightUnit; effortSetId: number | null
   onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onAddRound: (positions: number[]) => void
+  harder: Map<string, Hint>; onStepUp: (oldId: string, next: ExerciseRow) => void
+}
+
+type Hint = { next: ExerciseRow | null }
+
+/** "Wide knee push-up is getting easy": one tap switches to the harder version, or a tempo tip when there is none. */
+function HarderNote({ ex, hint, onStepUp }: { ex: ExerciseRow; hint: Hint | undefined; onStepUp: (oldId: string, next: ExerciseRow) => void }) {
+  if (!hint) return null
+  const next = hint.next
+  return (
+    <div class="lw-harder">
+      <span class="lw-harder-text">{next ? t('harder_ready', ex.name, next.name) : t('harder_tempo', ex.name)}</span>
+      {next && <Button variant="text" onClick={() => onStepUp(ex.id, next)}>{t('harder_switch')}</Button>}
+    </div>
+  )
 }
 
 /** An exercise or circuit card; once every set is ticked it folds into one line (tap to open it again). */
@@ -409,6 +445,7 @@ function GroupCard(p: CardProps) {
             </a>
             <IconButton label={t('cd_options')} onClick={() => p.onMenu(g.position, false)}><MoreVert /></IconButton>
           </div>
+          {ex && <HarderNote ex={ex} hint={p.harder.get(ex.id)} onStepUp={p.onStepUp} />}
           {g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...rowProps(set, null)} />)}
         </Card>
       </div>
@@ -422,6 +459,8 @@ function GroupCard(p: CardProps) {
           <span class="lw-circuit"><RepeatIcon size={16} /> {t('live_circuit')}</span>
         </div>
         <div class="lw-small">{t('live_circuit_hint')}</div>
+        {[...new Set((g.rounds[0] ?? []).map((s) => s.exerciseId))].map((id) => exercises.get(id)).filter((e) => e != null)
+          .map((e) => <HarderNote key={e.id} ex={e} hint={p.harder.get(e.id)} onStepUp={p.onStepUp} />)}
         {g.rounds.map((round, r) => {
           const done = round.every((s) => s.done)
           return (

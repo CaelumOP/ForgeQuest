@@ -99,3 +99,7 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
   .lws-check, .lws-stat, .lws-levelup, .lws-badge .lws-trophy { animation: none; }
   .lws-bar > div { transition: none; }
 }
+
+/* "Ready for a harder version" note */
+.lw-harder { display: flex; align-items: center; gap: 8px; margin-block: 8px 4px; padding-block: 8px; padding-inline: 12px; border-radius: 12px; background: var(--teal-track); color: var(--text); font-size: 14px; line-height: 1.45; }
+.lw-harder-text { flex: 1; min-inline-size: 0; }
