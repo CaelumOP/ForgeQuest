@@ -88,6 +88,25 @@ export function ChipGroup<T extends string>(p: ChipGroupProps<T>) {
   )
 }
 
+export type SegmentedOption<T extends string> = { value: T; label: string; sub?: string; disabled?: boolean }
+export type SegmentedProps<T extends string> = {
+  options: SegmentedOption<T>[]; value: T; onChange: (v: T) => void; label: string; accent?: ChipProps['accent']
+}
+/** Equal-width options in one row that always fit (no sideways scroll); an optional second line under each label. */
+export function Segmented<T extends string>({ options, value, onChange, label, accent = 'teal' }: SegmentedProps<T>) {
+  return (
+    <div class={cx('kit-seg', `kit-accent-${accent}`)} role="radiogroup" aria-label={label} style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={o.value === value} disabled={o.disabled}
+          class={cx('kit-seg-opt', o.value === value && 'kit-seg-on')} onClick={() => onChange(o.value)}>
+          <span class="kit-seg-label">{o.label}</span>
+          {o.sub && <span class="kit-seg-sub">{o.sub}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export type ListRowProps = {
   title: string
   subtitle?: string

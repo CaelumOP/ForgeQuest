@@ -9,16 +9,20 @@ import { updateSettings, useSettings, weightUnit, type Settings } from '../../da
 import { getProgressSnapshot, logWeight, useProgress, type ProgressSnapshot } from '../../data/progress'
 import { trainingDays } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
-import { ageFromBirthYear, MAX_SAFE_KCAL, MIN_PROTEIN_PER_KG, MIN_SAFE_KCAL, NUTRITION_GOALS, type NutritionGoal } from '../../domain/nutrition'
+import {
+  ageFromBirthYear, allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, GAIN_PACE, GAIN_PACES, MAX_SAFE_KCAL, MIN_PROTEIN_PER_KG, MIN_SAFE_KCAL,
+  NUTRITION_GOALS, weightTrendNote, type CutPace, type DayActivity, type GainPace, type NutritionGoal,
+} from '../../domain/nutrition'
+import { calorieInputs, floorFor, setTarget } from '../../data/calories'
 import {
   EQUIPMENT, EQUIPMENT_LABEL, EQUIPMENT_PRESETS, PRESET_INFO, encodePreset, presetFromEncoded, parseEquipmentSet,
   type Equipment, type EquipmentPreset,
 } from '../../domain/exercise-swap-engine'
 import { bodyStep, fromKg, toKg, unitLabel } from '../../domain/units'
 import { BADGES, BADGES_BY_ID } from '../../domain/badges'
-import { Button, Card, ChipGroup, LineChart, ListRow, NumberField, Ring, SectionHeader, Sheet, Stat, Stepper, TextField, toast } from '../kit'
+import { Button, Card, ChipGroup, LineChart, ListRow, NumberField, Ring, SectionHeader, Segmented, Sheet, Stat, Stepper, TextField, toast } from '../kit'
 import {
-  addNote, applyGoal, carbsFor, hasBodyStats, kcalFor, noteLines, proteinFor, removeNote, stepWeekly, summary,
+  addNote, applyNutrition, carbsFor, hasBodyStats, kcalFor, noteLines, proteinFor, removeNote, stepWeekly, summary, type NutritionPatch,
   toggleEquipment, trainingDaysFor,
 } from './helpers'
 import { BackupSection, backupSummary } from './BackupSection'
@@ -179,6 +183,13 @@ export function ProfileScreen() {
 
   const changeTheme = (v: Theme) => { setTheme(v); void set({ theme: v }) }
   const suggestedKcal = kcalFor(gi, s.nutritionGoal)
+  const ci = calorieInputs(s, latestKg, planDays, thisYear)
+  const floor = ci ? floorFor(ci) : MIN_SAFE_KCAL
+  const dayLabel = t(`day_web_${s.dayActivity.toLowerCase()}`)
+  const nutrition = (patch: NutritionPatch) => void updateSettings((cur) => applyNutrition({ ...gi, settings: cur }, patch, todayEpochDay()))
+  const fastBlocked = latestKg != null && allowedCutPace('AGGRESSIVE', latestKg, s.heightCm, age, s.bodyType === 'MALE', s.bodyFatPct) !== 'AGGRESSIVE'
+  const paceAmount = (kg: number) => `${(Math.round(fromKg(unit, kg) * 10) / 10).toFixed(1)} ${unitLabel(unit, ar)}`
+  const trend = weightTrendNote(s.nutritionGoal, s.goalSetDay, (snap?.weights ?? []).map((w) => [w.epochDay, w.kg] as const), todayEpochDay(), s.cutPace, s.gainPace, s.bodyType === 'FEMALE')
   const suggestedProt = latestKg == null ? null : proteinFor(gi, Math.max(s.proteinPerKg, MIN_PROTEIN_PER_KG))
   const fat = Math.max(s.fatSharePct, 20)
   const suggestedCarb = carbsFor(gi, s.kcalGoal, s.proteinGoal)
@@ -228,7 +239,7 @@ export function ProfileScreen() {
       <SectionHeader title={t('settings_section_settings')} />
 
       <Group id="body" accent="coral" icon="body" title={t('settings_group_body')} open={isOpen('body')} onToggle={() => toggle('body')}
-        sum={bodySet ? summary(t(s.bodyType === 'FEMALE' ? 'body_female' : 'body_male'), `${s.heightCm} ${t('unit_cm')}`, `${age} ${t('unit_years')}`) : t('summary_body_not_set')}>
+        sum={bodySet ? summary(t(s.bodyType === 'FEMALE' ? 'body_female' : 'body_male'), `${s.heightCm} ${t('unit_cm')}`, `${age} ${t('unit_years')}`, dayLabel) : t('summary_body_not_set')}>
         <Card>
           <CardTitle icon="body" accent="coral" title={t('profile_about_you')} hint={t('profile_about_you_hint')} />
           <ChipGroup label={t('profile_about_you')} accent="coral" value={s.bodyType} onChange={(v) => void set({ bodyType: v })}
@@ -242,6 +253,11 @@ export function ProfileScreen() {
           <Setting label={t('profile_body_fat_optional')}>
             <Stepper label={t('profile_body_fat_optional')} value={s.bodyFatPct} min={0} max={55} step={0.5} onChange={(v) => void set({ bodyFatPct: v < 4 ? 0 : v })} format={(n) => `${n.toFixed(1)}%`} />
           </Setting>
+          <p class="pf-s">{t('pf_web_bodyfat_hint')}</p>
+          <span class="pf-t">{t('pf_web_day_title')}</span>
+          <Segmented label={t('day_web_title')} accent="coral" value={s.dayActivity} onChange={(d: DayActivity) => nutrition({ dayActivity: d })}
+            options={DAY_ACTIVITIES.map((d) => ({ value: d, label: t(`day_web_${d.toLowerCase()}`) }))} />
+          <p class="pf-s">{t(`day_web_${s.dayActivity.toLowerCase()}_desc`)}</p>
           {!bodySet && <p class="pf-s pf-warn">{t('profile_body_not_set')}</p>}
         </Card>
         <Card>
@@ -258,17 +274,36 @@ export function ProfileScreen() {
         <Card>
           <CardTitle icon="goals" accent="gold" title={t('profile_daily_targets')} />
           <span class="pf-t">{t('goal_title')}</span>
-          <ChipGroup label={t('goal_title')} accent="gold" value={s.nutritionGoal} onChange={(g) => void updateSettings((cur) => applyGoal({ ...gi, settings: cur }, g, todayEpochDay()))}
+          <ChipGroup label={t('goal_title')} accent="gold" value={s.nutritionGoal} onChange={(g) => nutrition({ nutritionGoal: g })}
             options={NUTRITION_GOALS.map((g) => ({ value: g, label: goalLabel(g) }))} />
+          {s.nutritionGoal !== 'MAINTAIN' && <span class="pf-t">{t('pace_web_title')}</span>}
+          {s.nutritionGoal === 'CUT' && (
+            <Segmented label={t('pace_web_title')} accent="gold" value={s.cutPace} onChange={(p: CutPace) => nutrition({ cutPace: p })}
+              options={CUT_PACES.map((p) => ({
+                value: p, label: t(`pace_web_${p === 'AGGRESSIVE' ? 'fast' : p.toLowerCase()}`),
+                sub: latestKg != null ? t('pace_web_week', paceAmount((latestKg * CUT_PACE[p].weeklyPct) / 100)) : undefined,
+                disabled: p === 'AGGRESSIVE' && fastBlocked,
+              }))} />
+          )}
+          {s.nutritionGoal === 'CUT' && fastBlocked && <p class="pf-s">{t('pace_web_blocked')}</p>}
+          {s.nutritionGoal === 'GAIN' && (
+            <Segmented label={t('pace_web_title')} accent="gold" value={s.gainPace} onChange={(p: GainPace) => nutrition({ gainPace: p })}
+              options={GAIN_PACES.map((p) => ({
+                value: p, label: t(`pace_web_${p.toLowerCase()}`),
+                sub: latestKg != null ? t('pace_web_month', paceAmount((latestKg * GAIN_PACE[p].weeklyPct * 4.35) / 100)) : undefined,
+              }))} />
+          )}
+          {trend && <p class="pf-s pf-warn">{t(trend === 'CUT_TOO_FAST' ? 'goal_trend_cut_fast' : trend === 'GAIN_STALLED' ? 'goal_trend_gain_stalled' : trend === 'GAIN_TOO_FAST' ? 'goal_trend_gain_fast' : 'goal_trend_diet_break')}</p>}
           <Setting label={t('profile_daily_calories')}>
-            <Stepper label={t('profile_daily_calories')} value={s.kcalGoal} min={MIN_SAFE_KCAL} max={MAX_SAFE_KCAL} step={50} onChange={(v) => void set({ kcalGoal: v })} format={(n) => `${num(n)} ${t('unit_kcal')}`} />
+            <Stepper label={t('profile_daily_calories')} value={s.kcalGoal} min={floor} max={MAX_SAFE_KCAL} step={50} onChange={(v) => void setTarget(v, latestKg, todayEpochDay())} format={(n) => `${num(n)} ${t('unit_kcal')}`} />
           </Setting>
           <div class="pf-setting">
             <span class="pf-s pf-grow">
-              {!hasBodyStats(s, age) || suggestedKcal == null ? t('goals_suggest_missing') : t('goals_suggested', num(suggestedKcal), trainingDaysFor(s, planDays))}
+              {!hasBodyStats(s, age) || suggestedKcal == null ? t('goals_suggest_missing') : t('pf_web_suggested', num(suggestedKcal), trainingDaysFor(s, planDays), dayLabel)}
             </span>
-            {suggestedKcal != null && hasBodyStats(s, age) && suggestedKcal !== s.kcalGoal && <Button variant="tonal" onClick={() => void set({ kcalGoal: suggestedKcal })}>{t('goals_use')}</Button>}
+            {suggestedKcal != null && hasBodyStats(s, age) && suggestedKcal !== s.kcalGoal && <Button variant="tonal" onClick={() => void setTarget(suggestedKcal, latestKg, todayEpochDay())}>{t('goals_use')}</Button>}
           </div>
+          {s.kcalGoal <= floor && <p class="pf-s">{t('pf_web_floor_hint', num(floor))}</p>}
           <Setting label={t('profile_daily_protein')}>
             <Stepper label={t('profile_daily_protein')} value={s.proteinGoal} min={60} max={400} step={5} onChange={(v) => void set({ proteinGoal: v })} format={(n) => `${n} ${t('unit_g')}`} />
           </Setting>

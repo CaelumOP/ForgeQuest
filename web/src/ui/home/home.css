@@ -58,3 +58,8 @@ button.home-day { cursor: pointer; }
 .home-plan-link { text-decoration: none; color: inherit; min-block-size: 44px; }
 .home-sub2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .home-streak-top .home-t { margin: 0; }
+
+/* Calorie card (CalorieCard.tsx): title, a short paragraph, then Not now / main action on one line. */
+.home-cal { display: flex; flex-direction: column; gap: 6px; }
+.home-cal .home-s { margin: 0; white-space: normal; }
+.home-cal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-block-start: 4px; }

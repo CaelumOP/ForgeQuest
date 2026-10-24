@@ -7,11 +7,13 @@ import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { STARTER_PLANS, localizePlan, type PlanDraft } from '../../data/seed/starter-plans'
 import { todayEpochDay } from '../../domain/dates'
 import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
-import { MIN_SAFE_KCAL, NUTRITION_GOALS } from '../../domain/nutrition'
+import {
+  allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, DAY_BASE, dailyBurn, GAIN_PACE, GAIN_PACES, NUTRITION_GOALS, type CutPace, type GainPace,
+} from '../../domain/nutrition'
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, Card, ChipGroup, Stat, Stepper, TextField, parseNumber } from '../kit'
+import { Button, Card, ChipGroup, Segmented, Stat, Stepper, TextField, parseNumber } from '../kit'
 import { CheckCircleIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
-import { LAST_STEP, bodyStatsReady, initialState, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
+import { LAST_STEP, bodyStatsReady, floorOf, initialState, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
 import './onboarding.css'
 
 const GEMINI_MODELS = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
@@ -128,10 +130,30 @@ function StepWelcome({ s, update }: StepProps) {
     <>
       <Title title={t('onb_welcome_title')} body={t('onb_welcome_body')} />
       <TextField label={t('onb_your_name')} value={s.name} autocomplete="given-name" onInput={(v) => update((c) => ({ ...c, name: v.slice(0, 24) }))} />
-      <h2 class="onb-h2">{t('onb_body_for_map')}</h2>
-      <ChipGroup label={t('onb_body_for_map')} value={s.bodyType} onChange={(v) => update((c) => ({ ...c, bodyType: v }))}
+      <h2 class="onb-h2">{t('onb_web_body_type')}</h2>
+      <ChipGroup label={t('onb_web_body_type')} value={s.bodyType} onChange={(v) => update((c) => ({ ...c, bodyType: v }))}
         options={[{ value: 'MALE', label: t('body_male') }, { value: 'FEMALE', label: t('body_female') }]} />
     </>
+  )
+}
+
+/** Big radio cards with a title and a one-line description (goal, normal day). */
+function RadioCards<T extends string>({ label, value, options, onPick }: { label: string; value: T; options: { v: T; name: string; desc: string }[]; onPick: (v: T) => void }) {
+  return (
+    <div class="onb-plans" role="radiogroup" aria-label={label}>
+      {options.map((o) => {
+        const on = value === o.v
+        return (
+          <button key={o.v} type="button" role="radio" aria-checked={on} class={`onb-plan${on ? ' on' : ''}`} onClick={() => onPick(o.v)}>
+            <span class="onb-plan-text">
+              <span class="onb-plan-name">{o.name}</span>
+              <span class="onb-plan-desc">{o.desc}</span>
+            </span>
+            <span class={`onb-radio${on ? ' on' : ''}`}>{on && <CheckCircleIcon />}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -177,32 +199,44 @@ function StepBody({ s, update }: StepProps) {
         onChange={(v) => update((c) => withSuggestions({ ...c, heightCm: v }, trainingDaysOf))} />
       <RowNumber label={t('profile_age')} unit={t('unit_years')} value={s.age} min={10} max={100}
         onChange={(v) => update((c) => withSuggestions({ ...c, age: v }, trainingDaysOf))} />
+      <h2 class="onb-h2">{t('day_web_title')}</h2>
+      <RadioCards label={t('day_web_title')} value={s.dayActivity} onPick={(v) => update((c) => withSuggestions({ ...c, dayActivity: v }, trainingDaysOf))}
+        options={DAY_ACTIVITIES.map((d) => ({ v: d, name: t(`day_web_${d.toLowerCase()}`), desc: t(`day_web_${d.toLowerCase()}_desc`) }))} />
     </>
   )
 }
 
 /** Step 4 (after the plan, so the target counts its training days): the goal and the calculated target. */
 function StepGoal({ s, update }: StepProps) {
-  const goals = NUTRITION_GOALS.map((g) => ({ name: t(`goal_${g.toLowerCase()}`), desc: t(`onb_web_goal_${g.toLowerCase()}_desc`), g }))
   return (
     <>
       <Title title={t('goal_title')} body={t('onb_web_goal_body')} />
-      <div class="onb-plans" role="radiogroup" aria-label={t('goal_title')}>
-        {goals.map((o) => {
-          const on = s.goal === o.g
-          return (
-            <button key={o.g} type="button" role="radio" aria-checked={on} class={`onb-plan${on ? ' on' : ''}`}
-              onClick={() => update((c) => withSuggestions({ ...c, goal: o.g }, trainingDaysOf))}>
-              <span class="onb-plan-text">
-                <span class="onb-plan-name">{o.name}</span>
-                <span class="onb-plan-desc">{o.desc}</span>
-              </span>
-              <span class={`onb-radio${on ? ' on' : ''}`}>{on && <CheckCircleIcon />}</span>
-            </button>
-          )
-        })}
-      </div>
+      <RadioCards label={t('goal_title')} value={s.goal} onPick={(g) => update((c) => withSuggestions({ ...c, goal: g }, trainingDaysOf))}
+        options={NUTRITION_GOALS.map((g) => ({ v: g, name: t(`goal_${g.toLowerCase()}`), desc: t(`onb_web_goal_${g.toLowerCase()}_desc`) }))} />
+      <PaceControl s={s} update={update} />
       <Target s={s} update={update} />
+    </>
+  )
+}
+
+/** Weekly pace under Lose fat (Gentle / Standard / Fast) or Build muscle (Slow / Standard), with the weight it moves. */
+function PaceControl({ s, update }: StepProps) {
+  if (s.goal === 'MAINTAIN') return null
+  const unit = s.unit
+  const amount = (kg: number) => `${(Math.round(fromKg(unit, kg) * 10) / 10).toFixed(1)} ${unitLabel(unit, getLang() === 'ar')}`
+  const fastBlocked = allowedCutPace('AGGRESSIVE', s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE') !== 'AGGRESSIVE'
+  return (
+    <>
+      <h2 class="onb-h2">{t('pace_web_title')}</h2>
+      {s.goal === 'CUT'
+        ? <Segmented label={t('pace_web_title')} value={s.cutPace} onChange={(p: CutPace) => update((c) => withSuggestions({ ...c, cutPace: p }, trainingDaysOf))}
+            options={CUT_PACES.map((p) => ({
+              value: p, label: t(`pace_web_${p === 'AGGRESSIVE' ? 'fast' : p.toLowerCase()}`),
+              sub: t('pace_web_week', amount((s.weightKg * CUT_PACE[p].weeklyPct) / 100)), disabled: p === 'AGGRESSIVE' && fastBlocked,
+            }))} />
+        : <Segmented label={t('pace_web_title')} value={s.gainPace} onChange={(p: GainPace) => update((c) => withSuggestions({ ...c, gainPace: p }, trainingDaysOf))}
+            options={GAIN_PACES.map((p) => ({ value: p, label: t(`pace_web_${p.toLowerCase()}`), sub: t('pace_web_month', amount((s.weightKg * GAIN_PACE[p].weeklyPct * 4.35) / 100)) }))} />}
+      {s.goal === 'CUT' && fastBlocked && <p class="onb-note">{t('pace_web_blocked')}</p>}
     </>
   )
 }
@@ -212,6 +246,9 @@ function Target({ s, update }: StepProps) {
   const [editing, setEditing] = useState(false)
   if (!bodyStatsReady(s)) return <p class="onb-note">{t('onb_web_target_missing')}</p>
   const num = (n: number) => new Intl.NumberFormat(getLang()).format(n)
+  const burn = Math.round(dailyBurn(s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE', trainingDaysOf(s.planIndex), 0, DAY_BASE[s.dayActivity]) / 10) * 10
+  // The difference keeps its sign next to the number in Arabic too (left-to-right isolate).
+  const diff = `⁦${s.kcal >= burn ? '+' : '−'}${num(Math.abs(s.kcal - burn))}⁩`
   return (
     <Card>
       <div class="onb-target-head">
@@ -225,7 +262,7 @@ function Target({ s, update }: StepProps) {
       {editing && (
         <>
           <Row label={t('profile_daily_calories')}>
-            <Stepper label={t('profile_daily_calories')} value={s.kcal} step={50} min={MIN_SAFE_KCAL} max={6000} format={(n) => `${num(n)}`}
+            <Stepper label={t('profile_daily_calories')} value={s.kcal} step={50} min={floorOf(s)} max={6000} format={(n) => `${num(n)}`}
               onChange={(v) => update((c) => ({ ...c, kcal: v, goalsTouched: true }))} />
           </Row>
           <Row label={t('profile_daily_protein')}>
@@ -234,7 +271,8 @@ function Target({ s, update }: StepProps) {
           </Row>
         </>
       )}
-      <p class="onb-note">{s.goalsTouched ? t('onb_web_target_custom') : t('onb_web_target_body', trainingDaysOf(s.planIndex))}</p>
+      <p class="onb-note">{s.goal === 'MAINTAIN' ? t('target_web_burn_only', num(burn)) : t('target_web_burn', num(burn), num(s.kcal), diff)}</p>
+      <p class="onb-note">{s.goalsTouched ? t('onb_web_target_custom') : t('target_web_from', trainingDaysOf(s.planIndex), t(`day_web_${s.dayActivity.toLowerCase()}`))}</p>
     </Card>
   )
 }

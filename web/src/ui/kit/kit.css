@@ -130,3 +130,11 @@ button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: 
 /* The sheet and dialog sit on --card-high, so tonal controls inside use --card to stay visible. */
 .kit-sheet .kit-chip:not(.kit-chip-on), .kit-sheet .kit-iconbtn-tonal, .kit-sheet .kit-btn-tonal,
 .kit-dialog .kit-btn-tonal { background: var(--card); }
+
+/* Segmented control: equal-width options that always fit; the label may wrap, the second line is smaller. */
+.kit-seg { display: grid; gap: 4px; padding: 4px; border-radius: 26px; background: var(--card-high); }
+.kit-seg-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-inline-size: 0; min-block-size: 44px; padding-block: 6px; padding-inline: 6px; border: 0; border-radius: 22px; background: none; color: var(--text); font: inherit; text-align: center; cursor: pointer; }
+.kit-seg-opt:disabled { opacity: 0.4; cursor: default; }
+.kit-seg-on { background: var(--acc); color: var(--on-acc); }
+.kit-seg-label { font-size: 14px; font-weight: 600; line-height: 18px; text-wrap: balance; overflow-wrap: anywhere; }
+.kit-seg-sub { font-size: 12px; line-height: 16px; opacity: 0.8; }

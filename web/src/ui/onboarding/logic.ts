@@ -1,6 +1,8 @@
 import type { Settings } from '../../data/settings'
 import { encodePreset, type EquipmentPreset } from '../../domain/exercise-swap-engine'
-import { MIN_SAFE_KCAL, proteinPerKgFor, suggestedKcal, suggestedProtein, type NutritionGoal } from '../../domain/nutrition'
+import {
+  calorieFloor, DAY_BASE, proteinPerKgFor, suggestedKcal, suggestedProtein, type CutPace, type DayActivity, type GainPace, type NutritionGoal,
+} from '../../domain/nutrition'
 import type { WeightUnit } from '../../domain/units'
 import { unitCode } from '../../domain/units'
 import type { BodyType } from '../../data/settings'
@@ -19,13 +21,16 @@ export type OnbState = {
   protein: number
   goalsTouched: boolean
   goal: NutritionGoal
+  dayActivity: DayActivity
+  cutPace: CutPace
+  gainPace: GainPace
   planIndex: number
   preset: EquipmentPreset
 }
 
 export const initialState = (): OnbState => ({
   step: 0, name: '', bodyType: 'MALE', weightKg: 75, unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
-  goalsTouched: false, goal: 'MAINTAIN', planIndex: 0, preset: 'CALISTHENICS_PARK',
+  goalsTouched: false, goal: 'MAINTAIN', dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', planIndex: 0, preset: 'CALISTHENICS_PARK',
 })
 
 /** Height and age are needed before the goals step can continue, so the calorie target always uses them. */
@@ -35,12 +40,16 @@ export const bodyStatsReady = (s: OnbState): boolean => s.heightCm >= 120 && s.h
 export type DaysOf = (planIndex: number) => number
 
 const kcalFor = (s: OnbState, days: DaysOf) =>
-  suggestedKcal(s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE', days(s.planIndex), 0, s.goal)
+  suggestedKcal(s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE', days(s.planIndex), 0, s.goal,
+    { base: DAY_BASE[s.dayActivity], cutPace: s.cutPace, gainPace: s.gainPace })
+
+/** The lowest target this person can set by hand. */
+export const floorOf = (s: OnbState): number => calorieFloor(s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE')
 
 /** Refreshes both suggestions unless the person already set the goals by hand (Android OnboardingViewModel). */
 export function withSuggestions(s: OnbState, days: DaysOf): OnbState {
   if (s.goalsTouched) return s
-  const protein = suggestedProtein(s.weightKg, proteinPerKgFor(s.goal))
+  const protein = suggestedProtein(s.weightKg, proteinPerKgFor(s.goal, s.cutPace, s.gainPace), 0, s.heightCm)
   const next = { ...s, protein }
   return { ...next, kcal: kcalFor(next, days) }
 }
@@ -55,7 +64,7 @@ export function settingsPatch(s: OnbState, today: number, thisYear: number, key:
     onboarded: true,
     name: s.name.trim(),
     bodyType: s.bodyType,
-    kcalGoal: Math.max(s.kcal, MIN_SAFE_KCAL),
+    kcalGoal: Math.max(s.kcal, floorOf(s)),
     proteinGoal: Math.max(s.protein, 60),
     unit: unitCode(s.unit),
     heightCm: s.heightCm,
@@ -63,7 +72,11 @@ export function settingsPatch(s: OnbState, today: number, thisYear: number, key:
     equipment: encodePreset(s.preset),
     nutritionGoal: s.goal,
     goalSetDay: today,
-    proteinPerKg: proteinPerKgFor(s.goal),
+    proteinPerKg: proteinPerKgFor(s.goal, s.cutPace, s.gainPace),
+    dayActivity: s.dayActivity, cutPace: s.cutPace, gainPace: s.gainPace,
+    targetWeightKg: s.weightKg, targetSetDay: today,
+    // a new person starts on the new suggestion, so the one-time "more accurate target" card never shows
+    calorieV2Seen: true,
     apiKey: key ?? c.apiKey,
   })
 }

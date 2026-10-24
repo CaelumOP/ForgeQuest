@@ -23,8 +23,9 @@ describe('onboarding logic', () => {
   })
   it('builds the settings written on finish', () => {
     const s = { ...initialState(), name: '  Sam ', unit: 'LB' as const, age: 30, kcal: 900, protein: 20 }
+    // 900 kcal is lifted to this man's floor (1,500)
     const out = settingsPatch(s, 20000, 2026, null)({ ...DEFAULT_SETTINGS, apiKey: 'old' })
-    expect(out).toMatchObject({ onboarded: true, name: 'Sam', unit: 'lb', birthYear: 1996, kcalGoal: 1200, proteinGoal: 60, goalSetDay: 20000, apiKey: 'old' })
+    expect(out).toMatchObject({ onboarded: true, name: 'Sam', unit: 'lb', birthYear: 1996, kcalGoal: 1500, proteinGoal: 60, dayActivity: 'SITTING', calorieV2Seen: true, targetSetDay: 20000, goalSetDay: 20000, apiKey: 'old' })
     expect(settingsPatch(s, 1, 2026, 'k')(DEFAULT_SETTINGS).apiKey).toBe('k')
   })
   it('needs real height and age before the goals step continues', () => {

@@ -14,6 +14,7 @@ import {
 } from './glyphs'
 import { canExcuse, greetingKey } from './helpers'
 import { RaadEgg } from './RaadEgg'
+import { CalorieCard } from './CalorieCard'
 import './home.css'
 
 const nf = () => new Intl.NumberFormat(getLang())
@@ -52,6 +53,7 @@ export function HomeScreen(_: { param?: string }) {
           </div>
         </Card>
       )}
+      <CalorieCard s={s} today={today} />
       <Streak s={s} onDay={setTagDay} />
       <ProgressCard s={s} today={today} />
       <TodayCard
