@@ -67,3 +67,35 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 .lw-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .lw-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .lw-finish-msg { margin: 0 0 12px; color: var(--text-2); }
+
+/* Workout complete summary (Android WorkoutCompleteScreen) */
+.lws-body { display: flex; flex-direction: column; align-items: center; padding: 32px 16px 24px; gap: 12px; }
+.lws-check { display: inline-flex; align-items: center; justify-content: center; inline-size: 88px; block-size: 88px; border-radius: 50%; background: var(--teal); color: var(--on-teal); animation: lws-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.lws-title { margin: 8px 0 0; font-size: 28px; line-height: 36px; text-align: center; }
+.lws-sub { margin: 0; color: var(--text-2); text-align: center; }
+.lws-stats { display: flex; inline-size: 100%; margin-block: 12px; }
+.lws-stat { flex: 1; display: flex; flex-direction: column; align-items: center; animation: lws-rise 0.4s ease-out both; }
+.lws-stat:nth-child(2) { animation-delay: 0.08s; }
+.lws-stat:nth-child(3) { animation-delay: 0.16s; }
+.lws-stat b { font-size: 24px; line-height: 32px; }
+.lws-stat span { font-size: 12px; color: var(--text-2); }
+.lws-card { inline-size: 100%; box-sizing: border-box; }
+.lws-levelrow { display: flex; align-items: center; gap: 8px; }
+.lws-level { flex: 1; font-size: 16px; font-weight: 600; }
+.lws-levelup { color: var(--gold); animation: lws-pulse 0.9s ease-in-out 0.5s 2; }
+.lws-rank { font-size: 14px; font-weight: 500; color: var(--blue); }
+.lws-bar { block-size: 8px; border-radius: 4px; background: var(--blue-track); margin-block: 12px 6px; overflow: hidden; }
+.lws-bar > div { block-size: 100%; border-radius: 4px; background: var(--blue); transition: inline-size 0.9s ease-out; }
+.lws-xpline { margin: 0; font-size: 12px; color: var(--text-2); }
+.lws-line { display: flex; align-items: center; gap: 10px; padding-block: 4px; }
+.lws-trophy { display: inline-flex; color: var(--gold); }
+.lws-cal { display: inline-flex; color: var(--teal); }
+.lws-badge .lws-trophy { animation: lws-pulse 0.9s ease-in-out 0.6s 2; }
+.lws-actions { inline-size: 100%; display: flex; flex-direction: column; gap: 8px; margin-block-start: 12px; }
+@keyframes lws-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes lws-rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes lws-pulse { 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) {
+  .lws-check, .lws-stat, .lws-levelup, .lws-badge .lws-trophy { animation: none; }
+  .lws-bar > div { transition: none; }
+}
