@@ -5,7 +5,7 @@ import type { WeightUnit } from '../../domain/units'
 import { unitCode } from '../../domain/units'
 import type { BodyType } from '../../data/settings'
 
-export const LAST_STEP = 4 // language, welcome, goals, plan, key
+export const LAST_STEP = 5 // language, welcome, body, plan, goal, key
 
 export type OnbState = {
   step: number
