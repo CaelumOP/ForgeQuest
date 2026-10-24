@@ -12,6 +12,7 @@ import com.forgequest.app.data.db.DayNoteEntity
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.FoodEntity
 import com.forgequest.app.data.db.MealEntity
+import com.forgequest.app.data.db.SCANNED_NO_PHOTO
 import com.forgequest.app.data.db.PlanDayEntity
 import com.forgequest.app.data.db.PlanEntity
 import com.forgequest.app.data.db.PlanItemEntity
@@ -192,9 +193,10 @@ class BackupRepository(
         db.withTransaction {
             db.backup().replaceAll(
                 file.exercises, file.plans, file.planDays, file.planItems, file.sessions, file.sets,
-                // Photos aren't part of a backup, so drop paths that don't exist on this phone.
+                // Photos aren't part of a backup, so drop paths that don't exist on this phone. A scanned meal keeps
+                // a marker instead, so the "Snap & log" badge still counts it.
                 file.foods.map { it.copy(photoPath = it.photoPath?.takeIf { p -> File(p).exists() }) },
-                file.meals.map { it.copy(photoPath = it.photoPath?.takeIf { p -> File(p).exists() }) },
+                file.meals.map { it.copy(photoPath = it.photoPath?.let { p -> if (File(p).exists()) p else SCANNED_NO_PHOTO }) },
                 file.weights, file.chat, file.badges, file.dayNotes, file.readinessDays,
             )
         }

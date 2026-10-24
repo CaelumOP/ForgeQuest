@@ -97,6 +97,7 @@ import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
 import com.forgequest.app.data.db.MealEntity
+import com.forgequest.app.data.db.SCANNED_NO_PHOTO
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
@@ -635,7 +636,7 @@ private fun MealRow(meal: MealEntity, onDelete: () -> Unit) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.card).padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (meal.photoPath != null) {
+        if (meal.photoPath != null && meal.photoPath != SCANNED_NO_PHOTO) {
             AsyncImage(File(meal.photoPath), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)))
             Spacer(Modifier.width(12.dp))
         }

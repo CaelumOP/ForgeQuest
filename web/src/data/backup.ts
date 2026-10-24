@@ -7,6 +7,7 @@ import {
   type WeightRow,
 } from './db';
 import { fromBackupSettings, loadSettings, toBackupSettings, updateSettings } from './settings';
+import { SCANNED_NO_PHOTO } from './food';
 
 const currentBackupSettings = async (): Promise<BackupSettings> => toBackupSettings(await loadSettings());
 
@@ -225,7 +226,8 @@ export async function applyBackup(
     const rows: Record<(typeof TABLES)[number], unknown[]> = {
       ...f,
       foods: f.foods.map((r) => ({ ...r, photoPath: null })),
-      meals: f.meals.map((r) => ({ ...r, photoPath: null })),
+      // Photos never come along; a scanned meal keeps a marker so the "Snap & log" badge still counts it.
+      meals: f.meals.map((r) => ({ ...r, photoPath: r.photoPath == null ? null : SCANNED_NO_PHOTO })),
     };
     for (const t of TABLES) {
       if (t === 'readinessDays' && f.readinessDays.length === 0) continue;
