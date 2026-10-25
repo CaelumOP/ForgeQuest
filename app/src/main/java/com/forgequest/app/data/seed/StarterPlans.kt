@@ -129,7 +129,7 @@ object StarterPlans {
     val arabic = mapOf(
         "Hemo · Foundation level" to "هيمو · المستوى التأسيسي",
         "Hemo Calisthenics' 5-day foundation routine. Stretch, then jumping jacks, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target."
-            to "روتين Hemo Calisthenics التأسيسي على خمسة أيام: إطالة، ثم قفز مع فتح الذراعين، ثم كل مجموعة تمارين في دائرة من 3–4 جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.",
+            to "روتين Hemo Calisthenics التأسيسي على خمسة أيام: إطالة، ثم قفز مع فتح الذراعين، ثم كل مجموعة تمارين في دائرة من ⁦3–4⁩ جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.",
         "Full body · 3 days" to "الجسم كاملًا · 3 أيام",
         "Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home." to "خطة بسيطة للجسم كاملًا: الاثنين والأربعاء والجمعة، تصلح للنادي أو المنزل.",
         "Full body · 3 days · bodyweight" to "الجسم كاملًا · 3 أيام · وزن الجسم",

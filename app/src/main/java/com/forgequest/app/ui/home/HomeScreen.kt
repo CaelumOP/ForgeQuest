@@ -2,6 +2,8 @@ package com.forgequest.app.ui.home
 
 import com.forgequest.app.R
 import com.forgequest.app.ui.localTitle
+import com.forgequest.app.ui.mark
+import com.forgequest.app.ui.isArabic
 
 import androidx.compose.ui.res.pluralStringResource
 
@@ -293,9 +295,9 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
         // The rank letter alone meant nothing to new people; the level under it says what the ring is.
         Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
-                Text(s.level.rank.letter, style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
+                Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
             }
-            Text(stringResource(R.string.home_level, s.level.level), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+            Text(if (isArabic()) s.level.rank.localTitle() else stringResource(R.string.home_level, s.level.level), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
         }
     }
 }

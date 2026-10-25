@@ -152,6 +152,7 @@ import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.localDescription
 import com.forgequest.app.ui.localSummary
 import com.forgequest.app.ui.localTitle
+import com.forgequest.app.ui.mark
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.LineChart
 import com.forgequest.app.ui.workouts.PlanPreviewSheet
@@ -637,7 +638,7 @@ fun ProfileScreen(nav: NavHostController) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MiniRing(s.level.progress, c.blue, c.blueTrack, size = 64.dp, stroke = 4.dp) {
-                    Text(s.level.rank.letter, style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
+                    Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {

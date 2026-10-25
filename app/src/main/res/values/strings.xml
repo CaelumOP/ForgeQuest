@@ -315,6 +315,7 @@
     <string name="scan_step_portions">Estimating portions…</string>
     <string name="scan_step_add">Adding up calories and protein…</string>
     <string name="scan_failed_title">Couldn\'t scan this meal</string>
+    <string name="scan_key_needed_title">This needs a Gemini key</string>
     <string name="scan_retake">Retake</string>
     <string name="scan_open_profile">Open Profile</string>
     <string name="action_try_again">Try again</string>

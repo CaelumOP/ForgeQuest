@@ -820,7 +820,7 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?,
         Row(Modifier.fillMaxWidth()) {
             com.forgequest.app.ui.components.StatColumn("${sum.doneSets}", stringResource(R.string.live_sets), c.teal, Modifier.weight(1f))
             com.forgequest.app.ui.components.StatColumn(stringResource(R.string.hist_minutes, sum.minutes), stringResource(R.string.profile_time), c.blue, Modifier.weight(1f))
-            com.forgequest.app.ui.components.StatColumn("+${sum.xpGained}", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
+            com.forgequest.app.ui.components.StatColumn("⁦+${sum.xpGained}⁩", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
         }
         Spacer(Modifier.height(24.dp))
         FitCard {

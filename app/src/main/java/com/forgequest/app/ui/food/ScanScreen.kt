@@ -526,7 +526,8 @@ private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, o
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp)
                 .clip(RoundedCornerShape(28.dp)).background(c.card).padding(24.dp),
         ) {
-            Text(stringResource(R.string.scan_failed_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            // A missing or rejected key isn't the meal's fault: say what's actually needed.
+            Text(stringResource(if (keyProblem) R.string.scan_key_needed_title else R.string.scan_failed_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             Spacer(Modifier.height(6.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
             Spacer(Modifier.height(18.dp))
