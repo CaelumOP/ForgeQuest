@@ -23,6 +23,13 @@ class StarterPlanIndexTest {
         assertTrue(equipmentOf(StarterPlans.DUMBBELLS_INDEX).all { it == Equipment.DUMBBELLS || it == Equipment.BODYWEIGHT })
     }
 
+    @Test fun noEquipmentSetupLeavesNothingThatNeedsABar() {
+        val adapted = ExerciseSwapEngine.adaptPlanToEquipment(StarterPlans.all[StarterPlans.BODYWEIGHT_INDEX], catalog, setOf(Equipment.BODYWEIGHT), dropUnfit = true).first
+        val needs = adapted.days.flatMap { it.items }.map { ExerciseSwapEngine.profileFor(catalog.getValue(it.exerciseId)).equipment }.toSet()
+        assertEquals(setOf(Equipment.BODYWEIGHT), needs)
+        assertTrue(adapted.days.any { it.items.isNotEmpty() })
+    }
+
     @Test fun gymSplitIsLast() {
         assertEquals(StarterPlans.all.lastIndex, StarterPlans.GYM_SPLIT_INDEX)
     }

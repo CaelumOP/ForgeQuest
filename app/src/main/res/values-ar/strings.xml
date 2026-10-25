@@ -53,6 +53,8 @@
         <item quantity="other">%1$d أسبوع</item>
     </plurals>
     <string name="streak_first_week">يبدأ أول أسبوع كامل لك يوم الاثنين</string>
+    <string name="streak_head_start">بداية مبكرة</string>
+    <string name="streak_head_start_body">يبدأ أول أسبوع كامل لك يوم الاثنين، وهذا التمرين يُحتسب في سلسلتك مسبقًا.</string>
     <string name="streak_hit_to_start">حقّق هدفك الأسبوعي لتبدأ سلسلتك</string>
     <plurals name="streak_best">
         <item quantity="zero">الأفضل: 0 أسابيع</item>
@@ -244,12 +246,15 @@
     <string name="food_title">الطعام</string>
     <string name="food_scan_meal">تصوير وجبة</string>
     <string name="food_add">إضافة طعام</string>
-    <string name="food_none_in_category">لا أطعمة في %1$s بعد</string>
-    <string name="food_empty_hint">صوّر وجبة أو أضف الأطعمة التي تتناولها كثيرًا، لتسجّلها لاحقًا بضغطة واحدة.</string>
+    <string name="food_none_in_category">لا أطعمة محفوظة في %1$s بعد</string>
+    <string name="food_empty_hint">احفظ هنا الأطعمة التي تتناولها كثيرًا لتسجّلها بضغطة واحدة. أما ما أكلته اليوم فيظهر تحت «سُجّل اليوم».</string>
     <string name="food_add_a_food">إضافة طعام</string>
     <string name="food_logged_today">سُجّل اليوم</string>
     <string name="food_logged_that_day">سُجّل في ذلك اليوم</string>
     <string name="food_quick_log">تسجيل سريع</string>
+    <string name="food_estimate">قدِّر السعرات من الاسم</string>
+    <string name="food_estimating">جارٍ التقدير…</string>
+    <string name="food_estimate_needs_key">لا تعرف الأرقام؟ صوّر الوجبة بدلًا من ذلك، أو أضف مفتاح Gemini مجانيًا من الملف الشخصي ليقدّرها التطبيق من الاسم.</string>
     <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد من أطعمتك أعلاه، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
     <string name="food_nothing_that_day">لم يُسجَّل شيء في هذا اليوم.</string>
     <plurals name="food_log_selection">

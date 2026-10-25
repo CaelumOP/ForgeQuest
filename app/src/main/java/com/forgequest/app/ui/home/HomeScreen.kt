@@ -410,6 +410,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
             Text(
                 when {
                     streak.freeWeek -> stringResource(R.string.streak_starts_next_week)
+                    streak.headStart -> stringResource(R.string.streak_head_start)
                     streak.hitThisWeek -> stringResource(R.string.streak_week_complete)
                     else -> stringResource(R.string.streak_done_of_target, streak.doneThisWeek, streak.targetThisWeek)
                 },
@@ -439,6 +440,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
                 Text(
                     when {
                         streak.freeWeek -> stringResource(R.string.streak_first_week)
+                        streak.headStart -> stringResource(R.string.streak_head_start_body)
                         streak.weeks == 0 && streak.doneThisWeek == 0 -> stringResource(R.string.streak_hit_to_start)
                         streak.hitThisWeek -> pluralStringResource(R.plurals.streak_best, streak.best, streak.best)
                         else -> pluralStringResource(R.plurals.streak_more_to_go, streak.targetThisWeek - streak.doneThisWeek, streak.targetThisWeek - streak.doneThisWeek)

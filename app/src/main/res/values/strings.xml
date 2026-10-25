@@ -40,6 +40,8 @@
         <item quantity="other">%1$d weeks</item>
     </plurals>
     <string name="streak_first_week">Your first full week starts Monday</string>
+    <string name="streak_head_start">Head start</string>
+    <string name="streak_head_start_body">Your first full week starts Monday. This workout already counts toward your streak.</string>
     <string name="streak_hit_to_start">Hit your weekly target to start a streak</string>
     <plurals name="streak_best">
         <item quantity="one">Best: %1$d week</item>
@@ -207,12 +209,15 @@
     <string name="food_title">Food</string>
     <string name="food_scan_meal">Scan meal</string>
     <string name="food_add">Add food</string>
-    <string name="food_none_in_category">No foods in %1$s yet</string>
-    <string name="food_empty_hint">Scan a meal or add the foods you eat often. Next time it\'s one tap.</string>
+    <string name="food_none_in_category">No saved %1$s foods yet</string>
+    <string name="food_empty_hint">Save the foods you eat often here, then log them with one tap. What you ate today is listed under Logged today.</string>
     <string name="food_add_a_food">Add a food</string>
     <string name="food_logged_today">Logged today</string>
     <string name="food_logged_that_day">Logged that day</string>
     <string name="food_quick_log">Quick log</string>
+    <string name="food_estimate">Estimate calories from the name</string>
+    <string name="food_estimating">Estimating…</string>
+    <string name="food_estimate_needs_key">Don\'t know the numbers? Scan the meal instead, or add a free Gemini key in Profile and the app estimates them from the name.</string>
     <string name="food_nothing_today">Nothing logged yet. Tick foods above, scan a plate, or quick-log a one-off meal.</string>
     <string name="food_nothing_that_day">Nothing was logged on this day.</string>
     <plurals name="food_log_selection">

@@ -187,7 +187,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
             val adaptedPlan = if (selectedPlan === emptyPlan) {
                 emptyPlan
             } else {
-                ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment).first
+                ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment, dropUnfit = true).first
             }
             app.workouts.applyPlan(adaptedPlan, if (selectedPlan === emptyPlan) "manual" else "starter")
             app.progress.logWeight(s.weightKg)
@@ -552,6 +552,8 @@ private fun planFor(preset: EquipmentPreset, current: Int): Int {
         hasDumbbells && current in listOf(StarterPlans.BODYWEIGHT_INDEX, StarterPlans.DUMBBELLS_INDEX) -> StarterPlans.DUMBBELLS_INDEX
         hasDumbbells && current == 0 && preset in listOf(EquipmentPreset.FULL_GYM, EquipmentPreset.HOME_GYM) -> StarterPlans.DUMBBELLS_INDEX
         !hasDumbbells && current in listOf(StarterPlans.DUMBBELLS_INDEX, StarterPlans.GYM_SPLIT_INDEX) -> StarterPlans.BODYWEIGHT_INDEX
+        // Hemo's routine needs bars; with nothing at all, the plain bodyweight plan is the honest start.
+        preset == EquipmentPreset.BODYWEIGHT_ONLY && current == 0 -> StarterPlans.BODYWEIGHT_INDEX
         else -> current
     }
 }

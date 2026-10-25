@@ -599,9 +599,10 @@ private fun SetRow(
                         unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
                     )
                 }
+                // "reps" beside the number: a bare 8 read as seconds or kilos to beginners.
                 ExerciseKind.REPS -> NumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
-                    title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp, valueColor = flashColor,
+                    unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
                 )
                 ExerciseKind.WEIGHTED -> {
                     NumberStepper(

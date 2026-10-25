@@ -2,9 +2,9 @@ package com.forgequest.app.ui.components
 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -314,9 +314,12 @@ private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = compose
                 down.consume()
                 val press = PressInteraction.Press(down.position)
                 scope.launch { interaction.emit(press) }
-                current()
+                // Step on lift or after a still hold, never on touch-down: a scroll that starts on the button must
+                // not change the value (people lost calories and workouts per week that way).
+                var repeating = false
                 val repeat = scope.launch {
                     delay(420)
+                    repeating = true
                     var gap = 110L
                     while (true) {
                         current()
@@ -324,8 +327,14 @@ private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = compose
                         gap = (gap * 0.9f).toLong().coerceAtLeast(60)
                     }
                 }
-                waitForUpOrCancellation()
+                var tapped = false
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    if (change.changedToUp()) { tapped = !repeating; break }
+                    if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+                }
                 repeat.cancel()
+                if (tapped) current()
                 scope.launch { interaction.emit(PressInteraction.Release(press)) }
             }
         }

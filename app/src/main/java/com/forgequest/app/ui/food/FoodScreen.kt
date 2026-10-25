@@ -75,6 +75,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -140,6 +141,9 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     /** foodId → quantity for items ticked but not yet logged. */
     val selection = MutableStateFlow<Map<Long, Float>>(emptyMap())
     val message = MutableStateFlow<String?>(null)
+    val apiKey: StateFlow<String> = app.settings.apiKey
+
+    suspend fun estimate(text: String): com.forgequest.app.data.FoodScan = app.food.estimate(text)
 
     /** Called whenever the screen is shown, so a tab left open overnight moves on to the new day. */
     fun onShown() {
@@ -248,6 +252,7 @@ fun FoodScreen(nav: NavHostController) {
 
     val undo by vm.undo.collectAsState()
     val geminiMeals by vm.geminiMeals.collectAsState()
+    val apiKey by vm.apiKey.collectAsState()
     val day by vm.day.collectAsState()
     var confirmDeleteFood by remember { mutableStateOf<FoodEntity?>(null) }
     var quickLog by remember { mutableStateOf(false) }
@@ -355,10 +360,10 @@ fun FoodScreen(nav: NavHostController) {
 
     if (quickLog) {
         val recentOneOffs by vm.recentOneOffs.collectAsState()
-        QuickLogSheet(category, recent = recentOneOffs, carbsOn = snap?.settings?.trackCarbs == true, onLog = { n, cat, k, p, cb -> vm.logOnce(n, cat, k, p, cb); quickLog = false }, onDismiss = { quickLog = false })
+        QuickLogSheet(category, recent = recentOneOffs, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (apiKey.isNotBlank()) vm::estimate else null, onLog = { n, cat, k, p, cb -> vm.logOnce(n, cat, k, p, cb); quickLog = false }, onDismiss = { quickLog = false })
     }
     editing?.let { food ->
-        FoodEditorSheet(food, carbsOn = snap?.settings?.trackCarbs == true, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
+        FoodEditorSheet(food, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (apiKey.isNotBlank()) vm::estimate else null, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
     }
     confirmDeleteFood?.let { food ->
         AlertDialog(
@@ -515,7 +520,7 @@ private fun WeekCard(s: ProgressSnapshot) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbsOn: Boolean, onLog: (String, FoodCategory, Int, Float, Float) -> Unit, onDismiss: () -> Unit) {
+private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbsOn: Boolean, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onLog: (String, FoodCategory, Int, Float, Float) -> Unit, onDismiss: () -> Unit) {
     var carbs by remember { mutableStateOf("") }
     val c = Fit.colors
     var name by remember { mutableStateOf("") }
@@ -542,6 +547,7 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbs
             }
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.food_what_was_it)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            EstimateButton(name, estimate) { k, p, cb -> kcal = k.toString(); protein = p; carbs = cb }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
@@ -684,7 +690,7 @@ private fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FoodEditorSheet(food: FoodEntity, carbsOn: Boolean, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit) {
+private fun FoodEditorSheet(food: FoodEntity, carbsOn: Boolean, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit) {
     var carbs by remember { mutableStateOf(if (food.carbs == 0f) "" else food.carbs.toString().removeSuffix(".0")) }
     val c = Fit.colors
     var name by remember { mutableStateOf(food.name) }
@@ -699,6 +705,7 @@ private fun FoodEditorSheet(food: FoodEntity, carbsOn: Boolean, onSave: (FoodEnt
             Text(if (food.id == 0L) stringResource(R.string.food_add_title) else stringResource(R.string.food_edit_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            EstimateButton(name, estimate) { k, p, cb -> kcal = k.toString(); protein = p; carbs = cb }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
@@ -733,4 +740,42 @@ private fun FoodEditorSheet(food: FoodEntity, carbsOn: Boolean, onSave: (FoodEnt
             }
         }
     }
+}
+
+/**
+ * Fills calories, protein and carbs from the food's name, so nobody has to know them to log a meal. Without an AI key
+ * it says where the numbers can come from instead.
+ */
+@Composable
+private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onResult: (Int, String, String) -> Unit) {
+    val c = Fit.colors
+    if (estimate == null) {
+        Text(stringResource(R.string.food_estimate_needs_key), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+        return
+    }
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val fallback = stringResource(R.string.scan_err_unreadable)
+    TextButton(
+        onClick = {
+            busy = true
+            error = null
+            scope.launch {
+                runCatching { estimate(name.trim()) }
+                    .onSuccess { scan ->
+                        fun num(v: Float) = (kotlin.math.round(v * 10) / 10).toString().removeSuffix(".0")
+                        onResult(scan.items.sumOf { it.kcal }, num(scan.items.map { it.protein }.sum()), num(scan.items.map { it.carbs }.sum()))
+                    }
+                    .onFailure { e -> error = (e as? com.forgequest.app.LocalizedException)?.userMessage ?: fallback }
+                busy = false
+            }
+        },
+        enabled = name.isNotBlank() && !busy,
+    ) {
+        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = c.purple, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(stringResource(if (busy) R.string.food_estimating else R.string.food_estimate), color = c.purple)
+    }
+    error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.coral) }
 }

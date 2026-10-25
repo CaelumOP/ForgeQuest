@@ -185,6 +185,25 @@ class FoodRepository(
         return scan
     }
 
+    /** Calories and macros for a typed food ("chicken and rice"), for people who don't know the numbers. */
+    suspend fun estimate(description: String): FoodScan {
+        val key = settings.apiKey.value
+        if (key.isBlank()) throw AiError.MissingKey
+        val m = models.current()
+        val raw = gemini.generate(
+            apiKey = key,
+            models = listOf(m.fast, GeminiClient.FALLBACK_STABLE_FLASH, m.lite),
+            system = scanInstructions(),
+            turns = listOf("user" to "There is no photo. Estimate one typical home-sized serving of what the user typed: ${description.take(200)}"),
+            jsonOutput = true,
+            lowThinking = true,
+        )
+        val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
+            ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
+        if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
+        return scan
+    }
+
     private suspend fun scanInstructions(): String {
         val s = settings.current()
         val handHint = if (s.handLengthCm > 0f) {

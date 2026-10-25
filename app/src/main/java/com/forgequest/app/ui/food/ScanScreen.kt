@@ -398,7 +398,7 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
                     PillButton(stringResource(R.string.scan_allow_camera), onClick = { askedBefore.value = true; permission.launch(Manifest.permission.CAMERA) })
                 }
                 Spacer(Modifier.height(10.dp))
-                TonalPill(stringResource(R.string.photo_choose_gallery), onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, tint = Color.White)
+                com.forgequest.app.ui.components.PillButton(stringResource(R.string.photo_choose_gallery), { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, container = Color.Black.copy(alpha = 0.55f), content = Color.White)
             }
         }
 
@@ -425,7 +425,8 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
                 modifier = Modifier.padding(horizontal = 40.dp),
             )
             Spacer(Modifier.height(12.dp))
-            TonalPill(stringResource(R.string.meals_paste), onClick = onPaste, icon = Icons.Rounded.ContentPaste, tint = Color.White)
+            // Dark glass over the camera, so the label reads on any scene and in either theme.
+            com.forgequest.app.ui.components.PillButton(stringResource(R.string.meals_paste), onPaste, icon = Icons.Rounded.ContentPaste, container = Color.Black.copy(alpha = 0.55f), content = Color.White)
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = 36.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
@@ -681,7 +682,7 @@ private fun ResultSheet(
                 Spacer(Modifier.height(14.dp))
                 Text(stringResource(R.string.scan_extra_fat), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
-                SegmentedTabs(CookingFat.entries.map { stringResource(it.label) + " +${it.kcal}" }, CookingFat.entries.indexOf(fat), onSelect = { fat = CookingFat.entries[it] })
+                SegmentedTabs(CookingFat.entries.map { f -> stringResource(f.label) + if (f.kcal > 0) " +" + stringResource(R.string.food_kcal, f.kcal) else "" }, CookingFat.entries.indexOf(fat), onSelect = { fat = CookingFat.entries[it] })
                 Spacer(Modifier.height(14.dp))
                 Text(stringResource(R.string.scan_meal), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))

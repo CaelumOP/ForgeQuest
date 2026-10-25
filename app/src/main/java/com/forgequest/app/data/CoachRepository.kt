@@ -266,7 +266,7 @@ class CoachRepository(
         }
         val adaptedPlan = if (rawPlan != null && availableEquipment.isNotEmpty()) {
             val lib = progress.snapshot.first().exercises
-            ExerciseSwapEngine.adaptPlanToEquipment(rawPlan, lib, availableEquipment).first
+            ExerciseSwapEngine.adaptPlanToEquipment(rawPlan, lib, availableEquipment, dropUnfit = true).first
         } else {
             rawPlan
         }
@@ -297,7 +297,7 @@ class CoachRepository(
             plan = PlanPatches.apply(current, patch, snap.exercises).draft ?: return ApplyResult.STALE
         }
         val eq = settings.current().configuredEquipment
-        val finalPlan = if (eq.isNotEmpty()) ExerciseSwapEngine.adaptPlanToEquipment(plan, snap.exercises, eq).first else plan
+        val finalPlan = if (eq.isNotEmpty()) ExerciseSwapEngine.adaptPlanToEquipment(plan, snap.exercises, eq, dropUnfit = true).first else plan
         workouts.applyPlan(finalPlan.copy(basedOnHash = null, patch = null), "coach")
         chat.update(msg.copy(planApplied = true))
         return ApplyResult.APPLIED

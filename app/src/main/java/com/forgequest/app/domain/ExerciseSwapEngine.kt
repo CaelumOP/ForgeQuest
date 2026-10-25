@@ -491,6 +491,8 @@ object ExerciseSwapEngine {
         draft: PlanDraft,
         library: Map<String, ExerciseEntity>,
         userEquipment: Set<Equipment>,
+        /** Leave out moves that need missing equipment and have no fair swap, instead of keeping them. */
+        dropUnfit: Boolean = false,
     ): Pair<PlanDraft, Int> {
         val allowed = userEquipment.ifEmpty { return draft to 0 } + Equipment.BODYWEIGHT
         if (allowed.containsAll(Equipment.entries)) return draft to 0
@@ -499,7 +501,7 @@ object ExerciseSwapEngine {
         val adaptedDays = draft.days.map { day ->
             if (day.isRest || day.items.isEmpty()) return@map day
             val usedInDay = day.items.map { it.exerciseId }.toMutableSet()
-            val newItems = day.items.map { item ->
+            val newItems = day.items.mapNotNull { item ->
                 val ex = library[item.exerciseId] ?: ExerciseEntity(
                     id = item.exerciseId,
                     name = item.name ?: item.exerciseId,
@@ -510,12 +512,13 @@ object ExerciseSwapEngine {
                     secondary = emptyList(),
                 )
                 val prof = profileFor(ex)
-                if (prof.equipment in allowed) return@map item
+                if (prof.equipment in allowed) return@mapNotNull item
                 val ranked = rankSubstitutes(ex, allExercises, allowed)
                 // Only a real match (at least a related pattern or shared muscles): with none, keep the original rather
                 // than turning a curl into a push-up or a burpee (audit 2026-10-24).
                 val fits = ranked.filter { it.matchesUserEquipment && it.score >= MIN_SWAP_SCORE }
-                val replacement = fits.firstOrNull { it.exercise.id !in usedInDay } ?: fits.firstOrNull() ?: return@map item
+                val replacement = fits.firstOrNull { it.exercise.id !in usedInDay } ?: fits.firstOrNull()
+                    ?: return@mapNotNull if (dropUnfit) null.also { swapsCount++ } else item
                 swapsCount++
                 usedInDay += replacement.exercise.id
                 translateDraftItem(item, replacement.exercise)
