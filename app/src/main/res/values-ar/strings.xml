@@ -1195,6 +1195,12 @@
     <string name="ready_refresh">تحديث</string>
     <string name="ready_open_fitbit">افتح Fitbit للمزامنة</string>
     <string name="ready_yesterday">هذه نتيجة الأمس، إذ لم يصل نوم الليلة الماضية إلى التطبيق بعد. زامِن Fitbit ثم اضغط على زر التحديث.</string>
+    <string name="ready_refreshing">جارٍ التحديث</string>
+    <string name="ready_updated">حُدِّثت البيانات للتو.</string>
+    <string name="ready_new_night">وصل نوم الليلة الماضية.</string>
+    <string name="ready_waiting">لم يصل نوم جديد من Fitbit بعد. قد يستغرق ذلك بضع دقائق بعد المزامنة، لذا يعيد التطبيق التحقق كل دقيقة.</string>
+    <string name="ready_gave_up">لم يصل شيء بعد خمس دقائق. تحقّق في تطبيق Fitbit من مشاركة النوم مع Health Connect، ثم اضغط على زر التحديث.</string>
+    <string name="ready_refresh_failed">تعذّرت قراءة Health Connect الآن. هذه آخر الأرقام المتاحة.</string>
     <string name="unit_brpm">نفَسًا/دقيقة</string>
     <string name="ready_gap">يقظة بين فترتَي النوم: %1$s – %2$s</string>
     <string name="ready_earned_other_workouts">تمارين أخرى · %1$d%%</string>

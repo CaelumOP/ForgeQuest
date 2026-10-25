@@ -1,5 +1,10 @@
 package com.forgequest.app.ui.home
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,12 +44,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -52,13 +60,14 @@ import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.data.health.DayReadiness
 import com.forgequest.app.data.health.HealthState
+import com.forgequest.app.data.health.RefreshNote
+import com.forgequest.app.data.health.showsYesterday
 import com.forgequest.app.domain.DayCall
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.theme.Fit
-import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -68,6 +77,8 @@ import java.util.Locale
 fun ReadinessCard(
     state: HealthState,
     enabled: Boolean,
+    refreshing: Boolean,
+    note: RefreshNote?,
     onFeltGreat: (Boolean) -> Unit,
     onOpen: (ReadinessKind) -> Unit,
     onRefresh: () -> Unit,
@@ -86,7 +97,7 @@ fun ReadinessCard(
         }
         state == HealthState.NeedsAccess -> MessageCard(stringResource(R.string.ready_reconnect_body), stringResource(R.string.ready_reconnect), onReconnect)
         state == HealthState.Failed -> MessageCard(stringResource(R.string.ready_failed_body), stringResource(R.string.ready_try_again), onRefresh)
-        state is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, onFeltGreat, onOpen, onRefresh) else NoDataCard(onRefresh)
+        state is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, refreshing, note, onFeltGreat, onOpen, onRefresh) else NoDataCard(refreshing, note, onRefresh)
     }
 }
 
@@ -103,16 +114,35 @@ private fun MessageCard(body: String, action: String, onAction: () -> Unit) {
     Spacer(Modifier.height(12.dp))
 }
 
-/** The card's title with a refresh button: after syncing the Fitbit app, one tap reads the new night. */
+/** The card's title with a refresh button: after syncing the Fitbit app, one tap reads the new night. It spins while reading. */
 @Composable
-private fun TitleRow(onRefresh: () -> Unit) {
+private fun TitleRow(refreshing: Boolean, onRefresh: () -> Unit) {
     val c = Fit.colors
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.weight(1f))
-        IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.ready_refresh), tint = c.textSecondary, modifier = Modifier.size(20.dp))
+        val angle = if (refreshing) {
+            rememberInfiniteTransition(label = "refresh").animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "angle").value
+        } else 0f
+        IconButton(onClick = onRefresh, enabled = !refreshing, modifier = Modifier.size(32.dp)) {
+            Icon(
+                Icons.Rounded.Refresh, contentDescription = stringResource(if (refreshing) R.string.ready_refreshing else R.string.ready_refresh),
+                tint = if (refreshing) c.gold else c.textSecondary, modifier = Modifier.size(20.dp).rotate(angle),
+            )
         }
     }
+}
+
+/** What the last refresh found, under the title; "still waiting" lives in the yesterday line instead. */
+@Composable
+private fun NoteLine(note: RefreshNote?) {
+    val c = Fit.colors
+    val (text, color) = when (note) {
+        RefreshNote.UPDATED -> R.string.ready_updated to c.teal
+        RefreshNote.NEW_NIGHT -> R.string.ready_new_night to c.teal
+        RefreshNote.FAILED -> R.string.ready_refresh_failed to c.coral
+        else -> return
+    }
+    Text(stringResource(text), style = MaterialTheme.typography.bodySmall, color = color, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 /** Opens the Fitbit app so it syncs last night; nothing shows if it isn't installed. */
@@ -129,10 +159,11 @@ private val SleepColor = SleepTint
 private val StrainColor = StrainTint
 
 @Composable
-private fun NoDataCard(onRefresh: () -> Unit) {
+private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () -> Unit) {
     val c = Fit.colors
     FitCard {
-        TitleRow(onRefresh)
+        TitleRow(refreshing, onRefresh)
+        NoteLine(note)
         Text(stringResource(R.string.ready_no_data), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         OpenFitbitButton()
     }
@@ -164,7 +195,7 @@ private fun Dial(fraction: Float, color: Color, value: String, label: String, si
 private fun hm(min: Int) = stringResource(R.string.dur_hm, min / 60, min % 60)
 
 @Composable
-private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit, onRefresh: () -> Unit) {
+private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit, onRefresh: () -> Unit) {
     val c = Fit.colors
     val recColor = recoveryColor(d.recovery)
     val (title, body) = when (d.call) {
@@ -176,10 +207,16 @@ private fun DayCard(d: DayReadiness, onFeltGreat: (Boolean) -> Unit, onOpen: (Re
     }
     val target = Readiness.strainTarget(d.recovery)
     FitCard {
-        TitleRow(onRefresh)
+        TitleRow(refreshing, onRefresh)
+        NoteLine(note)
         // Before Fitbit has synced last night, these are yesterday's numbers: say so instead of passing them off as today's.
-        if (d.epochDay < LocalDate.now().toEpochDay() && java.time.LocalTime.now().hour >= 6) {
-            Text(stringResource(R.string.ready_yesterday), style = MaterialTheme.typography.bodySmall, color = c.gold)
+        if (d.showsYesterday()) {
+            val line = when (note) {
+                RefreshNote.WAITING -> R.string.ready_waiting
+                RefreshNote.GAVE_UP -> R.string.ready_gave_up
+                else -> R.string.ready_yesterday
+            }
+            Text(stringResource(line), style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             OpenFitbitButton()
         }
         Spacer(Modifier.height(8.dp))
