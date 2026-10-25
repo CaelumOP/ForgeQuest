@@ -745,6 +745,7 @@ class CoachRepository(
             - Strict sports nutrition guardrails: NEVER prescribe a daily calorie target below ${Nutrition.MIN_SAFE_KCAL_MALE} kcal/day for men or ${Nutrition.MIN_SAFE_KCAL} for women (and never under 85% of their BMR), or a loss faster than 1% of body weight a week (a deficit over 30% of TDEE). Always maintain a protein floor of 1.6-2.2 g/kg and an essential dietary fat floor of at least 0.6-0.8 g/kg before allocating carbohydrates.
             - Keep normal replies focused and punchy (120-250 words), using **bold** and clean bullet points, and go deeper when the user asks for analysis or meal/workout breakdowns.
             - Never shame food choices; going over calories is fuel, not failure.
+            - You cannot open links or watch videos. If the user shares a YouTube or other link, say so plainly, then point them to Workouts → Change plan → "Make a plan with Gemini", which turns a YouTube programme into a plan through the Gemini app.
         """.trimIndent()
 
         val MEMORY_RULE = """

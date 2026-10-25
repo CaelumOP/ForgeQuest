@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CenterFocusStrong
@@ -170,7 +171,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     summary?.let { sum ->
         val debrief by vm.debrief.collectAsState()
         val debriefLoading by vm.debriefLoading.collectAsState()
-        WorkoutCompleteScreen(sum, debrief, debriefLoading, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        WorkoutCompleteScreen(sum, debrief, debriefLoading, onRemind = vm::remindMe, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -296,11 +297,12 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             containerColor = c.card,
             title = { Text(pluralStringResource(R.plurals.live_finish_unticked_title, left, left), color = c.textPrimary) },
             text = { Text(pluralStringResource(R.plurals.live_finish_unticked_body, left, left), color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) } },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
+            // Three choices stacked, so none of them wraps onto a row of its own.
+            confirmButton = {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
                     TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
+                    TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) }
+                    TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
                 }
             },
         )
@@ -797,7 +799,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
 }
 
 @Composable
-private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?, debriefLoading: Boolean, onDone: () -> Unit) {
+private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?, debriefLoading: Boolean, onRemind: () -> Unit, onDone: () -> Unit) {
     val c = Fit.colors
     var filled by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { filled = true }
@@ -851,6 +853,24 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?,
                         Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(10.dp))
                         Text(stringResource(R.string.live_badge_unlocked, title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                    }
+                }
+            }
+        }
+        if (sum.offerReminder) {
+            var reminded by remember { mutableStateOf(false) }
+            Spacer(Modifier.height(12.dp))
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(if (reminded) R.string.live_reminder_on else R.string.live_reminder_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Text(stringResource(R.string.live_reminder_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    if (!reminded) {
+                        Spacer(Modifier.width(8.dp))
+                        PillButton(stringResource(R.string.live_reminder_button), onClick = { onRemind(); reminded = true })
                     }
                 }
             }

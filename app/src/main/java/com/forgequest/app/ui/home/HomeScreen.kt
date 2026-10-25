@@ -77,6 +77,7 @@ import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ChoiceChip
+import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ConcentricRings
 import com.forgequest.app.ui.components.FitCard
@@ -224,7 +225,17 @@ fun HomeScreen(nav: NavHostController) {
                 }
             },
             onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
-            onOpenPlan = { nav.goToTab(Routes.WORKOUTS) },
+            // After training, the card leads to what was done; before, to the plan.
+            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
+            // A rest day can still be a training day: start the next planned workout.
+            onTrainAnyway = {
+                scope.launch {
+                    val next = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
+                        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() } }
+                    vm.startToday(next)
+                    nav.navigate(Routes.LIVE)
+                }
+            },
         )
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.navigationBarsPadding())
@@ -273,10 +284,12 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
             )
             Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
-        Box(Modifier.clip(CircleShape).clickable(onClick = onRankClick)) {
+        // The rank letter alone meant nothing to new people; the level under it says what the ring is.
+        Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
                 Text(s.level.rank.letter, style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
             }
+            Text(stringResource(R.string.home_level, s.level.level), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
         }
     }
 }
@@ -522,6 +535,7 @@ private fun TodayCard(
     lowRecovery: Int? = null,
     onStartLighter: () -> Unit = {},
     onRestToday: () -> Unit = {},
+    onTrainAnyway: () -> Unit = {},
 ) {
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
@@ -539,6 +553,7 @@ private fun TodayCard(
                     when {
                         hasOpenSession -> stringResource(R.string.today_in_progress)
                         noPlan -> stringResource(R.string.today_no_plan)
+                        isRest && doneToday -> stringResource(R.string.today_extra_done)
                         isRest -> stringResource(R.string.today_rest_day)
                         else -> day!!.day.title
                     },
@@ -568,6 +583,7 @@ private fun TodayCard(
                 doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
                 noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
                 !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
+                excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway)
             }
         }
         if (lowRecovery != null && !isRest && !hasOpenSession && !doneToday && excused == null) {

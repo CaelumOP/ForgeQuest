@@ -185,7 +185,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlanEditorScreen(nav: NavHostController) {
+fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     val vm = appViewModel { PlanEditorViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val library by vm.library.collectAsState()
@@ -195,7 +195,7 @@ fun PlanEditorScreen(nav: NavHostController) {
     val snackbar = LocalSnackbar.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val c = Fit.colors
-    var selectedDay by rememberSaveable { mutableIntStateOf(Dates.todayDayOfWeek()) }
+    var selectedDay by rememberSaveable { mutableIntStateOf(initialDay.takeIf { it in 1..7 } ?: Dates.todayDayOfWeek()) }
     var picker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PlanItemEntity?>(null) }
     var swappingItem by remember { mutableStateOf<PlanItemEntity?>(null) }

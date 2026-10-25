@@ -111,7 +111,8 @@ fun FitCard(
 @Composable
 fun FitSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true) =
     androidx.compose.material3.Switch(
-        checked, onCheckedChange, enabled = enabled,
+        // A gap before the switch, so a long subtitle beside it never runs into it.
+        checked, onCheckedChange, modifier = Modifier.padding(start = 12.dp), enabled = enabled,
         colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Fit.colors.teal, checkedThumbColor = Fit.colors.card),
     )
 
