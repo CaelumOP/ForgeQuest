@@ -13,7 +13,7 @@ import {
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
 import { Button, Card, ChipGroup, Segmented, Stat, Stepper, TextField, parseNumber } from '../kit'
 import { CheckCircleIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
-import { LAST_STEP, bodyStatsReady, floorOf, initialState, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
+import { LAST_STEP, bodyStatsReady, floorOf, initialState, planFor, presetForPlan, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
 import './onboarding.css'
 
 const GEMINI_MODELS = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
@@ -53,7 +53,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
       await seedLibrary(getLang())
       const chosen = STARTER_PLANS[s.planIndex]
       const plan = chosen ? localizePlan(chosen, getLang()) : emptyPlan()
-      const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset))[0] : plan
+      const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
       await applyPlan(adapted, chosen ? 'starter' : 'manual')
       await logWeight(s.weightKg)
       await updateSettings(settingsPatch(s, todayEpochDay(), new Date().getFullYear(), check.ok ? key.trim() : null))
@@ -285,14 +285,14 @@ function StepPlan({ s, update }: StepProps) {
     <>
       <Title title={t('onb_plan_title')} body={t('onb_plan_body')} />
       <h2 class="onb-h2">{t('onb_available_equipment')}</h2>
-      <ChipGroup label={t('onb_available_equipment')} value={s.preset} onChange={(p) => update((c) => ({ ...c, preset: p }))}
+      <ChipGroup label={t('onb_available_equipment')} value={s.preset} onChange={(p) => update((c) => withSuggestions({ ...c, preset: p, planIndex: planFor(p, c.planIndex) }, trainingDaysOf))}
         options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn }))} />
       <div class="onb-plans" role="radiogroup" aria-label={t('onb_plan_title')}>
         {options.map((o, i) => {
           const on = s.planIndex === i
           return (
             <button key={i} type="button" role="radio" aria-checked={on} class={`onb-plan${on ? ' on' : ''}`}
-              onClick={() => update((c) => withSuggestions({ ...c, planIndex: i, preset: i === 2 ? 'FULL_GYM' : c.preset }, trainingDaysOf))}>
+              onClick={() => update((c) => withSuggestions({ ...c, planIndex: i, preset: presetForPlan(i, c.preset) }, trainingDaysOf))}>
               <span class="onb-plan-text">
                 <span class="onb-plan-name">{o.name}</span>
                 <span class="onb-plan-desc">{o.desc}</span>

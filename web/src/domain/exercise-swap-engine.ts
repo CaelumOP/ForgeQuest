@@ -25,7 +25,7 @@ const allEquipment = (): Set<Equipment> => new Set(EQUIPMENT)
 const isEquipment = (raw: string): raw is Equipment => (EQUIPMENT as readonly string[]).includes(raw)
 
 /** Quick presets for Onboarding and Profile settings. */
-export const EQUIPMENT_PRESETS = ['FULL_GYM', 'HOME_GYM', 'DUMBBELLS_AND_BAR', 'CALISTHENICS_PARK', 'PULL_UP_BAR_ONLY', 'BODYWEIGHT_ONLY'] as const
+export const EQUIPMENT_PRESETS = ['FULL_GYM', 'HOME_GYM', 'DUMBBELLS_AND_BAR', 'DUMBBELLS_AND_KETTLEBELL', 'CALISTHENICS_PARK', 'PULL_UP_BAR_ONLY', 'BODYWEIGHT_ONLY'] as const
 export type EquipmentPreset = (typeof EQUIPMENT_PRESETS)[number]
 
 export const PRESET_INFO: Record<EquipmentPreset, { id: string; labelEn: string; labelAr: string; equipment: readonly Equipment[] }> = {
@@ -37,6 +37,10 @@ export const PRESET_INFO: Record<EquipmentPreset, { id: string; labelEn: string;
   DUMBBELLS_AND_BAR: {
     id: 'dumbbells_bar', labelEn: 'Dumbbells & pull-up bar', labelAr: 'دمبل وعقلة',
     equipment: ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_BARS_OR_BENCH', 'DUMBBELLS'],
+  },
+  DUMBBELLS_AND_KETTLEBELL: {
+    id: 'dumbbells_kb', labelEn: 'Dumbbells & kettlebell', labelAr: 'دمبل وكيتلبل',
+    equipment: ['BODYWEIGHT', 'DUMBBELLS', 'KETTLEBELL'],
   },
   CALISTHENICS_PARK: {
     id: 'calisthenics', labelEn: 'Calisthenics (pull-up bar & dip bars)', labelAr: 'كاليستنكس (عقلة ومتوازي)',
@@ -441,11 +445,13 @@ export function translatePlanItem(oldItem: PlanItemEntity, newExercise: Exercise
 /**
  * Swaps every exercise in [draft] that needs equipment the person lacks for the best-ranked one they can do,
  * avoiding repeats within a day. Returns the adapted draft and the number of swaps.
+ * [dropUnfit] leaves out moves that need missing equipment and have no fair swap, instead of keeping them.
  */
 export function adaptPlanToEquipment<D extends { days: PlanDraftDay[] }>(
   draft: D,
   library: ReadonlyMap<string, ExerciseEntity>,
   userEquipment: ReadonlySet<Equipment>,
+  dropUnfit = false,
 ): [D, number] {
   if (userEquipment.size === 0) return [draft, 0]
   const allowed = new Set(userEquipment)
@@ -456,17 +462,21 @@ export function adaptPlanToEquipment<D extends { days: PlanDraftDay[] }>(
   const days = draft.days.map((day) => {
     if (day.isRest || day.items.length === 0) return day
     const usedInDay = new Set(day.items.map((it) => it.exerciseId))
-    const items = day.items.map((item) => {
+    const items = day.items.flatMap((item) => {
       const ex = library.get(item.exerciseId) ?? fallbackExercise(item)
-      if (allowed.has(profileFor(ex).equipment)) return item
+      if (allowed.has(profileFor(ex).equipment)) return [item]
       // Only a real match (at least a related pattern or shared muscles): with none, keep the original rather than
       // turning a curl into a push-up or a burpee (audit 2026-10-24).
       const doable = rankSubstitutes(ex, allExercises, allowed).filter((c) => c.matchesUserEquipment && c.score >= MIN_SWAP_SCORE)
       const replacement = doable.find((c) => !usedInDay.has(c.exercise.id)) ?? doable[0]
-      if (!replacement) return item
+      if (!replacement) {
+        if (!dropUnfit) return [item]
+        swaps++
+        return []
+      }
       swaps++
       usedInDay.add(replacement.exercise.id)
-      return translateDraftItem(item, replacement.exercise)
+      return [translateDraftItem(item, replacement.exercise)]
     })
     return { ...day, items }
   })

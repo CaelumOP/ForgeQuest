@@ -95,5 +95,9 @@ describe('audit 2026-10-24', () => {
     const [adapted, swaps] = adaptPlanToEquipment({ name: 'P', days }, LIBRARY, set('BODYWEIGHT'))
     expect(swaps).toBe(0)
     expect(adapted.days[0].items[0].exerciseId).toBe('bicep_curl')
+    // Setup drops it instead (dropUnfit), like the Android onboarding.
+    const [dropped, dropSwaps] = adaptPlanToEquipment({ name: 'P', days }, LIBRARY, set('BODYWEIGHT'), true)
+    expect(dropSwaps).toBe(1)
+    expect(dropped.days[0].items).toEqual([])
   })
 })

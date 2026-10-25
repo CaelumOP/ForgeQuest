@@ -1,5 +1,6 @@
 import type { Settings } from '../../data/settings'
-import { encodePreset, type EquipmentPreset } from '../../domain/exercise-swap-engine'
+import { BODYWEIGHT_INDEX, DUMBBELLS_INDEX, GYM_SPLIT_INDEX } from '../../data/seed/starter-plans'
+import { encodePreset, presetEquipment, type EquipmentPreset } from '../../domain/exercise-swap-engine'
 import {
   calorieFloor, DAY_BASE, proteinPerKgFor, suggestedKcal, suggestedProtein, type CutPace, type DayActivity, type GainPace, type NutritionGoal,
 } from '../../domain/nutrition'
@@ -32,6 +33,25 @@ export const initialState = (): OnbState => ({
   step: 0, name: '', bodyType: 'MALE', weightKg: 75, unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
   goalsTouched: false, goal: 'MAINTAIN', dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', planIndex: 0, preset: 'CALISTHENICS_PARK',
 })
+
+/** The starter plan to show as chosen after picking [preset] (OnboardingScreen.kt planFor). */
+export function planFor(preset: EquipmentPreset, current: number): number {
+  const hasDumbbells = presetEquipment(preset).has('DUMBBELLS')
+  if (hasDumbbells && current === GYM_SPLIT_INDEX && preset === 'FULL_GYM') return current
+  if (hasDumbbells && (current === BODYWEIGHT_INDEX || current === DUMBBELLS_INDEX)) return DUMBBELLS_INDEX
+  if (hasDumbbells && current === 0 && (preset === 'FULL_GYM' || preset === 'HOME_GYM')) return DUMBBELLS_INDEX
+  if (!hasDumbbells && (current === DUMBBELLS_INDEX || current === GYM_SPLIT_INDEX)) return BODYWEIGHT_INDEX
+  // Hemo's routine needs bars; with nothing at all, the plain bodyweight plan is the honest start.
+  if (preset === 'BODYWEIGHT_ONLY' && current === 0) return BODYWEIGHT_INDEX
+  return current
+}
+
+/** The equipment to show after picking starter plan [index]: the gym split needs a gym, the dumbbell plan dumbbells. */
+export function presetForPlan(index: number, current: EquipmentPreset): EquipmentPreset {
+  if (index === GYM_SPLIT_INDEX) return 'FULL_GYM'
+  if (index === DUMBBELLS_INDEX && !presetEquipment(current).has('DUMBBELLS')) return 'DUMBBELLS_AND_BAR'
+  return current
+}
 
 /** Height and age are needed before the goals step can continue, so the calorie target always uses them. */
 export const bodyStatsReady = (s: OnbState): boolean => s.heightCm >= 120 && s.heightCm <= 230 && s.age >= 10 && s.age <= 100
