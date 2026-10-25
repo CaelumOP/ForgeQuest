@@ -77,7 +77,14 @@ JS_HAS = "return document.querySelectorAll(arguments[0]).length;"
 
 
 def js(code, *args):
-    return driver.execute_script(code, *args)
+    # Right after switching to the Home Screen app, Appium can briefly report Safari as "not running": retry.
+    for attempt in range(4):
+        try:
+            return driver.execute_script(code, *args)
+        except Exception as e:
+            if attempt == 3 or "not running" not in str(e):
+                raise
+            time.sleep(2)
 
 
 def wait_for(sel, timeout=30):
@@ -252,7 +259,6 @@ def add_to_home_screen():
         direction = "left" if i < 6 else "up"
         driver.execute_script("mobile: swipe", {"elementId": cells[0].id, "direction": direction})
         time.sleep(1)
-        shot(f"zz-scroll-{i}")
     else:
         dump("no-add-to-home")
         raise RuntimeError("no Add to Home Screen")
