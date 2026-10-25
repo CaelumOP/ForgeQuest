@@ -302,12 +302,15 @@ private fun SleepDay(d: DayReadiness) {
     val c = Fit.colors
     val n = d.night ?: run { Text(stringResource(R.string.ready_no_sleep), color = c.textSecondary); return }
     val zone = ZoneId.systemDefault()
-    val fmt = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+    // With the weekday, so it's clear which night this is.
+    val fmt = DateTimeFormatter.ofPattern("EEE h:mm a", Locale.getDefault())
     BigNumber(hm(n.asleepMin), "${n.start.atZone(zone).format(fmt)} – ${n.end.atZone(zone).format(fmt)}", null, SleepTint)
     val efficiency = if (n.inBedMin > 0) (100 * n.asleepMin / n.inBedMin) else 0
     Text(stringResource(R.string.ready_sleep_sentence, d.sleepPerf ?: 0, hm(d.sleepNeedLastNight), hm(n.inBedMin), efficiency), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
     SectionTitle(stringResource(R.string.ready_stages_title))
-    Hypnogram(n.start, n.end, n.segments, listOf(n.awakeMin, n.remMin, n.lightMin, n.deepMin), n.gaps)
+    // A watch that sent no stages gets one line, not four empty lanes.
+    if (n.segments.isEmpty()) Text(stringResource(R.string.ready_no_stages), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+    else Hypnogram(n.start, n.end, n.segments, listOf(n.awakeMin, n.remMin, n.lightMin, n.deepMin), n.gaps)
     SectionTitle(stringResource(R.string.ready_c_tonight))
     BigNumber(hm(d.sleepNeedTonight), null, if (d.debtMin > 0) stringResource(R.string.ready_debt, hm(d.debtMin)) else null, c.textPrimary)
 }
@@ -410,14 +413,16 @@ private fun StrainDay(d: DayReadiness) {
         drawRoundRect(StrainTint, Offset(if (rtl) size.width - fill else 0f, 0f), Size(fill, size.height), CornerRadius(size.height / 2))
     }
     SectionTitle(stringResource(R.string.ready_how_earned))
-    ShareBar(stringResource(R.string.ready_earned_workouts, (d.workoutShare * 100).toInt()), d.workoutShare, StrainTint)
+    // No strain yet: "other activity 100%" on a 0.0 day read as broken.
+    if (d.strain < 0.1) Text(stringResource(R.string.ready_no_strain_yet), style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
+    else ShareBar(stringResource(R.string.ready_earned_workouts, (d.workoutShare * 100).toInt()), d.workoutShare, StrainTint)
     val fq = (d.workoutShare * 100).toInt()
     val other = (d.otherShare * 100).toInt()
-    if (d.otherWorkouts.isNotEmpty() || other > 0) {
+    if (d.strain >= 0.1 && (d.otherWorkouts.isNotEmpty() || other > 0)) {
         val named = d.otherWorkouts.map { (it.title ?: stringResource(exerciseName(it.exerciseType))) + " " + stringResource(R.string.ready_minutes, it.minutes) }.joinToString(" · ")
         ShareBar(stringResource(R.string.ready_earned_other_workouts, other) + if (named.isNotEmpty()) "\n$named" else "", d.otherShare, StrainTint.copy(alpha = 0.8f))
     }
-    ShareBar(stringResource(R.string.ready_earned_other, (100 - fq - other).coerceAtLeast(0)), (1f - d.workoutShare - d.otherShare).coerceAtLeast(0f), StrainTint.copy(alpha = 0.6f))
+    if (d.strain >= 0.1) ShareBar(stringResource(R.string.ready_earned_other, (100 - fq - other).coerceAtLeast(0)), (1f - d.workoutShare - d.otherShare).coerceAtLeast(0f), StrainTint.copy(alpha = 0.6f))
     SectionTitle(stringResource(R.string.ready_zones))
     val names = listOf(R.string.zone_1, R.string.zone_2, R.string.zone_3, R.string.zone_4, R.string.zone_5)
     d.zoneMin.forEachIndexed { i, m ->

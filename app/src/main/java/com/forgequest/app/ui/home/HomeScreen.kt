@@ -2,6 +2,8 @@ package com.forgequest.app.ui.home
 
 import com.forgequest.app.R
 import com.forgequest.app.ui.localTitle
+import com.forgequest.app.ui.mark
+import com.forgequest.app.ui.isArabic
 
 import androidx.compose.ui.res.pluralStringResource
 
@@ -77,6 +79,8 @@ import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ChoiceChip
+import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ConcentricRings
 import com.forgequest.app.ui.components.FitCard
@@ -120,6 +124,9 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     }
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 
+    /** Catches badges a workout or meal earned but that were missed (they used to be checked against stale data). */
+    fun checkBadges() = viewModelScope.launch { app.progress.evaluateBadges() }
+
     suspend fun startToday(day: PlanDayWithItems?, lighter: Boolean = false) = app.workouts.startSession(day, lighter)
 
     fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
@@ -138,7 +145,7 @@ fun HomeScreen(nav: NavHostController) {
     val refreshNote by vm.refreshWatch.note.collectAsState()
     // Every time the app comes to the front (back from the Fitbit app too): Fitbit numbers through Health Connect, reused
     // for a few minutes unless still waiting on last night; the update notice only goes online every 6 hours.
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.app.updateNotice.refresh(); onPauseOrDispose { vm.refreshWatch.pause() } }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.checkBadges(); vm.app.updateNotice.refresh(); onPauseOrDispose { vm.refreshWatch.pause() } }
     val healthAccess = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
     ) { vm.refreshHealth(force = true) }
@@ -224,7 +231,17 @@ fun HomeScreen(nav: NavHostController) {
                 }
             },
             onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
-            onOpenPlan = { nav.goToTab(Routes.WORKOUTS) },
+            // After training, the card leads to what was done; before, to the plan.
+            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
+            // A rest day can still be a training day: start the next planned workout.
+            onTrainAnyway = {
+                scope.launch {
+                    val next = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
+                        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() } }
+                    vm.startToday(next)
+                    nav.navigate(Routes.LIVE)
+                }
+            },
         )
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.navigationBarsPadding())
@@ -244,7 +261,9 @@ fun HomeScreen(nav: NavHostController) {
                 Spacer(Modifier.height(8.dp))
                 Text(stringResource(R.string.stepper_tap_to_type), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(24.dp))
-                PillButton(stringResource(R.string.action_save), onClick = { vm.logWeight(kg); weightSheet = false }, modifier = Modifier.fillMaxWidth())
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val saved = stringResource(R.string.weight_saved)
+                PillButton(stringResource(R.string.action_save), onClick = { vm.logWeight(kg); weightSheet = false; context.toast(saved) }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
             }
         }
@@ -273,10 +292,12 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
             )
             Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
-        Box(Modifier.clip(CircleShape).clickable(onClick = onRankClick)) {
+        // The rank letter alone meant nothing to new people; the level under it says what the ring is.
+        Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
-                Text(s.level.rank.letter, style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
+                Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
             }
+            Text(if (isArabic()) s.level.rank.localTitle() else stringResource(R.string.home_level, s.level.level), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
         }
     }
 }
@@ -397,6 +418,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
             Text(
                 when {
                     streak.freeWeek -> stringResource(R.string.streak_starts_next_week)
+                    streak.headStart -> stringResource(R.string.streak_head_start)
                     streak.hitThisWeek -> stringResource(R.string.streak_week_complete)
                     else -> stringResource(R.string.streak_done_of_target, streak.doneThisWeek, streak.targetThisWeek)
                 },
@@ -426,8 +448,11 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
                 Text(
                     when {
                         streak.freeWeek -> stringResource(R.string.streak_first_week)
+                        streak.headStart -> stringResource(R.string.streak_head_start_body)
                         streak.weeks == 0 && streak.doneThisWeek == 0 -> stringResource(R.string.streak_hit_to_start)
-                        streak.hitThisWeek -> pluralStringResource(R.plurals.streak_best, streak.best, streak.best)
+                        // Done for the week: also say what keeps the streak alive next week.
+                        streak.hitThisWeek -> pluralStringResource(R.plurals.streak_best, streak.best, streak.best) + " · " +
+                            pluralStringResource(R.plurals.streak_next_week, streak.targetThisWeek.coerceAtLeast(1), streak.targetThisWeek.coerceAtLeast(1))
                         else -> pluralStringResource(R.plurals.streak_more_to_go, streak.targetThisWeek - streak.doneThisWeek, streak.targetThisWeek - streak.doneThisWeek)
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -522,6 +547,7 @@ private fun TodayCard(
     lowRecovery: Int? = null,
     onStartLighter: () -> Unit = {},
     onRestToday: () -> Unit = {},
+    onTrainAnyway: () -> Unit = {},
 ) {
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
@@ -539,6 +565,7 @@ private fun TodayCard(
                     when {
                         hasOpenSession -> stringResource(R.string.today_in_progress)
                         noPlan -> stringResource(R.string.today_no_plan)
+                        isRest && doneToday -> stringResource(R.string.today_extra_done)
                         isRest -> stringResource(R.string.today_rest_day)
                         else -> day!!.day.title
                     },
@@ -568,6 +595,7 @@ private fun TodayCard(
                 doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
                 noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
                 !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
+                excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway)
             }
         }
         if (lowRecovery != null && !isRest && !hasOpenSession && !doneToday && excused == null) {
@@ -576,6 +604,12 @@ private fun TodayCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
                 AssistChip(onClick = onStartLighter, label = { Text(stringResource(R.string.today_start_lighter)) })
                 AssistChip(onClick = onRestToday, label = { Text(stringResource(R.string.today_rest_instead)) })
+            }
+        }
+        // Already trained today: another session is still one tap away.
+        if (doneToday && !hasOpenSession) {
+            TextButton(onClick = if (isRest) onTrainAnyway else onStart, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(R.string.today_train_again), color = c.teal, style = MaterialTheme.typography.labelLarge)
             }
         }
         if (!isRest && !hasOpenSession && !doneToday && excused == null) {

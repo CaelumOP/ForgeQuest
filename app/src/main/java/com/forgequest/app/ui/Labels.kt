@@ -205,3 +205,8 @@ fun blockLabel(block: String): String = when (block) {
     "Legs" -> stringResource(R.string.block_legs)
     else -> block
 }
+
+fun isArabic(): Boolean = java.util.Locale.getDefault().language == "ar"
+
+/** The badge in the rank circle: the E…S letter in English; in Arabic, where a Latin letter means nothing, the level. */
+fun com.forgequest.app.domain.RankInfo.mark(level: Int): String = if (isArabic()) level.toString() else letter

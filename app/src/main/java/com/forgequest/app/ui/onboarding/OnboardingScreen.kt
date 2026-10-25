@@ -69,6 +69,7 @@ import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.StarterPlans
+import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.EquipmentPreset
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseSwapEngine
@@ -151,7 +152,8 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     fun next() = state.update { it.copy(step = (it.step + 1).coerceAtMost(LAST_STEP)) }
     fun back() = state.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }
 
-    fun checkKey() {
+    /** [then] runs once the key checks out, e.g. finishing setup from the main button. */
+    fun checkKey(then: () -> Unit = {}) {
         val key = state.value.apiKey.trim()
         if (key.isEmpty()) return
         state.update { it.copy(checkingKey = true, keyMessage = null) }
@@ -163,7 +165,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                     onFailure = { e -> s.copy(checkingKey = false, keyOk = false, keyMessage = (e as? AiError)?.userMessage ?: app.str(R.string.onb_key_check_failed)) },
                 )
             }
-            result.getOrNull()?.let { models -> app.models.save(models) }
+            result.getOrNull()?.let { models -> app.models.save(models); then() }
         }
     }
 
@@ -185,7 +187,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
             val adaptedPlan = if (selectedPlan === emptyPlan) {
                 emptyPlan
             } else {
-                ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment).first
+                ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment, dropUnfit = true).first
             }
             app.workouts.applyPlan(adaptedPlan, if (selectedPlan === emptyPlan) "manual" else "starter")
             app.progress.logWeight(s.weightKg)
@@ -257,9 +259,13 @@ fun OnboardingScreen() {
             if (s.step > 0) TextButton(onClick = vm::back) { Text(stringResource(R.string.action_back), color = c.textSecondary) }
             Spacer(Modifier.weight(1f))
             val canGo = when (s.step) { 0 -> s.name.isNotBlank(); 1 -> s.bodyReady; else -> true }
+            // Say why Continue is greyed out instead of leaving people guessing.
+            if (!canGo && s.step == 1) Text(stringResource(R.string.onb_body_needed), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(end = 12.dp).weight(1f, fill = false))
             when {
                 s.step < OnboardingViewModel.LAST_STEP -> PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = canGo)
-                else -> PillButton(if (s.keyOk) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_skip), onClick = vm::finish)
+                // A typed key is checked and kept by the main button too, not thrown away by "Skip".
+                s.keyOk || s.apiKey.isBlank() -> PillButton(if (s.keyOk) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_skip), onClick = vm::finish)
+                else -> PillButton(stringResource(if (s.checkingKey) R.string.onb_checking else R.string.onb_save_key), onClick = { vm.checkKey(then = vm::finish) }, enabled = !s.checkingKey)
             }
         }
     }
@@ -497,10 +503,12 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
             ChoiceChip(
                 text = if (isArabic) preset.labelAr else preset.labelEn,
                 selected = s.equipmentPreset == preset,
-                onClick = { vm.update { it.copy(equipmentPreset = preset) } },
+                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planFor(preset, it.planIndex)) } },
             )
         }
     }
+    Spacer(Modifier.height(6.dp))
+    Text(stringResource(R.string.onb_equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     Spacer(Modifier.height(20.dp))
 
     val options = StarterPlans.all.map { it.name to it.description } + (stringResource(R.string.onb_start_empty) to stringResource(R.string.onb_start_empty_desc))
@@ -510,8 +518,9 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
             Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card)
                 .then(if (selected) Modifier.border(2.dp, c.teal, RoundedCornerShape(20.dp)) else Modifier)
                 .clickable {
-                    val autoPreset = when (index) {
-                        2 -> EquipmentPreset.FULL_GYM
+                    val autoPreset = when {
+                        index == StarterPlans.GYM_SPLIT_INDEX -> EquipmentPreset.FULL_GYM
+                        index == StarterPlans.DUMBBELLS_INDEX && Equipment.DUMBBELLS !in s.equipmentPreset.equipment -> EquipmentPreset.DUMBBELLS_AND_BAR
                         else -> s.equipmentPreset
                     }
                     vm.update { it.copy(planIndex = index, equipmentPreset = autoPreset) }
@@ -532,6 +541,20 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
                 if (selected) Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp))
             }
         }
+    }
+}
+
+/** The starter plan that fits [preset]: weights when there are dumbbells, bodyweight when there aren't. */
+private fun planFor(preset: EquipmentPreset, current: Int): Int {
+    val hasDumbbells = Equipment.DUMBBELLS in preset.equipment
+    return when {
+        hasDumbbells && current == StarterPlans.GYM_SPLIT_INDEX && preset == EquipmentPreset.FULL_GYM -> current
+        hasDumbbells && current in listOf(StarterPlans.BODYWEIGHT_INDEX, StarterPlans.DUMBBELLS_INDEX) -> StarterPlans.DUMBBELLS_INDEX
+        hasDumbbells && current == 0 && preset in listOf(EquipmentPreset.FULL_GYM, EquipmentPreset.HOME_GYM) -> StarterPlans.DUMBBELLS_INDEX
+        !hasDumbbells && current in listOf(StarterPlans.DUMBBELLS_INDEX, StarterPlans.GYM_SPLIT_INDEX) -> StarterPlans.BODYWEIGHT_INDEX
+        // Hemo's routine needs bars; with nothing at all, the plain bodyweight plan is the honest start.
+        preset == EquipmentPreset.BODYWEIGHT_ONLY && current == 0 -> StarterPlans.BODYWEIGHT_INDEX
+        else -> current
     }
 }
 

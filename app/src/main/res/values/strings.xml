@@ -15,6 +15,8 @@
         <item quantity="other">%1$d new badges</item>
     </plurals>
     <string name="weight_log_title">Log body weight</string>
+    <string name="weight_saved">Weight saved</string>
+    <string name="food_tick_hint">Tick what you ate, then tap Log.</string>
     <string name="weight_body">Body weight</string>
     <string name="stepper_tap_to_type">Tap the number to type it</string>
     <string name="action_save">Save</string>
@@ -40,10 +42,16 @@
         <item quantity="other">%1$d weeks</item>
     </plurals>
     <string name="streak_first_week">Your first full week starts Monday</string>
+    <string name="streak_head_start">Head start</string>
+    <string name="streak_head_start_body">Your first full week starts Monday. This workout already counts toward your streak.</string>
     <string name="streak_hit_to_start">Hit your weekly target to start a streak</string>
     <plurals name="streak_best">
         <item quantity="one">Best: %1$d week</item>
         <item quantity="other">Best: %1$d weeks</item>
+    </plurals>
+    <plurals name="streak_next_week">
+        <item quantity="one">next week: %1$d workout keeps it going</item>
+        <item quantity="other">next week: %1$d workouts keep it going</item>
     </plurals>
     <plurals name="streak_more_to_go">
         <item quantity="one">%1$d more to keep it going</item>
@@ -52,12 +60,16 @@
     <string name="cd_done">Done</string>
     <string name="cd_rest">Rest</string>
     <string name="home_done">Done</string>
+    <string name="home_level">Level %1$d</string>
     <string name="today_title">Today\'s workout</string>
     <string name="today_in_progress">Workout in progress</string>
     <string name="today_no_plan">No plan yet</string>
     <string name="today_rest_day">Rest day</string>
     <string name="today_resume_hint">Pick up where you left off</string>
     <string name="today_done">Done for today. Nice work.</string>
+    <string name="today_train_anyway">Train anyway</string>
+    <string name="today_train_again">Train again</string>
+    <string name="today_extra_done">Extra workout done</string>
     <string name="today_no_plan_hint">Pick a starter plan, build your own, or ask the coach.</string>
     <string name="today_rest_hint">Recovery is part of training.</string>
     <plurals name="today_exercises">
@@ -151,7 +163,7 @@
     <string name="rx_reps_only">reps</string>
     <string name="rx_sets_times">%1$d × %2$s</string>
     <string name="workouts_title">Workouts</string>
-    <string name="cd_workout_history">Journal</string>
+    <string name="cd_workout_history">History</string>
     <string name="cd_edit_plan">Edit plan</string>
     <string name="workouts_set_up_plan">Set up a plan</string>
     <string name="recovery_title">Muscle recovery</string>
@@ -204,12 +216,16 @@
     <string name="food_title">Food</string>
     <string name="food_scan_meal">Scan meal</string>
     <string name="food_add">Add food</string>
-    <string name="food_none_in_category">No foods in %1$s yet</string>
-    <string name="food_empty_hint">Scan a meal or add the foods you eat often. Next time it\'s one tap.</string>
+    <string name="food_none_in_category">No saved %1$s foods yet</string>
+    <string name="food_empty_hint">Save the foods you eat often here, then log them with one tap. What you ate today is listed under Logged today.</string>
     <string name="food_add_a_food">Add a food</string>
     <string name="food_logged_today">Logged today</string>
     <string name="food_logged_that_day">Logged that day</string>
     <string name="food_quick_log">Quick log</string>
+    <string name="food_estimate">Estimate calories from the name</string>
+    <string name="food_estimating">Estimating…</string>
+    <string name="food_estimate_basis">Based on: %1$s. Change the numbers if your portion was different.</string>
+    <string name="food_estimate_needs_key">Don\'t know the numbers? Scan the meal instead, or add a free Gemini key in Profile and the app estimates them from the name.</string>
     <string name="food_nothing_today">Nothing logged yet. Tick foods above, scan a plate, or quick-log a one-off meal.</string>
     <string name="food_nothing_that_day">Nothing was logged on this day.</string>
     <plurals name="food_log_selection">
@@ -229,8 +245,8 @@
     <string name="food_calories_surplus">Calories · surplus</string>
     <string name="food_last_7_days">Last 7 days</string>
     <plurals name="food_week_summary">
-        <item quantity="one">Avg %1$s kcal · %2$d g protein · goal hit %3$d of %4$d logged day</item>
-        <item quantity="other">Avg %1$s kcal · %2$d g protein · goal hit %3$d of %4$d logged days</item>
+        <item quantity="one">Avg %1$s kcal · %2$d g protein · protein goal hit %3$d of %4$d logged day</item>
+        <item quantity="other">Avg %1$s kcal · %2$d g protein · protein goal hit %3$d of %4$d logged days</item>
     </plurals>
     <string name="food_quick_log_hint">A one-off meal. It counts for the day but isn\'t added to your food list.</string>
     <string name="food_what_was_it">What was it?</string>
@@ -253,7 +269,7 @@
     <string name="food_serving_hint">Serving (e.g. 1 cup)</string>
     <string name="food_pin_top">Pin to top</string>
     <string name="ai_err_missing_key">Add your free Gemini key in Profile to use this.</string>
-    <string name="ai_err_invalid_key">Your Gemini key was rejected. Check it in Profile → AI key.</string>
+    <string name="ai_err_invalid_key">Your Gemini key was rejected. Check it in Profile → Coach and AI → Gemini key.</string>
     <string name="ai_err_rate_limited">Gemini\'s free limit is used up for now. Try again in a minute.</string>
     <string name="ai_err_offline">No internet connection. Check your connection and try again.</string>
     <string name="ai_err_network">The connection to Gemini failed. Try again.</string>
@@ -304,6 +320,7 @@
     <string name="scan_step_portions">Estimating portions…</string>
     <string name="scan_step_add">Adding up calories and protein…</string>
     <string name="scan_failed_title">Couldn\'t scan this meal</string>
+    <string name="scan_key_needed_title">This needs a Gemini key</string>
     <string name="scan_retake">Retake</string>
     <string name="scan_open_profile">Open Profile</string>
     <string name="action_try_again">Try again</string>
@@ -405,8 +422,10 @@
     <string name="profile_default_name">Athlete</string>
     <string name="profile_rank_line">Rank %1$s · %2$s · Level %3$d</string>
     <string name="profile_xp_line">%1$d / %2$d XP to level %3$d</string>
+    <string name="profile_xp_how">XP: %1$d a workout, %2$d a set, %3$d a new record, %4$d a badge. Your rank letter rises from E to S as you level up.</string>
     <string name="profile_best_streak">Best streak (wk)</string>
     <string name="profile_badges">Badges</string>
+    <string name="badges_next_up">Next up</string>
     <string name="profile_badges_unlocked">%1$d of %2$d unlocked</string>
     <string name="action_see_all">See all</string>
     <string name="profile_not_logged">Not logged</string>
@@ -453,7 +472,7 @@
     <string name="profile_import">Import file</string>
     <string name="profile_undo_restore">Undo last restore</string>
     <string name="drive_title">Google Drive</string>
-    <string name="drive_hint">Daily backup to a hidden app folder in your Drive. Nothing else in your Drive is touched.</string>
+    <string name="drive_hint">Daily backup to a hidden app folder in your Drive. The app only sees its own backup and the Docs it creates, never your other files.</string>
     <string name="drive_backed_up_at">%1$s · backed up %2$s</string>
     <string name="drive_connect">Connect Google Drive</string>
     <string name="drive_back_up_now">Back up now</string>
@@ -481,7 +500,7 @@
     <string name="hand_length">Length</string>
     <string name="hand_palm">Palm width</string>
     <string name="restore_title">Restore from %1$s?</string>
-    <string name="restore_body">Everything on this phone is replaced. A copy of what\'s here now is kept, so you can undo this from the Your data card.</string>
+    <string name="restore_body">Everything on this phone is replaced. A copy of what\'s here now is kept, so you can undo this with Undo last restore in Profile → Backup and sync.</string>
     <string name="badge_unlocked_detail">Unlocked. %1$s.</string>
     <string name="badge_locked_detail">To unlock: %1$s.</string>
     <string name="action_ok">OK</string>
@@ -515,6 +534,8 @@
     <string name="onb_key_label">Gemini API key</string>
     <string name="onb_checking">Checking…</string>
     <string name="onb_check_key">Check key</string>
+    <string name="onb_save_key">Save key</string>
+    <string name="onb_body_needed">Add your height and age to continue</string>
     <string name="onb_privacy">Your key stays encrypted on this phone. Meal photos and your training data are sent to Google Gemini under it; free keys let Google use them to improve its models.</string>
     <string name="cd_back">Back</string>
     <string name="hist_empty_title">No workouts yet</string>
@@ -564,6 +585,10 @@
     </plurals>
     <string name="live_finish">Finish</string>
     <string name="live_keep_going">Keep going</string>
+    <string name="live_reminder_title">Want a nudge on training days?</string>
+    <string name="live_reminder_on">Reminder on</string>
+    <string name="live_reminder_body">At 18:00 on planned days, only if you haven\'t trained yet. Change it in Profile → Training.</string>
+    <string name="live_reminder_button">Remind me</string>
     <string name="live_discard_title">Discard this workout?</string>
     <string name="live_discard_body">Logged sets from this session will be deleted.</string>
     <string name="live_swap_exercise">Swap exercise</string>
@@ -657,7 +682,7 @@
     <string name="plan_paste">Paste a plan</string>
     <string name="plan_paste_hint">From notes, a message or a Google Doc. AI turns it into your schedule.</string>
     <string name="plan_import_docs">Import from Google Docs</string>
-    <string name="plan_import_docs_hint">Pulls your newest doc named \"Workout Plan\". Set up in Profile → Google Drive.</string>
+    <string name="plan_import_docs_hint">Reads the \"ForgeQuest plan\" Google Doc. Turn it on in Profile → Backup and sync → Google Drive.</string>
     <string name="cd_move_day">Move to another day</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="one">circuit, %1$d round</item>
@@ -720,14 +745,14 @@
     <string name="live_next_up">Next up: %1$s · %2$s</string>
     <string name="home_center_protein">g protein</string>
     <string name="home_center_kcal">%1$s kcal</string>
-    <string name="backup_saved">Backup saved</string>
+    <string name="backup_saved">Saved to Downloads. On your new phone, use Import file here to bring it back.</string>
     <string name="profile_save_file">Save file</string>
     <string name="profile_share_file">Share</string>
     <string name="food_recent">Recent</string>
     <string name="coach_model_header">Model</string>
     <string name="coach_model_auto">Automatic</string>
-    <string name="coach_model_auto_hint">Recommended. Fastest model, with backups if it\'s busy</string>
-    <string name="coach_model_lite">Flash-Lite · fastest</string>
+    <string name="coach_model_auto_hint">Recommended. Quick replies, and it switches model when one is busy</string>
+    <string name="coach_model_lite">Flash-Lite · quickest, simpler answers</string>
     <string name="coach_model_lite_hint">Answers in about a second</string>
     <string name="coach_model_flash">Flash · smarter</string>
     <string name="coach_model_flash_hint">Slower, small free daily limit</string>
@@ -747,6 +772,7 @@
     <string name="progress_vs_last_week">%1$s vs last week</string>
     <string name="progress_first_week">your first week</string>
     <string name="progress_tile_best">%1$s · best set</string>
+    <string name="progress_tile_est_max">%1$s · estimated max (one rep)</string>
     <string name="progress_tile_weight">Body weight · 7-day avg</string>
     <string name="progress_tile_protein">Protein · days on goal</string>
     <string name="progress_tile_workouts">Workouts · per week</string>
@@ -756,7 +782,7 @@
     <string name="progress_holding">holding</string>
     <string name="progress_on_target">on target</string>
     <string name="progress_strength">Strength</string>
-    <string name="progress_strength_hint">Best set per session · gold dots are records · dashed line is your all-time high · drag to read</string>
+    <string name="progress_strength_hint">Best set per session (for weighted moves, the estimated one-rep max) · gold dots are records · dashed line is your all-time high · drag to read</string>
     <string name="progress_weight_hint">Daily entries with a 7-day average line · drag to read</string>
     <string name="progress_consistency">Consistency</string>
     <plurals name="progress_workout_days"><item quantity="one">%d workout day in this range</item><item quantity="other">%d workout days in this range</item></plurals>
@@ -887,7 +913,7 @@
     <string name="tour_2_t">Streaks by the week</string>
     <string name="tour_2_b">Your streak counts weeks you hit your workout target, not every single day. Rest days never break it.</string>
     <string name="tour_3_t">Plans and live workouts</string>
-    <string name="tour_3_b">Start from a ready plan or import one from a YouTube programme. Log sets with a rest timer, and new records are spotted for you.</string>
+    <string name="tour_3_b">Start from a ready plan, or let Gemini turn a YouTube programme into one (Workouts → Change plan). Log sets with a rest timer, and new records are spotted for you.</string>
     <string name="tour_4_t">Food in seconds</string>
     <string name="tour_4_b">Snap a photo of your meal and AI estimates protein and calories, carbs too if you want them. The rings on Home fill as you eat.</string>
     <string name="tour_5_t">Your AI coach</string>
@@ -905,6 +931,8 @@
     <string name="bridge_issues">Couldn\'t read: %1$s. Check the prompt\'s format.</string>
     <string name="bridge_sync">Sync now</string>
     <string name="bridge_copy_prompt">Copy prompt</string>
+    <string name="bridge_turn_on">Turn on and sign in</string>
+    <string name="bridge_explain">For people who use scheduled actions in the Gemini app.\n\n1. Turn it on and sign in with Google. Twice a day ForgeQuest writes your training summary to a \"ForgeQuest data\" Doc in your Drive.\n2. Tap Copy prompt and paste it into a new scheduled action in the Gemini app.\n3. Gemini writes its advice to \"ForgeQuest from Gemini\", and it shows on Home.\n\nThe app only sees those two Docs.</string>
     <string name="bridge_prompt_copied">Prompt copied. Paste it into a Gemini scheduled action.</string>
     <string name="bridge_copy_data">Copy data</string>
     <string name="bridge_data_copied">Data copied. Paste it into Gemini with the prompt.</string>
@@ -918,7 +946,7 @@
     <string name="bridge_home_title">From Gemini</string>
     <string name="bridge_week_title">**Weekly analysis from Gemini**</string>
     <string name="bridge_plan_card">Gemini suggests a new week. Preview it, and apply it if it looks right.</string>
-    <string name="drive_signin_cancelled">Google sign-in didn\'t finish. If the account list closes straight away, Drive isn\'t registered for this app yet (README › Google Drive).</string>
+    <string name="drive_signin_cancelled">Google sign-in didn\'t finish, so nothing was connected. Try again when you\'re ready.</string>
     <string name="hc_check_ok">Health Connect works: %1$d of %2$d data types have readings (%3$s).</string>
     <string name="hc_check_empty">Health Connect works, but nothing was recorded in the last 14 days. Check that Google Health shares with Health Connect.</string>
     <string name="drive_plan_doc_template">Write or paste your weekly plan below this line, in any form: a list of days and exercises, or plan JSON. ForgeQuest reads this document when you tap Import plan from Docs.\n\n</string>
@@ -993,7 +1021,7 @@
         <item quantity="other">%1$d sets done</item>
     </plurals>
     <string name="plan_change">Change plan</string>
-    <string name="plan_gemini">Make a plan with Gemini</string>
+    <string name="plan_gemini">Make a plan with Gemini (from YouTube too)</string>
     <string name="plan_gemini_copy">1. Copy prompt</string>
     <string name="plan_gemini_paste">2. Paste plan</string>
     <string name="plan_gemini_info">Copies a prompt for the Gemini app. Paste it there with YouTube links or a description of what you want; Gemini asks about your equipment and level, then replies with a plan. Copy its reply and tap Paste plan.</string>
@@ -1059,6 +1087,7 @@
     <string name="cd_group_closed">Closed</string>
     <string name="summary_body_not_set">Height and age not set yet</string>
     <string name="summary_fitbit_on">Fitbit on</string>
+    <string name="summary_fitbit_off">Fitbit off</string>
     <string name="summary_per_week">%1$d per week</string>
     <string name="summary_reminder_at">Reminder %1$s</string>
     <string name="summary_reminder_off">No reminder</string>
@@ -1091,6 +1120,8 @@
     <string name="ready_open_fitbit">Open Fitbit to sync</string>
     <string name="ready_yesterday">Yesterday\'s score: last night\'s sleep hasn\'t reached the app yet. Sync Fitbit, then tap refresh.</string>
     <string name="ready_refreshing">Refreshing</string>
+    <string name="ready_no_strain_yet">No strain recorded yet today. It builds up from your heart rate as you move and train.</string>
+    <string name="ready_sleep_only">No heart data from your watch yet, so recovery is based on your sleep alone.</string>
     <string name="ready_updated">Updated just now.</string>
     <string name="ready_new_night">Last night\'s sleep is in.</string>
     <string name="ready_waiting">Still no new sleep from Fitbit. It can take a few minutes after syncing, so the app checks again every minute.</string>
@@ -1146,6 +1177,7 @@
     <string name="picker_best_swaps">Best biomechanical matches</string>
     <string name="profile_body_fat_optional" formatted="false">Body fat % (optional)</string>
     <string name="onb_available_equipment">Your available equipment</string>
+    <string name="onb_equipment_hint">Pick what you have on most days. You can tick more later in Profile → Training.</string>
     <string name="live_tag_easy">Easy · RIR 3+</string>
     <string name="live_tag_solid">Solid · RIR 1-2</string>
     <string name="live_tag_max">Max · RIR 0</string>
@@ -1184,7 +1216,7 @@
     <string name="goal_cut_desc">Eat a little less and keep your muscle</string>
     <string name="goal_maintain_desc">Keep your weight and get stronger</string>
     <string name="goal_gain_desc">Eat a little more to build muscle</string>
-    <string name="pace_title">Weekly pace</string>
+    <string name="pace_title">Pace</string>
     <string name="pace_gentle">Gentle</string>
     <string name="pace_standard">Standard</string>
     <string name="pace_fast">Fast</string>

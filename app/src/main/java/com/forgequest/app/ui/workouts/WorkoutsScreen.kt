@@ -131,12 +131,9 @@ fun WorkoutsScreen(nav: NavHostController) {
                 Text(stringResource(R.string.workouts_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
                 Text(plan?.plan?.name ?: stringResource(R.string.today_no_plan), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            IconButton(onClick = { nav.navigate(Routes.HISTORY) }) {
-                Icon(Icons.Rounded.History, contentDescription = stringResource(R.string.cd_workout_history), tint = c.textPrimary)
-            }
-            IconButton(onClick = { nav.navigate(Routes.PLAN) }) {
-                Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.cd_edit_plan), tint = c.textPrimary)
-            }
+            // Labelled, so past workouts and the editor are found without guessing what an icon means.
+            HeaderAction(Icons.Rounded.History, stringResource(R.string.cd_workout_history)) { nav.navigate(Routes.HISTORY) }
+            HeaderAction(Icons.Rounded.Edit, stringResource(R.string.cd_edit_plan)) { nav.navigate(Routes.plan(selectedDay)) }
         }
         Spacer(Modifier.height(16.dp))
 
@@ -162,7 +159,7 @@ fun WorkoutsScreen(nav: NavHostController) {
         if (plan == null) {
             FitCard {
                 EmptyState(Icons.Rounded.Edit, stringResource(R.string.today_no_plan), stringResource(R.string.today_no_plan_hint)) {
-                    PillButton(stringResource(R.string.workouts_set_up_plan), onClick = { nav.navigate(Routes.PLAN) })
+                    PillButton(stringResource(R.string.workouts_set_up_plan), onClick = { nav.navigate(Routes.plan(selectedDay)) })
                 }
             }
         } else {
@@ -179,7 +176,7 @@ fun WorkoutsScreen(nav: NavHostController) {
                 },
                 onExercise = { nav.navigate(Routes.exercise(it)) },
                 onVideo = { openFormVideo(context, s.exercises[it]) },
-                onEdit = { nav.navigate(Routes.PLAN) },
+                onEdit = { nav.navigate(Routes.plan(selectedDay)) },
                 unit = s.settings.weightUnit,
                 trends = trends,
             )
@@ -319,5 +316,16 @@ private fun DayCard(
         if (canStart) {
             PillButton(if (isToday) stringResource(R.string.workouts_start) else stringResource(R.string.workouts_start_this), onClick = onStart, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
         }
+    }
+}
+
+@Composable
+private fun HeaderAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Column(
+        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(icon, contentDescription = null, tint = Fit.colors.textPrimary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Fit.colors.textSecondary)
     }
 }

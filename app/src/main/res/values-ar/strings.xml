@@ -24,6 +24,8 @@
         <item quantity="other">%1$d شارة جديدة</item>
     </plurals>
     <string name="weight_log_title">تسجيل الوزن</string>
+    <string name="weight_saved">حُفظ الوزن</string>
+    <string name="food_tick_hint">حدّد ما أكلته، ثم اضغط «تسجيل».</string>
     <string name="weight_body">وزن الجسم</string>
     <string name="stepper_tap_to_type">اضغط على الرقم لكتابته</string>
     <string name="action_save">حفظ</string>
@@ -53,6 +55,8 @@
         <item quantity="other">%1$d أسبوع</item>
     </plurals>
     <string name="streak_first_week">يبدأ أول أسبوع كامل لك يوم الاثنين</string>
+    <string name="streak_head_start">بداية مبكرة</string>
+    <string name="streak_head_start_body">يبدأ أول أسبوع كامل لك يوم الاثنين، وهذا التمرين يُحتسب في سلسلتك مسبقًا.</string>
     <string name="streak_hit_to_start">حقّق هدفك الأسبوعي لتبدأ سلسلتك</string>
     <plurals name="streak_best">
         <item quantity="zero">الأفضل: 0 أسابيع</item>
@@ -61,6 +65,14 @@
         <item quantity="few">الأفضل: %1$d أسابيع</item>
         <item quantity="many">الأفضل: %1$d أسبوعًا</item>
         <item quantity="other">الأفضل: %1$d أسبوع</item>
+    </plurals>
+    <plurals name="streak_next_week">
+        <item quantity="zero">الأسبوع المقبل: %1$d تمارين تُبقيها مستمرة</item>
+        <item quantity="one">الأسبوع المقبل: تمرين واحد يُبقيها مستمرة</item>
+        <item quantity="two">الأسبوع المقبل: تمرينان يُبقيانها مستمرة</item>
+        <item quantity="few">الأسبوع المقبل: %1$d تمارين تُبقيها مستمرة</item>
+        <item quantity="many">الأسبوع المقبل: %1$d تمرينًا يُبقيها مستمرة</item>
+        <item quantity="other">الأسبوع المقبل: %1$d تمرين يُبقيها مستمرة</item>
     </plurals>
     <plurals name="streak_more_to_go">
         <item quantity="zero">بقي %1$d لتستمر السلسلة</item>
@@ -73,12 +85,16 @@
     <string name="cd_done">تم</string>
     <string name="cd_rest">راحة</string>
     <string name="home_done">تم</string>
+    <string name="home_level">المستوى %1$d</string>
     <string name="today_title">تمرين اليوم</string>
     <string name="today_in_progress">تمرين جارٍ</string>
     <string name="today_no_plan">لا توجد خطة بعد</string>
     <string name="today_rest_day">يوم راحة</string>
     <string name="today_resume_hint">تابع من حيث توقفت</string>
     <string name="today_done">أنهيت تمرين اليوم. أحسنت.</string>
+    <string name="today_train_anyway">تمرّن رغم ذلك</string>
+    <string name="today_train_again">تمرّن مرة أخرى</string>
+    <string name="today_extra_done">أنجزت تمرينًا إضافيًا</string>
     <string name="today_no_plan_hint">اختر خطة جاهزة، أو أنشئ خطتك، أو اسأل المدرب.</string>
     <string name="today_rest_hint">الراحة جزء من التمرين.</string>
     <plurals name="today_exercises">
@@ -97,9 +113,9 @@
     <string name="badge_first_workout_desc">أنهِ تمرينك الأول</string>
     <string name="badge_workouts_10_title">عشرة تمارين</string>
     <string name="badge_workouts_10_desc">أنهِ 10 تمارين</string>
-    <string name="badge_workouts_50_title">نصف المئة</string>
+    <string name="badge_workouts_50_title">خمسون تمرينًا</string>
     <string name="badge_workouts_50_desc">أنهِ 50 تمرينًا</string>
-    <string name="badge_workouts_100_title">نادي المئة</string>
+    <string name="badge_workouts_100_title">مئة تمرين</string>
     <string name="badge_workouts_100_desc">أنهِ 100 تمرين</string>
     <string name="badge_streak_4_title">شهر من الالتزام</string>
     <string name="badge_streak_4_desc">حقّق هدفك الأسبوعي 4 أسابيع متتالية</string>
@@ -137,7 +153,7 @@
     <string name="badge_str_weighted_pull_20_desc">عقلة بوزن إضافي 20 كغ</string>
     <string name="badge_str_weighted_dip_30_title">متوازي بوزن إضافي 30 كغ</string>
     <string name="badge_str_weighted_dip_30_desc">متوازي بوزن إضافي 30 كغ</string>
-    <string name="badge_food_first_title">أول لقمة</string>
+    <string name="badge_food_first_title">أول وجبة مسجّلة</string>
     <string name="badge_food_first_desc">سجّل وجبتك الأولى</string>
     <string name="badge_food_scan_title">صوّر وسجّل</string>
     <string name="badge_food_scan_desc">سجّل وجبة بالكاميرا</string>
@@ -168,7 +184,7 @@
     <string name="badge_cat_strength">القوة</string>
     <string name="badge_cat_nutrition">التغذية</string>
     <string name="rx_seconds">%1$d ث</string>
-    <string name="rx_rep_range">%1$d–%2$d تكرار</string>
+    <string name="rx_rep_range">⁦%1$d–%2$d⁩ تكرار</string>
     <plurals name="rx_reps">
         <item quantity="zero">%1$d تكرار</item>
         <item quantity="one">تكرار واحد</item>
@@ -180,7 +196,7 @@
     <string name="rx_reps_only">تكرارات</string>
     <string name="rx_sets_times">%1$d × %2$s</string>
     <string name="workouts_title">التمارين</string>
-    <string name="cd_workout_history">يوميات التمارين</string>
+    <string name="cd_workout_history">السجل</string>
     <string name="cd_edit_plan">تعديل الخطة</string>
     <string name="workouts_set_up_plan">إعداد خطة</string>
     <string name="recovery_title">تعافي العضلات</string>
@@ -241,12 +257,16 @@
     <string name="food_title">الطعام</string>
     <string name="food_scan_meal">تصوير وجبة</string>
     <string name="food_add">إضافة طعام</string>
-    <string name="food_none_in_category">لا أطعمة في %1$s بعد</string>
-    <string name="food_empty_hint">صوّر وجبة أو أضف الأطعمة التي تتناولها كثيرًا، لتسجّلها لاحقًا بضغطة واحدة.</string>
+    <string name="food_none_in_category">لا أطعمة محفوظة في %1$s بعد</string>
+    <string name="food_empty_hint">احفظ هنا الأطعمة التي تتناولها كثيرًا لتسجّلها بضغطة واحدة. أما ما أكلته اليوم فيظهر تحت «سُجّل اليوم».</string>
     <string name="food_add_a_food">إضافة طعام</string>
     <string name="food_logged_today">سُجّل اليوم</string>
     <string name="food_logged_that_day">سُجّل في ذلك اليوم</string>
     <string name="food_quick_log">تسجيل سريع</string>
+    <string name="food_estimate">قدِّر السعرات من الاسم</string>
+    <string name="food_estimating">جارٍ التقدير…</string>
+    <string name="food_estimate_basis">بناءً على: %1$s. عدّل الأرقام إن اختلفت حصتك.</string>
+    <string name="food_estimate_needs_key">لا تعرف الأرقام؟ صوّر الوجبة بدلًا من ذلك، أو أضف مفتاح Gemini مجانيًا من الملف الشخصي ليقدّرها التطبيق من الاسم.</string>
     <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد من أطعمتك أعلاه، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
     <string name="food_nothing_that_day">لم يُسجَّل شيء في هذا اليوم.</string>
     <plurals name="food_log_selection">
@@ -270,12 +290,12 @@
     <string name="food_calories_surplus">سعرات زائدة</string>
     <string name="food_last_7_days">آخر 7 أيام</string>
     <plurals name="food_week_summary">
-        <item quantity="zero">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت الهدف %3$d من %4$d يوم مسجّل</item>
-        <item quantity="one">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت الهدف %3$d من يوم واحد مسجّل</item>
-        <item quantity="two">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت الهدف %3$d من يومين مسجّلين</item>
-        <item quantity="few">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت الهدف %3$d من %4$d أيام مسجّلة</item>
-        <item quantity="many">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت الهدف %3$d من %4$d يومًا مسجّلًا</item>
-        <item quantity="other">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت الهدف %3$d من %4$d يوم مسجّل</item>
+        <item quantity="zero">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d يوم مسجّل</item>
+        <item quantity="one">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من يوم واحد مسجّل</item>
+        <item quantity="two">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من يومين مسجّلين</item>
+        <item quantity="few">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d أيام مسجّلة</item>
+        <item quantity="many">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d يومًا مسجّلًا</item>
+        <item quantity="other">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d يوم مسجّل</item>
     </plurals>
     <string name="food_quick_log_hint">وجبة لمرة واحدة؛ تُحتسب لليوم ولا تُضاف إلى قائمة أطعمتك.</string>
     <string name="food_what_was_it">ماذا أكلت؟</string>
@@ -298,7 +318,7 @@
     <string name="food_serving_hint">الحصة (مثل: كوب واحد)</string>
     <string name="food_pin_top">تثبيت في الأعلى</string>
     <string name="ai_err_missing_key">أضف مفتاح Gemini المجاني من الملف الشخصي لاستخدام هذه الميزة.</string>
-    <string name="ai_err_invalid_key">رُفض مفتاح Gemini. راجعه في الملف الشخصي ← مفتاح Gemini.</string>
+    <string name="ai_err_invalid_key">رُفض مفتاح Gemini. راجعه في الملف الشخصي ← المدرب والذكاء الاصطناعي ← مفتاح Gemini.</string>
     <string name="ai_err_rate_limited">نفد الحد المجاني لـ Gemini مؤقتًا. أعد المحاولة بعد دقيقة.</string>
     <string name="ai_err_offline">لا يوجد اتصال بالإنترنت. تحقّق من اتصالك وأعد المحاولة.</string>
     <string name="ai_err_network">تعذّر الاتصال بـ Gemini. أعد المحاولة.</string>
@@ -349,6 +369,7 @@
     <string name="scan_step_portions">جارٍ تقدير الكميات…</string>
     <string name="scan_step_add">جارٍ حساب السعرات والبروتين…</string>
     <string name="scan_failed_title">تعذّرت قراءة هذه الوجبة</string>
+    <string name="scan_key_needed_title">تحتاج هذه الميزة إلى مفتاح Gemini</string>
     <string name="scan_retake">إعادة التصوير</string>
     <string name="scan_open_profile">فتح الملف الشخصي</string>
     <string name="action_try_again">إعادة المحاولة</string>
@@ -366,7 +387,7 @@
     <string name="scan_save_hint">سجّلها لاحقًا بضغطة واحدة</string>
     <string name="scan_log_meal">تسجيل الوجبة</string>
     <string name="coach_plan_applied">طُبّقت الخطة الجديدة. راجعها في تبويب التمارين.</string>
-    <string name="coach_suggest_week">راجع أسبوعي</string>
+    <string name="coach_suggest_week">راجع أسبوعي معي</string>
     <string name="coach_suggest_pull_up">كيف أصل إلى أول عقلة؟</string>
     <string name="coach_suggest_plan">أعدّ لي خطة من 4 أيام</string>
     <string name="coach_suggest_breakfast">أفكار فطور عالي البروتين</string>
@@ -468,10 +489,12 @@
     <string name="profile_setup_body">الصق مفتاح Gemini مجانيًا؛ يستغرق ذلك دقيقة تقريبًا.</string>
     <string name="profile_add_key">إضافة المفتاح</string>
     <string name="profile_default_name">الرياضي</string>
-    <string name="profile_rank_line">الرتبة %1$s · %2$s · المستوى %3$d</string>
-    <string name="profile_xp_line">⁦%1$d / %2$d XP⁩ للمستوى %3$d</string>
+    <string name="profile_rank_line">%2$s · المستوى %3$d</string>
+    <string name="profile_xp_line">⁦%1$d / %2$d⁩ نقطة خبرة للمستوى %3$d</string>
+    <string name="profile_xp_how">نقاط الخبرة: %1$d لكل تمرين، و%2$d لكل مجموعة، و%3$d لكل رقم قياسي جديد، و%4$d لكل وسام. ويرتقي لقب رتبتك كلما ارتفع مستواك.</string>
     <string name="profile_best_streak">أفضل سلسلة (أسابيع)</string>
     <string name="profile_badges">الشارات</string>
+    <string name="badges_next_up">الوسام التالي</string>
     <string name="profile_badges_unlocked">فُتحت %1$d من %2$d</string>
     <string name="action_see_all">عرض الكل</string>
     <string name="profile_not_logged">غير مسجل</string>
@@ -489,7 +512,7 @@
     <string name="theme_system">حسب النظام</string>
     <string name="theme_light">فاتح</string>
     <string name="theme_dark">داكن</string>
-    <string name="profile_weights">الأوزان</string>
+    <string name="profile_weights">وحدة الوزن</string>
     <string name="unit_kilograms">كيلوغرام</string>
     <string name="unit_pounds">رطل</string>
     <string name="profile_vibration">الاهتزاز</string>
@@ -498,7 +521,7 @@
     <string name="profile_reminder_off">متوقف. تنبيه في أيام التمرين إن لم تسجّل شيئًا.</string>
     <string name="profile_reminder_on">في أيام التمرين الساعة %1$s، إن لم تسجّل شيئًا بعد.</string>
     <string name="profile_time">الوقت</string>
-    <string name="profile_reminder_hour">ساعة التذكير (0–23)</string>
+    <string name="profile_reminder_hour">ساعة التذكير (⁦0–23⁩)</string>
     <string name="profile_coach_memory">ما يتذكره المدرب</string>
     <string name="profile_memory_empty">أخبر المدرب بإصاباتك أو معدّاتك أو تفضيلاتك، وسيحفظها هنا.</string>
     <string name="profile_memory_hint">يستعين بها في كل محادثة. اضغط على أي سطر لحذفه.</string>
@@ -518,7 +541,7 @@
     <string name="profile_import">استيراد ملف</string>
     <string name="profile_undo_restore">التراجع عن آخر استرجاع</string>
     <string name="drive_title">Google Drive</string>
-    <string name="drive_hint">نسخة يومية في مجلد مخفي للتطبيق داخل Google Drive، دون المساس بأي ملفات أخرى.</string>
+    <string name="drive_hint">نسخة يومية في مجلد مخفي للتطبيق داخل Google Drive. لا يرى التطبيق إلا نسخته الاحتياطية والمستندات التي ينشئها، ولا يطّلع على ملفاتك الأخرى.</string>
     <string name="drive_backed_up_at">%1$s · آخر نسخة %2$s</string>
     <string name="drive_connect">ربط Google Drive</string>
     <string name="drive_back_up_now">النسخ الاحتياطي الآن</string>
@@ -546,7 +569,7 @@
     <string name="hand_length">الطول</string>
     <string name="hand_palm">عرض الكف</string>
     <string name="restore_title">الاسترجاع من %1$s؟</string>
-    <string name="restore_body">ستُستبدل كل البيانات على هذا الهاتف، وتُحفظ نسخة من بياناتك الحالية لتتمكّن من التراجع من بطاقة «بياناتك».</string>
+    <string name="restore_body">ستُستبدل كل البيانات على هذا الهاتف، وتُحفظ نسخة من بياناتك الحالية لتتمكّن من التراجع عبر «التراجع عن آخر استرجاع» في الملف الشخصي ← النسخ الاحتياطي والمزامنة.</string>
     <string name="badge_unlocked_detail">مفتوحة. %1$s.</string>
     <string name="badge_locked_detail">لفتحها: %1$s.</string>
     <string name="action_ok">حسنًا</string>
@@ -574,12 +597,14 @@
     <string name="onb_ai_title">تفعيل ميزات الذكاء الاصطناعي</string>
     <string name="onb_ai_body">يعمل تصوير الوجبات والمدرب على Google Gemini. المفتاح الشخصي مجاني، وإعداده يستغرق دقيقة تقريبًا.</string>
     <string name="onb_ai_step1">افتح Google AI Studio وسجّل الدخول بحساب Google.</string>
-    <string name="onb_ai_step2">اضغط على «Create API key» ثم انسخه.</string>
+    <string name="onb_ai_step2">اضغط زر «Create API key» (إنشاء مفتاح)، ثم انسخ المفتاح.</string>
     <string name="onb_ai_step3">الصقه أدناه.</string>
     <string name="onb_get_key">الحصول على مفتاح مجاني</string>
     <string name="onb_key_label">مفتاح Gemini API</string>
     <string name="onb_checking">جارٍ التحقق…</string>
     <string name="onb_check_key">التحقق من المفتاح</string>
+    <string name="onb_save_key">احفظ المفتاح</string>
+    <string name="onb_body_needed">أدخل طولك وعمرك للمتابعة</string>
     <string name="onb_privacy">يبقى مفتاحك مشفّرًا على هذا الهاتف. تُرسل صور الوجبات وبيانات تمرينك إلى Google Gemini بهذا المفتاح، والمفاتيح المجانية تتيح لـ Google استخدامها لتحسين نماذجها.</string>
     <string name="cd_back">رجوع</string>
     <string name="hist_empty_title">لا توجد تمارين بعد</string>
@@ -632,23 +657,27 @@
     <string name="live_saving">جارٍ الحفظ…</string>
     <string name="live_finish_workout">إنهاء التمرين</string>
     <plurals name="live_finish_unticked_title">
-        <item quantity="zero">الإنهاء مع %1$d مجموعات غير محددة؟</item>
-        <item quantity="one">الإنهاء مع مجموعة غير محددة؟</item>
-        <item quantity="two">الإنهاء مع مجموعتين غير محددتين؟</item>
-        <item quantity="few">الإنهاء مع %1$d مجموعات غير محددة؟</item>
-        <item quantity="many">الإنهاء مع %1$d مجموعةً غير محددة؟</item>
-        <item quantity="other">الإنهاء مع %1$d مجموعة غير محددة؟</item>
+        <item quantity="zero">إنهاء التمرين؟</item>
+        <item quantity="one">إنهاء التمرين؟</item>
+        <item quantity="two">إنهاء التمرين؟</item>
+        <item quantity="few">إنهاء التمرين؟</item>
+        <item quantity="many">إنهاء التمرين؟</item>
+        <item quantity="other">إنهاء التمرين؟</item>
     </plurals>
     <plurals name="live_finish_unticked_body">
-        <item quantity="zero">لا تُحفظ إلا المجموعات المحددة.</item>
-        <item quantity="one">لا تُحفظ إلا المجموعات المحددة، وستُستبعد المجموعة التي لم تحدّدها.</item>
-        <item quantity="two">لا تُحفظ إلا المجموعات المحددة، وستُستبعد المجموعتان اللتان لم تحدّدهما.</item>
-        <item quantity="few">لا تُحفظ إلا المجموعات المحددة، وستُستبعد المجموعات الـ%1$d التي لم تحدّدها.</item>
-        <item quantity="many">لا تُحفظ إلا المجموعات المحددة، وستُستبعد المجموعات الـ%1$d التي لم تحدّدها.</item>
-        <item quantity="other">لا تُحفظ إلا المجموعات المحددة، وستُستبعد المجموعات الـ%1$d التي لم تحدّدها.</item>
+        <item quantity="zero">ستُحفظ المجموعات التي علّمتها فقط.</item>
+        <item quantity="one">ستُحفظ المجموعات التي علّمتها فقط، وتُهمل مجموعة واحدة لم تعلّمها.</item>
+        <item quantity="two">ستُحفظ المجموعات التي علّمتها فقط، وتُهمل مجموعتان لم تعلّمهما.</item>
+        <item quantity="few">ستُحفظ المجموعات التي علّمتها فقط، وتُهمل %1$d مجموعات لم تعلّمها.</item>
+        <item quantity="many">ستُحفظ المجموعات التي علّمتها فقط، وتُهمل %1$d مجموعةً لم تعلّمها.</item>
+        <item quantity="other">ستُحفظ المجموعات التي علّمتها فقط، وتُهمل %1$d مجموعة لم تعلّمها.</item>
     </plurals>
-    <string name="live_finish">إنهاء</string>
-    <string name="live_keep_going">المتابعة</string>
+    <string name="live_finish">أنهِ</string>
+    <string name="live_keep_going">أكمل التمرين</string>
+    <string name="live_reminder_title">هل تريد تذكيرًا في أيام التمرين؟</string>
+    <string name="live_reminder_on">التذكير مفعّل</string>
+    <string name="live_reminder_body">في الساعة 18:00 من الأيام المخطط لها، إن لم تكن قد تمرنت بعد. غيّره من الملف الشخصي ← التدريب.</string>
+    <string name="live_reminder_button">ذكّرني</string>
     <string name="live_discard_title">إلغاء هذا التمرين؟</string>
     <string name="live_discard_body">ستُحذف المجموعات المسجّلة في هذه الجلسة.</string>
     <string name="live_swap_exercise">استبدال التمرين</string>
@@ -669,14 +698,14 @@
     <string name="live_skip">تجاوز</string>
     <string name="live_complete">اكتمل التمرين</string>
     <string name="live_sets">مجموعات</string>
-    <string name="live_xp">XP</string>
+    <string name="live_xp">نقاط الخبرة</string>
     <string name="live_level_up">ارتقيت! المستوى %1$d</string>
     <string name="live_level">المستوى %1$d</string>
-    <string name="live_rank">الرتبة %1$s · %2$s</string>
+    <string name="live_rank">الرتبة: %2$s</string>
     <string name="live_new_record">رقم قياسي جديد: %1$s</string>
     <string name="live_badge_unlocked">شارة جديدة: %1$s</string>
     <string name="kind_hold">ثبات</string>
-    <string name="kind_weighted">بوزن</string>
+    <string name="kind_weighted">بأثقال</string>
     <string name="picker_search">ابحث عن تمرين</string>
     <string name="picker_all">الكل</string>
     <string name="picker_create_custom">إنشاء تمرين مخصص</string>
@@ -750,7 +779,7 @@
     <string name="plan_paste">لصق خطة</string>
     <string name="plan_paste_hint">من الملاحظات أو رسالة أو Google Doc، ويحوّلها الذكاء الاصطناعي إلى جدولك.</string>
     <string name="plan_import_docs">الاستيراد من Google Docs</string>
-    <string name="plan_import_docs_hint">يقرأ مستند «ForgeQuest plan». فعّله من الملف الشخصي ← Google Drive.</string>
+    <string name="plan_import_docs_hint">يقرأ مستند «ForgeQuest plan» في Google Docs. فعّله من الملف الشخصي ← النسخ الاحتياطي والمزامنة ← Google Drive.</string>
     <string name="cd_move_day">النقل إلى يوم آخر</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="zero">تمرين دائري، 0 جولات</item>
@@ -816,19 +845,19 @@
     <string name="block_legs">الأرجل</string>
     <string name="live_rest_minus">−15 ث</string>
     <string name="live_rest_plus">+15 ث</string>
-    <string name="live_tick_all_finish">تحديد الكل والإنهاء</string>
+    <string name="live_tick_all_finish">علّم الكل وأنهِ</string>
     <string name="live_last_time">المرة الماضية: %1$s</string>
     <string name="live_next_up">التالي: %1$s · %2$s</string>
     <string name="home_center_protein">غ بروتين</string>
     <string name="home_center_kcal">%1$s سعرة</string>
-    <string name="backup_saved">حُفظت النسخة الاحتياطية</string>
+    <string name="backup_saved">حُفظت في مجلد التنزيلات. على هاتفك الجديد، استخدم «استيراد ملف» هنا لاستعادتها.</string>
     <string name="profile_save_file">حفظ ملف</string>
     <string name="profile_share_file">مشاركة</string>
     <string name="food_recent">الأحدث</string>
     <string name="coach_model_header">النموذج</string>
     <string name="coach_model_auto">تلقائي</string>
-    <string name="coach_model_auto_hint">موصى به. أسرع نموذج، مع بدائل عند انشغاله</string>
-    <string name="coach_model_lite">Flash-Lite · الأسرع</string>
+    <string name="coach_model_auto_hint">موصى به. ردود سريعة، ويبدّل النموذج إذا كان أحدها مشغولًا</string>
+    <string name="coach_model_lite">Flash-Lite · الأسرع، بإجابات أبسط</string>
     <string name="coach_model_lite_hint">يُجيب في ثانية تقريبًا</string>
     <string name="coach_model_flash">Flash · أذكى</string>
     <string name="coach_model_flash_hint">أبطأ، وحدّه المجاني اليومي محدود</string>
@@ -848,6 +877,7 @@
     <string name="progress_vs_last_week">%1$s عن الأسبوع الماضي</string>
     <string name="progress_first_week">أسبوعك الأول</string>
     <string name="progress_tile_best">%1$s · أفضل مجموعة</string>
+    <string name="progress_tile_est_max">%1$s · الحد الأقصى التقديري (تكرار واحد)</string>
     <string name="progress_tile_weight">الوزن · متوسط 7 أيام</string>
     <string name="progress_tile_protein">البروتين · أيام على الهدف</string>
     <string name="progress_tile_workouts">التمارين · أسبوعيًا</string>
@@ -857,7 +887,7 @@
     <string name="progress_holding">ثابت</string>
     <string name="progress_on_target">على الهدف</string>
     <string name="progress_strength">القوة</string>
-    <string name="progress_strength_hint">أفضل مجموعة في كل جلسة · النقاط الذهبية أرقام قياسية · الخط المتقطع أعلى ما وصلت إليه · اسحب للقراءة</string>
+    <string name="progress_strength_hint">أفضل مجموعة في كل جلسة (وللتمارين بالأثقال: الحد الأقصى التقديري لتكرار واحد) · النقاط الذهبية أرقام قياسية · الخط المتقطع أعلى ما وصلت إليه · اسحب للقراءة</string>
     <string name="progress_weight_hint">إدخالات يومية مع خط متوسط 7 أيام · اسحب للقراءة</string>
     <string name="progress_consistency">الانتظام</string>
     <plurals name="progress_workout_days"><item quantity="zero">لا أيام تمرين في هذه الفترة</item><item quantity="one">يوم تمرين واحد في هذه الفترة</item><item quantity="two">يوما تمرين في هذه الفترة</item><item quantity="few">%d أيام تمرين في هذه الفترة</item><item quantity="many">%d يومَ تمرين في هذه الفترة</item><item quantity="other">%d يوم تمرين في هذه الفترة</item></plurals>
@@ -875,7 +905,7 @@
     <string name="progress_total_lifted">رُفعت إجمالًا</string>
     <string name="progress_empty_title">تبدأ رسومك بعد أول تمرين</string>
     <string name="progress_empty_body">أنهِ جلسة واحدة لتمتلئ هذه الصفحة باتجاهاتك وأرقامك القياسية وانتظامك.</string>
-    <string name="progress_need_more">جلستان من %1$s ويظهر الخط.</string>
+    <string name="progress_need_more">سجّل جلستين من %1$s ليظهر الخط.</string>
     <string name="home_progress_card">هذا الشهر</string>
     <string name="home_progress_open">شاهد تقدّمك</string>
     <string name="profile_progress_title">التقدّم</string>
@@ -949,7 +979,7 @@
     <string name="call_recover_t">استشفاء</string>
     <string name="call_recover_b">استرح، أو امشِ، أو أدِّ تمارين مرونة؛ فالتعافي جزء من التدريب.</string>
     <string name="ready_no_data">لا توجد بيانات Fitbit لليلة الماضية بعد. ارتدِه عند النوم ليظهر تعافيك هنا صباحًا.</string>
-    <string name="ready_target">هدف الإجهاد %1$d–%2$d</string>
+    <string name="ready_target">هدف الإجهاد ⁦%1$d–%2$d⁩</string>
     <string name="ready_need_tonight">النوم المطلوب الليلة %1$s</string>
     <string name="ready_felt_great">أشعر بنشاط كبير اليوم</string>
     <string name="ready_felt_great_on">سُجّل شعورك بالنشاط</string>
@@ -958,14 +988,14 @@
     <string name="ready_c_rhr">نبض الراحة</string>
     <string name="ready_c_resp">معدل التنفس</string>
     <string name="ready_c_sleep">أداء النوم</string>
-    <string name="ready_recovery_explain">يُقارَن بآخر 60 يومًا لك. تقلّب نبض القلب أهم العوامل، ويُحسب بمتوسط 7 أيام كي لا تقلب ليلةٌ شاذة النتيجة. الأخضر 67 فأكثر، والأصفر 34–66، والأحمر دون ذلك.</string>
+    <string name="ready_recovery_explain">يُقارَن بآخر 60 يومًا لك. تقلّب نبض القلب أهم العوامل، ويُحسب بمتوسط 7 أيام كي لا تقلب ليلةٌ شاذة النتيجة. الأخضر 67 فأكثر، والأصفر ⁦34–66⁩، والأحمر دون ذلك.</string>
     <string name="ready_c_tonight">المطلوب الليلة</string>
     <string name="ready_debt">يشمل %1$s من دين النوم المتراكم من الليالي القصيرة الأخيرة.</string>
     <string name="ready_c_steps">الخطوات</string>
     <string name="ready_c_kcal">السعرات المحروقة</string>
     <string name="ready_zones">نطاقات نبض القلب اليوم</string>
     <string name="ready_minutes">%1$d د</string>
-    <string name="ready_strain_explain">تُحتسب كل دقيقة يعمل فيها قلبك فوق نبض الراحة، والدقائق الأشد أكثر بكثير، على مقياس من 0 إلى 21 يزداد ارتقاؤه صعوبة. خفيف دون 10، ومتوسط 10–13، ومرتفع 14–17، وأقصى جهد 18 فأكثر.</string>
+    <string name="ready_strain_explain">تُحتسب كل دقيقة يعمل فيها قلبك فوق نبض الراحة، والدقائق الأشد أكثر بكثير، على مقياس من 0 إلى 21 يزداد ارتقاؤه صعوبة. خفيف دون 10، ومتوسط ⁦10–13⁩، ومرتفع ⁦14–17⁩، وأقصى جهد 18 فأكثر.</string>
     <string name="band_light">خفيف</string>
     <string name="band_moderate">متوسط</string>
     <string name="band_high">مرتفع</string>
@@ -988,7 +1018,7 @@
     <string name="tour_2_t">سلسلة أسبوعية</string>
     <string name="tour_2_b">تحتسب سلسلتك الأسابيع التي تبلغ فيها هدف تمارينك، لا كل يوم؛ فلا تقطعها أيام الراحة أبدًا.</string>
     <string name="tour_3_t">خطط وتمارين مباشرة</string>
-    <string name="tour_3_b">ابدأ بخطة جاهزة أو استورد برنامجًا من يوتيوب، وسجّل مجموعاتك مع مؤقت الراحة، وستُكتشف أرقامك القياسية تلقائيًا.</string>
+    <string name="tour_3_b">ابدأ بخطة جاهزة، أو دَع Gemini يحوّل برنامجًا من يوتيوب إلى خطة (التمارين ← تغيير الخطة)، وسجّل مجموعاتك مع مؤقت الراحة، وستُكتشف أرقامك القياسية تلقائيًا.</string>
     <string name="tour_4_t">طعامك في ثوانٍ</string>
     <string name="tour_4_b">صوّر وجبتك ليقدّر الذكاء الاصطناعي البروتين والسعرات، والكربوهيدرات إن شئت، وتمتلئ حلقات الرئيسية مع كل وجبة.</string>
     <string name="tour_5_t">مدربك الذكي</string>
@@ -999,6 +1029,8 @@
     <string name="tour_7_b">اجمع نقاط الخبرة، وارتقِ في الرتب، وافتح الأوسمة، وتابع تقدّمك وتعافي عضلاتك مع الوقت.</string>
     <string name="bridge_title">الربط مع تطبيق Gemini</string>
     <string name="bridge_hint">ميزة متقدمة: تقرأ أتمتة Gemini المستند «ForgeQuest data» في Drive مرتين يوميًا، وتكتب ردّها في «ForgeQuest from Gemini».</string>
+    <string name="bridge_turn_on">التفعيل وتسجيل الدخول</string>
+    <string name="bridge_explain">هذه الميزة لمن يستخدم الإجراءات المجدولة في تطبيق Gemini.\n\n1. فعّلها وسجّل الدخول بحساب Google ليكتب ForgeQuest ملخص تدريبك في مستند «ForgeQuest data» في Drive مرتين يوميًا.\n2. اضغط «نسخ النص» والصقه في إجراء مجدول جديد في تطبيق Gemini.\n3. يكتب Gemini نصائحه في «ForgeQuest from Gemini»، فتظهر في الصفحة الرئيسية.\n\nلا يطّلع التطبيق إلا على هذين المستندين.</string>
     <string name="bridge_wrote">كُتبت البيانات %1$s</string>
     <string name="bridge_never_wrote">لم تُكتب البيانات بعد</string>
     <string name="bridge_read">قُرئ الرد %1$s</string>
@@ -1019,7 +1051,7 @@
     <string name="bridge_home_title">من Gemini</string>
     <string name="bridge_week_title">**التحليل الأسبوعي من Gemini**</string>
     <string name="bridge_plan_card">يقترح Gemini أسبوعًا جديدًا؛ استعرضه وطبّقه إن رأيته مناسبًا.</string>
-    <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول بحساب Google. إن أُغلقت قائمة الحسابات فورًا، فالتطبيق غير مسجّل لاستخدام Drive بعد (README › Google Drive).</string>
+    <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول بحساب Google، فلم يُربط شيء. حاول مجددًا متى شئت.</string>
     <string name="hc_check_ok">يعمل Health Connect: %1$d من %2$d أنواع بيانات فيها قراءات (%3$s).</string>
     <string name="hc_check_empty">يعمل Health Connect، لكن لم يُسجَّل شيء في آخر 14 يومًا. تأكّد أن Google Health يشارك البيانات مع Health Connect.</string>
     <string name="drive_plan_doc_template">اكتب خطتك الأسبوعية أو الصقها تحت هذا السطر بأي صيغة: قائمة بالأيام والتمارين، أو JSON للخطة. يقرأ ForgeQuest هذا المستند عند الضغط على «استيراد خطة من Docs».\n\n</string>
@@ -1042,7 +1074,7 @@
     <string name="ready_out_of_bed">الاستيقاظ</string>
     <string name="ready_sleep_explain">أداء النوم هو نومك مقارنةً بما تحتاجه. يبدأ احتياجك من 8 ساعات، ويزيد بعد الأيام الشاقة والليالي القصيرة، وتُنقص القيلولة منه. تأتي المراحل من Fitbit.</string>
     <string name="ready_of_21">من 21 · %1$s</string>
-    <string name="ready_target_sentence">هدف اليوم %1$d–%2$d، وفق تعافيك.</string>
+    <string name="ready_target_sentence">هدف اليوم ⁦%1$d–%2$d⁩، وفق تعافيك.</string>
     <string name="ready_how_earned">مصادر الإجهاد</string>
     <string name="ready_earned_workouts">تمارين ForgeQuest · %1$d%%</string>
     <string name="ready_earned_other">نشاط آخر · %1$d%%</string>
@@ -1098,7 +1130,7 @@
         <item quantity="other">%1$d مجموعة مكتملة</item>
     </plurals>
     <string name="plan_change">تغيير الخطة</string>
-    <string name="plan_gemini">إنشاء خطة باستخدام Gemini</string>
+    <string name="plan_gemini">إنشاء خطة باستخدام Gemini (ومن يوتيوب أيضًا)</string>
     <string name="plan_gemini_copy">1. نسخ الطلب</string>
     <string name="plan_gemini_paste">2. لصق الخطة</string>
     <string name="plan_gemini_info">ينسخ طلبًا لتطبيق Gemini. الصقه هناك مع روابط يوتيوب أو وصف لما تريد، فيسألك Gemini عن معدّاتك ومستواك ثم يردّ بخطة. انسخ ردّه واضغط على «لصق الخطة».</string>
@@ -1164,7 +1196,8 @@
     <string name="cd_group_closed">مغلقة</string>
     <string name="summary_body_not_set">لم يُحدَّد الطول والعمر بعد</string>
     <string name="summary_fitbit_on">Fitbit متصل</string>
-    <string name="summary_per_week">%1$d في الأسبوع</string>
+    <string name="summary_fitbit_off">Fitbit غير مفعّل</string>
+    <string name="summary_per_week">%1$d أيام تمرين أسبوعيًا</string>
     <string name="summary_reminder_at">تذكير %1$s</string>
     <string name="summary_reminder_off">دون تذكير</string>
     <string name="summary_equipment_unset">لم تُحدَّد المعدات</string>
@@ -1196,6 +1229,8 @@
     <string name="ready_open_fitbit">افتح Fitbit للمزامنة</string>
     <string name="ready_yesterday">هذه نتيجة الأمس، إذ لم يصل نوم الليلة الماضية إلى التطبيق بعد. زامِن Fitbit ثم اضغط على زر التحديث.</string>
     <string name="ready_refreshing">جارٍ التحديث</string>
+    <string name="ready_no_strain_yet">لم يُسجَّل أي إجهاد اليوم بعد، وهو يتراكم من نبض قلبك كلما تحرّكت وتمرّنت.</string>
+    <string name="ready_sleep_only">لم تصل بيانات القلب من ساعتك بعد، لذا يعتمد التعافي على نومك وحده.</string>
     <string name="ready_updated">حُدِّثت البيانات للتو.</string>
     <string name="ready_new_night">وصل نوم الليلة الماضية.</string>
     <string name="ready_waiting">لم يصل نوم جديد من Fitbit بعد. قد يستغرق ذلك بضع دقائق بعد المزامنة، لذا يعيد التطبيق التحقق كل دقيقة.</string>
@@ -1250,6 +1285,7 @@
     <string name="picker_best_swaps">أفضل البدائل المطابقة حركيًا</string>
     <string name="profile_body_fat_optional" formatted="false">نسبة الدهون % (اختياري)</string>
     <string name="onb_available_equipment">معدات التدريب المتوفرة لديك</string>
+    <string name="onb_equipment_hint">اختر ما يتوفر لديك في أغلب الأيام، ويمكنك إضافة المزيد لاحقًا من الملف الشخصي ← التدريب.</string>
     <string name="live_tag_easy">سهل · RIR 3+</string>
     <string name="live_tag_solid">متوازن · RIR 1-2</string>
     <string name="live_tag_max">أقصى جهد · RIR 0</string>
@@ -1297,14 +1333,14 @@
     <string name="day_sitting">جلوس في أغلب الوقت</string>
     <string name="day_sitting_desc">عمل مكتبي أو دراسة أو قيادة (أقل من 5,000 خطوة تقريبًا)</string>
     <string name="day_mixed">حركة ووقوف لبعض الوقت</string>
-    <string name="day_mixed_desc">تدريس أو مبيعات أو أعمال منزلية ومشي يومي (نحو 6,000–10,000 خطوة)</string>
+    <string name="day_mixed_desc">تدريس أو مبيعات أو أعمال منزلية ومشي يومي (نحو ⁦6,000–10,000⁩ خطوة)</string>
     <string name="day_physical">عمل بدني</string>
     <string name="day_physical_desc">مستودعات أو بناء أو خدمة طاولات (أكثر من 12,000 خطوة)</string>
     <string name="goal_step_body">اختر ما تريده الآن، ويمكنك تغييره في أي وقت من الملف الشخصي.</string>
     <string name="goal_cut_desc">تناول أقل قليلًا مع الحفاظ على عضلاتك</string>
     <string name="goal_maintain_desc">حافظ على وزنك وازدد قوة</string>
     <string name="goal_gain_desc">تناول أكثر قليلًا لبناء العضلات</string>
-    <string name="pace_title">الوتيرة الأسبوعية</string>
+    <string name="pace_title">الوتيرة</string>
     <string name="pace_gentle">هادئة</string>
     <string name="pace_standard">قياسية</string>
     <string name="pace_fast">سريعة</string>
@@ -1320,7 +1356,7 @@
     <string name="target_custom">حدّدته بنفسك، ويمكنك تغييره في أي وقت من الملف الشخصي.</string>
     <string name="target_missing">أدخل طولك وعمرك لعرض هدفك اليومي.</string>
     <string name="profile_suggested_v2">المقترح %1$s سعرة من وزنك وطولك وعمرك ويومك المعتاد (%3$s) و%2$d أيام تمرين أسبوعيًا</string>
-    <string name="profile_bodyfat_hint">اتركه 0 ما لم يكن لديك قياس DEXA أو بالملقط، فالموازين الذكية قد تخطئ بين 5 و8 نقاط.</string>
+    <string name="profile_bodyfat_hint">اتركه صفرًا ما لم يكن لديك قياس دقيق بجهاز الأشعة (DEXA) أو بالملقط، فالموازين الذكية قد تخطئ بين 5 و8 نقاط.</string>
     <string name="profile_floor_hint">أدنى هدف يسمح به التطبيق لك هو %1$s سعرة.</string>
     <string name="steps_using">يُستخدم عدّاد ساعتك: نحو %1$s خطوة يوميًا</string>
     <string name="cal_v2_title">هدف سعرات أدق</string>

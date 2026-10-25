@@ -34,12 +34,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CenterFocusStrong
@@ -100,6 +101,7 @@ import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
+import com.forgequest.app.ui.components.steadyToggleable
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.localTitle
@@ -170,7 +172,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     summary?.let { sum ->
         val debrief by vm.debrief.collectAsState()
         val debriefLoading by vm.debriefLoading.collectAsState()
-        WorkoutCompleteScreen(sum, debrief, debriefLoading, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        WorkoutCompleteScreen(sum, debrief, debriefLoading, onRemind = vm::remindMe, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -212,7 +214,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             Column(Modifier.background(c.background).statusBarsPadding()) {
                 ProgressLine(if (sets.isEmpty()) 0f else doneCount / sets.size.toFloat(), c.teal, c.tealTrack, height = 4.dp)
                 Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
+                    IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(pluralStringResource(R.plurals.live_header, sets.size, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -296,11 +298,12 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             containerColor = c.card,
             title = { Text(pluralStringResource(R.plurals.live_finish_unticked_title, left, left), color = c.textPrimary) },
             text = { Text(pluralStringResource(R.plurals.live_finish_unticked_body, left, left), color = c.textSecondary) },
-            confirmButton = { TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) } },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
+            // Three choices stacked, so none of them wraps onto a row of its own.
+            confirmButton = {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
                     TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
+                    TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) }
+                    TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
                 }
             },
         )
@@ -597,9 +600,10 @@ private fun SetRow(
                         unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
                     )
                 }
+                // "reps" beside the number: a bare 8 read as seconds or kilos to beginners.
                 ExerciseKind.REPS -> NumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
-                    title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp, valueColor = flashColor,
+                    unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
                 )
                 ExerciseKind.WEIGHTED -> {
                     NumberStepper(
@@ -709,7 +713,7 @@ private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
     val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
     Box(
         Modifier.size(52.dp).clip(RoundedCornerShape(corner)).background(color)
-            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
+            .steadyToggleable(checked, onToggle)
             .semantics { contentDescription = setDoneLabel },
         contentAlignment = Alignment.Center,
     ) {
@@ -797,7 +801,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
 }
 
 @Composable
-private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?, debriefLoading: Boolean, onDone: () -> Unit) {
+private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?, debriefLoading: Boolean, onRemind: () -> Unit, onDone: () -> Unit) {
     val c = Fit.colors
     var filled by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { filled = true }
@@ -816,7 +820,7 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?,
         Row(Modifier.fillMaxWidth()) {
             com.forgequest.app.ui.components.StatColumn("${sum.doneSets}", stringResource(R.string.live_sets), c.teal, Modifier.weight(1f))
             com.forgequest.app.ui.components.StatColumn(stringResource(R.string.hist_minutes, sum.minutes), stringResource(R.string.profile_time), c.blue, Modifier.weight(1f))
-            com.forgequest.app.ui.components.StatColumn("+${sum.xpGained}", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
+            com.forgequest.app.ui.components.StatColumn("⁦+${sum.xpGained}⁩", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
         }
         Spacer(Modifier.height(24.dp))
         FitCard {
@@ -851,6 +855,24 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?,
                         Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(10.dp))
                         Text(stringResource(R.string.live_badge_unlocked, title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                    }
+                }
+            }
+        }
+        if (sum.offerReminder) {
+            var reminded by remember { mutableStateOf(false) }
+            Spacer(Modifier.height(12.dp))
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(if (reminded) R.string.live_reminder_on else R.string.live_reminder_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Text(stringResource(R.string.live_reminder_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    if (!reminded) {
+                        Spacer(Modifier.width(8.dp))
+                        PillButton(stringResource(R.string.live_reminder_button), onClick = { onRemind(); reminded = true })
                     }
                 }
             }

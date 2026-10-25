@@ -52,8 +52,8 @@ object StarterPlans {
     )
 
     val fullBodyBeginner = PlanDraft(
-        name = "Full body · 3 days",
-        description = "Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home.",
+        name = "Full body · 3 days · bodyweight",
+        description = "Simple bodyweight plan: Monday, Wednesday, Friday. Needs little or no equipment.",
         days = (1..7).map { dow ->
             if (dow == 1 || dow == 3 || dow == 5) {
                 PlanDraftDay(
@@ -63,6 +63,28 @@ object StarterPlans {
                         PlanDraftItem("australian_pull_up", block = "Main", sets = 3, repsMin = 8, repsMax = 12, restSeconds = 90),
                         PlanDraftItem("squat", block = "Main", sets = 3, repsMin = 12, repsMax = 15, restSeconds = 90),
                         PlanDraftItem("hip_bridge", block = "Main", sets = 3, repsMin = 12, restSeconds = 60),
+                        PlanDraftItem("plank", block = "Main", sets = 3, seconds = 30, restSeconds = 60),
+                    ),
+                )
+            } else {
+                PlanDraftDay(dow, "Rest day", isRest = true)
+            }
+        },
+    )
+
+    /** The same three days with dumbbells, for a gym or a home set: what "Full gym" people expect to see. */
+    val fullBodyDumbbells = PlanDraft(
+        name = "Full body · 3 days · dumbbells",
+        description = "Simple full-body plan with dumbbells: Monday, Wednesday, Friday. For a gym or a home set.",
+        days = (1..7).map { dow ->
+            if (dow == 1 || dow == 3 || dow == 5) {
+                PlanDraftDay(
+                    dow, "Full body",
+                    items = listOf(
+                        PlanDraftItem("goblet_squat", block = "Main", sets = 3, repsMin = 8, repsMax = 12, restSeconds = 90),
+                        PlanDraftItem("db_bench_press", block = "Main", sets = 3, repsMin = 8, repsMax = 12, restSeconds = 90),
+                        PlanDraftItem("db_row", block = "Main", sets = 3, repsMin = 8, repsMax = 12, restSeconds = 90),
+                        PlanDraftItem("db_shoulder_press", block = "Main", sets = 3, repsMin = 8, repsMax = 12, restSeconds = 90),
                         PlanDraftItem("plank", block = "Main", sets = 3, seconds = 30, restSeconds = 60),
                     ),
                 )
@@ -107,9 +129,13 @@ object StarterPlans {
     val arabic = mapOf(
         "Hemo · Foundation level" to "هيمو · المستوى التأسيسي",
         "Hemo Calisthenics' 5-day foundation routine. Stretch, then jumping jacks, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target."
-            to "روتين Hemo Calisthenics التأسيسي على خمسة أيام: إطالة، ثم قفز مع فتح الذراعين، ثم كل مجموعة تمارين في دائرة من 3–4 جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.",
+            to "روتين Hemo Calisthenics التأسيسي على خمسة أيام: إطالة، ثم قفز مع فتح الذراعين، ثم كل مجموعة تمارين في دائرة من ⁦3–4⁩ جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.",
         "Full body · 3 days" to "الجسم كاملًا · 3 أيام",
         "Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home." to "خطة بسيطة للجسم كاملًا: الاثنين والأربعاء والجمعة، تصلح للنادي أو المنزل.",
+        "Full body · 3 days · bodyweight" to "الجسم كاملًا · 3 أيام · وزن الجسم",
+        "Simple bodyweight plan: Monday, Wednesday, Friday. Needs little or no equipment." to "خطة بسيطة بوزن الجسم: الاثنين والأربعاء والجمعة، لا تحتاج إلا القليل من المعدات أو لا شيء.",
+        "Full body · 3 days · dumbbells" to "الجسم كاملًا · 3 أيام · دمبل",
+        "Simple full-body plan with dumbbells: Monday, Wednesday, Friday. For a gym or a home set." to "خطة بسيطة للجسم كاملًا بالدمبل: الاثنين والأربعاء والجمعة، للنادي أو للمعدات المنزلية.",
         "Push · Pull · Legs (gym)" to "دفع · سحب · أرجل (النادي)",
         "6-day gym split. Each muscle twice a week." to "تقسيم على ستة أيام في النادي، تُمرَّن فيه كل عضلة مرتين أسبوعيًا.",
         "Day 1 · Core + upper body" to "اليوم 1 · الجذع والجزء العلوي",
@@ -133,5 +159,10 @@ object StarterPlans {
     }
 
     /** In the reader's language; applied plans keep the names they were saved with. */
-    val all: List<PlanDraft> get() = listOf(hemoFoundation, fullBodyBeginner, pushPullLegs).map(::localize)
+    val all: List<PlanDraft> get() = listOf(hemoFoundation, fullBodyBeginner, fullBodyDumbbells, pushPullLegs).map(::localize)
+
+    /** Positions in [all], for onboarding's equipment ↔ plan matching. */
+    const val BODYWEIGHT_INDEX = 1
+    const val DUMBBELLS_INDEX = 2
+    const val GYM_SPLIT_INDEX = 3
 }

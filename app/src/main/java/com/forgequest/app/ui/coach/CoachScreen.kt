@@ -219,7 +219,8 @@ fun CoachScreen(nav: NavHostController) {
                 }
             }
         }
-        val showChips = messages.isNotEmpty() && hasKey && !sending
+        // Out of the way while typing, so a tap near Send never sends a suggestion instead.
+        val showChips = messages.isNotEmpty() && hasKey && !sending && input.isBlank()
         Box(Modifier.weight(1f)) {
             LazyColumn(
                 Modifier.fillMaxSize(),

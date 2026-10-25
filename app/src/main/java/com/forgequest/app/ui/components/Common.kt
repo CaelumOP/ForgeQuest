@@ -2,9 +2,9 @@ package com.forgequest.app.ui.components
 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -29,6 +29,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -111,7 +112,8 @@ fun FitCard(
 @Composable
 fun FitSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true) =
     androidx.compose.material3.Switch(
-        checked, onCheckedChange, enabled = enabled,
+        // A gap before the switch, so a long subtitle beside it never runs into it.
+        checked, onCheckedChange, modifier = Modifier.padding(start = 12.dp), enabled = enabled,
         colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Fit.colors.teal, checkedThumbColor = Fit.colors.card),
     )
 
@@ -313,9 +315,12 @@ private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = compose
                 down.consume()
                 val press = PressInteraction.Press(down.position)
                 scope.launch { interaction.emit(press) }
-                current()
+                // Step on lift or after a still hold, never on touch-down: a scroll that starts on the button must
+                // not change the value (people lost calories and workouts per week that way).
+                var repeating = false
                 val repeat = scope.launch {
                     delay(420)
+                    repeating = true
                     var gap = 110L
                     while (true) {
                         current()
@@ -323,9 +328,49 @@ private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = compose
                         gap = (gap * 0.9f).toLong().coerceAtLeast(60)
                     }
                 }
-                waitForUpOrCancellation()
+                var tapped = false
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    if (change.changedToUp()) { tapped = !repeating; break }
+                    if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+                }
                 repeat.cancel()
+                if (tapped) current()
                 scope.launch { interaction.emit(PressInteraction.Release(press)) }
+            }
+        }
+}
+
+/**
+ * A toggle for boxes inside scrolling lists (a set's tick): counts only when the finger lifts without having moved,
+ * and the press ripple waits a moment, so scrolling over the boxes neither ticks them nor makes them flash.
+ */
+fun Modifier.steadyToggleable(value: Boolean, onToggle: () -> Unit): Modifier = composed {
+    val current by rememberUpdatedState(onToggle)
+    val scope = rememberCoroutineScope()
+    val interaction = remember { MutableInteractionSource() }
+    this
+        .indication(interaction, ripple())
+        .semantics {
+            role = Role.Checkbox
+            toggleableState = androidx.compose.ui.state.ToggleableState(value)
+            onClick { current(); true }
+        }
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                val press = PressInteraction.Press(down.position)
+                var pressed = false
+                val showPress = scope.launch { delay(90); interaction.emit(press); pressed = true }
+                var tapped = false
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    if (change.changedToUp()) { tapped = !change.isConsumed; break }
+                    if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop / 2) break
+                }
+                showPress.cancel()
+                if (pressed) scope.launch { interaction.emit(PressInteraction.Release(press)) }
+                if (tapped) { down.consume(); current() }
             }
         }
 }

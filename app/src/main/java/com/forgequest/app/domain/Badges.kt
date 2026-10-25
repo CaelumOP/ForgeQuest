@@ -27,6 +27,21 @@ object Badges {
     private fun hold(id: String, s: Int): (BadgeStats) -> Boolean = { (it.bestSeconds[id] ?: 0) >= s }
     private fun load(id: String, kg: Float): (BadgeStats) -> Boolean = { (it.bestWeight[id] ?: 0f) >= kg }
 
+    /**
+     * How far along a locked counting badge is (done, needed), for "8 / 10" on the badges screen; null for one-off
+     * skill and strength badges.
+     */
+    fun progress(id: String, s: BadgeStats): Pair<Int, Int>? {
+        val n = id.substringAfterLast('_').toIntOrNull() ?: return null
+        val done = when {
+            id.startsWith("workouts_") -> s.workouts
+            id.startsWith("streak_") -> s.bestStreakWeeks
+            id.startsWith("protein_") -> s.proteinGoalDaysInARow
+            else -> return null
+        }
+        return done.coerceAtMost(n) to n
+    }
+
     val all: List<BadgeDef> = listOf(
         BadgeDef("first_workout", "First step", "Finish your first workout", BadgeCategory.CONSISTENCY) { it.workouts >= 1 },
         BadgeDef("workouts_10", "Ten in", "Finish 10 workouts", BadgeCategory.CONSISTENCY) { it.workouts >= 10 },

@@ -292,7 +292,8 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
         val latest = pts.lastOrNull()?.value ?: return@forEach
         val pair = Trends.thenNow(pts, d.from)
         val delta = pair?.let { (then, now) -> formatDelta(now - then, ex.kind, unit, sUnit) }
-        tiles += Tile(stringResource(R.string.progress_tile_best, ex.name), formatValue(latest, ex.kind, unit, sUnit), delta, pair != null && pair.second > pair.first, d.inRange(pts).ifEmpty { pts }.takeLast(12).map { it.value }, c.chartStrength)
+        // Weighted moves score as an estimated one-rep max, not the weight lifted: say so, or "best set 21 kg" looks wrong.
+        tiles += Tile(stringResource(if (ex.kind == ExerciseKind.WEIGHTED) R.string.progress_tile_est_max else R.string.progress_tile_best, ex.name), formatValue(latest, ex.kind, unit, sUnit), delta, pair != null && pair.second > pair.first, d.inRange(pts).ifEmpty { pts }.takeLast(12).map { it.value }, c.chartStrength)
     }
     if (d.weightAvg.size >= 2) {
         val pts = d.inRange(d.weightAvg).ifEmpty { d.weightAvg.takeLast(2) }

@@ -235,6 +235,8 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
             d.rhr?.let { r -> add(d.rhrUsual?.let { stringResource(R.string.ready_rhr, r.toInt(), it.toInt()) } ?: stringResource(R.string.ready_rhr_only, r.toInt())) }
         }
         if (why.isNotEmpty()) Text(why.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        // Sleep came through but no heart data: say what the score rests on instead of leaving the dashes unexplained.
+        else if (d.night != null) Text(stringResource(R.string.ready_sleep_only), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         Text(
             stringResource(R.string.ready_target, target.start.toInt(), target.endInclusive.toInt()) + " · " + stringResource(R.string.ready_need_tonight, hm(d.sleepNeedTonight)),
             style = MaterialTheme.typography.bodySmall, color = c.textSecondary,

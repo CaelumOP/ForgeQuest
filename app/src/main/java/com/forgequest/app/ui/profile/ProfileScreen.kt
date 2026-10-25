@@ -152,6 +152,7 @@ import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.localDescription
 import com.forgequest.app.ui.localSummary
 import com.forgequest.app.ui.localTitle
+import com.forgequest.app.ui.mark
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.LineChart
 import com.forgequest.app.ui.workouts.PlanPreviewSheet
@@ -334,8 +335,12 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     // ------------------------------------------------------------ Drive
 
-    private fun withDrive(label: String, op: suspend (String) -> Unit) {
+    /** Undoes what was switched on when the Google sign-in for it is cancelled. */
+    private var afterCancel: (suspend () -> Unit)? = null
+
+    private fun withDrive(label: String, onCancel: (suspend () -> Unit)? = null, op: suspend (String) -> Unit) {
         busy.value = label
+        afterCancel = onCancel
         viewModelScope.launch {
             try {
                 when (val auth = app.drive.authorize()) {
@@ -359,8 +364,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         consent.value = null
         val op = afterConsent
         afterConsent = null
+        val cancel = afterCancel
+        afterCancel = null
         if (!ok || op == null) {
             busy.value = null
+            if (!ok && cancel != null) viewModelScope.launch { cancel() }
             // Google closes the account picker straight away when the app isn't registered for Drive yet; say so.
             if (!ok) message.value = app.str(R.string.drive_signin_cancelled)
             return
@@ -383,10 +391,17 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun setBridge(on: Boolean) = viewModelScope.launch {
         app.settings.update { it.copy(bridgeEnabled = on) }
         if (on) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(app.appContext) else com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
-        if (on) syncBridge()
+        if (on) syncBridge(undoOnCancel = true)
     }
 
-    fun syncBridge() = withDrive(app.str(R.string.bridge_syncing)) { token ->
+    /** [undoOnCancel]: turning the bridge on, so a cancelled sign-in switches it back off instead of leaving it half set up. */
+    fun syncBridge(undoOnCancel: Boolean = false) = withDrive(
+        app.str(R.string.bridge_syncing),
+        onCancel = if (undoOnCancel) ({
+            app.settings.update { it.copy(bridgeEnabled = false) }
+            com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
+        }) else null,
+    ) { token ->
         // The same sign-in connects Drive backup too, so one tap sets up both.
         if (app.settings.current().driveEmail.isBlank()) {
             val email = app.drive.accountEmail(token)
@@ -623,7 +638,7 @@ fun ProfileScreen(nav: NavHostController) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MiniRing(s.level.progress, c.blue, c.blueTrack, size = 64.dp, stroke = 4.dp) {
-                    Text(s.level.rank.letter, style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
+                    Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
@@ -635,6 +650,11 @@ fun ProfileScreen(nav: NavHostController) {
             ProgressLine(s.level.progress, c.blue, c.blueTrack, height = 8.dp)
             Spacer(Modifier.height(6.dp))
             Text(stringResource(R.string.profile_xp_line, s.level.xpIntoLevel, s.level.xpForNextLevel, s.level.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            // How XP is earned and what the letter means, which nothing else on screen says.
+            Text(
+                stringResource(R.string.profile_xp_how, com.forgequest.app.domain.Xp.PER_WORKOUT, com.forgequest.app.domain.Xp.PER_SET, com.forgequest.app.domain.Xp.PER_PR, com.forgequest.app.domain.Xp.PER_BADGE),
+                style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp),
+            )
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
                 com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", stringResource(R.string.tab_workouts), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
@@ -718,13 +738,13 @@ fun ProfileScreen(nav: NavHostController) {
 
         SettingsGroup(
             Icons.Rounded.Accessibility, c.coral, c.coralTrack, stringResource(R.string.settings_group_body),
-            if (settings.heightCm <= 0f || age <= 0) summary(stringResource(R.string.summary_body_not_set), if (connected) stringResource(R.string.summary_fitbit_on) else null)
+            if (settings.heightCm <= 0f || age <= 0) summary(stringResource(R.string.summary_body_not_set), stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off))
             else summary(
                 stringResource(if (settings.bodyType == BodyType.FEMALE) R.string.body_female else R.string.body_male),
                 "${settings.heightCm.toInt()} ${stringResource(R.string.unit_cm)}",
                 "$age ${stringResource(R.string.unit_years)}",
                 stringResource(settings.dayActivity.labelRes),
-                if (connected) stringResource(R.string.summary_fitbit_on) else null,
+                stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off),
             ),
             open = "body" in openGroups, onToggle = { toggleGroup("body") },
         ) {
@@ -1125,7 +1145,21 @@ fun ProfileScreen(nav: NavHostController) {
             val bridgeScope = rememberCoroutineScope()
             val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
             FitCard {
-                SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { vm.setBridge(it) }
+                // Turning it on explains what it is first: a stray tap on the title used to start a Google sign-in out of nowhere.
+                var explainBridge by remember { mutableStateOf(false) }
+                SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { on ->
+                    if (on) explainBridge = true else vm.setBridge(false)
+                }
+                if (explainBridge) {
+                    AlertDialog(
+                        onDismissRequest = { explainBridge = false },
+                        containerColor = c.card,
+                        title = { Text(stringResource(R.string.bridge_title), color = c.textPrimary) },
+                        text = { Text(stringResource(R.string.bridge_explain), color = c.textSecondary) },
+                        confirmButton = { TextButton(onClick = { explainBridge = false; vm.setBridge(true) }) { Text(stringResource(R.string.bridge_turn_on), color = c.teal) } },
+                        dismissButton = { TextButton(onClick = { explainBridge = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+                    )
+                }
                 if (settings.bridgeEnabled) {
                     Spacer(Modifier.height(10.dp))
                     val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", Locale.getDefault())
@@ -1138,7 +1172,7 @@ fun ProfileScreen(nav: NavHostController) {
                     if (settings.bridgeIssues.isNotBlank()) Text(stringResource(R.string.bridge_issues, settings.bridgeIssues), style = MaterialTheme.typography.bodySmall, color = c.coral)
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncBridge)
+                        TonalPill(stringResource(R.string.bridge_sync), onClick = { vm.syncBridge() })
                         TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
                             val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
                             clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
@@ -1520,7 +1554,7 @@ internal fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVecto
 }
 
 @Composable
-internal fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier) {
+internal fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier, progress: Pair<Int, Int>? = null) {
     val c = Fit.colors
     var open by remember { mutableStateOf(false) }
     Column(
@@ -1535,6 +1569,7 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
         }
         Spacer(Modifier.height(6.dp))
         Text(title, style = MaterialTheme.typography.labelSmall, color = if (unlocked) c.textPrimary else c.textSecondary, textAlign = TextAlign.Center, maxLines = 2)
+        if (!unlocked && progress != null && progress.first > 0) Text("⁦${progress.first} / ${progress.second}⁩", style = MaterialTheme.typography.labelSmall, color = c.gold)
     }
     if (open) {
         AlertDialog(

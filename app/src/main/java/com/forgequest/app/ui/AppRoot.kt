@@ -83,7 +83,7 @@ object Routes {
     const val COACH = "coach"
     const val PROFILE = "profile"
     const val LIVE = "live"
-    const val PLAN = "plan"
+    const val PLAN = "plan?day={day}"
     const val SCAN = "scan"
     const val EXERCISE = "exercise/{id}"
     const val HISTORY = "history"
@@ -93,6 +93,8 @@ object Routes {
     const val PROGRESS = "progress"
     fun exercise(id: String) = "exercise/$id"
     fun session(id: Long) = "session/$id"
+    /** The plan editor, opened on [day] (1 = Monday) or on today. */
+    fun plan(day: Int = 0) = "plan?day=$day"
 }
 
 private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector)
@@ -198,7 +200,9 @@ private fun MainScaffold() {
                 composable(Routes.COACH) { CoachScreen(nav) }
                 composable(Routes.PROFILE) { ProfileScreen(nav) }
                 composable(Routes.LIVE, enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None }) { LiveWorkoutScreen(nav) }
-                composable(Routes.PLAN) { PlanEditorScreen(nav) }
+                composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 })) { entry ->
+                    PlanEditorScreen(nav, entry.arguments?.getInt("day") ?: 0)
+                }
                 composable(Routes.SCAN) { ScanScreen(nav) }
                 composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty())

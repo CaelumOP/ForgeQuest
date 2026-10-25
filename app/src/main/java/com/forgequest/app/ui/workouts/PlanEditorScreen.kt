@@ -90,6 +90,7 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
@@ -185,7 +186,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlanEditorScreen(nav: NavHostController) {
+fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     val vm = appViewModel { PlanEditorViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val library by vm.library.collectAsState()
@@ -195,7 +196,7 @@ fun PlanEditorScreen(nav: NavHostController) {
     val snackbar = LocalSnackbar.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val c = Fit.colors
-    var selectedDay by rememberSaveable { mutableIntStateOf(Dates.todayDayOfWeek()) }
+    var selectedDay by rememberSaveable { mutableIntStateOf(initialDay.takeIf { it in 1..7 } ?: Dates.todayDayOfWeek()) }
     var picker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PlanItemEntity?>(null) }
     var swappingItem by remember { mutableStateOf<PlanItemEntity?>(null) }
@@ -380,7 +381,7 @@ fun PlanEditorScreen(nav: NavHostController) {
                 if (allPlans.size > 1) {
                     ChoiceRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_info), onClick = { changePlan = false; previous = true })
                 }
-                ChoiceRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_docs_info), onClick = { changePlan = false; nav.navigate(com.forgequest.app.ui.Routes.PROFILE) })
+                ChoiceRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_docs_info), onClick = { changePlan = false; nav.goToTab(com.forgequest.app.ui.Routes.PROFILE) })
             }
         }
     }

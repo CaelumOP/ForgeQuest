@@ -36,6 +36,9 @@ data class OpenSession(val session: SessionEntity?)
 
 data class RestTimer(val totalSeconds: Int, val endsAt: Long, val nextExercise: String? = null)
 
+/** Outlives the screen, so leaving a workout mid-rest and resuming it keeps the countdown. */
+private val runningRest = MutableStateFlow<RestTimer?>(null)
+
 /** A timed hold in progress: a 3-second get-ready, then the clock runs from [startsAt] towards [target]. */
 /** A bodyweight move that has become easy: [next] is the harder version, or null to suggest a slower tempo. */
 data class HarderHint(val next: ExerciseEntity?)
@@ -56,6 +59,8 @@ data class WorkoutSummary(
     val after: LevelInfo,
     /** Next planned training day after today: day of week (1 = Monday) and title. */
     val nextUp: Pair<Int, String>? = null,
+    /** No reminder set yet and still one of the first workouts: offer one while consistency is fragile. */
+    val offerReminder: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -90,7 +95,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** Exercise id → "ready for a harder version", from its last two finished sessions. */
     val harder = MutableStateFlow<Map<String, HarderHint>>(emptyMap())
 
-    val rest = MutableStateFlow<RestTimer?>(null)
+    val rest = runningRest
     val hold = MutableStateFlow<HoldTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
     val summary = MutableStateFlow<WorkoutSummary?>(null)
@@ -152,12 +157,30 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** The set just ticked: only it shows the Easy · OK · Hard · Pain chips, so they fade once you move on. */
     val effortSetId = MutableStateFlow<Long?>(null)
 
+    /** Sets whose numbers were typed or nudged this session; the rest still hold the plan's defaults. */
+    private val edited = mutableSetOf<Long>()
+
     fun toggle(set: SetEntity) {
         val done = !set.done
         effortSetId.value = if (done) set.id else null
         if (done) app.haptics.setDone() else app.haptics.tick()
-        viewModelScope.launch { repo.updateSet(set.copy(done = done)) }
+        viewModelScope.launch {
+            repo.updateSet(set.copy(done = done))
+            if (done) carryForward(set)
+        }
         if (done && set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set)) else if (!done) skipRest()
+    }
+
+    /** What you just did becomes the starting point for the exercise's next sets you haven't touched yet. */
+    private suspend fun carryForward(set: SetEntity) {
+        sets.value.filter { it.itemPosition == set.itemPosition && it.exerciseId == set.exerciseId && it.setIndex > set.setIndex && !it.done && it.id !in edited }
+            .forEach { next ->
+                val carried = next.copy(
+                    reps = if (set.reps != null && next.reps != null) set.reps else next.reps,
+                    weightKg = set.weightKg?.takeIf { it > 0f } ?: next.weightKg,
+                )
+                if (carried != next) repo.updateSet(carried)
+            }
     }
 
     /** Name of the exercise the next unticked set belongs to, for the notification text. */
@@ -251,6 +274,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** Writes a typed or nudged value, clamped to a sane range. */
     fun setField(set: SetEntity, field: Field, value: Float) {
         app.haptics.tick()
+        edited += set.id
         val updated = when (field) {
             Field.REPS -> set.copy(reps = value.roundToInt().coerceIn(0, 999))
             Field.SECONDS -> set.copy(seconds = value.roundToInt().coerceIn(0, 3600))
@@ -343,8 +367,15 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         viewModelScope.launch { then(repo.addCustomExercise(name, kind, listOf(muscle), null)) }
     }
 
+    /** The summary's one-tap reminder: planned days at 18:00, only when nothing is logged yet. */
+    fun remindMe() = viewModelScope.launch {
+        app.settings.update { it.copy(reminderHour = REMINDER_HOUR) }
+        com.forgequest.app.data.notify.ReminderWorker.schedule(app.appContext, REMINDER_HOUR)
+    }
+
     fun discard(onDone: () -> Unit) {
         val s = currentSession ?: return onDone()
+        rest.value = null
         app.notifier.cancelRest()
         viewModelScope.launch {
             repo.discardSession(s.id)
@@ -363,10 +394,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         app.notifier.cancelRest()
         viewModelScope.launch {
             try {
-                val before = app.progress.snapshot.first().level
+                val before = app.progress.freshSnapshot().level
                 val result = repo.finishSession(s.id, tickAll = tickAll)
                 val badges = app.progress.evaluateBadges()
-                val snap = app.progress.snapshot.first()
+                // Straight from the database, with this workout and its badges in, or the summary shows "+0 XP".
+                val snap = app.progress.freshSnapshot()
                 val after = snap.level
                 val today = com.forgequest.app.domain.Dates.todayDayOfWeek()
                 val nextUp = snap.plan?.days.orEmpty()
@@ -384,6 +416,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     before = before,
                     after = after,
                     nextUp = nextUp,
+                    offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
                 )
                 // In its own job so a slow or failed debrief never holds up the summary. App scope, not viewModelScope:
                 // leaving this screen must not cancel it, since it saves to the workout's journal entry.
@@ -401,4 +434,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     }
 
     enum class Field { REPS, SECONDS, WEIGHT }
+
+    private companion object {
+        const val REMINDER_HOUR = 18
+    }
 }

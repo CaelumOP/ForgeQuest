@@ -62,6 +62,8 @@ data class WeeklyStreak(
 
     /** The week you joined, when no planned workouts were left in it. */
     val freeWeek: Boolean get() = targetThisWeek == 0 && doneThisWeek == 0
+    /** Trained in that joining week anyway: it counts, but "Week complete" would contradict the weekly target. */
+    val headStart: Boolean get() = targetThisWeek == 0 && doneThisWeek > 0
     val hitThisWeek: Boolean get() = if (targetThisWeek == 0) doneThisWeek > 0 else doneThisWeek >= targetThisWeek
 }
 
