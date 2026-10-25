@@ -130,6 +130,9 @@ button { min-height: 44px; padding-block: 0; padding-inline: 24px; border: 0; bo
   .shell { height: 100%; }
 }
 .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* The tab bar and pills get out of the keyboard's way while a text field has focus. CSS, not focus events: WebKit
+   sends no focusout when a focused field is removed, which left the tab bar hidden on iPhone (2026-10-25). */
+body:has(:is(input, textarea, select):focus) :is(.tab-bar, .backup-pill) { display: none; }
 
 .top-bar {
   display: flex;
