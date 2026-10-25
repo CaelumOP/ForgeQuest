@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -102,6 +101,7 @@ import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
+import com.forgequest.app.ui.components.steadyToggleable
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.localTitle
@@ -713,7 +713,7 @@ private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
     val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
     Box(
         Modifier.size(52.dp).clip(RoundedCornerShape(corner)).background(color)
-            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
+            .steadyToggleable(checked, onToggle)
             .semantics { contentDescription = setDoneLabel },
         contentAlignment = Alignment.Center,
     ) {

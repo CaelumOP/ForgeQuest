@@ -29,6 +29,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -336,6 +337,40 @@ private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = compose
                 repeat.cancel()
                 if (tapped) current()
                 scope.launch { interaction.emit(PressInteraction.Release(press)) }
+            }
+        }
+}
+
+/**
+ * A toggle for boxes inside scrolling lists (a set's tick): counts only when the finger lifts without having moved,
+ * and the press ripple waits a moment, so scrolling over the boxes neither ticks them nor makes them flash.
+ */
+fun Modifier.steadyToggleable(value: Boolean, onToggle: () -> Unit): Modifier = composed {
+    val current by rememberUpdatedState(onToggle)
+    val scope = rememberCoroutineScope()
+    val interaction = remember { MutableInteractionSource() }
+    this
+        .indication(interaction, ripple())
+        .semantics {
+            role = Role.Checkbox
+            toggleableState = androidx.compose.ui.state.ToggleableState(value)
+            onClick { current(); true }
+        }
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                val press = PressInteraction.Press(down.position)
+                var pressed = false
+                val showPress = scope.launch { delay(90); interaction.emit(press); pressed = true }
+                var tapped = false
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    if (change.changedToUp()) { tapped = !change.isConsumed; break }
+                    if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop / 2) break
+                }
+                showPress.cancel()
+                if (pressed) scope.launch { interaction.emit(PressInteraction.Release(press)) }
+                if (tapped) { down.consume(); current() }
             }
         }
 }
