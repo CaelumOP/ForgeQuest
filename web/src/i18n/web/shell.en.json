@@ -1,9 +1,8 @@
 {
   "about_body": "ForgeQuest for iPhone. Your data stays on this phone.",
-  "gate_share_button": "Share",
   "gate_step_add": "Choose Add to Home Screen (under More if you don't see it)",
   "gate_step_open": "Open ForgeQuest from your Home Screen",
-  "gate_step_share": "Tap Share here, or ⋯ then Share in Safari",
+  "gate_step_share": "In Safari, tap ⋯ then Share (or the Share button in Safari's toolbar)",
   "gate_steps_label": "How to install",
   "gate_title": "Add ForgeQuest to your Home Screen",
   "gate_why": "Your data stays in the Home Screen app, so ForgeQuest works only from there.",

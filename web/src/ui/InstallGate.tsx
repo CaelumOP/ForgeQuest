@@ -9,12 +9,6 @@ export function needsInstallGate(): boolean {
   return ios && !standalone
 }
 
-const canShare = typeof navigator.share === 'function'
-
-/** Opens the iPhone share sheet, where "Add to Home Screen" lives. Closing the sheet is not an error. */
-function share() {
-  navigator.share({ title: 'ForgeQuest', url: location.href }).catch(() => undefined)
-}
 
 export function InstallGate() {
   const other = getLang() === 'ar' ? 'en' : 'ar'
@@ -28,10 +22,10 @@ export function InstallGate() {
       <p class="muted">{t('gate_why')}</p>
       <ol class="gate-steps" aria-label={t('gate_steps_label')}>
         <li>
+          {/* No Share button of our own: the sheet a page can open (navigator.share) has no Add to Home Screen
+              (iOS 26, iPhone Simulator check), only Safari's own Share does. */}
           <span class="step-num" aria-hidden="true">1</span><span>{t('gate_step_share')}</span>
-          {canShare
-            ? <button type="button" class="step-glyph step-share" aria-label={t('gate_share_button')} onClick={share}><ShareIcon /></button>
-            : <span class="step-glyph"><ShareIcon /></span>}
+          <span class="step-glyph"><ShareIcon /></span>
         </li>
         <li><span class="step-num" aria-hidden="true">2</span><span>{t('gate_step_add')}</span><span class="step-glyph"><AddSquareIcon /></span></li>
         <li><span class="step-num" aria-hidden="true">3</span><span>{t('gate_step_open')}</span><img class="step-glyph" src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={22} height={22} /></li>

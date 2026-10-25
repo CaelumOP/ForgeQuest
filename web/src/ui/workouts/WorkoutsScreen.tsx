@@ -63,8 +63,8 @@ export function WorkoutsScreen(_: { param?: string }) {
     <div class="content wk">
       <div class="wk-head">
         <div class="wk-head-text">
-          <h1 class="wk-title">{t('workouts_title')}</h1>
-          <div class="wk-sub">{plan?.plan.name ?? t('today_no_plan')}</div>
+          {/* The top bar already says Workouts: this line names the plan. */}
+          <h1 class="wk-plan">{plan?.plan.name ?? t('today_no_plan')}</h1>
         </div>
         <a class="wk-iconlink" href="#/history" aria-label={t('cd_workout_history')}><HistoryIcon /></a>
         <a class="wk-iconlink" href="#/plan" aria-label={t('cd_edit_plan')}><EditIcon /></a>

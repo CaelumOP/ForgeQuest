@@ -119,9 +119,16 @@ button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: no
 button { min-height: 44px; padding-block: 0; padding-inline: 24px; border: 0; border-radius: 22px; background: var(--teal); color: var(--on-teal); font-weight: 600; }
 
 /* App shell: top bar, one scrolling area, tab bar. Only the middle scrolls. */
-/* 100dvh keeps the tab bar on screen. position: fixed + inset: 0 pushed it off the bottom on iPhone (2026-10-24);
-   the strip under the tab bar is still open, see #/viewport. */
+/* 100dvh keeps the tab bar on screen. position: fixed + inset: 0 pushed it off the bottom on iPhone (2026-10-24). */
 .shell { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
+/* iOS 26 Home Screen apps get a viewport short by the top safe area (WebKit bug 301108), which left an empty strip
+   under the tab bar (seen in the iPhone Simulator check, 812 of 874 pt). WebKit only does that while the page is
+   shorter than the screen, so the page is made screen-tall and the shell follows it. min() keeps it from scrolling
+   when there is no top inset. */
+@media (display-mode: standalone) {
+  html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
+  .shell { height: 100%; }
+}
 .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
 .top-bar {
@@ -277,7 +284,6 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
 .step-glyph { flex: none; display: inline-flex; color: var(--blue); }
 img.step-glyph { border-radius: 5px; }
 /* The Share glyph is a real button: 44px target, tinted so it reads as tappable. */
-button.step-share { align-items: center; justify-content: center; inline-size: 44px; min-block-size: 44px; padding: 0; border-radius: 22px; background: var(--card-high); color: var(--blue); }
 
 /* Dev screens (#/check). */
 .page { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 16px 24px; padding-inline: 16px; }

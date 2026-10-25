@@ -2,6 +2,7 @@
 .wk-head { display: flex; align-items: center; gap: 4px; padding-block-start: 4px; }
 .wk-head-text { flex: 1; min-inline-size: 0; }
 .wk-title { margin: 0; font-size: 22px; line-height: 28px; font-weight: 500; }
+.wk-plan { margin: 0; overflow: hidden; color: var(--text-2); font-size: 16px; line-height: 24px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .wk-sub { color: var(--text-2); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wk-iconlink { display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; border-radius: 50%; color: var(--text); text-decoration: none; flex: none; }
 .wk-iconlink:active { background: var(--card-high); }
