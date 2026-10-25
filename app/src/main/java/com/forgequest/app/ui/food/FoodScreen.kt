@@ -321,6 +321,10 @@ fun FoodScreen(nav: NavHostController) {
                     }
                 }
             }
+            // Saved foods are logged by ticking them; say so while nothing is ticked.
+            if (inCategory.isNotEmpty() && selection.isEmpty()) {
+                item { Text(stringResource(R.string.food_tick_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp)) }
+            }
             items(inCategory, key = { it.id }) { food ->
                 FoodRow(
                     food = food,

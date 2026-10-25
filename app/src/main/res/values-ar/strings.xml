@@ -24,6 +24,8 @@
         <item quantity="other">%1$d شارة جديدة</item>
     </plurals>
     <string name="weight_log_title">تسجيل الوزن</string>
+    <string name="weight_saved">حُفظ الوزن</string>
+    <string name="food_tick_hint">حدّد ما أكلته، ثم اضغط «تسجيل».</string>
     <string name="weight_body">وزن الجسم</string>
     <string name="stepper_tap_to_type">اضغط على الرقم لكتابته</string>
     <string name="action_save">حفظ</string>

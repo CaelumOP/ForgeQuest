@@ -15,6 +15,8 @@
         <item quantity="other">%1$d new badges</item>
     </plurals>
     <string name="weight_log_title">Log body weight</string>
+    <string name="weight_saved">Weight saved</string>
+    <string name="food_tick_hint">Tick what you ate, then tap Log.</string>
     <string name="weight_body">Body weight</string>
     <string name="stepper_tap_to_type">Tap the number to type it</string>
     <string name="action_save">Save</string>

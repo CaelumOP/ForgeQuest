@@ -78,6 +78,7 @@ import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ConcentricRings
 import com.forgequest.app.ui.components.FitCard
@@ -255,7 +256,9 @@ fun HomeScreen(nav: NavHostController) {
                 Spacer(Modifier.height(8.dp))
                 Text(stringResource(R.string.stepper_tap_to_type), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(24.dp))
-                PillButton(stringResource(R.string.action_save), onClick = { vm.logWeight(kg); weightSheet = false }, modifier = Modifier.fillMaxWidth())
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val saved = stringResource(R.string.weight_saved)
+                PillButton(stringResource(R.string.action_save), onClick = { vm.logWeight(kg); weightSheet = false; context.toast(saved) }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
             }
         }
