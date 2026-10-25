@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../data/settings'
-import { bodyStatsReady, initialState, setWeight, settingsPatch, withSuggestions } from './logic'
+import { bodyStatsReady, initialState, planFor, presetForPlan, setWeight, settingsPatch, withSuggestions } from './logic'
 
 const days = () => 3
 
@@ -39,5 +39,27 @@ describe('onboarding logic', () => {
     const short = withSuggestions({ ...initialState(), heightCm: 155, age: 60 }, days)
     expect(noBody.kcal).toBe(2200) // no height: 22 kcal/kg x (1.25 + 3 x 0.025) = 2186
     expect(tall.kcal).toBeGreaterThan(short.kcal)
+  })
+
+  // Plans: 0 Hemo, 1 bodyweight, 2 dumbbells, 3 push/pull/legs (StarterPlans.kt order).
+  it('matches the starter plan to the equipment like OnboardingScreen.kt planFor', () => {
+    expect(planFor('DUMBBELLS_AND_BAR', 1)).toBe(2)
+    expect(planFor('DUMBBELLS_AND_KETTLEBELL', 2)).toBe(2)
+    expect(planFor('FULL_GYM', 0)).toBe(2)
+    expect(planFor('HOME_GYM', 0)).toBe(2)
+    expect(planFor('DUMBBELLS_AND_BAR', 0)).toBe(0)
+    expect(planFor('FULL_GYM', 3)).toBe(3)
+    expect(planFor('HOME_GYM', 3)).toBe(3)
+    expect(planFor('CALISTHENICS_PARK', 2)).toBe(1)
+    expect(planFor('PULL_UP_BAR_ONLY', 3)).toBe(1)
+    expect(planFor('BODYWEIGHT_ONLY', 0)).toBe(1)
+    expect(planFor('CALISTHENICS_PARK', 0)).toBe(0)
+    expect(planFor('CALISTHENICS_PARK', 4)).toBe(4)
+  })
+  it('picking the gym split sets Full gym; the dumbbell plan without dumbbells sets Dumbbells & pull-up bar', () => {
+    expect(presetForPlan(3, 'BODYWEIGHT_ONLY')).toBe('FULL_GYM')
+    expect(presetForPlan(2, 'CALISTHENICS_PARK')).toBe('DUMBBELLS_AND_BAR')
+    expect(presetForPlan(2, 'DUMBBELLS_AND_KETTLEBELL')).toBe('DUMBBELLS_AND_KETTLEBELL')
+    expect(presetForPlan(1, 'HOME_GYM')).toBe('HOME_GYM')
   })
 })

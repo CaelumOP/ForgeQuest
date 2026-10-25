@@ -137,8 +137,12 @@ def onboard_web(lang, prefix):
     shot(f"{prefix}04-goal-bottom")
     next_step()
     shot(f"{prefix}05-key")
+    # Leave the key field focused, as a tap on the button does on iPhone: WebKit sends no focusout when the field
+    # goes away, which once left the tab bar hidden after onboarding.
+    js("document.querySelector('.onb input')?.focus()")
     next_step(3)
     skip_tour()
+    shot(f"{prefix}06-first-screen")
 
 
 def scroll_to_end():

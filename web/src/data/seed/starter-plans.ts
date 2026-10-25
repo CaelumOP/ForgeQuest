@@ -115,8 +115,8 @@ export const HEMO_FOUNDATION: PlanDraft = {
 
 /** Simple full-body plan: Monday, Wednesday, Friday. */
 export const FULL_BODY_BEGINNER: PlanDraft = {
-  name: 'Full body · 3 days',
-  description: 'Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home.',
+  name: 'Full body · 3 days · bodyweight',
+  description: 'Simple bodyweight plan: Monday, Wednesday, Friday. Needs little or no equipment.',
   days: [
     {
       dayOfWeek: 1,
@@ -162,6 +162,26 @@ export const FULL_BODY_BEGINNER: PlanDraft = {
     { dayOfWeek: 6, title: 'Rest day', isRest: true, note: '', items: [] },
     { dayOfWeek: 7, title: 'Rest day', isRest: true, note: '', items: [] },
   ],
+}
+
+/** The same three days with dumbbells, for a gym or a home set: what "Full gym" people expect to see. */
+const dumbbellDay = (dayOfWeek: number): PlanDraftDay => ({
+  dayOfWeek,
+  title: 'Full body',
+  isRest: false,
+  note: '',
+  items: [
+    { exerciseId: 'goblet_squat', name: null, kind: null, muscles: [], block: 'Main', circuit: false, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 90, note: '', videoUrl: null },
+    { exerciseId: 'db_bench_press', name: null, kind: null, muscles: [], block: 'Main', circuit: false, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 90, note: '', videoUrl: null },
+    { exerciseId: 'db_row', name: null, kind: null, muscles: [], block: 'Main', circuit: false, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 90, note: '', videoUrl: null },
+    { exerciseId: 'db_shoulder_press', name: null, kind: null, muscles: [], block: 'Main', circuit: false, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 90, note: '', videoUrl: null },
+    { exerciseId: 'plank', name: null, kind: null, muscles: [], block: 'Main', circuit: false, sets: 3, repsMin: null, repsMax: null, seconds: 30, weightKg: null, restSeconds: 60, note: '', videoUrl: null },
+  ],
+})
+export const FULL_BODY_DUMBBELLS: PlanDraft = {
+  name: 'Full body · 3 days · dumbbells',
+  description: 'Simple full-body plan with dumbbells: Monday, Wednesday, Friday. For a gym or a home set.',
+  days: [1, 2, 3, 4, 5, 6, 7].map((d) => (d % 2 === 1 && d < 7 ? dumbbellDay(d) : { dayOfWeek: d, title: 'Rest day', isRest: true, note: '', items: [] })),
 }
 
 /** 6-day gym split. Each muscle twice a week. */
@@ -252,14 +272,23 @@ export const PUSH_PULL_LEGS: PlanDraft = {
 }
 
 /** All starter plans in the Kotlin order (StarterPlans.all, before localization). */
-export const STARTER_PLANS: PlanDraft[] = [HEMO_FOUNDATION, FULL_BODY_BEGINNER, PUSH_PULL_LEGS]
+export const STARTER_PLANS: PlanDraft[] = [HEMO_FOUNDATION, FULL_BODY_BEGINNER, FULL_BODY_DUMBBELLS, PUSH_PULL_LEGS]
+
+/** Positions in [STARTER_PLANS], for onboarding's equipment ↔ plan matching. */
+export const BODYWEIGHT_INDEX = 1
+export const DUMBBELLS_INDEX = 2
+export const GYM_SPLIT_INDEX = 3
 
 /** English starter texts and their formal Arabic versions (from StarterPlans.kt `arabic`). */
 export const STARTER_PLANS_AR: Record<string, string> = {
   'Hemo · Foundation level': 'هيمو · المستوى التأسيسي',
-  'Hemo Calisthenics\' 5-day foundation routine. Stretch, then jumping jacks, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target.': 'روتين Hemo Calisthenics التأسيسي على خمسة أيام: إطالة، ثم قفز مع فتح الذراعين، ثم كل مجموعة تمارين في دائرة من 3–4 جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.',
+  'Hemo Calisthenics\' 5-day foundation routine. Stretch, then jumping jacks, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target.': 'روتين Hemo Calisthenics التأسيسي على خمسة أيام: إطالة، ثم قفز مع فتح الذراعين، ثم كل مجموعة تمارين في دائرة من ⁦3–4⁩ جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.',
   'Full body · 3 days': 'الجسم كاملًا · 3 أيام',
   'Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home.': 'خطة بسيطة للجسم كاملًا: الاثنين والأربعاء والجمعة، تصلح للنادي أو المنزل.',
+  'Full body · 3 days · bodyweight': 'الجسم كاملًا · 3 أيام · وزن الجسم',
+  'Simple bodyweight plan: Monday, Wednesday, Friday. Needs little or no equipment.': 'خطة بسيطة بوزن الجسم: الاثنين والأربعاء والجمعة، لا تحتاج إلا القليل من المعدات أو لا شيء.',
+  'Full body · 3 days · dumbbells': 'الجسم كاملًا · 3 أيام · دمبل',
+  'Simple full-body plan with dumbbells: Monday, Wednesday, Friday. For a gym or a home set.': 'خطة بسيطة للجسم كاملًا بالدمبل: الاثنين والأربعاء والجمعة، للنادي أو للمعدات المنزلية.',
   'Push · Pull · Legs (gym)': 'دفع · سحب · أرجل (النادي)',
   '6-day gym split. Each muscle twice a week.': 'تقسيم على ستة أيام في النادي، تُمرَّن فيه كل عضلة مرتين أسبوعيًا.',
   'Day 1 · Core + upper body': 'اليوم 1 · الجذع والجزء العلوي',
