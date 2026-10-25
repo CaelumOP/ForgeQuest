@@ -1,9 +1,8 @@
 {
   "about_body": "ForgeQuest لأجهزة iPhone. تبقى بياناتك على هذا الهاتف.",
-  "gate_share_button": "مشاركة",
   "gate_step_add": "اختر «إضافة إلى الشاشة الرئيسية» (ضمن «المزيد» إن لم يظهر)",
   "gate_step_open": "افتح ForgeQuest من الشاشة الرئيسية",
-  "gate_step_share": "اضغط زر المشاركة هنا، أو ⋯ ثم «مشاركة» في Safari",
+  "gate_step_share": "في Safari، اضغط ⋯ ثم «مشاركة» (أو زر المشاركة في شريط Safari)",
   "gate_steps_label": "طريقة التثبيت",
   "gate_title": "أضف ForgeQuest إلى الشاشة الرئيسية",
   "gate_why": "تُحفظ بياناتك في تطبيق الشاشة الرئيسية، لذا يعمل ForgeQuest من هناك فقط.",
