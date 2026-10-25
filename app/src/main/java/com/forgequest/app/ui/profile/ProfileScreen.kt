@@ -1554,7 +1554,7 @@ internal fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVecto
 }
 
 @Composable
-internal fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier) {
+internal fun BadgeChip(title: String, description: String, icon: ImageVector, unlocked: Boolean, isNew: Boolean, modifier: Modifier = Modifier, progress: Pair<Int, Int>? = null) {
     val c = Fit.colors
     var open by remember { mutableStateOf(false) }
     Column(
@@ -1569,6 +1569,7 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
         }
         Spacer(Modifier.height(6.dp))
         Text(title, style = MaterialTheme.typography.labelSmall, color = if (unlocked) c.textPrimary else c.textSecondary, textAlign = TextAlign.Center, maxLines = 2)
+        if (!unlocked && progress != null && progress.first > 0) Text("⁦${progress.first} / ${progress.second}⁩", style = MaterialTheme.typography.labelSmall, color = c.gold)
     }
     if (open) {
         AlertDialog(

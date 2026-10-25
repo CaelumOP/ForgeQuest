@@ -450,7 +450,9 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
                         streak.freeWeek -> stringResource(R.string.streak_first_week)
                         streak.headStart -> stringResource(R.string.streak_head_start_body)
                         streak.weeks == 0 && streak.doneThisWeek == 0 -> stringResource(R.string.streak_hit_to_start)
-                        streak.hitThisWeek -> pluralStringResource(R.plurals.streak_best, streak.best, streak.best)
+                        // Done for the week: also say what keeps the streak alive next week.
+                        streak.hitThisWeek -> pluralStringResource(R.plurals.streak_best, streak.best, streak.best) + " · " +
+                            pluralStringResource(R.plurals.streak_next_week, streak.targetThisWeek.coerceAtLeast(1), streak.targetThisWeek.coerceAtLeast(1))
                         else -> pluralStringResource(R.plurals.streak_more_to_go, streak.targetThisWeek - streak.doneThisWeek, streak.targetThisWeek - streak.doneThisWeek)
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -602,6 +604,12 @@ private fun TodayCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
                 AssistChip(onClick = onStartLighter, label = { Text(stringResource(R.string.today_start_lighter)) })
                 AssistChip(onClick = onRestToday, label = { Text(stringResource(R.string.today_rest_instead)) })
+            }
+        }
+        // Already trained today: another session is still one tap away.
+        if (doneToday && !hasOpenSession) {
+            TextButton(onClick = if (isRest) onTrainAnyway else onStart, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(R.string.today_train_again), color = c.teal, style = MaterialTheme.typography.labelLarge)
             }
         }
         if (!isRest && !hasOpenSession && !doneToday && excused == null) {

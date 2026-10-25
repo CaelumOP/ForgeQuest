@@ -58,6 +58,20 @@ fun BadgesScreen(nav: NavHostController) {
             }
         }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            // The closest locked badge, so there's always a clear next goal.
+            Badges.all.filter { it.id !in owned }
+                .mapNotNull { b -> Badges.progress(b.id, s.stats)?.let { b to it } }
+                .maxByOrNull { (_, p) -> p.first.toFloat() / p.second }
+                ?.let { (b, p) ->
+                    FitCard {
+                        Text(stringResource(R.string.badges_next_up), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+                        Text(b.localTitle() + " · " + b.localDescription(), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Spacer(Modifier.height(8.dp))
+                        com.forgequest.app.ui.components.ProgressLine(p.first.toFloat() / p.second, c.gold, c.goldTrack, height = 8.dp)
+                        Text("⁦${p.first} / ${p.second}⁩", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
             BadgeCategory.entries.forEach { cat ->
                 FitCard {
                     Text(cat.localLabel(), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
@@ -66,7 +80,7 @@ fun BadgesScreen(nav: NavHostController) {
                         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
                             row.forEach { b ->
                                 val got = owned[b.id]
-                                BadgeChip(b.localTitle(), b.localDescription(), badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f))
+                                BadgeChip(b.localTitle(), b.localDescription(), badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f), progress = Badges.progress(b.id, s.stats))
                             }
                             repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                         }

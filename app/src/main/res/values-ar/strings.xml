@@ -66,6 +66,14 @@
         <item quantity="many">الأفضل: %1$d أسبوعًا</item>
         <item quantity="other">الأفضل: %1$d أسبوع</item>
     </plurals>
+    <plurals name="streak_next_week">
+        <item quantity="zero">الأسبوع المقبل: %1$d تمارين تُبقيها مستمرة</item>
+        <item quantity="one">الأسبوع المقبل: تمرين واحد يُبقيها مستمرة</item>
+        <item quantity="two">الأسبوع المقبل: تمرينان يُبقيانها مستمرة</item>
+        <item quantity="few">الأسبوع المقبل: %1$d تمارين تُبقيها مستمرة</item>
+        <item quantity="many">الأسبوع المقبل: %1$d تمرينًا يُبقيها مستمرة</item>
+        <item quantity="other">الأسبوع المقبل: %1$d تمرين يُبقيها مستمرة</item>
+    </plurals>
     <plurals name="streak_more_to_go">
         <item quantity="zero">بقي %1$d لتستمر السلسلة</item>
         <item quantity="one">بقي تمرين واحد لتستمر السلسلة</item>
@@ -85,6 +93,7 @@
     <string name="today_resume_hint">تابع من حيث توقفت</string>
     <string name="today_done">أنهيت تمرين اليوم. أحسنت.</string>
     <string name="today_train_anyway">تمرّن رغم ذلك</string>
+    <string name="today_train_again">تمرّن مرة أخرى</string>
     <string name="today_extra_done">أنجزت تمرينًا إضافيًا</string>
     <string name="today_no_plan_hint">اختر خطة جاهزة، أو أنشئ خطتك، أو اسأل المدرب.</string>
     <string name="today_rest_hint">الراحة جزء من التمرين.</string>
@@ -281,12 +290,12 @@
     <string name="food_calories_surplus">سعرات زائدة</string>
     <string name="food_last_7_days">آخر 7 أيام</string>
     <plurals name="food_week_summary">
-        <item quantity="zero">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدفك في %3$d من %4$d يوم مسجّل</item>
-        <item quantity="one">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدفك في %3$d من يوم واحد مسجّل</item>
-        <item quantity="two">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدفك في %3$d من يومين مسجّلين</item>
-        <item quantity="few">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدفك في %3$d من %4$d أيام مسجّلة</item>
-        <item quantity="many">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدفك في %3$d من %4$d يومًا مسجّلًا</item>
-        <item quantity="other">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدفك في %3$d من %4$d يوم مسجّل</item>
+        <item quantity="zero">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d يوم مسجّل</item>
+        <item quantity="one">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من يوم واحد مسجّل</item>
+        <item quantity="two">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من يومين مسجّلين</item>
+        <item quantity="few">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d أيام مسجّلة</item>
+        <item quantity="many">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d يومًا مسجّلًا</item>
+        <item quantity="other">المتوسط %1$s سعرة · %2$d غ بروتين · بلغت هدف البروتين في %3$d من %4$d يوم مسجّل</item>
     </plurals>
     <string name="food_quick_log_hint">وجبة لمرة واحدة؛ تُحتسب لليوم ولا تُضاف إلى قائمة أطعمتك.</string>
     <string name="food_what_was_it">ماذا أكلت؟</string>
@@ -485,6 +494,7 @@
     <string name="profile_xp_how">نقاط الخبرة: %1$d لكل تمرين، و%2$d لكل مجموعة، و%3$d لكل رقم قياسي جديد، و%4$d لكل وسام. ويرتقي لقب رتبتك كلما ارتفع مستواك.</string>
     <string name="profile_best_streak">أفضل سلسلة (أسابيع)</string>
     <string name="profile_badges">الشارات</string>
+    <string name="badges_next_up">الوسام التالي</string>
     <string name="profile_badges_unlocked">فُتحت %1$d من %2$d</string>
     <string name="action_see_all">عرض الكل</string>
     <string name="profile_not_logged">غير مسجل</string>
@@ -877,7 +887,7 @@
     <string name="progress_holding">ثابت</string>
     <string name="progress_on_target">على الهدف</string>
     <string name="progress_strength">القوة</string>
-    <string name="progress_strength_hint">أفضل مجموعة في كل جلسة · النقاط الذهبية أرقام قياسية · الخط المتقطع أعلى ما وصلت إليه · اسحب للقراءة</string>
+    <string name="progress_strength_hint">أفضل مجموعة في كل جلسة (وللتمارين بالأثقال: الحد الأقصى التقديري لتكرار واحد) · النقاط الذهبية أرقام قياسية · الخط المتقطع أعلى ما وصلت إليه · اسحب للقراءة</string>
     <string name="progress_weight_hint">إدخالات يومية مع خط متوسط 7 أيام · اسحب للقراءة</string>
     <string name="progress_consistency">الانتظام</string>
     <plurals name="progress_workout_days"><item quantity="zero">لا أيام تمرين في هذه الفترة</item><item quantity="one">يوم تمرين واحد في هذه الفترة</item><item quantity="two">يوما تمرين في هذه الفترة</item><item quantity="few">%d أيام تمرين في هذه الفترة</item><item quantity="many">%d يومَ تمرين في هذه الفترة</item><item quantity="other">%d يوم تمرين في هذه الفترة</item></plurals>

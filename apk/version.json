@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "2.11.2",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.11.2/ForgeQuest-v2.11.2.apk",
-  "notes": "Fitbit refresh on Home now shows it's working: the button spins, and the card says whether last night's sleep arrived. Fitbit can take a few minutes to pass new sleep on, so the app keeps checking every minute for 5 minutes while Home is open."
+  "versionCode": 22,
+  "versionName": "2.12.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.12.0/ForgeQuest-v2.12.0.apk",
+  "notes": "Easier from the first day. Log food without knowing calories (tap Estimate), train on rest days with Train anyway, and get a reminder offer after your first workouts. Reps and weight carry to the next set, the rest timer survives leaving a workout, XP and badges now count straight away, badges show how close you are, and setup suggests a plan that fits your equipment. Fixed: scrolling over a +/- button no longer changes the value, the plan editor opens on the right day, and a key typed during setup is kept. Many clearer words, in English and Arabic."
 }

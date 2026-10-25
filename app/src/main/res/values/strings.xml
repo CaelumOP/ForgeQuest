@@ -49,6 +49,10 @@
         <item quantity="one">Best: %1$d week</item>
         <item quantity="other">Best: %1$d weeks</item>
     </plurals>
+    <plurals name="streak_next_week">
+        <item quantity="one">next week: %1$d workout keeps it going</item>
+        <item quantity="other">next week: %1$d workouts keep it going</item>
+    </plurals>
     <plurals name="streak_more_to_go">
         <item quantity="one">%1$d more to keep it going</item>
         <item quantity="other">%1$d more to keep it going</item>
@@ -64,6 +68,7 @@
     <string name="today_resume_hint">Pick up where you left off</string>
     <string name="today_done">Done for today. Nice work.</string>
     <string name="today_train_anyway">Train anyway</string>
+    <string name="today_train_again">Train again</string>
     <string name="today_extra_done">Extra workout done</string>
     <string name="today_no_plan_hint">Pick a starter plan, build your own, or ask the coach.</string>
     <string name="today_rest_hint">Recovery is part of training.</string>
@@ -240,8 +245,8 @@
     <string name="food_calories_surplus">Calories · surplus</string>
     <string name="food_last_7_days">Last 7 days</string>
     <plurals name="food_week_summary">
-        <item quantity="one">Avg %1$s kcal · %2$d g protein · goal hit %3$d of %4$d logged day</item>
-        <item quantity="other">Avg %1$s kcal · %2$d g protein · goal hit %3$d of %4$d logged days</item>
+        <item quantity="one">Avg %1$s kcal · %2$d g protein · protein goal hit %3$d of %4$d logged day</item>
+        <item quantity="other">Avg %1$s kcal · %2$d g protein · protein goal hit %3$d of %4$d logged days</item>
     </plurals>
     <string name="food_quick_log_hint">A one-off meal. It counts for the day but isn\'t added to your food list.</string>
     <string name="food_what_was_it">What was it?</string>
@@ -420,6 +425,7 @@
     <string name="profile_xp_how">XP: %1$d a workout, %2$d a set, %3$d a new record, %4$d a badge. Your rank letter rises from E to S as you level up.</string>
     <string name="profile_best_streak">Best streak (wk)</string>
     <string name="profile_badges">Badges</string>
+    <string name="badges_next_up">Next up</string>
     <string name="profile_badges_unlocked">%1$d of %2$d unlocked</string>
     <string name="action_see_all">See all</string>
     <string name="profile_not_logged">Not logged</string>
@@ -776,7 +782,7 @@
     <string name="progress_holding">holding</string>
     <string name="progress_on_target">on target</string>
     <string name="progress_strength">Strength</string>
-    <string name="progress_strength_hint">Best set per session · gold dots are records · dashed line is your all-time high · drag to read</string>
+    <string name="progress_strength_hint">Best set per session (for weighted moves, the estimated one-rep max) · gold dots are records · dashed line is your all-time high · drag to read</string>
     <string name="progress_weight_hint">Daily entries with a 7-day average line · drag to read</string>
     <string name="progress_consistency">Consistency</string>
     <plurals name="progress_workout_days"><item quantity="one">%d workout day in this range</item><item quantity="other">%d workout days in this range</item></plurals>
