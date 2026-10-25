@@ -1,9 +1,9 @@
 """
 iPhone Simulator screenshots of ForgeQuest Web (run by .github/workflows/ios-sim.yml on a GitHub macOS runner).
 
-1. Safari, English then Arabic: onboarding, then every tab, the chest exercise sheet and #/viewport.
-2. Home Screen app: Share → Add to Home Screen, open it from the icon, onboard again (it has its own storage) and
-   screenshot the tabs, so the strip under the tab bar shows up the way it does on a real iPhone.
+1. Safari: on iPhone the app only shows its "Add ForgeQuest to your Home Screen" page there, in English and Arabic.
+2. Home Screen app: Share → Add to Home Screen, open it from the icon, onboard, then every tab, the chest exercise
+   sheet and #/viewport, in English and then Arabic. This is how people really use it on an iPhone.
 
 Each step is logged and a failure in one part never stops the rest: the screenshots that did work still get uploaded.
 Screenshots come from `simctl io screenshot`, so they show the whole screen (status bar and home indicator too).
@@ -160,21 +160,38 @@ def tabs_web(prefix):
     shot(f"{prefix}13-viewport")
 
 
-def reset_web():
+def reset_app():
+    """Wipes the app's data and reloads it, back to the language picker."""
     js("""
       localStorage.clear(); sessionStorage.clear();
       indexedDB.deleteDatabase('forgequest');
-      if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+      setTimeout(() => location.replace(location.pathname), 800);
     """)
-    time.sleep(2)
-    driver.get(URL)
-    time.sleep(3)
+    time.sleep(5)
 
 
-def safari_run(lang):
-    prefix = f"safari-{lang}-"
-    step(f"{prefix}onboarding", onboard_web, lang, prefix)
-    step(f"{prefix}tabs", tabs_web, prefix)
+def dismiss_popups():
+    """Safari's first-run tips cover the page; close any that show."""
+    native()
+    for label in ("Close", "Dismiss", "Not Now", "OK", "Continue"):
+        for el in driver.find_elements(AppiumBy.IOS_PREDICATE, f'type == "XCUIElementTypeButton" AND label == "{label}" AND visible == 1'):
+            try:
+                el.click()
+                time.sleep(1)
+            except Exception:
+                pass
+
+
+def safari_gate():
+    """The install page Safari shows on iPhone, in both languages."""
+    dismiss_popups()
+    shot("safari-en-00-install-page")
+    find_label("Change language").click()
+    time.sleep(1.5)
+    shot("safari-ar-00-install-page")
+    find_label("Change language").click()
+    time.sleep(1.5)
+    dump("safari-page")
 
 
 # ---------------------------------------------------------------- Home Screen app
@@ -194,30 +211,44 @@ def find_label(label, kind=None, timeout=10):
     raise TimeoutError(f"no element labelled {label!r}")
 
 
+def dump(name):
+    try:
+        with open(f"{OUT}/zz-tree-{name}.xml", "w") as f:
+            f.write(driver.page_source)
+    except Exception as e:
+        log("no page source", e)
+
+
 def add_to_home_screen():
     native()
-    for share in ("ShareButton", "Share"):
-        found = driver.find_elements(AppiumBy.ACCESSIBILITY_ID, share)
+    # The install page's own Share button opens the same share sheet as Safari's (which iOS 26 hides under ⋯).
+    find_label("Share", "XCUIElementTypeButton").click()
+    time.sleep(2.5)
+    shot("app-00-share-sheet")
+    dump("share-sheet")
+    pred = 'label == "Add to Home Screen" AND visible == 1'
+    for _ in range(8):
+        found = driver.find_elements(AppiumBy.IOS_PREDICATE, pred)
         if found:
             found[0].click()
             break
-    else:
-        raise RuntimeError("no Share button")
-    time.sleep(2)
-    shot("app-00-share-sheet")
-    for _ in range(5):
-        found = driver.find_elements(AppiumBy.IOS_PREDICATE, 'label == "Add to Home Screen"')
-        if found and found[0].is_displayed():
-            found[0].click()
-            break
-        driver.execute_script("mobile: swipe", {"direction": "up"})
+        # Scroll the sheet's own action list (the one holding Copy), not the page behind it.
+        lists = [c for c in driver.find_elements(AppiumBy.CLASS_NAME, "XCUIElementTypeCollectionView")
+                 if c.find_elements(AppiumBy.IOS_PREDICATE, 'label == "Copy"')]
+        target = lists[-1] if lists else None
+        if target is not None:
+            driver.execute_script("mobile: scroll", {"elementId": target.id, "direction": "down"})
+        else:
+            driver.execute_script("mobile: swipe", {"direction": "up"})
         time.sleep(1)
     else:
+        dump("no-add-to-home")
         raise RuntimeError("no Add to Home Screen")
-    time.sleep(2)
+    time.sleep(2.5)
     shot("app-01-add-sheet")
+    dump("add-sheet")
     find_label("Add", "XCUIElementTypeButton").click()
-    time.sleep(2)
+    time.sleep(3)
 
 
 def open_from_home_screen():
@@ -225,7 +256,16 @@ def open_from_home_screen():
     time.sleep(2)
     driver.update_settings({"defaultActiveApplication": "com.apple.springboard"})
     shot("app-02-home-screen")
-    find_label("ForgeQuest").click()
+    for _ in range(4):
+        icons = driver.find_elements(AppiumBy.IOS_PREDICATE, 'label == "ForgeQuest" AND visible == 1')
+        if icons:
+            icons[0].click()
+            break
+        driver.execute_script("mobile: swipe", {"direction": "left"})  # the icon can land on the next page
+        time.sleep(1.5)
+    else:
+        dump("home-screen")
+        raise RuntimeError("no ForgeQuest icon")
     time.sleep(5)
     driver.update_settings({"defaultActiveApplication": "auto"})
     shot("app-03-opened")
@@ -237,9 +277,10 @@ def app_web_context():
         contexts = driver.contexts
         log("contexts", contexts)
         for c in contexts:
-            if c.startswith("WEBVIEW") and c != getattr(driver, "_fq_safari_context", None):
+            if c.startswith("WEBVIEW"):
                 driver.switch_to.context(c)
-                if "ForgeQuest" in (driver.current_url or ""):
+                # Safari's tab has the same address; only the Home Screen app runs standalone.
+                if js("return navigator.standalone === true || matchMedia('(display-mode: standalone)').matches"):
                     return True
         time.sleep(2)
     return False
@@ -284,12 +325,16 @@ def app_tabs_native():
 
 
 def home_screen_run():
-    step("app-add", add_to_home_screen)
+    if step("app-add", add_to_home_screen) is None and not os.path.exists(f"{OUT}/app-01-add-sheet.png"):
+        return
     if step("app-open", open_from_home_screen) is None and not os.path.exists(f"{OUT}/app-03-opened.png"):
         return
     if step("app-webview", app_web_context):
-        step("app-onboarding", onboard_web, "en", "app-")
-        step("app-tabs", tabs_web, "app-")
+        for lang in ("en", "ar"):
+            step(f"app-{lang}-onboarding", onboard_web, lang, f"app-{lang}-")
+            step(f"app-{lang}-tabs", tabs_web, f"app-{lang}-")
+            if lang == "en":
+                step("app-reset", reset_app)
     else:
         log("No web context for the Home Screen app: driving it by its labels instead")
         step("app-onboarding-native", onboard_native)
@@ -303,11 +348,7 @@ if __name__ == "__main__":
         time.sleep(3)
         driver._fq_safari_context = driver.current_context
         log("contexts", driver.contexts, "current", driver.current_context)
-        safari_run("en")
-        step("reset", reset_web)
-        safari_run("ar")
-        # The Home Screen app starts in English: clear Safari's copy first so the icon gets the onboarding page.
-        step("reset-2", reset_web)
+        step("safari-install-page", safari_gate)
         home_screen_run()
     finally:
         driver.quit()
