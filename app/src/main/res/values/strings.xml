@@ -1092,10 +1092,10 @@
     <string name="ready_yesterday">Yesterday\'s score: last night\'s sleep hasn\'t reached the app yet. Sync Fitbit, then tap refresh.</string>
     <string name="ready_refreshing">Refreshing</string>
     <string name="ready_updated">Updated just now.</string>
-    <string name="ready_new_night">Last night's sleep is in.</string>
+    <string name="ready_new_night">Last night\'s sleep is in.</string>
     <string name="ready_waiting">Still no new sleep from Fitbit. It can take a few minutes after syncing, so the app checks again every minute.</string>
     <string name="ready_gave_up">Still nothing after 5 minutes. In the Fitbit app, check that sleep is shared with Health Connect, then tap refresh.</string>
-    <string name="ready_refresh_failed">Couldn't read Health Connect just now. These are the last numbers.</string>
+    <string name="ready_refresh_failed">Couldn\'t read Health Connect just now. These are the last numbers.</string>
     <string name="unit_brpm">breaths/min</string>
     <string name="ready_gap">Up between sleeps: %1$s – %2$s</string>
     <string name="ready_earned_other_workouts">Other workouts · %1$d%%</string>
