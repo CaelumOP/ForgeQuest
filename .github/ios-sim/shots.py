@@ -53,6 +53,9 @@ def new_driver():
     o.udid = UDID
     o.set_capability("browserName", "Safari")
     o.set_capability("appium:safariInitialUrl", URL)
+    # The workflow already booted the phone without a window; opening Simulator.app on top of it hung on CI.
+    o.set_capability("appium:isHeadless", True)
+    o.set_capability("appium:simulatorStartupTimeout", 600000)
     o.set_capability("appium:newCommandTimeout", 900)
     o.set_capability("appium:wdaLaunchTimeout", 900000)
     o.set_capability("appium:wdaConnectionTimeout", 900000)
