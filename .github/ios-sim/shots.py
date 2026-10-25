@@ -220,29 +220,49 @@ def dump(name):
         log("no page source", e)
 
 
-def add_to_home_screen():
-    native()
-    # The install page's own Share button opens the same share sheet as Safari's (which iOS 26 hides under ⋯).
-    # It has to be a real tap: iOS only opens the share sheet from a user's touch.
+def share_sheet_open():
+    return bool(driver.find_elements(AppiumBy.IOS_PREDICATE, 'label == "Copy" AND visible == 1'))
+
+
+def open_share_sheet():
+    """The install page's Share button first (a real tap: iOS only shares from a touch), else Safari's ⋯ → Share."""
     dismiss_popups()
     find_label("Share", "XCUIElementTypeButton").click()
-    time.sleep(2.5)
+    time.sleep(3)
+    if share_sheet_open():
+        return
+    log("No share sheet from the page's button: trying Safari's menu")
+    find_label("More", "XCUIElementTypeButton").click()
+    time.sleep(1.5)
+    shot("app-00-safari-menu")
+    dump("safari-menu")
+    find_label("Share").click()
+    time.sleep(3)
+    if not share_sheet_open():
+        raise RuntimeError("share sheet didn't open")
+
+
+def add_to_home_screen():
+    native()
+    open_share_sheet()
     shot("app-00-share-sheet")
     dump("share-sheet")
-    pred = 'label == "Add to Home Screen" AND visible == 1'
-    for _ in range(8):
-        found = driver.find_elements(AppiumBy.IOS_PREDICATE, pred)
+    for _ in range(10):
+        found = driver.find_elements(AppiumBy.IOS_PREDICATE, 'label == "Add to Home Screen"')
         if found:
-            found[0].click()
-            break
-        # Scroll the sheet's own action list (the one holding Copy), not the page behind it.
-        lists = [c for c in driver.find_elements(AppiumBy.CLASS_NAME, "XCUIElementTypeCollectionView")
-                 if c.find_elements(AppiumBy.IOS_PREDICATE, 'label == "Copy"')]
-        target = lists[-1] if lists else None
-        if target is not None:
-            driver.execute_script("mobile: scroll", {"elementId": target.id, "direction": "down"})
-        else:
-            driver.execute_script("mobile: swipe", {"direction": "up"})
+            try:
+                driver.execute_script("mobile: scroll", {"elementId": found[0].id, "toVisible": True})
+            except Exception:
+                pass
+            if found[0].is_displayed():
+                found[0].click()
+                break
+        # Swipe on the action list itself (the cell that says Copy), so the sheet scrolls instead of closing.
+        cells = driver.find_elements(AppiumBy.IOS_PREDICATE, 'label == "Copy" AND visible == 1')
+        if not cells:
+            dump("sheet-closed")
+            raise RuntimeError("the share sheet closed")
+        driver.execute_script("mobile: swipe", {"elementId": cells[0].id, "direction": "up"})
         time.sleep(1)
     else:
         dump("no-add-to-home")
