@@ -256,6 +256,7 @@
     <string name="food_quick_log">تسجيل سريع</string>
     <string name="food_estimate">قدِّر السعرات من الاسم</string>
     <string name="food_estimating">جارٍ التقدير…</string>
+    <string name="food_estimate_basis">بناءً على: %1$s. عدّل الأرقام إن اختلفت حصتك.</string>
     <string name="food_estimate_needs_key">لا تعرف الأرقام؟ صوّر الوجبة بدلًا من ذلك، أو أضف مفتاح Gemini مجانيًا من الملف الشخصي ليقدّرها التطبيق من الاسم.</string>
     <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد من أطعمتك أعلاه، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
     <string name="food_nothing_that_day">لم يُسجَّل شيء في هذا اليوم.</string>
@@ -529,7 +530,7 @@
     <string name="profile_import">استيراد ملف</string>
     <string name="profile_undo_restore">التراجع عن آخر استرجاع</string>
     <string name="drive_title">Google Drive</string>
-    <string name="drive_hint">نسخة يومية في مجلد مخفي للتطبيق داخل Google Drive، دون المساس بأي ملفات أخرى.</string>
+    <string name="drive_hint">نسخة يومية في مجلد مخفي للتطبيق داخل Google Drive. لا يرى التطبيق إلا نسخته الاحتياطية والمستندات التي ينشئها، ولا يطّلع على ملفاتك الأخرى.</string>
     <string name="drive_backed_up_at">%1$s · آخر نسخة %2$s</string>
     <string name="drive_connect">ربط Google Drive</string>
     <string name="drive_back_up_now">النسخ الاحتياطي الآن</string>
@@ -557,7 +558,7 @@
     <string name="hand_length">الطول</string>
     <string name="hand_palm">عرض الكف</string>
     <string name="restore_title">الاسترجاع من %1$s؟</string>
-    <string name="restore_body">ستُستبدل كل البيانات على هذا الهاتف، وتُحفظ نسخة من بياناتك الحالية لتتمكّن من التراجع من بطاقة «بياناتك».</string>
+    <string name="restore_body">ستُستبدل كل البيانات على هذا الهاتف، وتُحفظ نسخة من بياناتك الحالية لتتمكّن من التراجع عبر «التراجع عن آخر استرجاع» في الملف الشخصي ← النسخ الاحتياطي والمزامنة.</string>
     <string name="badge_unlocked_detail">مفتوحة. %1$s.</string>
     <string name="badge_locked_detail">لفتحها: %1$s.</string>
     <string name="action_ok">حسنًا</string>
@@ -767,7 +768,7 @@
     <string name="plan_paste">لصق خطة</string>
     <string name="plan_paste_hint">من الملاحظات أو رسالة أو Google Doc، ويحوّلها الذكاء الاصطناعي إلى جدولك.</string>
     <string name="plan_import_docs">الاستيراد من Google Docs</string>
-    <string name="plan_import_docs_hint">يقرأ مستند «ForgeQuest plan». فعّله من الملف الشخصي ← Google Drive.</string>
+    <string name="plan_import_docs_hint">يقرأ مستند «ForgeQuest plan» في Google Docs. فعّله من الملف الشخصي ← النسخ الاحتياطي والمزامنة ← Google Drive.</string>
     <string name="cd_move_day">النقل إلى يوم آخر</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="zero">تمرين دائري، 0 جولات</item>
@@ -1017,6 +1018,8 @@
     <string name="tour_7_b">اجمع نقاط الخبرة، وارتقِ في الرتب، وافتح الأوسمة، وتابع تقدّمك وتعافي عضلاتك مع الوقت.</string>
     <string name="bridge_title">الربط مع تطبيق Gemini</string>
     <string name="bridge_hint">ميزة متقدمة: تقرأ أتمتة Gemini المستند «ForgeQuest data» في Drive مرتين يوميًا، وتكتب ردّها في «ForgeQuest from Gemini».</string>
+    <string name="bridge_turn_on">التفعيل وتسجيل الدخول</string>
+    <string name="bridge_explain">هذه الميزة لمن يستخدم الإجراءات المجدولة في تطبيق Gemini.\n\n1. فعّلها وسجّل الدخول بحساب Google ليكتب ForgeQuest ملخص تدريبك في مستند «ForgeQuest data» في Drive مرتين يوميًا.\n2. اضغط «نسخ النص» والصقه في إجراء مجدول جديد في تطبيق Gemini.\n3. يكتب Gemini نصائحه في «ForgeQuest from Gemini»، فتظهر في الصفحة الرئيسية.\n\nلا يطّلع التطبيق إلا على هذين المستندين.</string>
     <string name="bridge_wrote">كُتبت البيانات %1$s</string>
     <string name="bridge_never_wrote">لم تُكتب البيانات بعد</string>
     <string name="bridge_read">قُرئ الرد %1$s</string>
@@ -1037,7 +1040,7 @@
     <string name="bridge_home_title">من Gemini</string>
     <string name="bridge_week_title">**التحليل الأسبوعي من Gemini**</string>
     <string name="bridge_plan_card">يقترح Gemini أسبوعًا جديدًا؛ استعرضه وطبّقه إن رأيته مناسبًا.</string>
-    <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول بحساب Google. إن أُغلقت قائمة الحسابات فورًا، فالتطبيق غير مسجّل لاستخدام Drive بعد (README › Google Drive).</string>
+    <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول بحساب Google، فلم يُربط شيء. حاول مجددًا متى شئت.</string>
     <string name="hc_check_ok">يعمل Health Connect: %1$d من %2$d أنواع بيانات فيها قراءات (%3$s).</string>
     <string name="hc_check_empty">يعمل Health Connect، لكن لم يُسجَّل شيء في آخر 14 يومًا. تأكّد أن Google Health يشارك البيانات مع Health Connect.</string>
     <string name="drive_plan_doc_template">اكتب خطتك الأسبوعية أو الصقها تحت هذا السطر بأي صيغة: قائمة بالأيام والتمارين، أو JSON للخطة. يقرأ ForgeQuest هذا المستند عند الضغط على «استيراد خطة من Docs».\n\n</string>
@@ -1215,6 +1218,8 @@
     <string name="ready_open_fitbit">افتح Fitbit للمزامنة</string>
     <string name="ready_yesterday">هذه نتيجة الأمس، إذ لم يصل نوم الليلة الماضية إلى التطبيق بعد. زامِن Fitbit ثم اضغط على زر التحديث.</string>
     <string name="ready_refreshing">جارٍ التحديث</string>
+    <string name="ready_no_strain_yet">لم يُسجَّل أي إجهاد اليوم بعد، وهو يتراكم من نبض قلبك كلما تحرّكت وتمرّنت.</string>
+    <string name="ready_sleep_only">لم تصل بيانات القلب من ساعتك بعد، لذا يعتمد التعافي على نومك وحده.</string>
     <string name="ready_updated">حُدِّثت البيانات للتو.</string>
     <string name="ready_new_night">وصل نوم الليلة الماضية.</string>
     <string name="ready_waiting">لم يصل نوم جديد من Fitbit بعد. قد يستغرق ذلك بضع دقائق بعد المزامنة، لذا يعيد التطبيق التحقق كل دقيقة.</string>

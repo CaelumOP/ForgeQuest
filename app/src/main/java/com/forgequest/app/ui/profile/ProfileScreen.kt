@@ -334,8 +334,12 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     // ------------------------------------------------------------ Drive
 
-    private fun withDrive(label: String, op: suspend (String) -> Unit) {
+    /** Undoes what was switched on when the Google sign-in for it is cancelled. */
+    private var afterCancel: (suspend () -> Unit)? = null
+
+    private fun withDrive(label: String, onCancel: (suspend () -> Unit)? = null, op: suspend (String) -> Unit) {
         busy.value = label
+        afterCancel = onCancel
         viewModelScope.launch {
             try {
                 when (val auth = app.drive.authorize()) {
@@ -359,8 +363,11 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         consent.value = null
         val op = afterConsent
         afterConsent = null
+        val cancel = afterCancel
+        afterCancel = null
         if (!ok || op == null) {
             busy.value = null
+            if (!ok && cancel != null) viewModelScope.launch { cancel() }
             // Google closes the account picker straight away when the app isn't registered for Drive yet; say so.
             if (!ok) message.value = app.str(R.string.drive_signin_cancelled)
             return
@@ -383,10 +390,17 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun setBridge(on: Boolean) = viewModelScope.launch {
         app.settings.update { it.copy(bridgeEnabled = on) }
         if (on) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(app.appContext) else com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
-        if (on) syncBridge()
+        if (on) syncBridge(undoOnCancel = true)
     }
 
-    fun syncBridge() = withDrive(app.str(R.string.bridge_syncing)) { token ->
+    /** [undoOnCancel]: turning the bridge on, so a cancelled sign-in switches it back off instead of leaving it half set up. */
+    fun syncBridge(undoOnCancel: Boolean = false) = withDrive(
+        app.str(R.string.bridge_syncing),
+        onCancel = if (undoOnCancel) ({
+            app.settings.update { it.copy(bridgeEnabled = false) }
+            com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
+        }) else null,
+    ) { token ->
         // The same sign-in connects Drive backup too, so one tap sets up both.
         if (app.settings.current().driveEmail.isBlank()) {
             val email = app.drive.accountEmail(token)
@@ -1130,7 +1144,21 @@ fun ProfileScreen(nav: NavHostController) {
             val bridgeScope = rememberCoroutineScope()
             val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
             FitCard {
-                SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { vm.setBridge(it) }
+                // Turning it on explains what it is first: a stray tap on the title used to start a Google sign-in out of nowhere.
+                var explainBridge by remember { mutableStateOf(false) }
+                SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { on ->
+                    if (on) explainBridge = true else vm.setBridge(false)
+                }
+                if (explainBridge) {
+                    AlertDialog(
+                        onDismissRequest = { explainBridge = false },
+                        containerColor = c.card,
+                        title = { Text(stringResource(R.string.bridge_title), color = c.textPrimary) },
+                        text = { Text(stringResource(R.string.bridge_explain), color = c.textSecondary) },
+                        confirmButton = { TextButton(onClick = { explainBridge = false; vm.setBridge(true) }) { Text(stringResource(R.string.bridge_turn_on), color = c.teal) } },
+                        dismissButton = { TextButton(onClick = { explainBridge = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+                    )
+                }
                 if (settings.bridgeEnabled) {
                     Spacer(Modifier.height(10.dp))
                     val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", Locale.getDefault())
@@ -1143,7 +1171,7 @@ fun ProfileScreen(nav: NavHostController) {
                     if (settings.bridgeIssues.isNotBlank()) Text(stringResource(R.string.bridge_issues, settings.bridgeIssues), style = MaterialTheme.typography.bodySmall, color = c.coral)
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncBridge)
+                        TonalPill(stringResource(R.string.bridge_sync), onClick = { vm.syncBridge() })
                         TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
                             val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
                             clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))

@@ -760,6 +760,8 @@ private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forg
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // What the guess was based on, so a wrong match ("2 scrambled eggs" read as a bigger meal) is easy to spot.
+    var basis by remember { mutableStateOf<String?>(null) }
     val fallback = stringResource(R.string.scan_err_unreadable)
     TextButton(
         onClick = {
@@ -768,6 +770,7 @@ private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forg
             scope.launch {
                 runCatching { estimate(name.trim()) }
                     .onSuccess { scan ->
+                        basis = scan.items.joinToString(", ") { if (it.grams > 0) "${it.name} (${it.grams} g)" else it.name }
                         fun num(v: Float) = (kotlin.math.round(v * 10) / 10).toString().removeSuffix(".0")
                         onResult(scan.items.sumOf { it.kcal }, num(scan.items.map { it.protein }.sum()), num(scan.items.map { it.carbs }.sum()))
                     }
@@ -782,4 +785,5 @@ private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forg
         Text(stringResource(if (busy) R.string.food_estimating else R.string.food_estimate), color = c.purple)
     }
     error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.coral) }
+    basis?.let { Text(stringResource(R.string.food_estimate_basis, it), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
 }

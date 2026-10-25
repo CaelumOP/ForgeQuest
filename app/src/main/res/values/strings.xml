@@ -219,6 +219,7 @@
     <string name="food_quick_log">Quick log</string>
     <string name="food_estimate">Estimate calories from the name</string>
     <string name="food_estimating">Estimating…</string>
+    <string name="food_estimate_basis">Based on: %1$s. Change the numbers if your portion was different.</string>
     <string name="food_estimate_needs_key">Don\'t know the numbers? Scan the meal instead, or add a free Gemini key in Profile and the app estimates them from the name.</string>
     <string name="food_nothing_today">Nothing logged yet. Tick foods above, scan a plate, or quick-log a one-off meal.</string>
     <string name="food_nothing_that_day">Nothing was logged on this day.</string>
@@ -464,7 +465,7 @@
     <string name="profile_import">Import file</string>
     <string name="profile_undo_restore">Undo last restore</string>
     <string name="drive_title">Google Drive</string>
-    <string name="drive_hint">Daily backup to a hidden app folder in your Drive. Nothing else in your Drive is touched.</string>
+    <string name="drive_hint">Daily backup to a hidden app folder in your Drive. The app only sees its own backup and the Docs it creates, never your other files.</string>
     <string name="drive_backed_up_at">%1$s · backed up %2$s</string>
     <string name="drive_connect">Connect Google Drive</string>
     <string name="drive_back_up_now">Back up now</string>
@@ -492,7 +493,7 @@
     <string name="hand_length">Length</string>
     <string name="hand_palm">Palm width</string>
     <string name="restore_title">Restore from %1$s?</string>
-    <string name="restore_body">Everything on this phone is replaced. A copy of what\'s here now is kept, so you can undo this from the Your data card.</string>
+    <string name="restore_body">Everything on this phone is replaced. A copy of what\'s here now is kept, so you can undo this with Undo last restore in Profile → Backup and sync.</string>
     <string name="badge_unlocked_detail">Unlocked. %1$s.</string>
     <string name="badge_locked_detail">To unlock: %1$s.</string>
     <string name="action_ok">OK</string>
@@ -674,7 +675,7 @@
     <string name="plan_paste">Paste a plan</string>
     <string name="plan_paste_hint">From notes, a message or a Google Doc. AI turns it into your schedule.</string>
     <string name="plan_import_docs">Import from Google Docs</string>
-    <string name="plan_import_docs_hint">Pulls your newest doc named \"Workout Plan\". Set up in Profile → Google Drive.</string>
+    <string name="plan_import_docs_hint">Reads the \"ForgeQuest plan\" Google Doc. Turn it on in Profile → Backup and sync → Google Drive.</string>
     <string name="cd_move_day">Move to another day</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="one">circuit, %1$d round</item>
@@ -923,6 +924,8 @@
     <string name="bridge_issues">Couldn\'t read: %1$s. Check the prompt\'s format.</string>
     <string name="bridge_sync">Sync now</string>
     <string name="bridge_copy_prompt">Copy prompt</string>
+    <string name="bridge_turn_on">Turn on and sign in</string>
+    <string name="bridge_explain">For people who use scheduled actions in the Gemini app.\n\n1. Turn it on and sign in with Google. Twice a day ForgeQuest writes your training summary to a \"ForgeQuest data\" Doc in your Drive.\n2. Tap Copy prompt and paste it into a new scheduled action in the Gemini app.\n3. Gemini writes its advice to \"ForgeQuest from Gemini\", and it shows on Home.\n\nThe app only sees those two Docs.</string>
     <string name="bridge_prompt_copied">Prompt copied. Paste it into a Gemini scheduled action.</string>
     <string name="bridge_copy_data">Copy data</string>
     <string name="bridge_data_copied">Data copied. Paste it into Gemini with the prompt.</string>
@@ -936,7 +939,7 @@
     <string name="bridge_home_title">From Gemini</string>
     <string name="bridge_week_title">**Weekly analysis from Gemini**</string>
     <string name="bridge_plan_card">Gemini suggests a new week. Preview it, and apply it if it looks right.</string>
-    <string name="drive_signin_cancelled">Google sign-in didn\'t finish. If the account list closes straight away, Drive isn\'t registered for this app yet (README › Google Drive).</string>
+    <string name="drive_signin_cancelled">Google sign-in didn\'t finish, so nothing was connected. Try again when you\'re ready.</string>
     <string name="hc_check_ok">Health Connect works: %1$d of %2$d data types have readings (%3$s).</string>
     <string name="hc_check_empty">Health Connect works, but nothing was recorded in the last 14 days. Check that Google Health shares with Health Connect.</string>
     <string name="drive_plan_doc_template">Write or paste your weekly plan below this line, in any form: a list of days and exercises, or plan JSON. ForgeQuest reads this document when you tap Import plan from Docs.\n\n</string>
@@ -1110,6 +1113,8 @@
     <string name="ready_open_fitbit">Open Fitbit to sync</string>
     <string name="ready_yesterday">Yesterday\'s score: last night\'s sleep hasn\'t reached the app yet. Sync Fitbit, then tap refresh.</string>
     <string name="ready_refreshing">Refreshing</string>
+    <string name="ready_no_strain_yet">No strain recorded yet today. It builds up from your heart rate as you move and train.</string>
+    <string name="ready_sleep_only">No heart data from your watch yet, so recovery is based on your sleep alone.</string>
     <string name="ready_updated">Updated just now.</string>
     <string name="ready_new_night">Last night\'s sleep is in.</string>
     <string name="ready_waiting">Still no new sleep from Fitbit. It can take a few minutes after syncing, so the app checks again every minute.</string>
