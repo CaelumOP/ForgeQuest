@@ -139,12 +139,20 @@ class HealthRepository(private val context: Context, private val settings: Setti
         if (!settings.current().healthEnabled || !available()) { _state.value = HealthState.Unavailable; return null }
         val client = HealthConnectClient.getOrCreate(context)
         val granted = suspendRunCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
-        if (!granted.containsAll(permissions)) { _state.value = HealthState.NeedsAccess; return null }
+        if (!granted.containsAll(permissions)) {
+            // Someone who never connected a Fitbit sees no card at all, not a "reconnect" warning.
+            _state.value = if (settings.current().healthConnected) HealthState.NeedsAccess else HealthState.Unavailable
+            return null
+        }
         if (HealthPermission.getReadPermission(WeightRecord::class) in granted) suspendRunCatching { syncWeight(client) }
         val exerciseOk = HealthPermission.getReadPermission(ExerciseSessionRecord::class) in granted
         val before = (_state.value as? HealthState.Ready)?.day?.epochDay
         val result = suspendRunCatching { withContext(Dispatchers.IO) { compute(client, exerciseOk) } }
-            .onSuccess { _state.value = HealthState.Ready(it); lastRefreshAt = System.currentTimeMillis() }
+            .onSuccess {
+                _state.value = HealthState.Ready(it)
+                lastRefreshAt = System.currentTimeMillis()
+                if (!settings.current().healthConnected) settings.update { s -> s.copy(healthConnected = true) }
+            }
             .onFailure {
                 Log.w("ForgeQuest", "health refresh failed", it)
                 // Keep the last good numbers; otherwise leave Loading so the card doesn't spin forever.

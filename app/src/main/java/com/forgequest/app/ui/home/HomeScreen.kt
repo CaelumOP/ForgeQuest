@@ -115,8 +115,8 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
 
     /** Home is on screen: re-read Health Connect, and keep looking for a while if last night is still missing. */
     fun resumeHealth() = viewModelScope.launch {
-        app.health.refresh()
-        refreshWatch.resume(waiting = (app.health.state.value as? HealthState.Ready)?.day?.showsYesterday() == true)
+        val found = app.health.refresh()
+        refreshWatch.resume(found, waiting = (app.health.state.value as? HealthState.Ready)?.day?.showsYesterday() == true)
     }
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 

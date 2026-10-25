@@ -56,8 +56,12 @@ class RefreshWatch(
         }
     }
 
-    /** Home came to the front. Back from the Fitbit app, the new night may land any minute. */
-    fun resume(waiting: Boolean) {
+    /**
+     * Home came to the front after the read that gave [found]. Back from the Fitbit app the night may already be in
+     * (say so), or land any minute (keep looking).
+     */
+    fun resume(found: RefreshResult?, waiting: Boolean) {
+        if (found == RefreshResult.NEW_NIGHT) show(found)
         if (waiting && loop?.isActive != true) watch()
     }
 

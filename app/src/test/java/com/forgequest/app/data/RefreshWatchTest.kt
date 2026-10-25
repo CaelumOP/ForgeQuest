@@ -83,7 +83,7 @@ class RefreshWatchTest {
     @Test fun quietChecksOnReturnOnlySpeakWhenTheNightArrives() = runTest {
         val reads = Reads(RefreshResult.STILL_WAITING)
         val watch = RefreshWatch(this) { reads.next() }
-        watch.resume(waiting = true)
+        watch.resume(RefreshResult.STILL_WAITING, waiting = true)
         advanceTimeBy(2 * 60_000L + 1)
         assertNull(watch.note.value)
         assertFalse(watch.busy.value)
@@ -93,10 +93,20 @@ class RefreshWatchTest {
 
         val back = Reads(RefreshResult.STILL_WAITING, RefreshResult.NEW_NIGHT)
         val again = RefreshWatch(this) { back.next() }
-        again.resume(waiting = true)
+        again.resume(RefreshResult.STILL_WAITING, waiting = true)
         advanceTimeBy(2 * 60_000L + 1)
         assertEquals(RefreshNote.NEW_NIGHT, again.note.value)
         advanceUntilIdle()
+    }
+
+    @Test fun backFromFitbitWithTheNightAlreadyInSaysSo() = runTest {
+        val reads = Reads(RefreshResult.UPDATED)
+        val watch = RefreshWatch(this) { reads.next() }
+        watch.resume(RefreshResult.NEW_NIGHT, waiting = false)
+        assertEquals(RefreshNote.NEW_NIGHT, watch.note.value)
+        advanceUntilIdle()
+        assertNull(watch.note.value)
+        assertEquals(0, reads.calls)
     }
 
     @Test fun aFailedTapSaysSoAndNothingRunsOnItsOwn() = runTest {
@@ -106,7 +116,7 @@ class RefreshWatchTest {
         advanceUntilIdle()
         assertEquals(RefreshNote.FAILED, watch.note.value)
         assertEquals(1, reads.calls)
-        watch.resume(waiting = false)
+        watch.resume(RefreshResult.UPDATED, waiting = false)
         advanceUntilIdle()
         assertEquals(1, reads.calls)
     }
