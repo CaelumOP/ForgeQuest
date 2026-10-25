@@ -415,6 +415,7 @@
     <string name="profile_default_name">Athlete</string>
     <string name="profile_rank_line">Rank %1$s · %2$s · Level %3$d</string>
     <string name="profile_xp_line">%1$d / %2$d XP to level %3$d</string>
+    <string name="profile_xp_how">XP: %1$d a workout, %2$d a set, %3$d a new record, %4$d a badge. Your rank letter rises from E to S as you level up.</string>
     <string name="profile_best_streak">Best streak (wk)</string>
     <string name="profile_badges">Badges</string>
     <string name="profile_badges_unlocked">%1$d of %2$d unlocked</string>
@@ -763,6 +764,7 @@
     <string name="progress_vs_last_week">%1$s vs last week</string>
     <string name="progress_first_week">your first week</string>
     <string name="progress_tile_best">%1$s · best set</string>
+    <string name="progress_tile_est_max">%1$s · estimated max (one rep)</string>
     <string name="progress_tile_weight">Body weight · 7-day avg</string>
     <string name="progress_tile_protein">Protein · days on goal</string>
     <string name="progress_tile_workouts">Workouts · per week</string>
@@ -1075,6 +1077,7 @@
     <string name="cd_group_closed">Closed</string>
     <string name="summary_body_not_set">Height and age not set yet</string>
     <string name="summary_fitbit_on">Fitbit on</string>
+    <string name="summary_fitbit_off">Fitbit off</string>
     <string name="summary_per_week">%1$d per week</string>
     <string name="summary_reminder_at">Reminder %1$s</string>
     <string name="summary_reminder_off">No reminder</string>

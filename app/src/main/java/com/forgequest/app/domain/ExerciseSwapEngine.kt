@@ -118,6 +118,12 @@ enum class EquipmentPreset(
         labelAr = "دمبل وعقلة",
         equipment = setOf(Equipment.BODYWEIGHT, Equipment.PULL_UP_BAR, Equipment.DIP_BARS_OR_BENCH, Equipment.DUMBBELLS),
     ),
+    DUMBBELLS_AND_KETTLEBELL(
+        id = "dumbbells_kb",
+        labelEn = "Dumbbells & kettlebell",
+        labelAr = "دمبل وكيتلبل",
+        equipment = setOf(Equipment.BODYWEIGHT, Equipment.DUMBBELLS, Equipment.KETTLEBELL),
+    ),
     CALISTHENICS_PARK(
         id = "calisthenics",
         labelEn = "Calisthenics (pull-up bar & dip bars)",

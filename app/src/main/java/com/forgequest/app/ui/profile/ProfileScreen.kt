@@ -635,6 +635,11 @@ fun ProfileScreen(nav: NavHostController) {
             ProgressLine(s.level.progress, c.blue, c.blueTrack, height = 8.dp)
             Spacer(Modifier.height(6.dp))
             Text(stringResource(R.string.profile_xp_line, s.level.xpIntoLevel, s.level.xpForNextLevel, s.level.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            // How XP is earned and what the letter means, which nothing else on screen says.
+            Text(
+                stringResource(R.string.profile_xp_how, com.forgequest.app.domain.Xp.PER_WORKOUT, com.forgequest.app.domain.Xp.PER_SET, com.forgequest.app.domain.Xp.PER_PR, com.forgequest.app.domain.Xp.PER_BADGE),
+                style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp),
+            )
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
                 com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", stringResource(R.string.tab_workouts), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
@@ -718,13 +723,13 @@ fun ProfileScreen(nav: NavHostController) {
 
         SettingsGroup(
             Icons.Rounded.Accessibility, c.coral, c.coralTrack, stringResource(R.string.settings_group_body),
-            if (settings.heightCm <= 0f || age <= 0) summary(stringResource(R.string.summary_body_not_set), if (connected) stringResource(R.string.summary_fitbit_on) else null)
+            if (settings.heightCm <= 0f || age <= 0) summary(stringResource(R.string.summary_body_not_set), stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off))
             else summary(
                 stringResource(if (settings.bodyType == BodyType.FEMALE) R.string.body_female else R.string.body_male),
                 "${settings.heightCm.toInt()} ${stringResource(R.string.unit_cm)}",
                 "$age ${stringResource(R.string.unit_years)}",
                 stringResource(settings.dayActivity.labelRes),
-                if (connected) stringResource(R.string.summary_fitbit_on) else null,
+                stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off),
             ),
             open = "body" in openGroups, onToggle = { toggleGroup("body") },
         ) {

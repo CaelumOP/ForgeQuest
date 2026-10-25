@@ -480,6 +480,7 @@
     <string name="profile_default_name">الرياضي</string>
     <string name="profile_rank_line">الرتبة %1$s · %2$s · المستوى %3$d</string>
     <string name="profile_xp_line">⁦%1$d / %2$d XP⁩ للمستوى %3$d</string>
+    <string name="profile_xp_how">نقاط الخبرة: %1$d لكل تمرين، و%2$d لكل مجموعة، و%3$d لكل رقم قياسي جديد، و%4$d لكل وسام. ويرتقي حرف رتبتك من E إلى S كلما ارتفع مستواك.</string>
     <string name="profile_best_streak">أفضل سلسلة (أسابيع)</string>
     <string name="profile_badges">الشارات</string>
     <string name="profile_badges_unlocked">فُتحت %1$d من %2$d</string>
@@ -864,6 +865,7 @@
     <string name="progress_vs_last_week">%1$s عن الأسبوع الماضي</string>
     <string name="progress_first_week">أسبوعك الأول</string>
     <string name="progress_tile_best">%1$s · أفضل مجموعة</string>
+    <string name="progress_tile_est_max">%1$s · الحد الأقصى التقديري (تكرار واحد)</string>
     <string name="progress_tile_weight">الوزن · متوسط 7 أيام</string>
     <string name="progress_tile_protein">البروتين · أيام على الهدف</string>
     <string name="progress_tile_workouts">التمارين · أسبوعيًا</string>
@@ -1180,6 +1182,7 @@
     <string name="cd_group_closed">مغلقة</string>
     <string name="summary_body_not_set">لم يُحدَّد الطول والعمر بعد</string>
     <string name="summary_fitbit_on">Fitbit متصل</string>
+    <string name="summary_fitbit_off">Fitbit غير مفعّل</string>
     <string name="summary_per_week">%1$d في الأسبوع</string>
     <string name="summary_reminder_at">تذكير %1$s</string>
     <string name="summary_reminder_off">دون تذكير</string>

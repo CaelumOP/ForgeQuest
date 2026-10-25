@@ -93,10 +93,17 @@ class ProgressRepository(
      * Rebuilt on every change and off the main thread: with years of data this is real work. Shared, so the
      * screens on the back stack read one copy instead of each re-running the queries and the build.
      */
-    val snapshot: Flow<ProgressSnapshot> = combine(
+    private val live: Flow<ProgressSnapshot> = combine(
         raw, settingsRepo.settings, workouts.activePlan, db.weights().observeAll(),
     ) { r, settings, plan, weights -> build(r, settings, plan, weights) }.flowOn(Dispatchers.Default)
-        .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    val snapshot: Flow<ProgressSnapshot> = live.shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    /**
+     * Reads the database now. The shared [snapshot] replays its last copy at once, which right after a write is still
+     * the old one: badges and XP worked out from it missed the workout or meal that had just been saved.
+     */
+    suspend fun freshSnapshot(): ProgressSnapshot = live.first()
 
     private fun build(r: Raw, settings: Settings, plan: ActivePlan?, weights: List<WeightEntity>): ProgressSnapshot {
         val today = Dates.today()
@@ -186,7 +193,7 @@ class ProgressRepository(
 
     /** Unlocks any badges whose rule now passes. Returns the newly unlocked ones. */
     suspend fun evaluateBadges(): List<com.forgequest.app.domain.BadgeDef> {
-        val snap = snapshot.first()
+        val snap = freshSnapshot()
         val owned = snap.badges.map { it.id }.toSet()
         val fresh = Badges.all.filter { it.id !in owned && it.unlocked(snap.stats) }
         if (fresh.isNotEmpty()) {

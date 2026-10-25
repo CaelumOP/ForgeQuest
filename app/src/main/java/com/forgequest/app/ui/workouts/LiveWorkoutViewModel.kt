@@ -394,14 +394,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         app.notifier.cancelRest()
         viewModelScope.launch {
             try {
-                val before = app.progress.snapshot.first().level
+                val before = app.progress.freshSnapshot().level
                 val result = repo.finishSession(s.id, tickAll = tickAll)
                 val badges = app.progress.evaluateBadges()
-                // The shared snapshot replays its last value at once; wait for the one that has this workout finished,
-                // or the summary shows "+0 XP" and an unchanged level.
-                val snap = kotlinx.coroutines.withTimeoutOrNull(3_000) {
-                    app.progress.snapshot.first { snap -> snap.sessions.any { it.id == s.id && it.finishedAt != null } }
-                } ?: app.progress.snapshot.first()
+                // Straight from the database, with this workout and its badges in, or the summary shows "+0 XP".
+                val snap = app.progress.freshSnapshot()
                 val after = snap.level
                 val today = com.forgequest.app.domain.Dates.todayDayOfWeek()
                 val nextUp = snap.plan?.days.orEmpty()

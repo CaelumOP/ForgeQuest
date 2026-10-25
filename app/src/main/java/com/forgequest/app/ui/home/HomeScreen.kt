@@ -122,6 +122,9 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     }
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 
+    /** Catches badges a workout or meal earned but that were missed (they used to be checked against stale data). */
+    fun checkBadges() = viewModelScope.launch { app.progress.evaluateBadges() }
+
     suspend fun startToday(day: PlanDayWithItems?, lighter: Boolean = false) = app.workouts.startSession(day, lighter)
 
     fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
@@ -140,7 +143,7 @@ fun HomeScreen(nav: NavHostController) {
     val refreshNote by vm.refreshWatch.note.collectAsState()
     // Every time the app comes to the front (back from the Fitbit app too): Fitbit numbers through Health Connect, reused
     // for a few minutes unless still waiting on last night; the update notice only goes online every 6 hours.
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.app.updateNotice.refresh(); onPauseOrDispose { vm.refreshWatch.pause() } }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.checkBadges(); vm.app.updateNotice.refresh(); onPauseOrDispose { vm.refreshWatch.pause() } }
     val healthAccess = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
     ) { vm.refreshHealth(force = true) }
