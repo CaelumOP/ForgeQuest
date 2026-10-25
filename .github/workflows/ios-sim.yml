@@ -1,0 +1,104 @@
+name: iPhone Simulator screenshots
+
+# Free iPhone check for the web app (public repo, standard macOS runner): builds /web from this commit, serves it on
+# the runner, and drives Safari in an iPhone Simulator in English and Arabic, then the Home Screen app.
+# Screenshots land in the run's Artifacts ("iphone-screenshots"). Run it from the Actions tab, or it runs on PRs that
+# change it.
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "Simulator to use (blank = the newest iPhone with a home indicator)"
+        required: false
+        default: ""
+  pull_request:
+    paths: ['.github/workflows/ios-sim.yml', '.github/ios-sim/**']
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build and serve the web app
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+          nohup npx vite preview --port 4173 --strictPort > "$RUNNER_TEMP/preview.log" 2>&1 &
+          for i in $(seq 30); do curl -sf http://localhost:4173/ForgeQuest/ >/dev/null && break; sleep 1; done
+          curl -sf http://localhost:4173/ForgeQuest/ >/dev/null
+
+      - name: Pick and boot an iPhone
+        id: sim
+        env:
+          WANT: ${{ github.event.inputs.device }}
+        run: |
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/devices.json"
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os, re
+          data = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "devices.json")))["devices"]
+          def ver(rt):
+              m = re.search(r"iOS-(\d+)-(\d+)", rt)
+              return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+          want = os.environ.get("WANT", "").strip()
+          # Newest iOS first; on it, a phone with a home indicator (no Home button), Pro before plain.
+          order = ["iPhone 17 Pro", "iPhone 17", "iPhone 16 Pro", "iPhone 16", "iPhone 15 Pro", "iPhone 15"]
+          for rt in sorted((r for r in data if "iOS" in r), key=ver, reverse=True):
+              phones = [d for d in data[rt] if d["name"].startswith("iPhone")]
+              if want:
+                  phones = [d for d in phones if d["name"] == want]
+              phones.sort(key=lambda d: order.index(d["name"]) if d["name"] in order else 99)
+              if phones:
+                  d = phones[0]
+                  print(f"udid={d['udid']}")
+                  print(f"name={d['name']}")
+                  print(f"ios={'.'.join(map(str, ver(rt)))}")
+                  break
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+      - name: Start the simulator
+        run: |
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}"
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
+          xcrun simctl status_bar "${{ steps.sim.outputs.udid }}" override --time 9:41 --batteryState charged --batteryLevel 100 || true
+
+      - name: Install Appium
+        run: |
+          npm install -g appium
+          appium driver install xcuitest
+          pip install Appium-Python-Client
+          nohup appium --address 127.0.0.1 --port 4723 --log-timestamp > "$RUNNER_TEMP/appium.log" 2>&1 &
+          for i in $(seq 30); do curl -sf http://127.0.0.1:4723/status >/dev/null && break; sleep 1; done
+
+      - name: Take the screenshots
+        env:
+          SIM_UDID: ${{ steps.sim.outputs.udid }}
+          FQ_URL: http://localhost:4173/ForgeQuest/
+          OUT: ${{ runner.temp }}/shots
+        run: python .github/ios-sim/shots.py
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-screenshots
+          path: |
+            ${{ runner.temp }}/shots
+            ${{ runner.temp }}/appium.log
+          if-no-files-found: warn
