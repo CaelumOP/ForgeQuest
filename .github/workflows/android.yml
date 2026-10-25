@@ -12,6 +12,11 @@ on:
     branches: [main]
     paths-ignore: ["apk/**", "web/**", "**.md"]
   workflow_dispatch:
+    inputs:
+      gemini_base:
+        description: "QA only: Gemini base URL for a test build, e.g. http://10.0.2.2:8765/v1beta (never published)"
+        required: false
+        default: ""
 
 concurrency:
   group: android-${{ github.ref }}
@@ -68,7 +73,9 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Unit tests and release build
-        run: ./gradlew --stacktrace testDebugUnitTest assembleRelease
+        env:
+          GEMINI_BASE: ${{ github.event.inputs.gemini_base }}
+        run: ./gradlew --stacktrace testDebugUnitTest assembleRelease ${GEMINI_BASE:+-PgeminiBase=$GEMINI_BASE}
 
       - name: Remove signing files
         if: always()
@@ -100,7 +107,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ForgeQuest-${{ steps.apk.outputs.built }}
+          name: ForgeQuest-${{ steps.apk.outputs.built }}${{ github.event.inputs.gemini_base && '-qa' || '' }}
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 14
 
