@@ -125,29 +125,32 @@ class HealthRepository(private val context: Context, private val settings: Setti
     /**
      * Re-reads Health Connect. Home calls it on every open, so a fresh result is reused for a few minutes and two
      * opens at once share one read; [force] skips that (after granting access or changing the setting).
+     * Returns what the read found, or null when nothing was read (reused, switched off, or no access).
      */
-    suspend fun refresh(force: Boolean = false) = refreshLock.withLock {
+    suspend fun refresh(force: Boolean = false): RefreshResult? = refreshLock.withLock {
         // Still on yesterday's night: Fitbit may have just synced, so don't wait out the 5 minutes.
         val waiting = (state.value as? HealthState.Ready)?.day?.let { it.epochDay < LocalDate.now().toEpochDay() } == true
         val fresh = System.currentTimeMillis() - lastRefreshAt < 5 * 60_000 && !waiting
-        if (!force && fresh && state.value is HealthState.Ready) return@withLock
+        if (!force && fresh && state.value is HealthState.Ready) return@withLock null
         refreshNow()
     }
 
-    private suspend fun refreshNow() {
-        if (!settings.current().healthEnabled || !available()) { _state.value = HealthState.Unavailable; return }
+    private suspend fun refreshNow(): RefreshResult? {
+        if (!settings.current().healthEnabled || !available()) { _state.value = HealthState.Unavailable; return null }
         val client = HealthConnectClient.getOrCreate(context)
         val granted = suspendRunCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
-        if (!granted.containsAll(permissions)) { _state.value = HealthState.NeedsAccess; return }
+        if (!granted.containsAll(permissions)) { _state.value = HealthState.NeedsAccess; return null }
         if (HealthPermission.getReadPermission(WeightRecord::class) in granted) suspendRunCatching { syncWeight(client) }
         val exerciseOk = HealthPermission.getReadPermission(ExerciseSessionRecord::class) in granted
-        suspendRunCatching { withContext(Dispatchers.IO) { compute(client, exerciseOk) } }
+        val before = (_state.value as? HealthState.Ready)?.day?.epochDay
+        val result = suspendRunCatching { withContext(Dispatchers.IO) { compute(client, exerciseOk) } }
             .onSuccess { _state.value = HealthState.Ready(it); lastRefreshAt = System.currentTimeMillis() }
             .onFailure {
                 Log.w("ForgeQuest", "health refresh failed", it)
                 // Keep the last good numbers; otherwise leave Loading so the card doesn't spin forever.
                 if (_state.value !is HealthState.Ready) _state.value = HealthState.Failed
             }
+        return refreshResult(before, result.getOrNull()?.epochDay, LocalDate.now().toEpochDay())
     }
 
     /** The "I feel great" tap, kept next to the day's scores so the formulas can be tuned to this person later. */

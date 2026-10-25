@@ -1,6 +1,6 @@
 {
-  "versionCode": 20,
-  "versionName": "2.11.1",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.11.1/ForgeQuest-v2.11.1.apk",
-  "notes": "Updates install reliably: the app now checks it downloaded the new version before installing, and says so if an update is still being published. Also in 2.11: tap a muscle on the Workouts tab to see its exercises (Foundation, Intermediate or Advanced), swap an exercise into your plan from its page, filter the library by muscle, and get a one-tap harder version when a bodyweight move gets easy."
+  "versionCode": 21,
+  "versionName": "2.11.2",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.11.2/ForgeQuest-v2.11.2.apk",
+  "notes": "Fitbit refresh on Home now shows it's working: the button spins, and the card says whether last night's sleep arrived. Fitbit can take a few minutes to pass new sleep on, so the app keeps checking every minute for 5 minutes while Home is open."
 }

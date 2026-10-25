@@ -92,6 +92,9 @@ import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.Manrope
 import com.forgequest.app.ui.theme.NumberFont
 import kotlinx.coroutines.flow.SharingStarted
+import com.forgequest.app.data.health.HealthState
+import com.forgequest.app.data.health.RefreshWatch
+import com.forgequest.app.data.health.showsYesterday
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -108,6 +111,13 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     fun logWeight(kg: Float) = viewModelScope.launch { app.progress.logWeight(kg) }
     val health = app.health.state
     fun refreshHealth(force: Boolean = false) = viewModelScope.launch { app.health.refresh(force) }
+    val refreshWatch = RefreshWatch(viewModelScope) { app.health.refresh(force = true) }
+
+    /** Home is on screen: re-read Health Connect, and keep looking for a while if last night is still missing. */
+    fun resumeHealth() = viewModelScope.launch {
+        app.health.refresh()
+        refreshWatch.resume(waiting = (app.health.state.value as? HealthState.Ready)?.day?.showsYesterday() == true)
+    }
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 
     suspend fun startToday(day: PlanDayWithItems?, lighter: Boolean = false) = app.workouts.startSession(day, lighter)
@@ -124,9 +134,11 @@ fun HomeScreen(nav: NavHostController) {
     val c = Fit.colors
     val scope = rememberCoroutineScope()
     val health by vm.health.collectAsState()
+    val refreshing by vm.refreshWatch.busy.collectAsState()
+    val refreshNote by vm.refreshWatch.note.collectAsState()
     // Every time the app comes to the front (back from the Fitbit app too): Fitbit numbers through Health Connect, reused
     // for a few minutes unless still waiting on last night; the update notice only goes online every 6 hours.
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.refreshHealth(); vm.app.updateNotice.refresh(); onPauseOrDispose { } }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.app.updateNotice.refresh(); onPauseOrDispose { vm.refreshWatch.pause() } }
     val healthAccess = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
     ) { vm.refreshHealth(force = true) }
@@ -167,7 +179,8 @@ fun HomeScreen(nav: NavHostController) {
 
         ReadinessCard(
             health, enabled = s.settings.healthEnabled, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") },
-            onRefresh = { vm.refreshHealth(force = true) }, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
+            refreshing = refreshing, note = refreshNote,
+            onRefresh = vm.refreshWatch::tap, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
         )
         // Today's line from the owner's Gemini automation, when the bridge is on.
         if (s.settings.bridgeEnabled && s.settings.bridgeToday.isNotBlank()) {
