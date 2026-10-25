@@ -186,11 +186,12 @@ def safari_gate():
     """The install page Safari shows on iPhone, in both languages."""
     dismiss_popups()
     shot("safari-en-00-install-page")
-    find_label("Change language").click()
-    time.sleep(1.5)
+    # The language button by its class from the page (its label changes with the language); back to English after.
+    driver.switch_to.context(driver._fq_safari_context)
+    click(".lang-toggle", 0, 1.5)
     shot("safari-ar-00-install-page")
-    find_label("Change language").click()
-    time.sleep(1.5)
+    click(".lang-toggle", 0, 1.5)
+    native()
     dump("safari-page")
 
 
@@ -222,6 +223,8 @@ def dump(name):
 def add_to_home_screen():
     native()
     # The install page's own Share button opens the same share sheet as Safari's (which iOS 26 hides under ⋯).
+    # It has to be a real tap: iOS only opens the share sheet from a user's touch.
+    dismiss_popups()
     find_label("Share", "XCUIElementTypeButton").click()
     time.sleep(2.5)
     shot("app-00-share-sheet")
