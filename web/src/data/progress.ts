@@ -4,6 +4,7 @@
 import { db, putDayNote, putWeight, type BadgeRow, type ExerciseRow, type SessionRow, type SetRow, type WeightRow } from './db';
 import { loadSettings, saveWeekTargets, weekTargets, type Settings } from './settings';
 import { getActivePlan, trainingDays, type ActivePlan } from './workouts';
+import { useEffect } from 'preact/hooks';
 import { useLive } from './live';
 import { BADGES, type BadgeDef, type BadgeStats } from '../domain/badges';
 import { todayEpochDay } from '../domain/dates';
@@ -41,7 +42,11 @@ const NUTRITION_DAYS = 90;
 /** Today plus the last 3 days can be excused, so it can't be used to rewrite history. */
 export const EXCUSE_BACK_DAYS = 3;
 
-export async function getProgressSnapshot(now = Date.now()): Promise<ProgressSnapshot> {
+/**
+ * `save` stores newly finished weeks' targets. Pass false inside a live query, which may not write: the new
+ * weeks are then only merged in memory, so the numbers are the same.
+ */
+export async function getProgressSnapshot(now = Date.now(), save = true): Promise<ProgressSnapshot> {
   const today = todayEpochDay(new Date(now));
   const [settings, plan, weights, allSessions, badges, dayNotes, exerciseRows, mealCount, scannedCount, meals] = await Promise.all([
     loadSettings(), getActivePlan(), db.weights.orderBy('epochDay').toArray(),
@@ -64,7 +69,7 @@ export async function getProgressSnapshot(now = Date.now()): Promise<ProgressSna
   let locked = await weekTargets();
   if (plan) {
     const fresh = weeksToLock(locked, fullTarget(planned, settings.weeklyTargetOverride), start, today);
-    if (fresh.size) { await saveWeekTargets(fresh); locked = new Map([...locked, ...fresh]); }
+    if (fresh.size) { if (save) await saveWeekTargets(fresh); locked = new Map([...locked, ...fresh]); }
   }
   const streak = computeStreak(workoutDays, planned, settings.weeklyTargetOverride, start, today, new Set(dayTags.keys()), locked);
 
@@ -116,7 +121,11 @@ function statsFor(
 }
 
 /** The snapshot as a Preact hook; null until the first build. Rebuilds when any table it read changes. */
-export const useProgress = (): ProgressSnapshot | null => useLive(() => getProgressSnapshot(), [], null as ProgressSnapshot | null);
+export function useProgress(): ProgressSnapshot | null {
+  // Week targets are saved here, outside the live query: a write inside it fails and leaves the screen empty.
+  useEffect(() => { getProgressSnapshot().catch((e) => console.warn('locking week targets failed', e)); }, []);
+  return useLive(() => getProgressSnapshot(Date.now(), false), [], null as ProgressSnapshot | null);
+}
 
 /** Unlocks any badges whose rule now passes. Returns the newly unlocked ones. */
 export async function evaluateBadges(): Promise<BadgeDef[]> {

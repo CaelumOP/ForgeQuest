@@ -1,10 +1,13 @@
 import 'fake-indexeddb/auto';
+import { liveQuery } from 'dexie';
 import { beforeEach, describe, expect, it } from 'vitest';
+import fixtureText from './fixtures/android-backup.json?raw';
+import { applyBackup, decodeBackup } from './backup';
 import { db, putSession } from './db';
 import { todayEpochDay } from '../domain/dates';
 import { weekTargets } from './settings';
 import { applyPlan, seedLibrary } from './workouts';
-import { evaluateBadges, getProgressSnapshot, logWeight, setDayTag } from './progress';
+import { evaluateBadges, getProgressSnapshot, logWeight, setDayTag, type ProgressSnapshot } from './progress';
 import type { PlanDraft } from './seed/starter-plans';
 
 const day = (dayOfWeek: number, isRest: boolean) => ({
@@ -16,6 +19,11 @@ const day = (dayOfWeek: number, isRest: boolean) => ({
 });
 const plan = (name: string, trainingDows: number[]): PlanDraft => ({
   name, description: '', days: [1, 2, 3, 4, 5, 6, 7].map((d) => day(d, !trainingDows.includes(d))),
+});
+
+/** The first snapshot a live query (what screens use) builds; rejects if the query fails. */
+const firstLive = (query: () => Promise<ProgressSnapshot>) => new Promise<ProgressSnapshot>((resolve, reject) => {
+  const sub = liveQuery(query).subscribe({ next: (v) => { sub.unsubscribe(); resolve(v); }, error: reject });
 });
 
 async function finishedOn(epochDay: number) {
@@ -63,5 +71,19 @@ describe('progress', () => {
     const fresh = await evaluateBadges();
     expect(fresh.length).toBeGreaterThan(0);
     expect((await evaluateBadges())).toHaveLength(0);
+  });
+
+  it('builds inside a live query right after a restore, then locks the weeks outside it', async () => {
+    await applyBackup(decodeBackup(fixtureText));
+    expect((await db.plans.count()) > 0 && (await weekTargets()).size === 0).toBe(true); // weeks still to lock
+    const live = await firstLive(() => getProgressSnapshot(Date.now(), false));
+    expect(live.sessions).toHaveLength(1);
+    expect(live.doneSets.length).toBeGreaterThan(0);
+    expect(live.weights).toHaveLength(2);
+    expect(await weekTargets()).toEqual(new Map()); // nothing saved inside the live query
+
+    await getProgressSnapshot();
+    expect((await weekTargets()).size).toBeGreaterThan(0);
+    expect((await firstLive(() => getProgressSnapshot(Date.now(), false))).streak).toEqual(live.streak);
   });
 });
