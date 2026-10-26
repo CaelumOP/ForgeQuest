@@ -1371,7 +1371,8 @@ fun ProfileScreen(nav: NavHostController) {
                 onDismissRequest = { vm.update.value = null },
                 containerColor = c.card,
                 title = { Text(stringResource(R.string.update_available, v.versionName), color = c.textPrimary) },
-                text = { Text(v.notes.ifBlank { stringResource(R.string.update_no_notes) }, color = c.textSecondary) },
+                // What's new shows once, after the update installs (WhatsNewDialog), not here as well.
+                text = { Text(stringResource(R.string.update_notes_after), color = c.textSecondary) },
                 confirmButton = { TextButton(onClick = vm::installUpdate) { Text(stringResource(R.string.update_now), color = c.teal) } },
                 dismissButton = { TextButton(onClick = { vm.update.value = null }) { Text(stringResource(R.string.update_later), color = c.textSecondary) } },
             )

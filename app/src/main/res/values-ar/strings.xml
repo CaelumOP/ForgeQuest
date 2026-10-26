@@ -1105,7 +1105,7 @@
     <string name="update_latest">لديك أحدث إصدار.</string>
     <string name="update_failed">تعذّر التحقق من التحديثات. تحقّق من اتصالك وأعد المحاولة.</string>
     <string name="update_available">الإصدار %1$s متاح</string>
-    <string name="update_no_notes">إصلاحات وتحسينات.</string>
+    <string name="update_notes_after">ستظهر لك المستجدات بعد التثبيت.</string>
     <string name="update_now">تحديث</string>
     <string name="update_later">لاحقًا</string>
     <string name="update_allow">اسمح لـ ForgeQuest بتثبيت التحديثات، ثم اضغط على «تحديث» مجددًا.</string>

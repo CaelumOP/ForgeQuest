@@ -2,5 +2,5 @@
   "versionCode": 26,
   "versionName": "2.14.1",
   "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.14.1/ForgeQuest-v2.14.1.apk",
-  "notes": "• Coach debrief: Gemini now writes it first, with Groq as the backup."
+  "notes": "• Coach debrief: Gemini now writes it first, with Groq as the backup.\n• Updates: what's new shows once, after the update installs, not when checking."
 }

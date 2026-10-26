@@ -1000,7 +1000,7 @@
     <string name="update_latest">You have the latest version.</string>
     <string name="update_failed">Couldn\'t check for updates. Check your connection and try again.</string>
     <string name="update_available">Version %1$s is available</string>
-    <string name="update_no_notes">Fixes and improvements.</string>
+    <string name="update_notes_after">You\'ll see what\'s new after it installs.</string>
     <string name="update_now">Update</string>
     <string name="update_later">Later</string>
     <string name="update_allow">Allow ForgeQuest to install updates, then tap Update again.</string>
