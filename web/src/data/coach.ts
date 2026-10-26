@@ -717,7 +717,7 @@ export function progressSummary(snap: ProgressSnapshot, today: number, readiness
   const week = snap.nutritionByDay.filter((d) => d.epochDay > today - 7 && d.epochDay < today);
   if (week.length) {
     const hit = week.filter((d) => d.protein >= s.proteinGoal).length;
-    out += `- Last 7 days nutrition: avg ${Math.trunc(week.reduce((a, d) => a + d.kcal, 0) / week.length)} kcal, ${Math.trunc(week.reduce((a, d) => a + d.protein, 0) / week.length)} g protein over ${week.length} logged days; protein goal hit on ${hit} of them\n`;
+    out += `- Last 7 days nutrition: avg ${Math.round(week.reduce((a, d) => a + d.kcal, 0) / week.length)} kcal, ${Math.round(week.reduce((a, d) => a + d.protein, 0) / week.length)} g protein over ${week.length} logged days; protein goal hit on ${hit} of them\n`;
   } else out += '- No meals logged in the last 7 days\n';
   out += `- Today so far: ${Math.round(snap.today.kcal)} kcal, ${Math.round(snap.today.protein)} g protein`;
   if (s.trackCarbs) out += `, ${Math.round(snap.today.carbs)} g carbs (goal ${s.carbsGoal} g)`;

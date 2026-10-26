@@ -1,6 +1,7 @@
 package com.forgequest.app.ui.home
 
 import com.forgequest.app.R
+import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.localTitle
 import com.forgequest.app.ui.mark
 import com.forgequest.app.ui.isArabic
@@ -349,7 +350,7 @@ private fun Legend(color: Color, text: String) {
 @Composable
 private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
     val c = Fit.colors
-    val proteinLeft = (s.settings.proteinGoal - s.today.protein).roundToInt()
+    val proteinLeft = Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein)
     val kcalLeft = s.settings.kcalGoal - s.today.kcal
     Row(Modifier.fillMaxWidth()) {
         StatColumn(
@@ -359,7 +360,7 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
             Modifier.weight(1f),
         )
         if (s.settings.trackCarbs) {
-            val carbsLeft = (s.settings.carbsGoal - s.today.carbs).roundToInt()
+            val carbsLeft = Nutrition.gramsLeft(s.settings.carbsGoal, s.today.carbs)
             StatColumn(
                 stringResource(R.string.home_protein_left_value, carbsLeft.coerceAtLeast(0)),
                 stringResource(R.string.home_carbs_left),

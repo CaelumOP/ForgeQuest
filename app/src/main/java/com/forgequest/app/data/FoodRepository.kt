@@ -19,6 +19,7 @@ import com.forgequest.app.data.db.MealEntity
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.FoodSearch
+import com.forgequest.app.domain.Nutrition
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -95,7 +96,7 @@ class FoodRepository(
         dao.insertMeals(picks.map { (food, qty, category, name) ->
             MealEntity(
                 epochDay = epochDay, loggedAt = now, name = name, category = category,
-                kcal = (food.kcal * qty).toInt(), protein = food.protein * qty, quantity = qty, carbs = food.carbs * qty,
+                kcal = Nutrition.scaledKcal(food.kcal, qty), protein = food.protein * qty, quantity = qty, carbs = food.carbs * qty,
                 photoPath = food.photoPath, foodId = food.id,
             )
         })

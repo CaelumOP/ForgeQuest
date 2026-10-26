@@ -243,7 +243,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
                 .filter { it.metadata.dataOrigin.packageName != context.packageName }
         }.getOrDefault(emptyList())
         val otherWindows = otherSessions.map { it.startTime to it.endTime }
-        // Strain per day for the last 8 days, read a day at a time so 2-second heart rate never piles up in memory.
+        // Strain per day for today and the 8 days before, read a day at a time so 2-second heart rate never piles up in memory.
         val strainByDay = (0L..8L).associate { back ->
             val d = today.minusDays(back)
             val start = d.atStartOfDay(zone).toInstant()

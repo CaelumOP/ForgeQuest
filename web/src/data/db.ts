@@ -1,5 +1,5 @@
 // The on-phone database. One Dexie table per Room entity in
-// app/src/main/java/com/forgequest/app/data/db/Entities.kt (schema v7), with the Room field
+// app/src/main/java/com/forgequest/app/data/db/Entities.kt (schema v8), with the Room field
 // names unchanged so a backup file moves between the Android and web apps as is.
 import Dexie, { type Table } from 'dexie';
 import type {

@@ -187,8 +187,8 @@ object Readiness {
     }
 
     /**
-     * Banister TRIMP: minutes × heart-rate reserve × 0.64·e^(1.92·reserve) (0.86·e^(1.67·reserve) for women). A quiet
-     * day with some walking lands near 90, an hour of hard training adds about 140.
+     * Banister TRIMP: minutes × heart-rate reserve × 0.64·e^(1.92·reserve) (0.86·e^(1.67·reserve) for women), from 20 %
+     * of reserve up. An hour of walking lands near 35 (strain 5–6), an hour of hard training adds about 140.
      */
     fun trimp(samples: List<Pair<Instant, Long>>, hrMax: Int, hrRest: Double, female: Boolean = false): Double {
         val reserve = (hrMax - hrRest).coerceAtLeast(40.0)

@@ -231,7 +231,7 @@ object ExerciseSwapEngine {
         vararg swaps: String,
     ) = BiomechanicalProfile(eq, pat, ang, swaps.toList())
 
-    /** Explicit biomechanical profiles for all 81 built-in exercises in ExerciseCatalog. */
+    /** Explicit biomechanical profiles for all 90 built-in exercises in ExerciseCatalog. */
     val catalogProfiles: Map<String, BiomechanicalProfile> = mapOf(
         // Warm-up / conditioning
         "jumping_jacks" to prof(Equipment.BODYWEIGHT, MovementPattern.CARRY_CONDITIONING, JointAngle.LOCOMOTION, "burpee", "calf_raise"),

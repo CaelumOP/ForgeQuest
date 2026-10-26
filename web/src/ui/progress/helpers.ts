@@ -31,12 +31,12 @@ export function formatDelta(diff: number, kind: ExerciseKind, unit: WeightUnit, 
 
 type Day = { epochDay: number; carbs: number }
 
-/** Average carbs per logged day for each of the last 12 weeks, oldest first (0 when nothing was logged). */
+/** Average carbs per logged day for each of the last 12 weeks, oldest first (0 when nothing was logged). Rounded, like Trends.carbWeeks. */
 export function carbWeeks(byDay: readonly Day[], today: number): number[] {
   return Array.from({ length: 12 }, (_, i) => {
     const ws = weekStart(today) - 7 * (11 - i)
     const days = byDay.filter((d) => d.epochDay >= ws && d.epochDay <= ws + 6 && d.carbs > 0)
-    return days.length ? Math.trunc(days.reduce((a, d) => a + d.carbs, 0) / days.length) : 0
+    return days.length ? Math.round(days.reduce((a, d) => a + d.carbs, 0) / days.length) : 0
   })
 }
 

@@ -295,7 +295,7 @@ export function effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): number {
   } else if (ex.kind === 'WEIGHTED') {
     const r = set.reps ?? 0
     if (r <= 0) return 0
-    // Heavy low-rep sets (3-6 reps with external load) still count as a full working set.
+    // With external load, 6 reps already count as a full working set (10 without); a heavy triple counts half.
     const refReps = (set.weightKg ?? 0) > 0 ? 6 : 10
     rawEffort = clamp(f(r / refReps), f(0.15), 1.25)
   } else {

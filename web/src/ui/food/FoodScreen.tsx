@@ -4,6 +4,7 @@ import { todayEpochDay } from '../../domain/dates'
 import type { FoodCategory, FoodPart, FoodRow, MealRow } from '../../data/db'
 import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, placesOf, restoreMeal, saveFood, totalsOf, useFoodUsage, useFoods, useMealsOn, useRecentOneOffs, withParts } from '../../data/food'
 import { score } from '../../domain/food-search'
+import { scaledKcal } from '../../domain/nutrition'
 import { evaluateBadges, useProgress } from '../../data/progress'
 import { useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
@@ -289,7 +290,8 @@ export function FoodScreen(_: { param?: string }) {
   const recentPlaces = places.map((p) => [p, Math.max(...foods.filter((f) => f.place?.trim() === p).map(lastAt))] as const).sort((a, b) => b[1] - a[1]).map(([p]) => p).slice(0, 6)
   const shown = searching ? results : inCat
   const picked = foods.filter((f) => f.id != null && sel[f.id] != null)
-  const selKcal = Math.round(picked.reduce((a, f) => a + f.kcal * sel[f.id!].qty, 0))
+  // Each food rounded on its own, as logFoods stores it, so this is what the day's total gains.
+  const selKcal = picked.reduce((a, f) => a + scaledKcal(f.kcal, sel[f.id!].qty), 0)
   const selProtein = Math.round(picked.reduce((a, f) => a + f.protein * sel[f.id!].qty, 0))
   const dots = new Set(Object.values(sel).map((p) => p.cat))
 

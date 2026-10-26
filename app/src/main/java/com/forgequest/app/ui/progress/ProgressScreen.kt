@@ -108,11 +108,7 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
     val weightAvg = Trends.movingAverage(weightPoints)
     val proteinWeeks = Trends.proteinDaysPerWeek(s.nutritionByDay.map { it.epochDay to it.protein }, s.settings.proteinGoal, 12, today)
     // Average carbs per logged day, by week; only shown when carbs tracking is on.
-    val carbWeeks: List<Int> = (11 downTo 0).map { back ->
-        val ws = Dates.weekStart(today) - 7L * back
-        val days = s.nutritionByDay.filter { it.epochDay in ws..ws + 6 && it.carbs > 0f }
-        if (days.isEmpty()) 0 else (days.sumOf { it.carbs.toDouble() } / days.size).toInt()
-    }
+    val carbWeeks = Trends.carbWeeks(s.nutritionByDay.map { it.epochDay to it.carbs }, 12, today)
     val lifetime = Trends.lifetime(s.sessions, s.doneSets)
     val workoutDaysInRange = workoutDays.count { it >= from }
 

@@ -8,6 +8,7 @@ import { DAY_TAGS, type DayState, type DayTag } from '../../domain/progress'
 import { weeklyCounts } from '../../domain/trends'
 import { bodyStep, fromKg, toKg, unitLabel, weightNumber } from '../../domain/units'
 import { BADGES } from '../../domain/badges'
+import { gramsLeft } from '../../domain/nutrition'
 import { Button, Card, Chip, Ring, Sheet, Stat, Stepper } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
@@ -145,14 +146,14 @@ function Rings({ s }: { s: ProgressSnapshot }) {
 
 function StatRow({ s, onWeight }: { s: ProgressSnapshot; onWeight: () => void }) {
   const { settings: st, today: n } = s
-  const proteinLeft = Math.round(st.proteinGoal - n.protein)
+  const proteinLeft = gramsLeft(st.proteinGoal, n.protein)
   const kcalLeft = st.kcalGoal - n.kcal
   const unit = weightUnit(st)
   const ar = getLang() === 'ar'
   return (
     <div class="home-stats">
       <Stat value={proteinLeft > 0 ? t('home_protein_left_value', proteinLeft) : t('home_done')} label={proteinLeft > 0 ? t('home_protein_left') : t('home_protein_goal')} accent="teal" />
-      {st.trackCarbs && <Stat value={t('home_protein_left_value', Math.max(0, Math.round(st.carbsGoal - n.carbs)))} label={t('home_carbs_left')} accent="purple" />}
+      {st.trackCarbs && <Stat value={t('home_protein_left_value', Math.max(0, gramsLeft(st.carbsGoal, n.carbs)))} label={t('home_carbs_left')} accent="purple" />}
       <Stat value={nf().format(Math.abs(kcalLeft))} label={kcalLeft >= 0 ? t('home_cal_left') : t('home_cal_surplus')} accent={kcalLeft >= 0 ? 'blue' : 'gold'} />
       <button type="button" class="home-statbtn" aria-label={t('home_web_weight_cd')} onClick={onWeight}>
         <Stat value={s.latestWeight != null ? weightNumber(unit, s.latestWeight) : '–'} label={t('home_weight_unit', unitLabel(unit, ar))} accent="text" />
