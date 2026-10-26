@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.data.db.FoodPart
 import com.forgequest.app.domain.FoodSearch
+import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.PillButton
@@ -55,7 +56,7 @@ fun partsCount(parts: List<FoodPart>): String = stringResource(R.string.food_par
 /** A part moved to [grams], its calories, protein and carbs scaled with it. */
 fun FoodPart.withGrams(grams: Int): FoodPart {
     val factor = if (this.grams > 0) grams.toFloat() / this.grams else 1f
-    return copy(grams = grams, kcal = (kcal * factor).roundToInt(), protein = protein * factor, carbs = carbs * factor)
+    return copy(grams = grams, kcal = Nutrition.scaledKcal(kcal, factor), protein = protein * factor, carbs = carbs * factor)
 }
 
 /**

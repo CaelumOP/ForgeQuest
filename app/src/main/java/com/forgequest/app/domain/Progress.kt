@@ -322,7 +322,7 @@ object Recovery {
                 val r = set.reps ?: 0
                 if (r <= 0) return 0f
                 val w = set.weightKg ?: 0f
-                // Heavy low-rep sets (3-6 reps with external load) still count as a full working set.
+                // With external load, 6 reps already count as a full working set (10 without); a heavy triple counts half.
                 val refReps = if (w > 0f) 6f else 10f
                 (r / refReps).coerceIn(0.15f, 1.25f)
             }

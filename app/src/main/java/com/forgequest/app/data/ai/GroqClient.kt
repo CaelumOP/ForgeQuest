@@ -37,7 +37,7 @@ class GroqClient(base: OkHttpClient = OkHttpClient()) {
         .build()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    /** Smartest fast chat model this key can use: Llama 3.3 70B Versatile first, then Llama 4 Scout, then 8B instant. */
+    /** Smartest fast chat model this key can use: Llama 3.3 70B first, then Llama 4 Maverick, Llama 4 Scout, Qwen 32B, then 8B instant. */
     suspend fun pickModel(apiKey: String): String = withContext(Dispatchers.IO) {
         val ids = com.forgequest.app.data.suspendRunCatching {
             val body = execute(Request.Builder().url("$BASE/models").header("Authorization", "Bearer $apiKey").get().build())

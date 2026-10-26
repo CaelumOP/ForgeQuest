@@ -4,6 +4,7 @@ import { db, putMeal, type FoodCategory, type FoodPart, type FoodRow, type MealR
 import { sameFood } from '../domain/food-search';
 import { useLive } from './live';
 import { todayEpochDay } from '../domain/dates';
+import { scaledKcal } from '../domain/nutrition';
 
 export type DayTotals = { kcal: number; protein: number; carbs: number };
 
@@ -33,7 +34,7 @@ export type FoodPick = { food: FoodRow; qty: number; category?: FoodCategory; na
 export async function logFoods(picks: ReadonlyArray<FoodPick>, epochDay = todayEpochDay()): Promise<void> {
   const now = Date.now();
   await db.meals.bulkAdd(picks.map(({ food, qty, category, name }): MealRow => ({
-    epochDay, loggedAt: now, name: name ?? food.name, category: category ?? food.category, kcal: Math.trunc(food.kcal * qty),
+    epochDay, loggedAt: now, name: name ?? food.name, category: category ?? food.category, kcal: scaledKcal(food.kcal, qty),
     protein: food.protein * qty, quantity: qty, carbs: food.carbs * qty, photoPath: null, foodId: food.id ?? null,
   })));
 }
@@ -48,7 +49,7 @@ export function withParts(food: FoodRow, parts: FoodPart[]): FoodRow {
 /** A part moved to `grams`, its calories, protein and carbs scaled with it. */
 export function partWithGrams(part: FoodPart, grams: number): FoodPart {
   const f = part.grams > 0 ? grams / part.grams : 1;
-  return { ...part, grams, kcal: Math.round(part.kcal * f), protein: part.protein * f, carbs: part.carbs * f };
+  return { ...part, grams, kcal: scaledKcal(part.kcal, f), protein: part.protein * f, carbs: part.carbs * f };
 }
 
 /** The name in the day's log, saying which parts were left out: "Chicken shawarma, no Ketchup". */

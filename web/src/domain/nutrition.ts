@@ -53,6 +53,15 @@ export const PER_TRAINING_DAY = 0.025
 export const KCAL_PER_KG_WEEK = 1100
 export const MIN_TREND_DAYS = 14
 
+/**
+ * `kcal` times `factor` (servings, a portion, a corrected weight), rounded to the nearest whole kcal, in 32-bit Float
+ * like Android's Nutrition.scaledKcal. The one rule for scaled calories, so the Log button total is what the day gains.
+ */
+export const scaledKcal = (kcal: number, factor: number): number => Math.round(f(kcal * f(factor)))
+
+/** Grams still to eat: the goal minus the eaten grams as shown, so 99.6 of 100 g reads 100 and done, not "1 g left". */
+export const gramsLeft = (goal: number, eaten: number): number => goal - Math.round(eaten)
+
 const bmi = (kg: number, heightCm: number) => f(kg / f(f(heightCm / 100) * f(heightCm / 100)))
 
 /**

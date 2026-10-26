@@ -125,6 +125,16 @@ object Trends {
         return (weeks - 1 downTo 0).map { back -> val ws = thisWeek - 7L * back; hits.count { it in ws..ws + 6 } }
     }
 
+    /** Average carbs per logged day (days with carbs) for each week, oldest first; 0 for a week with none. Rounded, not cut off. */
+    fun carbWeeks(nutrition: List<Pair<Long, Float>>, weeks: Int, today: Long): List<Int> {
+        val thisWeek = Dates.weekStart(today)
+        return (weeks - 1 downTo 0).map { back ->
+            val ws = thisWeek - 7L * back
+            val days = nutrition.filter { it.first in ws..ws + 6 && it.second > 0f }
+            if (days.isEmpty()) 0 else (days.sumOf { it.second.toDouble() } / days.size).roundToInt()
+        }
+    }
+
     data class Lifetime(val workouts: Int, val reps: Int, val minutes: Int, val records: Int, val kgLifted: Float)
 
     fun lifetime(sessions: List<SessionEntity>, sets: List<SetEntity>): Lifetime = Lifetime(
@@ -144,10 +154,10 @@ object Trends {
 
     /**
      * Evaluates recent training history for:
-     * 1. Stagnant lifts: exercises trained >= 3 times across >= 14 days in the last 35 days where the best score
+     * 1. Stalled lifts: exercises trained >= 3 times across >= 12 days in the last 35 days where the best score
      *    of the most recent 2 sessions failed to beat the earlier sessions in that window.
-     * 2. Systemic deload triggers: acute weekly volume > 135 % of 4-week chronic average (with >= 18 sets),
-     *    >= 3 of the last 4 readiness days below 45 % recovery, or >= 2 simultaneous stalled main lifts.
+     * 2. Deload triggers: this week's sets >= 135 % of the 4-week average (with >= 18 sets),
+     *    >= 3 of the last 5 readiness days below 45 % recovery, or >= 2 stalled lifts at normal or higher load.
      */
     fun analyzeFatigueAndPlateaus(
         sessions: List<SessionEntity>,

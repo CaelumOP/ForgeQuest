@@ -1,6 +1,7 @@
 package com.forgequest.app.ui.food
 
 import com.forgequest.app.R
+import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.titleRes
 
@@ -618,7 +619,8 @@ private fun ResultSheet(
     LaunchedEffect(Unit) { shown = true }
 
     val chosen = items.filterIndexed { i, _ -> i in included }
-    val kcal = (chosen.sumOf { it.kcal } * portion.factor).roundToInt() + if (chosen.isEmpty()) 0 else fat.kcal
+    // The sum of the parts it will be saved with, so the logged meal and the saved food agree.
+    val kcal = Nutrition.scanKcal(chosen.map { it.kcal }, portion.factor, fat.kcal)
     val protein = chosen.sumOf { it.protein.toDouble() }.toFloat() * portion.factor
     val carbs = chosen.sumOf { it.carbs.toDouble() }.toFloat() * portion.factor
 
@@ -631,7 +633,7 @@ private fun ResultSheet(
                 // Scale calories and protein with the weight so a corrected portion stays consistent.
                 val factor = if (item.grams > 0) grams / item.grams else 1f
                 items = items.toMutableList().also {
-                    it[index] = item.copy(grams = grams.roundToInt(), kcal = (item.kcal * factor).roundToInt(), protein = item.protein * factor, carbs = item.carbs * factor)
+                    it[index] = item.copy(grams = grams.roundToInt(), kcal = Nutrition.scaledKcal(item.kcal, factor), protein = item.protein * factor, carbs = item.carbs * factor)
                 }
                 editingGrams = null
             },
@@ -739,7 +741,7 @@ private fun ResultSheet(
                             // Parts at the chosen portion; extra cooking fat is a part of its own.
                             val f = portion.factor
                             val parts = items.mapIndexed { i, it ->
-                                FoodPart(it.name, (it.grams * f).roundToInt(), (it.kcal * f).roundToInt(), it.protein * f, it.carbs * f, on = i in included)
+                                FoodPart(it.name, (it.grams * f).roundToInt(), Nutrition.scaledKcal(it.kcal, f), it.protein * f, it.carbs * f, on = i in included)
                             } + if (fat.kcal > 0) listOf(FoodPart(fatPartName, kcal = fat.kcal)) else emptyList()
                             onLog(ScanLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, carbs, save, pin, place, parts))
                         },

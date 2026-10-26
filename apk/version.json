@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "2.13.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.13.0/ForgeQuest-v2.13.0.apk",
-  "notes": "Your own food library. Search your saved foods and restaurants the forgiving way: كفتيريا or كافتيرا, shawarma or شاورما, or a typo or two all find the same food. Add where a food is from, and tap a restaurant to see what you usually order there. Meals from a photo or the Gemini Gem keep their parts, so next time you untick the ketchup in one tap and it's remembered; the day's log says what you left out. The same meal from the same place updates instead of being saved twice, and drinks always log under Drinks."
+  "versionCode": 24,
+  "versionName": "2.13.1",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.13.1/ForgeQuest-v2.13.1.apk",
+  "notes": "Calories add up everywhere. A half serving now logs rounded to the nearest calorie instead of cut down, so the total on the Log button is exactly what your day gains, and a scanned meal logs the same calories as the parts it's saved with. Protein and carbs left on Home match the grams eaten shown above them, and weekly carb averages round instead of dropping the fraction."
 }

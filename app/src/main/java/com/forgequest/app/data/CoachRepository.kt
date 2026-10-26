@@ -704,7 +704,7 @@ class CoachRepository(
         val week = snap.nutritionByDay.filter { it.epochDay > today - 7 && it.epochDay < today }
         if (week.isNotEmpty()) {
             val hit = week.count { it.protein >= s.proteinGoal }
-            sb.append("- Last 7 days nutrition: avg ${week.sumOf { it.kcal } / week.size} kcal, ${(week.sumOf { it.protein.toDouble() } / week.size).toInt()} g protein over ${week.size} logged days; protein goal hit on $hit of them\n")
+            sb.append("- Last 7 days nutrition: avg ${(week.sumOf { it.kcal }.toDouble() / week.size).roundToInt()} kcal, ${(week.sumOf { it.protein.toDouble() } / week.size).roundToInt()} g protein over ${week.size} logged days; protein goal hit on $hit of them\n")
         } else {
             sb.append("- No meals logged in the last 7 days\n")
         }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import { todayEpochDay } from '../../domain/dates'
+import { scaledKcal } from '../../domain/nutrition'
 import type { FoodCategory } from '../../data/db'
 import { AiError, aiErrorKey } from '../../data/ai'
 import { categoryForNow, logOnce, placesOf, saveMeal, useFoods, withParts } from '../../data/food'
@@ -60,7 +61,7 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
     // Parts at the chosen portion; extra cooking fat is a part of its own.
     const factor = PORTIONS.find((p) => p.id === portion)!.factor
     const fatKcal = COOKING_FATS.find((f) => f.id === fat)!.kcal
-    const parts: FoodPart[] = items.map((it, i) => ({ name: it.name, grams: Math.round(it.grams * factor), kcal: Math.round(it.kcal * factor), protein: it.protein * factor, carbs: it.carbs * factor, on: included.has(i) }))
+    const parts: FoodPart[] = items.map((it, i) => ({ name: it.name, grams: Math.round(it.grams * factor), kcal: scaledKcal(it.kcal, factor), protein: it.protein * factor, carbs: it.carbs * factor, on: included.has(i) }))
     if (fatKcal > 0) parts.push({ name: t('scan_extra_fat_part'), grams: 0, kcal: fatKcal, protein: 0, carbs: 0, on: true })
     // The day's log says what was left out: "Chicken shawarma, no Ketchup".
     const off = parts.filter((p) => !p.on).map((p) => p.name)

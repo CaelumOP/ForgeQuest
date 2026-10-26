@@ -65,6 +65,19 @@ object Nutrition {
     private fun round50(x: Float) = (x / 50f).roundToInt() * 50
 
     /**
+     * [kcal] times [factor] (servings, a portion, a corrected weight), rounded to the nearest whole kcal. The one rule
+     * for scaled calories, so the total on the Log button is what the day's total gains. web: scaledKcal in nutrition.ts.
+     */
+    fun scaledKcal(kcal: Int, factor: Float): Int = (kcal * factor).roundToInt()
+
+    /** A scanned meal's calories: each ticked item at the portion, rounded like its saved part, plus the extra fat. */
+    fun scanKcal(itemKcal: List<Int>, portion: Float, fatKcal: Int): Int =
+        if (itemKcal.isEmpty()) 0 else itemKcal.sumOf { scaledKcal(it, portion) } + fatKcal
+
+    /** Grams still to eat: the goal minus the eaten grams as shown, so 99.6 of 100 g reads 100 and done, not "1 g left". */
+    fun gramsLeft(goal: Int, eaten: Float): Int = goal - eaten.roundToInt()
+
+    /**
      * [perKg] grams per kg (clamped to 1.2..2.5), rounded to 5 g. When [bodyFatPct] is 30–60 %, scales against lean
      * mass on a 20 % body-fat reference. When body fat is unknown and BMI is over 30, uses an adjusted weight
      * (BMI-25 weight + a quarter of the rest), so a 120 kg person isn't told to eat 240 g.
@@ -72,7 +85,7 @@ object Nutrition {
     fun suggestedProtein(kg: Float, perKg: Float = DEFAULT_PROTEIN_PER_KG, bodyFatPct: Float = 0f, heightCm: Float = 0f): Int {
         if (kg <= 0f) return 120
         val effectiveMassKg = when {
-            // Use lean mass scaled to a 20% body-fat reference frame so protein stays in the 2.0–2.2g/kg LBM zone.
+            // Lean mass scaled to a 20% body-fat reference frame: [perKg] ÷ 0.8 per kg of lean mass (2.25 g at the default 1.8).
             bodyFatPct in 30f..60f -> kg * (1f - bodyFatPct / 100f) / 0.80f
             bodyFatPct <= 0f && heightCm > 0f && kg / ((heightCm / 100f) * (heightCm / 100f)) > 30f -> {
                 val refKg = 25f * (heightCm / 100f) * (heightCm / 100f)

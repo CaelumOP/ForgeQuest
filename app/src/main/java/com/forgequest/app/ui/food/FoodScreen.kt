@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitSwitch
 import androidx.compose.foundation.rememberScrollState
@@ -330,7 +331,8 @@ fun FoodScreen(nav: NavHostController) {
     }
     val shown = if (searching) results else inCategory
     val selectedFoods = foods.filter { it.id in selection }
-    val selKcal = selectedFoods.sumOf { (it.kcal * (selection[it.id]?.qty ?: 1f)).toDouble() }.roundToInt()
+    // Each food rounded on its own, as logFoods stores it, so this is what the day's total gains.
+    val selKcal = selectedFoods.sumOf { Nutrition.scaledKcal(it.kcal, selection[it.id]?.qty ?: 1f) }
     val selProtein = selectedFoods.sumOf { (it.protein * (selection[it.id]?.qty ?: 1f)).toDouble() }.roundToInt()
 
     Box(Modifier.fillMaxSize().background(c.background)) {

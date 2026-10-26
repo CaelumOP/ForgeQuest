@@ -2,6 +2,7 @@
 // browser-only photo shrink. The photo is never stored: it lives in memory until the screen closes.
 import { AiError, geminiGenerate, imagePart, scanModelsFor, textPart } from '../../data/ai';
 import { loadSettings } from '../../data/settings';
+import { scaledKcal } from '../../domain/nutrition';
 
 export type ScanItem = { name: string; grams: number; kcal: number; protein: number; carbs: number };
 export type FoodScan = { dish: string; items: ScanItem[]; handVisible: boolean; note: string };
@@ -118,13 +119,16 @@ export const COOKING_FATS = [{ id: 'light', kcal: 0 }, { id: 'normal', kcal: 50 
 /** Scales an item to a corrected weight so calories and macros stay consistent. */
 export function withGrams(item: ScanItem, grams: number): ScanItem {
   const f = item.grams > 0 ? grams / item.grams : 1;
-  return { ...item, grams: Math.round(grams), kcal: Math.round(item.kcal * f), protein: item.protein * f, carbs: item.carbs * f };
+  return { ...item, grams: Math.round(grams), kcal: scaledKcal(item.kcal, f), protein: item.protein * f, carbs: item.carbs * f };
 }
 
-/** Totals for the ticked items, portion factor and extra fat applied (Android ResultSheet). */
+/**
+ * Totals for the ticked items, portion factor and extra fat applied (Android ResultSheet). The calories are the sum
+ * of the parts the meal is saved with, so the logged meal and the saved food agree (Android Nutrition.scanKcal).
+ */
 export function scanTotals(items: readonly ScanItem[], portion: number, fatKcal: number): { kcal: number; protein: number; carbs: number } {
   return {
-    kcal: Math.round(items.reduce((a, i) => a + i.kcal, 0) * portion) + (items.length ? fatKcal : 0),
+    kcal: items.length ? items.reduce((a, i) => a + scaledKcal(i.kcal, portion), 0) + fatKcal : 0,
     protein: items.reduce((a, i) => a + i.protein, 0) * portion,
     carbs: items.reduce((a, i) => a + i.carbs, 0) * portion,
   };

@@ -82,6 +82,15 @@ describe('food library: parts, restaurants, no duplicates', () => {
     expect(logName(food('Rice', 300, 6), without, ', ')).toBe('Rice');
   });
 
+  it('logs half servings rounded, so the day gains what the Log button showed (audit item 15)', async () => {
+    const id = await saveFood(food('Wrap', 125, 9));
+    const wrap = (await getFoods()).find((f) => f.id === id)!;
+    await logFoods([{ food: wrap, qty: 0.5 }, { food: wrap, qty: 0.5 }], 20000);
+    expect((await getMealsOn(20000)).map((m) => m.kcal)).toEqual([63, 63]); // Math.trunc gave 62 + 62
+    expect((await dayTotals(20000)).kcal).toBe(126);
+    expect((await dayTotals(20000)).protein).toBeCloseTo(9); // grams keep full precision
+  });
+
   it('logs each pick under its meal with its name', async () => {
     const id = await saveFood(food('Coca-Cola', 140, 0));
     const coke = (await getFoods()).find((f) => f.id === id)!;
