@@ -12,8 +12,8 @@ import {
 import { db, type ChatRow, type ExerciseRow } from './db';
 import { useLive } from './live';
 import { getProgressSnapshot, type ProgressSnapshot } from './progress';
-import { configuredEquipment, loadSettings, updateSettings } from './settings';
-import { applyPlan, planToDraft, recentDoneSets } from './workouts';
+import { configuredEquipment, loadSettings, updateSettings, type Settings } from './settings';
+import { applyPlan, doneSetsBefore, planToDraft } from './workouts';
 import { adaptPlanToEquipment, inferEquipmentFromText, type Equipment } from '../domain/exercise-swap-engine';
 import { todayEpochDay } from '../domain/dates';
 
@@ -226,17 +226,23 @@ export async function parsePlanText(text: string): Promise<CoachPlan> {
 
 // ---------------------------------------------------------------- Debrief
 
-const DEBRIEF_TIMEOUT_MS = 10_000;
+// Runs while the summary is already showing, so it can afford a slow network and a Groq -> Gemini fallback.
+const DEBRIEF_TIMEOUT_MS = 30_000;
+
+/** A debrief can be asked for at all: a Groq or Gemini key is saved. */
+export const canDebrief = (s: Pick<Settings, 'groqKey' | 'apiKey'>): boolean => !!(s.groqKey.trim() || s.apiKey.trim());
 
 /**
- * The coach's short debrief of a finished workout, saved on the session row. Groq when set, else Gemini with no
- * thinking; 10 s at most. Null when the setting is off, there is no key, or no set was done. Throws AiError on failure.
+ * The coach's short debrief of a finished workout, saved on the session row. Compares with the last time each exercise
+ * was done before it. Groq first when set (JSON mode), Gemini with no thinking when Groq fails or its reply can't be
+ * read; 30 s overall. Null when the setting is off (unless `onDemand`, asked for from the journal), there is no key, or
+ * no set was done. Throws AiError on failure.
  */
-export async function generateDebrief(sessionId: number): Promise<WorkoutDebrief | null> {
+export async function generateDebrief(sessionId: number, onDemand = false): Promise<WorkoutDebrief | null> {
   const s = await loadSettings();
-  if (!s.debriefEnabled) return null;
+  if (!s.debriefEnabled && !onDemand) return null;
+  if (!canDebrief(s)) return null;
   const groqKey = s.groqKey.trim();
-  if (!groqKey && !s.apiKey.trim()) return null;
   const session = await db.sessions.get(sessionId);
   if (!session) return null;
   const sets = (await db.sets.where('sessionId').equals(sessionId).toArray()).filter((x) => x.done);
@@ -246,7 +252,8 @@ export async function generateDebrief(sessionId: number): Promise<WorkoutDebrief
   const ids = [...new Set(sets.map((x) => x.exerciseId))];
   const exercises = [];
   for (const id of ids) {
-    const before = (await recentDoneSets(id)).filter((x) => x.sessionId !== sessionId);
+    // Only workouts before this one, so a debrief asked for later from the journal compares the right way.
+    const before = await doneSetsBefore(id, session.epochDay, session.startedAt);
     const lastId = before[0]?.sessionId;
     exercises.push({ name: library.get(id)?.name ?? id, done: sets.filter((x) => x.exerciseId === id), lastTime: lastId == null ? [] : before.filter((x) => x.sessionId === lastId) });
   }
@@ -260,16 +267,17 @@ export async function generateDebrief(sessionId: number): Promise<WorkoutDebrief
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), DEBRIEF_TIMEOUT_MS);
   try {
-    let text: string | null = null;
+    let debrief: WorkoutDebrief | null = null;
     if (groqKey) {
       try {
-        text = await groqChat({ model: s.groqModel || GROQ_FALLBACK_MODEL, messages: [{ role: 'system', content: system }, { role: 'user', content: payload }], signal: ctl.signal });
-      } catch { text = null; }
+        const text = await groqChat({ model: s.groqModel || GROQ_FALLBACK_MODEL, messages: [{ role: 'system', content: system }, { role: 'user', content: payload }], json: true, signal: ctl.signal });
+        debrief = parseDebrief(text);
+      } catch { debrief = null; }
     }
-    if (text == null && s.apiKey.trim()) {
-      text = await geminiGenerate({ system, parts: [textPart(payload)], json: true, fast: true, models: modelsFor(s.coachModel, s), signal: ctl.signal });
+    if (!debrief && s.apiKey.trim()) {
+      const text = await geminiGenerate({ system, parts: [textPart(payload)], json: true, fast: true, models: modelsFor(s.coachModel, s), signal: ctl.signal });
+      debrief = parseDebrief(text);
     }
-    const debrief = text ? parseDebrief(text) : null;
     if (!debrief) throw new AiError('unreadable', 'debrief not readable');
     // Re-read the workout so a note added while the coach was writing isn't overwritten.
     const fresh = await db.sessions.get(sessionId);

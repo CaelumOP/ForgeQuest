@@ -1,6 +1,6 @@
 // "Tap a muscle, see its exercises" (docs/plans/muscle-exercises-plan.md). Android: MuscleExercises.kt.
 import type { ExerciseEntity } from './entities'
-import { EQUIPMENT, profileFor, type Equipment } from './exercise-swap-engine'
+import { EQUIPMENT, profileFor, rankSubstitutes, type Equipment } from './exercise-swap-engine'
 import { tierOf, TIERS, type Tier } from './exercise-tiers'
 import type { Muscle } from './muscle'
 
@@ -42,12 +42,10 @@ export function muscleExercises(
 export const listSize = (l: MuscleExerciseList) => l.inPlan.length + l.others.length
 
 /**
- * The plan exercise `ex` could replace: the only one in the plan with the same movement pattern. Null when `ex` is
- * already in the plan or there are none or several (then the plan editor is the place to choose).
+ * A plan day's exercises in the order to offer them for replacing with `ex`, closest movement first; the flag marks the
+ * ones doing the same movement. `ex` itself is left out, since replacing it with itself does nothing.
  */
-export function planSwapTarget(ex: ExerciseEntity, planExercises: ExerciseEntity[]): ExerciseEntity | null {
-  if (planExercises.some((e) => e.id === ex.id)) return null
+export function replaceOrder(ex: ExerciseEntity, dayExercises: ExerciseEntity[]): [ExerciseEntity, boolean][] {
   const pattern = profileFor(ex).pattern
-  const matches = [...new Map(planExercises.map((e) => [e.id, e])).values()].filter((e) => profileFor(e).pattern === pattern)
-  return matches.length === 1 ? matches[0] : null
+  return rankSubstitutes(ex, [...new Map(dayExercises.map((e) => [e.id, e])).values()]).map((c) => [c.exercise, c.profile.pattern === pattern])
 }

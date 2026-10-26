@@ -408,7 +408,10 @@ export function describeChanges(patch: PlanPatch, library: Known, lang: string):
 
 export const MIN_SCORE = 4;
 
-/** Reads the model's JSON (bare or fenced, with chatter around it); null when it isn't usable. */
+/**
+ * Reads the model's JSON (bare or fenced, with chatter around it); null when it isn't usable. Forgiving about shape,
+ * since fast models drift: a score of 8 or "8/10", and a single string where a list was asked for.
+ */
 export function parseDebrief(text: string): WorkoutDebrief | null {
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
@@ -417,11 +420,14 @@ export function parseDebrief(text: string): WorkoutDebrief | null {
   if (!isObj(raw)) return null;
   const summary = strOr(raw.summary, '').trim();
   if (!summary) return null;
-  const list = (x: unknown, max: number) => strList(x).map((s) => s.trim()).filter(Boolean).slice(0, max);
+  const score = typeof raw.score === 'number' || typeof raw.score === 'string' ? /\d+/.exec(String(raw.score))?.[0] : undefined;
+  if (score == null) return null;
+  const list = (x: unknown, max: number) =>
+    (Array.isArray(x) ? x : [x]).filter((v): v is string => typeof v === 'string').map((s) => s.trim()).filter(Boolean).slice(0, max);
   return {
-    score: clampN(Math.round(Number(raw.score) || 0), MIN_SCORE, 10),
+    score: clampN(parseInt(score, 10), MIN_SCORE, 10),
     summary: summary.slice(0, 240),
-    highlights: list(raw.highlights, 2), watch: list(raw.watch, 1), nextTime: list(raw.nextTime, 1),
+    highlights: list(raw.highlights, 2), watch: list(raw.watch, 1), nextTime: list(raw.nextTime ?? raw.next_time, 1),
   };
 }
 
@@ -475,7 +481,7 @@ export function debriefPayload(i: DebriefInput): string {
 export function debriefSystem(lang: 'en' | 'ar'): string {
   const language = lang === 'ar' ? 'formal Modern Standard Arabic (Western digits)' : 'English';
   return [
-    'You are a friendly strength coach writing a 10-second debrief of a workout that was just finished.',
+    'You are a friendly strength coach writing a 10-second debrief of a finished workout.',
     'Reply with ONLY a JSON object: {"score": 4-10, "summary": one short sentence, "highlights": [1-2 short items citing real numbers],',
     '"watch": [0-1 short item: a stall, a pain/hard note, or low readiness], "nextTime": [1 short, concrete tip]}.',
     'Finishing counts: never score below 4. Be specific, warm and brief. Write in ' + language + '.',

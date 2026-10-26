@@ -103,5 +103,17 @@ class DebriefTest {
     fun junkGivesNull() {
         assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("offline"))
         assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"score\": 7}"))
+        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"summary\": \"No score\"}"))
+    }
+
+    @Test
+    fun forgivesDriftingShapes() {
+        // Fast models sometimes send a text score and single strings where lists were asked for.
+        val d = com.forgequest.app.data.plan.WorkoutDebrief.parse(
+            "{\"score\": \"8/10\", \"summary\": \"Strong session.\", \"highlights\": \"12 dips, 2 more than last time\", \"watch\": [], \"next_time\": \"Add a set of rows\"}",
+        )!!
+        assertEquals(8, d.score)
+        assertEquals(listOf("12 dips, 2 more than last time"), d.highlights)
+        assertEquals(listOf("Add a set of rows"), d.nextTime)
     }
 }

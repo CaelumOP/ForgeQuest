@@ -289,6 +289,17 @@ export async function recentDoneSets(exerciseId: string): Promise<SetRow[]> {
   }).slice(0, 20);
 }
 
+/** Like recentDoneSets, but only from workouts before the one on `epochDay` that started at `startedAt`. */
+export async function doneSetsBefore(exerciseId: string, epochDay: number, startedAt: number): Promise<SetRow[]> {
+  const all = await recentDoneSetsAll(exerciseId);
+  const sess = new Map((await db.sessions.toArray()).map((s) => [s.id!, s]));
+  return all.filter((x) => { const ss = sess.get(x.sessionId)!; return ss.epochDay < epochDay || (ss.epochDay === epochDay && ss.startedAt < startedAt); })
+    .sort((a, b) => {
+      const sa = sess.get(a.sessionId)!; const sb = sess.get(b.sessionId)!;
+      return sb.epochDay - sa.epochDay || sb.startedAt - sa.startedAt || a.setIndex - b.setIndex;
+    }).slice(0, 20);
+}
+
 /** Every done set of one exercise in a finished workout. */
 export async function recentDoneSetsAll(exerciseId: string): Promise<SetRow[]> {
   const finished = new Set((await db.sessions.toArray()).filter((s) => s.finishedAt != null).map((s) => s.id!));
@@ -380,12 +391,6 @@ export async function swapExercise(sessionId: number, itemPosition: number, newE
   };
   const fresh = await buildSetsFor(sessionId, itemPosition, synthetic, ex);
   if (fresh.length) await db.sets.bulkAdd(fresh);
-}
-
-/** Puts `newId` in place of `oldId` on every plan day of the active plan, translating sets and reps. */
-export async function swapIntoPlan(oldId: string, newId: string): Promise<void> {
-  const plan = await getActivePlan();
-  for (const item of plan?.days.flatMap((d) => d.items).filter((i) => i.exerciseId === oldId) ?? []) await swapPlanItem(item, newId);
 }
 
 /** A harder version replaces an easy move: today's sets at its positions, and the plan day the workout came from. */

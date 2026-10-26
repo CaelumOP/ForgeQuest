@@ -1198,6 +1198,9 @@
     <string name="debrief_journal">المدرب %1$d/10: %2$s</string>
     <string name="debrief_setting">ملخص ما بعد التمرين</string>
     <string name="debrief_setting_hint">مراجعة قصيرة بالذكاء الاصطناعي مع تقييم ونصيحة بعد كل تمرين</string>
+    <string name="debrief_failed">تعذّر على مدربك كتابة هذا الملخص. تحقّق من اتصالك ثم أعد المحاولة.</string>
+    <string name="debrief_open">ملخص المدرب</string>
+    <string name="debrief_no_key">أضف مفتاح Gemini أو Groq المجاني من الملف الشخصي لتحصل على ملخصات المدرب.</string>
     <!-- الملف الشخصي: فئات الإعدادات القابلة للطي -->
     <string name="settings_section_settings">الإعدادات</string>
     <string name="settings_group_body">الجسم والصحة</string>
@@ -1408,8 +1411,14 @@
     <string name="tier_intermediate">متوسط</string>
     <string name="tier_advanced">متقدم</string>
     <string name="swap_into_plan">ضعه في خطتي</string>
-    <string name="swap_into_plan_hint">يحل محل %1$s، وهو التمرين الوحيد في خطتك الذي يؤدي الحركة نفسها.</string>
-    <string name="swap_into_plan_done">حلّ %1$s محل %2$s في خطتك</string>
+    <string name="plan_put_in_title">ضع %1$s في خطتك</string>
+    <string name="plan_put_in_pick_day">اختر يومًا.</string>
+    <string name="plan_put_in_already">موجود فيه</string>
+    <string name="plan_put_in_replace">استبدال</string>
+    <string name="plan_put_in_same_movement">الحركة نفسها</string>
+    <string name="plan_put_in_add">أضفه إلى هذا اليوم</string>
+    <string name="plan_put_in_replaced">حلّ %1$s محل %2$s يوم %3$s</string>
+    <string name="plan_put_in_added">أُضيف %1$s إلى يوم %2$s</string>
     <string name="harder_ready">صار %1$s سهلًا عليك. أمستعد لـ%2$s؟</string>
     <string name="harder_tempo">صار %1$s سهلًا عليك. أبطئ الحركة: 3 ثوانٍ في النزول، ثم توقف ثانية واحدة.</string>
     <string name="harder_switch">بدّل</string>

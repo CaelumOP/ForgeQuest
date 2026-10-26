@@ -1089,6 +1089,9 @@
     <string name="debrief_journal">Coach %1$d/10: %2$s</string>
     <string name="debrief_setting">Workout debrief</string>
     <string name="debrief_setting_hint">A short AI review with a score and one tip after each workout</string>
+    <string name="debrief_failed">Your coach couldn\'t write this debrief. Check your connection and try again.</string>
+    <string name="debrief_open">Coach debrief</string>
+    <string name="debrief_no_key">Add a free Gemini or Groq key in Profile to get coach debriefs.</string>
     <!-- Profile: folding settings categories -->
     <string name="settings_section_settings">Settings</string>
     <string name="settings_group_body">Body and health</string>
@@ -1283,9 +1286,15 @@
     <string name="tier_foundation">Foundation</string>
     <string name="tier_intermediate">Intermediate</string>
     <string name="tier_advanced">Advanced</string>
-    <string name="swap_into_plan">Swap into my plan</string>
-    <string name="swap_into_plan_hint">Replaces %1$s, the one exercise in your plan doing the same movement.</string>
-    <string name="swap_into_plan_done">%1$s replaced %2$s in your plan</string>
+    <string name="swap_into_plan">Put in my plan</string>
+    <string name="plan_put_in_title">Put %1$s in your plan</string>
+    <string name="plan_put_in_pick_day">Choose a day.</string>
+    <string name="plan_put_in_already">Already in it</string>
+    <string name="plan_put_in_replace">Replace</string>
+    <string name="plan_put_in_same_movement">Same movement</string>
+    <string name="plan_put_in_add">Add to this day</string>
+    <string name="plan_put_in_replaced">%1$s replaced %2$s on %3$s</string>
+    <string name="plan_put_in_added">%1$s added to %2$s</string>
     <string name="harder_ready">%1$s is getting easy. Ready for %2$s?</string>
     <string name="harder_tempo">%1$s is getting easy. Slow it down: 3 seconds down, then a 1-second pause.</string>
     <string name="harder_switch">Switch</string>

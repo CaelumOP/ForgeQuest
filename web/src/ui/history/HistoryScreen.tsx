@@ -10,6 +10,7 @@ import { formatWeight } from '../../domain/units'
 import { Button, Card, EmptyState, Sheet, TextField } from '../kit'
 import { ExpandMoreIcon } from '../icons'
 import { decodeDebrief, groupWeeks, minutesOf } from './helpers'
+import { DebriefSheet } from './DebriefSheet'
 import './history.css'
 
 const fmt = (day: number, o: Intl.DateTimeFormatOptions) =>
@@ -30,7 +31,9 @@ export function HistoryScreen(_: { param?: string }) {
   const [open, setOpen] = useState<Record<number, boolean>>({})
   const [noteFor, setNoteFor] = useState<SessionRow | null>(null)
   const [noteText, setNoteText] = useState('')
+  const [debriefId, setDebriefId] = useState<number | null>(null)
 
+  const debriefSession = sessions.find((x) => x.id === debriefId)
   const names = new Map(library.map((e) => [e.id, e.name]))
   const bySession = new Map<number, SetRow[]>()
   for (const s of doneSets) bySession.set(s.sessionId, [...(bySession.get(s.sessionId) ?? []), s])
@@ -116,9 +119,12 @@ export function HistoryScreen(_: { param?: string }) {
                           </div>
                         </Card>
                         {d && <p class="hs-debrief">{t('debrief_journal', d.score, d.summary)}</p>}
-                        <button type="button" class={`hs-notebtn${s.note ? ' has' : ''}`} onClick={() => { setNoteFor(s); setNoteText(s.note) }}>
-                          {s.note || t('journal_add_note')}
-                        </button>
+                        <div class="hs-actions">
+                          <button type="button" class={`hs-notebtn${s.note ? ' has' : ''}`} onClick={() => { setNoteFor(s); setNoteText(s.note) }}>
+                            {s.note || t('journal_add_note')}
+                          </button>
+                          {ss.length > 0 && <button type="button" class="hs-notebtn" onClick={() => setDebriefId(s.id!)}>{t('debrief_open')}</button>}
+                        </div>
                       </div>
                     )
                   })}
@@ -128,6 +134,7 @@ export function HistoryScreen(_: { param?: string }) {
           )
         })}
       </div>
+      {debriefSession && <DebriefSheet key={debriefSession.id} session={debriefSession} onClose={() => setDebriefId(null)} />}
       <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={t('history_web_note_title')}>
         <div class="hs-sheet">
           <TextField label={t('history_web_note_title')} value={noteText} onInput={(v) => setNoteText(v.slice(0, 300))} multiline placeholder={t('history_web_note_hint')} />

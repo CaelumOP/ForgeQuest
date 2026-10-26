@@ -4,7 +4,7 @@ import { EXERCISE_CATALOG } from '../data/seed/exercise-catalog'
 import type { SetEffort } from './effort'
 import { EQUIPMENT, presetEquipment, type Equipment } from './exercise-swap-engine'
 import { harderVersion, readyForHarder, tierOf } from './exercise-tiers'
-import { listSize, muscleExercises, planSwapTarget } from './muscle-exercises'
+import { listSize, muscleExercises, replaceOrder } from './muscle-exercises'
 import type { PastSet } from './progression'
 
 const all = EXERCISE_CATALOG
@@ -58,9 +58,9 @@ describe('muscle exercises', () => {
     expect(obliques.others.some((r) => r.exercise.id === 'crunch')).toBe(true)
   })
 
-  it('offers a plan swap only with exactly one same-movement exercise', () => {
-    expect(planSwapTarget(ex('push_up'), [ex('knee_push_up'), ex('squat')])?.id).toBe('knee_push_up')
-    expect(planSwapTarget(ex('push_up'), [ex('knee_push_up'), ex('wide_knee_push_up')])).toBeNull()
-    expect(planSwapTarget(ex('push_up'), [ex('push_up')])).toBeNull()
+  it('replace order puts the same movement first', () => {
+    const order = replaceOrder(ex('push_up'), [ex('squat'), ex('knee_push_up'), ex('push_up')])
+    expect(order.map((r) => r[0].id)).toEqual(['knee_push_up', 'squat'])
+    expect(order.map((r) => r[1])).toEqual([true, false])
   })
 })

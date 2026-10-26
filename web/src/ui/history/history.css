@@ -40,3 +40,13 @@
 .hs-toolbar .hs-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hs-datefield { width: 100%; min-height: 44px; font-size: 16px; padding-inline: 12px; border-radius: 12px; border: 1px solid var(--divider); background: var(--card); color: var(--text); font-family: inherit; box-sizing: border-box; }
 .hs-sheet { display: flex; flex-direction: column; gap: 12px; }
+.hs-deb-date { margin: 0; font-size: 13px; color: var(--text-2); }
+.hs-deb-card { display: flex; flex-direction: column; gap: 4px; }
+.hs-deb-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.hs-deb-main { margin: 6px 0 0; color: var(--text); font-size: 15px; }
+.hs-deb-line { margin: 4px 0 0; font-size: 13px; }
+.hs-deb-good { color: var(--teal); }
+.hs-deb-gold { color: var(--gold); }
+.hs-deb-head .hs-deb-gold { font-weight: 600; }
+.hs-deb-next { color: var(--blue); }
+.hs-actions { display: flex; align-items: center; flex-wrap: wrap; }

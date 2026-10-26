@@ -121,7 +121,7 @@ class CoachRepository(
             // Chat goes to Groq (Llama 3.3 70B) when there's a Groq key and Automatic is chosen; plans stay on Gemini.
             val viaGroq = !shouldEmitPlanJson && settings.groqKey.value.isNotBlank() && modelChoice == "auto"
             val fromGroq = if (!viaGroq) null else try {
-                groq.streamChat(settings.groqKey.value, groqModel(), system, turns, onDelta).also { provider = "Groq" }
+                groq.streamChat(settings.groqKey.value, groqModel(), system, turns, onDelta = onDelta).also { provider = "Groq" }
             } catch (e: AiError) {
                 if (e is AiError.Partial) throw e
                 Log.w(TAG, "groq failed before any text, using Gemini: ${e.detail}")
@@ -303,16 +303,20 @@ class CoachRepository(
         return ApplyResult.APPLIED
     }
 
+    /** A debrief can be asked for at all: a Groq or Gemini key is saved. */
+    fun canDebrief(): Boolean = settings.groqKey.value.isNotBlank() || settings.apiKey.value.isNotBlank()
+
     /**
-     * The coach's short debrief of a finished workout: compares it with the last time each exercise was done,
-     * the effort chips and notes, and that day's readiness. Fast provider (Groq when set, else Gemini with no
-     * thinking), 10 s at most; null when offline, off, keyless or unreadable, so the summary never waits on it.
+     * The coach's short debrief of a finished workout: compares it with the last time each exercise was done before
+     * it, the effort chips and notes, and that day's readiness. Groq first when set (JSON mode), Gemini with no
+     * thinking when Groq fails or its reply can't be read; [DEBRIEF_TIMEOUT_MS] overall. Null when offline, keyless
+     * or unreadable: the screen then offers Try again. [onDemand] (asked for from the journal) ignores the setting.
      */
-    suspend fun generateDebrief(sessionId: Long): WorkoutDebrief? = suspendRunCatching {
+    suspend fun generateDebrief(sessionId: Long, onDemand: Boolean = false): WorkoutDebrief? = suspendRunCatching {
         val s = settings.current()
-        if (!s.debriefEnabled) return@suspendRunCatching null
+        if (!s.debriefEnabled && !onDemand) return@suspendRunCatching null
+        if (!canDebrief()) return@suspendRunCatching null
         val groqKey = settings.groqKey.value
-        if (groqKey.isBlank() && settings.apiKey.value.isBlank()) return@suspendRunCatching null
         val session = db.sessions().byId(sessionId) ?: return@suspendRunCatching null
         val sets = db.sessions().observeSets(sessionId).first().filter { it.done }
         if (sets.isEmpty()) return@suspendRunCatching null
@@ -332,26 +336,32 @@ class CoachRepository(
                     ).joinToString(" ")
                 }
                 appendLine("- $name: ${line(done)}")
-                val before = db.sessions().recentDoneSets(id).filter { it.sessionId != sessionId }
+                // Only workouts before this one, so a debrief asked for later from the journal compares the right way.
+                val before = db.sessions().doneSetsBefore(id, session.epochDay, session.startedAt)
                 val last = before.filter { it.sessionId == before.firstOrNull()?.sessionId }
                 if (last.isNotEmpty()) appendLine("  last time: ${line(last)}")
             }
         }
         val language = if (java.util.Locale.getDefault().language == "ar") "formal Modern Standard Arabic (Western digits)" else "English"
         val system = """
-            You are a friendly strength coach writing a 10-second debrief of a workout that was just finished.
+            You are a friendly strength coach writing a 10-second debrief of a finished workout.
             Reply with ONLY a JSON object: {"score": 4-10, "summary": one short sentence, "highlights": [1-2 short items citing real numbers],
             "watch": [0-1 short item: a stall, a pain/hard note, or low readiness], "nextTime": [1 short, concrete tip]}.
             Finishing counts: never score below 4. Be specific, warm and brief. Write in $language.
         """.trimIndent()
         val turns = listOf("user" to payload)
-        val text = withTimeoutOrNull(DEBRIEF_TIMEOUT_MS) {
-            val fromGroq = if (groqKey.isBlank()) null else suspendRunCatching { groq.streamChat(groqKey, groqModel(), system, turns) {} }.getOrNull()
-            fromGroq ?: gemini.generate(requireKey(), models(), system, turns, jsonOutput = true, fast = true)
-        } ?: return@suspendRunCatching null
+        val debrief = withTimeoutOrNull(DEBRIEF_TIMEOUT_MS) {
+            val fromGroq = if (groqKey.isBlank()) null else suspendRunCatching { groq.streamChat(groqKey, groqModel(), system, turns, jsonOutput = true) {} }
+                .onFailure { Log.w(TAG, "debrief: groq failed, using Gemini: ${it.message}") }.getOrNull()
+                ?.let { text -> WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: groq reply unreadable: ${text.take(200)}") } }
+            fromGroq ?: settings.apiKey.value.takeIf { it.isNotBlank() }?.let { key ->
+                val text = gemini.generate(key, models(), system, turns, jsonOutput = true, fast = true)
+                WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: gemini reply unreadable: ${text.take(200)}") }
+            }
+        } ?: return@suspendRunCatching null.also { Log.w(TAG, "debrief: no readable reply within $DEBRIEF_TIMEOUT_MS ms") }
         // Re-read the workout so a note added while the coach was writing isn't overwritten.
-        WorkoutDebrief.parse(text)?.also { d -> db.sessions().byId(sessionId)?.let { db.sessions().update(it.copy(debrief = WorkoutDebrief.encode(d))) } }
-    }.getOrNull()
+        debrief.also { d -> db.sessions().byId(sessionId)?.let { db.sessions().update(it.copy(debrief = WorkoutDebrief.encode(d))) } }
+    }.onFailure { Log.w(TAG, "debrief failed: ${it.message}") }.getOrNull()
 
     /** "Tuesday: Dips → Push-up" lines for a change-only card, in the app language. */
     private fun describeChanges(base: PlanDraft, patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
@@ -736,7 +746,8 @@ class CoachRepository(
 
     private companion object {
         const val TAG = "FQ-AI"
-        const val DEBRIEF_TIMEOUT_MS = 10_000L
+        // Runs while the summary is already showing, so it can afford a slow network and a Groq → Gemini fallback.
+        const val DEBRIEF_TIMEOUT_MS = 30_000L
 
         val CORE_RULES = """
             You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Sports Science, Calisthenics & Gym Coach).

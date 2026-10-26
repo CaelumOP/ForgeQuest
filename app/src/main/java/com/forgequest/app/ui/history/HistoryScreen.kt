@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -84,6 +85,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -95,6 +97,31 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
     val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
 
     fun setNote(session: SessionEntity, note: String) = viewModelScope.launch { app.db.sessions().update(session.copy(note = note.trim().take(300))) }
+
+    /** The debrief sheet: which workout it is open for, and whether the coach is writing it or couldn't. */
+    val debriefFor = MutableStateFlow<Long?>(null)
+    val debriefLoading = MutableStateFlow(false)
+    val debriefFailed = MutableStateFlow(false)
+    val canDebrief get() = app.coach.canDebrief()
+
+    /** Opens the sheet; a workout with no saved debrief gets one written now. */
+    fun openDebrief(session: SessionEntity) {
+        debriefFor.value = session.id
+        debriefFailed.value = false
+        if (com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) == null) writeDebrief(session.id)
+    }
+
+    /** App scope so closing the sheet doesn't throw the answer away; it is saved on the workout either way. */
+    fun writeDebrief(sessionId: Long) {
+        if (debriefLoading.value || !canDebrief) return
+        debriefLoading.value = true
+        debriefFailed.value = false
+        app.appScope.launch {
+            val d = app.coach.generateDebrief(sessionId, onDemand = true)
+            debriefFailed.value = d == null
+            debriefLoading.value = false
+        }
+    }
 }
 
 /** The journal: a feed of weeks, newest first, each opening into its days and workouts (like Google Fit's journal). */
@@ -118,6 +145,8 @@ fun HistoryScreen(nav: NavHostController) {
     noteFor?.let { ses ->
         com.forgequest.app.ui.workouts.SetNoteDialog(ses.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(ses, it); noteFor = null })
     }
+    val debriefFor by vm.debriefFor.collectAsState()
+    s.sessions.firstOrNull { it.id == debriefFor }?.let { ses -> DebriefSheet(vm, ses) }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -162,12 +191,19 @@ fun HistoryScreen(nav: NavHostController) {
                                         modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 8.dp),
                                     )
                                 }
-                                TextButton(onClick = { noteFor = session }) {
-                                    Text(
-                                        session.note.ifBlank { stringResource(R.string.journal_add_note) },
-                                        style = MaterialTheme.typography.bodySmall, color = if (session.note.isBlank()) c.teal else c.textSecondary,
-                                        fontStyle = if (session.note.isBlank()) null else androidx.compose.ui.text.font.FontStyle.Italic,
-                                    )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = { noteFor = session }, modifier = Modifier.weight(1f, fill = false)) {
+                                        Text(
+                                            session.note.ifBlank { stringResource(R.string.journal_add_note) },
+                                            style = MaterialTheme.typography.bodySmall, color = if (session.note.isBlank()) c.teal else c.textSecondary,
+                                            fontStyle = if (session.note.isBlank()) null else androidx.compose.ui.text.font.FontStyle.Italic,
+                                        )
+                                    }
+                                    if (setsBySession[session.id].orEmpty().isNotEmpty()) {
+                                        TextButton(onClick = { vm.openDebrief(session) }) {
+                                            Text(stringResource(R.string.debrief_open), style = MaterialTheme.typography.bodySmall, color = c.teal)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -179,6 +215,32 @@ fun HistoryScreen(nav: NavHostController) {
 }
 
 /** One week: how many workouts, time, kg lifted and records; tap to open its days. */
+/** The journal's coach debrief for one workout: the saved one, or the coach writing it now, with Try again on failure. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity) {
+    val c = Fit.colors
+    val loading by vm.debriefLoading.collectAsState()
+    val failed by vm.debriefFailed.collectAsState()
+    val debrief = com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
+            Text(session.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Text(
+                LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
+                style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+            )
+            Spacer(Modifier.height(12.dp))
+            if (debrief == null && !vm.canDebrief) {
+                Text(stringResource(R.string.debrief_no_key), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+            } else {
+                com.forgequest.app.ui.workouts.DebriefCard(debrief, failed = failed && !loading, onRetry = { vm.writeDebrief(session.id) })
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
 @Composable
 private fun WeekCard(
     week: LocalDate,

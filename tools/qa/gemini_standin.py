@@ -1,5 +1,5 @@
 """Fake Gemini API for ForgeQuest QA builds (-PgeminiBase=http://10.0.2.2:8765/v1beta). Canned but well-formed replies."""
-import json, sys, time
+import json, os, sys, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PLAN = {
@@ -27,7 +27,10 @@ MEAL = {"dish": "Chicken and rice", "items": [
     {"name": "Grilled chicken breast", "grams": 150, "kcal": 248, "protein": 46.5, "carbs": 0},
     {"name": "Basmati rice", "grams": 200, "kcal": 260, "protein": 5.4, "carbs": 56}],
     "handVisible": False, "note": "Assumed little oil; rice weighed cooked."}
-DEBRIEF = {"score": 7, "summary": "Solid first session.", "highlights": ["You finished every set"], "watch": [], "nextTime": ["Add one rep to each set"]}
+# A text score and a single string where a list is asked for: fast models drift like this, and the app must cope.
+DEBRIEF = {"score": "7/10", "summary": "Solid session.", "highlights": "You finished every set", "watch": [], "nextTime": ["Add one rep to each set"]}
+# Touch tools/qa/fail_debrief to make debrief requests fail (tests Try again); delete it to let them through.
+FAIL_DEBRIEF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fail_debrief")
 
 
 def reply_for(req):
@@ -74,6 +77,9 @@ class H(BaseHTTPRequestHandler):
         key = self.headers.get("x-goog-api-key", "")
         if key.startswith("bad"):
             self._send(400, json.dumps({"error": {"code": 400, "message": "API key not valid. Please pass a valid API key.", "status": "INVALID_ARGUMENT"}}))
+            return
+        if os.path.exists(FAIL_DEBRIEF) and "10-second debrief" in json.dumps(req.get("systemInstruction", {})):
+            self._send(500, json.dumps({"error": {"code": 500, "message": "Internal error (QA fail_debrief)", "status": "INTERNAL"}}))
             return
         text = reply_for(req)
         sys.stderr.write(f"{time.strftime('%H:%M:%S')} {self.path[:60]} -> {text[:60]!r}\n")

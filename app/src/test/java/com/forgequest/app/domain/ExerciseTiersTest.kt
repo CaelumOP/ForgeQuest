@@ -62,9 +62,9 @@ class ExerciseTiersTest {
         assertTrue(obliques.others.any { it.exercise.id == "crunch" })
     }
 
-    @Test fun planSwapOnlyWithOneSameMovementExercise() {
-        assertEquals("knee_push_up", MuscleExercises.planSwapTarget(ex("push_up"), listOf(ex("knee_push_up"), ex("squat")))?.id)
-        assertNull(MuscleExercises.planSwapTarget(ex("push_up"), listOf(ex("knee_push_up"), ex("wide_knee_push_up"))))
-        assertNull(MuscleExercises.planSwapTarget(ex("push_up"), listOf(ex("push_up"))))
+    @Test fun replaceOrderPutsTheSameMovementFirst() {
+        val order = MuscleExercises.replaceOrder(ex("push_up"), listOf(ex("squat"), ex("knee_push_up"), ex("push_up")))
+        assertEquals(listOf("knee_push_up", "squat"), order.map { it.first.id })
+        assertEquals(listOf(true, false), order.map { it.second })
     }
 }

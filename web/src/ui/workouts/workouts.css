@@ -106,3 +106,7 @@ div.wk-choice-main { cursor: default; }
 .wk-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-block: 2px; }
 .wk-chips::-webkit-scrollbar { display: none; }
 .wk-chips .kit-chip { flex: none; white-space: nowrap; line-height: 1.4; }
+.wk-pick { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 0; background: none; border: 0; font: inherit; color: var(--text); text-align: start; cursor: pointer; }
+.wk-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wk-pick-head { display: flex; align-items: center; gap: 4px; }
+.wk-pick-sec { margin: 8px 0 0; font-size: 14px; font-weight: 600; color: var(--text-2); }

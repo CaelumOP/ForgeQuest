@@ -186,6 +186,15 @@ interface SessionDao {
     )
     suspend fun recentDoneSets(exerciseId: String): List<SetEntity>
 
+    /** Like [recentDoneSets], but only from workouts before the one on [epochDay] started at [startedAt]. */
+    @Query(
+        "SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id " +
+            "WHERE ss.finishedAt IS NOT NULL AND s.done = 1 AND s.exerciseId = :exerciseId " +
+            "AND (ss.epochDay < :epochDay OR (ss.epochDay = :epochDay AND ss.startedAt < :startedAt)) " +
+            "ORDER BY ss.epochDay DESC, ss.startedAt DESC, s.setIndex ASC LIMIT 20"
+    )
+    suspend fun doneSetsBefore(exerciseId: String, epochDay: Long, startedAt: Long): List<SetEntity>
+
     /** Every finished set of one exercise, for personal-record comparison. */
     @Query(
         "SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id " +
