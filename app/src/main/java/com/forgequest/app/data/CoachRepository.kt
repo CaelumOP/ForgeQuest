@@ -121,7 +121,7 @@ class CoachRepository(
             // Chat goes to Groq (Llama 3.3 70B) when there's a Groq key and Automatic is chosen; plans stay on Gemini.
             val viaGroq = !shouldEmitPlanJson && settings.groqKey.value.isNotBlank() && modelChoice == "auto"
             val fromGroq = if (!viaGroq) null else try {
-                groq.streamChat(settings.groqKey.value, groqModel(), system, turns, onDelta).also { provider = "Groq" }
+                groq.streamChat(settings.groqKey.value, groqModel(), system, turns, onDelta = onDelta).also { provider = "Groq" }
             } catch (e: AiError) {
                 if (e is AiError.Partial) throw e
                 Log.w(TAG, "groq failed before any text, using Gemini: ${e.detail}")
