@@ -61,7 +61,9 @@ import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseTiers
-import com.forgequest.app.domain.MuscleExercises
+import com.forgequest.app.data.PlanDayWithItems
+import com.forgequest.app.data.db.PlanItemEntity
+import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.Records
 import com.forgequest.app.ui.LocalSnackbar
@@ -87,11 +89,17 @@ class ExerciseDetailViewModel(val app: AppContainer) : ViewModel() {
         if (!app.workouts.setVideoUrl(id, url)) message.value = app.str(R.string.detail_bad_link)
     }
 
-    /** Puts [new] in place of [old] on every plan day that has it, translating sets and reps. */
-    fun swapIntoPlan(old: ExerciseEntity, new: ExerciseEntity) = viewModelScope.launch {
-        val items = snapshot.value?.plan?.days.orEmpty().flatMap { it.items }.filter { it.exerciseId == old.id }
-        items.forEach { app.workouts.swapPlanItem(it, new.id) }
-        message.value = app.str(R.string.swap_into_plan_done, new.name, old.name)
+    /** Puts [new] in place of [item] on [day], translating its sets and reps. */
+    fun replaceInPlan(day: PlanDayWithItems, item: PlanItemEntity, new: ExerciseEntity) = viewModelScope.launch {
+        val oldName = snapshot.value?.exercises?.get(item.exerciseId)?.name ?: item.exerciseId
+        app.workouts.swapPlanItem(item, new.id)
+        message.value = app.str(R.string.plan_put_in_replaced, new.name, oldName, Dates.dayName(day.day.dayOfWeek))
+    }
+
+    /** Adds [new] at the end of [day]; a rest day becomes a workout day. */
+    fun addToPlan(day: PlanDayWithItems, new: ExerciseEntity) = viewModelScope.launch {
+        app.workouts.addPlanItem(day.day.id, new.id)
+        message.value = app.str(R.string.plan_put_in_added, new.name, Dates.dayName(day.day.dayOfWeek))
     }
 }
 
@@ -123,6 +131,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
     val context = LocalContext.current
     var metricIndex by remember { mutableIntStateOf(0) }
     var editLink by remember { mutableStateOf(false) }
+    var putInPlan by remember { mutableStateOf(false) }
     val message by vm.message.collectAsState()
     val snackbar = LocalSnackbar.current
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
@@ -159,12 +168,9 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                 Spacer(Modifier.height(12.dp))
                 TierBadge(it)
             }
-            // Only when the plan has exactly one exercise doing the same movement, so there is nothing to choose.
-            val planExercises = s.plan?.days.orEmpty().flatMap { d -> d.items.mapNotNull { s.exercises[it.exerciseId] } }
-            if (ex != null) MuscleExercises.planSwapTarget(ex, planExercises)?.let { old ->
+            if (ex != null && s.plan != null) {
                 Spacer(Modifier.height(12.dp))
-                TonalPill(stringResource(R.string.swap_into_plan), onClick = { vm.swapIntoPlan(old, ex) }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.SwapHoriz, tint = c.teal)
-                Text(stringResource(R.string.swap_into_plan_hint, old.name), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp))
+                TonalPill(stringResource(R.string.swap_into_plan), onClick = { putInPlan = true }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.SwapHoriz, tint = c.teal)
             }
             Spacer(Modifier.height(16.dp))
             FitCard {
@@ -219,6 +225,16 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    val plan = s.plan
+    if (putInPlan && ex != null && plan != null) {
+        PutInPlanSheet(
+            ex, plan, s.exercises,
+            onReplace = { day, item -> vm.replaceInPlan(day, item, ex); putInPlan = false },
+            onAdd = { day -> vm.addToPlan(day, ex); putInPlan = false },
+            onDismiss = { putInPlan = false },
+        )
     }
 
     if (editLink) {

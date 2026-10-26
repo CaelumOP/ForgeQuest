@@ -21,6 +21,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -172,7 +173,8 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     summary?.let { sum ->
         val debrief by vm.debrief.collectAsState()
         val debriefLoading by vm.debriefLoading.collectAsState()
-        WorkoutCompleteScreen(sum, debrief, debriefLoading, onRemind = vm::remindMe, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        val debriefFailed by vm.debriefFailed.collectAsState()
+        WorkoutCompleteScreen(sum, debrief, debriefLoading, debriefFailed, onRetryDebrief = vm::retryDebrief, onRemind = vm::remindMe, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -801,7 +803,15 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
 }
 
 @Composable
-private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?, debriefLoading: Boolean, onRemind: () -> Unit, onDone: () -> Unit) {
+private fun WorkoutCompleteScreen(
+    sum: WorkoutSummary,
+    debrief: WorkoutDebrief?,
+    debriefLoading: Boolean,
+    debriefFailed: Boolean,
+    onRetryDebrief: () -> Unit,
+    onRemind: () -> Unit,
+    onDone: () -> Unit,
+) {
     val c = Fit.colors
     var filled by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { filled = true }
@@ -888,10 +898,10 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?,
                 }
             }
         }
-        AnimatedVisibility(debrief != null || debriefLoading) {
+        AnimatedVisibility(debrief != null || debriefLoading || debriefFailed) {
             Column {
                 Spacer(Modifier.height(12.dp))
-                DebriefCard(debrief)
+                DebriefCard(debrief, failed = debriefFailed && !debriefLoading, onRetry = onRetryDebrief)
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -899,9 +909,12 @@ private fun WorkoutCompleteScreen(sum: WorkoutSummary, debrief: WorkoutDebrief?,
     }
 }
 
-/** The coach's take on the workout: score, what went well, one thing to watch, one tip. Null shows it loading. */
+/**
+ * The coach's take on the workout: score, what went well, one thing to watch, one tip. Null shows it loading, or with
+ * [failed], that the coach couldn't write it and a Try again.
+ */
 @Composable
-fun DebriefCard(d: WorkoutDebrief?) {
+fun DebriefCard(d: WorkoutDebrief?, failed: Boolean = false, onRetry: () -> Unit = {}) {
     val c = Fit.colors
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -909,7 +922,12 @@ fun DebriefCard(d: WorkoutDebrief?) {
             if (d != null) Text(stringResource(R.string.debrief_score, d.score), style = MaterialTheme.typography.titleMedium, color = c.gold)
         }
         Spacer(Modifier.height(6.dp))
-        if (d == null) {
+        if (d == null && failed) {
+            Text(stringResource(R.string.debrief_failed), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                Text(stringResource(R.string.action_try_again), color = c.teal)
+            }
+        } else if (d == null) {
             Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         } else {
             Text(d.summary, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)

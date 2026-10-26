@@ -46,12 +46,9 @@ object MuscleExercises {
     }
 
     /**
-     * The plan exercise [ex] could replace: the only one in the plan with the same movement pattern. Null when [ex] is
-     * already in the plan or there are none or several (then the plan editor is the place to choose).
+     * A plan day's exercises in the order to offer them for replacing with [ex], closest movement first; the flag
+     * marks the ones doing the same movement. [ex] itself is left out, since replacing it with itself does nothing.
      */
-    fun planSwapTarget(ex: ExerciseEntity, planExercises: List<ExerciseEntity>): ExerciseEntity? {
-        if (planExercises.any { it.id == ex.id }) return null
-        val pattern = ExerciseSwapEngine.profileFor(ex).pattern
-        return planExercises.distinctBy { it.id }.filter { ExerciseSwapEngine.profileFor(it).pattern == pattern }.singleOrNull()
-    }
+    fun replaceOrder(ex: ExerciseEntity, dayExercises: List<ExerciseEntity>): List<Pair<ExerciseEntity, Boolean>> =
+        ExerciseSwapEngine.rankSubstitutes(ex, dayExercises.distinctBy { it.id }).map { it.exercise to (it.profile.pattern == ExerciseSwapEngine.profileFor(ex).pattern) }
 }

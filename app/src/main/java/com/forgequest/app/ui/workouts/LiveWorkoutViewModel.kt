@@ -99,9 +99,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val hold = MutableStateFlow<HoldTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
     val summary = MutableStateFlow<WorkoutSummary?>(null)
-    /** The coach's debrief under the summary; loads in the background and may never arrive (offline, no key). */
+    /** The coach's debrief under the summary; loads in the background. When it can't be written, [debriefFailed] offers Try again. */
     val debrief = MutableStateFlow<WorkoutDebrief?>(null)
     val debriefLoading = MutableStateFlow(false)
+    val debriefFailed = MutableStateFlow(false)
+    private var debriefSessionId = 0L
     val finishing = MutableStateFlow(false)
 
     /**
@@ -418,18 +420,29 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     nextUp = nextUp,
                     offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
                 )
-                // In its own job so a slow or failed debrief never holds up the summary. App scope, not viewModelScope:
-                // leaving this screen must not cancel it, since it saves to the workout's journal entry.
-                if (snap.settings.debriefEnabled) {
-                    debriefLoading.value = true
-                    app.appScope.launch {
-                        debrief.value = app.coach.generateDebrief(s.id)
-                        debriefLoading.value = false
-                    }
+                if (snap.settings.debriefEnabled && app.coach.canDebrief()) {
+                    debriefSessionId = s.id
+                    retryDebrief()
                 }
             } finally {
                 finishing.value = false
             }
+        }
+    }
+
+    /**
+     * Asks the coach for the debrief of the workout just finished. In its own job so it never holds up the summary.
+     * App scope, not viewModelScope: leaving this screen must not cancel it, since it saves to the journal entry.
+     */
+    fun retryDebrief() {
+        if (debriefSessionId == 0L || debriefLoading.value) return
+        debriefLoading.value = true
+        debriefFailed.value = false
+        app.appScope.launch {
+            val d = app.coach.generateDebrief(debriefSessionId)
+            debrief.value = d
+            debriefFailed.value = d == null
+            debriefLoading.value = false
         }
     }
 

@@ -62,11 +62,13 @@ class GroqClient(base: OkHttpClient = OkHttpClient()) {
         model: String,
         system: String,
         turns: List<Pair<String, String>>,
+        jsonOutput: Boolean = false,
         onDelta: suspend (String) -> Unit,
     ): String = withContext(Dispatchers.IO) {
         val payload = buildJsonObject {
             put("model", model)
             put("stream", true)
+            if (jsonOutput) put("response_format", buildJsonObject { put("type", "json_object") })
             put("temperature", 0.5)
             put("max_tokens", 1500)
             put("messages", buildJsonArray {
