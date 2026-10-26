@@ -6,8 +6,8 @@ const en = load('en.json');
 const ar = load('ar.json');
 
 const LEFTOVER = /%(\d+\$)?[-#+ 0,(]*\d*(\.\d+)?[a-zA-Z]/;
-// Keys whose placeholder sets differ between EN and AR in the Android source.
-const SKIP_PLACEHOLDER_KEYS = new Set();
+// Keys whose placeholder sets differ between EN and AR in the Android source (AR drops the rank letter / set count).
+const SKIP_PLACEHOLDER_KEYS = new Set(['live_finish_unticked_title', 'live_rank', 'profile_rank_line']);
 
 const texts = (v) => (typeof v === 'string' ? [v] : Object.values(v));
 const phSet = (v) =>
