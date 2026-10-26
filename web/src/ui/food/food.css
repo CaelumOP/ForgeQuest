@@ -112,7 +112,7 @@
 .food-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .food-row-body { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
 .food-row-place { font-size: 13px; line-height: 18px; color: var(--text); opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.food-row-parts { align-self: flex-start; min-block-size: 36px; margin-block-start: -6px; margin-inline-start: 46px; padding-inline: 4px; border: 0; background: none; color: var(--teal); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.food-row-parts { align-self: flex-start; min-block-size: 32px; margin-block: -14px 2px; margin-inline-start: 46px; padding-inline: 4px; border: 0; background: none; color: var(--teal); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .food-parts-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-block-size: 56px; padding: 10px 14px; border: 0; border-radius: 16px; background: var(--card-high); color: var(--text); font: inherit; font-size: 16px; text-align: start; cursor: pointer; }
 .food-row-parts-text { color: var(--teal); font-size: 13px; font-weight: 500; }
 .food-part { display: flex; flex-direction: column; gap: 6px; }

@@ -395,7 +395,7 @@
   "food_nothing_today": "Nothing logged yet. Tick foods above, scan a plate, or quick-log a one-off meal.",
   "food_parts_change": "Change parts",
   "food_parts_count": "Parts: {1} of {2}",
-  "food_parts_hint": "Untick what you didn\\'t have. It\\'s remembered for next time.",
+  "food_parts_hint": "Untick what you didn't have. It's remembered for next time.",
   "food_parts_title": "What was in {1}?",
   "food_photo": "Food photo",
   "food_photo_failed": "Couldn't use that photo.",
