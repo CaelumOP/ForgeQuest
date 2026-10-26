@@ -235,8 +235,13 @@ def open_safari_share():
     """Safari's ⋯ → Share. (The page's own Share button opens the web share sheet, which on iOS 26 has no
     Add to Home Screen, only Copy and Add to Reading List.)"""
     dismiss_popups()
-    find_label("More", "XCUIElementTypeButton").click()
-    time.sleep(1.5)
+    # The first tap on ⋯ sometimes doesn't open the menu on CI: tap again until Share (or Add to Home Screen) shows.
+    for _ in range(3):
+        find_label("More", "XCUIElementTypeButton").click()
+        time.sleep(1.5)
+        if driver.find_elements(AppiumBy.IOS_PREDICATE, '(label == "Share" OR label == "Add to Home Screen") AND visible == 1'):
+            break
+        native()
     shot("app-00-safari-menu")
     dump("safari-menu")
 

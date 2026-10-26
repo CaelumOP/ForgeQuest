@@ -76,7 +76,7 @@ const SPECS = {
   },
   foods: {
     id: 0, name: REQ, category: REQ, kcal: REQ, protein: REQ, serving: '', carbs: 0, photoPath: null,
-    pinned: false, createdAt: REQ,
+    pinned: false, createdAt: REQ, place: '', parts: [],
   },
   meals: {
     id: 0, epochDay: REQ, loggedAt: REQ, name: REQ, category: REQ, kcal: REQ, protein: REQ, quantity: 1,
@@ -109,7 +109,7 @@ function shape(spec: Spec, src: unknown, where: string): Record<string, unknown>
     const v = src[key];
     if (v === undefined) {
       if (def === REQ) throw new BackupUnreadableError(`${where}.${key} is missing`);
-      out[key] = def;
+      out[key] = Array.isArray(def) ? [] : def; // a fresh list per row, never one shared array
     } else {
       out[key] = v;
     }

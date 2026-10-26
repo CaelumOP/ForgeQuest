@@ -3,7 +3,9 @@ import { t } from '../../i18n'
 import { todayEpochDay } from '../../domain/dates'
 import type { FoodCategory } from '../../data/db'
 import { AiError, aiErrorKey } from '../../data/ai'
-import { categoryForNow, logOnce, saveFood } from '../../data/food'
+import { categoryForNow, logOnce, placesOf, saveMeal, useFoods, withParts } from '../../data/food'
+import type { FoodPart } from '../../data/db'
+import { PlaceField } from './FoodParts'
 import { useSettings } from '../../data/settings'
 import { CameraIcon, CheckIcon, PhotoLibraryIcon } from '../icons'
 import { Button, Card, ChipGroup, NumberField, Sheet, toast } from '../kit'
@@ -39,7 +41,9 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
   const [cat, setCat] = useState<FoodCategory>(categoryForNow())
   const [save, setSave] = useState(false)
   const [pin, setPin] = useState(false)
+  const [place, setPlace] = useState('')
   const [busy, setBusy] = useState(false)
+  const places = placesOf(useFoods())
 
   const chosen = items.filter((_, i) => included.has(i))
   const tot = scanTotals(chosen, PORTIONS.find((p) => p.id === portion)!.factor, COOKING_FATS.find((f) => f.id === fat)!.kcal)
@@ -53,9 +57,18 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
     const kcal = tot.kcal
     const protein = tot.protein
     const carbs = tot.carbs
+    // Parts at the chosen portion; extra cooking fat is a part of its own.
+    const factor = PORTIONS.find((p) => p.id === portion)!.factor
+    const fatKcal = COOKING_FATS.find((f) => f.id === fat)!.kcal
+    const parts: FoodPart[] = items.map((it, i) => ({ name: it.name, grams: Math.round(it.grams * factor), kcal: Math.round(it.kcal * factor), protein: it.protein * factor, carbs: it.carbs * factor, on: included.has(i) }))
+    if (fatKcal > 0) parts.push({ name: t('scan_extra_fat_part'), grams: 0, kcal: fatKcal, protein: 0, carbs: 0, on: true })
+    // The day's log says what was left out: "Chicken shawarma, no Ketchup".
+    const off = parts.filter((p) => !p.on).map((p) => p.name)
+    const logged = off.length ? t('food_without', name, off.join(t('food_list_sep'))) : name
     try {
-      await logOnce(name, cat, kcal, protein, todayEpochDay(), carbs, true)
-      if (save) await saveFood({ name, category: cat, kcal, protein, carbs, serving: t('scan_default_serving'), photoPath: null, pinned: pin, createdAt: Date.now() })
+      await logOnce(logged, cat, kcal, protein, todayEpochDay(), carbs, true)
+      // Saved with its parts, so next time it's one tap with ketchup ticked off; the same meal is updated, not added twice.
+      if (save) await saveMeal(withParts({ name, category: cat, kcal, protein, carbs, serving: t('scan_default_serving'), photoPath: null, pinned: pin, createdAt: Date.now(), place: place.trim() }, parts))
       toast(t('scan_logged_summary', name, kcal, Math.round(protein)) + (await badgeSuffix()))
       onLogged()
     } catch { setBusy(false) }
@@ -107,6 +120,7 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
         <Switch on={save} onChange={setSave} label={t('scan_save_to_foods')} />
       </div>
       {save && <div class="food-switch-row"><span>{t('food_pin_top')}</span><Switch on={pin} onChange={setPin} label={t('food_w_pinned_switch')} /></div>}
+      {save && <PlaceField value={place} onChange={setPlace} places={places} />}
       <div class="scan-actions">
         <Button variant="tonal" onClick={onRetake}>{t('scan_retake')}</Button>
         <Button disabled={!chosen.length || busy} loading={busy} onClick={log}>{t('scan_log_meal')}</Button>

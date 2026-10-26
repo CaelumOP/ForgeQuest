@@ -114,6 +114,8 @@ import com.forgequest.app.data.bridge.MealInbox
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
+import com.forgequest.app.data.db.FoodPart
+import com.forgequest.app.data.db.withParts
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
@@ -244,16 +246,26 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
         viewModelScope.launch { app.food.discardPhoto(photo) }
     }
 
-    fun log(photo: String?, name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float, saveToFoods: Boolean, pin: Boolean, gemini: GeminiMeal? = null) {
+    fun log(photo: String?, entry: ScanLog, gemini: GeminiMeal? = null) {
+        val (name, category, kcal, protein, carbs) = entry
+        // The day's log says what was left out: "Chicken shawarma, no Ketchup".
+        val off = entry.parts.filter { !it.on }.map { it.name }
+        val logName = if (off.isEmpty()) name else app.str(R.string.food_without, name, off.joinToString(app.str(R.string.food_list_sep)))
         viewModelScope.launch {
             if (gemini != null) {
-                app.food.logOnce(name, category, kcal, protein, photo, gemini.epochDay(), carbs)
+                app.food.logOnce(logName, category, kcal, protein, photo, gemini.epochDay(), carbs)
                 app.meals.markHandled(gemini.mealId)
             } else {
-                app.food.logScannedMeal(name, category, kcal, protein, photo, carbs)
+                app.food.logScannedMeal(logName, category, kcal, protein, photo, carbs)
             }
-            if (saveToFoods) {
-                app.food.saveFood(FoodEntity(name = name, category = category, kcal = kcal, protein = protein, carbs = carbs, serving = app.str(R.string.scan_default_serving), photoPath = photo, pinned = pin, createdAt = System.currentTimeMillis()))
+            if (entry.save) {
+                // Saved with its parts, so next time it's one tap with ketchup ticked off; the same meal is updated, not added twice.
+                app.food.saveMeal(
+                    FoodEntity(
+                        name = name, category = category, kcal = kcal, protein = protein, carbs = carbs, serving = app.str(R.string.scan_default_serving),
+                        photoPath = photo, pinned = entry.pin, createdAt = System.currentTimeMillis(), place = entry.place.trim(),
+                    ).withParts(entry.parts)
+                )
             }
             val badges = app.progress.evaluateBadges()
             app.haptics.celebrate()
@@ -309,9 +321,12 @@ fun ScanScreen(nav: NavHostController) {
             is ScanState.Result -> FrozenPhoto(s.photo) {
                 val carbsOn = vm.app.settings.settings.collectAsState(initial = null).value?.trackCarbs == true
                 // A different meal arriving while the sheet is open starts with fresh edits.
-                androidx.compose.runtime.key(s.gemini?.mealId) { ResultSheet(s.scan, s.gemini?.category() ?: vm.app.food.categoryForNow(), carbsOn, saveByDefault = s.gemini != null, onRetake = vm::retake) { name, cat, kcal, protein, carbs, save, pin ->
-                    vm.log(s.photo, name, cat, kcal, protein, carbs, save, pin, s.gemini)
-                } }
+                val places = vm.app.food.foods.collectAsState(initial = emptyList()).value.map { it.place }.filter { it.isNotBlank() }.distinct()
+                androidx.compose.runtime.key(s.gemini?.mealId) {
+                    ResultSheet(s.scan, s.gemini?.category() ?: vm.app.food.categoryForNow(), carbsOn, saveByDefault = s.gemini != null, initialPlace = s.gemini?.place.orEmpty(), places = places, onRetake = vm::retake) { entry ->
+                        vm.log(s.photo, entry, s.gemini)
+                    }
+                }
             }
             is ScanState.Failed -> FrozenPhoto(s.photo) {
                 ErrorCard(
@@ -570,14 +585,22 @@ private fun OutsideCard(wrongFormat: Boolean, onRetake: () -> Unit, onAskAgain: 
     }
 }
 
+/** What the review sheet logs: the meal, whether to save it to My foods, its restaurant and its parts (each on or off). */
+data class ScanLog(
+    val name: String, val category: FoodCategory, val kcal: Int, val protein: Float, val carbs: Float,
+    val save: Boolean, val pin: Boolean, val place: String, val parts: List<FoodPart>,
+)
+
 @Composable
 private fun ResultSheet(
     scan: FoodScan,
     defaultCategory: FoodCategory,
     carbsOn: Boolean,
     saveByDefault: Boolean,
+    initialPlace: String,
+    places: List<String>,
     onRetake: () -> Unit,
-    onLog: (String, FoodCategory, Int, Float, Float, Boolean, Boolean) -> Unit,
+    onLog: (ScanLog) -> Unit,
 ) {
     val c = Fit.colors
     var items by remember { mutableStateOf(scan.items) }
@@ -589,7 +612,9 @@ private fun ResultSheet(
     var category by remember { mutableStateOf(defaultCategory) }
     var save by remember { mutableStateOf(saveByDefault) }
     var pin by remember { mutableStateOf(false) }
+    var place by remember { mutableStateOf(initialPlace) }
     var shown by remember { mutableStateOf(false) }
+    val fatPartName = stringResource(R.string.scan_extra_fat_part)
     LaunchedEffect(Unit) { shown = true }
 
     val chosen = items.filterIndexed { i, _ -> i in included }
@@ -701,12 +726,25 @@ private fun ResultSheet(
                         Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                         FitSwitch(pin, { pin = it })
                     }
+                    Spacer(Modifier.height(6.dp))
+                    PlaceField(place, { place = it }, places)
                 }
                 Spacer(Modifier.height(16.dp))
                 // Clear of the gesture bar; the Log button sat under the home handle.
                 Row(Modifier.navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
-                    PillButton(stringResource(R.string.scan_log_meal), onClick = { onLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, carbs, save, pin) }, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
+                    PillButton(
+                        stringResource(R.string.scan_log_meal),
+                        onClick = {
+                            // Parts at the chosen portion; extra cooking fat is a part of its own.
+                            val f = portion.factor
+                            val parts = items.mapIndexed { i, it ->
+                                FoodPart(it.name, (it.grams * f).roundToInt(), (it.kcal * f).roundToInt(), it.protein * f, it.carbs * f, on = i in included)
+                            } + if (fat.kcal > 0) listOf(FoodPart(fatPartName, kcal = fat.kcal)) else emptyList()
+                            onLog(ScanLog(dish.trim().ifBlank { scan.dish }, category, kcal, protein, carbs, save, pin, place, parts))
+                        },
+                        enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }

@@ -24,7 +24,7 @@
     {"id": 3, "sessionId": 2, "exerciseId": "plank", "itemPosition": 0, "block": "Core", "circuit": false, "setIndex": 0, "targetLabel": "45 s", "reps": null, "seconds": 45, "weightKg": null, "done": false, "isPr": false, "restSeconds": 60, "note": "", "effort": ""}
   ],
   "foods": [
-    {"id": 1, "name": "Greek yogurt", "category": "BREAKFAST", "kcal": 130, "protein": 17.0, "serving": "170 g cup", "carbs": 6.0, "photoPath": null, "pinned": true, "createdAt": 1760100000000}
+    {"id": 1, "name": "Greek yogurt", "category": "BREAKFAST", "kcal": 130, "protein": 17.0, "serving": "170 g cup", "carbs": 6.0, "photoPath": null, "pinned": true, "createdAt": 1760100000000, "place": "", "parts": []}
   ],
   "meals": [
     {"id": 1, "epochDay": 20380, "loggedAt": 1760860800000, "name": "Greek yogurt", "category": "BREAKFAST", "kcal": 130, "protein": 17.0, "quantity": 1.5, "carbs": 6.0, "photoPath": null, "foodId": 1}

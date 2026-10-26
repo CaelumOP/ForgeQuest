@@ -14,10 +14,11 @@ HOW TO ESTIMATE (think through all of this before answering)
 9. If something important is impossible to see (for example what is inside a wrap or how much oil went into a stew), make the most likely assumption and say it in "note". Do not ask me questions first; always give the estimate.
 
 THE JSON
-{"mealId": "k7q2xm9a", "date": "2026-10-23", "time": "13:40", "dish": "Chicken kabsa", "items": [{"name": "Kabsa rice", "grams": 250, "kcal": 420, "protein": 9, "carbs": 78, "fat": 8}], "handVisible": true, "confidence": "medium", "note": "Assumed home-cooked with about 1 tbsp ghee."}
+{"mealId": "k7q2xm9a", "date": "2026-10-23", "time": "13:40", "dish": "Chicken kabsa", "place": "", "items": [{"name": "Kabsa rice", "grams": 250, "kcal": 420, "protein": 9, "carbs": 78, "fat": 8}], "handVisible": true, "confidence": "medium", "note": "Assumed home-cooked with about 1 tbsp ghee."}
 
 - "mealId": 8 random lowercase letters and digits, new for every new meal. When I correct a meal, keep the SAME mealId.
 - "date" (YYYY-MM-DD) and "time" (24-hour HH:MM): when I ate it. Use what I say ("this was lunch yesterday at 2"), otherwise the current date and time.
+- "place": the restaurant, café or shop it came from when I say so or a receipt, bag, cup or box shows it, written the way I or the place write it (for example "Barn's" or "كفتيريا افراح وتهاني"); "" for home food or when you don't know.
 - One item per component, cooking fat included as its own item (for example "Olive oil (cooking)").
 - "grams" and "kcal" are whole numbers; "protein", "carbs" and "fat" are grams with at most one decimal.
 - Short, plain food names in English, even if I write in Arabic. Write "note" in the language I wrote in (formal Arabic if Arabic).

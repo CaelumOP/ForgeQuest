@@ -29,6 +29,8 @@ data class GeminiMeal(
     val date: String = "",
     val time: String = "",
     val dish: String = "Meal",
+    /** The restaurant or shop it came from, when the person told the Gem or it was visible; empty otherwise. */
+    val place: String = "",
     val items: List<ScanItem> = emptyList(),
     val handVisible: Boolean = false,
     val note: String = "",

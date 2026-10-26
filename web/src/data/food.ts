@@ -1,6 +1,7 @@
 // Port of the data parts of app/.../data/FoodRepository.kt: foods ("My foods"), meals and today's totals.
 // Skipped: photos (the web never stores them), the AI scan and the Gemini meal inbox.
-import { db, putMeal, type FoodCategory, type FoodRow, type MealRow } from './db';
+import { db, putMeal, type FoodCategory, type FoodPart, type FoodRow, type MealRow } from './db';
+import { sameFood } from '../domain/food-search';
 import { useLive } from './live';
 import { todayEpochDay } from '../domain/dates';
 
@@ -25,14 +26,68 @@ export const deleteMeal = (id: number): Promise<void> => db.meals.delete(id);
 /** Puts a deleted meal back with its original id (undo). */
 export const restoreMeal = async (meal: MealRow): Promise<void> => { await db.meals.put(meal); };
 
-/** Logs saved foods with a quantity each (1 = one serving). */
-export async function logFoods(selection: ReadonlyArray<readonly [FoodRow, number]>, epochDay = todayEpochDay()): Promise<void> {
+/** A saved food ticked to log: how much, under which meal (default its own tab) and its name in the day's log. */
+export type FoodPick = { food: FoodRow; qty: number; category?: FoodCategory; name?: string };
+
+/** Logs saved foods, each with its amount (1 = one serving), meal and the name to show in the day's log. */
+export async function logFoods(picks: ReadonlyArray<FoodPick>, epochDay = todayEpochDay()): Promise<void> {
   const now = Date.now();
-  await db.meals.bulkAdd(selection.map(([food, qty]): MealRow => ({
-    epochDay, loggedAt: now, name: food.name, category: food.category, kcal: Math.trunc(food.kcal * qty),
+  await db.meals.bulkAdd(picks.map(({ food, qty, category, name }): MealRow => ({
+    epochDay, loggedAt: now, name: name ?? food.name, category: category ?? food.category, kcal: Math.trunc(food.kcal * qty),
     protein: food.protein * qty, quantity: qty, carbs: food.carbs * qty, photoPath: null, foodId: food.id ?? null,
   })));
 }
+
+/** This food with `parts`; when there are parts, its calories, protein and carbs become the totals of the parts that are on. */
+export function withParts(food: FoodRow, parts: FoodPart[]): FoodRow {
+  if (!parts.length) return { ...food, parts };
+  const on = parts.filter((p) => p.on);
+  return { ...food, parts, kcal: on.reduce((a, p) => a + p.kcal, 0), protein: on.reduce((a, p) => a + p.protein, 0), carbs: on.reduce((a, p) => a + p.carbs, 0) };
+}
+
+/** A part moved to `grams`, its calories, protein and carbs scaled with it. */
+export function partWithGrams(part: FoodPart, grams: number): FoodPart {
+  const f = part.grams > 0 ? grams / part.grams : 1;
+  return { ...part, grams, kcal: Math.round(part.kcal * f), protein: part.protein * f, carbs: part.carbs * f };
+}
+
+/** The name in the day's log, saying which parts were left out: "Chicken shawarma, no Ketchup". */
+export function logName(food: FoodRow, without: (name: string, off: string) => string, sep: string): string {
+  const off = (food.parts ?? []).filter((p) => !p.on).map((p) => p.name);
+  return off.length ? without(food.name, off.join(sep)) : food.name;
+}
+
+/** Restaurants used on saved foods, each once. */
+export const placesOf = (foods: readonly FoodRow[]): string[] => [...new Set(foods.map((f) => (f.place ?? '').trim()).filter(Boolean))];
+
+/**
+ * Saves a scanned meal to My foods. The same food at the same restaurant (spelling variants and venue words like
+ * كفتيريا or مطعم aside) is updated in place instead of saved again; it keeps its id, photo and pin. Returns its id.
+ */
+export async function saveMeal(food: FoodRow): Promise<number> {
+  const all = await db.foods.toArray();
+  const places = [...placesOf(all), food.place ?? ''];
+  const existing = all.find((f) => sameFood(f.name, f.place ?? '', food.name, food.place ?? '', places));
+  if (!existing) return saveFood(food);
+  await db.foods.put({
+    ...food, id: existing.id, createdAt: existing.createdAt, pinned: existing.pinned || food.pinned,
+    photoPath: food.photoPath ?? existing.photoPath, place: (food.place ?? '').trim() || existing.place || '',
+    serving: existing.serving || food.serving, // "1 sandwich" stays, not the scan's "1 plate"
+  });
+  return existing.id!;
+}
+
+/** How often and how lately each saved food was logged, by food id, so search puts your usual foods first. */
+export async function foodUsage(): Promise<Map<number, { times: number; lastAt: number }>> {
+  const out = new Map<number, { times: number; lastAt: number }>();
+  await db.meals.each((m) => {
+    if (m.foodId == null) return;
+    const u = out.get(m.foodId) ?? { times: 0, lastAt: 0 };
+    out.set(m.foodId, { times: u.times + 1, lastAt: Math.max(u.lastAt, m.loggedAt) });
+  });
+  return out;
+}
+export const useFoodUsage = (): Map<number, { times: number; lastAt: number }> => useLive(foodUsage, [], new Map());
 
 /** photoPath of a scanned meal whose photo isn't kept (the web never stores photos), so "Snap & log" still counts it. Same value as Android. */
 export const SCANNED_NO_PHOTO = 'scan:no-photo';

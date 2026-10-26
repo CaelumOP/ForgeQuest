@@ -24,7 +24,13 @@ export type SetRow = Omit<SetEntity, 'id'> & { id?: number };
 export interface FoodRow {
   id?: number; name: string; category: FoodCategory; kcal: number; protein: number; serving: string;
   carbs: number; photoPath: string | null; pinned: boolean; createdAt: number;
+  /** Where it's from ("كفتيريا افراح وتهاني"); missing on foods saved before restaurants existed. */
+  place?: string;
+  /** What it's made of, each part on or off; when set, kcal/protein/carbs are the "on" parts' totals. */
+  parts?: FoodPart[];
 }
+/** One part of a saved food (the bread, the chicken, the ketchup). Unticked parts stay, switched off, for next time. */
+export interface FoodPart { name: string; grams: number; kcal: number; protein: number; carbs: number; on: boolean }
 export interface MealRow {
   id?: number; epochDay: number; loggedAt: number; name: string; category: FoodCategory; kcal: number;
   protein: number; quantity: number; carbs: number; photoPath: string | null; foodId: number | null;

@@ -14,11 +14,14 @@ import com.forgequest.app.data.ai.ModelStore
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
+import com.forgequest.app.data.db.FoodUsage
 import com.forgequest.app.data.db.MealEntity
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.FoodSearch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -33,6 +36,9 @@ data class ScanItem(
     val protein: Float = 0f,
     val carbs: Float = 0f,
 )
+
+/** A saved food ticked to log: how much, under which meal, and its name in the day's log ("Chicken shawarma, no Ketchup"). */
+data class FoodPick(val food: FoodEntity, val qty: Float, val category: FoodCategory, val name: String = food.name)
 
 @Serializable
 data class FoodScan(
@@ -58,14 +64,37 @@ class FoodRepository(
 
     suspend fun saveFood(food: FoodEntity): Long = dao.upsertFood(food)
     suspend fun deleteFood(id: Long) = dao.deleteFood(id)
+
+    /** How often each saved food was logged, by food id. */
+    val usage: Flow<Map<Long, FoodUsage>> = dao.observeFoodUsage().map { list -> list.associateBy { it.foodId } }
+
+    /**
+     * Saves a scanned or Gemini meal to My foods. The same food at the same restaurant (spelling variants and venue words
+     * like كفتيريا or مطعم aside) is updated in place instead of saved again; it keeps its id, photo and pin.
+     */
+    suspend fun saveMeal(food: FoodEntity): Long {
+        val all = dao.allFoods()
+        val places = all.map { it.place }.filter { it.isNotBlank() }.distinct() + food.place
+        val existing = all.firstOrNull { FoodSearch.sameFood(it.name, it.place, food.name, food.place, places) }
+            ?: return dao.upsertFood(food)
+        dao.upsertFood(
+            food.copy(
+                id = existing.id, createdAt = existing.createdAt, pinned = existing.pinned || food.pinned,
+                photoPath = food.photoPath ?: existing.photoPath, place = food.place.ifBlank { existing.place },
+                serving = existing.serving.ifBlank { food.serving }, // "1 sandwich" stays, not the scan's "1 plate"
+            )
+        )
+        return existing.id
+    }
     suspend fun deleteMeal(id: Long) = dao.deleteMeal(id)
     suspend fun restoreMeal(meal: MealEntity) = dao.restoreMeal(meal)
 
-    suspend fun logFoods(selection: List<Pair<FoodEntity, Float>>, epochDay: Long = Dates.today()) {
+    /** Logs saved foods, each with its amount (1 = one serving), meal and the name to show in the day's log. */
+    suspend fun logFoods(picks: List<FoodPick>, epochDay: Long = Dates.today()) {
         val now = System.currentTimeMillis()
-        dao.insertMeals(selection.map { (food, qty) ->
+        dao.insertMeals(picks.map { (food, qty, category, name) ->
             MealEntity(
-                epochDay = epochDay, loggedAt = now, name = food.name, category = food.category,
+                epochDay = epochDay, loggedAt = now, name = name, category = category,
                 kcal = (food.kcal * qty).toInt(), protein = food.protein * qty, quantity = qty, carbs = food.carbs * qty,
                 photoPath = food.photoPath, foodId = food.id,
             )
