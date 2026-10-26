@@ -3,17 +3,17 @@ import { getLang, t } from '../../i18n'
 import type { SetRow } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
-import { recentDoneSetsAll, setVideoUrl, swapIntoPlan, useActivePlan, useFinishedSessions, useLibrary } from '../../data/workouts'
+import { addPlanItem, recentDoneSetsAll, setVideoUrl, swapPlanItem, useActivePlan, useFinishedSessions, useLibrary } from '../../data/workouts'
 import { tierOf } from '../../domain/exercise-tiers'
-import { planSwapTarget } from '../../domain/muscle-exercises'
 import type { ExerciseKind } from '../../domain/muscle'
 import { recordScore } from '../../domain/progress'
 import { fromKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
 import { Button, Card, ChipGroup, LineChart, Sheet, TextField, toast } from '../kit'
 import { ExerciseEditor } from './ExerciseEditor'
+import { PutInPlanSheet } from './PutInPlanSheet'
 import { TierBadge } from './MuscleSheet'
 import { LinkIcon, PlayIcon } from './glyphs'
-import { kindLabel, musclesLabel, openFormVideo } from './helpers'
+import { dayName, kindLabel, musclesLabel, openFormVideo } from './helpers'
 import './workouts.css'
 
 type Metric = { label: string; unit: string; value: (sets: SetRow[]) => number }
@@ -52,6 +52,7 @@ export function ExerciseDetailScreen({ param }: { param?: string }) {
   const [metricIdx, setMetricIdx] = useState(0)
   const [linkOpen, setLinkOpen] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [putOpen, setPutOpen] = useState(false)
   const plan = useActivePlan()
 
   const ex = library.find((e) => e.id === id)
@@ -70,8 +71,6 @@ export function ExerciseDetailScreen({ param }: { param?: string }) {
   const best = points.length ? Math.max(...points.map((p) => p.value)) : null
   const sec = t('unit_s')
   const tier = tierOf(ex)
-  const planExercises = plan?.days.flatMap((d) => d.items).map((i) => library.find((e) => e.id === i.exerciseId)).filter((e) => e != null) ?? []
-  const swapTarget = planSwapTarget(ex, planExercises)
   const setText = (s: SetRow) => ex.kind === 'HOLD' ? `${s.seconds ?? 0}${sec}` : ex.kind === 'WEIGHTED' ? `${s.reps ?? 0}×${weightNumber(unit, s.weightKg ?? 0)}` : `${s.reps ?? 0}`
 
   return (
@@ -86,16 +85,7 @@ export function ExerciseDetailScreen({ param }: { param?: string }) {
         {ex.custom && <Button variant="tonal" onClick={() => setEditing(true)}>{t('lib_edit')}</Button>}
       </div>
       {tier && <div><TierBadge tier={tier} /></div>}
-      {swapTarget && (
-        // Only when the plan has exactly one exercise doing the same movement, so there is nothing to choose.
-        <div>
-          <Button variant="tonal" block onClick={async () => {
-            await swapIntoPlan(swapTarget.id, ex.id)
-            toast(t('swap_into_plan_done', ex.name, swapTarget.name))
-          }}>{t('swap_into_plan')}</Button>
-          <p class="wk-msub" style={{ marginBlockStart: '6px' }}>{t('swap_into_plan_hint', swapTarget.name)}</p>
-        </div>
-      )}
+      {plan && <Button variant="tonal" block onClick={() => setPutOpen(true)}>{t('swap_into_plan')}</Button>}
 
       <Card>
         <h2 class="wk-card-title" style={{ fontSize: '18px' }}>{t('detail_progress')}</h2>
@@ -125,6 +115,17 @@ export function ExerciseDetailScreen({ param }: { param?: string }) {
         setLinkOpen(false)
         if (await setVideoUrl(ex.id, v.trim() || null)) toast(t('workouts_web_link_saved')); else toast(t('detail_bad_link'))
       }} />}
+      {putOpen && plan && <PutInPlanSheet ex={ex} plan={plan} library={library} onClose={() => setPutOpen(false)}
+        onReplace={async (day, item, old) => {
+          setPutOpen(false)
+          await swapPlanItem(item, ex.id)
+          toast(t('plan_put_in_replaced', ex.name, old.name, dayName(day.day.dayOfWeek, getLang())))
+        }}
+        onAdd={async (day) => {
+          setPutOpen(false)
+          await addPlanItem(day.day.id!, ex.id)
+          toast(t('plan_put_in_added', ex.name, dayName(day.day.dayOfWeek, getLang())))
+        }} />}
       {editing && <ExerciseEditor ex={ex} library={library} onClose={() => setEditing(false)} onGone={() => window.history.back()} />}
     </div>
   )

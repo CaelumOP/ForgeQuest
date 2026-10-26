@@ -295,6 +295,8 @@ export type GroqOptions = {
   apiKey?: string;
   temperature?: number;
   maxTokens?: number;
+  /** JSON mode: the reply is a single JSON object. */
+  json?: boolean;
   signal?: AbortSignal;
 };
 
@@ -309,7 +311,7 @@ export async function groqChat(o: GroqOptions): Promise<string> {
     {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, messages: o.messages, temperature: o.temperature ?? 0.5, max_tokens: o.maxTokens ?? 1500 }),
+      body: JSON.stringify({ model, messages: o.messages, temperature: o.temperature ?? 0.5, max_tokens: o.maxTokens ?? 1500, ...(o.json ? { response_format: { type: 'json_object' } } : {}) }),
     },
     15_000, o.signal, `groq ${model}`,
   );

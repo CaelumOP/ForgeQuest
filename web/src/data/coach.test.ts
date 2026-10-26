@@ -81,7 +81,15 @@ describe('debrief encode / decode', () => {
     expect(p).toEqual({ score: 4, summary: 'Done.', highlights: ['a', 'b'], watch: ['x'], nextTime: [] })
     expect(parseDebrief('{"score": 9, "summary": "  "}')).toBeNull()
     expect(parseDebrief('no json')).toBeNull()
+    expect(parseDebrief('{"summary": "No score"}')).toBeNull()
     expect(decodeDebriefFull('')).toBeNull()
+  })
+  it('forgives drifting shapes', () => {
+    // Fast models sometimes send a text score and single strings where lists were asked for.
+    const d = parseDebrief('{"score": "8/10", "summary": "Strong session.", "highlights": "12 dips, 2 more than last time", "watch": [], "next_time": "Add a set of rows"}')!
+    expect(d.score).toBe(8)
+    expect(d.highlights).toEqual(['12 dips, 2 more than last time'])
+    expect(d.nextTime).toEqual(['Add a set of rows'])
   })
 })
 
