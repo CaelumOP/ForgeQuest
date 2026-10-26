@@ -76,6 +76,25 @@ describe('backup', () => {
     expect(out.meals[0].photoPath).toBe('scan:no-photo'); // keeps "Snap & log" counting
   });
 
+  it('carries the restaurant and parts of a food, and gives older backups none', async () => {
+    const f = fixture() as { foods: Record<string, unknown>[] };
+    const parts = [{ name: 'Bread', grams: 80, kcal: 220, protein: 7, carbs: 44, on: true }, { name: 'Ketchup', grams: 15, kcal: 17, protein: 0.2, carbs: 4, on: false }];
+    f.foods[0].place = 'كفتيريا افراح وتهاني';
+    f.foods[0].parts = parts;
+    // Two foods from an older app, without the new fields.
+    const { place: _p, parts: _q, ...old }: Record<string, unknown> = { ...f.foods[0], id: 2, name: 'Dates' };
+    f.foods.push(old, { ...old, id: 3, name: 'Laban' });
+    const file = decodeBackup(JSON.stringify(f));
+    expect(file.foods[1].place).toBe('');
+    expect(file.foods[1].parts).toEqual([]);
+    expect(file.foods[1].parts).not.toBe(file.foods[2].parts); // a fresh list per row
+    await applyBackup(file);
+    const out = await buildBackup(null);
+    const back = out.foods.find((x) => x.name === f.foods[0].name)!;
+    expect(back.place).toBe('كفتيريا افراح وتهاني');
+    expect(back.parts).toEqual(parts);
+  });
+
   it('fills Kotlin defaults for missing fields and rejects missing required ones', () => {
     const f = fixture() as { sets: Record<string, unknown>[]; settings: Record<string, unknown> };
     delete f.sets[0].effort;

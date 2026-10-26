@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import { todayEpochDay } from '../../domain/dates'
-import type { FoodCategory, FoodRow, MealRow } from '../../data/db'
-import { categoryForNow, deleteFood, deleteMeal, logFoods, logOnce, restoreMeal, saveFood, totalsOf, useFoods, useMealsOn, useRecentOneOffs } from '../../data/food'
+import type { FoodCategory, FoodPart, FoodRow, MealRow } from '../../data/db'
+import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, placesOf, restoreMeal, saveFood, totalsOf, useFoodUsage, useFoods, useMealsOn, useRecentOneOffs, withParts } from '../../data/food'
+import { score } from '../../domain/food-search'
 import { evaluateBadges, useProgress } from '../../data/progress'
 import { useSettings } from '../../data/settings'
-import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon } from '../icons'
+import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
 import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, TextField, toast } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
+import { PartsSheet, PlaceField, partsCount } from './FoodParts'
 import './food.css'
 
 const CATS: FoodCategory[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACKS', 'DRINKS']
@@ -115,18 +117,22 @@ function WeekCard({ proteinGoal, trackCarbs }: { proteinGoal: number; trackCarbs
   )
 }
 
-function FoodItem({ food, qty, onToggle, onQty, onEdit }: { food: FoodRow; qty: number | undefined; onToggle: () => void; onQty: (q: number) => void; onEdit: () => void }) {
+function FoodItem({ food, qty, onToggle, onQty, onEdit, onParts }: { food: FoodRow; qty: number | undefined; onToggle: () => void; onQty: (q: number) => void; onEdit: () => void; onParts?: () => void }) {
   const on = qty != null
   const sub = [t('food_kcal', food.kcal), t('food_g_protein', Math.round(food.protein)), food.serving || null].filter(Boolean).join(' · ')
   return (
     <div class={`food-row${on ? ' on' : ''}`}>
-      <button type="button" class="food-row-main" aria-pressed={on} onClick={onToggle}>
-        <span class="food-check">{on && <CheckIcon size={18} />}</span>
-        <span class="food-row-text">
-          <span class="food-row-name">{food.pinned && <PinIcon size={14} />}<span>{food.name}</span></span>
-          <span class="food-row-sub">{sub}</span>
-        </span>
-      </button>
+      <div class="food-row-body">
+        <button type="button" class="food-row-main" aria-pressed={on} onClick={onToggle}>
+          <span class="food-check">{on && <CheckIcon size={18} />}</span>
+          <span class="food-row-text">
+            <span class="food-row-name">{food.pinned && <PinIcon size={14} />}<span>{food.name}</span></span>
+            {food.place && <span class="food-row-place">{food.place}</span>}
+            <span class="food-row-sub">{sub}</span>
+          </span>
+        </button>
+        {onParts && food.parts && <button type="button" class="food-row-parts" onClick={onParts}>{partsCount(food.parts)} · {t('food_parts_change')}</button>}
+      </div>
       {on && (
         <div class="food-qty" role="group" aria-label={t('food_w_qty', food.name)}>
           <IconButton label={t('food_w_less')} tone="tonal" onClick={() => onQty(qtyMinus(qty))}><RemoveIcon /></IconButton>
@@ -191,7 +197,7 @@ function QuickLogSheet({ open, initial, carbsOn, onLog, onClose }: { open: boole
   )
 }
 
-function FoodEditorSheet({ food, carbsOn, onSave, onDelete, onClose }: { food: FoodRow | null; carbsOn: boolean; onSave: (f: FoodRow) => void; onDelete: () => void; onClose: () => void }) {
+function FoodEditorSheet({ food, places, carbsOn, onSave, onDelete, onClose }: { food: FoodRow | null; places: string[]; carbsOn: boolean; onSave: (f: FoodRow) => void; onDelete: () => void; onClose: () => void }) {
   const [name, setName] = useState('')
   const [kcal, setKcal] = useState<number | null>(null)
   const [protein, setProtein] = useState<number | null>(null)
@@ -199,27 +205,44 @@ function FoodEditorSheet({ food, carbsOn, onSave, onDelete, onClose }: { food: F
   const [serving, setServing] = useState('')
   const [cat, setCat] = useState<FoodCategory>('LUNCH')
   const [pinned, setPinned] = useState(false)
+  const [place, setPlace] = useState('')
+  const [parts, setParts] = useState<FoodPart[]>([])
+  const [editParts, setEditParts] = useState(false)
   const seen = useRef<FoodRow | null>(null)
   if (food && seen.current !== food) {
     seen.current = food
     setName(food.name); setKcal(numText(food.kcal)); setProtein(numText(food.protein)); setCarbs(numText(food.carbs)); setServing(food.serving); setCat(food.category); setPinned(food.pinned)
+    setPlace(food.place ?? ''); setParts(food.parts ?? []); setEditParts(false)
   }
+  const onParts = parts.filter((p) => p.on)
   if (!food) seen.current = null
   return (
     <Sheet open={food != null} onClose={onClose} title={food?.id ? t('food_edit_title') : t('food_add_title')}>
       <TextField label={t('label_name')} value={name} onInput={(v) => setName(v.slice(0, 48))} />
-      <div class="food-two">
-        <NumberField label={t('home_legend_calories')} value={kcal} onChange={setKcal} min={0} max={99999} />
-        <NumberField label={t('home_legend_protein')} value={protein} onChange={setProtein} min={0} max={9999} decimal />
-      </div>
-      {carbsOn && <NumberField label={t('label_carbs_g')} value={carbs} onChange={setCarbs} min={0} max={9999} decimal />}
+      {parts.length > 0 ? (
+        // With parts, the numbers come from the ticked parts: change a part's grams instead of typing totals.
+        <button type="button" class="food-parts-card" onClick={() => setEditParts(true)}>
+          <span>{t('food_kcal', onParts.reduce((a, p) => a + p.kcal, 0))} · {t('food_g_protein', Math.round(onParts.reduce((a, p) => a + p.protein, 0)))}</span>
+          <span class="food-row-parts-text">{partsCount(parts)} · {t('food_parts_change')}</span>
+        </button>
+      ) : (
+        <>
+          <div class="food-two">
+            <NumberField label={t('home_legend_calories')} value={kcal} onChange={setKcal} min={0} max={99999} />
+            <NumberField label={t('home_legend_protein')} value={protein} onChange={setProtein} min={0} max={9999} decimal />
+          </div>
+          {carbsOn && <NumberField label={t('label_carbs_g')} value={carbs} onChange={setCarbs} min={0} max={9999} decimal />}
+        </>
+      )}
+      <PlaceField value={place} onChange={setPlace} places={places} />
       <TextField label={t('food_serving_hint')} value={serving} onInput={(v) => setServing(v.slice(0, 32))} />
       <CategoryTabs value={cat} onChange={setCat} label={t('scan_meal')} />
       <div class="food-switch-row"><span>{t('food_pin_top')}</span><Switch on={pinned} onChange={setPinned} label={t('food_w_pinned_switch')} /></div>
       <div class="food-sheet-actions">
         {food?.id ? <Button variant="text" class="kit-danger" onClick={onDelete}>{t('action_delete')}</Button> : <span />}
-        <Button disabled={!name.trim() || kcal == null} onClick={() => food && onSave({ ...food, name: name.trim(), kcal: Math.round(kcal ?? 0), protein: protein ?? 0, carbs: carbs ?? 0, serving: serving.trim(), category: cat, pinned })}>{t('action_save')}</Button>
+        <Button disabled={!name.trim() || (kcal == null && !onParts.length)} onClick={() => food && onSave(withParts({ ...food, name: name.trim(), kcal: Math.round(kcal ?? 0), protein: protein ?? 0, carbs: carbs ?? 0, serving: serving.trim(), category: cat, pinned, place: place.trim() }, parts))}>{t('action_save')}</Button>
       </div>
+      <PartsSheet open={editParts} foodName={name || food?.name || ''} parts={parts} carbsOn={carbsOn} onSave={(p) => { setParts(p); setEditParts(false) }} onClose={() => setEditParts(false)} />
     </Sheet>
   )
 }
@@ -230,7 +253,11 @@ export function FoodScreen(_: { param?: string }) {
   const [day, setDay] = useState(todayEpochDay())
   const [followToday, setFollowToday] = useState(true)
   const [cat, setCat] = useState<FoodCategory>(categoryForNow())
-  const [sel, setSel] = useState<Record<number, number>>({})
+  /** foodId → how much and the meal it's logged under, for foods ticked but not yet logged. */
+  const [sel, setSel] = useState<Record<number, { qty: number; cat: FoodCategory }>>({})
+  const [query, setQuery] = useState('')
+  const [partsFor, setPartsFor] = useState<FoodRow | null>(null)
+  const usage = useFoodUsage()
   const [editing, setEditing] = useState<FoodRow | null>(null)
   const [confirmDel, setConfirmDel] = useState<FoodRow | null>(null)
   const [quick, setQuick] = useState(false)
@@ -249,16 +276,34 @@ export function FoodScreen(_: { param?: string }) {
 
   const shift = (d: number) => { const next = Math.min(today, day + d); setDay(next); setFollowToday(next === today) }
   const inCat = foods.filter((f) => f.category === cat)
+  const searching = query.trim() !== ''
+  // Best match first; among equally good matches, pinned foods, then the ones you log most and most lately.
+  const results = searching
+    ? foods.map((f) => [f, score(query, f.name, f.place ?? '')] as const).filter(([, sc]) => sc > 0)
+      .sort(([a, sa], [b, sb]) => sb - sa || Number(b.pinned) - Number(a.pinned) || (usage.get(b.id!)?.times ?? 0) - (usage.get(a.id!)?.times ?? 0) || (usage.get(b.id!)?.lastAt ?? 0) - (usage.get(a.id!)?.lastAt ?? 0))
+      .map(([f]) => f)
+    : []
+  const places = placesOf(foods)
+  // Restaurant shortcuts: the ones used most lately first.
+  const lastAt = (f: FoodRow) => usage.get(f.id!)?.lastAt ?? f.createdAt
+  const recentPlaces = places.map((p) => [p, Math.max(...foods.filter((f) => f.place?.trim() === p).map(lastAt))] as const).sort((a, b) => b[1] - a[1]).map(([p]) => p).slice(0, 6)
+  const shown = searching ? results : inCat
   const picked = foods.filter((f) => f.id != null && sel[f.id] != null)
-  const selKcal = Math.round(picked.reduce((a, f) => a + f.kcal * sel[f.id!], 0))
-  const selProtein = Math.round(picked.reduce((a, f) => a + f.protein * sel[f.id!], 0))
-  const dots = new Set(picked.map((f) => f.category))
+  const selKcal = Math.round(picked.reduce((a, f) => a + f.kcal * sel[f.id!].qty, 0))
+  const selProtein = Math.round(picked.reduce((a, f) => a + f.protein * sel[f.id!].qty, 0))
+  const dots = new Set(Object.values(sel).map((p) => p.cat))
 
-  const setQty = (f: FoodRow, q: number) => setSel((m) => { const { [f.id!]: _drop, ...rest } = m; return q <= 0 ? rest : { ...rest, [f.id!]: q } })
+  // Drinks log under Drinks; a search result under the open tab (it opens on the meal for the time of day); otherwise its own tab.
+  const mealFor = (f: FoodRow): FoodCategory => (f.category === 'DRINKS' ? 'DRINKS' : searching ? cat : f.category)
+  const setQty = (f: FoodRow, q: number) => setSel((m) => {
+    const { [f.id!]: prev, ...rest } = m
+    return q <= 0 ? rest : { ...rest, [f.id!]: { qty: q, cat: prev?.cat ?? mealFor(f) } }
+  })
 
   const logSelected = async () => {
     if (!picked.length) return
-    await logFoods(picked.map((f) => [f, sel[f.id!]] as const), day)
+    const sep = t('food_list_sep')
+    await logFoods(picked.map((f) => ({ food: f, qty: sel[f.id!].qty, category: sel[f.id!].cat, name: logName(f, (n, off) => t('food_without', n, off), sep) })), day)
     setSel({})
     toast(plural('food_logged_items', picked.length) + (await badgeSuffix()))
   }
@@ -281,8 +326,27 @@ export function FoodScreen(_: { param?: string }) {
       <DayPicker day={day} today={today} onShift={shift} onToday={() => { setDay(today); setFollowToday(true) }} />
       <Totals meals={meals} kcalGoal={s.kcalGoal} proteinGoal={s.proteinGoal} carbsGoal={s.carbsGoal} trackCarbs={s.trackCarbs} />
       {isToday && <WeekCard proteinGoal={s.proteinGoal} trackCarbs={s.trackCarbs} />}
+      <div class="food-search">
+        <SearchIcon size={20} />
+        <input
+          type="search" class="food-search-input" value={query} placeholder={t('food_search_hint')} aria-label={t('food_search_hint')} enterkeyhint="search"
+          onInput={(e) => setQuery((e.target as HTMLInputElement).value.slice(0, 48))}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+        />
+        {query && <IconButton label={t('food_search_clear')} onClick={() => setQuery('')}><CloseIcon size={18} /></IconButton>}
+      </div>
+      {!searching && recentPlaces.length > 0 && (
+        <div class="food-places">
+          <span class="food-note">{t('food_restaurants')}</span>
+          <div class="food-chips">{recentPlaces.map((p) => <Chip key={p} label={p} onClick={() => setQuery(p)} />)}</div>
+        </div>
+      )}
       <CategoryTabs value={cat} onChange={setCat} dots={dots} label={t('scan_meal')} />
-      {inCat.length === 0 && (
+      {searching && <p class="food-note food-search-note">{results.length ? t('food_search_logs_as', catLabel(cat)) : t('food_search_none', query.trim())}</p>}
+      {searching && !results.length && (
+        <div><Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setEditing({ ...blankFood(cat), name: query.trim().slice(0, 48) })}>{t('food_search_add', query.trim())}</Button></div>
+      )}
+      {!searching && inCat.length === 0 && (
         <Card>
           <div class="food-empty">
             <RestaurantIcon size={32} />
@@ -292,7 +356,7 @@ export function FoodScreen(_: { param?: string }) {
           </div>
         </Card>
       )}
-      {inCat.map((f) => <FoodItem key={f.id} food={f} qty={sel[f.id!]} onToggle={() => setQty(f, sel[f.id!] == null ? 1 : 0)} onQty={(q) => setQty(f, q)} onEdit={() => setEditing(f)} />)}
+      {shown.map((f) => <FoodItem key={f.id} food={f} qty={sel[f.id!]?.qty} onToggle={() => setQty(f, sel[f.id!] == null ? 1 : 0)} onQty={(q) => setQty(f, q)} onEdit={() => setEditing(f)} onParts={f.parts?.length ? () => setPartsFor(f) : undefined} />)}
       <div class="food-logged-head">
         <h2>{isToday ? t('food_logged_today') : t('food_logged_that_day')}</h2>
         <Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setQuick(true)}>{t('food_quick_log')}</Button>
@@ -306,8 +370,10 @@ export function FoodScreen(_: { param?: string }) {
       {undo && <div class="food-snack" role="status"><span>{undo.text}</span><button type="button" onClick={doUndo}>{t('action_undo')}</button></div>}
 
       <QuickLogSheet open={quick} initial={cat} carbsOn={s.trackCarbs} onLog={quickLog} onClose={() => setQuick(false)} />
+      <PartsSheet open={partsFor != null} foodName={partsFor?.name ?? ''} parts={partsFor?.parts ?? []} carbsOn={s.trackCarbs}
+        onSave={async (p) => { if (partsFor) await saveFood(withParts(partsFor, p)); setPartsFor(null) }} onClose={() => setPartsFor(null)} />
       <FoodEditorSheet
-        food={editing} carbsOn={s.trackCarbs} onClose={() => setEditing(null)}
+        food={editing} places={places} carbsOn={s.trackCarbs} onClose={() => setEditing(null)}
         onSave={async (f) => { await saveFood(f); setEditing(null) }}
         onDelete={() => { setConfirmDel(editing); setEditing(null) }}
       />
