@@ -7,6 +7,8 @@ import androidx.room.TypeConverter
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Muscle
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 
 @Serializable
 @Entity(tableName = "exercises")
@@ -119,6 +121,31 @@ data class FoodEntity(
     val photoPath: String? = null,
     val pinned: Boolean = false,
     val createdAt: Long,
+    /** Where it's from ("كفتيريا افراح وتهاني"), so it can be searched by restaurant; empty when not set. */
+    val place: String = "",
+    /** What it's made of (from a Gemini or photo scan), each part on or off. When set, kcal/protein/carbs are the "on" parts' totals. */
+    val parts: List<FoodPart> = emptyList(),
+)
+
+/** This food with [parts]; when there are parts, its calories, protein and carbs become the totals of the parts that are on. */
+fun FoodEntity.withParts(parts: List<FoodPart>): FoodEntity {
+    if (parts.isEmpty()) return copy(parts = parts)
+    val on = parts.filter { it.on }
+    return copy(parts = parts, kcal = on.sumOf { it.kcal }, protein = on.sumOf { it.protein.toDouble() }.toFloat(), carbs = on.sumOf { it.carbs.toDouble() }.toFloat())
+}
+
+/** How often a saved food was logged and when last (meals.foodId). */
+data class FoodUsage(val foodId: Long, val times: Int, val lastAt: Long)
+
+/** One part of a saved food (the bread, the chicken, the ketchup). Unticked parts stay, switched off, for next time. */
+@Serializable
+data class FoodPart(
+    val name: String,
+    val grams: Int = 0,
+    val kcal: Int = 0,
+    val protein: Float = 0f,
+    val carbs: Float = 0f,
+    val on: Boolean = true,
 )
 
 @Serializable
@@ -176,6 +203,16 @@ class Converters {
     @TypeConverter
     fun stringToMuscles(value: String): List<Muscle> =
         value.split(",").filter { it.isNotBlank() }.mapNotNull { runCatching { Muscle.valueOf(it) }.getOrNull() }
+
+    @TypeConverter
+    fun partsToString(list: List<FoodPart>): String = partsJson.encodeToString(list)
+
+    @TypeConverter
+    fun stringToParts(value: String): List<FoodPart> = runCatching { partsJson.decodeFromString<List<FoodPart>>(value) }.getOrDefault(emptyList())
+
+    private companion object {
+        val partsJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+    }
 }
 
 /** A day the person excused (sick, injured, travelling, resting): it never counts as missed. */

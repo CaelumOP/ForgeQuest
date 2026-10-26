@@ -236,6 +236,10 @@ interface FoodDao {
     @Query("SELECT * FROM meals WHERE id IN (SELECT MAX(id) FROM meals WHERE foodId IS NULL GROUP BY lower(name)) ORDER BY loggedAt DESC LIMIT 8")
     fun observeRecentOneOffs(): Flow<List<MealEntity>>
 
+    /** How often and how lately each saved food was logged, so search puts your usual foods first. */
+    @Query("SELECT foodId, COUNT(*) AS times, MAX(loggedAt) AS lastAt FROM meals WHERE foodId IS NOT NULL GROUP BY foodId")
+    fun observeFoodUsage(): Flow<List<FoodUsage>>
+
     @Query("SELECT * FROM meals WHERE epochDay = :day ORDER BY loggedAt")
     fun observeMeals(day: Long): Flow<List<MealEntity>>
 
