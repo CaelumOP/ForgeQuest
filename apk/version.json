@@ -1,6 +1,6 @@
 {
-  "versionCode": 25,
-  "versionName": "2.14.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.14.0/ForgeQuest-v2.14.0.apk",
-  "notes": "• Coach debrief: no longer disappears when the coach is slow or offline. If it can't be written, Try again appears.\n• Journal: every finished workout has a Coach debrief button, older workouts included.\n• Exercise page: Put in my plan lets you choose a day, then replace an exercise or add it.\n• Home: the update notice is now one compact row."
+  "versionCode": 26,
+  "versionName": "2.14.1",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.14.1/ForgeQuest-v2.14.1.apk",
+  "notes": "• Coach debrief: Gemini now writes it first, with Groq as the backup."
 }

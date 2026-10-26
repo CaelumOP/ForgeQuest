@@ -226,7 +226,7 @@ export async function parsePlanText(text: string): Promise<CoachPlan> {
 
 // ---------------------------------------------------------------- Debrief
 
-// Runs while the summary is already showing, so it can afford a slow network and a Groq -> Gemini fallback.
+// Runs while the summary is already showing, so it can afford a slow network and a Gemini -> Groq fallback.
 const DEBRIEF_TIMEOUT_MS = 30_000;
 
 /** A debrief can be asked for at all: a Groq or Gemini key is saved. */
@@ -234,7 +234,7 @@ export const canDebrief = (s: Pick<Settings, 'groqKey' | 'apiKey'>): boolean => 
 
 /**
  * The coach's short debrief of a finished workout, saved on the session row. Compares with the last time each exercise
- * was done before it. Groq first when set (JSON mode), Gemini with no thinking when Groq fails or its reply can't be
+ * was done before it. Gemini first when set (no thinking), Groq in JSON mode when Gemini fails or its reply can't be
  * read; 30 s overall. Null when the setting is off (unless `onDemand`, asked for from the journal), there is no key, or
  * no set was done. Throws AiError on failure.
  */
@@ -268,14 +268,16 @@ export async function generateDebrief(sessionId: number, onDemand = false): Prom
   const timer = setTimeout(() => ctl.abort(), DEBRIEF_TIMEOUT_MS);
   try {
     let debrief: WorkoutDebrief | null = null;
-    if (groqKey) {
+    if (s.apiKey.trim()) {
       try {
-        const text = await groqChat({ model: s.groqModel || GROQ_FALLBACK_MODEL, messages: [{ role: 'system', content: system }, { role: 'user', content: payload }], json: true, signal: ctl.signal });
+        const text = await geminiGenerate({ system, parts: [textPart(payload)], json: true, fast: true, models: modelsFor(s.coachModel, s), signal: ctl.signal });
         debrief = parseDebrief(text);
-      } catch { debrief = null; }
+      } catch (e) {
+        if (!groqKey) throw e; // nothing to fall back to: keep the real error
+      }
     }
-    if (!debrief && s.apiKey.trim()) {
-      const text = await geminiGenerate({ system, parts: [textPart(payload)], json: true, fast: true, models: modelsFor(s.coachModel, s), signal: ctl.signal });
+    if (!debrief && groqKey) {
+      const text = await groqChat({ model: s.groqModel || GROQ_FALLBACK_MODEL, messages: [{ role: 'system', content: system }, { role: 'user', content: payload }], json: true, signal: ctl.signal });
       debrief = parseDebrief(text);
     }
     if (!debrief) throw new AiError('unreadable', 'debrief not readable');
