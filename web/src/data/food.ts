@@ -72,6 +72,7 @@ export async function saveMeal(food: FoodRow): Promise<number> {
   await db.foods.put({
     ...food, id: existing.id, createdAt: existing.createdAt, pinned: existing.pinned || food.pinned,
     photoPath: food.photoPath ?? existing.photoPath, place: (food.place ?? '').trim() || existing.place || '',
+    serving: existing.serving || food.serving, // "1 sandwich" stays, not the scan's "1 plate"
   });
   return existing.id!;
 }

@@ -93,12 +93,13 @@ describe('food library: parts, restaurants, no duplicates', () => {
 
   it('saving the same meal at the same restaurant updates it instead of adding a copy', async () => {
     const first = await saveMeal(withParts({ ...food('Chicken shawarma', 0, 0), place: 'كفتيريا افراح وتهاني', pinned: true }, shawarma));
-    const again = await saveMeal(withParts({ ...food('chicken Shawarma', 0, 0), place: 'شاورما افراح وتهاني' }, shawarma.map((p) => ({ ...p, on: true }))));
+    const again = await saveMeal(withParts({ ...food('chicken Shawarma', 0, 0), serving: '1 plate', place: 'شاورما افراح وتهاني' }, shawarma.map((p) => ({ ...p, on: true }))));
     expect(again).toBe(first);
     const foods = await getFoods();
     expect(foods).toHaveLength(1);
     expect(foods[0].kcal).toBe(667);
     expect(foods[0].pinned).toBe(true);
+    expect(foods[0].serving).toBe('1'); // keeps its own serving text
     await saveMeal({ ...food('Chicken shawarma', 500, 30), place: 'مطعم البيك' });
     await saveMeal(food('Chicken shawarma', 500, 30));
     expect(await getFoods()).toHaveLength(3);

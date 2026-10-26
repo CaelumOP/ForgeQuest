@@ -3,7 +3,7 @@
 Goal: Gemini is only needed the first time you eat something. After that you log from your own list like a shopping
 cart: search a food or a restaurant, tick what you had, set the amount (half a can), log.
 
-Status: plan, waiting for approval. Nothing built yet. Applies to Android (`app/`) and web (`web/`), English and
+Status: built in 2.13.0 (Android and web), approved 2026-10-26. Refinement while building: a ticked search result logs under the open tab (which opens on the meal for the time of day); foods ticked in a tab keep that tab; drinks always Drinks. Applies to Android (`app/`) and web (`web/`), English and
 formal Arabic.
 
 ## Decisions so far (2026-10-26)
