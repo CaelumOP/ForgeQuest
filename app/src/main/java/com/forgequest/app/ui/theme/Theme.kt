@@ -172,30 +172,44 @@ private val ArabicTypography = FitTypography.run {
     )
 }
 
+/**
+ * The full Material 3 colour scheme, built from [FitColors] so built-in components (switches, snackbars, sheets, chips,
+ * the navigation bar) pick up our palette without per-call colours. Our hex values win wherever the Material spec
+ * differs; roles we have no colour for take the spec's value. Surface containers step up in tone from the canvas:
+ * lowest, low, container (our card), high (our raised card), highest. No dynamic colour: the palette is the brand.
+ */
+internal fun forgeDarkScheme(f: FitColors) = darkColorScheme(
+    primary = f.teal, onPrimary = f.onTeal, primaryContainer = f.tealTrack, onPrimaryContainer = f.teal,
+    inversePrimary = LightFitColors.teal,
+    secondary = f.blue, onSecondary = Color(0xFF003062), secondaryContainer = f.blueTrack, onSecondaryContainer = f.blue,
+    tertiary = f.gold, onTertiary = Color(0xFF3F2E00), tertiaryContainer = f.goldTrack, onTertiaryContainer = f.gold,
+    error = f.coral, onError = Color(0xFF601410), errorContainer = f.coralTrack, onErrorContainer = f.coral,
+    background = f.background, onBackground = f.textPrimary,
+    surface = f.background, onSurface = f.textPrimary, surfaceVariant = f.cardHigh, onSurfaceVariant = f.textSecondary,
+    inverseSurface = f.textPrimary, inverseOnSurface = f.card,
+    outline = f.divider, outlineVariant = f.divider, scrim = Color.Black,
+    surfaceContainerLowest = Color(0xFF0E0E0F), surfaceContainerLow = Color(0xFF18191A), surfaceContainer = f.card,
+    surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFF333537),
+)
+
+internal fun forgeLightScheme(f: FitColors) = lightColorScheme(
+    primary = f.teal, onPrimary = f.onTeal, primaryContainer = f.tealTrack, onPrimaryContainer = Color(0xFF00413A),
+    inversePrimary = DarkFitColors.teal,
+    secondary = f.blue, onSecondary = Color.White, secondaryContainer = f.blueTrack, onSecondaryContainer = Color(0xFF0B3C86),
+    tertiary = f.gold, onTertiary = Color.White, tertiaryContainer = f.goldTrack, onTertiaryContainer = Color(0xFF261900),
+    error = f.coral, onError = Color.White, errorContainer = f.coralTrack, onErrorContainer = Color(0xFF410E0B),
+    background = f.background, onBackground = f.textPrimary,
+    surface = f.background, onSurface = f.textPrimary, surfaceVariant = f.cardHigh, onSurfaceVariant = f.textSecondary,
+    inverseSurface = Color(0xFF2E3133), inverseOnSurface = Color(0xFFF0F1F3),
+    outline = f.divider, outlineVariant = f.divider, scrim = Color.Black,
+    surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF0F4F9), surfaceContainer = f.card,
+    surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFFD8E0EC),
+)
+
 @Composable
 fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val fit = if (dark) DarkFitColors else LightFitColors
-    val scheme = if (dark) {
-        darkColorScheme(
-            primary = fit.teal, onPrimary = fit.onTeal, primaryContainer = fit.tealTrack, onPrimaryContainer = fit.teal,
-            secondary = fit.blue, secondaryContainer = fit.blueTrack, onSecondaryContainer = fit.blue,
-            background = fit.background, onBackground = fit.textPrimary,
-            surface = fit.background, onSurface = fit.textPrimary, onSurfaceVariant = fit.textSecondary,
-            surfaceContainerLowest = fit.background, surfaceContainerLow = fit.card, surfaceContainer = fit.card,
-            surfaceContainerHigh = fit.card, surfaceContainerHighest = fit.cardHigh,
-            outline = fit.divider, outlineVariant = fit.divider, error = fit.coral,
-        )
-    } else {
-        lightColorScheme(
-            primary = fit.teal, onPrimary = fit.onTeal, primaryContainer = fit.tealTrack, onPrimaryContainer = Color(0xFF00413A),
-            secondary = fit.blue, secondaryContainer = fit.blueTrack, onSecondaryContainer = Color(0xFF0B3C86),
-            background = fit.background, onBackground = fit.textPrimary,
-            surface = fit.background, onSurface = fit.textPrimary, onSurfaceVariant = fit.textSecondary,
-            surfaceContainerLowest = fit.card, surfaceContainerLow = fit.card, surfaceContainer = fit.card,
-            surfaceContainerHigh = fit.card, surfaceContainerHighest = fit.cardHigh,
-            outline = fit.divider, outlineVariant = fit.divider, error = fit.coral,
-        )
-    }
+    val scheme = if (dark) forgeDarkScheme(fit) else forgeLightScheme(fit)
     // Manrope has no Arabic glyphs, and the negative tracking on display sizes pulls joined Arabic letters apart and
     // makes Compose wrap the last letter of a title onto its own line. Arabic gets the system face, untracked.
     val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"

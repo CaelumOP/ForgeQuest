@@ -162,7 +162,8 @@ private fun MainScaffold() {
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
                 if (showBar) {
-                    NavigationBar(containerColor = c.card, tonalElevation = 0.dp) {
+                    // Container is the theme's surfaceContainer, which is our card.
+                    NavigationBar(tonalElevation = 0.dp) {
                         tabs.forEach { tab ->
                             val selected = route == tab.route
                             NavigationBarItem(

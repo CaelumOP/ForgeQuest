@@ -81,6 +81,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.alpha
@@ -115,8 +116,21 @@ fun FitSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: 
     androidx.compose.material3.Switch(
         // A gap before the switch, so a long subtitle beside it never runs into it.
         checked, onCheckedChange, modifier = Modifier.padding(start = 12.dp), enabled = enabled,
-        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Fit.colors.teal, checkedThumbColor = Fit.colors.card),
+        colors = fitSwitchColors(Fit.colors.teal),
     )
+
+/**
+ * Switch colours: the checked track is [checked], the unchecked track stays our raised card. The theme's
+ * surfaceContainerHighest is one step brighter, so the unchecked track is pinned here to keep the look.
+ */
+@Composable
+fun fitSwitchColors(checked: Color) = Fit.colors.let { c ->
+    androidx.compose.material3.SwitchDefaults.colors(
+        checkedTrackColor = checked, checkedThumbColor = c.card,
+        uncheckedTrackColor = c.cardHigh,
+        disabledUncheckedTrackColor = c.cardHigh.copy(alpha = 0.12f).compositeOver(c.background),
+    )
+}
 
 /** Short message at the bottom of the screen, for results that need no action. */
 fun android.content.Context.toast(message: String) = android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show()

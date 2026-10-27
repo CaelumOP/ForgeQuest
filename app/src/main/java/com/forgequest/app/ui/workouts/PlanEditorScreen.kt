@@ -45,7 +45,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -274,7 +273,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                         Switch(
                             checked = day.day.isRest,
                             onCheckedChange = { vm.setRest(day.day, it) },
-                            colors = SwitchDefaults.colors(checkedTrackColor = c.blue, checkedThumbColor = c.card),
+                            colors = com.forgequest.app.ui.components.fitSwitchColors(c.blue),
                         )
                     }
                     if (!day.day.isRest) {
@@ -638,7 +637,7 @@ private fun ItemEditorSheet(
                         Text(stringResource(R.string.plan_add_weight), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                         Text(stringResource(R.string.plan_add_weight_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
-                    Switch(checked = draft.weightKg != null, onCheckedChange = { draft = draft.copy(weightKg = if (it) 0f else null) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                    Switch(checked = draft.weightKg != null, onCheckedChange = { draft = draft.copy(weightKg = if (it) 0f else null) }, colors = com.forgequest.app.ui.components.fitSwitchColors(c.teal))
                 }
             }
             if (kind == ExerciseKind.WEIGHTED || draft.weightKg != null) {
@@ -650,7 +649,7 @@ private fun ItemEditorSheet(
                     Text(stringResource(R.string.plan_part_circuit), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                     Text(stringResource(R.string.plan_circuit_hint, draft.block), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
-                Switch(checked = draft.circuit, onCheckedChange = { draft = draft.copy(circuit = it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.teal, checkedThumbColor = c.card))
+                Switch(checked = draft.circuit, onCheckedChange = { draft = draft.copy(circuit = it) }, colors = com.forgequest.app.ui.components.fitSwitchColors(c.teal))
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
