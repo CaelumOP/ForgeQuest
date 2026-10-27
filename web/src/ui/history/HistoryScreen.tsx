@@ -6,6 +6,7 @@ import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
 import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { formatDay } from '../day-format'
 import { fromKg, unitLabel } from '../../domain/units'
 import type { WeightUnit } from '../../domain/units'
 import { Button, Card, EmptyState, Sheet, SwipeRow, TextField } from '../kit'
@@ -20,8 +21,6 @@ const volumeText = (unit: WeightUnit, kg: number, arabic: boolean): string => {
   const text = `${Math.round(fromKg(unit, kg)).toLocaleString('en-US')} ${unitLabel(unit, arabic)}`
   return arabic ? `⁧${text}⁩` : `⁦${text}⁩`
 }
-const fmt = (day: number, o: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat(getLang(), { ...o, timeZone: 'UTC' }).format(new Date(day * 86_400_000))
 
 function PrTag({ count = 1 }: { count?: number }) {
   return <><span class="hs-pr">{t('live_pr')}</span>{count > 1 && <span class="hs-prx"> ×{count}</span>}</>
@@ -105,7 +104,7 @@ export function HistoryScreen(_: { param?: string }) {
           const prs = sets.filter((s) => s.isPr).length
           const title = w.start === thisWeek ? t('journal_this_week')
             : w.start === thisWeek - 7 ? t('journal_last_week')
-            : t('journal_range', fmt(w.start, { day: 'numeric', month: 'short' }), fmt(w.start + 6, { day: 'numeric', month: 'short' }))
+            : t('journal_range', formatDay(w.start, { day: 'numeric', month: 'short' }), formatDay(w.start + 6, { day: 'numeric', month: 'short' }))
           const days = new Map<number, SessionRow[]>()
           for (const s of w.sessions) days.set(s.epochDay, [...(days.get(s.epochDay) ?? []), s])
           return (
@@ -125,7 +124,7 @@ export function HistoryScreen(_: { param?: string }) {
               </Card>
               {expanded && [...days.entries()].map(([day, list]) => (
                 <>
-                  <h3 class="hs-day" key={`d${day}`}>{fmt(day, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                  <h3 class="hs-day" key={`d${day}`}>{formatDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                   {list.map((s) => {
                     const ss = bySession.get(s.id!) ?? []
                     const mins = minutesOf(s)
@@ -137,7 +136,7 @@ export function HistoryScreen(_: { param?: string }) {
                         <SwipeRow label={t('action_delete')} radius={24} srDelete onDelete={() => void removeWorkout(s)}>
                         <Card href={`#/session/${s.id}`}>
                           <div class="hs-srow">
-                            <span class="hs-date"><b>{fmt(day, { day: 'numeric' })}</b><span>{dayShort(dayOfWeek(day), getLang())}</span></span>
+                            <span class="hs-date"><b>{formatDay(day, { day: 'numeric' })}</b><span>{dayShort(dayOfWeek(day), getLang())}</span></span>
                             <span class="hs-stext">
                               <span class="hs-sname"><span>{s.title}</span>{prc > 0 && <span><PrTag count={prc} /></span>}</span>
                               <span class="hs-meta">{[plural('hist_sets', ss.length), mins != null ? t('hist_minutes', mins) : null].filter(Boolean).join(' · ')}</span>

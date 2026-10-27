@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { formatDay } from '../day-format'
 import type { FoodCategory, FoodPart, FoodRow, MealRow } from '../../data/db'
 import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, placesOf, restoreMeal, saveFood, totalsOf, useFoodUsage, useFoods, useMealsOn, useRecentOneOffs, withParts } from '../../data/food'
 import { score } from '../../domain/food-search'
@@ -27,7 +28,6 @@ export async function badgeSuffix(): Promise<string> {
 }
 export const catLabel = (c: FoodCategory): string => t(`food_cat_${c.toLowerCase()}`)
 const fmtInt = (n: number) => Math.round(n).toLocaleString(getLang())
-const dayFmt = (day: number, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(getLang(), { ...o, timeZone: 'UTC' }).format(new Date(day * 86_400_000))
 const timeOf = (ms: number) => new Intl.DateTimeFormat(getLang(), { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms))
 const blankFood = (category: FoodCategory): FoodRow => ({ name: '', category, kcal: 0, protein: 0, serving: '', carbs: 0, photoPath: null, pinned: false, createdAt: Date.now() })
 
@@ -49,7 +49,7 @@ function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
 
 function DayPicker({ day, today, onShift, onToday }: { day: number; today: number; onShift: (d: number) => void; onToday: () => void }) {
   const isToday = day === today
-  const label = isToday ? t('day_today') : day === today - 1 ? t('day_yesterday') : dayFmt(day, { weekday: 'long', month: 'short', day: 'numeric' })
+  const label = isToday ? t('day_today') : day === today - 1 ? t('day_yesterday') : formatDay(day, { weekday: 'long', month: 'short', day: 'numeric' })
   return (
     <div class="food-day" role="group" aria-label={t('food_w_day_nav')}>
       <IconButton label={t('cd_previous_day')} onClick={() => onShift(-1)}><span class="mirror"><BackChevron /></span></IconButton>
@@ -106,7 +106,7 @@ function WeekCard({ proteinGoal, trackCarbs }: { proteinGoal: number; trackCarbs
           const ratio = Math.min(1, Math.max(0, (n?.protein ?? 0) / Math.max(1, proteinGoal)))
           const letter = dayShort(dayOfWeek(d), getLang())
           return (
-            <div key={d} class={`food-week-col${d === today ? ' today' : ''}`} role="img" aria-label={t('food_w_week_bar', dayFmt(d, { weekday: 'long' }), fmtInt(n?.protein ?? 0))}>
+            <div key={d} class={`food-week-col${d === today ? ' today' : ''}`} role="img" aria-label={t('food_w_week_bar', formatDay(d, { weekday: 'long' }), fmtInt(n?.protein ?? 0))}>
               <div class="food-week-bar">
                 {n && ratio > 0 && <div class={`food-week-fill${n.protein >= proteinGoal ? '' : ' low'}`} style={{ blockSize: `${Math.max(3, 32 * ratio)}px` }} />}
               </div>

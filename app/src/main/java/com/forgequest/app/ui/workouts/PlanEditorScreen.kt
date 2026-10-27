@@ -101,6 +101,8 @@ import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.UndoSnackbarEffect
+import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
@@ -161,14 +163,13 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         app.workouts.swapPlanItem(item, newExerciseId)
     }
 
-    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+    val undo = UndoState(viewModelScope)
 
     fun deleteItem(item: PlanItemEntity, name: String) = viewModelScope.launch {
         app.workouts.deletePlanItem(item.id)
-        undo.value = app.str(R.string.food_removed, name) to { app.workouts.restorePlanItem(item) }
+        undo.offer(app.str(R.string.food_removed, name)) { app.workouts.restorePlanItem(item) }
     }
 
-    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
     fun addItem(dayId: Long, exerciseId: String) = viewModelScope.launch { app.workouts.addPlanItem(dayId, exerciseId) }
     fun setRest(day: PlanDayEntity, rest: Boolean) = viewModelScope.launch {
         app.workouts.updatePlanDay(day.copy(isRest = rest, title = if (rest) app.str(R.string.today_rest_day) else if (day.title == app.str(R.string.today_rest_day) || day.title == "Rest day") app.str(R.string.plan_workout) else day.title))
@@ -216,18 +217,10 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     var moveDay by remember { mutableStateOf(false) }
     val allPlans by vm.allPlans.collectAsState()
 
-    val undo by vm.undo.collectAsState()
-
     androidx.compose.runtime.LaunchedEffect(message) {
         message?.let { snackbar.showSnackbar(it); vm.message.value = null }
     }
-    val undoLabel = stringResource(R.string.action_undo)
-    androidx.compose.runtime.LaunchedEffect(undo) {
-        undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = androidx.compose.material3.SnackbarDuration.Short)
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
-        }
-    }
+    UndoSnackbarEffect(vm.undo)
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val day = s.plan?.day(selectedDay)

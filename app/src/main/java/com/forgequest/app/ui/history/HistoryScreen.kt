@@ -81,6 +81,8 @@ import com.forgequest.app.ui.components.CardShape
 import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.components.EmptyState
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.UndoSnackbarEffect
+import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.theme.Fit
@@ -110,15 +112,13 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
     fun setNote(session: SessionEntity, note: String) = viewModelScope.launch { app.db.sessions().update(session.copy(note = note.trim().take(300))) }
 
     /** A workout deleted by swipe: removed right away, and [undo] puts it back (same ids) while the snackbar is up. */
-    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+    val undo = UndoState(viewModelScope)
 
     fun deleteWorkout(session: SessionEntity) = viewModelScope.launch {
         val sets = app.db.sessions().sets(session.id)
         app.workouts.deleteSession(session.id)
-        undo.value = app.str(R.string.food_removed, session.title) to { app.workouts.restoreSession(session, sets) }
+        undo.offer(app.str(R.string.food_removed, session.title)) { app.workouts.restoreSession(session, sets) }
     }
-
-    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
 
     /** The debrief sheet: which workout it is open for, and whether the coach is writing it or couldn't. */
     val debriefFor = MutableStateFlow<Long?>(null)
@@ -170,14 +170,7 @@ fun HistoryScreen(nav: NavHostController) {
         com.forgequest.app.ui.workouts.SetNoteDialog(ses.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(ses, it); noteFor = null })
     }
     val snackbar = LocalSnackbar.current
-    val undoLabel = stringResource(R.string.action_undo)
-    val undo by vm.undo.collectAsState()
-    LaunchedEffect(undo) {
-        undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = SnackbarDuration.Long)
-            if (result == SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
-        }
-    }
+    UndoSnackbarEffect(vm.undo, SnackbarDuration.Long)
     val debriefFor by vm.debriefFor.collectAsState()
     s.sessions.firstOrNull { it.id == debriefFor }?.let { ses -> DebriefSheet(vm, ses) }
 

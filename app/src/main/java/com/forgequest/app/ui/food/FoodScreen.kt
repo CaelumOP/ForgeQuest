@@ -117,6 +117,8 @@ import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.UndoSnackbarEffect
+import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
@@ -256,14 +258,12 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     fun save(food: FoodEntity) = viewModelScope.launch { app.food.saveFood(food) }
     fun delete(food: FoodEntity) = viewModelScope.launch { app.food.deleteFood(food.id); selection.update { it - food.id } }
     /** Deleted right away; [undo] puts it back with the same id. */
-    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+    val undo = UndoState(viewModelScope)
 
     fun deleteMeal(meal: MealEntity) = viewModelScope.launch {
         app.food.deleteMeal(meal.id)
-        undo.value = app.str(R.string.food_removed, meal.name) to { app.food.restoreMeal(meal) }
+        undo.offer(app.str(R.string.food_removed, meal.name)) { app.food.restoreMeal(meal) }
     }
-
-    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
 
     fun setPhotoFromUri(food: FoodEntity, uri: Uri) = viewModelScope.launch {
         runCatching { app.food.importPhoto(uri) }.onSuccess { app.food.saveFood(food.copy(photoPath = it)) }
@@ -290,7 +290,6 @@ fun FoodScreen(nav: NavHostController) {
     var editing by remember { mutableStateOf<FoodEntity?>(null) }
     var photoFor by remember { mutableStateOf<FoodEntity?>(null) }
 
-    val undo by vm.undo.collectAsState()
     val geminiMeals by vm.geminiMeals.collectAsState()
     val apiKey by vm.apiKey.collectAsState()
     val day by vm.day.collectAsState()
@@ -300,13 +299,7 @@ fun FoodScreen(nav: NavHostController) {
     LaunchedEffect(Unit) { vm.onShown() }
 
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
-    val undoLabel = stringResource(R.string.action_undo)
-    LaunchedEffect(undo) {
-        undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
-        }
-    }
+    UndoSnackbarEffect(vm.undo)
 
     val query by vm.query.collectAsState()
     val usage by vm.usage.collectAsState()
