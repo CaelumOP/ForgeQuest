@@ -889,6 +889,13 @@ private fun WorkoutCompleteScreen(
             com.forgequest.app.ui.components.StatColumn(stringResource(R.string.hist_minutes, sum.minutes), stringResource(R.string.profile_time), c.blue, Modifier.weight(1f))
             com.forgequest.app.ui.components.StatColumn("⁦+${sum.xpGained}⁩", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
         }
+        sum.clippedEndAt?.let { end ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.live_ended_at_last_set, java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(end - com.forgequest.app.domain.WorkoutEnd.GRACE_MS))),
+                style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center,
+            )
+        }
         Spacer(Modifier.height(24.dp))
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {

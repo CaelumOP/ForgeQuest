@@ -59,6 +59,8 @@ export type SetEntity = {
   note: string
   /** A SetEffort name, or empty when not tapped. */
   effort: string
+  /** When the set was ticked (epoch ms); null while unticked or for sets done before this existed. */
+  doneAt?: number | null
 }
 
 export type ReadinessDayEntity = {

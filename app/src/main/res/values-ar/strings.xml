@@ -706,6 +706,7 @@
     <string name="live_pr">رقم قياسي</string>
     <string name="live_rest">راحة</string>
     <string name="live_skip">تجاوز</string>
+    <string name="live_ended_at_last_set">انتهى التمرين عند آخر مجموعة لك، %1$s</string>
     <string name="live_complete">اكتمل التمرين</string>
     <string name="live_sets">مجموعات</string>
     <string name="live_xp">نقاط الخبرة</string>

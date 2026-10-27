@@ -209,8 +209,12 @@ interface SessionDao {
     @Update
     suspend fun updateSets(sets: List<SetEntity>)
 
-    @Query("UPDATE sets SET done = 1 WHERE sessionId = :sessionId AND done = 0")
-    suspend fun markAllSetsDone(sessionId: Long)
+    @Query("UPDATE sets SET done = 1, doneAt = :now WHERE sessionId = :sessionId AND done = 0")
+    suspend fun markAllSetsDone(sessionId: Long, now: Long)
+
+    /** Latest tick time among a session's done sets, or null when none has one. */
+    @Query("SELECT MAX(doneAt) FROM sets WHERE sessionId = :sessionId AND done = 1")
+    suspend fun lastDoneAt(sessionId: Long): Long?
 
     @Query("DELETE FROM sets WHERE id = :id")
     suspend fun deleteSet(id: Long)

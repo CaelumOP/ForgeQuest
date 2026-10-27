@@ -337,7 +337,7 @@
       },
       {
         "tableName": "sets",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `exerciseId` TEXT NOT NULL, `itemPosition` INTEGER NOT NULL, `block` TEXT NOT NULL, `circuit` INTEGER NOT NULL, `setIndex` INTEGER NOT NULL, `targetLabel` TEXT NOT NULL, `reps` INTEGER, `seconds` INTEGER, `weightKg` REAL, `done` INTEGER NOT NULL, `isPr` INTEGER NOT NULL, `restSeconds` INTEGER NOT NULL, `note` TEXT NOT NULL, `effort` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `exerciseId` TEXT NOT NULL, `itemPosition` INTEGER NOT NULL, `block` TEXT NOT NULL, `circuit` INTEGER NOT NULL, `setIndex` INTEGER NOT NULL, `targetLabel` TEXT NOT NULL, `reps` INTEGER, `seconds` INTEGER, `weightKg` REAL, `done` INTEGER NOT NULL, `isPr` INTEGER NOT NULL, `restSeconds` INTEGER NOT NULL, `note` TEXT NOT NULL, `effort` TEXT NOT NULL, `doneAt` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -431,6 +431,11 @@
             "columnName": "effort",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "doneAt",
+            "columnName": "doneAt",
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {

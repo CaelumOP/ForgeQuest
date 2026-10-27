@@ -66,6 +66,10 @@ data class FinishResult(
     val doneSets: Int,
     val prs: List<String>,
     val xpGained: Int,
+    /** When the workout counts as ended (epoch ms); shown minutes use it too. */
+    val endedAt: Long = System.currentTimeMillis(),
+    /** True when the end was pulled back to the last set because the app sat idle. */
+    val clipped: Boolean = false,
 )
 
 /** [settings] gives progression the weight unit and the readiness switch; without it (tests) steps are in kg. */
@@ -456,7 +460,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     suspend fun finishSession(sessionId: Long, tickAll: Boolean = false): FinishResult = db.withTransaction {
         val session = sessions.byId(sessionId) ?: return@withTransaction FinishResult("", 0, emptyList(), 0)
         if (tickAll) {
-            sessions.markAllSetsDone(sessionId)
+            sessions.markAllSetsDone(sessionId, System.currentTimeMillis())
         } else {
             sessions.deleteUntickedSetsOf(sessionId)
         }
@@ -481,9 +485,11 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         }
         // The plan day's sets as they are now, kept so a later plan edit can't change this workout's score.
         val plannedSets = session.planDayId?.let { plannedSetsOf(plans.items(it)) }?.takeIf { it > 0 }
-        sessions.update(session.copy(finishedAt = System.currentTimeMillis(), plannedSets = plannedSets))
+        val now = System.currentTimeMillis()
+        val end = com.forgequest.app.domain.WorkoutEnd.endTime(now, sessions.lastDoneAt(sessionId))
+        sessions.update(session.copy(finishedAt = end, plannedSets = plannedSets))
         val xp = com.forgequest.app.domain.Xp.total(1, done.size, prNames.size, 0)
-        FinishResult(session.title, done.size, prNames, xp)
+        FinishResult(session.title, done.size, prNames, xp, endedAt = end, clipped = end != now)
     }
 
     // ------------------------------------------------------------ History

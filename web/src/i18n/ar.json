@@ -650,6 +650,7 @@
   "live_discard": "إلغاء التمرين",
   "live_discard_body": "ستُحذف المجموعات المسجّلة في هذه الجلسة.",
   "live_discard_title": "إلغاء هذا التمرين؟",
+  "live_ended_at_last_set": "انتهى التمرين عند آخر مجموعة لك، {1}",
   "live_exercise_of": "التمرين {1} من {2}",
   "live_finish": "أنهِ",
   "live_finish_unticked_body": {

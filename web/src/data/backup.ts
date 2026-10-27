@@ -72,7 +72,7 @@ const SPECS = {
   sets: {
     id: 0, sessionId: REQ, exerciseId: REQ, itemPosition: REQ, block: REQ, circuit: REQ, setIndex: REQ,
     targetLabel: REQ, reps: null, seconds: null, weightKg: null, done: false, isPr: false, restSeconds: 60,
-    note: '', effort: '',
+    note: '', effort: '', doneAt: null,
   },
   foods: {
     id: 0, name: REQ, category: REQ, kcal: REQ, protein: REQ, serving: '', carbs: 0, photoPath: null,

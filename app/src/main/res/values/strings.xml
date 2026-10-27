@@ -617,6 +617,7 @@
     <string name="live_pr">PR</string>
     <string name="live_rest">Rest</string>
     <string name="live_skip">Skip</string>
+    <string name="live_ended_at_last_set">Ended at your last set, %1$s</string>
     <string name="live_complete">Workout complete</string>
     <string name="live_sets">Sets</string>
     <string name="live_xp">XP</string>

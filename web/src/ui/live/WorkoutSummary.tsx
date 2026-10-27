@@ -5,6 +5,7 @@ import { Button, Card } from '../kit'
 import { CalendarIcon, CheckIcon } from '../icons'
 import { TrophyIcon } from '../home/glyphs'
 import { dayName } from '../workouts/helpers'
+import { GRACE_MS } from '../../domain/workout-end'
 import type { WorkoutSummaryData } from './summary'
 import { scoreNote, scoreReasons, scoreTone } from '../history/helpers'
 
@@ -31,6 +32,9 @@ export function WorkoutSummary({ sum, onDone, onView }: { sum: WorkoutSummaryDat
           <div class="lws-stat" style={{ color: 'var(--blue)' }}><b>{t('hist_minutes', sum.minutes)}</b><span>{t('profile_time')}</span></div>
           <div class="lws-stat" style={{ color: 'var(--gold)' }}><b>+{sum.xpGained}</b><span>{t('live_xp')}</span></div>
         </div>
+        {sum.clippedEndAt != null && (
+          <p class="lws-xpline">{t('live_ended_at_last_set', new Date(sum.clippedEndAt - GRACE_MS).toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }))}</p>
+        )}
         {sum.score && (
           <Card class="lws-card">
             <div class="lws-levelrow">

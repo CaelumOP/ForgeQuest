@@ -19,9 +19,9 @@
     {"id": 2, "planDayId": null, "title": "Quick core", "epochDay": 20381, "startedAt": 1760976000000, "finishedAt": null, "note": "", "debrief": "", "plannedSets": null}
   ],
   "sets": [
-    {"id": 1, "sessionId": 1, "exerciseId": "bench_press", "itemPosition": 0, "block": "Main", "circuit": false, "setIndex": 0, "targetLabel": "6-10 reps", "reps": 8, "seconds": null, "weightKg": 60.0, "done": true, "isPr": false, "restSeconds": 120, "note": "", "effort": "OK"},
-    {"id": 2, "sessionId": 1, "exerciseId": "bench_press", "itemPosition": 0, "block": "Main", "circuit": false, "setIndex": 1, "targetLabel": "6-10 reps", "reps": 7, "seconds": null, "weightKg": 62.5, "done": true, "isPr": true, "restSeconds": 120, "note": "felt heavy", "effort": "HARD"},
-    {"id": 3, "sessionId": 2, "exerciseId": "plank", "itemPosition": 0, "block": "Core", "circuit": false, "setIndex": 0, "targetLabel": "45 s", "reps": null, "seconds": 45, "weightKg": null, "done": false, "isPr": false, "restSeconds": 60, "note": "", "effort": ""}
+    {"id": 1, "sessionId": 1, "exerciseId": "bench_press", "itemPosition": 0, "block": "Main", "circuit": false, "setIndex": 0, "targetLabel": "6-10 reps", "reps": 8, "seconds": null, "weightKg": 60.0, "done": true, "isPr": false, "restSeconds": 120, "note": "", "effort": "OK", "doneAt": 1760890000000},
+    {"id": 2, "sessionId": 1, "exerciseId": "bench_press", "itemPosition": 0, "block": "Main", "circuit": false, "setIndex": 1, "targetLabel": "6-10 reps", "reps": 7, "seconds": null, "weightKg": 62.5, "done": true, "isPr": true, "restSeconds": 120, "note": "felt heavy", "effort": "HARD", "doneAt": 1760891000000},
+    {"id": 3, "sessionId": 2, "exerciseId": "plank", "itemPosition": 0, "block": "Core", "circuit": false, "setIndex": 0, "targetLabel": "45 s", "reps": null, "seconds": 45, "weightKg": null, "done": false, "isPr": false, "restSeconds": 60, "note": "", "effort": "", "doneAt": null}
   ],
   "foods": [
     {"id": 1, "name": "Greek yogurt", "category": "BREAKFAST", "kcal": 130, "protein": 17.0, "serving": "170 g cup", "carbs": 6.0, "photoPath": null, "pinned": true, "createdAt": 1760100000000, "place": "", "parts": []}

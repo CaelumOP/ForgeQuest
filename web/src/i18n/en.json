@@ -590,6 +590,7 @@
   "live_discard": "Discard",
   "live_discard_body": "Logged sets from this session will be deleted.",
   "live_discard_title": "Discard this workout?",
+  "live_ended_at_last_set": "Ended at your last set, {1}",
   "live_exercise_of": "Exercise {1} of {2}",
   "live_finish": "Finish",
   "live_finish_unticked_body": {

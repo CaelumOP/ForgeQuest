@@ -211,14 +211,14 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const done = !group.every((s) => s.done)
     setEffortSetId(null)
     if (hapticsOn) buzz(done ? 40 : 15)
-    group.forEach((s) => { if (s.done !== done) save({ ...s, done }) })
+    group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt: done ? Date.now() : null }) })
   }
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
     setEffortSetId(done ? (set.id ?? null) : null)
     if (hapticsOn) buzz(done ? 40 : 15)
-    save({ ...set, done })
+    save({ ...set, done, doneAt: done ? Date.now() : null })
     if (done && set.restSeconds > 0) startRestFor(set)
     else if (!done) setRestSaved(null)
   }
@@ -235,7 +235,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const held = holdSaved(h, Date.now())
     const set = setsRef.current.find((s) => s.id === h.setId)
     if (!set || held === 0) return
-    save({ ...set, seconds: held, done: true })
+    save({ ...set, seconds: held, done: true, doneAt: Date.now() })
     if (hapticsOn) buzz(40)
     if (set.restSeconds > 0) startRestFor(set)
   }
@@ -264,10 +264,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (hapticsOn) buzz([60, 40, 120])
       onWorkoutFinished(sid, result)
       setDone({
-        sessionId: sid, title: result.sessionTitle, doneSets: result.doneSets, minutes: workoutMinutes(startedAt, Date.now()),
+        sessionId: sid, title: result.sessionTitle, doneSets: result.doneSets, minutes: workoutMinutes(startedAt, result.endedAt),
         prs: result.prs, newBadges: badges, xpGained: snap.level.totalXp - before.totalXp, before, after: snap.level,
         nextUp: nextUpDay(snap.plan?.days ?? [], dayOfWeek(todayEpochDay())),
         score: (await allWorkoutScores()).get(sid) ?? null,
+        clippedEndAt: result.clipped ? result.endedAt : null,
       })
     } catch {
       toast(t('live_web_save_failed'))

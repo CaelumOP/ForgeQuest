@@ -17,6 +17,8 @@ export type WorkoutSummaryData = {
   nextUp: { dow: number; title: string } | null
   /** The calculated workout score and its reasons (domain/workout-score.ts). */
   score?: WorkoutScoreResult | null
+  /** Set when the end was pulled back to the last set: when the workout ended (epoch ms). */
+  clippedEndAt?: number | null
 }
 
 type PlanDays = { day: { dayOfWeek: number; title: string; isRest: boolean }; items: unknown[] }[]

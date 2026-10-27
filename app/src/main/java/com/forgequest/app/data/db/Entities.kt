@@ -105,6 +105,8 @@ data class SetEntity(
     val note: String = "",
     /** One-tap effort: a SetEffort name ("EASY", "OK", "HARD", "PAIN"), or empty when not tapped (counts as OK). */
     val effort: String = "",
+    /** When the set was ticked (epoch ms); null while unticked or for sets done before this existed. */
+    val doneAt: Long? = null,
 )
 
 @Serializable
