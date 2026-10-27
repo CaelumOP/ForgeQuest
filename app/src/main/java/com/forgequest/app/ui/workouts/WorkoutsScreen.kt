@@ -217,6 +217,8 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
     val today = Dates.todayDayOfWeek()
     val dayRestCd = stringResource(R.string.day_cd_rest)
     val dayTrainingCd = stringResource(R.string.day_cd_training)
+    // Seven chips share the width, so the day names stop growing at 1.3x text (like the bottom bar) instead of turning into "الث…".
+    com.forgequest.app.ui.components.CappedFontScale {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         (1..7).forEach { dow ->
             val isSel = dow == selected
@@ -229,11 +231,11 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    Dates.shortDayName(dow),
+                    Dates.dayShort(dow),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (isSel) c.onTeal else if (dow == today) c.teal else c.textSecondary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
                 )
                 Spacer(Modifier.height(6.dp))
                 Box(
@@ -247,6 +249,7 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
                 )
             }
         }
+    }
     }
 }
 

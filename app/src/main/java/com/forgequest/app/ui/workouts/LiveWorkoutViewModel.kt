@@ -61,6 +61,10 @@ data class WorkoutSummary(
     val nextUp: Pair<Int, String>? = null,
     /** No reminder set yet and still one of the first workouts: offer one while consistency is fragile. */
     val offerReminder: Boolean = false,
+    /** The calculated workout score and its reasons (domain/WorkoutScore.kt). */
+    val score: com.forgequest.app.domain.WorkoutScore.Result? = null,
+    /** Set when the end was pulled back to the last set: when that was (epoch ms). */
+    val clippedEndAt: Long? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -167,10 +171,18 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         effortSetId.value = if (done) set.id else null
         if (done) app.haptics.setDone() else app.haptics.tick()
         viewModelScope.launch {
-            repo.updateSet(set.copy(done = done))
+            repo.updateSet(set.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null))
             if (done) carryForward(set)
         }
         if (done && set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set)) else if (!done) skipRest()
+    }
+
+    /** The warm-up's single tick: marks all of one exercise's sets done (or all undone) and starts no rest timer. */
+    fun toggleAll(group: List<SetEntity>) {
+        val done = !group.all { it.done }
+        effortSetId.value = null
+        if (done) app.haptics.setDone() else app.haptics.tick()
+        viewModelScope.launch { group.filter { it.done != done }.forEach { repo.updateSet(it.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null)) } }
     }
 
     /** What you just did becomes the starting point for the exercise's next sets you haven't touched yet. */
@@ -240,7 +252,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val held = h.elapsed(System.currentTimeMillis()).coerceIn(0, 3600)
         val set = sets.value.firstOrNull { it.id == h.setId } ?: return
         if (held == 0) return
-        val updated = set.copy(seconds = held, done = true)
+        val updated = set.copy(seconds = held, done = true, doneAt = System.currentTimeMillis())
         app.haptics.setDone()
         viewModelScope.launch { repo.updateSet(updated) }
         checkBest(set, updated)
@@ -399,6 +411,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 val before = app.progress.freshSnapshot().level
                 val result = repo.finishSession(s.id, tickAll = tickAll)
                 val badges = app.progress.evaluateBadges()
+                // The summary below shows them, so Home shouldn't announce them a second time.
+                if (badges.isNotEmpty()) app.progress.markBadgesSeen()
                 // Straight from the database, with this workout and its badges in, or the summary shows "+0 XP".
                 val snap = app.progress.freshSnapshot()
                 val after = snap.level
@@ -411,7 +425,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 summary.value = WorkoutSummary(
                     title = result.sessionTitle,
                     doneSets = result.doneSets,
-                    minutes = ((System.currentTimeMillis() - s.startedAt) / 60_000).toInt().coerceAtLeast(1),
+                    minutes = ((result.endedAt - s.startedAt) / 60_000).toInt().coerceAtLeast(1),
                     prs = result.prs,
                     newBadges = badges,
                     xpGained = after.totalXp - before.totalXp,
@@ -419,6 +433,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     after = after,
                     nextUp = nextUp,
                     offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
+                    score = repo.scores(snap, only = s.id)[s.id],
+                    clippedEndAt = result.endedAt.takeIf { result.clipped },
                 )
                 if (snap.settings.debriefEnabled && app.coach.canDebrief()) {
                     debriefSessionId = s.id
@@ -442,6 +458,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             val d = app.coach.generateDebrief(debriefSessionId)
             debrief.value = d
             debriefFailed.value = d == null
+            if (d == null) app.haptics.error()
             debriefLoading.value = false
         }
     }

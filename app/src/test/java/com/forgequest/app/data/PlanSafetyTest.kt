@@ -90,11 +90,11 @@ class PlanSafetyTest {
 
 class DebriefTest {
     @Test
-    fun parsesFencedJsonAndFloorsTheScore() {
+    fun parsesFencedJsonAndIgnoresAnyScore() {
         val d = com.forgequest.app.data.plan.WorkoutDebrief.parse(
             "Sure!\n```json\n{\"score\": 2, \"summary\": \"Solid work.\", \"highlights\": [\"PR on dips\", \"all sets done\", \"extra\"], \"watch\": [\"knee note\"], \"nextTime\": [\"add 1 rep\"]}\n```",
         )!!
-        assertEquals(4, d.score)
+        assertNull(d.score)
         assertEquals(2, d.highlights.size)
         assertEquals("knee note", d.watch.single())
     }
@@ -103,16 +103,26 @@ class DebriefTest {
     fun junkGivesNull() {
         assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("offline"))
         assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"score\": 7}"))
-        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"summary\": \"No score\"}"))
+    }
+
+    @Test
+    fun summaryAloneIsEnough() {
+        assertEquals("No score", com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"summary\": \"No score\"}")!!.summary)
+    }
+
+    @Test
+    fun oldSavedDebriefsWithAScoreStillDecode() {
+        val d = com.forgequest.app.data.plan.WorkoutDebrief.decode("{\"score\":8,\"summary\":\"Strong session.\"}")!!
+        assertEquals(8, d.score)
+        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.decode(com.forgequest.app.data.plan.WorkoutDebrief.encode(d.copy(score = null)))!!.score)
     }
 
     @Test
     fun forgivesDriftingShapes() {
-        // Fast models sometimes send a text score and single strings where lists were asked for.
+        // Fast models sometimes send single strings where lists were asked for.
         val d = com.forgequest.app.data.plan.WorkoutDebrief.parse(
-            "{\"score\": \"8/10\", \"summary\": \"Strong session.\", \"highlights\": \"12 dips, 2 more than last time\", \"watch\": [], \"next_time\": \"Add a set of rows\"}",
+            "{\"summary\": \"Strong session.\", \"highlights\": \"12 dips, 2 more than last time\", \"watch\": [], \"next_time\": \"Add a set of rows\"}",
         )!!
-        assertEquals(8, d.score)
         assertEquals(listOf("12 dips, 2 more than last time"), d.highlights)
         assertEquals(listOf("Add a set of rows"), d.nextTime)
     }

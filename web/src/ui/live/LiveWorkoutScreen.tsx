@@ -3,10 +3,11 @@ import { getLang, plural, t, useLang } from '../../i18n'
 import type { ExerciseRow, SetRow } from '../../data/db'
 import { configuredEquipment, useSettings, weightUnit } from '../../data/settings'
 import {
-  addCustomExercise, addExercise, addSet, discardSession, finishSession, harderHint, recentDoneSets, removeSet, stepUp, swapExercise, updateSet,
+  addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishSession, harderHint, recentDoneSets, removeSet, stepUp, swapExercise, updateSet,
   useLibrary, useOpenSession, useSets, type FinishResult,
 } from '../../data/workouts'
 import { weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
+import { isWarmUp } from '../../domain/workout-score'
 import { Button, Card, Dialog, EmptyState, IconButton, Sheet, ListRow, toast } from '../kit'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
@@ -17,12 +18,12 @@ import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
 import { currentGroupIndex, groupSets, groupSetsByExercise, nextUntickedSet, type Group } from './groups'
 import { HoldOverlay, RestBar } from './Overlays'
-import { SetRowView } from './SetRowView'
+import { SetRowView, type SetRowProps } from './SetRowView'
 import {
-  adjustRest, holdElapsed, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
+  adjustRest, clock, holdElapsed, restLeft, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
   type HoldTimer, type RestTimer,
 } from './timers'
-import { evaluateBadges, getProgressSnapshot } from '../../data/progress'
+import { evaluateBadges, getProgressSnapshot, markBadgesSeen } from '../../data/progress'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import { nextUpDay, workoutMinutes, type WorkoutSummaryData } from './summary'
 import { WorkoutSummary } from './WorkoutSummary'
@@ -74,6 +75,15 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const hapticsRef = useRef(hapticsOn); hapticsRef.current = hapticsOn
   const lastCue = useRef(Number.MIN_SAFE_INTEGER)
   const restored = useRef<number | null>(null)
+  // iOS Safari has no vibration: a flash on the dock when rest ends, and the countdown in the tab title.
+  const [flash, setFlash] = useState(false)
+  const [overTitle, setOverTitle] = useState(false)
+  const baseTitle = useRef<string | null>(null)
+  useEffect(() => {
+    baseTitle.current ??= document.title
+    document.title = rest ? `${clock(restLeft(rest.endsAt, now))} · ${t('live_rest')}` : overTitle ? t('live_web_rest_over') : baseTitle.current
+  }, [rest, now, overTitle])
+  useEffect(() => () => { if (baseTitle.current != null) document.title = baseTitle.current }, [])
 
   // Screen on while open, and audio unlocked by the first tap (iOS).
   useEffect(() => {
@@ -105,7 +115,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (r && restDone(r, n)) {
         restRef.current = null; setRest(null)
         if (session?.id) saveTimers(store(), { sessionId: session.id, rest: null, hold: holdRef.current })
-        if (n - r.endsAt < 15000) alarm(hapticsRef.current)
+        if (n - r.endsAt < 15000) {
+          alarm(hapticsRef.current)
+          setFlash(true); window.setTimeout(() => setFlash(false), 700)
+          if (document.visibilityState === 'hidden') setOverTitle(true)
+        }
       }
       if (h) {
         const s = holdElapsed(h, n)
@@ -119,7 +133,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (Math.floor(n / 1000) !== Math.floor(nowRef.current / 1000) || h) { nowRef.current = n; setNow(n) }
     }
     const id = window.setInterval(tick, 250)
-    const onVisible = () => { if (document.visibilityState === 'visible') tick() }
+    const onVisible = () => { if (document.visibilityState === 'visible') { setOverTitle(false); tick() } }
     document.addEventListener('visibilitychange', onVisible)
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
   }, [session?.id])
@@ -191,12 +205,20 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     setRestSaved(startRest(set.restSeconds, Date.now(), next ? nameOf(next.exerciseId) : null))
   }
   const save = (next: SetRow) => { void updateSet(next).catch(() => toast(t('live_web_save_failed'))) }
+  /** The warm-up's single tick: marks every set of that exercise done (or all undone), and starts no rest timer. */
+  const toggleAll = (group: SetRow[]) => {
+    unlockAudio()
+    const done = !group.every((s) => s.done)
+    setEffortSetId(null)
+    if (hapticsOn) buzz(done ? 40 : 15)
+    group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt: done ? Date.now() : null }) })
+  }
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
     setEffortSetId(done ? (set.id ?? null) : null)
     if (hapticsOn) buzz(done ? 40 : 15)
-    save({ ...set, done })
+    save({ ...set, done, doneAt: done ? Date.now() : null })
     if (done && set.restSeconds > 0) startRestFor(set)
     else if (!done) setRestSaved(null)
   }
@@ -213,7 +235,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const held = holdSaved(h, Date.now())
     const set = setsRef.current.find((s) => s.id === h.setId)
     if (!set || held === 0) return
-    save({ ...set, seconds: held, done: true })
+    save({ ...set, seconds: held, done: true, doneAt: Date.now() })
     if (hapticsOn) buzz(40)
     if (set.restSeconds > 0) startRestFor(set)
   }
@@ -236,13 +258,17 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       const before = (await getProgressSnapshot()).level
       const result = await finishSession(sid, tickAll)
       const badges = await evaluateBadges()
+      // The summary shows them, so Home shouldn't announce them a second time.
+      if (badges.length > 0) await markBadgesSeen()
       const snap = await getProgressSnapshot()
       if (hapticsOn) buzz([60, 40, 120])
       onWorkoutFinished(sid, result)
       setDone({
-        sessionId: sid, title: result.sessionTitle, doneSets: result.doneSets, minutes: workoutMinutes(startedAt, Date.now()),
+        sessionId: sid, title: result.sessionTitle, doneSets: result.doneSets, minutes: workoutMinutes(startedAt, result.endedAt),
         prs: result.prs, newBadges: badges, xpGained: snap.level.totalXp - before.totalXp, before, after: snap.level,
         nextUp: nextUpDay(snap.plan?.days ?? [], dayOfWeek(todayEpochDay())),
+        score: (await allWorkoutScores()).get(sid) ?? null,
+        clippedEndAt: result.clipped ? result.endedAt : null,
       })
     } catch {
       toast(t('live_web_save_failed'))
@@ -266,7 +292,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const header = plural('live_header', sets.length, Math.floor(elapsed / 60), String(elapsed % 60).padStart(2, '0'), doneCount, sets.length)
   const cardFor = (g: Group, forceOpen: boolean) => (
     <GroupCard key={g.key} g={g} forceOpen={forceOpen} exercises={exercises} previous={previous} unit={unit} effortSetId={effortSetId}
-      onChange={save} onToggle={toggle} onStartHold={beginHold} harder={harder}
+      onChange={save} onToggle={toggle} onToggleAll={toggleAll} onStartHold={beginHold} harder={harder}
       onStepUp={(oldId, next) => {
         setHarder((m) => { const n = new Map(m); n.delete(oldId); return n })
         void stepUp(sid, oldId, next.id).then(() => toast(t('harder_switched', next.name)))
@@ -309,6 +335,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       </div>
 
       <div class="lw-dock">
+        {flash && !rest && <div class="lw-rest-flash" role="status">{t('live_web_rest_over')}</div>}
         {rest && <RestBar rest={rest} now={now} nextLabel={nextLabel} onAdd={() => addRest(15)}
           onRemove={() => { if (restLeftNow(rest) > 15) addRest(-15); else setRestSaved(null) }} onSkip={() => setRestSaved(null)} />}
         <Button block disabled={doneCount === 0 || finishing} loading={finishing}
@@ -369,8 +396,8 @@ function FinishSheet({ open, left, onClose, onFinish }: { open: boolean; left: n
     <Sheet open={open} onClose={onClose} title={plural('live_finish_unticked_title', left, left)}>
       <p class="lw-finish-msg">{plural('live_finish_unticked_body', left, left)}</p>
       <div class="lw-finish-actions">
-        <Button block onClick={() => onFinish(true)}>{t('live_tick_all_finish')}</Button>
-        <Button block variant="tonal" onClick={() => onFinish(false)}>{t('live_finish')}</Button>
+        <Button block onClick={() => onFinish(false)}>{t('live_finish')}</Button>
+        <Button block variant="text" onClick={() => onFinish(true)}>{t('live_tick_all_finish')}</Button>
         <Button block variant="text" onClick={onClose}>{t('live_keep_going')}</Button>
       </div>
     </Sheet>
@@ -386,7 +413,7 @@ function setSummary(set: SetRow, kind: ExerciseRow['kind'], unit: WeightUnit): s
 
 type CardProps = {
   g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; unit: WeightUnit; effortSetId: number | null
-  onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onAddRound: (positions: number[]) => void
+  onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onAddRound: (positions: number[]) => void
   harder: Map<string, Hint>; onStepUp: (oldId: string, next: ExerciseRow) => void
 }
 
@@ -404,6 +431,34 @@ function HarderNote({ ex, hint, onStepUp }: { ex: ExerciseRow; hint: Hint | unde
   )
 }
 
+/** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
+function WarmupRow(p: { g: Extract<Group, { kind: 'straight' }>; ex: ExerciseRow | undefined; name: string; rowProps: (set: SetRow, round: number | null) => Omit<SetRowProps, 'label' | 'sublabel'>; onToggleAll: (sets: SetRow[]) => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const { g } = p
+  const first = g.sets[0]
+  const doneCount = g.sets.filter((s) => s.done).length
+  const allDone = doneCount === g.sets.length
+  const each = p.ex?.kind === 'HOLD' ? t('rx_seconds', first.seconds ?? 0) : String(first.reps ?? 0)
+  return (
+    <div data-gkey={g.key}>
+      <Card>
+        <div class="lw-warm">
+          <button type="button" class="lw-warm-main" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+            <span class="lw-warm-text">
+              <span class="lw-name">{`${p.name} · ${g.sets.length} × ${each}`}</span>
+              {doneCount > 0 && !allDone && <span class="lw-small">{`${doneCount}/${g.sets.length}`}</span>}
+            </span>
+            <ExpandMoreIcon size={20} />
+          </button>
+          <button type="button" class={`lw-tick${allDone ? ' lw-tick-on' : ''}`} role="checkbox" aria-checked={allDone} aria-label={t('cd_set_done')}
+            onClick={() => p.onToggleAll(g.sets)}><CheckIcon size={28} /></button>
+        </div>
+        {expanded && g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...p.rowProps(set, null)} />)}
+      </Card>
+    </div>
+  )
+}
+
 /** An exercise or circuit card; once every set is ticked it folds into one line (tap to open it again). */
 function GroupCard(p: CardProps) {
   const { g, exercises } = p
@@ -417,6 +472,10 @@ function GroupCard(p: CardProps) {
     set, unit: p.unit, kind: exercises.get(set.exerciseId)?.kind ?? 'REPS', previous: p.previous.get(set.exerciseId)?.[round ?? set.setIndex],
     showEffort: p.effortSetId === set.id, onChange: p.onChange, onToggle: p.onToggle, onStartHold: p.onStartHold,
   })
+
+  if (g.kind === 'straight' && isWarmUp(g.block)) {
+    return <WarmupRow g={g} ex={exercises.get(first.exerciseId)} name={name(first.exerciseId)} rowProps={rowProps} onToggleAll={p.onToggleAll} />
+  }
 
   if (!open && !p.forceOpen) {
     return (

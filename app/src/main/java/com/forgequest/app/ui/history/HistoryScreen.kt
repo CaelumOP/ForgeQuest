@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -70,10 +71,18 @@ import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
+import com.forgequest.app.ui.LocalSnackbar
+import com.forgequest.app.ui.components.CardShape
+import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.components.EmptyState
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.UndoSnackbarEffect
+import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.theme.Fit
@@ -83,20 +92,38 @@ import com.forgequest.app.ui.workouts.musclesLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.roundToInt
 
 class HistoryViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
+    /** The calculated score of every workout, worked out once per snapshot from what is already loaded, never per row. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val scores: StateFlow<Map<Long, WorkoutScore.Result>> = snapshot
+        .distinctUntilChanged { a, b -> a?.sessions == b?.sessions && a?.doneSets == b?.doneSets }
+        .mapLatest { snap -> snap?.let { app.workouts.scores(it) }.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     fun setNote(session: SessionEntity, note: String) = viewModelScope.launch { app.db.sessions().update(session.copy(note = note.trim().take(300))) }
+
+    /** A workout deleted by swipe: removed right away, and [undo] puts it back (same ids) while the snackbar is up. */
+    val undo = UndoState(viewModelScope)
+
+    fun deleteWorkout(session: SessionEntity) = viewModelScope.launch {
+        val sets = app.db.sessions().sets(session.id)
+        app.workouts.deleteSession(session.id)
+        undo.offer(app.str(R.string.food_removed, session.title)) { app.workouts.restoreSession(session, sets) }
+    }
 
     /** The debrief sheet: which workout it is open for, and whether the coach is writing it or couldn't. */
     val debriefFor = MutableStateFlow<Long?>(null)
@@ -119,6 +146,7 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
         app.appScope.launch {
             val d = app.coach.generateDebrief(sessionId, onDemand = true)
             debriefFailed.value = d == null
+            if (d == null) app.haptics.error()
             debriefLoading.value = false
         }
     }
@@ -133,6 +161,7 @@ fun HistoryScreen(nav: NavHostController) {
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val setsBySession = s.doneSets.groupBy { it.sessionId }
     val unit by vm.unit.collectAsState()
+    val scores by vm.scores.collectAsState()
     // Weeks start on Monday, like the streak and weekly target (Dates.weekStart), so a journal week's count matches them.
     val firstDay = java.time.DayOfWeek.MONDAY
     val weeks = remember(s.sessions) {
@@ -145,6 +174,8 @@ fun HistoryScreen(nav: NavHostController) {
     noteFor?.let { ses ->
         com.forgequest.app.ui.workouts.SetNoteDialog(ses.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(ses, it); noteFor = null })
     }
+    val snackbar = LocalSnackbar.current
+    UndoSnackbarEffect(vm.undo, SnackbarDuration.Long)
     val debriefFor by vm.debriefFor.collectAsState()
     s.sessions.firstOrNull { it.id == debriefFor }?.let { ses -> DebriefSheet(vm, ses) }
 
@@ -171,24 +202,33 @@ fun HistoryScreen(nav: NavHostController) {
             weeks.entries.forEachIndexed { index, (week, sessions) ->
                 val expanded = open[week] ?: (index == 0)
                 item(key = "w$week") {
-                    WeekCard(week, thisWeek, sessions, setsBySession, unit, expanded) { open[week] = !expanded }
+                    Box(Modifier.animateItem()) { WeekCard(week, thisWeek, sessions, setsBySession, unit, expanded) { open[week] = !expanded } }
                 }
                 if (expanded) {
                     sessions.groupBy { it.epochDay }.forEach { (day, daySessions) ->
                         item(key = "d$day") {
                             Text(
                                 LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
-                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.padding(start = 8.dp, top = 6.dp),
+                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.animateItem().padding(start = 8.dp, top = 6.dp),
                             )
                         }
                         items(daySessions, key = { it.id }) { session ->
-                            Column(Modifier.padding(start = 8.dp)) {
+                            Column(Modifier.animateItem().padding(start = 8.dp)) {
+                                SwipeToDelete(onDelete = { vm.deleteWorkout(session) }, shape = CardShape) {
                                 SessionRow(session, setsBySession[session.id].orEmpty(), s.exercises) { nav.navigate(Routes.session(session.id)) }
-                                com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)?.let { d ->
+                                }
+                                scores[session.id]?.let { r ->
                                     Text(
-                                        stringResource(R.string.debrief_journal, d.score, d.summary),
+                                        com.forgequest.app.ui.workouts.scoreReasons(r),
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                         modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 8.dp),
+                                    )
+                                }
+                                remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }?.let { d ->
+                                    Text(
+                                        d.summary,
+                                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                                        modifier = Modifier.padding(start = 12.dp, top = 2.dp, end = 8.dp),
                                     )
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -222,7 +262,8 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity) {
     val c = Fit.colors
     val loading by vm.debriefLoading.collectAsState()
     val failed by vm.debriefFailed.collectAsState()
-    val debrief = com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)
+    val debrief = remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }
+    val score = vm.scores.collectAsState().value[session.id]
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
             Text(session.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
@@ -232,9 +273,13 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity) {
             )
             Spacer(Modifier.height(12.dp))
             if (debrief == null && !vm.canDebrief) {
+                if (score != null) {
+                    com.forgequest.app.ui.workouts.DebriefCard(null, score)
+                    Spacer(Modifier.height(12.dp))
+                }
                 Text(stringResource(R.string.debrief_no_key), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
             } else {
-                com.forgequest.app.ui.workouts.DebriefCard(debrief, failed = failed && !loading, onRetry = { vm.writeDebrief(session.id) })
+                com.forgequest.app.ui.workouts.DebriefCard(debrief, score, failed = failed && !loading, waiting = loading, onRetry = { vm.writeDebrief(session.id) })
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -269,7 +314,7 @@ private fun WeekCard(
                     listOfNotNull(
                         pluralStringResource(R.plurals.backup_workouts, sessions.size, sessions.size),
                         stringResource(R.string.hist_minutes, minutes),
-                        if (volume > 0f) stringResource(R.string.journal_volume, unit.format(volume)) else null,
+                        if (volume > 0f) stringResource(R.string.journal_volume, "%s%,d %s%s".format(Locale.US, if (Locale.getDefault().language == "ar") "⁧" else "⁦", unit.fromKg(volume).roundToInt(), unit.label, "⁩")) else null,
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
@@ -297,11 +342,12 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
     FitCard(onClick = onClick, padding = PaddingValues(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
-                Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(c.tealTrack),
+                // Grows with the text size instead of clipping the weekday.
+                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).clip(RoundedCornerShape(14.dp)).background(c.tealTrack).padding(horizontal = 6.dp, vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
                 Text(date.format(DateTimeFormatter.ofPattern("d")), style = MaterialTheme.typography.titleMedium, color = c.teal, fontWeight = FontWeight.Bold)
-                Text(date.format(DateTimeFormatter.ofPattern("EEE")), style = MaterialTheme.typography.labelSmall, color = c.teal)
+                Text(com.forgequest.app.domain.Dates.dayShort(date.dayOfWeek.value), style = MaterialTheme.typography.labelSmall, color = c.teal)
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
@@ -336,6 +382,9 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
+    /** This workout's calculated score; null until the snapshot loads or when no set is done. */
+    val score: StateFlow<WorkoutScore.Result?> = app.progress.snapshot.map { snap -> app.workouts.scores(snap, only = sessionId)[sessionId] }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     data class Loaded(val session: SessionEntity?)
 
@@ -366,6 +415,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     val sets by vm.sets.collectAsState()
     val exercises by vm.exercises.collectAsState()
     val unit by vm.unit.collectAsState()
+    val score by vm.score.collectAsState()
     val c = Fit.colors
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -399,12 +449,13 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 }
             }
         }
+        val d = remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
-            com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)?.let { d ->
-                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(d) }
+            if (d != null || score != null) {
+                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(d, score) }
             }
             items(groups, key = { it.first().itemPosition }) { group ->
                 val ex = exercises[group.first().exerciseId]

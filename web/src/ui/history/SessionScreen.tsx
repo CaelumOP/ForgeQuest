@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import type { SetRow } from '../../data/db'
-import { getSession } from '../../data/workouts'
+import { getSession, useWorkoutScore } from '../../data/workouts'
 import { useSettings, weightUnit } from '../../data/settings'
 import { deleteFinishedSet, deleteSession, moveSession, updateFinishedSet, useLibrary, useSession, useSets } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
@@ -9,7 +9,7 @@ import { fromKg, loadStep, toKg, unitLabel } from '../../domain/units'
 import { Button, Card, Dialog, EmptyState, IconButton, ListRow, Sheet, Stepper, TextField } from '../kit'
 import { CloseIcon, MoreIcon } from '../icons'
 import { musclesLabel } from '../workouts/helpers'
-import { dayOfIso, decodeDebrief, isoOfDay, minutesOf } from './helpers'
+import { dayOfIso, decodeDebrief, isoOfDay, minutesOf, scoreReasons } from './helpers'
 import './history.css'
 
 const goHistory = () => { location.hash = '#/history' }
@@ -58,6 +58,7 @@ export function SessionScreen({ param }: { param?: string }) {
   const session = useSession(id)
   const sets = useSets(id)
   const library = useLibrary()
+  const score = useWorkoutScore(id)
   const [missing, setMissing] = useState(false)
   const [menu, setMenu] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -97,12 +98,13 @@ export function SessionScreen({ param }: { param?: string }) {
       <div class="hs-list">
         <p class="hs-hint">{t('hist_edit_hint')}</p>
         {session.note && <p class="hs-hint"><i>{session.note}</i></p>}
-        {debrief && (
+        {(debrief || score) && (
           <Card>
-            <div class="hs-deb-title">{t('debrief_title')}</div>
-            <div class="hs-deb-score">{t('debrief_score', debrief.score)}</div>
-            <p class="hs-deb-body">{debrief.summary}</p>
-            {debrief.nextTime.map((x) => <p class="hs-deb-body" key={x}>{t('debrief_next_time', x)}</p>)}
+            <div class="hs-deb-title">{t(debrief ? 'debrief_title' : 'score_title')}</div>
+            {score && <div class="hs-deb-score">{t('debrief_score', score.score)}</div>}
+            {score && <p class="hs-deb-body">{scoreReasons(score)}</p>}
+            {debrief && <p class="hs-deb-body">{debrief.summary}</p>}
+            {debrief?.nextTime.map((x) => <p class="hs-deb-body" key={x}>{t('debrief_next_time', x)}</p>)}
           </Card>
         )}
         {groups.map((group) => {

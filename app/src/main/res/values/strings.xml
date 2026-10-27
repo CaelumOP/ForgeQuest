@@ -477,7 +477,6 @@
     <string name="profile_lock_on">Asks for your fingerprint, face or PIN when you open the app.</string>
     <string name="profile_lock_off">Ask for your fingerprint, face or PIN when the app opens.</string>
     <string name="profile_exercise_library">Exercise library</string>
-    <string name="profile_exercise_library_hint">Rename, merge or delete exercises you or the coach created</string>
     <string name="profile_hand_size">Hand size (optional)</string>
     <string name="profile_hand_value">%1$s cm long · %2$s cm palm</string>
     <string name="profile_hand_hint">Helps portion estimates when your hand is in the photo</string>
@@ -530,11 +529,6 @@
     <string name="onb_welcome_title">Welcome to ForgeQuest</string>
     <string name="onb_welcome_body">Train, eat well and watch yourself level up. First, what should we call you?</string>
     <string name="onb_your_name">Your name</string>
-    <string name="onb_body_for_map">Body for the muscle map</string>
-    <string name="onb_goals_title">Your body &amp; goals</string>
-    <string name="onb_goals_body">We suggest goals from your weight. Adjust them any time in Profile.</string>
-    <string name="onb_tap_number">Tap a number to type it.</string>
-    <string name="onb_protein_hint">Protein suggestion: about 1.8 g per kg of body weight, a common target for building muscle.</string>
     <string name="onb_plan_title">Pick a starting plan</string>
     <string name="onb_plan_body">You can edit it, ask the coach to change it, or import your own later.</string>
     <string name="onb_start_empty">Start empty</string>
@@ -556,7 +550,6 @@
     <string name="hist_empty_title">No workouts yet</string>
     <string name="hist_empty_body">Finished workouts show up here. Tap one to fix a set or remove it.</string>
     <string name="hist_go_workouts">Go to Workouts</string>
-    <string name="hist_month_pattern">MMMM yyyy</string>
     <plurals name="hist_sets">
         <item quantity="one">%1$d set</item>
         <item quantity="other">%1$d sets</item>
@@ -569,6 +562,7 @@
     <string name="stepper_reps">Reps</string>
     <string name="unit_reps">reps</string>
     <string name="stepper_weight">Weight</string>
+    <string name="cd_drag_reorder">Drag to reorder</string>
     <string name="cd_remove_set">Remove set</string>
     <string name="hist_no_sets">No sets</string>
     <string name="hist_no_sets_body">This workout has no sets left.</string>
@@ -618,10 +612,12 @@
     <string name="live_add_round">Add round</string>
     <string name="live_note_title">Note for this set</string>
     <string name="live_note_hint">Felt easy, add weight next time</string>
+    <string name="live_add_note">Add a note</string>
     <string name="cd_set_done">Set done</string>
     <string name="live_pr">PR</string>
     <string name="live_rest">Rest</string>
     <string name="live_skip">Skip</string>
+    <string name="live_ended_at_last_set">Ended at your last set, %1$s</string>
     <string name="live_complete">Workout complete</string>
     <string name="live_sets">Sets</string>
     <string name="live_xp">XP</string>
@@ -691,13 +687,10 @@
     <string name="plan_your_plan">Your plan</string>
     <string name="plan_no_plan">No plan</string>
     <string name="plan_ready_made">Switch to a ready-made plan</string>
-    <string name="plan_ready_made_hint">Hemo foundation, full body, push/pull/legs</string>
     <string name="plan_previous">Previous plans</string>
-    <string name="plan_previous_hint">Go back to a plan you used before. Nothing is lost when you apply a new one.</string>
     <string name="plan_paste">Paste a plan</string>
     <string name="plan_paste_hint">From notes, a message or a Google Doc. AI turns it into your schedule.</string>
     <string name="plan_import_docs">Import from Google Docs</string>
-    <string name="plan_import_docs_hint">Reads the \"ForgeQuest plan\" Google Doc. Turn it on in Profile → Backup and sync → Google Drive.</string>
     <string name="cd_move_day">Move to another day</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="one">circuit, %1$d round</item>
@@ -755,7 +748,7 @@
     <string name="block_legs">Legs</string>
     <string name="live_rest_minus">−15 s</string>
     <string name="live_rest_plus">+15 s</string>
-    <string name="live_tick_all_finish">Tick all &amp; finish</string>
+    <string name="live_tick_all_finish">I did them all: tick &amp; finish</string>
     <string name="live_last_time">Last time: %1$s</string>
     <string name="live_next_up">Next up: %1$s · %2$s</string>
     <string name="home_center_protein">g protein</string>
@@ -819,11 +812,9 @@
     <string name="home_progress_card">This month</string>
     <string name="home_progress_open">See your progress</string>
     <string name="profile_progress_title">Progress</string>
-    <string name="profile_progress_hint">Trends, records and consistency over months</string>
     <string name="profile_height">Height</string>
     <string name="profile_age">Age</string>
     <string name="unit_years">yrs</string>
-    <string name="goals_suggested">Suggested %1$s kcal from your weight, height, age and %2$d training days a week</string>
     <string name="goals_suggest_missing">Set your height and age under About you to get a calorie suggestion</string>
     <string name="goals_use">Use</string>
     <string name="profile_language">Language</string>
@@ -836,8 +827,6 @@
     <string name="groq_key_saved">Groq key saved. Chat now answers through Groq.</string>
     <string name="groq_key_removed">Groq key removed</string>
     <string name="coach_answered_by">Last reply: %1$s · %2$s s</string>
-    <string name="plan_from_youtube">Make a plan from YouTube with Gemini</string>
-    <string name="plan_from_youtube_hint">Copies a prompt. Paste it into the Gemini app with the video links, then paste the JSON here.</string>
     <string name="plan_prompt_copied">Prompt copied</string>
     <string name="onb_groq_hint">Want even faster chat? Add a free Groq key later in Profile.</string>
     <string name="hist_change_date">Change date</string>
@@ -850,12 +839,6 @@
     <string name="profile_track_carbs">Track carbs</string>
     <string name="profile_daily_carbs">Daily carbs</string>
     <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a %2$d%% fat share</string>
-    <string name="settings_section_body">Your body</string>
-    <string name="settings_section_goals">Goals</string>
-    <string name="settings_section_coach">Coach and AI</string>
-    <string name="settings_section_app">App</string>
-    <string name="settings_section_data">Your data</string>
-    <string name="settings_section_more">More</string>
     <string name="profile_about_you">About you</string>
     <string name="profile_about_you_hint">Sets your calorie suggestion and the body on the muscle map</string>
     <string name="profile_daily_targets">Daily targets</string>
@@ -1007,7 +990,6 @@
     <string name="update_downloading">Downloading the update…</string>
     <string name="update_banner_title">There\'s an update!</string>
     <string name="update_critical_title">Important update</string>
-    <string name="update_critical_hint">This update fixes something important. Please install it soon.</string>
     <string name="update_progress">Downloading… %1$d%%</string>
     <string name="update_download_failed">The download didn\'t finish. Check your connection and tap Update again.</string>
     <string name="whats_new_title">What\'s new in v%1$s</string>
@@ -1084,11 +1066,24 @@
     <string name="coach_stale_apply">Apply anyway</string>
     <string name="debrief_title">Coach\'s debrief</string>
     <string name="debrief_score">%1$d/10</string>
+    <string name="score_first_ever">First one done. That\'s the hardest part.</string>
+    <string name="score_after_break">Back in. That\'s what counts.</string>
+    <string name="score_adjusted">Adjusted for recovery</string>
+    <string name="score_title">Workout score</string>
     <string name="debrief_loading">Your coach is reviewing this workout…</string>
     <string name="debrief_next_time">Next time: %1$s</string>
-    <string name="debrief_journal">Coach %1$d/10: %2$s</string>
+    <plurals name="score_sets_all">
+        <item quantity="one">All %1$d set</item>
+        <item quantity="other">All %1$d sets</item>
+    </plurals>
+    <string name="score_sets_of">%1$d of %2$d sets</string>
+    <string name="score_up">Up on %1$d of %2$d</string>
+    <plurals name="score_prs">
+        <item quantity="one">%1$d PR</item>
+        <item quantity="other">%1$d PRs</item>
+    </plurals>
     <string name="debrief_setting">Workout debrief</string>
-    <string name="debrief_setting_hint">A short AI review with a score and one tip after each workout</string>
+    <string name="debrief_setting_hint">A short AI review and one tip after each workout</string>
     <string name="debrief_failed">Your coach couldn\'t write this debrief. Check your connection and try again.</string>
     <string name="debrief_open">Coach debrief</string>
     <string name="debrief_no_key">Add a free Gemini or Groq key in Profile to get coach debriefs.</string>
@@ -1300,4 +1295,22 @@
     <string name="harder_switch">Switch</string>
     <string name="harder_switched">%1$s is now in your plan</string>
     <string name="update_not_ready">This update is still being published. Try again in a few minutes.</string>
+    <string name="onb_days_title">How many days a week can you train?</string>
+    <string name="onb_days_hint">This is your weekly streak target. You can change it any time in Profile.</string>
+    <plurals name="onb_plan_days">
+        <item quantity="one">%d day a week</item>
+        <item quantity="other">%d days a week</item>
+    </plurals>
+    <string name="onb_finish">Finish setup</string>
+    <string name="food_setup_title">Set up food targets · 1 min</string>
+    <string name="food_setup_body">Add your weight, height and age to get calorie and protein targets that fit you.</string>
+    <plurals name="target_nudge_body">
+        <item quantity="one">You\'ve trained %1$d time a week lately. Make %1$d your weekly target?</item>
+        <item quantity="other">You\'ve trained %1$d times a week lately. Make %1$d your weekly target?</item>
+    </plurals>
+    <string name="target_nudge_make">Make it %1$d</string>
+    <string name="target_nudge_keep">Keep %1$d</string>
+    <string name="ai_key_needed_coach">A free Gemini key turns the coach on.</string>
+    <string name="ai_key_needed_food">A free Gemini key turns the meal scanner on.</string>
+    <string name="ai_key_needed_button">Add a free key</string>
 </resources>

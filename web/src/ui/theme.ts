@@ -21,8 +21,6 @@ function applyTheme() {
 }
 applyTheme()
 
-export const getTheme = (): Theme => theme
-
 export function setTheme(next: Theme) {
   theme = next
   try { localStorage.setItem(KEY, next) } catch { /* applies for this visit only */ }

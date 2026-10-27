@@ -23,8 +23,8 @@ android {
         applicationId = "com.forgequest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 26
-        versionName = "2.14.1"
+        versionCode = 27
+        versionName = "2.15.0"
 
         // QA only: `-PgeminiBase=http://10.0.2.2:8765/v1beta` points a build at a local test server.
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"

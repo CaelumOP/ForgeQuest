@@ -117,12 +117,15 @@ import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.UndoSnackbarEffect
+import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -255,14 +258,12 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     fun save(food: FoodEntity) = viewModelScope.launch { app.food.saveFood(food) }
     fun delete(food: FoodEntity) = viewModelScope.launch { app.food.deleteFood(food.id); selection.update { it - food.id } }
     /** Deleted right away; [undo] puts it back with the same id. */
-    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+    val undo = UndoState(viewModelScope)
 
     fun deleteMeal(meal: MealEntity) = viewModelScope.launch {
         app.food.deleteMeal(meal.id)
-        undo.value = app.str(R.string.food_removed, meal.name) to { app.food.restoreMeal(meal) }
+        undo.offer(app.str(R.string.food_removed, meal.name)) { app.food.restoreMeal(meal) }
     }
-
-    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
 
     fun setPhotoFromUri(food: FoodEntity, uri: Uri) = viewModelScope.launch {
         runCatching { app.food.importPhoto(uri) }.onSuccess { app.food.saveFood(food.copy(photoPath = it)) }
@@ -289,7 +290,6 @@ fun FoodScreen(nav: NavHostController) {
     var editing by remember { mutableStateOf<FoodEntity?>(null) }
     var photoFor by remember { mutableStateOf<FoodEntity?>(null) }
 
-    val undo by vm.undo.collectAsState()
     val geminiMeals by vm.geminiMeals.collectAsState()
     val apiKey by vm.apiKey.collectAsState()
     val day by vm.day.collectAsState()
@@ -299,13 +299,7 @@ fun FoodScreen(nav: NavHostController) {
     LaunchedEffect(Unit) { vm.onShown() }
 
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
-    val undoLabel = stringResource(R.string.action_undo)
-    LaunchedEffect(undo) {
-        undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
-        }
-    }
+    UndoSnackbarEffect(vm.undo)
 
     val query by vm.query.collectAsState()
     val usage by vm.usage.collectAsState()
@@ -408,15 +402,17 @@ fun FoodScreen(nav: NavHostController) {
                 item { Text(stringResource(R.string.food_tick_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp)) }
             }
             items(shown, key = { it.id }) { food ->
-                FoodRow(
-                    food = food,
-                    qty = selection[food.id]?.qty,
-                    onToggle = { vm.toggle(food) },
-                    onQty = { vm.setQty(food, it) },
-                    onPhoto = { photoFor = food },
-                    onEdit = { editing = food },
-                    onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
-                )
+                Box(Modifier.animateItem()) {
+                    FoodRow(
+                        food = food,
+                        qty = selection[food.id]?.qty,
+                        onToggle = { vm.toggle(food) },
+                        onQty = { vm.setQty(food, it) },
+                        onPhoto = { photoFor = food },
+                        onEdit = { editing = food },
+                        onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
+                    )
+                }
             }
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -427,7 +423,11 @@ fun FoodScreen(nav: NavHostController) {
             if (meals.isEmpty()) {
                 item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
             }
-            items(meals, key = { "m${it.id}" }) { meal -> MealRow(meal, onDelete = { vm.deleteMeal(meal) }) }
+            items(meals, key = { "m${it.id}" }) { meal ->
+                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = Modifier.animateItem()) {
+                    MealRow(meal, onDelete = { vm.deleteMeal(meal) })
+                }
+            }
         }
 
         AnimatedVisibility(
@@ -601,7 +601,7 @@ private fun WeekCard(s: ProgressSnapshot) {
                     Box(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(6.dp)).background(c.tealTrack), contentAlignment = Alignment.BottomCenter) {
                         if (n != null) Box(Modifier.fillMaxWidth().height((32 * ratio).dp.coerceAtLeast(if (ratio > 0f) 3.dp else 0.dp)).background(if (n.protein >= s.settings.proteinGoal) c.teal else c.teal.copy(alpha = 0.55f)))
                     }
-                    Text(Dates.shortDayLetters[Dates.dayOfWeek(d) - 1], style = MaterialTheme.typography.labelSmall, color = if (d == today) c.textPrimary else c.textSecondary)
+                    Text(Dates.dayShort(Dates.dayOfWeek(d)), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = if (d == today) c.textPrimary else c.textSecondary)
                 }
             }
         }

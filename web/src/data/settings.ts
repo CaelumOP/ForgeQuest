@@ -65,6 +65,8 @@ export interface Settings {
   calorieSnoozeUntil: number;
   /** The one-time "more accurate calorie target" card was answered. */
   calorieV2Seen: boolean;
+  /** The one-time "make N your weekly target?" card on Home was answered (either way). */
+  targetNudgeAnswered: boolean;
   /** Gemini key. Never in a backup, never logged. */
   apiKey: string;
   /** Optional Groq key. Never in a backup, never logged. */
@@ -79,7 +81,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   trackCarbs: false, carbsGoal: 250, proteinPerKg: 1.8, fatSharePct: 25, equipment: '', bodyFatPct: 0,
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true, apiKey: '', groqKey: '',
   dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
-  calorieSnoozeUntil: 0, calorieV2Seen: false,
+  calorieSnoozeUntil: 0, calorieV2Seen: false, targetNudgeAnswered: false,
 } satisfies Settings);
 
 const SETTINGS_KEY = 'settings';

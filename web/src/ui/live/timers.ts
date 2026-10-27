@@ -50,9 +50,6 @@ export function holdDisplay(h: HoldTimer, now: number): string {
   return clock(h.target - s)
 }
 
-/** Seconds extra beyond the target, 0 before it. */
-export const holdExtra = (h: HoldTimer, now: number): number => Math.max(0, holdElapsed(h, now) - h.target)
-
 /** Seconds to save when Stop is pressed: held time, 0..3600. 0 means nothing to save. */
 export const holdSaved = (h: HoldTimer, now: number): number => Math.min(3600, Math.max(0, holdElapsed(h, now)))
 

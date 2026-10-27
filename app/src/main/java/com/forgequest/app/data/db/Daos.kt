@@ -69,10 +69,11 @@ interface PlanDao {
     suspend fun day(id: Long): PlanDayEntity?
 
     @Query("SELECT * FROM plan_items WHERE dayId = :dayId ORDER BY position")
-    fun observeItems(dayId: Long): Flow<List<PlanItemEntity>>
-
-    @Query("SELECT * FROM plan_items WHERE dayId = :dayId ORDER BY position")
     suspend fun items(dayId: Long): List<PlanItemEntity>
+
+    /** Every plan item, for the journal's planned-set totals in one query. */
+    @Query("SELECT * FROM plan_items")
+    suspend fun allItems(): List<PlanItemEntity>
 
     @Query("SELECT pi.* FROM plan_items pi JOIN plan_days pd ON pi.dayId = pd.id WHERE pd.planId = :planId ORDER BY pd.dayOfWeek, pi.position")
     fun observeAllItems(planId: Long): Flow<List<PlanItemEntity>>
@@ -132,9 +133,6 @@ interface PlanDao {
 
     @Query("DELETE FROM plans WHERE id = :planId")
     suspend fun deletePlan(planId: Long)
-
-    @Query("SELECT COUNT(*) FROM sessions WHERE planDayId IN (SELECT id FROM plan_days WHERE planId = :planId)")
-    suspend fun sessionsUsingPlan(planId: Long): Int
 }
 
 @Dao
@@ -175,9 +173,6 @@ interface SessionDao {
     @Query("SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id WHERE ss.finishedAt IS NOT NULL AND s.done = 1")
     fun observeAllDoneSets(): Flow<List<SetEntity>>
 
-    @Query("SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id WHERE ss.finishedAt IS NOT NULL AND s.done = 1")
-    suspend fun allDoneSets(): List<SetEntity>
-
     /** Most recent finished sets of one exercise, latest workout date first (not latest logged). Used to prefill. */
     @Query(
         "SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id " +
@@ -214,8 +209,12 @@ interface SessionDao {
     @Update
     suspend fun updateSets(sets: List<SetEntity>)
 
-    @Query("UPDATE sets SET done = 1 WHERE sessionId = :sessionId AND done = 0")
-    suspend fun markAllSetsDone(sessionId: Long)
+    @Query("UPDATE sets SET done = 1, doneAt = :now WHERE sessionId = :sessionId AND done = 0")
+    suspend fun markAllSetsDone(sessionId: Long, now: Long)
+
+    /** Latest tick time among a session's done sets, or null when none has one. */
+    @Query("SELECT MAX(doneAt) FROM sets WHERE sessionId = :sessionId AND done = 1")
+    suspend fun lastDoneAt(sessionId: Long): Long?
 
     @Query("DELETE FROM sets WHERE id = :id")
     suspend fun deleteSet(id: Long)
@@ -254,9 +253,6 @@ interface FoodDao {
 
     @Query("SELECT * FROM meals WHERE epochDay >= :fromDay ORDER BY loggedAt")
     fun observeMealsSince(fromDay: Long): Flow<List<MealEntity>>
-
-    @Query("SELECT * FROM meals WHERE epochDay >= :fromDay ORDER BY loggedAt")
-    suspend fun mealsSince(fromDay: Long): List<MealEntity>
 
     @Query("SELECT * FROM meals ORDER BY loggedAt")
     suspend fun allMeals(): List<MealEntity>

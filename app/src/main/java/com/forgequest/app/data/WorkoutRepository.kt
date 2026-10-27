@@ -16,7 +16,6 @@ import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.DayCall
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
@@ -25,6 +24,7 @@ import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutScore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -65,6 +65,10 @@ data class FinishResult(
     val doneSets: Int,
     val prs: List<String>,
     val xpGained: Int,
+    /** When the workout counts as ended (epoch ms); shown minutes use it too. */
+    val endedAt: Long = System.currentTimeMillis(),
+    /** True when the end was pulled back to the last set because the app sat idle. */
+    val clipped: Boolean = false,
 )
 
 /** [settings] gives progression the weight unit and the readiness switch; without it (tests) steps are in kg. */
@@ -367,8 +371,21 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     /** Today's Fitbit recovery says ease off or recover (below 50); no data means train as normal. */
     private suspend fun lowReadinessToday(): Boolean {
         val day = db.readiness().get(Dates.today()) ?: return false
-        return Readiness.call(day.recovery).let { it == DayCall.EASE_OFF || it == DayCall.RECOVER }
+        return Readiness.isLowRecovery(day.recovery)
     }
+
+    /** The calculated score of every finished workout in [snap], from data already loaded plus two small queries (plan items, recovery). With [only], just that workout is scored. */
+    suspend fun scores(snap: ProgressSnapshot, only: Long? = null): Map<Long, WorkoutScore.Result> {
+        val planned = plans.allItems().groupBy { it.dayId }.mapValues { (_, items) -> plannedSetsOf(items) }
+        val rough = db.readiness().all().filter { Readiness.isLowRecovery(it.recovery) }.map { it.epochDay }.toSet()
+        return WorkoutScore.forSessions(
+            snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough,
+            snap.dayTags, snap.plan?.trainingDays ?: emptySet(), only,
+        )
+    }
+
+    /** A plan day's sets for the score: warm-ups left out. */
+    private fun plannedSetsOf(items: List<PlanItemEntity>): Int = items.filterNot { WorkoutScore.isWarmUp(it.block) }.sumOf { it.sets }
 
     fun targetLabel(kind: ExerciseKind, item: PlanItemEntity?): String {
         if (item == null) return ""
@@ -442,7 +459,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     suspend fun finishSession(sessionId: Long, tickAll: Boolean = false): FinishResult = db.withTransaction {
         val session = sessions.byId(sessionId) ?: return@withTransaction FinishResult("", 0, emptyList(), 0)
         if (tickAll) {
-            sessions.markAllSetsDone(sessionId)
+            sessions.markAllSetsDone(sessionId, System.currentTimeMillis())
         } else {
             sessions.deleteUntickedSetsOf(sessionId)
         }
@@ -465,9 +482,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 prNames += ex.name
             }
         }
-        sessions.update(session.copy(finishedAt = System.currentTimeMillis()))
+        // The plan day's sets as they are now, kept so a later plan edit can't change this workout's score.
+        val plannedSets = session.planDayId?.let { plannedSetsOf(plans.items(it)) }?.takeIf { it > 0 }
+        val now = System.currentTimeMillis()
+        val end = com.forgequest.app.domain.WorkoutEnd.endTime(now, sessions.lastDoneAt(sessionId))
+        sessions.update(session.copy(finishedAt = end, plannedSets = plannedSets))
         val xp = com.forgequest.app.domain.Xp.total(1, done.size, prNames.size, 0)
-        FinishResult(session.title, done.size, prNames, xp)
+        FinishResult(session.title, done.size, prNames, xp, endedAt = end, clipped = end != now)
     }
 
     // ------------------------------------------------------------ History
@@ -501,6 +522,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         sessions.deleteSetsOf(sessionId)
         sessions.delete(sessionId)
         affected.forEach { recomputeRecords(it) }
+    }
+
+    /** Puts back a workout removed by [deleteSession], with its original ids, then re-checks the records it touched. */
+    suspend fun restoreSession(session: SessionEntity, sets: List<SetEntity>) = db.withTransaction {
+        sessions.insert(session)
+        sessions.insertSets(sets)
+        sets.map { it.exerciseId }.distinct().forEach { recomputeRecords(it) }
     }
 
     /** Replays the exercise's whole history in chronological order so PR tags stay truthful after an edit or delete. */

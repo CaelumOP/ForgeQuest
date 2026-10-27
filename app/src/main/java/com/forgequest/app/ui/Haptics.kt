@@ -55,4 +55,14 @@ class Haptics(context: Context) {
                 .compose()
         } else VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
     }, 40)
+
+    /** Something failed: a short double buzz. */
+    fun error() = play({
+        if (supported(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
+            VibrationEffect.startComposition()
+                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
+                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f, 90)
+                .compose()
+        } else VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
+    }, 30)
 }

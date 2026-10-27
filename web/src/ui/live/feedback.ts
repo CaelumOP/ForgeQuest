@@ -33,6 +33,9 @@ export function buzz(pattern: number | number[] = 40): void {
   try { navigator.vibrate?.(pattern) } catch { /* not supported (iOS Safari) */ }
 }
 
+/** Something failed: a short double buzz (Android Haptics.error). */
+export const buzzError = (): void => buzz([30, 60, 30])
+
 /** Rest or hold finished: beep plus a long buzz. */
 export function alarm(vibrate: boolean): void {
   beep(988, 0.35)

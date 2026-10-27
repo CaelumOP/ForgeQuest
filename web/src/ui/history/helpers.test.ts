@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionRow } from '../../data/db'
-import { dayOfIso, decodeDebrief, groupWeeks, isoOfDay, minutesOf, weekStart } from './helpers'
+import type { WorkoutScoreResult } from '../../domain/workout-score'
+import { dayOfIso, decodeDebrief, groupWeeks, isoOfDay, minutesOf, scoreLine, scoreNote, scoreTone, weekStart } from './helpers'
 
 const ses = (id: number, epochDay: number): SessionRow =>
   ({ id, planDayId: null, title: 'A', epochDay, startedAt: epochDay * 1000 + id, finishedAt: null, note: '', debrief: '' })
@@ -21,12 +22,28 @@ describe('history helpers', () => {
   it('decodes debriefs', () => {
     expect(decodeDebrief('')).toBeNull()
     expect(decodeDebrief('nope')).toBeNull()
-    expect(decodeDebrief('{"score":2,"summary":" ok "}')).toEqual({ score: 4, summary: 'ok', nextTime: [] })
+    expect(decodeDebrief('{"score":2,"summary":" ok "}')).toEqual({ summary: 'ok', nextTime: [] })
     expect(decodeDebrief('{"score":9,"summary":"x","nextTime":["add"]}')?.nextTime).toEqual(['add'])
   })
   it('minutes and iso days', () => {
     expect(minutesOf({ startedAt: 0, finishedAt: 10_000 })).toBe(1)
     expect(minutesOf({ startedAt: 0, finishedAt: null })).toBeNull()
     expect(dayOfIso(isoOfDay(20000))).toBe(20000)
+  })
+  it('journal facts line has no N/10, shows the recovery note when rough', () => {
+    const r: WorkoutScoreResult = { score: 8, doneSets: 12, plannedSets: 12, up: 3, compared: 4, prs: 1, rough: false, firstEver: false, afterBreak: false, showNumber: true }
+    expect(scoreLine(r)).not.toContain('/10')
+    expect(scoreLine(r)).not.toContain('8')
+    expect(scoreLine({ ...r, rough: true })).toContain('Adjusted for recovery')
+  })
+  it('number is gold only from 8 up; first-ever and after-break show a sentence instead', () => {
+    expect(scoreTone(10)).toBe('gold')
+    expect(scoreTone(8)).toBe('gold')
+    expect(scoreTone(7)).toBe('quiet')
+    expect(scoreTone(4)).toBe('quiet')
+    const r: WorkoutScoreResult = { score: 6, doneSets: 5, plannedSets: null, up: 0, compared: 0, prs: 0, rough: false, firstEver: true, afterBreak: false, showNumber: false }
+    expect(scoreNote(r)).toBe("First one done. That's the hardest part.")
+    expect(scoreNote({ ...r, firstEver: false, afterBreak: true })).toBe("Back in. That's what counts.")
+    expect(scoreNote({ ...r, showNumber: true })).toBeNull()
   })
 })

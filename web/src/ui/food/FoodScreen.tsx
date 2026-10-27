@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
-import { todayEpochDay } from '../../domain/dates'
+import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { formatDay } from '../day-format'
 import type { FoodCategory, FoodPart, FoodRow, MealRow } from '../../data/db'
 import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, placesOf, restoreMeal, saveFood, totalsOf, useFoodUsage, useFoods, useMealsOn, useRecentOneOffs, withParts } from '../../data/food'
 import { score } from '../../domain/food-search'
@@ -8,8 +9,9 @@ import { scaledKcal } from '../../domain/nutrition'
 import { evaluateBadges, useProgress } from '../../data/progress'
 import { useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
-import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, TextField, toast } from '../kit'
+import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
+import { dayShort } from '../workouts/helpers'
 import { PartsSheet, PlaceField, partsCount } from './FoodParts'
 import './food.css'
 
@@ -26,7 +28,6 @@ export async function badgeSuffix(): Promise<string> {
 }
 export const catLabel = (c: FoodCategory): string => t(`food_cat_${c.toLowerCase()}`)
 const fmtInt = (n: number) => Math.round(n).toLocaleString(getLang())
-const dayFmt = (day: number, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(getLang(), { ...o, timeZone: 'UTC' }).format(new Date(day * 86_400_000))
 const timeOf = (ms: number) => new Intl.DateTimeFormat(getLang(), { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms))
 const blankFood = (category: FoodCategory): FoodRow => ({ name: '', category, kcal: 0, protein: 0, serving: '', carbs: 0, photoPath: null, pinned: false, createdAt: Date.now() })
 
@@ -48,7 +49,7 @@ function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
 
 function DayPicker({ day, today, onShift, onToday }: { day: number; today: number; onShift: (d: number) => void; onToday: () => void }) {
   const isToday = day === today
-  const label = isToday ? t('day_today') : day === today - 1 ? t('day_yesterday') : dayFmt(day, { weekday: 'long', month: 'short', day: 'numeric' })
+  const label = isToday ? t('day_today') : day === today - 1 ? t('day_yesterday') : formatDay(day, { weekday: 'long', month: 'short', day: 'numeric' })
   return (
     <div class="food-day" role="group" aria-label={t('food_w_day_nav')}>
       <IconButton label={t('cd_previous_day')} onClick={() => onShift(-1)}><span class="mirror"><BackChevron /></span></IconButton>
@@ -103,9 +104,9 @@ function WeekCard({ proteinGoal, trackCarbs }: { proteinGoal: number; trackCarbs
         {days.map((d) => {
           const n = byDay.get(d)
           const ratio = Math.min(1, Math.max(0, (n?.protein ?? 0) / Math.max(1, proteinGoal)))
-          const letter = dayFmt(d, { weekday: 'narrow' })
+          const letter = dayShort(dayOfWeek(d), getLang())
           return (
-            <div key={d} class={`food-week-col${d === today ? ' today' : ''}`} role="img" aria-label={t('food_w_week_bar', dayFmt(d, { weekday: 'long' }), fmtInt(n?.protein ?? 0))}>
+            <div key={d} class={`food-week-col${d === today ? ' today' : ''}`} role="img" aria-label={t('food_w_week_bar', formatDay(d, { weekday: 'long' }), fmtInt(n?.protein ?? 0))}>
               <div class="food-week-bar">
                 {n && ratio > 0 && <div class={`food-week-fill${n.protein >= proteinGoal ? '' : ' low'}`} style={{ blockSize: `${Math.max(3, 32 * ratio)}px` }} />}
               </div>
@@ -364,7 +365,7 @@ export function FoodScreen(_: { param?: string }) {
         <Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setQuick(true)}>{t('food_quick_log')}</Button>
       </div>
       {meals.length === 0 && <p class="food-note">{isToday ? t('food_nothing_today') : t('food_nothing_that_day')}</p>}
-      {meals.map((m) => <MealItem key={m.id} meal={m} onDelete={() => removeMeal(m)} />)}
+      {meals.map((m) => <SwipeRow key={m.id} label={t('action_delete')} onDelete={() => removeMeal(m)}><MealItem meal={m} onDelete={() => removeMeal(m)} /></SwipeRow>)}
 
       {picked.length > 0 && (
         <div class="food-bar"><Button block onClick={logSelected}>{plural('food_log_selection', picked.length, picked.length, fmtInt(selKcal), selProtein)}</Button></div>

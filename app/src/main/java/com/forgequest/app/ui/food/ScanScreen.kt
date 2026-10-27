@@ -205,6 +205,7 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             if (outcome == null) pending.cancel()
             if ((state.value as? ScanState.Analyzing)?.photo != photo) return@launch
             val error = outcome?.exceptionOrNull()
+            if (outcome == null || error != null) app.haptics.error()
             state.value = when {
                 outcome == null -> ScanState.Failed(photo, app.str(R.string.scan_err_slow))
                 error == null -> ScanState.Result(photo, outcome.getOrThrow())
@@ -314,10 +315,23 @@ fun ScanScreen(nav: NavHostController) {
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when (val s = state) {
-            ScanState.Camera -> CameraView(
-                onCaptured = vm::analyzeBytes, onPicked = vm::analyzeUri, onClose = { nav.popBackStack() },
-                onPaste = { vm.paste(clipboard.getText()?.text) { res -> context.toast(context.getString(res)) } },
-            )
+            ScanState.Camera -> Box(Modifier.fillMaxSize()) {
+                CameraView(
+                    onCaptured = vm::analyzeBytes, onPicked = vm::analyzeUri, onClose = { nav.popBackStack() },
+                    onPaste = { vm.paste(clipboard.getText()?.text) { res -> context.toast(context.getString(res)) } },
+                )
+                // No key yet: say so up front instead of failing after the photo.
+                if (!vm.hasKey) {
+                    Column(
+                        Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 64.dp)
+                            .clip(RoundedCornerShape(20.dp)).background(Fit.colors.card).padding(16.dp),
+                    ) {
+                        Text(stringResource(R.string.ai_key_needed_food), style = MaterialTheme.typography.bodyMedium, color = Fit.colors.textPrimary)
+                        Spacer(Modifier.height(10.dp))
+                        PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.popBackStack(); nav.goToTab(Routes.PROFILE) })
+                    }
+                }
+            }
             is ScanState.Analyzing -> FrozenPhoto(s.photo) { ScanningOverlay(onAskOutside = { askOutside(s.photo) }) }
             is ScanState.Result -> FrozenPhoto(s.photo) {
                 val carbsOn = vm.app.settings.settings.collectAsState(initial = null).value?.trackCarbs == true

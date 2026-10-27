@@ -77,6 +77,9 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.DayTag
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeeklyStreak
+import com.forgequest.app.domain.StreakCalculator
+import com.forgequest.app.domain.TargetNudge
+import com.forgequest.app.ui.onboarding.FoodTargetsSetup
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ChoiceChip
@@ -131,6 +134,11 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     suspend fun startToday(day: PlanDayWithItems?, lighter: Boolean = false) = app.workouts.startSession(day, lighter)
 
     fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
+
+    /** Answers the one-time weekly-target question: [make] is the new target, or null to keep the current one. */
+    fun answerNudge(make: Int?) = viewModelScope.launch {
+        app.settings.update { it.copy(targetNudgeAnswered = true, weeklyTargetOverride = make ?: it.weeklyTargetOverride) }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -154,14 +162,61 @@ fun HomeScreen(nav: NavHostController) {
     val whatsNew by vm.app.updateNotice.whatsNew.collectAsState()
     var weightSheet by remember { mutableStateOf(false) }
     var tagDay by remember { mutableStateOf<Long?>(null) }
+    var foodSetup by remember { mutableStateOf(false) }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
+
+    val today = s.plan?.day(Dates.todayDayOfWeek())
+    // On a training day with the workout still to do (or one in progress), today's card leads the page.
+    val startOnTop = open != null || (today?.day?.isRest == false && !s.workoutDoneToday && s.excusedToday == null)
+    val todayCard: @Composable () -> Unit = {
+        TodayCard(
+            day = today,
+            exerciseNames = today?.items?.mapNotNull { s.exercises[it.exerciseId]?.name }?.distinct().orEmpty(),
+            hasOpenSession = open != null,
+            doneToday = s.workoutDoneToday,
+            excused = s.excusedToday,
+            onCantTrain = { tagDay = Dates.today() },
+            onStart = {
+                scope.launch {
+                    vm.startToday(today?.takeIf { !it.day.isRest })
+                    nav.navigate(Routes.LIVE)
+                }
+            },
+            // A red or low-yellow Fitbit morning offers a lighter session or a rest day, one tap each.
+            lowRecovery = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day
+                ?.takeIf { it.hasData && it.epochDay == Dates.today() && com.forgequest.app.domain.Readiness.isLowRecovery(it.recovery) }
+                ?.recovery,
+            onStartLighter = {
+                scope.launch {
+                    vm.startToday(today?.takeIf { !it.day.isRest }, lighter = true)
+                    nav.navigate(Routes.LIVE)
+                }
+            },
+            onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
+            // After training, the card leads to what was done; before, to the plan.
+            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
+            // A rest day can still be a training day: start the next planned workout.
+            onTrainAnyway = {
+                scope.launch {
+                    val next = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
+                        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() } }
+                    vm.startToday(next)
+                    nav.navigate(Routes.LIVE)
+                }
+            },
+        )
+    }
 
     Column(
         Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
     ) {
         Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(8.dp))
+        if (startOnTop) {
+            todayCard()
+            Spacer(Modifier.height(16.dp))
+        }
         updateBanner?.let { UpdateCard(it, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later) }
         whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
         NutritionRings(s)
@@ -202,48 +257,28 @@ fun HomeScreen(nav: NavHostController) {
         tagDay?.let { day ->
             DayTagDialog(day, s.dayTags[day], onPick = { vm.setDayTag(day, it); tagDay = null }, onDismiss = { tagDay = null })
         }
-        StreakCard(s.streak, onDayClick = { day -> tagDay = day })
+        // After the first finished workout, the body and food-goal questions that used to sit in onboarding.
+        if (s.settings.heightCm <= 0f && s.sessions.isNotEmpty()) {
+            FitCard(onClick = { foodSetup = true }) {
+                Text(stringResource(R.string.food_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Spacer(Modifier.height(4.dp))
+                Text(stringResource(R.string.food_setup_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        val weeklyTarget = StreakCalculator.fullTarget(s.plan?.trainingDays ?: emptySet(), s.settings.weeklyTargetOverride)
+        val todayDay = Dates.today()
+        val nudge = remember(s.sessions, weeklyTarget, s.settings.onboarded, s.settings.targetNudgeAnswered, todayDay) {
+            val finishedDays = s.sessions.map { it.epochDay }.toSet()
+            TargetNudge.offer(finishedDays, weeklyTarget, minOf(finishedDays.minOrNull() ?: todayDay, todayDay), todayDay)
+                ?.takeIf { s.settings.onboarded && TargetNudge.show(s.settings.targetNudgeAnswered, it) }
+        }
+        StreakCard(s.streak, onDayClick = { day -> tagDay = day }, nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(12.dp))
 
-        val today = s.plan?.day(Dates.todayDayOfWeek())
-        TodayCard(
-            day = today,
-            exerciseNames = today?.items?.mapNotNull { s.exercises[it.exerciseId]?.name }?.distinct().orEmpty(),
-            hasOpenSession = open != null,
-            doneToday = s.workoutDoneToday,
-            excused = s.excusedToday,
-            onCantTrain = { tagDay = Dates.today() },
-            onStart = {
-                scope.launch {
-                    vm.startToday(today?.takeIf { !it.day.isRest })
-                    nav.navigate(Routes.LIVE)
-                }
-            },
-            // A red or low-yellow Fitbit morning offers a lighter session or a rest day, one tap each.
-            lowRecovery = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day
-                ?.takeIf { it.hasData && it.epochDay == Dates.today() && it.call in setOf(com.forgequest.app.domain.DayCall.EASE_OFF, com.forgequest.app.domain.DayCall.RECOVER) }
-                ?.recovery,
-            onStartLighter = {
-                scope.launch {
-                    vm.startToday(today?.takeIf { !it.day.isRest }, lighter = true)
-                    nav.navigate(Routes.LIVE)
-                }
-            },
-            onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
-            // After training, the card leads to what was done; before, to the plan.
-            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
-            // A rest day can still be a training day: start the next planned workout.
-            onTrainAnyway = {
-                scope.launch {
-                    val next = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
-                        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() } }
-                    vm.startToday(next)
-                    nav.navigate(Routes.LIVE)
-                }
-            },
-        )
+        if (!startOnTop) todayCard()
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.navigationBarsPadding())
     }
@@ -270,6 +305,7 @@ fun HomeScreen(nav: NavHostController) {
         }
     }
     RaadEgg(s.settings.name, vm.app.haptics::celebrate)
+    if (foodSetup) FoodTargetsSetup(s.settings, s.latestWeight) { foodSetup = false }
 }
 
 @Composable
@@ -288,7 +324,7 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
                 if (s.settings.name.isNotBlank()) stringResource(R.string.home_greeting_name, greeting, s.settings.name) else greeting,
                 style = MaterialTheme.typography.headlineSmall,
                 color = c.textPrimary,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
@@ -411,7 +447,7 @@ private fun ProgressCard(s: ProgressSnapshot, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
+private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit, nudge: Int? = null, keepTarget: Int = 0, onNudge: (Int?) -> Unit = {}) {
     val c = Fit.colors
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -475,8 +511,18 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
                 ) {
                     DayCircle(state)
                     Spacer(Modifier.height(6.dp))
-                    Text(Dates.shortDayLetters[i], style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                    Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
+            }
+        }
+        // Asked once, after two finished weeks of 2+ workouts under the target; any answer ends it.
+        if (nudge != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(pluralStringResource(R.plurals.target_nudge_body, nudge, nudge), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                TextButton(onClick = { onNudge(null) }) { Text(stringResource(R.string.target_nudge_keep, keepTarget), color = c.textSecondary) }
+                PillButton(stringResource(R.string.target_nudge_make, nudge), onClick = { onNudge(nudge) })
             }
         }
     }
@@ -553,6 +599,16 @@ private fun TodayCard(
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
     val noPlan = day == null
+    val big = com.forgequest.app.ui.components.isLargeText()
+    val action: @Composable () -> Unit = {
+        when {
+            hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)
+            doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
+            noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
+            !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
+            excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway)
+        }
+    }
     FitCard(onClick = onOpenPlan) {
         Text(stringResource(R.string.today_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(12.dp))
@@ -590,15 +646,13 @@ private fun TodayCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            when {
-                hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)
-                doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
-                noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
-                !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
-                excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway)
+            if (!big) {
+                Spacer(Modifier.width(12.dp))
+                action()
             }
         }
+        // At large text sizes the button sits under the text instead of squeezing it into a sliver.
+        if (big) Box(Modifier.fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.CenterEnd) { action() }
         if (lowRecovery != null && !isRest && !hasOpenSession && !doneToday && excused == null) {
             Spacer(Modifier.height(10.dp))
             Text(stringResource(R.string.today_low_recovery, lowRecovery), style = MaterialTheme.typography.bodySmall, color = c.gold)

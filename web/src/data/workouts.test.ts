@@ -4,7 +4,7 @@ import { db, putSession, putSet, type SetRow } from './db';
 import { FULL_BODY_BEGINNER } from './seed/starter-plans';
 import {
   addExercise, applyPlan, finishSession, getActivePlan, getSets, moveSession, openSessionNow, seedLibrary,
-  startSession, updateSet, deleteSession, recentDoneSets, type PlanDayWithItems,
+  startSession, updateSet, deleteSession, restoreSession, recentDoneSets, type PlanDayWithItems,
 } from './workouts';
 
 const pause = () => new Promise((r) => setTimeout(r, 5));
@@ -130,6 +130,23 @@ describe('live session', () => {
     await deleteSession(ids[1]);
     const prs = (await db.sets.toArray()).filter((s) => s.isPr);
     expect(prs.map((s) => s.reps)).toEqual([12]);
+  });
+
+  it('undoing a deleted workout puts it back with its PR tag', async () => {
+    const ids: number[] = [];
+    for (const reps of [10, 14, 12]) {
+      await pause();
+      const id = await startSession(null);
+      await addExercise(id, 'burpee');
+      await logAndFinish(id, 'burpee', reps, 'OK');
+      ids.push(id);
+    }
+    const session = (await db.sessions.get(ids[1]))!;
+    const sets = await getSets(ids[1]);
+    await deleteSession(ids[1]);
+    await restoreSession(session, sets);
+    expect((await db.sessions.get(ids[1]))?.id).toBe(ids[1]);
+    expect((await db.sets.toArray()).filter((x) => x.isPr).map((x) => x.reps)).toEqual([14]);
   });
 
   it('every tap is a single-row write', async () => {

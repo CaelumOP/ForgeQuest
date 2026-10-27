@@ -14,8 +14,10 @@ import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
 import { canExcuse, greetingKey } from './helpers'
+import { dayShort } from '../workouts/helpers'
 import { RaadEgg } from './RaadEgg'
 import { CalorieCard } from './CalorieCard'
+import { FoodTargetsCard, TargetNudge } from './SetupCards'
 import './home.css'
 
 const nf = () => new Intl.NumberFormat(getLang())
@@ -38,9 +40,22 @@ export function HomeScreen(_: { param?: string }) {
     go('#/live')
   }
 
+  // On a training day with the workout still to do (or one in progress), today's card leads the page.
+  const startOnTop = !!open || (!!todayPlan && !todayPlan.day.isRest && !s.workoutDoneToday && !s.excusedToday)
+
+  const todayCard = (
+    <TodayCard
+      s={s} title={todayPlan?.day.title ?? ''} isRest={!todayPlan || todayPlan.day.isRest} noPlan={!todayPlan}
+      note={todayPlan?.day.note ?? ''}
+      names={[...new Set((todayPlan?.items ?? []).map((i) => s.exercises.get(i.exerciseId)?.name).filter((n): n is string => !!n))]}
+      hasOpen={!!open} onStart={start} onCant={() => setTagDay(today)}
+    />
+  )
+
   return (
     <div class="content home">
       <Header s={s} />
+      {startOnTop && todayCard}
       <Rings s={s} />
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {unseen.length > 0 && (
@@ -55,14 +70,10 @@ export function HomeScreen(_: { param?: string }) {
         </Card>
       )}
       <CalorieCard s={s} today={today} />
+      <FoodTargetsCard s={s} />
       <Streak s={s} onDay={setTagDay} />
       <ProgressCard s={s} today={today} />
-      <TodayCard
-        s={s} title={todayPlan?.day.title ?? ''} isRest={!todayPlan || todayPlan.day.isRest} noPlan={!todayPlan}
-        note={todayPlan?.day.note ?? ''}
-        names={[...new Set((todayPlan?.items ?? []).map((i) => s.exercises.get(i.exerciseId)?.name).filter((n): n is string => !!n))]}
-        hasOpen={!!open} onStart={start} onCant={() => setTagDay(today)}
-      />
+      {!startOnTop && todayCard}
       <WeightSheet s={s} open={weightOpen} onClose={() => setWeightOpen(false)} />
       <DayTagSheet day={tagDay} current={tagDay != null ? s.dayTags.get(tagDay) ?? null : null} onClose={() => setTagDay(null)} />
       <RaadEgg name={s.settings.name} />
@@ -80,15 +91,17 @@ function Header({ s }: { s: ProgressSnapshot }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
   const date = new Intl.DateTimeFormat(getLang(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
+  // Arabic has no use for a Latin letter: the level goes in the ring instead (Android RankInfo.mark).
+  const mark = getLang() === 'ar' ? String(s.level.level) : s.level.rank.letter
   return (
     <div class="home-head">
       <div class="home-head-text">
         <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
         <div class="home-date">{date}</div>
       </div>
-      <a class="home-rank" href="#/progress" aria-label={t('home_web_rank_cd', s.level.rank.letter)}>
-        <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={s.level.rank.letter}>
-          <span class="home-rank-letter">{s.level.rank.letter}</span>
+      <a class="home-rank" href="#/progress" aria-label={t('home_web_rank_cd', mark)}>
+        <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
+          <span class="home-rank-letter">{mark}</span>
         </Ring>
       </a>
     </div>
@@ -214,7 +227,6 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
     : k.weeks === 0 && k.doneThisWeek === 0 ? t('streak_hit_to_start')
     : k.hitThisWeek ? plural('streak_best', k.best)
     : plural('streak_more_to_go', k.targetThisWeek - k.doneThisWeek)
-  const fmt = new Intl.DateTimeFormat(getLang(), { weekday: 'narrow', timeZone: 'UTC' })
   const long = new Intl.DateTimeFormat(getLang(), { weekday: 'long', timeZone: 'UTC' })
   return (
     <Card>
@@ -234,13 +246,14 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
       <div class="home-week">
         {k.days.map((state, i) => {
           const day = start + i
-          const letter = fmt.format(dayDate(day))
+          const letter = dayShort(dayOfWeek(day), getLang())
           const inner = <><DayCircle state={state} /><small>{letter}</small></>
           return canExcuse(day, today, state)
             ? <button type="button" key={i} class="home-day" aria-label={`${t('daytag_title')}: ${long.format(dayDate(day))}`} onClick={() => onDay(day)}>{inner}</button>
             : <span key={i} class="home-day">{inner}</span>
         })}
       </div>
+      <TargetNudge s={s} today={today} />
     </Card>
   )
 }

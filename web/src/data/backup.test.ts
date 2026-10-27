@@ -27,6 +27,27 @@ describe('backup', () => {
     expect(decodeBackup(text).version).toBe(2);
   });
 
+  it('keeps the planned sets saved on each workout, and an older backup without them restores with null', async () => {
+    await applyBackup(decodeBackup(fixtureText));
+    expect((await db.sessions.get(1))?.plannedSets).toBe(9);
+    const old = fixtureText.replace(', "plannedSets": 9', '').replace(', "plannedSets": null', '');
+    expect(old).not.toContain('plannedSets');
+    await applyBackup(decodeBackup(old));
+    expect((await db.sessions.get(1))?.plannedSets).toBeNull();
+    expect((await db.sessions.get(2))?.plannedSets).toBeNull();
+  });
+
+  it('keeps when each set was ticked, and an older backup without it restores with null', async () => {
+    await applyBackup(decodeBackup(fixtureText));
+    expect((await db.sets.get(2))?.doneAt).toBe(1760891000000);
+    expect((await db.sets.get(3))?.doneAt).toBeNull();
+    const old = fixtureText.replace(/, "doneAt": (\d+|null)/g, '');
+    expect(old).not.toContain('doneAt');
+    await applyBackup(decodeBackup(old));
+    expect((await db.sets.get(1))?.doneAt).toBeNull();
+    expect((await db.sets.get(2))?.doneAt).toBeNull();
+  });
+
   it('keeps a safety copy only when there is something to lose, and only the latest 3', async () => {
     const file = decodeBackup(fixtureText);
     await applyBackup(file);

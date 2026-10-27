@@ -67,6 +67,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -163,7 +164,8 @@ fun PillButton(
                 Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
             }
-            Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Two lines at large text sizes instead of cutting the label off.
+            Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
         }
     }
 }
@@ -214,15 +216,20 @@ fun SegmentedTabs(
 ) {
     val c = Fit.colors
     val tall = subs.isNotEmpty() || wrap
+    // At large text sizes five equal slices can't hold their labels, so the row scrolls sideways with each label whole.
+    val scrolling = !tall && options.size >= 4 && isLargeText()
     // Tall segments share one height, so a one-line option is as tall as a wrapped one.
-    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh).padding(4.dp)) {
+    Row(
+        modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh)
+            .then(if (scrolling) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier).padding(4.dp),
+    ) {
         options.forEachIndexed { i, label ->
             val isSel = i == selected
             val off = i in disabled
             Box(
-                Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(if (tall) 20 else 50)).background(if (isSel) c.teal else Color.Transparent)
+                (if (scrolling) Modifier else Modifier.weight(1f)).fillMaxHeight().clip(RoundedCornerShape(if (tall) 20 else 50)).background(if (isSel) c.teal else Color.Transparent)
                     .selectable(selected = isSel, enabled = !off, role = Role.Tab) { onSelect(i) }
-                    .alpha(if (off) 0.4f else 1f).padding(vertical = 9.dp, horizontal = 4.dp),
+                    .alpha(if (off) 0.4f else 1f).padding(vertical = 9.dp, horizontal = if (scrolling) 14.dp else 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 if (tall) {
@@ -238,7 +245,7 @@ fun SegmentedTabs(
                         maxLines = 1,
                         softWrap = false,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
+                        modifier = if (scrolling) Modifier else Modifier.weight(1f, fill = false),
                     )
                     if (i in dots) {
                         Spacer(Modifier.width(3.dp))
@@ -535,4 +542,21 @@ fun EmptyState(icon: ImageVector, title: String, body: String, modifier: Modifie
         Spacer(Modifier.height(16.dp))
         action()
     }
+}
+
+/** The text size (as a multiple of the system default) above which tight layouts switch to their large-text form. */
+const val LARGE_TEXT = 1.3f
+
+/** True when the person's text size is above [LARGE_TEXT]. */
+@Composable
+fun isLargeText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale > LARGE_TEXT
+
+/** Shows [content] with the text size stopping at [max], for rows whose labels share a fixed width. */
+@Composable
+fun CappedFontScale(max: Float = LARGE_TEXT, content: @Composable () -> Unit) {
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, d.fontScale.coerceAtMost(max)),
+        content = content,
+    )
 }

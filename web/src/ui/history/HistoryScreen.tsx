@@ -1,20 +1,26 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import type { SessionRow, SetRow } from '../../data/db'
 import { putSession } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
-import { allDoneSets, useFinishedSessions, useLibrary } from '../../data/workouts'
-import { todayEpochDay } from '../../domain/dates'
-import { formatWeight } from '../../domain/units'
-import { Button, Card, EmptyState, Sheet, TextField } from '../kit'
+import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
+import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { formatDay } from '../day-format'
+import { fromKg, unitLabel } from '../../domain/units'
+import type { WeightUnit } from '../../domain/units'
+import { Button, Card, EmptyState, Sheet, SwipeRow, TextField } from '../kit'
 import { ExpandMoreIcon } from '../icons'
-import { decodeDebrief, groupWeeks, minutesOf } from './helpers'
+import { decodeDebrief, groupWeeks, minutesOf, scoreLine } from './helpers'
+import { dayShort } from '../workouts/helpers'
 import { DebriefSheet } from './DebriefSheet'
 import './history.css'
 
-const fmt = (day: number, o: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat(getLang(), { ...o, timeZone: 'UTC' }).format(new Date(day * 86_400_000))
+/** "4,210 kg": whole numbers with grouping, number and unit kept in order in right-to-left text. */
+const volumeText = (unit: WeightUnit, kg: number, arabic: boolean): string => {
+  const text = `${Math.round(fromKg(unit, kg)).toLocaleString('en-US')} ${unitLabel(unit, arabic)}`
+  return arabic ? `⁧${text}⁩` : `⁦${text}⁩`
+}
 
 function PrTag({ count = 1 }: { count?: number }) {
   return <><span class="hs-pr">{t('live_pr')}</span>{count > 1 && <span class="hs-prx"> ×{count}</span>}</>
@@ -31,7 +37,26 @@ export function HistoryScreen(_: { param?: string }) {
   const [open, setOpen] = useState<Record<number, boolean>>({})
   const [noteFor, setNoteFor] = useState<SessionRow | null>(null)
   const [noteText, setNoteText] = useState('')
+  const scores = useWorkoutScores()
   const [debriefId, setDebriefId] = useState<number | null>(null)
+  const [undo, setUndo] = useState<{ text: string; session: SessionRow; sets: SetRow[] } | null>(null)
+  const undoTimer = useRef<number>(0)
+  useEffect(() => () => clearTimeout(undoTimer.current), [])
+
+  // A swiped-away workout is deleted at once; Undo puts it back (same ids) while the bar is up.
+  const removeWorkout = async (s: SessionRow) => {
+    const sets = await getSets(s.id!)
+    await deleteSession(s.id!)
+    setUndo({ text: t('food_removed', s.title), session: s, sets })
+    clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => setUndo(null), 10000)
+  }
+  const doUndo = async () => {
+    const u = undo
+    setUndo(null)
+    clearTimeout(undoTimer.current)
+    if (u) await restoreSession(u.session, u.sets)
+  }
 
   const debriefSession = sessions.find((x) => x.id === debriefId)
   const names = new Map(library.map((e) => [e.id, e.name]))
@@ -79,7 +104,7 @@ export function HistoryScreen(_: { param?: string }) {
           const prs = sets.filter((s) => s.isPr).length
           const title = w.start === thisWeek ? t('journal_this_week')
             : w.start === thisWeek - 7 ? t('journal_last_week')
-            : t('journal_range', fmt(w.start, { day: 'numeric', month: 'short' }), fmt(w.start + 6, { day: 'numeric', month: 'short' }))
+            : t('journal_range', formatDay(w.start, { day: 'numeric', month: 'short' }), formatDay(w.start + 6, { day: 'numeric', month: 'short' }))
           const days = new Map<number, SessionRow[]>()
           for (const s of w.sessions) days.set(s.epochDay, [...(days.get(s.epochDay) ?? []), s])
           return (
@@ -90,7 +115,7 @@ export function HistoryScreen(_: { param?: string }) {
                     <span class="hs-week-title">{title}</span>
                     <span class="hs-meta">
                       {[plural('backup_workouts', w.sessions.length), t('hist_minutes', minutes),
-                        volume > 0 ? t('journal_volume', formatWeight(unit, volume, lang === 'ar', 0)) : null].filter(Boolean).join(' · ')}
+                        volume > 0 ? t('journal_volume', volumeText(unit, volume, lang === 'ar')) : null].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   {prs > 0 && <span><PrTag count={prs} /></span>}
@@ -99,7 +124,7 @@ export function HistoryScreen(_: { param?: string }) {
               </Card>
               {expanded && [...days.entries()].map(([day, list]) => (
                 <>
-                  <h3 class="hs-day" key={`d${day}`}>{fmt(day, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                  <h3 class="hs-day" key={`d${day}`}>{formatDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                   {list.map((s) => {
                     const ss = bySession.get(s.id!) ?? []
                     const mins = minutesOf(s)
@@ -108,9 +133,10 @@ export function HistoryScreen(_: { param?: string }) {
                     const d = decodeDebrief(s.debrief)
                     return (
                       <div class="hs-sess" key={s.id}>
+                        <SwipeRow label={t('action_delete')} radius={24} srDelete onDelete={() => void removeWorkout(s)}>
                         <Card href={`#/session/${s.id}`}>
                           <div class="hs-srow">
-                            <span class="hs-date"><b>{fmt(day, { day: 'numeric' })}</b><span>{fmt(day, { weekday: 'short' })}</span></span>
+                            <span class="hs-date"><b>{formatDay(day, { day: 'numeric' })}</b><span>{dayShort(dayOfWeek(day), getLang())}</span></span>
                             <span class="hs-stext">
                               <span class="hs-sname"><span>{s.title}</span>{prc > 0 && <span><PrTag count={prc} /></span>}</span>
                               <span class="hs-meta">{[plural('hist_sets', ss.length), mins != null ? t('hist_minutes', mins) : null].filter(Boolean).join(' · ')}</span>
@@ -118,7 +144,9 @@ export function HistoryScreen(_: { param?: string }) {
                             </span>
                           </div>
                         </Card>
-                        {d && <p class="hs-debrief">{t('debrief_journal', d.score, d.summary)}</p>}
+                        </SwipeRow>
+                        {scores.get(s.id!) && <p class="hs-debrief hs-score">{scoreLine(scores.get(s.id!)!)}</p>}
+                        {d && <p class="hs-debrief">{d.summary}</p>}
                         <div class="hs-actions">
                           <button type="button" class={`hs-notebtn${s.note ? ' has' : ''}`} onClick={() => { setNoteFor(s); setNoteText(s.note) }}>
                             {s.note || t('journal_add_note')}
@@ -134,7 +162,8 @@ export function HistoryScreen(_: { param?: string }) {
           )
         })}
       </div>
-      {debriefSession && <DebriefSheet key={debriefSession.id} session={debriefSession} onClose={() => setDebriefId(null)} />}
+      {undo && <div class="hs-undo" role="status"><span>{undo.text}</span><button type="button" onClick={() => void doUndo()}>{t('action_undo')}</button></div>}
+      {debriefSession && <DebriefSheet key={debriefSession.id} session={debriefSession} score={scores.get(debriefSession.id!)} onClose={() => setDebriefId(null)} />}
       <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={t('history_web_note_title')}>
         <div class="hs-sheet">
           <TextField label={t('history_web_note_title')} value={noteText} onInput={(v) => setNoteText(v.slice(0, 300))} multiline placeholder={t('history_web_note_hint')} />

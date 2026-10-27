@@ -1,9 +1,11 @@
 package com.forgequest.app.ui
 
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -167,7 +169,12 @@ private fun MainScaffold() {
                                 selected = selected,
                                 onClick = { nav.goToTab(tab.route) },
                                 icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                                label = { Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+                                // Five tabs share the width, so their labels stop growing past 1.3x text size.
+                                label = {
+                                    com.forgequest.app.ui.components.CappedFontScale {
+                                        Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                                    }
+                                },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = c.teal,
                                     selectedTextColor = c.textPrimary,
@@ -189,10 +196,19 @@ private fun MainScaffold() {
                 modifier = (if (showBar) PaddingValues(bottom = padding.calculateBottomPadding()) else PaddingValues(0.dp)).let { barSpace ->
                     Modifier.padding(barSpace).consumeWindowInsets(barSpace)
                 },
-                enterTransition = { fadeIn() },
+                // Pushed detail screens slide in from the end edge (RTL-aware) and slide back out; tabs just fade.
+                enterTransition = {
+                    if (isDetailRoute(targetState.destination.route)) {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(NAV_SLIDE_MS)) + fadeIn(tween(NAV_SLIDE_MS))
+                    } else fadeIn()
+                },
                 exitTransition = { fadeOut() },
                 popEnterTransition = { fadeIn() },
-                popExitTransition = { fadeOut() },
+                popExitTransition = {
+                    if (isDetailRoute(initialState.destination.route)) {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(NAV_SLIDE_MS)) + fadeOut(tween(NAV_SLIDE_MS))
+                    } else fadeOut()
+                },
             ) {
                 composable(Routes.HOME) { HomeScreen(nav) }
                 composable(Routes.WORKOUTS) { WorkoutsScreen(nav) }
@@ -222,6 +238,13 @@ private fun MainScaffold() {
         }
     }
 }
+
+private const val NAV_SLIDE_MS = 280
+
+/** Pushed screens (everything except the five tabs and the live workout, which has no transition). */
+private fun isDetailRoute(route: String?): Boolean =
+    route != null && route != Routes.LIVE && route != Routes.HOME && route != Routes.WORKOUTS &&
+        route != Routes.FOOD && route != Routes.COACH && route != Routes.PROFILE
 
 fun NavHostController.goToTab(route: String) {
     // Home is the start destination: navigating to it with saveState/restoreState restored the tab you were

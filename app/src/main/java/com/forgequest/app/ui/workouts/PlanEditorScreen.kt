@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
@@ -51,14 +52,21 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -93,6 +101,8 @@ import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.UndoSnackbarEffect
+import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
@@ -153,14 +163,13 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         app.workouts.swapPlanItem(item, newExerciseId)
     }
 
-    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+    val undo = UndoState(viewModelScope)
 
     fun deleteItem(item: PlanItemEntity, name: String) = viewModelScope.launch {
         app.workouts.deletePlanItem(item.id)
-        undo.value = app.str(R.string.food_removed, name) to { app.workouts.restorePlanItem(item) }
+        undo.offer(app.str(R.string.food_removed, name)) { app.workouts.restorePlanItem(item) }
     }
 
-    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
     fun addItem(dayId: Long, exerciseId: String) = viewModelScope.launch { app.workouts.addPlanItem(dayId, exerciseId) }
     fun setRest(day: PlanDayEntity, rest: Boolean) = viewModelScope.launch {
         app.workouts.updatePlanDay(day.copy(isRest = rest, title = if (rest) app.str(R.string.today_rest_day) else if (day.title == app.str(R.string.today_rest_day) || day.title == "Rest day") app.str(R.string.plan_workout) else day.title))
@@ -208,18 +217,10 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     var moveDay by remember { mutableStateOf(false) }
     val allPlans by vm.allPlans.collectAsState()
 
-    val undo by vm.undo.collectAsState()
-
     androidx.compose.runtime.LaunchedEffect(message) {
         message?.let { snackbar.showSnackbar(it); vm.message.value = null }
     }
-    val undoLabel = stringResource(R.string.action_undo)
-    androidx.compose.runtime.LaunchedEffect(undo) {
-        undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = androidx.compose.material3.SnackbarDuration.Short)
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
-        }
-    }
+    UndoSnackbarEffect(vm.undo)
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val day = s.plan?.day(selectedDay)
@@ -247,7 +248,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(Dates.dayChip(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(Dates.dayShort(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, softWrap = false)
                     }
                 }
             }
@@ -278,12 +279,57 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                     }
                     if (!day.day.isRest) {
                         Spacer(Modifier.height(8.dp))
-                        day.items.forEach { item ->
+                        // Drag a row by its handle (long press) to reorder; the Move up / Move down buttons in the editor stay.
+                        val haptics = LocalContext.current.container.haptics
+                        var order by remember(day.items) { mutableStateOf(day.items.map { it.id }) }
+                        var dragId by remember { mutableStateOf<Long?>(null) }
+                        var dragOffset by remember { mutableFloatStateOf(0f) }
+                        var dragStart by remember { mutableIntStateOf(0) }
+                        val heights = remember { mutableMapOf<Long, Int>() }
+                        val dragLabel = stringResource(R.string.cd_drag_reorder)
+                        order.mapNotNull { id -> day.items.firstOrNull { it.id == id } }.forEach { item ->
+                          key(item.id) {
                             val ex = s.exercises[item.exerciseId]
+                            val dragging = dragId == item.id
                             Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { editing = item }.padding(vertical = 10.dp),
+                                Modifier.fillMaxWidth()
+                                    .zIndex(if (dragging) 1f else 0f)
+                                    .graphicsLayer { translationY = if (dragging) dragOffset else 0f; alpha = if (dragging) 0.92f else 1f }
+                                    .onSizeChanged { heights[item.id] = it.height }
+                                    .clip(RoundedCornerShape(12.dp)).background(if (dragging) c.cardHigh else androidx.compose.ui.graphics.Color.Transparent)
+                                    .clickable { editing = item }.padding(vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                Icon(
+                                    Icons.Rounded.DragHandle, contentDescription = dragLabel, tint = c.textSecondary,
+                                    modifier = Modifier.size(40.dp).pointerInput(item.id) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { dragId = item.id; dragOffset = 0f; dragStart = order.indexOf(item.id); haptics.tick() },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragOffset += amount.y
+                                                val i = order.indexOf(item.id)
+                                                val below = order.getOrNull(i + 1)?.let { heights[it] }
+                                                val above = order.getOrNull(i - 1)?.let { heights[it] }
+                                                if (dragOffset > 0f && below != null && dragOffset > below / 2f) {
+                                                    order = order.toMutableList().also { it.add(i + 1, it.removeAt(i)) }
+                                                    dragOffset -= below
+                                                    haptics.tick()
+                                                } else if (dragOffset < 0f && above != null && -dragOffset > above / 2f) {
+                                                    order = order.toMutableList().also { it.add(i - 1, it.removeAt(i)) }
+                                                    dragOffset += above
+                                                    haptics.tick()
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                val delta = order.indexOf(item.id) - dragStart
+                                                dragId = null; dragOffset = 0f
+                                                if (delta != 0) vm.move(item, delta)
+                                            },
+                                            onDragCancel = { dragId = null; dragOffset = 0f; order = day.items.map { it.id } },
+                                        )
+                                    }.padding(end = 12.dp),
+                                )
                                 Column(Modifier.weight(1f)) {
                                     Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                                     Text(
@@ -298,6 +344,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                                     Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary)
                                 }
                             }
+                          }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -654,7 +701,7 @@ fun PlanPreviewSheet(
             Spacer(Modifier.height(12.dp))
             draft.days.sortedBy { it.dayOfWeek }.forEach { d ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                    Text(Dates.dayAbbrev(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
+                    Text(Dates.dayShort(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                         if (!d.isRest && d.items.isNotEmpty()) {

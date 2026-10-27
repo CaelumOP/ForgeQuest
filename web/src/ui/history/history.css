@@ -21,6 +21,7 @@
 .hs-sname > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hs-ellip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hs-debrief { margin: 4px 0 0; padding-inline: 12px 8px; font-size: 13px; color: var(--text-2); }
+.hs-score { color: var(--text-2); }
 .hs-notebtn { align-self: flex-start; min-height: 44px; padding-inline: 12px; background: none; border: 0; font: inherit; font-size: 13px; color: var(--teal); text-align: start; cursor: pointer; }
 .hs-notebtn.has { color: var(--text-2); font-style: italic; }
 .hs-hint { margin: 0; font-size: 13px; color: var(--text-2); }
@@ -47,6 +48,11 @@
 .hs-deb-line { margin: 4px 0 0; font-size: 13px; }
 .hs-deb-good { color: var(--teal); }
 .hs-deb-gold { color: var(--gold); }
+.hs-deb-gold.quiet { color: var(--text-2); }
 .hs-deb-head .hs-deb-gold { font-weight: 600; }
 .hs-deb-next { color: var(--blue); }
 .hs-actions { display: flex; align-items: center; flex-wrap: wrap; }
+
+/* Undo bar after a swiped-away workout (same look as the Food screen's). */
+.hs-undo { position: fixed; inset-inline: 16px; inset-block-end: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 4px 16px; padding-inline: 16px 4px; border-radius: 14px; background: var(--text); color: var(--bg); font-size: 14px; }
+.hs-undo button { min-block-size: 44px; padding-inline: 14px; border: 0; background: none; color: var(--teal-on-inv, var(--bg)); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }

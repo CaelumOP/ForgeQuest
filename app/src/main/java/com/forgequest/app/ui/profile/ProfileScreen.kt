@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -35,6 +36,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -464,7 +466,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
             try {
                 shareUri.value = app.backup.exportForSharing()
             } catch (e: Exception) {
-                message.value = app.str(R.string.backup_create_failed)
+                app.haptics.error(); message.value = app.str(R.string.backup_create_failed)
             } finally {
                 busy.value = null
             }
@@ -479,7 +481,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
                 app.backup.exportTo(uri)
                 message.value = app.str(R.string.backup_saved)
             } catch (e: Exception) {
-                message.value = app.str(R.string.backup_create_failed)
+                app.haptics.error(); message.value = app.str(R.string.backup_create_failed)
             } finally {
                 busy.value = null
             }
@@ -523,7 +525,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
                 safetyCopies.value = app.backup.safetyCopies()
                 message.value = app.str(R.string.backup_restored_from, app.str(preview.source))
             } catch (e: Exception) {
-                message.value = app.str(R.string.backup_restore_failed)
+                app.haptics.error(); message.value = app.str(R.string.backup_restore_failed)
             } finally {
                 busy.value = null
             }
@@ -707,9 +709,9 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         // Shortcuts to the screens that used to sit among the settings
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ShortcutCard(Icons.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f)) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
-            ShortcutCard(Icons.Rounded.FitnessCenter, c.blue, c.blueTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f)) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
+        Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ShortcutCard(Icons.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
+            ShortcutCard(Icons.Rounded.FitnessCenter, c.blue, c.blueTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -1129,14 +1131,17 @@ fun ProfileScreen(nav: NavHostController) {
                 val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
                 if (notes.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    notes.forEach { note ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
-                            Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                    // The list grows and shrinks smoothly as notes are added or removed.
+                    Column(Modifier.animateContentSize()) {
+                        notes.forEach { note ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
+                                Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
@@ -1677,8 +1682,14 @@ private fun SettingsGroup(
 /** Half-width card that opens another screen. */
 @Composable
 private fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    // At large text sizes the icon sits above the title, so a long word is never broken in the middle.
+    val stacked = com.forgequest.app.ui.components.isLargeText()
     FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (stacked) {
+            IconCircle(icon, tint, track, size = 40.dp)
+            Spacer(Modifier.height(8.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        } else Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(icon, tint, track, size = 40.dp)
             Spacer(Modifier.width(12.dp))
             Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)

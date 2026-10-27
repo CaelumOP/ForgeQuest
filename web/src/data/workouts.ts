@@ -11,15 +11,18 @@ import { STARTER_PLANS_AR, type PlanDraft } from './seed/starter-plans';
 import { useLive } from './live';
 import { todayEpochDay } from '../domain/dates';
 import { effortOf } from '../domain/effort';
+import { endTime, lastDoneAt } from '../domain/workout-end';
 import { translatePlanItem } from '../domain/exercise-swap-engine';
 import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
-import { personalRecords, recordScore, totalXp } from '../domain/progress';
+import { dayTagMap, personalRecords, recordScore, totalXp } from '../domain/progress';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
 import { nextPrefill, type PastSet } from '../domain/progression';
+import { isWarmUp, scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
 export type ActivePlan = { plan: PlanRow; days: PlanDayWithItems[] };
-export type FinishResult = { sessionTitle: string; doneSets: number; prs: string[]; xpGained: number };
+/** `endedAt` is when the workout counts as ended (see domain/workout-end.ts); `clipped` when that is earlier than now. */
+export type FinishResult = { sessionTitle: string; doneSets: number; prs: string[]; xpGained: number; endedAt: number; clipped: boolean };
 
 const REST_TITLE = 'Rest day';
 const QUICK_TITLE = 'Quick workout';
@@ -343,7 +346,7 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
   return result.sets.map((p, i): SetRow => ({
     sessionId, exerciseId: ex?.id ?? item?.exerciseId ?? '', itemPosition: position, block: item?.block ?? 'Main',
     circuit: item?.circuit ?? false, setIndex: i, targetLabel: label, reps: p.reps, seconds: p.seconds, weightKg: p.weightKg,
-    done: false, isPr: false, restSeconds: item?.restSeconds ?? 90, note: '', effort: '',
+    done: false, isPr: false, restSeconds: item?.restSeconds ?? 90, note: '', effort: '', doneAt: null,
   }));
 }
 
@@ -432,11 +435,12 @@ export function discardSession(sessionId: number): Promise<void> {
  * New personal records are flagged against workouts dated earlier only, so a backdated log compares with its own past.
  */
 export function finishSession(sessionId: number, tickAll = false): Promise<FinishResult> {
-  return db.transaction('rw', db.sessions, db.sets, db.exercises, async () => {
+  return db.transaction('rw', [db.sessions, db.sets, db.exercises, db.planItems], async () => {
     const session = await db.sessions.get(sessionId);
-    if (!session) return { sessionTitle: '', doneSets: 0, prs: [], xpGained: 0 };
+    if (!session) return { sessionTitle: '', doneSets: 0, prs: [], xpGained: 0, endedAt: Date.now(), clipped: false };
     const mine = await db.sets.where('sessionId').equals(sessionId).toArray();
-    if (tickAll) await db.sets.bulkPut(mine.map((s) => ({ ...s, done: true })));
+    const now = Date.now();
+    if (tickAll) await db.sets.bulkPut(mine.map((s) => (s.done ? s : { ...s, done: true, doneAt: now })));
     else await db.sets.bulkDelete(mine.filter((s) => !s.done).map((s) => s.id!));
     const done = (await getSets(sessionId)).filter((s) => s.done);
 
@@ -456,8 +460,11 @@ export function finishSession(sessionId: number, tickAll = false): Promise<Finis
       const best = sets.reduce((m, s) => (score(s) > score(m) ? s : m));
       if (score(best) > previousBest) { await db.sets.put({ ...best, isPr: true }); prs.push(ex.name); }
     }
-    await db.sessions.put({ ...session, finishedAt: Date.now() });
-    return { sessionTitle: session.title, doneSets: done.length, prs, xpGained: totalXp(1, done.length, prs.length, 0) };
+    // The plan day's sets as they are now, kept so a later plan edit can't change this workout's score.
+    const planned = session.planDayId == null ? 0 : plannedSetsOf(await db.planItems.where('dayId').equals(session.planDayId).toArray());
+    const endedAt = endTime(now, lastDoneAt(done));
+    await db.sessions.put({ ...session, finishedAt: endedAt, plannedSets: planned > 0 ? planned : null });
+    return { sessionTitle: session.title, doneSets: done.length, prs, xpGained: totalXp(1, done.length, prs.length, 0), endedAt, clipped: endedAt !== now };
   });
 }
 
@@ -477,6 +484,29 @@ export async function allDoneSets(): Promise<SetRow[]> {
   const finished = new Set((await finishedSessions()).map((s) => s.id!));
   return (await db.sets.filter((s) => s.done).toArray()).filter((s) => finished.has(s.sessionId));
 }
+
+/** A plan day's sets for the score: warm-ups left out. */
+const plannedSetsOf = (items: PlanItemRow[]): number => items.reduce((n, i) => n + (isWarmUp(i.block) ? 0 : i.sets), 0);
+
+/** The calculated score of every finished workout (domain/workout-score.ts): a few small reads, never one query per row. */
+export async function allWorkoutScores(only?: number): Promise<Map<number, WorkoutScoreResult>> {
+  const [sessions, doneSets, items, readiness, library, notes, plan] = await Promise.all([
+    finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(),
+    db.dayNotes.toArray(), getActivePlan(),
+  ]);
+  const byDay = new Map<number, PlanItemRow[]>();
+  for (const i of items) byDay.set(i.dayId, [...(byDay.get(i.dayId) ?? []), i]);
+  const planned = new Map([...byDay].map(([dayId, l]) => [dayId, plannedSetsOf(l)]));
+  // Ease off (34-49) and recover (below 34): Android Readiness.call is under 50.
+  const rough = new Set(readiness.filter((r) => r.recovery < 50).map((r) => r.epochDay));
+  return scoresForSessions(
+    sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, rough, dayTagMap(notes), plan ? trainingDays(plan) : new Set(), only,
+  );
+}
+/** The score of one workout: only that one is calculated, from the same history. */
+export const useWorkoutScore = (id: number): WorkoutScoreResult | undefined =>
+  useLive(() => allWorkoutScores(id), [id], new Map<number, WorkoutScoreResult>()).get(id);
+export const useWorkoutScores = (): Map<number, WorkoutScoreResult> => useLive(allWorkoutScores, [], new Map());
 
 /** Edits a set of a finished workout and re-checks which sets of that exercise are records. */
 export async function updateFinishedSet(set: SetRow): Promise<void> {
@@ -498,6 +528,15 @@ export async function moveSession(sessionId: number, epochDay: number): Promise<
   const shift = (epochDay - s.epochDay) * 86_400_000;
   await db.sessions.put({ ...s, epochDay, startedAt: s.startedAt + shift, finishedAt: s.finishedAt == null ? null : s.finishedAt + shift });
   for (const id of new Set((await getSets(sessionId)).map((x) => x.exerciseId))) await recomputeRecords(id);
+}
+
+/** Puts back a workout removed by deleteSession (same ids), then re-checks the records it touched. */
+export async function restoreSession(session: SessionRow, sets: SetRow[]): Promise<void> {
+  await db.transaction('rw', db.sessions, db.sets, async () => {
+    await db.sessions.put(session);
+    await db.sets.bulkPut(sets);
+  });
+  for (const id of new Set(sets.map((s) => s.exerciseId))) await recomputeRecords(id);
 }
 
 export async function deleteSession(sessionId: number): Promise<void> {

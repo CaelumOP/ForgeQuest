@@ -194,6 +194,9 @@ class CoachRepository(
         return result
     }
 
+    /** True when the newest message is a failed reply, so the screen can buzz once. */
+    suspend fun lastReplyFailed(): Boolean = chat.recent(1).firstOrNull()?.kind == "error"
+
     private suspend fun saveError(e: AiError) {
         val text = if (e is AiError.Timeout) AppText.get(R.string.ai_err_coach_timeout) else e.userMessage
         val s = settings.current()
@@ -327,6 +330,14 @@ class CoachRepository(
             appendLine("Body goal: ${s.nutritionGoal.name}")
             db.readiness().get(session.epochDay)?.let { appendLine("Readiness that day: recovery ${it.recovery}%, sleep ${it.sleepMin} min") }
             if (session.note.isNotBlank()) appendLine("Their note: ${session.note}")
+            progress.freshSnapshot().let { workouts.scores(it, only = sessionId)[sessionId] }?.let { r ->
+                val parts = listOfNotNull(
+                    if (r.plannedSets == null) "${r.doneSets} sets" else if (r.doneSets >= r.plannedSets) "All ${r.doneSets} sets" else "${r.doneSets} of ${r.plannedSets} sets",
+                    if (r.compared > 0) "up on ${r.up} of ${r.compared}" else null,
+                    if (r.prs > 0) "${r.prs} ${if (r.prs > 1) "PRs" else "PR"}" else null,
+                )
+                appendLine("Score (calculated by the app, do not change it): ${r.score}/10. ${parts.joinToString(", ")}.")
+            }
             sets.groupBy { it.exerciseId }.forEach { (id, done) ->
                 val name = library[id]?.name ?: id
                 fun line(list: List<SetEntity>) = list.sortedBy { it.setIndex }.joinToString(", ") { st ->
@@ -346,9 +357,9 @@ class CoachRepository(
         val language = if (java.util.Locale.getDefault().language == "ar") "formal Modern Standard Arabic (Western digits)" else "English"
         val system = """
             You are a friendly strength coach writing a 10-second debrief of a finished workout.
-            Reply with ONLY a JSON object: {"score": 4-10, "summary": one short sentence, "highlights": [1-2 short items citing real numbers],
+            Reply with ONLY a JSON object: {"summary": one short sentence, "highlights": [1-2 short items citing real numbers],
             "watch": [0-1 short item: a stall, a pain/hard note, or low readiness], "nextTime": [1 short, concrete tip]}.
-            Finishing counts: never score below 4. Be specific, warm and brief. Write in $language.
+            The app already calculated the score and shows it; the summary must agree with it, never give your own. Be specific, warm and brief. Write in $language.
         """.trimIndent()
         val turns = listOf("user" to payload)
         val debrief = withTimeoutOrNull(DEBRIEF_TIMEOUT_MS) {

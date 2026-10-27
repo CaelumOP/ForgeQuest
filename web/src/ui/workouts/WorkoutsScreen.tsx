@@ -10,7 +10,7 @@ import { bestSetSeries } from '../../domain/trends'
 import type { WeightUnit } from '../../domain/units'
 import { Button, Card, EmptyState } from '../kit'
 import { BedIcon, EditIcon, HistoryIcon, PlayCircleIcon, PlayIcon, RepeatIcon, Sparkline } from './glyphs'
-import { blockLabel, dayName, openFormVideo, prescription } from './helpers'
+import { blockLabel, dayName, dayShort, openFormVideo, prescription } from './helpers'
 import { BodyMap } from '../progress/BodyMap'
 import type { Equipment } from '../../domain/exercise-swap-engine'
 import type { Muscle } from '../../domain/muscle'
@@ -93,7 +93,7 @@ export function WorkoutsScreen(_: { param?: string }) {
               aria-label={t(rest ? 'day_cd_rest' : 'day_cd_training', dayName(dow, lang))}
               onClick={() => setSelected(dow)}
             >
-              <span>{dayName(dow, lang, 'short')}</span>
+              <span>{dayShort(dow, lang)}</span>
               <span class={`wk-day-dot${rest ? ' rest' : ''}`} />
             </button>
           )

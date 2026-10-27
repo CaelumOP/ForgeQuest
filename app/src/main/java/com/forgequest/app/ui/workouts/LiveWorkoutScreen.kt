@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -92,6 +94,7 @@ import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.SetEffort
+import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
@@ -145,6 +148,12 @@ private fun group(sets: List<SetEntity>): List<Group> {
     flush()
     return result
 }
+
+/** Seconds as minutes:seconds, with Western digits on every device. */
+private fun clock(sec: Int): String = "%d:%02d".format(Locale.US, sec / 60, sec % 60)
+
+/** How much larger than the app text size the live pager cards read. */
+private const val LIVE_TEXT_BOOST = 1.15f
 
 @Composable
 fun LiveWorkoutScreen(nav: NavHostController) {
@@ -252,10 +261,11 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
                 val density = androidx.compose.ui.platform.LocalDensity.current
+                // The pager cards are the live screen's focus, so their text runs 15 % larger than the app's.
                 androidx.compose.foundation.pager.HorizontalPager(
                     pager, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp, key = { groups[it].key },
                 ) { i ->
-                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * 1.15f)) {
+                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * LIVE_TEXT_BOOST)) {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = bottomPad)) { cardFor(groups[i], true) }
                     }
                 }
@@ -265,7 +275,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(groups, key = { it.key }) { g -> cardFor(g, false) }
+                items(groups, key = { it.key }) { g -> Box(Modifier.animateItem()) { cardFor(g, false) } }
                 item {
                     TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = PickerMode.Add }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }
@@ -303,8 +313,11 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             // Three choices stacked, so none of them wraps onto a row of its own.
             confirmButton = {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+                    androidx.compose.material3.Button(
+                        onClick = { confirmFinish = false; vm.finish() },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = c.teal, contentColor = c.onTeal),
+                    ) { Text(stringResource(R.string.live_finish)) }
                     TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
-                    TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) }
                     TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
                 }
             },
@@ -365,6 +378,10 @@ private fun GroupCard(
     val all = g.allSets
     val allDone = all.isNotEmpty() && all.all { it.done }
     var open by remember(allDone) { mutableStateOf(!allDone) }
+    if (g is Group.Straight && WorkoutScore.isWarmUp(g.block)) {
+        WarmupCard(g, exercises[g.sets.first().exerciseId], vm)
+        return
+    }
     if (!open && !forceOpen) {
         val title = if (g is Group.Straight) exercises[g.sets.first().exerciseId]?.name ?: g.sets.first().exerciseId else blockLabel((g as Group.Circuit).block)
         FitCard(onClick = { open = true }, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
@@ -384,6 +401,40 @@ private fun GroupCard(
             onVideo = onVideo, onSwap = { onSwap(g.position) }, onDetail = { onDetail(g.sets.first().exerciseId) },
         )
         is Group.Circuit -> CircuitCard(g, exercises, vm, onVideo = onVideo, onSwap = onSwap)
+    }
+}
+
+/** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
+@Composable
+private fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutViewModel) {
+    val c = Fit.colors
+    val prev by vm.previous.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+    val first = g.sets.first()
+    val doneCount = g.sets.count { it.done }
+    val allDone = doneCount == g.sets.size
+    val each = if (ex?.kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, first.seconds ?: 0) else "${first.reps ?: 0}"
+    FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { expanded = !expanded }.padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("${ex?.name ?: first.exerciseId} · ${g.sets.size} × $each", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    if (doneCount > 0 && !allDone) Text("$doneCount/${g.sets.size}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(6.dp))
+            MorphCheck(allDone) { vm.toggleAll(g.sets) }
+        }
+        if (expanded) {
+            Spacer(Modifier.height(4.dp))
+            g.sets.forEach { set ->
+                SetRow(label = "${set.setIndex + 1}", sublabel = null, set = set, kind = ex?.kind ?: ExerciseKind.REPS, vm = vm, previous = prev[set.exerciseId]?.getOrNull(set.setIndex))
+            }
+        }
     }
 }
 
@@ -407,7 +458,8 @@ private fun StraightCard(
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
     var menu by remember { mutableStateOf(false) }
-    FitCard(padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
+    // A set added or removed grows or shrinks the card smoothly instead of jumping.
+    FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onDetail)) {
                 Text(ex?.name ?: g.sets.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
@@ -634,14 +686,20 @@ private fun SetRow(
     }
     // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
     AnimatedVisibility(visible = set.done && effortSetId == set.id) {
-        Row(Modifier.padding(start = 8.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            SetEffort.entries.forEach { e ->
-                ChoiceChip(
-                    stringResource(e.labelRes),
-                    set.effort == e.name,
-                    { vm.setEffort(set, e) },
-                    accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
-                )
+        Column(Modifier.padding(start = 8.dp, top = 6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SetEffort.entries.forEach { e ->
+                    ChoiceChip(
+                        stringResource(e.labelRes),
+                        set.effort == e.name,
+                        { vm.setEffort(set, e) },
+                        accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                    )
+                }
+            }
+            // Pain is worth a word: one tap opens the same note editor as a long-press.
+            if (set.effort == SetEffort.PAIN.name) {
+                TextButton(onClick = { noteDialog = true }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
             }
         }
     }
@@ -748,8 +806,8 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
     val over = s >= h.target
     val shown = when {
         ready -> "${-s}"
-        over -> "+%d:%02d".format(java.util.Locale.US, (s - h.target) / 60, (s - h.target) % 60)
-        else -> (h.target - s).let { "%d:%02d".format(java.util.Locale.US, it / 60, it % 60) }
+        over -> "+" + clock(s - h.target)
+        else -> clock(h.target - s)
     }
     val tint = when { ready -> c.textSecondary; over -> c.gold; else -> c.teal }
     Column(
@@ -788,14 +846,20 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
 private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Unit, onRemove: () -> Unit, onSkip: () -> Unit) {
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary)
-            Spacer(Modifier.width(10.dp))
-            Text("%d:%02d".format(secondsLeft / 60, secondsLeft % 60), style = MaterialTheme.typography.titleLarge, color = c.blue, modifier = Modifier.weight(1f))
-            TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary) }
-            TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary) }
-            TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal) }
+        // At large text sizes the three buttons drop to their own line, so the time never wraps digit by digit.
+        val big = com.forgequest.app.ui.components.isLargeText()
+        val buttons: @Composable () -> Unit = {
+            TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary, maxLines = 1) }
+            TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary, maxLines = 1) }
+            TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal, maxLines = 1) }
         }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
+            Spacer(Modifier.width(10.dp))
+            Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge, color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+            if (!big) buttons()
+        }
+        if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }
         if (next != null) Text(stringResource(R.string.live_next, next), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(8.dp))
         ProgressLine(if (total == 0) 0f else secondsLeft / total.toFloat(), c.blue, c.blueTrack, height = 4.dp)
@@ -831,6 +895,13 @@ private fun WorkoutCompleteScreen(
             com.forgequest.app.ui.components.StatColumn("${sum.doneSets}", stringResource(R.string.live_sets), c.teal, Modifier.weight(1f))
             com.forgequest.app.ui.components.StatColumn(stringResource(R.string.hist_minutes, sum.minutes), stringResource(R.string.profile_time), c.blue, Modifier.weight(1f))
             com.forgequest.app.ui.components.StatColumn("⁦+${sum.xpGained}⁩", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
+        }
+        sum.clippedEndAt?.let { end ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.live_ended_at_last_set, java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(end - com.forgequest.app.domain.WorkoutEnd.GRACE_MS))),
+                style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center,
+            )
         }
         Spacer(Modifier.height(24.dp))
         FitCard {
@@ -898,10 +969,10 @@ private fun WorkoutCompleteScreen(
                 }
             }
         }
-        AnimatedVisibility(debrief != null || debriefLoading || debriefFailed) {
+        AnimatedVisibility(sum.score != null || debrief != null || debriefLoading || debriefFailed) {
             Column {
                 Spacer(Modifier.height(12.dp))
-                DebriefCard(debrief, failed = debriefFailed && !debriefLoading, onRetry = onRetryDebrief)
+                DebriefCard(debrief, sum.score, failed = debriefFailed && !debriefLoading, waiting = debriefLoading, onRetry = onRetryDebrief)
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -909,26 +980,49 @@ private fun WorkoutCompleteScreen(
     }
 }
 
+/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. */
+@Composable
+fun scoreReasons(r: WorkoutScore.Result): String {
+    val sets = when {
+        r.plannedSets == null -> pluralStringResource(R.plurals.hist_sets, r.doneSets, r.doneSets)
+        r.doneSets >= r.plannedSets -> pluralStringResource(R.plurals.score_sets_all, r.doneSets, r.doneSets)
+        else -> stringResource(R.string.score_sets_of, r.doneSets, r.plannedSets)
+    }
+    val up = if (r.compared > 0) stringResource(R.string.score_up, r.up, r.compared) else null
+    val prs = if (r.prs > 0) pluralStringResource(R.plurals.score_prs, r.prs, r.prs) else null
+    val adjusted = if (r.rough) stringResource(R.string.score_adjusted) else null
+    return listOfNotNull(sets, up, prs, adjusted).joinToString(" · ")
+}
+
+/** N/10 only from 8 up is gold; 4 to 7 stay quiet. */
+@Composable
+private fun scoreColor(score: Int) = if (score >= 8) Fit.colors.gold else Fit.colors.textSecondary
+
 /**
- * The coach's take on the workout: score, what went well, one thing to watch, one tip. Null shows it loading, or with
- * [failed], that the coach couldn't write it and a Try again.
+ * The workout: the calculated score with its reasons at once, then the coach's words (one thing that went well, one to watch, one tip).
+ * A null [d] shows the wait while [waiting], or with [failed], that the coach couldn't write it and a Try again; with neither, only the score.
  */
 @Composable
-fun DebriefCard(d: WorkoutDebrief?, failed: Boolean = false, onRetry: () -> Unit = {}) {
+fun DebriefCard(d: WorkoutDebrief?, score: WorkoutScore.Result?, failed: Boolean = false, waiting: Boolean = false, onRetry: () -> Unit = {}) {
     val c = Fit.colors
+    val coachPart = d != null || failed || waiting
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-            if (d != null) Text(stringResource(R.string.debrief_score, d.score), style = MaterialTheme.typography.titleMedium, color = c.gold)
+            Text(stringResource(if (coachPart) R.string.debrief_title else R.string.score_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            if (score != null && score.showNumber) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = scoreColor(score.score))
         }
-        Spacer(Modifier.height(6.dp))
+        if (score != null && !score.showNumber) {
+            Text(stringResource(if (score.firstEver) R.string.score_first_ever else R.string.score_after_break), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 2.dp))
+        }
+        if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
+        if (coachPart) Spacer(Modifier.height(6.dp))
         if (d == null && failed) {
             Text(stringResource(R.string.debrief_failed), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 0.dp)) {
                 Text(stringResource(R.string.action_try_again), color = c.teal)
             }
         } else if (d == null) {
-            Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            if (waiting) Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         } else {
             Text(d.summary, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
             // Green for what went well, gold for what to watch, blue for next time.

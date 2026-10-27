@@ -49,7 +49,7 @@ export function SetRowView(p: SetRowProps) {
   )
   return (
     <div class="lw-setwrap">
-      <div class={`lw-set${set.done ? ' lw-set-done' : ''}`}
+      <div class={`lw-set${set.done ? ' lw-set-done' : ''}${set.done && set.isPr ? ' lw-set-pr' : ''}`}
         onPointerDown={() => { clear(); timer.current = window.setTimeout(() => setNoteOpen(true), 550) }}
         onPointerUp={clear} onPointerLeave={clear} onPointerCancel={clear}
         onContextMenu={(e) => { e.preventDefault(); setNoteOpen(true) }}>
@@ -90,6 +90,7 @@ export function SetRowView(p: SetRowProps) {
           {SET_EFFORTS.map((e) => (
             <Chip key={e} label={t(EFFORT_KEY[e])} selected={set.effort === e} accent={accentOf(e)} onClick={() => save({ effort: set.effort === e ? '' : e })} />
           ))}
+          {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}
         </div>
       )}
       <NoteSheet open={noteOpen} initial={set.note} onClose={() => setNoteOpen(false)} onSave={(v) => { save({ note: v.trim().slice(0, 120) }); setNoteOpen(false) }} />

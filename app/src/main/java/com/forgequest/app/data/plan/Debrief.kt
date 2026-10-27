@@ -12,20 +12,19 @@ import kotlinx.serialization.json.jsonObject
 /** The coach's short take on a finished workout, shown under the summary and kept with the session. */
 @Serializable
 data class WorkoutDebrief(
-    /** 4..10: a finished workout never scores below 4, showing up counts. */
-    val score: Int,
+    /** Only in debriefs saved before the score became calculated (WorkoutScore); never shown, never asked of the model. */
+    val score: Int? = null,
     val summary: String,
     val highlights: List<String> = emptyList(),
     val watch: List<String> = emptyList(),
     val nextTime: List<String> = emptyList(),
 ) {
     companion object {
-        const val MIN_SCORE = 4
         private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
         /**
          * Reads the model's JSON (bare or fenced, with chatter around it); null when it isn't usable. Forgiving about
-         * shape, since fast models drift: a score of "8" or "8/10", and a single string where a list was asked for.
+         * shape, since fast models drift: a single string where a list was asked for. A "score" in the reply is ignored.
          */
         fun parse(text: String): WorkoutDebrief? {
             val start = text.indexOf('{')
@@ -34,9 +33,7 @@ data class WorkoutDebrief(
             val obj = runCatching { json.parseToJsonElement(text.substring(start, end + 1)).jsonObject }.getOrNull() ?: return null
             val summary = obj.text("summary")?.trim().orEmpty()
             if (summary.isBlank()) return null
-            val score = obj.text("score")?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() } ?: return null
             return WorkoutDebrief(
-                score = score.coerceIn(MIN_SCORE, 10),
                 summary = summary.take(240),
                 highlights = obj.list("highlights").take(2),
                 watch = obj.list("watch").take(1),

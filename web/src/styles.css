@@ -293,6 +293,14 @@ img.step-glyph { border-radius: 5px; }
 .muted { color: var(--text-2); margin: 0; }
 .page label { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 420px; }
 
+/* Pushed screens slide in from the end edge; rows fade up when they are inserted. */
+:root { --dir: 1; }
+:root[dir="rtl"] { --dir: -1; }
+@keyframes fq-push { from { opacity: 0; transform: translateX(calc(28px * var(--dir))); } to { opacity: 1; transform: none; } }
+@keyframes fq-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.scroll-push { animation: fq-push 280ms ease-out; }
+.food-row, .kit-swipe, .wk-item { animation: fq-in 200ms ease-out; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }

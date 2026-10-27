@@ -151,6 +151,9 @@ object Readiness {
         return (100 / (1 + exp(-(1.4 * z + 0.4)))).roundToInt().coerceIn(1, 99)
     }
 
+    /** Recovery calls for an easier day: ease off or recover (below 50). */
+    fun isLowRecovery(recovery: Int): Boolean = call(recovery).let { it == DayCall.EASE_OFF || it == DayCall.RECOVER }
+
     fun call(recovery: Int): DayCall = when {
         recovery >= 85 -> DayCall.PEAK
         recovery >= 67 -> DayCall.READY

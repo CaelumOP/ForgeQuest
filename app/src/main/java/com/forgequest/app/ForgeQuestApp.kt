@@ -46,9 +46,12 @@ class AppContainer(context: Context) {
     val haptics = Haptics(context)
     val notifier = Notifier(context)
 
-    /** Strings for view models and workers, in the app's language. */
-    fun str(@androidx.annotation.StringRes id: Int, vararg args: Any): String = appContext.getString(id, *args)
-    fun plural(@androidx.annotation.PluralsRes id: Int, count: Int, vararg args: Any): String = appContext.resources.getQuantityString(id, count, *args)
+    /**
+     * Strings for view models and workers, in the app's language. Wrapped on every call: the application context keeps the
+     * language the process started with, so after switching it in Profile, snackbars came out in the old one.
+     */
+    fun str(@androidx.annotation.StringRes id: Int, vararg args: Any): String = AppLocale.wrap(appContext).getString(id, *args)
+    fun plural(@androidx.annotation.PluralsRes id: Int, count: Int, vararg args: Any): String = AppLocale.wrap(appContext).resources.getQuantityString(id, count, *args)
 }
 
 class ForgeQuestApp : Application() {

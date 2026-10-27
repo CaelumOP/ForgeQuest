@@ -11,7 +11,7 @@ import { todayEpochDay } from '../domain/dates';
 import type { SetEntity } from '../domain/entities';
 import type { Muscle } from '../domain/muscle';
 import {
-  computeRecovery, computeStreak, fullTarget, levelFor, parseDayTag, sessionHits, totalXp, weeksToLock,
+  computeRecovery, computeStreak, dayTagMap, fullTarget, levelFor, sessionHits, totalXp, weeksToLock,
   type DayTag, type LevelInfo, type MuscleRecovery, type WeeklyStreak,
 } from '../domain/progress';
 
@@ -61,8 +61,7 @@ export async function getProgressSnapshot(now = Date.now(), save = true): Promis
 
   const workoutDays = new Set(sessions.map((s) => s.epochDay));
   const start = Math.min(workoutDays.size ? Math.min(...workoutDays) : today, today);
-  const dayTags = new Map<number, DayTag>();
-  for (const n of dayNotes) { const t = parseDayTag(n.tag); if (t) dayTags.set(n.epochDay, t); }
+  const dayTags = dayTagMap(dayNotes);
   const planned = plan ? trainingDays(plan) : new Set<number>();
 
   // Lock each finished week's target the first time it is seen.
@@ -147,7 +146,6 @@ export async function logWeight(kg: number): Promise<void> {
   await putWeight({ epochDay: todayEpochDay(), kg: Math.trunc(kg * 10) / 10, loggedAt: Date.now() });
 }
 
-export const deleteWeight = (epochDay: number): Promise<void> => db.weights.delete(epochDay);
 
 /** Excuses `epochDay` (today or up to 3 days back); null `tag` takes the excuse away. */
 export async function setDayTag(epochDay: number, tag: DayTag | null): Promise<void> {

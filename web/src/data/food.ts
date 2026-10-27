@@ -119,7 +119,6 @@ export function totalsOf(meals: readonly MealRow[]): DayTotals {
 export async function dayTotals(epochDay = todayEpochDay()): Promise<DayTotals> {
   return totalsOf(await getMealsOn(epochDay));
 }
-export const useDayTotals = (epochDay = todayEpochDay()): DayTotals => useLive(() => dayTotals(epochDay), [epochDay], { kcal: 0, protein: 0, carbs: 0 });
 
 /** The latest of each one-off meal (quick log or scan) by name, newest first, max 8, for one-tap relogging. */
 export function recentOneOffsOf(meals: readonly MealRow[]): MealRow[] {

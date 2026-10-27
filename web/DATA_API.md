@@ -16,10 +16,10 @@ useLive<T>(query, deps, initial)
 - A few texts (rest day, quick workout, hold ceiling) are English constants here: map them to i18n keys in the screen.
 
 ## src/data/progress.ts
-getProgressSnapshot(now?) / useProgress(); evaluateBadges(); markBadgesSeen(); logWeight(kg); deleteWeight(epochDay); setDayTag(epochDay, tag | null); EXCUSE_BACK_DAYS
+getProgressSnapshot(now?) / useProgress(); evaluateBadges(); markBadgesSeen(); logWeight(kg); setDayTag(epochDay, tag | null); EXCUSE_BACK_DAYS
 
 ## src/data/food.ts
-getFoods() / useFoods(); getMealsOn(day) / useMealsOn(day); saveFood(row); deleteFood(id); deleteMeal(id); restoreMeal(meal); logFoods([[food, qty]], day?); logOnce(name, cat, kcal, protein, day?, carbs?); categoryForNow(hour?); totalsOf(meals); dayTotals(day?) / useDayTotals(day?)
+getFoods() / useFoods(); getMealsOn(day) / useMealsOn(day); saveFood(row); deleteFood(id); deleteMeal(id); restoreMeal(meal); logFoods([[food, qty]], day?); logOnce(name, cat, kcal, protein, day?, carbs?); categoryForNow(hour?); totalsOf(meals); dayTotals(day?)
 
 ## src/ui/kit (import from '../kit')
 Card, SectionHeader, Button(variant filled|tonal|text, loading), IconButton(label), Chip, ChipGroup(single|multiple), ListRow(title, subtitle, icon, trailing, href|onClick), Stat(value, label, accent), EmptyState, Ring(value 0..1, color/track CSS var names, label), LineChart / BarChart(data {label, value}[], title), Sheet(open, onClose, title), Dialog(confirm), toast(msg), TextField, NumberField, Stepper, Markdown(text). Icons: src/ui/icons.tsx.

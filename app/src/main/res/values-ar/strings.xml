@@ -546,7 +546,6 @@
     <string name="profile_lock_on">يطلب بصمتك أو وجهك أو رمزك عند فتح التطبيق.</string>
     <string name="profile_lock_off">اطلب البصمة أو الوجه أو الرمز عند فتح التطبيق.</string>
     <string name="profile_exercise_library">مكتبة التمارين</string>
-    <string name="profile_exercise_library_hint">أعد تسمية التمارين التي أنشأتها أنت أو المدرب، أو ادمجها، أو احذفها</string>
     <string name="profile_hand_size">مقاس اليد (اختياري)</string>
     <string name="profile_hand_value">الطول %1$s سم · الكف %2$s سم</string>
     <string name="profile_hand_hint">يساعد على تقدير الكميات حين تظهر يدك في الصورة</string>
@@ -599,11 +598,6 @@
     <string name="onb_welcome_title">مرحبًا بك في ForgeQuest</string>
     <string name="onb_welcome_body">تمرّن، وتغذَّ جيدًا، وشاهد مستواك يرتفع. أولًا، بمَ نناديك؟</string>
     <string name="onb_your_name">اسمك</string>
-    <string name="onb_body_for_map">الجسم في خريطة العضلات</string>
-    <string name="onb_goals_title">جسمك وأهدافك</string>
-    <string name="onb_goals_body">نقترح أهدافًا بناءً على وزنك، ويمكنك تعديلها متى شئت من الملف الشخصي.</string>
-    <string name="onb_tap_number">اضغط على أي رقم لكتابته.</string>
-    <string name="onb_protein_hint">البروتين المقترح: نحو 1.8 غ لكل كيلوغرام من وزنك، وهو هدف شائع لبناء العضلات.</string>
     <string name="onb_plan_title">اختر خطة البداية</string>
     <string name="onb_plan_body">يمكنك تعديلها، أو طلب تغييرها من المدرب، أو استيراد خطتك لاحقًا.</string>
     <string name="onb_start_empty">البدء دون خطة</string>
@@ -625,7 +619,6 @@
     <string name="hist_empty_title">لا توجد تمارين بعد</string>
     <string name="hist_empty_body">تظهر التمارين المكتملة هنا. اضغط على أيٍّ منها لتعديل مجموعة أو حذفها.</string>
     <string name="hist_go_workouts">الانتقال إلى التمارين</string>
-    <string name="hist_month_pattern">MMMM yyyy</string>
     <plurals name="hist_sets">
         <item quantity="zero">0 مجموعات</item>
         <item quantity="one">مجموعة واحدة</item>
@@ -642,6 +635,7 @@
     <string name="stepper_reps">التكرارات</string>
     <string name="unit_reps">تكرار</string>
     <string name="stepper_weight">الوزن</string>
+    <string name="cd_drag_reorder">اسحب لإعادة الترتيب</string>
     <string name="cd_remove_set">حذف المجموعة</string>
     <string name="hist_no_sets">لا مجموعات</string>
     <string name="hist_no_sets_body">لم تبقَ مجموعات في هذا التمرين.</string>
@@ -707,10 +701,12 @@
     <string name="live_add_round">إضافة جولة</string>
     <string name="live_note_title">ملاحظة لهذه المجموعة</string>
     <string name="live_note_hint">كانت سهلة؛ زد الوزن في المرة القادمة</string>
+    <string name="live_add_note">إضافة ملاحظة</string>
     <string name="cd_set_done">اكتملت المجموعة</string>
     <string name="live_pr">رقم قياسي</string>
     <string name="live_rest">راحة</string>
     <string name="live_skip">تجاوز</string>
+    <string name="live_ended_at_last_set">انتهى التمرين عند آخر مجموعة لك، %1$s</string>
     <string name="live_complete">اكتمل التمرين</string>
     <string name="live_sets">مجموعات</string>
     <string name="live_xp">نقاط الخبرة</string>
@@ -788,13 +784,10 @@
     <string name="plan_your_plan">خطتك</string>
     <string name="plan_no_plan">دون خطة</string>
     <string name="plan_ready_made">التحوّل إلى خطة جاهزة</string>
-    <string name="plan_ready_made_hint">أساس Hemo، جسم كامل، دفع/سحب/أرجل</string>
     <string name="plan_previous">الخطط السابقة</string>
-    <string name="plan_previous_hint">عُد إلى خطة استخدمتها سابقًا؛ لا يضيع شيء عند تطبيق خطة جديدة.</string>
     <string name="plan_paste">لصق خطة</string>
     <string name="plan_paste_hint">من الملاحظات أو رسالة أو Google Doc، ويحوّلها الذكاء الاصطناعي إلى جدولك.</string>
     <string name="plan_import_docs">الاستيراد من Google Docs</string>
-    <string name="plan_import_docs_hint">يقرأ مستند «ForgeQuest plan» في Google Docs. فعّله من الملف الشخصي ← النسخ الاحتياطي والمزامنة ← Google Drive.</string>
     <string name="cd_move_day">النقل إلى يوم آخر</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="zero">تمرين دائري، 0 جولات</item>
@@ -860,7 +853,7 @@
     <string name="block_legs">الأرجل</string>
     <string name="live_rest_minus">−15 ث</string>
     <string name="live_rest_plus">+15 ث</string>
-    <string name="live_tick_all_finish">علّم الكل وأنهِ</string>
+    <string name="live_tick_all_finish">أنجزتها كلها: علّمها وأنهِ</string>
     <string name="live_last_time">المرة الماضية: %1$s</string>
     <string name="live_next_up">التالي: %1$s · %2$s</string>
     <string name="home_center_protein">غ بروتين</string>
@@ -924,11 +917,9 @@
     <string name="home_progress_card">هذا الشهر</string>
     <string name="home_progress_open">شاهد تقدّمك</string>
     <string name="profile_progress_title">التقدّم</string>
-    <string name="profile_progress_hint">الاتجاهات والأرقام القياسية والانتظام عبر الأشهر</string>
     <string name="profile_height">الطول</string>
     <string name="profile_age">العمر</string>
     <string name="unit_years">سنة</string>
-    <string name="goals_suggested">المقترح %1$s سعرة بناءً على وزنك وطولك وعمرك و%2$d أيام تدريب أسبوعيًا</string>
     <string name="goals_suggest_missing">حدّد طولك وعمرك في قسم «عنك» للحصول على السعرات المقترحة</string>
     <string name="goals_use">استخدام</string>
     <string name="profile_language">اللغة</string>
@@ -941,8 +932,6 @@
     <string name="groq_key_saved">حُفظ مفتاح Groq، وصار المدرب يردّ عبره.</string>
     <string name="groq_key_removed">حُذف مفتاح Groq</string>
     <string name="coach_answered_by">آخر رد: %1$s · %2$s ث</string>
-    <string name="plan_from_youtube">إنشاء خطة من يوتيوب بمساعدة Gemini</string>
-    <string name="plan_from_youtube_hint">ينسخ نصًا جاهزًا؛ الصقه في تطبيق Gemini مع روابط الفيديو، ثم الصق ملف JSON الناتج هنا.</string>
     <string name="plan_prompt_copied">نُسخ النص</string>
     <string name="onb_groq_hint">تريد ردودًا أسرع؟ أضف مفتاح Groq مجانيًا لاحقًا من الملف الشخصي.</string>
     <string name="hist_change_date">تغيير التاريخ</string>
@@ -955,12 +944,6 @@
     <string name="profile_track_carbs">تتبّع الكربوهيدرات</string>
     <string name="profile_daily_carbs">الكربوهيدرات اليومية</string>
     <string name="profile_carbs_suggested">المقترح %1$d غ: السعرات المتبقية بعد البروتين وحصة دهون %2$d%%</string>
-    <string name="settings_section_body">جسمك</string>
-    <string name="settings_section_goals">الأهداف</string>
-    <string name="settings_section_coach">المدرب والذكاء الاصطناعي</string>
-    <string name="settings_section_app">التطبيق</string>
-    <string name="settings_section_data">بياناتك</string>
-    <string name="settings_section_more">المزيد</string>
     <string name="profile_about_you">عنك</string>
     <string name="profile_about_you_hint">يحدد السعرات المقترحة وشكل الجسم في خريطة العضلات</string>
     <string name="profile_daily_targets">الأهداف اليومية</string>
@@ -1112,7 +1095,6 @@
     <string name="update_downloading">جارٍ تنزيل التحديث…</string>
     <string name="update_banner_title">يتوفّر تحديث جديد!</string>
     <string name="update_critical_title">تحديث مهم</string>
-    <string name="update_critical_hint">يُصلح هذا التحديث مشكلةً مهمة، فيُرجى تثبيته في أقرب وقت.</string>
     <string name="update_progress">جارٍ التنزيل… %1$d%%</string>
     <string name="update_download_failed">لم يكتمل التنزيل. تحقّق من اتصالك ثم اضغط على «تحديث» مجددًا.</string>
     <string name="whats_new_title">الجديد في الإصدار %1$s</string>
@@ -1193,11 +1175,32 @@
     <string name="coach_stale_apply">طبّقها على أي حال</string>
     <string name="debrief_title">ملخص المدرب</string>
     <string name="debrief_score">%1$d/10</string>
+    <string name="score_first_ever">أنهيتَ أولى تمارينك، وهذه أصعب خطوة.</string>
+    <string name="score_after_break">عدتَ إلى التمرين، وهذا هو المهم.</string>
+    <string name="score_adjusted">مُعدَّل بحسب التعافي</string>
+    <string name="score_title">تقييم التمرين</string>
     <string name="debrief_loading">يراجع مدربك هذا التمرين…</string>
     <string name="debrief_next_time">في المرة القادمة: %1$s</string>
-    <string name="debrief_journal">المدرب %1$d/10: %2$s</string>
+    <plurals name="score_sets_all">
+        <item quantity="zero">كل المجموعات (%1$d)</item>
+        <item quantity="one">المجموعة الوحيدة</item>
+        <item quantity="two">المجموعتان كلتاهما</item>
+        <item quantity="few">كل المجموعات (%1$d)</item>
+        <item quantity="many">كل المجموعات (%1$d)</item>
+        <item quantity="other">كل المجموعات (%1$d)</item>
+    </plurals>
+    <string name="score_sets_of">المجموعات: %1$d من %2$d</string>
+    <string name="score_up">تحسّن في %1$d من %2$d</string>
+    <plurals name="score_prs">
+        <item quantity="zero">0 رقم قياسي</item>
+        <item quantity="one">رقم قياسي واحد</item>
+        <item quantity="two">رقمان قياسيان</item>
+        <item quantity="few">%1$d أرقام قياسية</item>
+        <item quantity="many">%1$d رقمًا قياسيًا</item>
+        <item quantity="other">%1$d رقم قياسي</item>
+    </plurals>
     <string name="debrief_setting">ملخص ما بعد التمرين</string>
-    <string name="debrief_setting_hint">مراجعة قصيرة بالذكاء الاصطناعي مع تقييم ونصيحة بعد كل تمرين</string>
+    <string name="debrief_setting_hint">مراجعة قصيرة بالذكاء الاصطناعي ونصيحة بعد كل تمرين</string>
     <string name="debrief_failed">تعذّر على مدربك كتابة هذا الملخص. تحقّق من اتصالك ثم أعد المحاولة.</string>
     <string name="debrief_open">ملخص المدرب</string>
     <string name="debrief_no_key">أضف مفتاح Gemini أو Groq المجاني من الملف الشخصي لتحصل على ملخصات المدرب.</string>
@@ -1424,4 +1427,30 @@
     <string name="harder_switch">بدّل</string>
     <string name="harder_switched">أصبح %1$s في خطتك</string>
     <string name="update_not_ready">ما زال هذا التحديث قيد النشر. حاول مرة أخرى بعد دقائق.</string>
+    <string name="onb_days_title">كم يومًا في الأسبوع يمكنك التمرّن؟</string>
+    <string name="onb_days_hint">هذا هو هدف سلسلتك الأسبوعية، ويمكنك تغييره في أي وقت من الملف الشخصي.</string>
+    <plurals name="onb_plan_days">
+        <item quantity="zero">%d أيام في الأسبوع</item>
+        <item quantity="one">يوم واحد في الأسبوع</item>
+        <item quantity="two">يومان في الأسبوع</item>
+        <item quantity="few">%d أيام في الأسبوع</item>
+        <item quantity="many">%d يومًا في الأسبوع</item>
+        <item quantity="other">%d يوم في الأسبوع</item>
+    </plurals>
+    <string name="onb_finish">إنهاء الإعداد</string>
+    <string name="food_setup_title">اضبط أهدافك الغذائية · دقيقة واحدة</string>
+    <string name="food_setup_body">أضف وزنك وطولك وعمرك لتحصل على أهداف سعرات وبروتين تناسبك.</string>
+    <plurals name="target_nudge_body">
+        <item quantity="zero">تمرّنت مؤخرًا %1$d مرات في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+        <item quantity="one">تمرّنت مؤخرًا مرة واحدة في الأسبوع. هل تجعلها هدفك الأسبوعي؟</item>
+        <item quantity="two">تمرّنت مؤخرًا مرتين في الأسبوع. هل تجعلهما هدفك الأسبوعي؟</item>
+        <item quantity="few">تمرّنت مؤخرًا %1$d مرات في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+        <item quantity="many">تمرّنت مؤخرًا %1$d مرة في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+        <item quantity="other">تمرّنت مؤخرًا %1$d مرة في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+    </plurals>
+    <string name="target_nudge_make">اجعله %1$d</string>
+    <string name="target_nudge_keep">أبقِ على %1$d</string>
+    <string name="ai_key_needed_coach">مفتاح Gemini المجاني يشغّل مدربك الذكي.</string>
+    <string name="ai_key_needed_food">مفتاح Gemini المجاني يشغّل ماسح الوجبات.</string>
+    <string name="ai_key_needed_button">أضف مفتاحًا مجانيًا</string>
 </resources>
