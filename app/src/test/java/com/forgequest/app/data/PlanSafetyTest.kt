@@ -92,10 +92,7 @@ class DebriefTest {
     @Test
     fun parsesFencedJsonAndIgnoresAnyScore() {
         val d = com.forgequest.app.data.plan.WorkoutDebrief.parse(
-            "Sure!
-```json
-{\"score\": 2, \"summary\": \"Solid work.\", \"highlights\": [\"PR on dips\", \"all sets done\", \"extra\"], \"watch\": [\"knee note\"], \"nextTime\": [\"add 1 rep\"]}
-```",
+            "Sure!\n```json\n{\"score\": 2, \"summary\": \"Solid work.\", \"highlights\": [\"PR on dips\", \"all sets done\", \"extra\"], \"watch\": [\"knee note\"], \"nextTime\": [\"add 1 rep\"]}\n```",
         )!!
         assertNull(d.score)
         assertEquals(2, d.highlights.size)
