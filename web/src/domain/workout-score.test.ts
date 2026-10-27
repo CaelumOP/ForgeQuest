@@ -100,6 +100,16 @@ describe('scoresForSessions', () => {
     expect(r.get(1)).toMatchObject({ score: 8, firstEver: true, afterBreak: false, showNumber: false })
     expect(r.get(2)).toMatchObject({ score: 9, firstEver: false, showNumber: true })
   })
+  it('only: scores just that workout, the same as the full run', () => {
+    const sessions = [sess(1, 100), sess(2, 102), sess(3, 102), sess(4, 105)]
+    const sets = [row(1, 8), row(2, 10), row(3, 6), row(4, 12)]
+    const full = scoresForSessions(sessions, sets, kinds, new Map([[7, 1]]), new Set())
+    for (const id of [1, 2, 3, 4]) {
+      const one = scoresForSessions(sessions, sets, kinds, new Map([[7, 1]]), new Set(), new Map(), new Set(), id)
+      expect([...one.keys()]).toEqual([id])
+      expect(one.get(id)).toEqual(full.get(id))
+    }
+  })
   it('a saved plannedSets wins over the plan as it is now (TC-6.4)', () => {
     const done = (id: number) => Array.from({ length: 9 }, () => row(id, 8))
     const sessions = [sess(1, 100, { plannedSets: 9 }), sess(2, 102, { plannedSets: 9 }), sess(3, 104)]

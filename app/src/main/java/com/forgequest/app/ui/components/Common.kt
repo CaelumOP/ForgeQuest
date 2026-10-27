@@ -217,7 +217,7 @@ fun SegmentedTabs(
     val c = Fit.colors
     val tall = subs.isNotEmpty() || wrap
     // At large text sizes five equal slices can't hold their labels, so the row scrolls sideways with each label whole.
-    val scrolling = !tall && options.size >= 4 && androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+    val scrolling = !tall && options.size >= 4 && isLargeText()
     // Tall segments share one height, so a one-line option is as tall as a wrapped one.
     Row(
         modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh)
@@ -542,4 +542,21 @@ fun EmptyState(icon: ImageVector, title: String, body: String, modifier: Modifie
         Spacer(Modifier.height(16.dp))
         action()
     }
+}
+
+/** The text size (as a multiple of the system default) above which tight layouts switch to their large-text form. */
+const val LARGE_TEXT = 1.3f
+
+/** True when the person's text size is above [LARGE_TEXT]. */
+@Composable
+fun isLargeText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale > LARGE_TEXT
+
+/** Shows [content] with the text size stopping at [max], for rows whose labels share a fixed width. */
+@Composable
+fun CappedFontScale(max: Float = LARGE_TEXT, content: @Composable () -> Unit) {
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, d.fontScale.coerceAtMost(max)),
+        content = content,
+    )
 }

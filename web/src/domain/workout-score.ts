@@ -94,17 +94,19 @@ type ScoreSet = Done & Pick<SetEntity, 'sessionId' | 'exerciseId'>
  * The score of every workout with done sets, in one pass over data already loaded. A workout's saved `plannedSets` wins;
  * `plannedByDay` (each plan day's work sets as the plan is now) is the fallback for older workouts. `lowReadinessDays` are
  * the epoch days with recovery under 50; `dayTags` and `trainingDays` feed the Welcome back rule behind `afterBreak`.
+ * With `only` set, just that workout is scored (history still comes from all of them).
  */
 export function scoresForSessions(
   sessions: ScoreSession[], doneSets: ScoreSet[], kinds: Map<string, ExerciseKind>,
   plannedByDay: Map<number, number>, lowReadinessDays: Set<number>,
   dayTags: ReadonlyMap<number, DayTag> = new Map(), trainingDays: ReadonlySet<number> = new Set(),
+  only?: number,
 ): Map<number, WorkoutScoreResult> {
   const bySession = new Map<number, ScoreSet[]>()
   for (const s of doneSets) bySession.set(s.sessionId, [...(bySession.get(s.sessionId) ?? []), s])
   const byId = new Map(sessions.map((s) => [s.id!, s]))
-  const before = (o: ScoreSession, s: ScoreSession) =>
-    o.id !== s.id && (o.epochDay < s.epochDay || (o.epochDay === s.epochDay && o.startedAt < s.startedAt))
+  // Strictly earlier: equal (day, start) keys never count as before each other.
+  const earlier = (o: ScoreSession, s: ScoreSession) => o.epochDay < s.epochDay || (o.epochDay === s.epochDay && o.startedAt < s.startedAt)
   const order = (a: ScoreSession, b: ScoreSession) => a.epochDay - b.epochDay || a.startedAt - b.startedAt
   // Per exercise, its workouts oldest first, so "last time" is the nearest one before.
   const history = new Map<string, { session: ScoreSession; sets: ScoreSet[] }[]>()
@@ -118,19 +120,47 @@ export function scoresForSessions(
   for (const l of history.values()) l.sort((a, b) => order(a.session, b.session))
   const firstWithSets = sessions.filter((s) => bySession.get(s.id!)?.length).sort(order)[0]?.id
   const start = sessions.length ? Math.min(...sessions.map((s) => s.epochDay)) : null
-  const out = new Map<number, WorkoutScoreResult>()
-  for (const s of sessions) {
+  const scoreOf = (s: ScoreSession, earlierDays: ReadonlySet<number>, lastOf: (exId: string) => ScoreSet[]): WorkoutScoreResult | null => {
     const mine = bySession.get(s.id!) ?? []
-    if (!mine.length) continue
-    const work: ScoreWork[] = [...new Set(mine.map((x) => x.exerciseId))].map((exId) => {
-      const earlier = (history.get(exId) ?? []).filter((h) => before(h.session, s))
-      return { exerciseId: exId, kind: kinds.get(exId) ?? 'REPS', done: mine.filter((x) => x.exerciseId === exId), last: earlier.at(-1)?.sets ?? [] }
-    })
+    if (!mine.length) return null
+    const work: ScoreWork[] = [...new Set(mine.map((x) => x.exerciseId))].map((exId) => (
+      { exerciseId: exId, kind: kinds.get(exId) ?? 'REPS', done: mine.filter((x) => x.exerciseId === exId), last: lastOf(exId) }
+    ))
     // The workout days known when this one started, as the Welcome back card saw them then.
-    const earlierDays = new Set(sessions.filter((o) => before(o, s)).map((o) => o.epochDay))
     const afterBreak = welcomeBack(s.epochDay, earlierDays, dayTags, trainingDays, start ?? s.epochDay)
     const planned = s.plannedSets ?? (s.planDayId != null ? plannedByDay.get(s.planDayId) ?? null : null)
-    out.set(s.id!, computeWorkoutScore(work, planned, lowReadinessDays.has(s.epochDay), s.id === firstWithSets, afterBreak))
+    return computeWorkoutScore(work, planned, lowReadinessDays.has(s.epochDay), s.id === firstWithSets, afterBreak)
+  }
+  const out = new Map<number, WorkoutScoreResult>()
+  if (only !== undefined) {
+    const s = byId.get(only)
+    if (!s) return out
+    const days = new Set(sessions.filter((o) => earlier(o, s)).map((o) => o.epochDay))
+    const r = scoreOf(s, days, (exId) => (history.get(exId) ?? []).filter((h) => earlier(h.session, s)).at(-1)?.sets ?? [])
+    if (r) out.set(s.id!, r)
+    return out
+  }
+  // One walk in time order: the earlier workout days build up, and each exercise keeps a pointer into its history.
+  const ordered = [...sessions].sort((a, b) => order(a, b) || a.id! - b.id!)
+  const pointer = new Map<string, number>()
+  const earlierDays = new Set<number>()
+  let i = 0
+  while (i < ordered.length) {
+    let j = i
+    while (j < ordered.length && order(ordered[j], ordered[i]) === 0) j++
+    for (let k = i; k < j; k++) {
+      const s = ordered[k]
+      const r = scoreOf(s, earlierDays, (exId) => {
+        const l = history.get(exId) ?? []
+        let p = pointer.get(exId) ?? 0
+        while (p < l.length && earlier(l[p].session, s)) p++
+        pointer.set(exId, p)
+        return p === 0 ? [] : l[p - 1].sets
+      })
+      if (r) out.set(s.id!, r)
+    }
+    for (let k = i; k < j; k++) earlierDays.add(ordered[k].epochDay)
+    i = j
   }
   return out
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import type { SetRow } from '../../data/db'
-import { getSession, useWorkoutScores } from '../../data/workouts'
+import { getSession, useWorkoutScore } from '../../data/workouts'
 import { useSettings, weightUnit } from '../../data/settings'
 import { deleteFinishedSet, deleteSession, moveSession, updateFinishedSet, useLibrary, useSession, useSets } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
@@ -58,7 +58,7 @@ export function SessionScreen({ param }: { param?: string }) {
   const session = useSession(id)
   const sets = useSets(id)
   const library = useLibrary()
-  const scores = useWorkoutScores()
+  const score = useWorkoutScore(id)
   const [missing, setMissing] = useState(false)
   const [menu, setMenu] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -84,7 +84,6 @@ export function SessionScreen({ param }: { param?: string }) {
   for (const s of sets) groupMap.set(s.itemPosition, [...(groupMap.get(s.itemPosition) ?? []), s])
   const groups = [...groupMap.entries()].sort((a, b) => a[0] - b[0]).map(([, g]) => g.sort((a, b) => a.setIndex - b.setIndex))
   const debrief = decodeDebrief(session.debrief)
-  const score = scores.get(session.id!)
   const today = todayEpochDay()
 
   return (

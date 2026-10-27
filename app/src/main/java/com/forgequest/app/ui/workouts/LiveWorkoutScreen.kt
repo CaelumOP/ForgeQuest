@@ -149,6 +149,9 @@ private fun group(sets: List<SetEntity>): List<Group> {
     return result
 }
 
+/** How much larger than the app text size the live pager cards read. */
+private const val LIVE_TEXT_BOOST = 1.15f
+
 @Composable
 fun LiveWorkoutScreen(nav: NavHostController) {
     val vm = appViewModel { LiveWorkoutViewModel(it) }
@@ -255,10 +258,11 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
                 val density = androidx.compose.ui.platform.LocalDensity.current
+                // The pager cards are the live screen's focus, so their text runs 15 % larger than the app's.
                 androidx.compose.foundation.pager.HorizontalPager(
                     pager, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp, key = { groups[it].key },
                 ) { i ->
-                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * 1.15f)) {
+                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * LIVE_TEXT_BOOST)) {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = bottomPad)) { cardFor(groups[i], true) }
                     }
                 }
@@ -840,7 +844,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
         // At large text sizes the three buttons drop to their own line, so the time never wraps digit by digit.
-        val big = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+        val big = com.forgequest.app.ui.components.isLargeText()
         val buttons: @Composable () -> Unit = {
             TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary, maxLines = 1) }
             TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary, maxLines = 1) }

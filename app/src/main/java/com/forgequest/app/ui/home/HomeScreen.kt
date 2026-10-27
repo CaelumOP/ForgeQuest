@@ -185,7 +185,7 @@ fun HomeScreen(nav: NavHostController) {
             },
             // A red or low-yellow Fitbit morning offers a lighter session or a rest day, one tap each.
             lowRecovery = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day
-                ?.takeIf { it.hasData && it.epochDay == Dates.today() && it.call in setOf(com.forgequest.app.domain.DayCall.EASE_OFF, com.forgequest.app.domain.DayCall.RECOVER) }
+                ?.takeIf { it.hasData && it.epochDay == Dates.today() && com.forgequest.app.domain.Readiness.isLowRecovery(it.recovery) }
                 ?.recovery,
             onStartLighter = {
                 scope.launch {
@@ -596,7 +596,7 @@ private fun TodayCard(
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
     val noPlan = day == null
-    val big = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+    val big = com.forgequest.app.ui.components.isLargeText()
     val action: @Composable () -> Unit = {
         when {
             hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)

@@ -43,8 +43,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.annotation.StringRes
@@ -173,8 +171,7 @@ private fun MainScaffold() {
                                 icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
                                 // Five tabs share the width, so their labels stop growing past 1.3x text size.
                                 label = {
-                                    val d = LocalDensity.current
-                                    CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale.coerceAtMost(1.3f))) {
+                                    com.forgequest.app.ui.components.CappedFontScale {
                                         Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium)
                                     }
                                 },

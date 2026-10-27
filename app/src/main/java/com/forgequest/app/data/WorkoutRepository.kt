@@ -16,7 +16,6 @@ import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.DayCall
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
@@ -372,13 +371,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     /** Today's Fitbit recovery says ease off or recover (below 50); no data means train as normal. */
     private suspend fun lowReadinessToday(): Boolean {
         val day = db.readiness().get(Dates.today()) ?: return false
-        return Readiness.call(day.recovery).let { it == DayCall.EASE_OFF || it == DayCall.RECOVER }
+        return Readiness.isLowRecovery(day.recovery)
     }
 
     /** The calculated score of every finished workout in [snap], from data already loaded plus two small queries (plan items, recovery). */
     suspend fun scores(snap: ProgressSnapshot): Map<Long, WorkoutScore.Result> {
         val planned = plans.allItems().groupBy { it.dayId }.mapValues { (_, items) -> plannedSetsOf(items) }
-        val rough = db.readiness().all().filter { Readiness.call(it.recovery).let { c -> c == DayCall.EASE_OFF || c == DayCall.RECOVER } }.map { it.epochDay }.toSet()
+        val rough = db.readiness().all().filter { Readiness.isLowRecovery(it.recovery) }.map { it.epochDay }.toSet()
         return WorkoutScore.forSessions(
             snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough,
             snap.dayTags, snap.plan?.trainingDays ?: emptySet(),

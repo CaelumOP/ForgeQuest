@@ -14,7 +14,7 @@ import { effortOf } from '../domain/effort';
 import { endTime, lastDoneAt } from '../domain/workout-end';
 import { translatePlanItem } from '../domain/exercise-swap-engine';
 import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
-import { parseDayTag, personalRecords, recordScore, totalXp, type DayTag } from '../domain/progress';
+import { dayTagMap, personalRecords, recordScore, totalXp } from '../domain/progress';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
 import { nextPrefill, type PastSet } from '../domain/progression';
 import { isWarmUp, scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
@@ -489,21 +489,23 @@ export async function allDoneSets(): Promise<SetRow[]> {
 const plannedSetsOf = (items: PlanItemRow[]): number => items.reduce((n, i) => n + (isWarmUp(i.block) ? 0 : i.sets), 0);
 
 /** The calculated score of every finished workout (domain/workout-score.ts): a few small reads, never one query per row. */
-export async function allWorkoutScores(): Promise<Map<number, WorkoutScoreResult>> {
+export async function allWorkoutScores(only?: number): Promise<Map<number, WorkoutScoreResult>> {
   const [sessions, doneSets, items, readiness, library, notes, plan] = await Promise.all([
     finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(),
     db.dayNotes.toArray(), getActivePlan(),
   ]);
-  const planned = new Map<number, number>();
-  for (const i of items) if (!isWarmUp(i.block)) planned.set(i.dayId, (planned.get(i.dayId) ?? 0) + i.sets);
+  const byDay = new Map<number, PlanItemRow[]>();
+  for (const i of items) byDay.set(i.dayId, [...(byDay.get(i.dayId) ?? []), i]);
+  const planned = new Map([...byDay].map(([dayId, l]) => [dayId, plannedSetsOf(l)]));
   // Ease off (34-49) and recover (below 34): Android Readiness.call is under 50.
   const rough = new Set(readiness.filter((r) => r.recovery < 50).map((r) => r.epochDay));
-  const tags = new Map<number, DayTag>();
-  for (const n of notes) { const t = parseDayTag(n.tag); if (t) tags.set(n.epochDay, t); }
   return scoresForSessions(
-    sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, rough, tags, plan ? trainingDays(plan) : new Set(),
+    sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, rough, dayTagMap(notes), plan ? trainingDays(plan) : new Set(), only,
   );
 }
+/** The score of one workout: only that one is calculated, from the same history. */
+export const useWorkoutScore = (id: number): WorkoutScoreResult | undefined =>
+  useLive(() => allWorkoutScores(id), [id], new Map<number, WorkoutScoreResult>()).get(id);
 export const useWorkoutScores = (): Map<number, WorkoutScoreResult> => useLive(allWorkoutScores, [], new Map());
 
 /** Edits a set of a finished workout and re-checks which sets of that exercise are records. */

@@ -218,8 +218,7 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
     val dayRestCd = stringResource(R.string.day_cd_rest)
     val dayTrainingCd = stringResource(R.string.day_cd_training)
     // Seven chips share the width, so the day names stop growing at 1.3x text (like the bottom bar) instead of turning into "الث…".
-    val d = androidx.compose.ui.platform.LocalDensity.current
-    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, d.fontScale.coerceAtMost(1.3f))) {
+    com.forgequest.app.ui.components.CappedFontScale {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         (1..7).forEach { dow ->
             val isSel = dow == selected

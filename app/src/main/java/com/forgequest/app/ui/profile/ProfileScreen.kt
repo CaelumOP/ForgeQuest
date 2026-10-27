@@ -1683,7 +1683,7 @@ private fun SettingsGroup(
 @Composable
 private fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     // At large text sizes the icon sits above the title, so a long word is never broken in the middle.
-    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+    val stacked = com.forgequest.app.ui.components.isLargeText()
     FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
         if (stacked) {
             IconCircle(icon, tint, track, size = 40.dp)

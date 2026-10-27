@@ -111,7 +111,7 @@ object WorkoutScore {
      * The score of every finished workout with done sets, in one pass over data already loaded. A workout's saved
      * [SessionEntity.plannedSets] wins; [plannedByDay] (each plan day's work sets as the plan is now) is the fallback for
      * older workouts. [lowReadinessDays] are the epoch days with recovery under 50; [dayTags] and [trainingDays] feed the
-     * Welcome back rule behind [Result.afterBreak].
+     * Welcome back rule behind [Result.afterBreak]. With [only] set, just that workout is scored (history still comes from all).
      */
     fun forSessions(
         sessions: List<SessionEntity>,
@@ -121,11 +121,12 @@ object WorkoutScore {
         lowReadinessDays: Set<Long>,
         dayTags: Map<Long, DayTag> = emptyMap(),
         trainingDays: Set<Int> = emptySet(),
+        only: Long? = null,
     ): Map<Long, Result> {
         val bySession = doneSets.groupBy { it.sessionId }
         val byId = sessions.associateBy { it.id }
-        fun before(o: SessionEntity, s: SessionEntity) =
-            o.id != s.id && (o.epochDay < s.epochDay || (o.epochDay == s.epochDay && o.startedAt < s.startedAt))
+        // Strictly earlier: equal (day, start) keys never count as before each other.
+        fun earlier(o: SessionEntity, s: SessionEntity) = o.epochDay < s.epochDay || (o.epochDay == s.epochDay && o.startedAt < s.startedAt)
         // Per exercise, its workouts oldest first, so "last time" is the nearest one before.
         val history: Map<String, List<Pair<SessionEntity, List<SetEntity>>>> = doneSets.groupBy { it.exerciseId }.mapValues { (_, sets) ->
             sets.groupBy { it.sessionId }.mapNotNull { (id, l) -> byId[id]?.let { it to l } }
@@ -134,18 +135,44 @@ object WorkoutScore {
         val firstWithSets = sessions.filter { bySession[it.id].orEmpty().isNotEmpty() }
             .minWithOrNull(compareBy({ it.epochDay }, { it.startedAt }))?.id
         val start = sessions.minOfOrNull { it.epochDay }
-        return sessions.mapNotNull { s ->
+        fun scoreOf(s: SessionEntity, earlierDays: Set<Long>, lastOf: (String) -> List<SetEntity>): Result? {
             val mine = bySession[s.id].orEmpty()
-            if (mine.isEmpty()) return@mapNotNull null
-            val work = mine.groupBy { it.exerciseId }.map { (id, done) ->
-                val last = history[id].orEmpty().lastOrNull { (o, _) -> before(o, s) }
-                Work(id, kinds[id] ?: ExerciseKind.REPS, done, last?.second.orEmpty())
-            }
+            if (mine.isEmpty()) return null
+            val work = mine.groupBy { it.exerciseId }.map { (id, done) -> Work(id, kinds[id] ?: ExerciseKind.REPS, done, lastOf(id)) }
             // The workout days known when this one started, as the Welcome back card saw them then.
-            val earlierDays = sessions.filter { before(it, s) }.map { it.epochDay }.toSet()
             val afterBreak = Nudges.welcomeBack(s.epochDay, earlierDays, dayTags, trainingDays, start ?: s.epochDay)
             val planned = s.plannedSets ?: s.planDayId?.let { plannedByDay[it] }
-            s.id to compute(work, planned, s.epochDay in lowReadinessDays, firstEver = s.id == firstWithSets, afterBreak = afterBreak)
-        }.toMap()
+            return compute(work, planned, s.epochDay in lowReadinessDays, firstEver = s.id == firstWithSets, afterBreak = afterBreak)
+        }
+        if (only != null) {
+            val s = byId[only] ?: return emptyMap()
+            val days = sessions.filter { earlier(it, s) }.map { it.epochDay }.toSet()
+            val r = scoreOf(s, days) { id -> history[id].orEmpty().lastOrNull { (o, _) -> earlier(o, s) }?.second.orEmpty() }
+            return if (r == null) emptyMap() else mapOf(s.id to r)
+        }
+        // One walk in time order: the earlier workout days build up, and each exercise keeps a pointer into its history.
+        val ordered = sessions.sortedWith(compareBy({ it.epochDay }, { it.startedAt }, { it.id }))
+        val pointer = HashMap<String, Int>()
+        val earlierDays = HashSet<Long>()
+        val out = HashMap<Long, Result>()
+        var i = 0
+        while (i < ordered.size) {
+            var j = i
+            while (j < ordered.size && ordered[j].epochDay == ordered[i].epochDay && ordered[j].startedAt == ordered[i].startedAt) j++
+            for (k in i until j) {
+                val s = ordered[k]
+                val r = scoreOf(s, earlierDays) { id ->
+                    val l = history[id].orEmpty()
+                    var p = pointer[id] ?: 0
+                    while (p < l.size && earlier(l[p].first, s)) p++
+                    pointer[id] = p
+                    if (p == 0) emptyList() else l[p - 1].second
+                }
+                if (r != null) out[s.id] = r
+            }
+            for (k in i until j) earlierDays.add(ordered[k].epochDay)
+            i = j
+        }
+        return out
     }
 }

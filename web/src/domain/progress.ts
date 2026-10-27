@@ -20,6 +20,13 @@ export function parseDayTag(raw: string | null | undefined): DayTag | null {
   return DAY_TAGS.find((t) => t === raw) ?? null
 }
 
+/** Each day's tag (sick, injured...) from the day notes; notes without a known tag are left out. */
+export function dayTagMap(notes: { epochDay: number; tag: string | null }[]): Map<number, DayTag> {
+  const out = new Map<number, DayTag>()
+  for (const n of notes) { const t = parseDayTag(n.tag); if (t) out.set(n.epochDay, t) }
+  return out
+}
+
 export type WeeklyStreak = {
   /** Consecutive weeks (ending this week if hit, otherwise last week) where the target was reached. */
   weeks: number
