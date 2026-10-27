@@ -2,5 +2,5 @@
   "versionCode": 27,
   "versionName": "2.15.0",
   "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.15.0/ForgeQuest-v2.15.0.apk",
-  "notes": "• Workout score: now calculated from your sets, last time and PRs, with the reasons shown. Every journal workout has one, no AI key needed.\n• Coach debrief: the coach explains the score instead of guessing it.\n• Smoother app: lists animate, swipe to delete with Undo, drag to reorder plan exercises, larger-text fixes."
+  "notes": "• Workout score: calculated from your sets, last time and records, with the reasons shown. No AI key needed.\n• Quicker start: setup in 4 steps, a weekly target that matches the days you can train, and today's workout first on Home.\n• Live workout: one tap for warm-ups, a note button after Pain, and a workout left open ends at your last set.\n• Smoother app: animated lists, swipe to delete with Undo, drag to reorder plan exercises, and larger-text fixes.\n• Arabic: day names shown in full, and messages follow the app language."
 }
