@@ -7,7 +7,7 @@ import { buzzError } from '../live/feedback'
 import { decodeDebriefFull } from '../../data/coach'
 import { useSettings } from '../../data/settings'
 import { Button, Sheet } from '../kit'
-import { scoreReasons } from './helpers'
+import { scoreNote, scoreReasons, scoreTone } from './helpers'
 
 /** The journal's coach debrief for one workout: the saved one, or the coach writing it now, with Try again on failure. */
 export function DebriefSheet({ session, score, onClose }: { session: SessionRow; score?: WorkoutScoreResult; onClose: () => void }) {
@@ -38,8 +38,9 @@ export function DebriefSheet({ session, score, onClose }: { session: SessionRow;
           <div class="hs-deb-card">
             <div class="hs-deb-head">
               <span class="hs-deb-title">{t('score_title')}</span>
-              <span class="hs-deb-gold">{t('debrief_score', score.score)}</span>
+              {score.showNumber && <span class={`hs-deb-gold ${scoreTone(score.score)}`}>{t('debrief_score', score.score)}</span>}
             </div>
+            {scoreNote(score) && <p class="hs-deb-body hs-deb-note">{scoreNote(score)}</p>}
             <p class="hs-deb-body">{scoreReasons(score)}</p>
           </div>
         )}

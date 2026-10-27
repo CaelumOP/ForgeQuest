@@ -638,7 +638,7 @@
   "live_tag_max_note": "Max effort · RIR 0",
   "live_tag_solid": "Solid · RIR 1-2",
   "live_target": "Target {1} × {2}",
-  "live_tick_all_finish": "Tick all & finish",
+  "live_tick_all_finish": "I did them all: tick & finish",
   "live_xp": "XP",
   "lock_body": "Use your fingerprint, face or screen lock to continue.",
   "lock_prompt_subtitle": "Your training and food data stay private",
@@ -1124,6 +1124,9 @@
   "scan_step_find": "Finding the foods…",
   "scan_step_portions": "Estimating portions…",
   "scan_tap_name": "Tap the name to change it",
+  "score_adjusted": "Adjusted for recovery",
+  "score_after_break": "Back in. That's what counts.",
+  "score_first_ever": "First one done. That's the hardest part.",
   "score_prs": {
     "one": "{1} PR",
     "other": "{1} PRs"

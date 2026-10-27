@@ -401,6 +401,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 val before = app.progress.freshSnapshot().level
                 val result = repo.finishSession(s.id, tickAll = tickAll)
                 val badges = app.progress.evaluateBadges()
+                // The summary below shows them, so Home shouldn't announce them a second time.
+                if (badges.isNotEmpty()) app.progress.markBadgesSeen()
                 // Straight from the database, with this workout and its badges in, or the summary shows "+0 XP".
                 val snap = app.progress.freshSnapshot()
                 val after = snap.level

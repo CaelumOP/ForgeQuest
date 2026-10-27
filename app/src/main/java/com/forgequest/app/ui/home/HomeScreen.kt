@@ -157,11 +157,57 @@ fun HomeScreen(nav: NavHostController) {
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
 
+    val today = s.plan?.day(Dates.todayDayOfWeek())
+    // On a training day with the workout still to do (or one in progress), today's card leads the page.
+    val startOnTop = open != null || (today?.day?.isRest == false && !s.workoutDoneToday && !s.excusedToday)
+    val todayCard: @Composable () -> Unit = {
+        TodayCard(
+            day = today,
+            exerciseNames = today?.items?.mapNotNull { s.exercises[it.exerciseId]?.name }?.distinct().orEmpty(),
+            hasOpenSession = open != null,
+            doneToday = s.workoutDoneToday,
+            excused = s.excusedToday,
+            onCantTrain = { tagDay = Dates.today() },
+            onStart = {
+                scope.launch {
+                    vm.startToday(today?.takeIf { !it.day.isRest })
+                    nav.navigate(Routes.LIVE)
+                }
+            },
+            // A red or low-yellow Fitbit morning offers a lighter session or a rest day, one tap each.
+            lowRecovery = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day
+                ?.takeIf { it.hasData && it.epochDay == Dates.today() && it.call in setOf(com.forgequest.app.domain.DayCall.EASE_OFF, com.forgequest.app.domain.DayCall.RECOVER) }
+                ?.recovery,
+            onStartLighter = {
+                scope.launch {
+                    vm.startToday(today?.takeIf { !it.day.isRest }, lighter = true)
+                    nav.navigate(Routes.LIVE)
+                }
+            },
+            onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
+            // After training, the card leads to what was done; before, to the plan.
+            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
+            // A rest day can still be a training day: start the next planned workout.
+            onTrainAnyway = {
+                scope.launch {
+                    val next = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
+                        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() } }
+                    vm.startToday(next)
+                    nav.navigate(Routes.LIVE)
+                }
+            },
+        )
+    }
+
     Column(
         Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
     ) {
         Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(8.dp))
+        if (startOnTop) {
+            todayCard()
+            Spacer(Modifier.height(16.dp))
+        }
         updateBanner?.let { UpdateCard(it, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later) }
         whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
         NutritionRings(s)
@@ -207,43 +253,7 @@ fun HomeScreen(nav: NavHostController) {
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(12.dp))
 
-        val today = s.plan?.day(Dates.todayDayOfWeek())
-        TodayCard(
-            day = today,
-            exerciseNames = today?.items?.mapNotNull { s.exercises[it.exerciseId]?.name }?.distinct().orEmpty(),
-            hasOpenSession = open != null,
-            doneToday = s.workoutDoneToday,
-            excused = s.excusedToday,
-            onCantTrain = { tagDay = Dates.today() },
-            onStart = {
-                scope.launch {
-                    vm.startToday(today?.takeIf { !it.day.isRest })
-                    nav.navigate(Routes.LIVE)
-                }
-            },
-            // A red or low-yellow Fitbit morning offers a lighter session or a rest day, one tap each.
-            lowRecovery = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day
-                ?.takeIf { it.hasData && it.epochDay == Dates.today() && it.call in setOf(com.forgequest.app.domain.DayCall.EASE_OFF, com.forgequest.app.domain.DayCall.RECOVER) }
-                ?.recovery,
-            onStartLighter = {
-                scope.launch {
-                    vm.startToday(today?.takeIf { !it.day.isRest }, lighter = true)
-                    nav.navigate(Routes.LIVE)
-                }
-            },
-            onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
-            // After training, the card leads to what was done; before, to the plan.
-            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
-            // A rest day can still be a training day: start the next planned workout.
-            onTrainAnyway = {
-                scope.launch {
-                    val next = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
-                        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() } }
-                    vm.startToday(next)
-                    nav.navigate(Routes.LIVE)
-                }
-            },
-        )
+        if (!startOnTop) todayCard()
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.navigationBarsPadding())
     }

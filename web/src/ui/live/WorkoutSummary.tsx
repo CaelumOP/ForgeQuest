@@ -6,7 +6,7 @@ import { CalendarIcon, CheckIcon } from '../icons'
 import { TrophyIcon } from '../home/glyphs'
 import { dayName } from '../workouts/helpers'
 import type { WorkoutSummaryData } from './summary'
-import { scoreReasons } from '../history/helpers'
+import { scoreNote, scoreReasons, scoreTone } from '../history/helpers'
 
 const tr = (key: string, fallback: string) => { const v = t(key); return v === key ? fallback : v }
 const badgeTitle = (b: BadgeDef) => tr(`badge_${b.id}_title`, b.title)
@@ -35,8 +35,9 @@ export function WorkoutSummary({ sum, onDone, onView }: { sum: WorkoutSummaryDat
           <Card class="lws-card">
             <div class="lws-levelrow">
               <span class="lws-level">{t('score_title')}</span>
-              <span class="lws-score">{t('debrief_score', sum.score.score)}</span>
+              {sum.score.showNumber && <span class={`lws-score ${scoreTone(sum.score.score)}`}>{t('debrief_score', sum.score.score)}</span>}
             </div>
+            {scoreNote(sum.score) && <p class="lws-xpline lws-scorenote">{scoreNote(sum.score)}</p>}
             <p class="lws-xpline">{scoreReasons(sum.score)}</p>
           </Card>
         )}

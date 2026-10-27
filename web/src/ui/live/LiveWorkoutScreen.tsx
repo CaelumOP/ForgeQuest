@@ -22,7 +22,7 @@ import {
   adjustRest, holdElapsed, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
   type HoldTimer, type RestTimer,
 } from './timers'
-import { evaluateBadges, getProgressSnapshot } from '../../data/progress'
+import { evaluateBadges, getProgressSnapshot, markBadgesSeen } from '../../data/progress'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import { nextUpDay, workoutMinutes, type WorkoutSummaryData } from './summary'
 import { WorkoutSummary } from './WorkoutSummary'
@@ -236,6 +236,8 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       const before = (await getProgressSnapshot()).level
       const result = await finishSession(sid, tickAll)
       const badges = await evaluateBadges()
+      // The summary shows them, so Home shouldn't announce them a second time.
+      if (badges.length > 0) await markBadgesSeen()
       const snap = await getProgressSnapshot()
       if (hapticsOn) buzz([60, 40, 120])
       onWorkoutFinished(sid, result)
@@ -370,8 +372,8 @@ function FinishSheet({ open, left, onClose, onFinish }: { open: boolean; left: n
     <Sheet open={open} onClose={onClose} title={plural('live_finish_unticked_title', left, left)}>
       <p class="lw-finish-msg">{plural('live_finish_unticked_body', left, left)}</p>
       <div class="lw-finish-actions">
-        <Button block onClick={() => onFinish(true)}>{t('live_tick_all_finish')}</Button>
-        <Button block variant="tonal" onClick={() => onFinish(false)}>{t('live_finish')}</Button>
+        <Button block onClick={() => onFinish(false)}>{t('live_finish')}</Button>
+        <Button block variant="text" onClick={() => onFinish(true)}>{t('live_tick_all_finish')}</Button>
         <Button block variant="text" onClick={onClose}>{t('live_keep_going')}</Button>
       </div>
     </Sheet>

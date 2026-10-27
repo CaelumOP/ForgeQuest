@@ -6,7 +6,8 @@ import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
 import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
-import { formatWeight } from '../../domain/units'
+import { fromKg, unitLabel } from '../../domain/units'
+import type { WeightUnit } from '../../domain/units'
 import { Button, Card, EmptyState, Sheet, SwipeRow, TextField } from '../kit'
 import { ExpandMoreIcon } from '../icons'
 import { decodeDebrief, groupWeeks, minutesOf, scoreLine } from './helpers'
@@ -14,6 +15,11 @@ import { dayShort } from '../workouts/helpers'
 import { DebriefSheet } from './DebriefSheet'
 import './history.css'
 
+/** "4,210 kg": whole numbers with grouping, number and unit kept in order in right-to-left text. */
+const volumeText = (unit: WeightUnit, kg: number, arabic: boolean): string => {
+  const text = `${Math.round(fromKg(unit, kg)).toLocaleString('en-US')} ${unitLabel(unit, arabic)}`
+  return arabic ? `⁧${text}⁩` : `⁦${text}⁩`
+}
 const fmt = (day: number, o: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(getLang(), { ...o, timeZone: 'UTC' }).format(new Date(day * 86_400_000))
 
@@ -110,7 +116,7 @@ export function HistoryScreen(_: { param?: string }) {
                     <span class="hs-week-title">{title}</span>
                     <span class="hs-meta">
                       {[plural('backup_workouts', w.sessions.length), t('hist_minutes', minutes),
-                        volume > 0 ? t('journal_volume', formatWeight(unit, volume, lang === 'ar', 0)) : null].filter(Boolean).join(' · ')}
+                        volume > 0 ? t('journal_volume', volumeText(unit, volume, lang === 'ar')) : null].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   {prs > 0 && <span><PrTag count={prs} /></span>}

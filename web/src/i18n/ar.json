@@ -714,7 +714,7 @@
   "live_tag_max_note": "أقصى جهد · RIR 0",
   "live_tag_solid": "متوازن · RIR 1-2",
   "live_target": "الهدف {1} × {2}",
-  "live_tick_all_finish": "علّم الكل وأنهِ",
+  "live_tick_all_finish": "أنجزتها كلها: علّمها وأنهِ",
   "live_xp": "نقاط الخبرة",
   "lock_body": "استخدم البصمة أو الوجه أو قفل الشاشة للمتابعة.",
   "lock_prompt_subtitle": "بيانات تمرينك وطعامك تبقى خاصة",
@@ -1227,6 +1227,9 @@
   "scan_step_find": "جارٍ التعرّف على الأطعمة…",
   "scan_step_portions": "جارٍ تقدير الكميات…",
   "scan_tap_name": "اضغط على الاسم لتغييره",
+  "score_adjusted": "مُعدَّل بحسب التعافي",
+  "score_after_break": "عدتَ إلى التمرين، وهذا هو المهم.",
+  "score_first_ever": "أنهيتَ أولى تمارينك، وهذه أصعب خطوة.",
   "score_prs": {
     "zero": "0 رقم قياسي",
     "one": "رقم قياسي واحد",

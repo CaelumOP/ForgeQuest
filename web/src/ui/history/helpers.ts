@@ -21,11 +21,17 @@ export function scoreReasons(r: WorkoutScoreResult): string {
   const sets = r.plannedSets == null ? plural('hist_sets', r.doneSets)
     : r.doneSets >= r.plannedSets ? plural('score_sets_all', r.doneSets)
     : t('score_sets_of', r.doneSets, r.plannedSets)
-  return [sets, r.compared > 0 ? t('score_up', r.up, r.compared) : null, r.prs > 0 ? plural('score_prs', r.prs) : null].filter(Boolean).join(' · ')
+  return [sets, r.compared > 0 ? t('score_up', r.up, r.compared) : null, r.prs > 0 ? plural('score_prs', r.prs) : null, r.rough ? t('score_adjusted') : null].filter(Boolean).join(' · ')
 }
 
-/** "8/10 · All 12 sets · Up on 3 of 4 · 1 PR". */
-export const scoreLine = (r: WorkoutScoreResult): string => `${t('debrief_score', r.score)} · ${scoreReasons(r)}`
+/** Journal row facts line: the reasons without the "8/10". */
+export const scoreLine = (r: WorkoutScoreResult): string => scoreReasons(r)
+
+/** The number is gold only from 8 up; 4 to 7 stay quiet. */
+export const scoreTone = (score: number): 'gold' | 'quiet' => (score >= 8 ? 'gold' : 'quiet')
+
+/** The sentence shown instead of N/10 on a first-ever or first-after-a-break workout, else null. */
+export const scoreNote = (r: WorkoutScoreResult): string | null => (r.showNumber ? null : t(r.firstEver ? 'score_first_ever' : 'score_after_break'))
 
 /** Epoch day of the first day of the week containing `day`. firstDow: 0 = Monday ... 6 = Sunday. 1970-01-01 was a Thursday. */
 export function weekStart(day: number, firstDow: number): number {

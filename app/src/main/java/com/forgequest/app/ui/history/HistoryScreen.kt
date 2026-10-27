@@ -97,6 +97,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.roundToInt
 
 class HistoryViewModel(val app: AppContainer) : ViewModel() {
@@ -315,7 +316,7 @@ private fun WeekCard(
                     listOfNotNull(
                         pluralStringResource(R.plurals.backup_workouts, sessions.size, sessions.size),
                         stringResource(R.string.hist_minutes, minutes),
-                        if (volume > 0f) stringResource(R.string.journal_volume, unit.format(volume)) else null,
+                        if (volume > 0f) stringResource(R.string.journal_volume, "%s%,d %s%s".format(Locale.US, if (Locale.getDefault().language == "ar") "⁧" else "⁦", unit.fromKg(volume).roundToInt(), unit.label, "⁩")) else null,
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
