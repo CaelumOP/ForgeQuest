@@ -1,13 +1,13 @@
 // Profile → Backup: Google Drive (same file as Android) and a backup file to save or restore by hand.
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { getLang, plural, t } from '../../i18n'
+import { plural, t, intlLocale } from '../../i18n'
 import { applyBackup, backupCounts, buildBackup, decodeBackup, encodeBackup, listSafetyCopies, type BackupFile } from '../../data/backup'
 import { connectDrive, disconnectDrive, DriveError, backupNow, fetchDriveBackup, preloadGis, tokenForTap } from '../../data/drive'
 import { useLive } from '../../data/live'
 import type { Settings } from '../../data/settings'
 import { Button, Card, Dialog, toast } from '../kit'
 
-const when = (ms: number) => new Intl.DateTimeFormat(getLang(), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(ms)
+const when = (ms: number) => new Intl.DateTimeFormat(intlLocale(), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(ms)
 
 /** Group summary line, like Android's. */
 export const backupSummary = (s: Settings) =>

@@ -50,7 +50,7 @@ class GeminiBridge(
             sb.appendLine("date | recovery % | asleep | sleep performance % | HRV ms | resting HR | strain /21 | felt great")
             days.forEach { d ->
                 sb.appendLine(
-                    "${LocalDate.ofEpochDay(d.epochDay)} | ${d.recovery} | ${d.sleepMin / 60}h${"%02d".format(d.sleepMin % 60)} | ${d.sleepPerf} | " +
+                    "${LocalDate.ofEpochDay(d.epochDay)} | ${d.recovery} | ${d.sleepMin / 60}h${"%02d".format(Locale.US, d.sleepMin % 60)} | ${d.sleepPerf} | " +
                         "${d.hrv.toInt()} | ${d.rhr.toInt()} | ${"%.1f".format(Locale.US, d.strain)} | ${if (d.feltGreat) "yes" else "-"}"
                 )
             }

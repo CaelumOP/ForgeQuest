@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { getLang, plural, t } from '../../i18n'
+import { getLang, plural, t, intlLocale } from '../../i18n'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import { formatDay } from '../day-format'
 import type { FoodCategory, FoodPart, FoodRow, MealRow } from '../../data/db'
@@ -27,8 +27,8 @@ export async function badgeSuffix(): Promise<string> {
   } catch { return '' }
 }
 export const catLabel = (c: FoodCategory): string => t(`food_cat_${c.toLowerCase()}`)
-const fmtInt = (n: number) => Math.round(n).toLocaleString(getLang())
-const timeOf = (ms: number) => new Intl.DateTimeFormat(getLang(), { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms))
+const fmtInt = (n: number) => Math.round(n).toLocaleString(intlLocale())
+const timeOf = (ms: number) => new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms))
 const blankFood = (category: FoodCategory): FoodRow => ({ name: '', category, kcal: 0, protein: 0, serving: '', carbs: 0, photoPath: null, pinned: false, createdAt: Date.now() })
 
 function CategoryTabs({ value, onChange, dots, label }: { value: FoodCategory; onChange: (c: FoodCategory) => void; dots?: Set<FoodCategory>; label: string }) {

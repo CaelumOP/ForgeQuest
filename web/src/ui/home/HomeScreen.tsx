@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { getLang, plural, t } from '../../i18n'
+import { getLang, plural, t, intlLocale } from '../../i18n'
 import { logWeight, setDayTag, useProgress, type ProgressSnapshot } from '../../data/progress'
 import { planDay, startSession, useOpenSession } from '../../data/workouts'
 import { weightUnit } from '../../data/settings'
@@ -20,7 +20,7 @@ import { CalorieCard } from './CalorieCard'
 import { FoodTargetsCard, TargetNudge } from './SetupCards'
 import './home.css'
 
-const nf = () => new Intl.NumberFormat(getLang())
+const nf = () => new Intl.NumberFormat(intlLocale())
 const go = (hash: string) => { location.hash = hash }
 const dayDate = (epochDay: number) => new Date(epochDay * 86_400_000)
 
@@ -90,7 +90,7 @@ function badgeTitle(id: string, fallback: string): string {
 function Header({ s }: { s: ProgressSnapshot }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
-  const date = new Intl.DateTimeFormat(getLang(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
+  const date = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
   // Arabic has no use for a Latin letter: the level goes in the ring instead (Android RankInfo.mark).
   const mark = getLang() === 'ar' ? String(s.level.level) : s.level.rank.letter
   return (
@@ -227,7 +227,7 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
     : k.weeks === 0 && k.doneThisWeek === 0 ? t('streak_hit_to_start')
     : k.hitThisWeek ? plural('streak_best', k.best)
     : plural('streak_more_to_go', k.targetThisWeek - k.doneThisWeek)
-  const long = new Intl.DateTimeFormat(getLang(), { weekday: 'long', timeZone: 'UTC' })
+  const long = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', timeZone: 'UTC' })
   return (
     <Card>
       <div class="home-streak-top">
@@ -317,7 +317,7 @@ function WeightSheet({ s, open, onClose }: { s: ProgressSnapshot; open: boolean;
 }
 
 function DayTagSheet({ day, current, onClose }: { day: number | null; current: DayTag | null; onClose: () => void }) {
-  const name = day != null ? new Intl.DateTimeFormat(getLang(), { weekday: 'long', timeZone: 'UTC' }).format(dayDate(day)) : ''
+  const name = day != null ? new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', timeZone: 'UTC' }).format(dayDate(day)) : ''
   const pick = async (tag: DayTag | null) => { if (day != null) await setDayTag(day, tag); onClose() }
   return (
     <Sheet open={day != null} onClose={onClose} title={t('daytag_title')}>

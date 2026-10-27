@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { getLang, plural, t, useLang } from '../../i18n'
+import { getLang, plural, t, useLang, intlLocale } from '../../i18n'
 import type { ExerciseRow, PlanDayRow, PlanItemRow, PlanRow } from '../../data/db'
 import { useProgress } from '../../data/progress'
 import { configuredEquipment, weightUnit } from '../../data/settings'
@@ -385,7 +385,7 @@ function PreviousSheet({ open, onClose, plans, onActivate, onDelete }: { open: b
           <div class="wk-opt-row" key={p.id}>
             <button type="button" class={`wk-opt${p.active ? ' on' : ''}`} disabled={p.active} onClick={() => onActivate(p)}>
               <span class="wk-t">{p.name}</span>
-              <span class="wk-s">{[src(p), new Date(p.createdAt).toLocaleDateString(getLang(), { dateStyle: 'medium' }), p.active ? t('plan_current') : null].filter(Boolean).join(' · ')}</span>
+              <span class="wk-s">{[src(p), new Date(p.createdAt).toLocaleDateString(intlLocale(), { dateStyle: 'medium' }), p.active ? t('plan_current') : null].filter(Boolean).join(' · ')}</span>
             </button>
             {!p.active && <button type="button" class="kit-iconbtn wk-ibtn" aria-label={`${t('cd_delete_plan')}: ${p.name}`} onClick={() => setDel(p)}><DeleteIcon /></button>}
           </div>

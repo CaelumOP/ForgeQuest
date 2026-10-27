@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { t, useLang } from '../../i18n'
+import { t, useLang, intlLocale } from '../../i18n'
 import type { BadgeDef } from '../../domain/badges'
 import { Button, Card } from '../kit'
 import { CalendarIcon, CheckIcon } from '../icons'
@@ -33,7 +33,7 @@ export function WorkoutSummary({ sum, onDone, onView }: { sum: WorkoutSummaryDat
           <div class="lws-stat" style={{ color: 'var(--gold)' }}><b>+{sum.xpGained}</b><span>{t('live_xp')}</span></div>
         </div>
         {sum.clippedEndAt != null && (
-          <p class="lws-xpline">{t('live_ended_at_last_set', new Date(sum.clippedEndAt - GRACE_MS).toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }))}</p>
+          <p class="lws-xpline">{t('live_ended_at_last_set', new Date(sum.clippedEndAt - GRACE_MS).toLocaleTimeString(intlLocale(lang), { hour: 'numeric', minute: '2-digit' }))}</p>
         )}
         <Card class="lws-card">
           <div class="lws-levelrow">

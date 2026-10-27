@@ -39,6 +39,9 @@ applyLang()
 
 export const getLang = (): Lang => lang
 
+/** The locale for Intl number and date formatting. Arabic keeps Western digits (0-9), like the Android app. */
+export const intlLocale = (want: Lang = lang): string => (want === 'ar' ? 'ar-u-nu-latn' : 'en')
+
 export function setLang(next: Lang) {
   lang = next
   try { localStorage.setItem(KEY, next) } catch { /* not saved; still applies for this visit */ }

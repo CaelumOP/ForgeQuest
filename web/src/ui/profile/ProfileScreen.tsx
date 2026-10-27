@@ -3,7 +3,7 @@
 // and the Drive Docs import. Backup (Drive + file) lives in BackupSection.tsx.
 import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
-import { getLang, plural, setLang, t, useLang, type Lang } from '../../i18n'
+import { getLang, plural, setLang, t, useLang, type Lang, intlLocale } from '../../i18n'
 import { setTheme, useTheme, type Theme } from '../theme'
 import { updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
 import { getProgressSnapshot, logWeight, useProgress, type ProgressSnapshot } from '../../data/progress'
@@ -175,7 +175,7 @@ export function ProfileScreen() {
   const preset = presetFromEncoded(s.equipment)
   const bodySet = s.heightCm > 0 && age > 0
   const weekly = s.weeklyTargetOverride === 0 ? planDays : s.weeklyTargetOverride
-  const num = (n: number) => n.toLocaleString(lang)
+  const num = (n: number) => n.toLocaleString(intlLocale(lang))
   const goalLabel = (g: NutritionGoal) => t(g === 'CUT' ? 'goal_cut' : g === 'GAIN' ? 'goal_gain' : 'goal_maintain')
   const presetLabel = (p: EquipmentPreset) => (ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn)
   const eqLabel = (e: Equipment) => EQUIPMENT_LABEL[e][ar ? 'ar' : 'en']
