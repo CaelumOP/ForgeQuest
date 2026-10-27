@@ -77,9 +77,10 @@ class TrendsTest {
         assertNull(Trends.percentChange(0f, 3f))
     }
 
+    // Rule B: a plateau needs 4+ workouts over 21+ days (it was 3+ over 12+ days).
     @Test
-    fun aLiftWithNoImprovementOverTwoWeeksIsStalled() {
-        val days = listOf(today - 20, today - 10, today)
+    fun aLiftWithNoImprovementOverThreeWeeksIsStalled() {
+        val days = listOf(today - 21, today - 14, today - 7, today)
         val sessions = days.mapIndexed { i, d -> SessionEntity(id = i + 1L, planDayId = null, title = "Day", epochDay = d, startedAt = 0L) }
         val sets = sessions.map { s ->
             SetEntity(sessionId = s.id, exerciseId = "bench_press", itemPosition = 0, block = "Main", circuit = false, setIndex = 0, targetLabel = "", reps = 5, weightKg = 80f, done = true)
@@ -88,7 +89,68 @@ class TrendsTest {
         val report = Trends.analyzeFatigueAndPlateaus(sessions, sets, mapOf(bench.id to bench), today = today)
         val lift = report.stalledLifts.single()
         assertEquals("bench_press", lift.exerciseId)
-        assertEquals(3, lift.sessionsCount)
-        assertEquals(20, lift.spanDays)
+        assertEquals(4, lift.sessionsCount)
+        assertEquals(21, lift.spanDays)
+    }
+
+    private val cableRow = ExerciseEntity("cable_row", "Cable row", ExerciseKind.WEIGHTED, listOf(Muscle.UPPER_BACK), emptyList())
+
+    /** One workout a week for four weeks ending today, each with the given reps at 50 kg. */
+    private fun rowReport(reps: List<List<Int>>): FatigueAndPlateauReport {
+        val sessions = reps.indices.map { i -> SessionEntity(id = i + 1L, planDayId = null, title = "Day", epochDay = today - 21 + 7 * i, startedAt = 0L) }
+        val sets = reps.flatMapIndexed { i, r ->
+            r.map { SetEntity(sessionId = i + 1L, exerciseId = "cable_row", itemPosition = 0, block = "Main", circuit = false, setIndex = 0, targetLabel = "", reps = it, weightKg = 50f, done = true) }
+        }
+        return Trends.analyzeFatigueAndPlateaus(sessions, sets, mapOf(cableRow.id to cableRow), today = today)
+    }
+
+    @Test
+    fun theCableRowExampleBestFlatTotalRisingIsNotAPlateau() {
+        assertEquals(emptyList<StalledLift>(), rowReport(listOf(listOf(10, 9, 9), listOf(10, 9, 9), listOf(10, 10, 9), listOf(10, 10, 10))).stalledLifts)
+    }
+
+    @Test
+    fun fourFlatWorkoutsOverThreeWeeksIsAPlateau() {
+        val lift = rowReport(List(4) { listOf(10, 10, 10) }).stalledLifts.single()
+        assertEquals("cable_row", lift.exerciseId)
+        assertEquals(4, lift.sessionsCount)
+        assertEquals(21, lift.spanDays)
+    }
+
+    @Test
+    fun threeWorkoutsOrTwentyDaysAreNotAPlateau() {
+        val bench = ExerciseEntity("bench_press", "Bench press", ExerciseKind.WEIGHTED, listOf(Muscle.CHEST), emptyList())
+        fun report(days: List<Long>): FatigueAndPlateauReport {
+            val sessions = days.mapIndexed { i, d -> SessionEntity(id = i + 1L, planDayId = null, title = "Day", epochDay = d, startedAt = 0L) }
+            val sets = sessions.map { s ->
+                SetEntity(sessionId = s.id, exerciseId = "bench_press", itemPosition = 0, block = "Main", circuit = false, setIndex = 0, targetLabel = "", reps = 5, weightKg = 80f, done = true)
+            }
+            return Trends.analyzeFatigueAndPlateaus(sessions, sets, mapOf(bench.id to bench), today = today)
+        }
+        assertEquals(emptyList<StalledLift>(), report(listOf(today - 20, today - 13, today - 7, today)).stalledLifts)
+        assertEquals(emptyList<StalledLift>(), report(listOf(today - 21, today - 7, today)).stalledLifts)
+    }
+
+    /** One workout per rolling week (the windows end yesterday) with the given number of sets, oldest first. */
+    private fun weeks(counts: List<Int>): FatigueAndPlateauReport {
+        val sessions = counts.indices.map { i -> SessionEntity(id = i + 1L, planDayId = null, title = "Day", epochDay = today - 1 - 7L * (counts.size - 1 - i), startedAt = 0L) }
+        val sets = counts.flatMapIndexed { i, n -> List(n) { set(i + 1L, 8).copy(exerciseId = "squat") } }
+        return Trends.analyzeFatigueAndPlateaus(sessions, sets, emptyMap(), today = today)
+    }
+
+    @Test
+    fun aVacationWeekDoesNotTriggerTheVolumeDeload() {
+        // Old rule: 24 / avg(20, 20, 3, 20) = 152 %. Active weeks only: 24 / 20 = 120 %.
+        val calm = weeks(listOf(20, 20, 3, 20, 24))
+        assertEquals(120, calm.trainingLoadPct)
+        assertEquals(false, calm.needsDeload)
+        val spike = weeks(listOf(20, 20, 3, 20, 28))
+        assertEquals(140, spike.trainingLoadPct)
+        assertEquals(true, spike.needsDeload)
+    }
+
+    @Test
+    fun noActiveWeekMeansNoVolumeTrigger() {
+        assertEquals(false, weeks(listOf(0, 0, 2, 5, 24)).needsDeload)
     }
 }

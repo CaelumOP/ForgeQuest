@@ -80,19 +80,57 @@ describe('web additions', () => {
   })
   const args = (h: { sessions: SessionEntity[]; sets: SetEntity[] }) => [h.sessions, h.sets, exercises, today] as const
 
-  // Audit #7 and #14: a lift with no gain over 12+ days is stalled (the code's 12, not the old comment's 14).
-  it('flags a stalled lift across exactly 12 days', () => {
-    const { sessions, sets } = history([12, 8, 4, 0], [10, 10, 9, 10])
+  // Rule B: a plateau needs 4+ workouts over 21+ days (it was 3+ over 12+ days).
+  it('flags a stalled lift across exactly 21 days', () => {
+    const { sessions, sets } = history([21, 14, 7, 0], [10, 10, 9, 10])
     const report = analyzeFatigueAndPlateaus(sessions, sets, exercises, today)
-    expect(report.stalledLifts).toEqual([{ exerciseId: 'pull_up', exerciseName: 'Pull-up', sessionsCount: 4, spanDays: 12, bestScore: 10 }])
+    expect(report.stalledLifts).toEqual([{ exerciseId: 'pull_up', exerciseName: 'Pull-up', sessionsCount: 4, spanDays: 21, bestScore: 10 }])
     expect(report.needsDeload).toBe(false) // one stalled lift alone is not a deload
   })
 
-  it('does not flag 11 days or a recent improvement', () => {
-    expect(analyzeFatigueAndPlateaus(...args(history([11, 7, 3, 0], [10, 10, 9, 10]))).stalledLifts).toEqual([])
-    expect(analyzeFatigueAndPlateaus(...args(history([12, 8, 4, 0], [10, 10, 9, 11]))).stalledLifts).toEqual([])
+  it('does not flag 20 days, 3 workouts or a recent improvement', () => {
+    expect(analyzeFatigueAndPlateaus(...args(history([20, 13, 7, 0], [10, 10, 9, 10]))).stalledLifts).toEqual([])
+    expect(analyzeFatigueAndPlateaus(...args(history([21, 7, 0], [10, 10, 10]))).stalledLifts).toEqual([])
+    expect(analyzeFatigueAndPlateaus(...args(history([21, 14, 7, 0], [10, 10, 9, 11]))).stalledLifts).toEqual([])
+  })
+})
+
+describe('rule B: plateau and deload', () => {
+  const cableRow: ExerciseEntity = { id: 'cable_row', name: 'Cable row', kind: 'WEIGHTED', primary: ['UPPER_BACK'], secondary: [] }
+  const lib = new Map([['cable_row', cableRow]])
+  const row = (sessionId: number, reps: number): SetEntity => ({ ...set(sessionId, reps, false, 'cable_row'), weightKg: 50 })
+  const workouts = (reps: number[][]) => ({
+    sessions: reps.map((_, i) => session(i + 1, today - 21 + 7 * i)),
+    sets: reps.flatMap((r, i) => r.map((x) => row(i + 1, x))),
   })
 
+  it('the cable-row example: best set flat, total rising, is not a plateau', () => {
+    const { sessions, sets } = workouts([[10, 9, 9], [10, 9, 9], [10, 10, 9], [10, 10, 10]])
+    expect(analyzeFatigueAndPlateaus(sessions, sets, lib, today).stalledLifts).toEqual([])
+  })
+
+  it('4 flat workouts over 21 days is a plateau', () => {
+    const { sessions, sets } = workouts([[10, 10, 10], [10, 10, 10], [10, 10, 10], [10, 10, 10]])
+    expect(analyzeFatigueAndPlateaus(sessions, sets, lib, today).stalledLifts.map((l) => [l.exerciseId, l.sessionsCount, l.spanDays]))
+      .toEqual([['cable_row', 4, 21]])
+  })
+
+  // One workout per rolling week (the windows end yesterday) with the given number of sets, oldest first.
+  const weeks = (counts: number[]) => {
+    const sessions = counts.map((_, i) => session(i + 1, today - 1 - 7 * (counts.length - 1 - i)))
+    const sets = counts.flatMap((n, i) => Array.from({ length: n }, () => set(i + 1, 8, false, 'squat')))
+    return analyzeFatigueAndPlateaus(sessions, sets, new Map(), today)
+  }
+
+  it('a vacation week does not trigger the volume deload', () => {
+    // Old rule: 24 / avg(20, 20, 3, 20) = 152 %. Active weeks only: 24 / 20 = 120 %.
+    expect(weeks([20, 20, 3, 20, 24])).toMatchObject({ trainingLoadPct: 120, needsDeload: false })
+    expect(weeks([20, 20, 3, 20, 28])).toMatchObject({ trainingLoadPct: 140, needsDeload: true })
+  })
+
+  it('no active week among the previous 4: no volume trigger', () => {
+    expect(weeks([0, 0, 2, 5, 24]).needsDeload).toBe(false)
+  })
 })
 
 describe('audit 2026-10-24', () => {
