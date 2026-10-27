@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { SetEffort } from './effort'
 import { effortOf } from './effort'
 import type { ExerciseKind } from './muscle'
-import { nextPrefill, type PastSet, type Target } from './progression'
+import { nextPrefill, progressionInputs, type PastSet, type Target } from './progression'
 import { fromKg, toKg, type WeightUnit } from './units'
 
 const sets = (n: number, reps: number | null, kg: number | null, sec: number | null = null, effort: SetEffort = 'OK'): PastSet[] =>
@@ -92,5 +92,22 @@ describe('audit 2026-10-24', () => {
   it('one failed weighted set starts next time at the bottom of the range', () => {
     const last = [...sets(2, 10, 60), ...sets(1, 4, 60, null, 'HARD')]
     expect(next('WEIGHTED', target(3, 8, 12, null, 60), last).sets.map((s) => s.reps)).toEqual([10, 10, 8])
+  })
+})
+
+describe('progressionInputs', () => {
+  it('reads the last two workouts newest first, in set order, effort from the note', () => {
+    const row = (sessionId: number, setIndex: number, reps: number, effort = '', note = '') =>
+      ({ sessionId, setIndex, reps, seconds: null, weightKg: 60, effort, note })
+    const recent = [row(9, 1, 8, '', 'knee pain'), row(9, 0, 10), row(5, 0, 12, 'HARD'), row(2, 0, 6)]
+    const item = { block: 'Main', sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: 60 }
+    const input = progressionInputs(item, 'squat', recent)
+    expect(input.target).toEqual(target(3, 8, 12, null, 60))
+    expect(input.last).toEqual([{ reps: 10, seconds: null, weightKg: 60, effort: 'OK' }, { reps: 8, seconds: null, weightKg: 60, effort: 'PAIN' }])
+    expect(input.previous).toEqual([{ reps: 12, seconds: null, weightKg: 60, effort: 'HARD' }])
+    expect(input.warmup).toBe(false)
+    expect(progressionInputs({ ...item, block: 'warm-up' }, 'squat', recent).warmup).toBe(true)
+    expect(progressionInputs(null, 'jumping_jacks', []).warmup).toBe(true)
+    expect(progressionInputs(null, 'squat', []).target).toBeNull()
   })
 })

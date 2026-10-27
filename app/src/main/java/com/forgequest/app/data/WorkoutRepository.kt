@@ -22,7 +22,6 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
-import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.WorkoutScore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -333,20 +332,16 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
      */
     private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
         val kind = ex?.kind ?: ExerciseKind.REPS
-        val recent = ex?.let { sessions.recentDoneSets(it.id) }.orEmpty()
-        val sessionIds = recent.map { it.sessionId }.distinct()
-        fun past(id: Long?) = recent.filter { it.sessionId == id }.sortedBy { it.setIndex }
-            .map { Progression.PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
-        val isWarmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || ex?.id == "jumping_jacks"
+        val input = Progression.inputs(item, ex?.id, ex?.let { sessions.recentDoneSets(it.id) }.orEmpty())
         val s = settings?.current()
         val result = Progression.next(
             kind = kind,
-            target = item?.let { Progression.Target(it.sets, it.repsMin, it.repsMax, it.seconds, it.weightKg) },
-            last = past(sessionIds.getOrNull(0)),
-            previous = past(sessionIds.getOrNull(1)),
+            target = input.target,
+            last = input.last,
+            previous = input.previous,
             unit = s?.weightUnit ?: WeightUnit.KG,
             lowReadiness = s?.healthEnabled == true && lowReadinessToday(),
-            warmup = isWarmup,
+            warmup = input.warmup,
         )
         val label = targetLabel(kind, item).let { base ->
             if (result.holdCeilingReached) listOf(base, AppText.get(R.string.rx_hold_ceiling)).filter { it.isNotBlank() }.joinToString(" · ") else base

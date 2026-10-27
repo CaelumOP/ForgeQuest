@@ -6,7 +6,8 @@
 //   Pain also takes the load back one step (bodyweight moves keep their reps).
 // - Load steps follow the person's unit: +2.5 kg or +5 lb, landing on numbers they can actually load.
 // Kotlin uses 32-bit Float here, so weights go through Math.fround.
-import type { SetEffort } from './effort'
+import { effortOf, type SetEffort } from './effort'
+import type { PlanItemEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
 import { fromKg, loadStep, toKg, type WeightUnit } from './units'
 
@@ -20,6 +21,30 @@ export type ProgressionResult = { sets: Prefill[]; holdCeilingReached: boolean }
 
 export const HOLD_STEP_SEC = 5
 export const HOLD_CEILING = 1.5
+
+/** What nextPrefill needs for one exercise, apart from the unit and the readiness. */
+export type ProgressionInputs = { target: Target | null; last: PastSet[]; previous: PastSet[]; warmup: boolean }
+type PlanItemLike = Pick<PlanItemEntity, 'block' | 'sets' | 'repsMin' | 'repsMax' | 'seconds' | 'weightKg'>
+type RecentSet = Pick<SetEntity, 'sessionId' | 'setIndex' | 'reps' | 'seconds' | 'weightKg' | 'effort' | 'note'>
+
+/**
+ * The inputs to nextPrefill for one exercise, shared by the prefill and the debrief so both read history the same way:
+ * the target from the plan `item` (null without one), the last two workouts in `recent` (done sets, newest workout first),
+ * each in set order with its effort read through effortOf, and the warm-up check (an item in the Warm-up block, or
+ * jumping jacks). Same as Android Progression.inputs.
+ */
+export function progressionInputs(item: PlanItemLike | null | undefined, exerciseId: string | null | undefined, recent: readonly RecentSet[]): ProgressionInputs {
+  const sessionIds = [...new Set(recent.map((s) => s.sessionId))]
+  const past = (id: number | undefined): PastSet[] =>
+    recent.filter((s) => s.sessionId === id).sort((a, b) => a.setIndex - b.setIndex)
+      .map((s) => ({ reps: s.reps, seconds: s.seconds, weightKg: s.weightKg, effort: effortOf(s.effort, s.note) }))
+  return {
+    target: item ? { sets: item.sets, repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds, weightKg: item.weightKg } : null,
+    last: past(sessionIds[0]),
+    previous: past(sessionIds[1]),
+    warmup: item?.block.toLowerCase() === 'warm-up' || exerciseId === 'jumping_jacks',
+  }
+}
 
 export function nextPrefill(
   kind: ExerciseKind,

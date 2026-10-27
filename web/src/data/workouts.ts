@@ -16,7 +16,7 @@ import { translatePlanItem } from '../domain/exercise-swap-engine';
 import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
 import { dayTagMap, personalRecords, recordScore, totalXp } from '../domain/progress';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
-import { nextPrefill, type PastSet } from '../domain/progression';
+import { nextPrefill, progressionInputs, type PastSet } from '../domain/progression';
 import { isWarmUp, scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
@@ -330,17 +330,8 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
 /** Today's sets for one exercise from its last two finished workouts, through the Progression rules. */
 async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined): Promise<SetRow[]> {
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
-  const recent = ex ? await recentDoneSets(ex.id) : [];
-  const sessionIds = [...new Set(recent.map((s) => s.sessionId))];
-  const past = (id: number | undefined): PastSet[] =>
-    recent.filter((s) => s.sessionId === id).sort((a, b) => a.setIndex - b.setIndex)
-      .map((s) => ({ reps: s.reps, seconds: s.seconds, weightKg: s.weightKg, effort: effortOf(s.effort, s.note) }));
-  const isWarmup = item?.block.toLowerCase() === 'warm-up' || ex?.id === 'jumping_jacks';
-  const result = nextPrefill(
-    kind,
-    item ? { sets: item.sets, repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds, weightKg: item.weightKg } : null,
-    past(sessionIds[0]), past(sessionIds[1]), weightUnit(await loadSettings()), false, isWarmup,
-  );
+  const input = progressionInputs(item, ex?.id, ex ? await recentDoneSets(ex.id) : []);
+  const result = nextPrefill(kind, input.target, input.last, input.previous, weightUnit(await loadSettings()), false, input.warmup);
   const base = targetLabel(kind, item);
   const label = result.holdCeilingReached ? [base, HOLD_CEILING_NOTE].filter(Boolean).join(' · ') : base;
   return result.sets.map((p, i): SetRow => ({
