@@ -756,7 +756,7 @@
     <string name="block_legs">Legs</string>
     <string name="live_rest_minus">−15 s</string>
     <string name="live_rest_plus">+15 s</string>
-    <string name="live_tick_all_finish">Tick all &amp; finish</string>
+    <string name="live_tick_all_finish">I did them all: tick &amp; finish</string>
     <string name="live_last_time">Last time: %1$s</string>
     <string name="live_next_up">Next up: %1$s · %2$s</string>
     <string name="home_center_protein">g protein</string>
@@ -1085,6 +1085,9 @@
     <string name="coach_stale_apply">Apply anyway</string>
     <string name="debrief_title">Coach\'s debrief</string>
     <string name="debrief_score">%1$d/10</string>
+    <string name="score_first_ever">First one done. That\'s the hardest part.</string>
+    <string name="score_after_break">Back in. That\'s what counts.</string>
+    <string name="score_adjusted">Adjusted for recovery</string>
     <string name="score_title">Workout score</string>
     <string name="debrief_loading">Your coach is reviewing this workout…</string>
     <string name="debrief_next_time">Next time: %1$s</string>

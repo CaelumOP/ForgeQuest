@@ -66,7 +66,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -166,10 +165,7 @@ private fun MetricRow(label: String, value: String, usual: String?, better: Bool
     }
 }
 
-// One letter in Arabic, where short day names are the full names and cutting them leaves only «ال».
-private fun dayLetter(epochDay: Long) = LocalDate.ofEpochDay(epochDay).dayOfWeek.let { d ->
-    if (Locale.getDefault().language == "ar") d.getDisplayName(TextStyle.NARROW, Locale.getDefault()) else d.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3)
-}
+private fun dayLetter(epochDay: Long) = com.forgequest.app.domain.Dates.dayShort(LocalDate.ofEpochDay(epochDay).dayOfWeek.value)
 
 /**
  * Seven days with a value axis on the right and an optional dotted target, like Google Health's week view. Bars for

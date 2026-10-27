@@ -305,8 +305,11 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             // Three choices stacked, so none of them wraps onto a row of its own.
             confirmButton = {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+                    androidx.compose.material3.Button(
+                        onClick = { confirmFinish = false; vm.finish() },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = c.teal, contentColor = c.onTeal),
+                    ) { Text(stringResource(R.string.live_finish)) }
                     TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
-                    TextButton(onClick = { confirmFinish = false; vm.finish() }) { Text(stringResource(R.string.live_finish), color = c.teal) }
                     TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
                 }
             },
@@ -928,12 +931,13 @@ fun scoreReasons(r: WorkoutScore.Result): String {
     }
     val up = if (r.compared > 0) stringResource(R.string.score_up, r.up, r.compared) else null
     val prs = if (r.prs > 0) pluralStringResource(R.plurals.score_prs, r.prs, r.prs) else null
-    return listOfNotNull(sets, up, prs).joinToString(" · ")
+    val adjusted = if (r.rough) stringResource(R.string.score_adjusted) else null
+    return listOfNotNull(sets, up, prs, adjusted).joinToString(" · ")
 }
 
-/** "8/10 · All 12 sets · Up on 3 of 4 · 1 PR". */
+/** N/10 only from 8 up is gold; 4 to 7 stay quiet. */
 @Composable
-fun scoreLine(r: WorkoutScore.Result): String = stringResource(R.string.debrief_score, r.score) + " · " + scoreReasons(r)
+private fun scoreColor(score: Int) = if (score >= 8) Fit.colors.gold else Fit.colors.textSecondary
 
 /**
  * The workout: the calculated score with its reasons at once, then the coach's words (one thing that went well, one to watch, one tip).
@@ -946,7 +950,10 @@ fun DebriefCard(d: WorkoutDebrief?, score: WorkoutScore.Result?, failed: Boolean
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(if (coachPart) R.string.debrief_title else R.string.score_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-            if (score != null) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = c.gold)
+            if (score != null && score.showNumber) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = scoreColor(score.score))
+        }
+        if (score != null && !score.showNumber) {
+            Text(stringResource(if (score.firstEver) R.string.score_first_ever else R.string.score_after_break), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 2.dp))
         }
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
         if (coachPart) Spacer(Modifier.height(6.dp))

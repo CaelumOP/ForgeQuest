@@ -5,11 +5,12 @@ import { putSession } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
 import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
-import { todayEpochDay } from '../../domain/dates'
+import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import { formatWeight } from '../../domain/units'
 import { Button, Card, EmptyState, Sheet, SwipeRow, TextField } from '../kit'
 import { ExpandMoreIcon } from '../icons'
 import { decodeDebrief, groupWeeks, minutesOf, scoreLine } from './helpers'
+import { dayShort } from '../workouts/helpers'
 import { DebriefSheet } from './DebriefSheet'
 import './history.css'
 
@@ -130,7 +131,7 @@ export function HistoryScreen(_: { param?: string }) {
                         <SwipeRow label={t('action_delete')} radius={24} srDelete onDelete={() => void removeWorkout(s)}>
                         <Card href={`#/session/${s.id}`}>
                           <div class="hs-srow">
-                            <span class="hs-date"><b>{fmt(day, { day: 'numeric' })}</b><span>{fmt(day, { weekday: 'short' })}</span></span>
+                            <span class="hs-date"><b>{fmt(day, { day: 'numeric' })}</b><span>{dayShort(dayOfWeek(day), getLang())}</span></span>
                             <span class="hs-stext">
                               <span class="hs-sname"><span>{s.title}</span>{prc > 0 && <span><PrTag count={prc} /></span>}</span>
                               <span class="hs-meta">{[plural('hist_sets', ss.length), mins != null ? t('hist_minutes', mins) : null].filter(Boolean).join(' · ')}</span>

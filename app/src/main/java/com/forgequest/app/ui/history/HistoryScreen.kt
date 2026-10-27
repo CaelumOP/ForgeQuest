@@ -220,8 +220,8 @@ fun HistoryScreen(nav: NavHostController) {
                                 }
                                 scores[session.id]?.let { r ->
                                     Text(
-                                        com.forgequest.app.ui.workouts.scoreLine(r),
-                                        style = MaterialTheme.typography.bodySmall, color = c.gold,
+                                        com.forgequest.app.ui.workouts.scoreReasons(r),
+                                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                         modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 8.dp),
                                     )
                                 }
@@ -348,7 +348,7 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
                 Text(date.format(DateTimeFormatter.ofPattern("d")), style = MaterialTheme.typography.titleMedium, color = c.teal, fontWeight = FontWeight.Bold)
-                Text(date.format(DateTimeFormatter.ofPattern("EEE")), style = MaterialTheme.typography.labelSmall, color = c.teal)
+                Text(com.forgequest.app.domain.Dates.dayShort(date.dayOfWeek.value), style = MaterialTheme.typography.labelSmall, color = c.teal)
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {

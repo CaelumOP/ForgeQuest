@@ -861,7 +861,7 @@
     <string name="block_legs">الأرجل</string>
     <string name="live_rest_minus">−15 ث</string>
     <string name="live_rest_plus">+15 ث</string>
-    <string name="live_tick_all_finish">علّم الكل وأنهِ</string>
+    <string name="live_tick_all_finish">أنجزتها كلها: علّمها وأنهِ</string>
     <string name="live_last_time">المرة الماضية: %1$s</string>
     <string name="live_next_up">التالي: %1$s · %2$s</string>
     <string name="home_center_protein">غ بروتين</string>
@@ -1194,6 +1194,9 @@
     <string name="coach_stale_apply">طبّقها على أي حال</string>
     <string name="debrief_title">ملخص المدرب</string>
     <string name="debrief_score">%1$d/10</string>
+    <string name="score_first_ever">أنهيتَ أولى تمارينك، وهذه أصعب خطوة.</string>
+    <string name="score_after_break">عدتَ إلى التمرين، وهذا هو المهم.</string>
+    <string name="score_adjusted">مُعدَّل بحسب التعافي</string>
     <string name="score_title">تقييم التمرين</string>
     <string name="debrief_loading">يراجع مدربك هذا التمرين…</string>
     <string name="debrief_next_time">في المرة القادمة: %1$s</string>
