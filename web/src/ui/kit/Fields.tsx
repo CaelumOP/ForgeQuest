@@ -102,7 +102,16 @@ export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, la
     <div class="kit-stepper" role="group" aria-label={label}>
       <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_decrease', shown)} disabled={value <= min} onClick={() => set(base - step)}><RemoveIcon /></button>
       {draft == null
-        ? <button type="button" class="kit-stepper-val" aria-label={`${label}: ${shown}`} onClick={() => setDraft(String(value))}>{shown}</button>
+        // A slider to screen readers: it names the value, and arrow keys (or a swipe) step it. A tap types one.
+        ? <button
+            type="button" class="kit-stepper-val" role="slider" aria-label={label}
+            aria-valuenow={value} aria-valuemin={Number.isFinite(min) ? min : undefined} aria-valuemax={Number.isFinite(max) ? max : undefined} aria-valuetext={shown}
+            onClick={() => setDraft(String(value))}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp') { e.preventDefault(); set(value + step) }
+              if (e.key === 'ArrowDown') { e.preventDefault(); set(value - step) }
+            }}
+          >{shown}</button>
         : <input
             class="kit-stepper-input" aria-label={label} value={draft} autoFocus
             inputMode={Number.isInteger(step) && Number.isInteger(min) ? 'numeric' : 'decimal'} enterKeyHint="done"

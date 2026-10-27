@@ -90,6 +90,81 @@
   }
 }
 
+/*
+ * Material 3 color roles (--md-sys-color-*), mapped onto the palette above the same way Theme.kt maps
+ * Fit.colors: our values win, roles we have no color for take the spec's. Surface containers step up from the canvas:
+ * lowest, low, container (our card), high (our raised card), highest.
+ */
+:root {
+  --md-sys-color-primary: var(--teal);
+  --md-sys-color-on-primary: var(--on-teal);
+  --md-sys-color-primary-container: var(--teal-track);
+  --md-sys-color-secondary: var(--blue);
+  --md-sys-color-secondary-container: var(--blue-track);
+  --md-sys-color-tertiary: var(--gold);
+  --md-sys-color-tertiary-container: var(--gold-track);
+  --md-sys-color-error: var(--coral);
+  --md-sys-color-error-container: var(--coral-track);
+  --md-sys-color-background: var(--bg);
+  --md-sys-color-on-background: var(--text);
+  --md-sys-color-surface: var(--bg);
+  --md-sys-color-on-surface: var(--text);
+  --md-sys-color-surface-variant: var(--card-high);
+  --md-sys-color-on-surface-variant: var(--text-2);
+  --md-sys-color-outline: var(--divider);
+  --md-sys-color-outline-variant: var(--divider);
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-surface-container: var(--card);
+  --md-sys-color-surface-container-high: var(--card-high);
+  /* Light values; the dark ones follow. */
+  --md-sys-color-on-primary-container: #00413a;
+  --md-sys-color-inverse-primary: #5cd6c0;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-on-secondary-container: #0b3c86;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-on-tertiary-container: #261900;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-on-error-container: #410e0b;
+  --md-sys-color-inverse-surface: #2e3133;
+  --md-sys-color-inverse-on-surface: #f0f1f3;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f0f4f9;
+  --md-sys-color-surface-container-highest: #d8e0ec;
+}
+:root[data-theme='dark'] {
+  --md-sys-color-on-primary-container: var(--teal);
+  --md-sys-color-inverse-primary: #00705f;
+  --md-sys-color-on-secondary: #003062;
+  --md-sys-color-on-secondary-container: var(--blue);
+  --md-sys-color-on-tertiary: #3f2e00;
+  --md-sys-color-on-tertiary-container: var(--gold);
+  --md-sys-color-on-error: #601410;
+  --md-sys-color-on-error-container: var(--coral);
+  --md-sys-color-inverse-surface: var(--text);
+  --md-sys-color-inverse-on-surface: var(--card);
+  --md-sys-color-surface-container-lowest: #0e0e0f;
+  --md-sys-color-surface-container-low: #18191a;
+  --md-sys-color-surface-container-highest: #333537;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --md-sys-color-on-primary-container: var(--teal);
+    --md-sys-color-inverse-primary: #00705f;
+    --md-sys-color-on-secondary: #003062;
+    --md-sys-color-on-secondary-container: var(--blue);
+    --md-sys-color-on-tertiary: #3f2e00;
+    --md-sys-color-on-tertiary-container: var(--gold);
+    --md-sys-color-on-error: #601410;
+    --md-sys-color-on-error-container: var(--coral);
+    --md-sys-color-inverse-surface: var(--text);
+    --md-sys-color-inverse-on-surface: var(--card);
+    --md-sys-color-surface-container-lowest: #0e0e0f;
+    --md-sys-color-surface-container-low: #18191a;
+    --md-sys-color-surface-container-highest: #333537;
+  }
+}
+
+
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overscroll-behavior: none; }
 body {
@@ -298,9 +373,11 @@ img.step-glyph { border-radius: 5px; }
 :root[dir="rtl"] { --dir: -1; }
 @keyframes fq-push { from { opacity: 0; transform: translateX(calc(28px * var(--dir))); } to { opacity: 1; transform: none; } }
 @keyframes fq-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.scroll-push { animation: fq-push 280ms ease-out; }
+/* Emphasized curve, medium length: the M3 tokens for a screen-level move (kit.css), like the Android app. */
+.scroll-push { animation: fq-push var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized); }
 .food-row, .kit-swipe, .wk-item { animation: fq-in 200ms ease-out; }
 
+/* Reduced motion: nothing moves. Entrances that matter become short fades instead (kit.css). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }

@@ -57,12 +57,17 @@ export function IconButton({ label, children, onClick, disabled, tone = 'plain' 
   )
 }
 
-export type ChipProps = { label: string; selected?: boolean; onClick?: () => void; role?: 'radio' | 'checkbox' | 'button'; accent?: 'teal' | 'blue' | 'gold' | 'coral' | 'purple' }
-export function Chip({ label, selected = false, onClick, role = 'button', accent = 'teal' }: ChipProps) {
+export type ChipProps = {
+  label: string; selected?: boolean; onClick?: () => void; role?: 'radio' | 'checkbox' | 'button'; accent?: 'teal' | 'blue' | 'gold' | 'coral' | 'purple'
+  /** Read after the label by screen readers only, e.g. a muscle's recovery state. */
+  srDetail?: string
+}
+export function Chip({ label, selected = false, onClick, role = 'button', accent = 'teal', srDetail }: ChipProps) {
   const aria = role === 'button' ? { 'aria-pressed': selected } : { role, 'aria-checked': selected }
   return (
     <button type="button" class={cx('kit-chip', `kit-accent-${accent}`, selected && 'kit-chip-on')} onClick={onClick} {...aria}>
       {label}
+      {srDetail && <span class="kit-sr">{`, ${srDetail}`}</span>}
     </button>
   )
 }

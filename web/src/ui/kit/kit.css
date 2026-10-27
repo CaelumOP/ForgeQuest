@@ -1,4 +1,43 @@
 /* Shared UI kit. Colors only from styles.css variables; logical properties only. */
+
+/*
+ * Motion tokens, the same as ForgeMotion.kt. Easing and duration pairs for timed changes, and springs as an easing
+ * plus the time the spring takes to settle. Springs are cubic-bezier approximations here and exact linear() curves
+ * where the browser supports them. Spatial springs move things and overshoot a little; effects springs never do.
+ */
+:root {
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-long2: 500ms;
+  --forge-spring-fast-spatial: cubic-bezier(0.3, 1.3, 0.5, 1);
+  --forge-spring-fast-spatial-duration: 350ms;
+  --forge-spring-default-spatial: cubic-bezier(0.3, 1.15, 0.5, 1);
+  --forge-spring-default-spatial-duration: 470ms;
+  --forge-spring-slow-spatial: cubic-bezier(0.3, 1.05, 0.5, 1);
+  --forge-spring-slow-spatial-duration: 570ms;
+  /* The three effects springs share one curve (critically damped); only their length differs. */
+  --forge-spring-effects: cubic-bezier(0.3, 0.7, 0.4, 1);
+  --forge-spring-fast-effects-duration: 140ms;
+  --forge-spring-default-effects-duration: 210ms;
+  --forge-spring-slow-effects-duration: 300ms;
+  /* With reduced motion on, movement becomes a fade this long. */
+  --forge-reduced-fade: 120ms;
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --forge-spring-fast-spatial: linear(0, 0.071, 0.235, 0.436, 0.632, 0.801, 0.93, 1.018, 1.069, 1.092, 1.094, 1.082, 1.065, 1.046, 1.028, 1.013, 1.003, 0.996, 0.992, 0.991, 0.991, 0.993, 0.995, 0.996, 1);
+    --forge-spring-default-spatial: linear(0, 0.061, 0.201, 0.372, 0.542, 0.693, 0.816, 0.908, 0.972, 1.013, 1.036, 1.045, 1.045, 1.041, 1.033, 1.025, 1.018, 1.011, 1.006, 1.003, 1, 0.999, 0.998, 0.998, 1);
+    --forge-spring-slow-spatial: linear(0, 0.047, 0.156, 0.292, 0.432, 0.563, 0.677, 0.772, 0.847, 0.904, 0.945, 0.975, 0.994, 1.006, 1.012, 1.015, 1.015, 1.014, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1);
+    --forge-spring-effects: linear(0, 0.049, 0.157, 0.285, 0.411, 0.525, 0.623, 0.705, 0.771, 0.824, 0.866, 0.898, 0.923, 0.943, 0.957, 0.968, 0.976, 0.982, 0.987, 0.99, 0.993, 0.995, 0.996, 0.997, 1);
+  }
+}
 .kit-accent-teal { --acc: var(--teal); --on-acc: var(--on-teal); }
 .kit-accent-blue { --acc: var(--blue); --on-acc: var(--bg); }
 .kit-accent-gold { --acc: var(--gold); --on-acc: var(--bg); }
@@ -59,7 +98,7 @@ button.kit-card { min-block-size: 44px; }
 .kit-ring { position: relative; display: inline-block; flex: none; }
 .kit-ring svg { display: block; }
 html[dir='rtl'] .kit-ring svg { transform: scaleX(-1); }
-.kit-ring-arc { transition: stroke-dasharray 0.4s; }
+.kit-ring-arc { transition: stroke-dasharray var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized-decelerate); }
 .kit-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; text-align: center; }
 
 /* Charts */
@@ -125,6 +164,10 @@ button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: 
 
 @media (prefers-reduced-motion: reduce) {
   .kit-spinner { animation-duration: 2s !important; animation: kit-spin 2s linear infinite !important; }
+  /* Nothing slides or rises: sheets, dialogs, toasts, pushed screens and new rows just fade in, briefly. */
+  .kit-sheet, .kit-dialog, .kit-toast, .kit-backdrop, .scroll-push, .food-row, .kit-swipe, .wk-item {
+    animation: kit-fade var(--forge-reduced-fade) linear !important;
+  }
 }
 
 /* The sheet and dialog sit on --card-high, so tonal controls inside use --card to stay visible. */

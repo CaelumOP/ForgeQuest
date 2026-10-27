@@ -67,7 +67,7 @@ function Totals({ meals, kcalGoal, proteinGoal, carbsGoal, trackCarbs }: { meals
   const over = tot.kcal > kcalGoal
   const ring = (value: number, goal: number, color: string, track: string, label: string, num: string, sub: string) => (
     <div class="food-ring">
-      <Ring value={goal > 0 ? value / goal : 0} color={color} track={track} size={76} stroke={8} label={label}>
+      <Ring value={goal > 0 ? value / goal : 0} color={color} track={track} size={76} stroke={8} label={label} valueText={sub}>
         <span class="food-ring-num" style={{ color: `var(${color})` }}>{num}</span>
       </Ring>
       <span class="food-ring-lbl">{label}</span>

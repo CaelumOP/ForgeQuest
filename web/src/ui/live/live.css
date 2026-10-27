@@ -4,6 +4,8 @@
 .lw-progress > div { block-size: 100%; background: var(--teal); transition: inline-size 0.2s; }
 .lw-head { display: flex; align-items: center; gap: 4px; padding-block: max(4px, env(safe-area-inset-top)) 4px; padding-inline: 4px 12px; }
 .lw-head-text { flex: 1; min-inline-size: 0; }
+/* The workout clock in the header ticks every second: equal-width digits keep it still. */
+.lw-head .lw-small { font-variant-numeric: tabular-nums; }
 .lw-title { margin: 0; font-size: 17px; line-height: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lw-now { font-size: 12px; color: var(--teal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lw-discard.kit-btn-text { color: var(--text-2); padding-inline: 8px; }
@@ -95,7 +97,7 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 .lws-level { flex: 1; font-size: 16px; font-weight: 600; }
 .lws-levelup { color: var(--gold); animation: lws-pulse 0.9s ease-in-out 0.5s 2; }
 .lws-rank { font-size: 14px; font-weight: 500; color: var(--blue); }
-.lws-score { font-size: 16px; font-weight: 600; color: var(--gold); }
+.lws-score { font-size: 16px; font-weight: 600; color: var(--gold); font-variant-numeric: tabular-nums; }
 .lws-score.quiet { color: var(--text-2); }
 .lws-scorenote { color: var(--text); }
 .lws-bar { block-size: 8px; border-radius: 4px; background: var(--blue-track); margin-block: 12px 6px; overflow: hidden; }
