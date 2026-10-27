@@ -1,7 +1,9 @@
 package com.forgequest.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -16,6 +18,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.forgequest.app.R
 
@@ -206,6 +209,15 @@ internal fun forgeLightScheme(f: FitColors) = lightColorScheme(
     surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFFD8E0EC),
 )
 
+/** The M3 shape scale, set explicitly. Our own components keep their corners (cards 24, pills fully round). */
+private val ForgeShapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(28.dp),
+)
+
 @Composable
 fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val fit = if (dark) DarkFitColors else LightFitColors
@@ -214,6 +226,6 @@ fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
     // makes Compose wrap the last letter of a title onto its own line. Arabic gets the system face, untracked.
     val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"
     CompositionLocalProvider(LocalFitColors provides fit) {
-        MaterialTheme(colorScheme = scheme, typography = if (arabic) ArabicTypography else FitTypography, content = content)
+        MaterialTheme(colorScheme = scheme, shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography, content = content)
     }
 }
