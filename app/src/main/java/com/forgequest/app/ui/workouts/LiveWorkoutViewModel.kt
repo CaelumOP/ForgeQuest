@@ -433,7 +433,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     after = after,
                     nextUp = nextUp,
                     offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
-                    score = repo.scores(snap)[s.id],
+                    score = repo.scores(snap, only = s.id)[s.id],
                     clippedEndAt = result.endedAt.takeIf { result.clipped },
                 )
                 if (snap.settings.debriefEnabled && app.coach.canDebrief()) {

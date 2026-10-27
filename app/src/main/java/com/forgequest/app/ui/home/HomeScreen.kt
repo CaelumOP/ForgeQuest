@@ -267,9 +267,12 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
         val weeklyTarget = StreakCalculator.fullTarget(s.plan?.trainingDays ?: emptySet(), s.settings.weeklyTargetOverride)
-        val finishedDays = s.sessions.map { it.epochDay }.toSet()
-        val nudge = TargetNudge.offer(finishedDays, weeklyTarget, minOf(finishedDays.minOrNull() ?: Dates.today(), Dates.today()), Dates.today())
-            ?.takeIf { s.settings.onboarded && TargetNudge.show(s.settings.targetNudgeAnswered, it) }
+        val todayDay = Dates.today()
+        val nudge = remember(s.sessions, weeklyTarget, s.settings.onboarded, s.settings.targetNudgeAnswered, todayDay) {
+            val finishedDays = s.sessions.map { it.epochDay }.toSet()
+            TargetNudge.offer(finishedDays, weeklyTarget, minOf(finishedDays.minOrNull() ?: todayDay, todayDay), todayDay)
+                ?.takeIf { s.settings.onboarded && TargetNudge.show(s.settings.targetNudgeAnswered, it) }
+        }
         StreakCard(s.streak, onDayClick = { day -> tagDay = day }, nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })

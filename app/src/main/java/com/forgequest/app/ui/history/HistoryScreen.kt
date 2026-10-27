@@ -92,7 +92,9 @@ import com.forgequest.app.ui.workouts.musclesLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -106,7 +108,10 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
     /** The calculated score of every workout, worked out once per snapshot from what is already loaded, never per row. */
-    val scores: StateFlow<Map<Long, WorkoutScore.Result>> = snapshot.map { snap -> snap?.let { app.workouts.scores(it) }.orEmpty() }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val scores: StateFlow<Map<Long, WorkoutScore.Result>> = snapshot
+        .distinctUntilChanged { a, b -> a?.sessions == b?.sessions && a?.doneSets == b?.doneSets }
+        .mapLatest { snap -> snap?.let { app.workouts.scores(it) }.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     fun setNote(session: SessionEntity, note: String) = viewModelScope.launch { app.db.sessions().update(session.copy(note = note.trim().take(300))) }
@@ -378,7 +383,7 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
 
     val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
     /** This workout's calculated score; null until the snapshot loads or when no set is done. */
-    val score: StateFlow<WorkoutScore.Result?> = app.progress.snapshot.map { snap -> app.workouts.scores(snap)[sessionId] }
+    val score: StateFlow<WorkoutScore.Result?> = app.progress.snapshot.map { snap -> app.workouts.scores(snap, only = sessionId)[sessionId] }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     data class Loaded(val session: SessionEntity?)

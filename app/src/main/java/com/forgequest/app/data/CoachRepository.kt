@@ -330,7 +330,7 @@ class CoachRepository(
             appendLine("Body goal: ${s.nutritionGoal.name}")
             db.readiness().get(session.epochDay)?.let { appendLine("Readiness that day: recovery ${it.recovery}%, sleep ${it.sleepMin} min") }
             if (session.note.isNotBlank()) appendLine("Their note: ${session.note}")
-            progress.freshSnapshot().let { workouts.scores(it)[sessionId] }?.let { r ->
+            progress.freshSnapshot().let { workouts.scores(it, only = sessionId)[sessionId] }?.let { r ->
                 val parts = listOfNotNull(
                     if (r.plannedSets == null) "${r.doneSets} sets" else if (r.doneSets >= r.plannedSets) "All ${r.doneSets} sets" else "${r.doneSets} of ${r.plannedSets} sets",
                     if (r.compared > 0) "up on ${r.up} of ${r.compared}" else null,

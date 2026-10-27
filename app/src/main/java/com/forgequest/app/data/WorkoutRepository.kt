@@ -374,13 +374,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         return Readiness.isLowRecovery(day.recovery)
     }
 
-    /** The calculated score of every finished workout in [snap], from data already loaded plus two small queries (plan items, recovery). */
-    suspend fun scores(snap: ProgressSnapshot): Map<Long, WorkoutScore.Result> {
+    /** The calculated score of every finished workout in [snap], from data already loaded plus two small queries (plan items, recovery). With [only], just that workout is scored. */
+    suspend fun scores(snap: ProgressSnapshot, only: Long? = null): Map<Long, WorkoutScore.Result> {
         val planned = plans.allItems().groupBy { it.dayId }.mapValues { (_, items) -> plannedSetsOf(items) }
         val rough = db.readiness().all().filter { Readiness.isLowRecovery(it.recovery) }.map { it.epochDay }.toSet()
         return WorkoutScore.forSessions(
             snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough,
-            snap.dayTags, snap.plan?.trainingDays ?: emptySet(),
+            snap.dayTags, snap.plan?.trainingDays ?: emptySet(), only,
         )
     }
 
