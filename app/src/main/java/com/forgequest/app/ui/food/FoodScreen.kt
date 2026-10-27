@@ -123,6 +123,7 @@ import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -408,15 +409,17 @@ fun FoodScreen(nav: NavHostController) {
                 item { Text(stringResource(R.string.food_tick_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp)) }
             }
             items(shown, key = { it.id }) { food ->
-                FoodRow(
-                    food = food,
-                    qty = selection[food.id]?.qty,
-                    onToggle = { vm.toggle(food) },
-                    onQty = { vm.setQty(food, it) },
-                    onPhoto = { photoFor = food },
-                    onEdit = { editing = food },
-                    onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
-                )
+                Box(Modifier.animateItem()) {
+                    FoodRow(
+                        food = food,
+                        qty = selection[food.id]?.qty,
+                        onToggle = { vm.toggle(food) },
+                        onQty = { vm.setQty(food, it) },
+                        onPhoto = { photoFor = food },
+                        onEdit = { editing = food },
+                        onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
+                    )
+                }
             }
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -427,7 +430,11 @@ fun FoodScreen(nav: NavHostController) {
             if (meals.isEmpty()) {
                 item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
             }
-            items(meals, key = { "m${it.id}" }) { meal -> MealRow(meal, onDelete = { vm.deleteMeal(meal) }) }
+            items(meals, key = { "m${it.id}" }) { meal ->
+                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = Modifier.animateItem()) {
+                    MealRow(meal, onDelete = { vm.deleteMeal(meal) })
+                }
+            }
         }
 
         AnimatedVisibility(

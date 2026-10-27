@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -464,7 +465,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
             try {
                 shareUri.value = app.backup.exportForSharing()
             } catch (e: Exception) {
-                message.value = app.str(R.string.backup_create_failed)
+                app.haptics.error(); message.value = app.str(R.string.backup_create_failed)
             } finally {
                 busy.value = null
             }
@@ -479,7 +480,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
                 app.backup.exportTo(uri)
                 message.value = app.str(R.string.backup_saved)
             } catch (e: Exception) {
-                message.value = app.str(R.string.backup_create_failed)
+                app.haptics.error(); message.value = app.str(R.string.backup_create_failed)
             } finally {
                 busy.value = null
             }
@@ -523,7 +524,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
                 safetyCopies.value = app.backup.safetyCopies()
                 message.value = app.str(R.string.backup_restored_from, app.str(preview.source))
             } catch (e: Exception) {
-                message.value = app.str(R.string.backup_restore_failed)
+                app.haptics.error(); message.value = app.str(R.string.backup_restore_failed)
             } finally {
                 busy.value = null
             }
@@ -1129,14 +1130,17 @@ fun ProfileScreen(nav: NavHostController) {
                 val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
                 if (notes.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    notes.forEach { note ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
-                            Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                    // The list grows and shrinks smoothly as notes are added or removed.
+                    Column(Modifier.animateContentSize()) {
+                        notes.forEach { note ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
+                                Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }

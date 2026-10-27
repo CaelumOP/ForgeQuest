@@ -511,6 +511,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         affected.forEach { recomputeRecords(it) }
     }
 
+    /** Puts back a workout removed by [deleteSession], with its original ids, then re-checks the records it touched. */
+    suspend fun restoreSession(session: SessionEntity, sets: List<SetEntity>) = db.withTransaction {
+        sessions.insert(session)
+        sessions.insertSets(sets)
+        sets.map { it.exerciseId }.distinct().forEach { recomputeRecords(it) }
+    }
+
     /** Replays the exercise's whole history in chronological order so PR tags stay truthful after an edit or delete. */
     private suspend fun recomputeRecords(exerciseId: String) {
         val ex = exercises.byId(exerciseId) ?: return

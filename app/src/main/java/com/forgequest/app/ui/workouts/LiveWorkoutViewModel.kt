@@ -445,6 +445,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             val d = app.coach.generateDebrief(debriefSessionId)
             debrief.value = d
             debriefFailed.value = d == null
+            if (d == null) app.haptics.error()
             debriefLoading.value = false
         }
     }

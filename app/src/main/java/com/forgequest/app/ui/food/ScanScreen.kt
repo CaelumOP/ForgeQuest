@@ -205,6 +205,7 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             if (outcome == null) pending.cancel()
             if ((state.value as? ScanState.Analyzing)?.photo != photo) return@launch
             val error = outcome?.exceptionOrNull()
+            if (outcome == null || error != null) app.haptics.error()
             state.value = when {
                 outcome == null -> ScanState.Failed(photo, app.str(R.string.scan_err_slow))
                 error == null -> ScanState.Result(photo, outcome.getOrThrow())

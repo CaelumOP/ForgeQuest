@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
@@ -51,14 +52,21 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -278,12 +286,57 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                     }
                     if (!day.day.isRest) {
                         Spacer(Modifier.height(8.dp))
-                        day.items.forEach { item ->
+                        // Drag a row by its handle (long press) to reorder; the Move up / Move down buttons in the editor stay.
+                        val haptics = LocalContext.current.container.haptics
+                        var order by remember(day.items) { mutableStateOf(day.items.map { it.id }) }
+                        var dragId by remember { mutableStateOf<Long?>(null) }
+                        var dragOffset by remember { mutableFloatStateOf(0f) }
+                        var dragStart by remember { mutableIntStateOf(0) }
+                        val heights = remember { mutableMapOf<Long, Int>() }
+                        val dragLabel = stringResource(R.string.cd_drag_reorder)
+                        order.mapNotNull { id -> day.items.firstOrNull { it.id == id } }.forEach { item ->
+                          key(item.id) {
                             val ex = s.exercises[item.exerciseId]
+                            val dragging = dragId == item.id
                             Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { editing = item }.padding(vertical = 10.dp),
+                                Modifier.fillMaxWidth()
+                                    .zIndex(if (dragging) 1f else 0f)
+                                    .graphicsLayer { translationY = if (dragging) dragOffset else 0f; alpha = if (dragging) 0.92f else 1f }
+                                    .onSizeChanged { heights[item.id] = it.height }
+                                    .clip(RoundedCornerShape(12.dp)).background(if (dragging) c.cardHigh else androidx.compose.ui.graphics.Color.Transparent)
+                                    .clickable { editing = item }.padding(vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                Icon(
+                                    Icons.Rounded.DragHandle, contentDescription = dragLabel, tint = c.textSecondary,
+                                    modifier = Modifier.size(40.dp).pointerInput(item.id) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { dragId = item.id; dragOffset = 0f; dragStart = order.indexOf(item.id); haptics.tick() },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragOffset += amount.y
+                                                val i = order.indexOf(item.id)
+                                                val below = order.getOrNull(i + 1)?.let { heights[it] }
+                                                val above = order.getOrNull(i - 1)?.let { heights[it] }
+                                                if (dragOffset > 0f && below != null && dragOffset > below / 2f) {
+                                                    order = order.toMutableList().also { it.add(i + 1, it.removeAt(i)) }
+                                                    dragOffset -= below
+                                                    haptics.tick()
+                                                } else if (dragOffset < 0f && above != null && -dragOffset > above / 2f) {
+                                                    order = order.toMutableList().also { it.add(i - 1, it.removeAt(i)) }
+                                                    dragOffset += above
+                                                    haptics.tick()
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                val delta = order.indexOf(item.id) - dragStart
+                                                dragId = null; dragOffset = 0f
+                                                if (delta != 0) vm.move(item, delta)
+                                            },
+                                            onDragCancel = { dragId = null; dragOffset = 0f; order = day.items.map { it.id } },
+                                        )
+                                    }.padding(end = 12.dp),
+                                )
                                 Column(Modifier.weight(1f)) {
                                     Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                                     Text(
@@ -298,6 +351,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                                     Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary)
                                 }
                             }
+                          }
                         }
                     }
                     Spacer(Modifier.height(8.dp))

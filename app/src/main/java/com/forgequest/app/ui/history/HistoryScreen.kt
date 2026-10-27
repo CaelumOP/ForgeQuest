@@ -73,6 +73,11 @@ import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
+import com.forgequest.app.ui.LocalSnackbar
+import com.forgequest.app.ui.components.CardShape
+import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.components.EmptyState
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.NumberStepper
@@ -102,6 +107,17 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
 
     fun setNote(session: SessionEntity, note: String) = viewModelScope.launch { app.db.sessions().update(session.copy(note = note.trim().take(300))) }
 
+    /** A workout deleted by swipe: removed right away, and [undo] puts it back (same ids) while the snackbar is up. */
+    val undo = MutableStateFlow<Pair<String, suspend () -> Unit>?>(null)
+
+    fun deleteWorkout(session: SessionEntity) = viewModelScope.launch {
+        val sets = app.db.sessions().sets(session.id)
+        app.workouts.deleteSession(session.id)
+        undo.value = app.str(R.string.food_removed, session.title) to { app.workouts.restoreSession(session, sets) }
+    }
+
+    fun runUndo() = viewModelScope.launch { undo.value?.second?.invoke(); undo.value = null }
+
     /** The debrief sheet: which workout it is open for, and whether the coach is writing it or couldn't. */
     val debriefFor = MutableStateFlow<Long?>(null)
     val debriefLoading = MutableStateFlow(false)
@@ -123,6 +139,7 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
         app.appScope.launch {
             val d = app.coach.generateDebrief(sessionId, onDemand = true)
             debriefFailed.value = d == null
+            if (d == null) app.haptics.error()
             debriefLoading.value = false
         }
     }
@@ -150,6 +167,15 @@ fun HistoryScreen(nav: NavHostController) {
     noteFor?.let { ses ->
         com.forgequest.app.ui.workouts.SetNoteDialog(ses.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(ses, it); noteFor = null })
     }
+    val snackbar = LocalSnackbar.current
+    val undoLabel = stringResource(R.string.action_undo)
+    val undo by vm.undo.collectAsState()
+    LaunchedEffect(undo) {
+        undo?.let { (text, _) ->
+            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
+        }
+    }
     val debriefFor by vm.debriefFor.collectAsState()
     s.sessions.firstOrNull { it.id == debriefFor }?.let { ses -> DebriefSheet(vm, ses) }
 
@@ -176,19 +202,21 @@ fun HistoryScreen(nav: NavHostController) {
             weeks.entries.forEachIndexed { index, (week, sessions) ->
                 val expanded = open[week] ?: (index == 0)
                 item(key = "w$week") {
-                    WeekCard(week, thisWeek, sessions, setsBySession, unit, expanded) { open[week] = !expanded }
+                    Box(Modifier.animateItem()) { WeekCard(week, thisWeek, sessions, setsBySession, unit, expanded) { open[week] = !expanded } }
                 }
                 if (expanded) {
                     sessions.groupBy { it.epochDay }.forEach { (day, daySessions) ->
                         item(key = "d$day") {
                             Text(
                                 LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
-                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.padding(start = 8.dp, top = 6.dp),
+                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.animateItem().padding(start = 8.dp, top = 6.dp),
                             )
                         }
                         items(daySessions, key = { it.id }) { session ->
-                            Column(Modifier.padding(start = 8.dp)) {
+                            Column(Modifier.animateItem().padding(start = 8.dp)) {
+                                SwipeToDelete(onDelete = { vm.deleteWorkout(session) }, shape = CardShape) {
                                 SessionRow(session, setsBySession[session.id].orEmpty(), s.exercises) { nav.navigate(Routes.session(session.id)) }
+                                }
                                 scores[session.id]?.let { r ->
                                     Text(
                                         com.forgequest.app.ui.workouts.scoreLine(r),

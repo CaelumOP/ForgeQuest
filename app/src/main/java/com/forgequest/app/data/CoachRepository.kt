@@ -194,6 +194,9 @@ class CoachRepository(
         return result
     }
 
+    /** True when the newest message is a failed reply, so the screen can buzz once. */
+    suspend fun lastReplyFailed(): Boolean = chat.recent(1).firstOrNull()?.kind == "error"
+
     private suspend fun saveError(e: AiError) {
         val text = if (e is AiError.Timeout) AppText.get(R.string.ai_err_coach_timeout) else e.userMessage
         val s = settings.current()

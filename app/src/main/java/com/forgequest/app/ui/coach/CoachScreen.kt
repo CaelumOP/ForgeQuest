@@ -126,6 +126,7 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
         sending.value = true
         viewModelScope.launch {
             app.coach.send(text)
+            if (app.coach.lastReplyFailed()) app.haptics.error()
             sending.value = false
         }
     }
