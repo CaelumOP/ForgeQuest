@@ -250,7 +250,7 @@ private fun LoadCard(d: Derived, reveal: Float) {
     val change = Trends.percentChange(lastWeek.toFloat(), thisWeek.toFloat())
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MiniRing((d.load / 100f).coerceIn(0f, 1f) * reveal, c.chartStrength, c.chartGainTrack, size = 84.dp, stroke = 8.dp) {
+            MiniRing((d.load / 100f).coerceIn(0f, 1f) * reveal, c.chartStrength, c.chartGainTrack, size = 84.dp, stroke = 8.dp, description = stringResource(R.string.a11y_load_ring, d.load)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("${(d.load * reveal).roundToInt()}", fontFamily = Manrope, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge.tabular(), color = c.textPrimary)
                     Text("%", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)

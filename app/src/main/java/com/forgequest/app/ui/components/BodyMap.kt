@@ -12,6 +12,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -142,7 +144,9 @@ fun MuscleRecoveryMap(
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         // Front on the left and back on the right in every language: it's a picture of a body, not a reading order.
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-        Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = summary }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // TalkBack reads the figures as one summary; the drawing is not exposed. The chip row below is how a screen
+        // reader picks a muscle.
+        Row(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = summary }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(stringResource(R.string.map_front) to art?.front, stringResource(R.string.map_back) to art?.back).forEach { (label, view) ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.fillMaxWidth().aspectRatio(0.5f)) {
@@ -159,7 +163,10 @@ fun MuscleRecoveryMap(
             // Every muscle as a chip too: small ones (forearms, tibialis) are hard to hit on the picture.
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Muscle.entries.forEach { m -> ChoiceChip(m.localLabel(), selected == m, { selected = if (selected == m) null else m }) }
+                Muscle.entries.forEach { m ->
+                    val status = muscleStatus(recovery[m])
+                    ChoiceChip(m.localLabel(), selected == m, { selected = if (selected == m) null else m }, Modifier.semantics { stateDescription = status })
+                }
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -185,6 +192,21 @@ fun MuscleRecoveryMap(
         Spacer(Modifier.height(12.dp))
         MapLegend()
     }
+}
+
+/** A muscle's state in the legend's words, for TalkBack: "Fresh", or "Recovering, 60% recovered". */
+@Composable
+private fun muscleStatus(r: MuscleRecovery?): String {
+    val fatigue = r?.fatigue ?: 0f
+    if (fatigue <= 0f) return stringResource(R.string.map_fresh)
+    val stage = stringResource(
+        when {
+            fatigue < 0.33f -> R.string.map_almost_ready
+            fatigue < 0.66f -> R.string.map_recovering
+            else -> R.string.map_just_trained
+        },
+    )
+    return stringResource(R.string.a11y_muscle_recovering, stage, ((1f - fatigue) * 100).roundToInt())
 }
 
 /** Wraps onto a second line at large text sizes instead of running off the card. */

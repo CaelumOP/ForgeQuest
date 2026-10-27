@@ -350,6 +350,12 @@ private fun NutritionRings(s: ProgressSnapshot) {
     val kcalTrack = if (over) c.goldTrack else c.blueTrack
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         val carbsOn = s.settings.trackCarbs
+        // TalkBack reads the rings and their centre as one sentence, in ring order.
+        val ringsLabel = listOfNotNull(
+            stringResource(R.string.a11y_rings_protein, s.today.protein.roundToInt(), s.settings.proteinGoal),
+            if (carbsOn) stringResource(R.string.a11y_rings_carbs, s.today.carbs.roundToInt(), s.settings.carbsGoal) else null,
+            stringResource(R.string.a11y_rings_calories, "%,d".format(s.today.kcal), "%,d".format(s.settings.kcalGoal)),
+        ).joinToString(stringResource(R.string.list_separator))
         ConcentricRings(
             rings = listOfNotNull(
                 RingSpec(s.today.protein / goalProtein, c.teal, c.tealTrack),
@@ -358,6 +364,7 @@ private fun NutritionRings(s: ProgressSnapshot) {
             ),
             size = 210.dp,
             stroke = if (carbsOn) 13.dp else 16.dp,
+            description = ringsLabel,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Units under the numbers: without them "66 / 1,005" read like a score (Google Fit labels its ring centre too).

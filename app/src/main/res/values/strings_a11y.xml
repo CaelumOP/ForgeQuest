@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screen reader (TalkBack) descriptions for drawn content: rings, charts, the body map. -->
+<resources>
+    <string name="a11y_rings_protein">Protein %1$d of %2$d grams</string>
+    <string name="a11y_rings_carbs">Carbs %1$d of %2$d grams</string>
+    <string name="a11y_rings_calories">Calories %1$s of %2$s</string>
+    <string name="a11y_load_ring">Training load %1$d percent</string>
+    <string name="a11y_chart_summary">Chart of %1$d points, from %2$s on %3$s to %4$s on %5$s, best %6$s</string>
+    <string name="a11y_muscle_recovering">%1$s, %2$d%% recovered</string>
+</resources>

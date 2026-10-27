@@ -16,10 +16,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 data class RingSpec(val progress: Float, val color: Color, val track: Color)
+
+/**
+ * TalkBack: with a [description] the ring and its centre read as that one sentence ("Calories 1,850 of 2,200");
+ * the drawing itself is never exposed.
+ */
+private fun Modifier.ringSemantics(description: String?): Modifier =
+    if (description != null) clearAndSetSemantics { contentDescription = description } else this
 
 /**
  * Google Fit concentric rings. At 0 a ring shows a single dot at 12 o'clock;
@@ -33,8 +42,9 @@ fun ConcentricRings(
     size: Dp = 220.dp,
     stroke: Dp = 16.dp,
     gap: Dp = 6.dp,
+    description: String? = null,
     center: @Composable () -> Unit = {},
-) = ConcentricRings(listOf(outer, inner), modifier, size, stroke, gap, center)
+) = ConcentricRings(listOf(outer, inner), modifier, size, stroke, gap, description, center)
 
 /** Rings listed outer to inner. */
 @Composable
@@ -44,11 +54,12 @@ fun ConcentricRings(
     size: Dp = 220.dp,
     stroke: Dp = 16.dp,
     gap: Dp = 6.dp,
+    description: String? = null,
     center: @Composable () -> Unit = {},
 ) {
     val progress = rings.mapIndexed { i, r -> animateFloatAsState(r.progress, spring(stiffness = Spring.StiffnessVeryLow), label = "ring$i") }
-    Box(modifier.size(size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(size)) {
+    Box(modifier.size(size).ringSemantics(description), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(size).clearAndSetSemantics {}) {
             val s = stroke.toPx()
             var radius = this.size.minDimension / 2f - s / 2f
             rings.forEachIndexed { i, r ->
@@ -79,10 +90,10 @@ private fun DrawScope.drawRing(radius: Float, stroke: Float, progress: Float, sp
 
 /** Single small ring, used for the week circles and rank badge. */
 @Composable
-fun MiniRing(progress: Float, color: Color, track: Color, modifier: Modifier = Modifier, size: Dp = 32.dp, stroke: Dp = 3.dp, content: @Composable () -> Unit = {}) {
+fun MiniRing(progress: Float, color: Color, track: Color, modifier: Modifier = Modifier, size: Dp = 32.dp, stroke: Dp = 3.dp, description: String? = null, content: @Composable () -> Unit = {}) {
     val p by animateFloatAsState(progress, spring(stiffness = Spring.StiffnessLow), label = "mini")
-    Box(modifier.size(size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(size)) {
+    Box(modifier.size(size).ringSemantics(description), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(size).clearAndSetSemantics {}) {
             val s = stroke.toPx()
             val r = this.size.minDimension / 2f - s / 2f
             val tl = Offset(center.x - r, center.y - r)

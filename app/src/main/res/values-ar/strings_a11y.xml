@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- أوصاف قارئ الشاشة (TalkBack) للمحتوى المرسوم: الحلقات والمخططات وخريطة الجسم. -->
+<resources>
+    <string name="a11y_rings_protein">البروتين %1$d من %2$d غرامًا</string>
+    <string name="a11y_rings_carbs">الكربوهيدرات %1$d من %2$d غرامًا</string>
+    <string name="a11y_rings_calories">السعرات الحرارية %1$s من %2$s</string>
+    <string name="a11y_load_ring">حمل التدريب %1$d بالمئة</string>
+    <string name="a11y_chart_summary">مخطط من %1$d نقطة، من %2$s في %3$s إلى %4$s في %5$s، وأعلى قيمة %6$s</string>
+    <string name="a11y_muscle_recovering">%1$s، متعافية بنسبة %2$d%%</string>
+</resources>

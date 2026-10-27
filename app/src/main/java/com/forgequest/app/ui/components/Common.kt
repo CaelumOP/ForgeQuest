@@ -31,6 +31,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +84,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.LaunchedEffect
 import java.util.Locale
+import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -285,6 +292,8 @@ fun Stepper(
     valueColor: Color = Fit.colors.textPrimary,
     minValueWidth: Dp = 40.dp,
     onValueClick: (() -> Unit)? = null,
+    /** Extra TalkBack semantics on the value, e.g. a range so a swipe adjusts it. */
+    valueSemantics: (SemanticsPropertyReceiver.() -> Unit)? = null,
 ) {
     val c = Fit.colors
     val typeLabel = stringResource(R.string.cd_type_value)
@@ -299,6 +308,8 @@ fun Stepper(
         }
         Box(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
+                // TalkBack hears the value ("82.5 kg") as the control's state, once.
+                .semantics(mergeDescendants = true) { stateDescription = value; valueSemantics?.invoke(this) }
                 .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
@@ -310,6 +321,7 @@ fun Stepper(
                 color = valueColor,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
+                modifier = Modifier.clearAndSetSemantics {},
             )
         }
         Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onPlus), contentAlignment = Alignment.Center) {
@@ -447,6 +459,11 @@ fun NumberStepper(
         valueColor = valueColor,
         minValueWidth = minValueWidth,
         onValueClick = { editing = true },
+        // A range like a slider's, so TalkBack can adjust it with a swipe (or the volume keys) in steps of [step].
+        valueSemantics = {
+            progressBarRangeInfo = ProgressBarRangeInfo(local.coerceIn(min, max), min..max, (((max - min) / step).roundToInt() - 1).coerceAtLeast(0))
+            setProgress { target -> commit(min + ((target - min) / step).roundToInt() * step); true }
+        },
     )
     if (editing) {
         NumberEntryDialog(
