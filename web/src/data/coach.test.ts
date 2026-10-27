@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  alternatingTurns, answeredHistory, applyPatch, canonicalId, coachSystemPrompt, debriefPayload, debriefSystem, decodeDebriefFull, encodeDebrief, extractMemory, extractPatch,
-  extractPlan, hasBrokenBlock, isReplyToIntake, languageOf, mergeMemory, parseDebrief, parsePastedPlan, planHash, stripPartial, stripReply,
+  alternatingTurns, answeredHistory, applyPatch, canonicalId, coachSystemPrompt, debriefPayload, decodeDebriefFull, extractMemory, extractPatch,
+  extractPlan, hasBrokenBlock, isReplyToIntake, languageOf, mergeMemory, parsePastedPlan, planHash, stripPartial, stripReply,
   validatePlan, wantsPlanText, type CoachPlan,
 } from './coach'
 import { decodeDebrief } from '../ui/history/helpers'
@@ -69,46 +69,28 @@ describe('plan from a coach reply', () => {
   })
 })
 
-describe('debrief encode / decode', () => {
-  const d = { score: 8, summary: 'Strong push day.', highlights: ['Dips 3x10'], watch: ['Left elbow felt hard'], nextTime: ['Add 1 kg'] }
-  it('round-trips through the session row and the journal decoder', () => {
-    const text = encodeDebrief(d)
-    expect(decodeDebriefFull(text)).toEqual(d)
+describe('old saved debriefs', () => {
+  it('still decode, with or without a score, and the journal decoder reads them', () => {
+    const text = JSON.stringify({ score: 8, summary: 'Strong push day.', highlights: ['Dips 3x10'], watch: ['Left elbow felt hard'], nextTime: ['Add 1 kg'] })
+    expect(decodeDebriefFull(text)).toEqual({ score: 8, summary: 'Strong push day.', highlights: ['Dips 3x10'], watch: ['Left elbow felt hard'], nextTime: ['Add 1 kg'] })
     expect(decodeDebrief(text)).toEqual({ summary: 'Strong push day.', nextTime: ['Add 1 kg'] })
-  })
-  it('a new debrief has no score and old saved ones still decode', () => {
-    const { score: _old, ...fresh } = d
-    expect(JSON.parse(encodeDebrief(fresh))).not.toHaveProperty('score')
-    expect(decodeDebriefFull(encodeDebrief(fresh))).toEqual(fresh)
-    expect(decodeDebriefFull('{"score":7,"summary":"Old one."}')?.score).toBe(7)
-  })
-  it('parses chatty model output and ignores any score', () => {
-    const p = parseDebrief('Sure!\n```json\n{"score": 1, "summary": " Done. ", "highlights": ["a","b","c"], "watch": ["x","y"], "nextTime": []}\n```')!
-    expect(p).toEqual({ summary: 'Done.', highlights: ['a', 'b'], watch: ['x'], nextTime: [] })
-    expect(parseDebrief('{"score": 9, "summary": "  "}')).toBeNull()
-    expect(parseDebrief('no json')).toBeNull()
-    expect(parseDebrief('{"score": 7}')).toBeNull()
-    expect(parseDebrief('{"summary": "No score"}')?.summary).toBe('No score')
+    expect(decodeDebriefFull('{"summary":"No score"}')?.score).toBeUndefined()
     expect(decodeDebriefFull('')).toBeNull()
-  })
-  it('forgives drifting shapes', () => {
-    // Fast models sometimes send single strings where lists were asked for.
-    const d = parseDebrief('{"score": "8/10", "summary": "Strong session.", "highlights": "12 dips, 2 more than last time", "watch": [], "next_time": "Add a set of rows"}')!
-    expect(d).not.toHaveProperty('score')
-    expect(d.highlights).toEqual(['12 dips, 2 more than last time'])
-    expect(d.nextTime).toEqual(['Add a set of rows'])
   })
 })
 
 describe('debrief request', () => {
+  it('writes weights in the unit the person uses', () => {
+    const set = { reps: 8, seconds: null, weightKg: 50, effort: 'OK', note: '', isPr: false, setIndex: 0 }
+    expect(debriefPayload({ ...input, exercises: [{ name: 'Squat', done: [set], lastTime: [] }], unit: 'LB' })).toContain('- Squat: 8 reps 110.2lb')
+    expect(debriefPayload({ ...input, exercises: [{ name: 'Squat', done: [set], lastTime: [] }] })).toContain('- Squat: 8 reps 50kg')
+  })
   const input = { title: 'Push', epochDay: 20000, minutes: 40, goal: 'MAINTAIN', note: '', exercises: [] }
-  it('carries the calculated score and asks the model not to score', () => {
+  it('carries the calculated score', () => {
     const score = { score: 8, doneSets: 12, plannedSets: 12, up: 3, compared: 4, prs: 1, rough: false, firstEver: false, afterBreak: false, showNumber: true }
     expect(debriefPayload({ ...input, score })).toContain('Score (calculated by the app, do not change it): 8/10. All 12 sets, up on 3 of 4, 1 PR.')
     expect(debriefPayload({ ...input, score: { ...score, doneSets: 10, compared: 0, prs: 2 } })).toContain('10 of 12 sets, 2 PRs.')
     expect(debriefPayload(input)).not.toContain('Score')
-    expect(debriefSystem('en')).toContain('10-second debrief')
-    expect(debriefSystem('en')).not.toContain('"score"')
   })
 })
 

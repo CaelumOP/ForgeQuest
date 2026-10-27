@@ -10,6 +10,7 @@ import { EQUIPMENT, EQUIPMENT_LABEL, profileFor, rankSubstitutes, translateDraft
 import { isExerciseKind, isMuscle, MUSCLES, MUSCLE_INFO, type ExerciseKind } from '../domain/muscle';
 import { CUT_PACE, GAIN_PACE, MIN_SAFE_KCAL, MIN_SAFE_KCAL_MALE, weightTrendNote } from '../domain/nutrition';
 import { recordScore } from '../domain/progress';
+import { unitCode, weightNumber, type WeightUnit } from '../domain/units';
 import type { WorkoutScoreResult } from '../domain/workout-score';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { BADGES, BADGES_BY_ID } from '../domain/badges';
@@ -407,29 +408,6 @@ export function describeChanges(patch: PlanPatch, library: Known, lang: string):
 
 // ---------------------------------------------------------------- Debrief
 
-/**
- * Reads the model's JSON (bare or fenced, with chatter around it); null when it isn't usable. Forgiving about shape,
- * since fast models drift: a single string where a list was asked for. A "score" in the reply is ignored.
- */
-export function parseDebrief(text: string): WorkoutDebrief | null {
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
-  const raw = parse(text.slice(start, end + 1));
-  if (!isObj(raw)) return null;
-  const summary = strOr(raw.summary, '').trim();
-  if (!summary) return null;
-  const list = (x: unknown, max: number) =>
-    (Array.isArray(x) ? x : [x]).filter((v): v is string => typeof v === 'string').map((s) => s.trim()).filter(Boolean).slice(0, max);
-  return {
-    summary: summary.slice(0, 240),
-    highlights: list(raw.highlights, 2), watch: list(raw.watch, 1), nextTime: list(raw.nextTime ?? raw.next_time, 1),
-  };
-}
-
-/** The text stored on the session row (Android WorkoutDebrief.encode). */
-export const encodeDebrief = (d: WorkoutDebrief): string => JSON.stringify(d);
-
 /** Android WorkoutDebrief.decode, with all four lists. */
 export function decodeDebriefFull(text: string): WorkoutDebrief | null {
   if (!text.trim()) return null;
@@ -450,6 +428,8 @@ export type DebriefInput = {
   exercises: { name: string; done: DebriefSet[]; lastTime: DebriefSet[] }[]
   /** The calculated score, already worked out by the app (workout-score.ts). */
   score?: WorkoutScoreResult | null
+  /** The person's weight unit; weights are written in it. Default kg. */
+  unit?: WeightUnit
 };
 
 /** "Score (calculated by the app, do not change it): 8/10. All 12 sets, up on 3 of 4, 1 PR." */
@@ -462,39 +442,30 @@ function scoreLine(r: WorkoutScoreResult): string {
   return `Score (calculated by the app, do not change it): ${r.score}/10. ${parts.join(', ')}.\n`;
 }
 
-function debriefLine(list: readonly DebriefSet[]): string {
+function debriefLine(list: readonly DebriefSet[], unit: WeightUnit): string {
   return [...list].sort((a, b) => a.setIndex - b.setIndex).map((st) => [
     st.reps != null ? `${st.reps} reps` : null,
     st.seconds != null ? `${st.seconds}s` : null,
-    st.weightKg != null && st.weightKg > 0 ? `${st.weightKg}kg` : null,
+    st.weightKg != null && st.weightKg > 0 ? `${weightNumber(unit, st.weightKg)}${unitCode(unit)}` : null,
     st.effort.trim() && st.effort !== 'OK' ? st.effort.toLowerCase() : null,
     st.note.trim() ? `"${st.note}"` : null,
     st.isPr ? 'PR' : null,
   ].filter((x): x is string => x != null).join(' ')).join(', ');
 }
 
-/** The user message of the debrief request (Android generateDebrief payload). */
+/** The facts part of the message "Ask the coach about this workout" sends (Android CoachRepository.debriefChatMessage). */
 export function debriefPayload(i: DebriefInput): string {
+  const unit = i.unit ?? 'KG';
   const day = new Date(i.epochDay * 86_400_000).toISOString().slice(0, 10);
   let s = `Workout: ${i.title}, ${day}, ${i.minutes} min\nBody goal: ${i.goal}\n`;
   if (i.readiness) s += `Readiness that day: recovery ${i.readiness.recovery}%, sleep ${i.readiness.sleepMin} min\n`;
   if (i.note.trim()) s += `Their note: ${i.note}\n`;
   if (i.score) s += scoreLine(i.score);
   for (const e of i.exercises) {
-    s += `- ${e.name}: ${debriefLine(e.done)}\n`;
-    if (e.lastTime.length) s += `  last time: ${debriefLine(e.lastTime)}\n`;
+    s += `- ${e.name}: ${debriefLine(e.done, unit)}\n`;
+    if (e.lastTime.length) s += `  last time: ${debriefLine(e.lastTime, unit)}\n`;
   }
   return s;
-}
-
-export function debriefSystem(lang: 'en' | 'ar'): string {
-  const language = lang === 'ar' ? 'formal Modern Standard Arabic (Western digits)' : 'English';
-  return [
-    'You are a friendly strength coach writing a 10-second debrief of a finished workout.',
-    'Reply with ONLY a JSON object: {"summary": one short sentence, "highlights": [1-2 short items citing real numbers],',
-    '"watch": [0-1 short item: a stall, a pain/hard note, or low readiness], "nextTime": [1 short, concrete tip]}.',
-    'The app already calculated the score and shows it; the summary must agree with it, never give your own. Be specific, warm and brief. Write in ' + language + '.',
-  ].join('\n');
 }
 
 // ---------------------------------------------------------------- Prompts

@@ -6,7 +6,6 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Nudges
 import com.forgequest.app.domain.SetEffort
@@ -65,6 +64,12 @@ data class WorkoutSummary(
     val score: com.forgequest.app.domain.WorkoutScore.Result? = null,
     /** Set when the end was pulled back to the last set: when that was (epoch ms). */
     val clippedEndAt: Long? = null,
+    val sessionId: Long = 0L,
+    /** The calculated debrief of this workout (domain/WorkoutDebriefMath.kt); null when it has no done sets. */
+    val debrief: com.forgequest.app.domain.WorkoutDebriefMath.Result? = null,
+    /** Exercise id → name, for the debrief's lines. */
+    val exerciseNames: Map<String, String> = emptyMap(),
+    val unit: WeightUnit = WeightUnit.KG,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -103,11 +108,6 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val hold = MutableStateFlow<HoldTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
     val summary = MutableStateFlow<WorkoutSummary?>(null)
-    /** The coach's debrief under the summary; loads in the background. When it can't be written, [debriefFailed] offers Try again. */
-    val debrief = MutableStateFlow<WorkoutDebrief?>(null)
-    val debriefLoading = MutableStateFlow(false)
-    val debriefFailed = MutableStateFlow(false)
-    private var debriefSessionId = 0L
     val finishing = MutableStateFlow(false)
 
     /**
@@ -435,31 +435,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
                     score = repo.scores(snap, only = s.id)[s.id],
                     clippedEndAt = result.endedAt.takeIf { result.clipped },
+                    sessionId = s.id,
+                    debrief = repo.debrief(snap, s.id),
+                    exerciseNames = snap.exercises.mapValues { it.value.name },
+                    unit = snap.settings.weightUnit,
                 )
-                if (snap.settings.debriefEnabled && app.coach.canDebrief()) {
-                    debriefSessionId = s.id
-                    retryDebrief()
-                }
             } finally {
                 finishing.value = false
             }
-        }
-    }
-
-    /**
-     * Asks the coach for the debrief of the workout just finished. In its own job so it never holds up the summary.
-     * App scope, not viewModelScope: leaving this screen must not cancel it, since it saves to the journal entry.
-     */
-    fun retryDebrief() {
-        if (debriefSessionId == 0L || debriefLoading.value) return
-        debriefLoading.value = true
-        debriefFailed.value = false
-        app.appScope.launch {
-            val d = app.coach.generateDebrief(debriefSessionId)
-            debrief.value = d
-            debriefFailed.value = d == null
-            if (d == null) app.haptics.error()
-            debriefLoading.value = false
         }
     }
 

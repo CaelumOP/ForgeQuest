@@ -19,7 +19,6 @@ import com.forgequest.app.data.plan.PlanJson
 import com.forgequest.app.data.plan.PlanPatch
 import com.forgequest.app.data.plan.PlanPatches
 import com.forgequest.app.data.plan.PlanValidator
-import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Badges
@@ -42,7 +41,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -80,7 +78,11 @@ class CoachRepository(
         suspendRunCatching { models.current() }
     }
 
-    suspend fun send(text: String) = chatMutex.withLock {
+    /**
+     * [aboutWorkout]: the message is the debrief button's (see [debriefChatMessage]). It is never read as a plan request,
+     * never changes the saved equipment, and is answered in the app language.
+     */
+    suspend fun send(text: String, aboutWorkout: Boolean = false) = chatMutex.withLock {
         val tapped = SystemClock.elapsedRealtime()
         val trimmed = text.trim()
         chat.insert(ChatEntity(role = "user", text = trimmed, createdAt = System.currentTimeMillis()))
@@ -88,7 +90,7 @@ class CoachRepository(
         val history = answeredHistory(rawRecent)
 
         // Persist any equipment explicitly mentioned in the user's message.
-        val newlyInferredEq = inferEquipmentFromText(trimmed)
+        val newlyInferredEq = if (aboutWorkout) null else inferEquipmentFromText(trimmed)
         if (newlyInferredEq != null && settings.current().equipment.isBlank()) {
             settings.update { it.copy(equipment = newlyInferredEq.joinToString(",") { e -> e.name }) }
         }
@@ -98,14 +100,14 @@ class CoachRepository(
             .ifEmpty { inferEquipmentFromText(currentSettings.coachNotes, trimmed).orEmpty() }
 
         val replyingToIntake = PlanIntent.isReplyToIntake(history, trimmed)
-        val wantsPlan = wantsPlan(trimmed) || (replyingToIntake && knownEquipment.isNotEmpty())
+        val wantsPlan = !aboutWorkout && (wantsPlan(trimmed) || (replyingToIntake && knownEquipment.isNotEmpty()))
         val needsEquipmentIntake = wantsPlan && knownEquipment.isEmpty()
         val shouldEmitPlanJson = wantsPlan && !needsEquipmentIntake
 
         _draft.value = ""
         try {
             val system = coachSystemPrompt(
-                replyLanguage = languageOf(trimmed),
+                replyLanguage = if (aboutWorkout && Locale.getDefault().language == "ar") "Arabic" else languageOf(trimmed),
                 plan = shouldEmitPlanJson,
                 needsEquipmentIntake = needsEquipmentIntake,
                 availableEquipment = knownEquipment,
@@ -306,31 +308,32 @@ class CoachRepository(
         return ApplyResult.APPLIED
     }
 
-    /** A debrief can be asked for at all: a Groq or Gemini key is saved. */
+    /** The debrief's "Ask the coach" button shows: a Groq or Gemini key is saved. */
     fun canDebrief(): Boolean = settings.groqKey.value.isNotBlank() || settings.apiKey.value.isNotBlank()
 
+    /** The message the Coach tab sends the moment it opens from the debrief button. The tab takes it and sets it back to null. */
+    val pendingMessage = MutableStateFlow<String?>(null)
+
     /**
-     * The coach's short debrief of a finished workout: compares it with the last time each exercise was done before
-     * it, the effort chips and notes, and that day's readiness. Gemini first when set (no thinking), Groq in JSON mode
-     * when Gemini fails or its reply can't be read; [DEBRIEF_TIMEOUT_MS] overall. Null when offline, keyless
-     * or unreadable: the screen then offers Try again. [onDemand] (asked for from the journal) ignores the setting.
+     * The first message of "Ask the coach about this workout": the workout's facts (each exercise against its previous
+     * time, effort chips, notes, that day's readiness), the debrief the app calculated in plain English, and the
+     * instruction to treat the numbers as fact. Blank when the workout is gone.
      */
-    suspend fun generateDebrief(sessionId: Long, onDemand: Boolean = false): WorkoutDebrief? = suspendRunCatching {
+    suspend fun debriefChatMessage(sessionId: Long): String {
         val s = settings.current()
-        if (!s.debriefEnabled && !onDemand) return@suspendRunCatching null
-        if (!canDebrief()) return@suspendRunCatching null
-        val groqKey = settings.groqKey.value
-        val geminiKey = settings.apiKey.value
-        val session = db.sessions().byId(sessionId) ?: return@suspendRunCatching null
+        val unit = s.weightUnit
+        val session = db.sessions().byId(sessionId) ?: return ""
         val sets = db.sessions().observeSets(sessionId).first().filter { it.done }
-        if (sets.isEmpty()) return@suspendRunCatching null
-        val library = progress.snapshot.first().exercises
-        val payload = buildString {
+        if (sets.isEmpty()) return ""
+        val snap = progress.freshSnapshot()
+        val library = snap.exercises
+        val name = { id: String -> library[id]?.name ?: id }
+        val facts = buildString {
             appendLine("Workout: ${session.title}, ${LocalDate.ofEpochDay(session.epochDay)}, ${((session.finishedAt ?: System.currentTimeMillis()) - session.startedAt) / 60_000} min")
             appendLine("Body goal: ${s.nutritionGoal.name}")
             db.readiness().get(session.epochDay)?.let { appendLine("Readiness that day: recovery ${it.recovery}%, sleep ${it.sleepMin} min") }
             if (session.note.isNotBlank()) appendLine("Their note: ${session.note}")
-            progress.freshSnapshot().let { workouts.scores(it, only = sessionId)[sessionId] }?.let { r ->
+            workouts.scores(snap, only = sessionId)[sessionId]?.let { r ->
                 val parts = listOfNotNull(
                     if (r.plannedSets == null) "${r.doneSets} sets" else if (r.doneSets >= r.plannedSets) "All ${r.doneSets} sets" else "${r.doneSets} of ${r.plannedSets} sets",
                     if (r.compared > 0) "up on ${r.up} of ${r.compared}" else null,
@@ -339,41 +342,40 @@ class CoachRepository(
                 appendLine("Score (calculated by the app, do not change it): ${r.score}/10. ${parts.joinToString(", ")}.")
             }
             sets.groupBy { it.exerciseId }.forEach { (id, done) ->
-                val name = library[id]?.name ?: id
                 fun line(list: List<SetEntity>) = list.sortedBy { it.setIndex }.joinToString(", ") { st ->
                     listOfNotNull(
-                        st.reps?.let { "$it reps" }, st.seconds?.let { "${it}s" }, st.weightKg?.takeIf { it > 0f }?.let { "${it}kg" },
+                        st.reps?.let { "$it reps" }, st.seconds?.let { "${it}s" }, st.weightKg?.takeIf { it > 0f }?.let { "${unit.number(it)}${unit.code}" },
                         st.effort.takeIf { it.isNotBlank() && it != "OK" }?.lowercase(), st.note.takeIf { it.isNotBlank() }?.let { "\"$it\"" },
                         if (st.isPr) "PR" else null,
                     ).joinToString(" ")
                 }
-                appendLine("- $name: ${line(done)}")
+                appendLine("- ${name(id)}: ${line(done)}")
                 // Only workouts before this one, so a debrief asked for later from the journal compares the right way.
                 val before = db.sessions().doneSetsBefore(id, session.epochDay, session.startedAt)
                 val last = before.filter { it.sessionId == before.firstOrNull()?.sessionId }
                 if (last.isNotEmpty()) appendLine("  last time: ${line(last)}")
             }
         }
-        val language = if (java.util.Locale.getDefault().language == "ar") "formal Modern Standard Arabic (Western digits)" else "English"
-        val system = """
-            You are a friendly strength coach writing a 10-second debrief of a finished workout.
-            Reply with ONLY a JSON object: {"summary": one short sentence, "highlights": [1-2 short items citing real numbers],
-            "watch": [0-1 short item: a stall, a pain/hard note, or low readiness], "nextTime": [1 short, concrete tip]}.
-            The app already calculated the score and shows it; the summary must agree with it, never give your own. Be specific, warm and brief. Write in $language.
-        """.trimIndent()
-        val turns = listOf("user" to payload)
-        val debrief = withTimeoutOrNull(DEBRIEF_TIMEOUT_MS) {
-            val fromGemini = if (geminiKey.isBlank()) null else suspendRunCatching { gemini.generate(geminiKey, models(), system, turns, jsonOutput = true, fast = true) }
-                .onFailure { Log.w(TAG, "debrief: gemini failed, using Groq: ${it.message}") }.getOrNull()
-                ?.let { text -> WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: gemini reply unreadable: ${text.take(200)}") } }
-            fromGemini ?: groqKey.takeIf { it.isNotBlank() }?.let { key ->
-                val text = groq.streamChat(key, groqModel(), system, turns, jsonOutput = true) {}
-                WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: groq reply unreadable: ${text.take(200)}") }
+        val calculated = workouts.debrief(snap, sessionId)?.let { d ->
+            AppText.englishResources()?.let { res ->
+                val lines = DebriefText.render(d, res, name) { "${unit.number(it)} ${unit.code}" }
+                buildString {
+                    appendLine("Debrief calculated by the app:")
+                    appendLine(lines.headline)
+                    (lines.wins + lines.watch + lines.next).forEach { appendLine("- $it") }
+                    lines.sameRest?.let { appendLine("- $it") }
+                }
             }
-        } ?: return@suspendRunCatching null.also { Log.w(TAG, "debrief: no readable reply within $DEBRIEF_TIMEOUT_MS ms") }
-        // Re-read the workout so a note added while the coach was writing isn't overwritten.
-        debrief.also { d -> db.sessions().byId(sessionId)?.let { db.sessions().update(it.copy(debrief = WorkoutDebrief.encode(d))) } }
-    }.onFailure { Log.w(TAG, "debrief failed: ${it.message}") }.getOrNull()
+        }.orEmpty()
+        val language = if (Locale.getDefault().language == "ar") "formal Modern Standard Arabic (Western digits)" else "English"
+        return buildString {
+            append(facts)
+            if (calculated.isNotBlank()) { appendLine(); append(calculated) }
+            appendLine()
+            appendLine("Treat these numbers and next-time targets as fact; don't recalculate or contradict them.")
+            append("Give me your take in a few short lines: what went well, one thing to watch, and one tip. Reply in $language.")
+        }
+    }
 
     /** "Tuesday: Dips → Push-up" lines for a change-only card, in the app language. */
     private fun describeChanges(base: PlanDraft, patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
@@ -758,8 +760,6 @@ class CoachRepository(
 
     private companion object {
         const val TAG = "FQ-AI"
-        // Runs while the summary is already showing, so it can afford a slow network and a Gemini → Groq fallback.
-        const val DEBRIEF_TIMEOUT_MS = 30_000L
 
         val CORE_RULES = """
             You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Sports Science, Calisthenics & Gym Coach).

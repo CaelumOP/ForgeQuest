@@ -100,7 +100,7 @@ data class Settings(
     val nutritionGoal: NutritionGoal = NutritionGoal.MAINTAIN,
     /** Epoch day the goal was last changed, so the weight-trend note waits for real data under the new goal. */
     val goalSetDay: Long = 0,
-    /** AI debrief card after each workout (Profile > Coach and AI). */
+    /** No longer read: the workout debrief is calculated, with no switch. Kept so old backups and saved settings still load. */
     val debriefEnabled: Boolean = true,
     /** How active a normal day is outside workouts (calorie plan v2); watch steps override it on Android. */
     val dayActivity: DayActivity = DayActivity.SITTING,

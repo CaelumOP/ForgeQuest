@@ -91,7 +91,11 @@ import androidx.navigation.NavHostController
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.data.plan.WorkoutDebrief
+import com.forgequest.app.data.DebriefText
+import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutDebriefMath
+import com.forgequest.app.ui.goToTab
+import kotlinx.coroutines.launch
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.WorkoutScore
@@ -180,10 +184,12 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
-        val debrief by vm.debrief.collectAsState()
-        val debriefLoading by vm.debriefLoading.collectAsState()
-        val debriefFailed by vm.debriefFailed.collectAsState()
-        WorkoutCompleteScreen(sum, debrief, debriefLoading, debriefFailed, onRetryDebrief = vm::retryDebrief, onRemind = vm::remindMe, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
+        val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
+            scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sum.sessionId); nav.goToTab(Routes.COACH) }
+        } else null
+        WorkoutCompleteScreen(sum, onAskCoach = askCoach, onRemind = vm::remindMe, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -869,10 +875,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
 @Composable
 private fun WorkoutCompleteScreen(
     sum: WorkoutSummary,
-    debrief: WorkoutDebrief?,
-    debriefLoading: Boolean,
-    debriefFailed: Boolean,
-    onRetryDebrief: () -> Unit,
+    onAskCoach: (() -> Unit)?,
     onRemind: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -969,11 +972,9 @@ private fun WorkoutCompleteScreen(
                 }
             }
         }
-        AnimatedVisibility(sum.score != null || debrief != null || debriefLoading || debriefFailed) {
-            Column {
-                Spacer(Modifier.height(12.dp))
-                DebriefCard(debrief, sum.score, failed = debriefFailed && !debriefLoading, waiting = debriefLoading, onRetry = onRetryDebrief)
-            }
+        if (sum.score != null || sum.debrief != null) {
+            Spacer(Modifier.height(12.dp))
+            DebriefCard(sum.debrief, sum.score, sum.exerciseNames, sum.unit, onAskCoach)
         }
         Spacer(Modifier.height(24.dp))
         PillButton(stringResource(R.string.home_done), onClick = onDone, modifier = Modifier.fillMaxWidth())
@@ -999,36 +1000,45 @@ fun scoreReasons(r: WorkoutScore.Result): String {
 private fun scoreColor(score: Int) = if (score >= 8) Fit.colors.gold else Fit.colors.textSecondary
 
 /**
- * The workout: the calculated score with its reasons at once, then the coach's words (one thing that went well, one to watch, one tip).
- * A null [d] shows the wait while [waiting], or with [failed], that the coach couldn't write it and a Try again; with neither, only the score.
+ * The workout debrief: the calculated score with its reasons, then the headline, what went well (teal), what to watch
+ * (gold) and next time (blue), all worked out from the person's numbers ([DebriefText]). [onAskCoach] shows the coach
+ * button; null hides it (no AI key). [names] maps an exercise id to its name.
  */
 @Composable
-fun DebriefCard(d: WorkoutDebrief?, score: WorkoutScore.Result?, failed: Boolean = false, waiting: Boolean = false, onRetry: () -> Unit = {}) {
+fun DebriefCard(
+    debrief: WorkoutDebriefMath.Result?,
+    score: WorkoutScore.Result?,
+    names: Map<String, String>,
+    unit: WeightUnit,
+    onAskCoach: (() -> Unit)? = null,
+) {
     val c = Fit.colors
-    val coachPart = d != null || failed || waiting
+    val res = LocalContext.current.resources
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current
+    val lines = remember(debrief, names, unit, locale) { debrief?.let { d -> DebriefText.render(d, res, { id -> names[id] ?: id }) { kg -> unit.format(kg) } } }
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(if (coachPart) R.string.debrief_title else R.string.score_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
             if (score != null && score.showNumber) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = scoreColor(score.score))
         }
         if (score != null && !score.showNumber) {
             Text(stringResource(if (score.firstEver) R.string.score_first_ever else R.string.score_after_break), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 2.dp))
         }
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
-        if (coachPart) Spacer(Modifier.height(6.dp))
-        if (d == null && failed) {
-            Text(stringResource(R.string.debrief_failed), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                Text(stringResource(R.string.action_try_again), color = c.teal)
-            }
-        } else if (d == null) {
-            if (waiting) Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        } else {
-            Text(d.summary, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        if (lines != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
             // Green for what went well, gold for what to watch, blue for next time.
-            d.highlights.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(top = 4.dp)) }
-            d.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(top = 4.dp)) }
-            d.nextTime.forEach { Text(stringResource(R.string.debrief_next_time, it), style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.padding(top = 4.dp)) }
+            lines.wins.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(top = 4.dp)) }
+            lines.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(top = 4.dp)) }
+            lines.next.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.padding(top = 4.dp)) }
+            lines.sameRest?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
+            lines.footnote?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp)) }
+        }
+        if (onAskCoach != null) {
+            TextButton(onClick = onAskCoach, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                Text(stringResource(R.string.debrief_ask_coach), color = c.teal)
+            }
         }
     }
 }

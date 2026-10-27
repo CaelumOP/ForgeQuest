@@ -11,7 +11,6 @@ import { isWarmUp } from '../../domain/workout-score'
 import { Button, Card, Dialog, EmptyState, IconButton, Sheet, ListRow, toast } from '../kit'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
-import { runDebriefInBackground } from '../coach/debrief'
 import { autoBackup } from '../../data/drive'
 import { blockLabel, openFormVideo } from '../workouts/helpers'
 import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
@@ -30,10 +29,10 @@ import { WorkoutSummary } from './WorkoutSummary'
 import './live.css'
 
 /**
- * After finishSession: the Coach's debrief of the workout (Android generateDebrief) runs in the background and is saved on the
- * session row; the summary screen shows it when it arrives. The per-set effort chips (Easy, OK, Hard, Pain) are ported in SetRowView.
+ * After finishSession: the backup runs in the background. The debrief on the summary is calculated when the card opens.
+ * The per-set effort chips (Easy, OK, Hard, Pain) are ported in SetRowView.
  */
-export function onWorkoutFinished(sessionId: number, _result: FinishResult): void { runDebriefInBackground(sessionId); void autoBackup('workout') }
+export function onWorkoutFinished(_sessionId: number, _result: FinishResult): void { void autoBackup('workout') }
 
 const FOCUS_KEY = 'fq.live.focus'
 const store = (): Storage | null => { try { return sessionStorage } catch { return null } }

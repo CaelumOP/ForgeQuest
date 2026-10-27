@@ -71,7 +71,9 @@ import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.domain.WorkoutScore
+import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import androidx.compose.material3.SnackbarDuration
@@ -92,6 +94,7 @@ import com.forgequest.app.ui.workouts.musclesLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -125,31 +128,17 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
         undo.offer(app.str(R.string.food_removed, session.title)) { app.workouts.restoreSession(session, sets) }
     }
 
-    /** The debrief sheet: which workout it is open for, and whether the coach is writing it or couldn't. */
+    /** The debrief sheet: which workout it is open for. */
     val debriefFor = MutableStateFlow<Long?>(null)
-    val debriefLoading = MutableStateFlow(false)
-    val debriefFailed = MutableStateFlow(false)
     val canDebrief get() = app.coach.canDebrief()
 
-    /** Opens the sheet; a workout with no saved debrief gets one written now. */
-    fun openDebrief(session: SessionEntity) {
-        debriefFor.value = session.id
-        debriefFailed.value = false
-        if (com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) == null) writeDebrief(session.id)
-    }
+    fun openDebrief(session: SessionEntity) { debriefFor.value = session.id }
 
-    /** App scope so closing the sheet doesn't throw the answer away; it is saved on the workout either way. */
-    fun writeDebrief(sessionId: Long) {
-        if (debriefLoading.value || !canDebrief) return
-        debriefLoading.value = true
-        debriefFailed.value = false
-        app.appScope.launch {
-            val d = app.coach.generateDebrief(sessionId, onDemand = true)
-            debriefFailed.value = d == null
-            if (d == null) app.haptics.error()
-            debriefLoading.value = false
-        }
-    }
+    /** The open workout's calculated debrief, worked out again whenever a set or the history changes. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val debrief: StateFlow<WorkoutDebriefMath.Result?> = combine(snapshot, debriefFor) { snap, id -> snap to id }
+        .mapLatest { (snap, id) -> if (snap == null || id == null) null else app.workouts.debrief(snap, id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 }
 
 /** The journal: a feed of weeks, newest first, each opening into its days and workouts (like Google Fit's journal). */
@@ -177,7 +166,19 @@ fun HistoryScreen(nav: NavHostController) {
     val snackbar = LocalSnackbar.current
     UndoSnackbarEffect(vm.undo, SnackbarDuration.Long)
     val debriefFor by vm.debriefFor.collectAsState()
-    s.sessions.firstOrNull { it.id == debriefFor }?.let { ses -> DebriefSheet(vm, ses) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val names = remember(s.exercises) { s.exercises.mapValues { it.value.name } }
+    s.sessions.firstOrNull { it.id == debriefFor }?.let { ses ->
+        // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
+        val askCoach: (() -> Unit)? = if (vm.canDebrief) fun() {
+            scope.launch {
+                vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(ses.id)
+                vm.debriefFor.value = null
+                nav.goToTab(Routes.COACH)
+            }
+        } else null
+        DebriefSheet(vm, ses, names, unit, askCoach)
+    }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -255,14 +256,12 @@ fun HistoryScreen(nav: NavHostController) {
 }
 
 /** One week: how many workouts, time, kg lifted and records; tap to open its days. */
-/** The journal's coach debrief for one workout: the saved one, or the coach writing it now, with Try again on failure. */
+/** The journal's debrief for one workout, calculated from its numbers; it changes when a set is edited. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity) {
+private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Map<String, String>, unit: WeightUnit, onAskCoach: (() -> Unit)?) {
     val c = Fit.colors
-    val loading by vm.debriefLoading.collectAsState()
-    val failed by vm.debriefFailed.collectAsState()
-    val debrief = remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }
+    val debrief by vm.debrief.collectAsState()
     val score = vm.scores.collectAsState().value[session.id]
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
@@ -272,15 +271,7 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity) {
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
             )
             Spacer(Modifier.height(12.dp))
-            if (debrief == null && !vm.canDebrief) {
-                if (score != null) {
-                    com.forgequest.app.ui.workouts.DebriefCard(null, score)
-                    Spacer(Modifier.height(12.dp))
-                }
-                Text(stringResource(R.string.debrief_no_key), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
-            } else {
-                com.forgequest.app.ui.workouts.DebriefCard(debrief, score, failed = failed && !loading, waiting = loading, onRetry = { vm.writeDebrief(session.id) })
-            }
+            com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit, onAskCoach)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -386,6 +377,10 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
     val score: StateFlow<WorkoutScore.Result?> = app.progress.snapshot.map { snap -> app.workouts.scores(snap, only = sessionId)[sessionId] }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /** This workout's calculated debrief, worked out again when a set is edited; null until the snapshot loads or when no set is done. */
+    val debrief: StateFlow<WorkoutDebriefMath.Result?> = app.progress.snapshot.map { snap -> app.workouts.debrief(snap, sessionId) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     data class Loaded(val session: SessionEntity?)
 
     fun setField(set: SetEntity, field: Field, value: Float) {
@@ -416,6 +411,9 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     val exercises by vm.exercises.collectAsState()
     val unit by vm.unit.collectAsState()
     val score by vm.score.collectAsState()
+    val debrief by vm.debrief.collectAsState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val names = remember(exercises) { exercises.mapValues { it.value.name } }
     val c = Fit.colors
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -449,13 +447,16 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 }
             }
         }
-        val d = remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }
+        // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
+        val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
+            scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sessionId); nav.goToTab(Routes.COACH) }
+        } else null
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
-            if (d != null || score != null) {
-                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(d, score) }
+            if (debrief != null || score != null) {
+                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit, askCoach) }
             }
             items(groups, key = { it.first().itemPosition }) { group ->
                 val ex = exercises[group.first().exerciseId]

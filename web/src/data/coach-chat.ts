@@ -4,16 +4,18 @@
 import { getLang, t } from '../i18n';
 import { AiError, GROQ_FALLBACK_MODEL, aiErrorKey, geminiGenerate, groqChat, modelsFor, textPart } from './ai';
 import {
-  alternatingTurns, answeredHistory, applyPatch, coachSystemPrompt, debriefPayload, debriefSystem, describeChanges, encodeDebrief,
-  extractMemory, extractPatch, extractPlan, hasBrokenBlock, isReplyToIntake, languageOf, mergeMemory, parseDebrief, parsePlanSystem,
+  alternatingTurns, answeredHistory, applyPatch, coachSystemPrompt, debriefPayload, describeChanges,
+  extractMemory, extractPatch, extractPlan, hasBrokenBlock, isReplyToIntake, languageOf, mergeMemory, parsePlanSystem,
   planHash, planSchemaInstructions, progressSummary, repairRequest, replaceUnknown, stripReply, validatePlan, wantsPlanText,
-  type CoachPlan, type Turn, type WorkoutDebrief,
+  type CoachPlan, type Turn,
 } from './coach';
 import { db, type ChatRow, type ExerciseRow } from './db';
 import { useLive } from './live';
 import { getProgressSnapshot, type ProgressSnapshot } from './progress';
-import { configuredEquipment, loadSettings, updateSettings, type Settings } from './settings';
-import { allWorkoutScores, applyPlan, doneSetsBefore, planToDraft } from './workouts';
+import { configuredEquipment, loadSettings, updateSettings, weightUnit, type Settings } from './settings';
+import { allWorkoutScores, applyPlan, doneSetsBefore, planToDraft, workoutDebrief } from './workouts';
+import { debriefLines } from './debrief-text';
+import { unitCode, weightNumber } from '../domain/units';
 import { adaptPlanToEquipment, inferEquipmentFromText, type Equipment } from '../domain/exercise-swap-engine';
 import { todayEpochDay } from '../domain/dates';
 
@@ -52,16 +54,20 @@ const exclusive = <T>(fn: () => Promise<T>): Promise<T> => {
 const insert = (row: Partial<ChatRow> & Pick<ChatRow, 'role' | 'text'>): Promise<number> =>
   db.chat.add({ planJson: null, planApplied: false, kind: '', detail: '', createdAt: Date.now(), ...row });
 
-/** Sends the person's message and saves the coach's reply (or an error bubble) in the chat table. Never throws. */
-export function sendCoachMessage(text: string): Promise<void> {
-  return exclusive(() => sendNow(text.trim()));
+/**
+ * Sends the person's message and saves the coach's reply (or an error bubble) in the chat table. Never throws.
+ * `aboutWorkout`: the message is the debrief button's (see debriefChatMessage). It is never read as a plan request,
+ * never changes the saved equipment, and is answered in the app language.
+ */
+export function sendCoachMessage(text: string, aboutWorkout = false): Promise<void> {
+  return exclusive(() => sendNow(text.trim(), aboutWorkout));
 }
 
-async function sendNow(text: string): Promise<void> {
+async function sendNow(text: string, aboutWorkout = false): Promise<void> {
   const started = Date.now();
   await insert({ role: 'user', text });
   const history = answeredHistory((await db.chat.orderBy('id').reverse().limit(14).toArray()).reverse());
-  const inferred = inferEquipmentFromText(text);
+  const inferred = aboutWorkout ? null : inferEquipmentFromText(text);
   let settings = await loadSettings();
   if (inferred && !settings.equipment.trim()) {
     settings = await updateSettings((s) => ({ ...s, equipment: [...inferred].join(',') }));
@@ -72,14 +78,14 @@ async function sendNow(text: string): Promise<void> {
     const snap = await getProgressSnapshot();
     const planNames = (snap.plan?.days ?? []).flatMap((d) => d.items).map((i) => i.exerciseId)
       .flatMap((id) => [id.replace(/_/g, ' '), snap.exercises.get(id)?.name ?? '']).filter(Boolean);
-    const wants = wantsPlanText(text, planNames) || (isReplyToIntake(history, text) && known.size > 0);
+    const wants = !aboutWorkout && (wantsPlanText(text, planNames) || (isReplyToIntake(history, text) && known.size > 0));
     const needsIntake = wants && known.size === 0;
     const emitPlan = wants && !needsIntake;
     const library = [...snap.exercises.values()];
     const today = todayEpochDay();
     const readiness = await db.readinessDays.where('epochDay').aboveOrEqual(today - 14).toArray();
     const system = coachSystemPrompt({
-      replyLanguage: languageOf(text), plan: emitPlan, needsEquipmentIntake: needsIntake,
+      replyLanguage: aboutWorkout && getLang() === 'ar' ? 'Arabic' : languageOf(text), plan: emitPlan, needsEquipmentIntake: needsIntake,
       schema: emitPlan ? planSchemaInstructions(library, known, snap.plan ? planToDraft(snap.plan) : null) : undefined,
       summary: progressSummary(snap, today, readiness, known),
     });
@@ -226,66 +232,66 @@ export async function parsePlanText(text: string): Promise<CoachPlan> {
 
 // ---------------------------------------------------------------- Debrief
 
-// Runs while the summary is already showing, so it can afford a slow network and a Gemini -> Groq fallback.
-const DEBRIEF_TIMEOUT_MS = 30_000;
-
-/** A debrief can be asked for at all: a Groq or Gemini key is saved. */
+/** The debrief's "Ask the coach" button shows: a Groq or Gemini key is saved. */
 export const canDebrief = (s: Pick<Settings, 'groqKey' | 'apiKey'>): boolean => !!(s.groqKey.trim() || s.apiKey.trim());
 
+let pending: string | null = null;
+/** The Coach screen takes the message the debrief button left for it (and clears it). */
+export function takePendingCoachMessage(): string | null {
+  const text = pending;
+  pending = null;
+  return text;
+}
+
 /**
- * The coach's short debrief of a finished workout, saved on the session row. Compares with the last time each exercise
- * was done before it. Gemini first when set (no thinking), Groq in JSON mode when Gemini fails or its reply can't be
- * read; 30 s overall. Null when the setting is off (unless `onDemand`, asked for from the journal), there is no key, or
- * no set was done. Throws AiError on failure.
+ * "Ask the coach about this workout": leaves the workout's message for the Coach screen, which sends it as it opens.
+ * Nothing is left when the workout is gone.
  */
-export async function generateDebrief(sessionId: number, onDemand = false): Promise<WorkoutDebrief | null> {
+export async function askCoachAboutWorkout(sessionId: number): Promise<boolean> {
+  const text = await debriefChatMessage(sessionId);
+  pending = text || null;
+  return !!text;
+}
+
+/**
+ * The message of "Ask the coach about this workout": the workout's facts (each exercise against its previous time,
+ * effort chips, notes, that day's readiness), the debrief the app calculated in plain English and the instruction to
+ * treat the numbers as fact. Blank when the workout is gone or has no done sets.
+ */
+export async function debriefChatMessage(sessionId: number): Promise<string> {
   const s = await loadSettings();
-  if (!s.debriefEnabled && !onDemand) return null;
-  if (!canDebrief(s)) return null;
-  const groqKey = s.groqKey.trim();
   const session = await db.sessions.get(sessionId);
-  if (!session) return null;
+  if (!session) return '';
   const sets = (await db.sets.where('sessionId').equals(sessionId).toArray()).filter((x) => x.done);
-  if (!sets.length) return null;
+  if (!sets.length) return '';
+  const unit = weightUnit(s);
   const library = new Map((await db.exercises.toArray()).map((e) => [e.id, e]));
+  const name = (id: string) => library.get(id)?.name ?? id;
   const readiness = await db.readinessDays.get(session.epochDay);
   const ids = [...new Set(sets.map((x) => x.exerciseId))];
   const exercises = [];
   for (const id of ids) {
-    // Only workouts before this one, so a debrief asked for later from the journal compares the right way.
+    // Only workouts before this one, so a message asked for later from the journal compares the right way.
     const before = await doneSetsBefore(id, session.epochDay, session.startedAt);
     const lastId = before[0]?.sessionId;
-    exercises.push({ name: library.get(id)?.name ?? id, done: sets.filter((x) => x.exerciseId === id), lastTime: lastId == null ? [] : before.filter((x) => x.sessionId === lastId) });
+    exercises.push({ name: name(id), done: sets.filter((x) => x.exerciseId === id), lastTime: lastId == null ? [] : before.filter((x) => x.sessionId === lastId) });
   }
-  const payload = debriefPayload({
+  const facts = debriefPayload({
     title: session.title, epochDay: session.epochDay, goal: s.nutritionGoal, note: session.note,
     minutes: Math.trunc(((session.finishedAt ?? Date.now()) - session.startedAt) / 60_000),
     readiness: readiness ? { recovery: readiness.recovery, sleepMin: readiness.sleepMin } : null,
-    exercises, score: (await allWorkoutScores()).get(sessionId) ?? null,
+    exercises, score: (await allWorkoutScores(sessionId)).get(sessionId) ?? null, unit,
   });
-  const system = debriefSystem(getLang());
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), DEBRIEF_TIMEOUT_MS);
-  try {
-    let debrief: WorkoutDebrief | null = null;
-    if (s.apiKey.trim()) {
-      try {
-        const text = await geminiGenerate({ system, parts: [textPart(payload)], json: true, fast: true, models: modelsFor(s.coachModel, s), signal: ctl.signal });
-        debrief = parseDebrief(text);
-      } catch (e) {
-        if (!groqKey) throw e; // nothing to fall back to: keep the real error
-      }
-    }
-    if (!debrief && groqKey) {
-      const text = await groqChat({ model: s.groqModel || GROQ_FALLBACK_MODEL, messages: [{ role: 'system', content: system }, { role: 'user', content: payload }], json: true, signal: ctl.signal });
-      debrief = parseDebrief(text);
-    }
-    if (!debrief) throw new AiError('unreadable', 'debrief not readable');
-    // Re-read the workout so a note added while the coach was writing isn't overwritten.
-    const fresh = await db.sessions.get(sessionId);
-    if (fresh) await db.sessions.put({ ...fresh, debrief: encodeDebrief(debrief) });
-    return debrief;
-  } finally {
-    clearTimeout(timer);
+  const d = await workoutDebrief(sessionId);
+  let calculated = '';
+  if (d) {
+    const lines = debriefLines(d, 'en', name, (kg) => `${weightNumber(unit, kg)} ${unitCode(unit)}`);
+    calculated = ['Debrief calculated by the app:', lines.headline, ...[...lines.wins, ...lines.watch, ...lines.next, ...(lines.sameRest ? [lines.sameRest] : [])].map((x) => `- ${x}`)].join('\n') + '\n';
   }
+  const language = getLang() === 'ar' ? 'formal Modern Standard Arabic (Western digits)' : 'English';
+  return [
+    facts + (calculated ? `\n${calculated}` : ''),
+    "Treat these numbers and next-time targets as fact; don't recalculate or contradict them.",
+    `Give me your take in a few short lines: what went well, one thing to watch, and one tip. Reply in ${language}.`,
+  ].join('\n');
 }

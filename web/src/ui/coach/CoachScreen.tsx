@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { plural, t, useLang } from '../../i18n'
 import type { ChatRow } from '../../data/db'
-import { clearChat, errorKindOf, lastAnswer, planOfMessage, sendCoachMessage, applyChatPlan, useChat } from '../../data/coach-chat'
+import { clearChat, errorKindOf, lastAnswer, planOfMessage, sendCoachMessage, applyChatPlan, takePendingCoachMessage, useChat } from '../../data/coach-chat'
 import { updateSettings, useSettings } from '../../data/settings'
 import { useLibrary } from '../../data/workouts'
 import { Button, Dialog, IconButton, Markdown, Sheet, toast } from '../kit'
@@ -40,6 +40,14 @@ export function CoachScreen(_: { param?: string }) {
     const el = listRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages.length, sending])
+
+  // "Ask the coach about this workout" on a debrief: sent as the screen opens, no typing.
+  useEffect(() => {
+    const text = takePendingCoachMessage()
+    if (!text) return
+    setSending(true)
+    void sendCoachMessage(text, true).finally(() => setSending(false))
+  }, [])
 
   const send = async (text: string) => {
     const trimmed = text.trim()

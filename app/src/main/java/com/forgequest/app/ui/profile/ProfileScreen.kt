@@ -257,7 +257,6 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { CalorieUi.withTarget(it, kcal.coerceIn(floor, Nutrition.MAX_SAFE_KCAL), snap?.latestWeight, Dates.today()) }
     }
 
-    fun setDebrief(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(debriefEnabled = on) } }
 
     fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
@@ -1081,17 +1080,6 @@ fun ProfileScreen(nav: NavHostController) {
                         Text(stringResource(R.string.profile_vibration_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                     FitSwitch(settings.hapticsEnabled, null)
-                }
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    Modifier.fillMaxWidth().toggleable(settings.debriefEnabled, role = Role.Switch) { vm.setDebrief(it) },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.debrief_setting), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                        Text(stringResource(R.string.debrief_setting_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    }
-                    FitSwitch(settings.debriefEnabled, null)
                 }
             }
         }

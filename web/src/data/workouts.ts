@@ -582,3 +582,6 @@ export async function recomputeRecords(exerciseId: string): Promise<void> {
   const changed = all.filter((s) => s.isPr !== records.has(s)).map((s) => ({ ...s, isPr: records.has(s) }));
   if (changed.length) await db.sets.bulkPut(changed);
 }
+
+/** The calculated debrief of one workout, worked out again when a set is edited. */
+export const useWorkoutDebrief = (id: number): DebriefResult | null => useLive(() => workoutDebrief(id), [id], null);

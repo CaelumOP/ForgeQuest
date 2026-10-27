@@ -356,7 +356,6 @@ export function ProfileScreen() {
         </Card>
         <Card>
           <Switch label={t('profile_vibration')} hint={t('profile_vibration_hint')} on={s.hapticsEnabled} onChange={(v) => void set({ hapticsEnabled: v })} />
-          <Switch label={t('debrief_setting')} hint={t('debrief_setting_hint')} on={s.debriefEnabled} onChange={(v) => void set({ debriefEnabled: v })} />
         </Card>
       </Group>
 

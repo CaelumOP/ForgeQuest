@@ -121,11 +121,12 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun send(text: String) {
+    /** [aboutWorkout]: the debrief button's message (see CoachRepository.debriefChatMessage). */
+    fun send(text: String, aboutWorkout: Boolean = false) {
         if (text.isBlank() || sending.value) return
         sending.value = true
         viewModelScope.launch {
-            app.coach.send(text)
+            app.coach.send(text, aboutWorkout)
             if (app.coach.lastReplyFailed()) app.haptics.error()
             sending.value = false
         }
@@ -184,6 +185,9 @@ fun CoachScreen(nav: NavHostController) {
         if (messages.isNotEmpty()) listState.scrollToItem(listState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1)
     }
     LaunchedEffect(applied) { applied?.let { snackbar.showSnackbar(it); vm.applied.value = null } }
+    // "Ask the coach about this workout" on a debrief: sent the moment the tab opens, no typing.
+    val pending by vm.app.coach.pendingMessage.collectAsState()
+    LaunchedEffect(pending) { pending?.let { vm.app.coach.pendingMessage.value = null; vm.send(it, aboutWorkout = true) } }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {

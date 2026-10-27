@@ -58,9 +58,9 @@ export function useLang(): Lang {
 }
 
 /** The entry and the language it came from (missing Arabic falls back to English). */
-function find(key: string): [Entry, Lang] | undefined {
-  const own = tables[lang][key]
-  if (own !== undefined) return [own, lang]
+function find(key: string, want: Lang = lang): [Entry, Lang] | undefined {
+  const own = tables[want][key]
+  if (own !== undefined) return [own, want]
   const fallback = tables.en[key]
   return fallback !== undefined ? [fallback, 'en'] : undefined
 }
@@ -69,16 +69,21 @@ function fill(text: string, args: unknown[]): string {
   return text.replace(/\{(\d+)\}/g, (m, n) => (Number(n) - 1 < args.length ? String(args[Number(n) - 1]) : m))
 }
 
-export function t(key: string, ...args: unknown[]): string {
-  const hit = find(key)
+export const t = (key: string, ...args: unknown[]): string => tIn(lang, key, ...args)
+
+/** `t` in a chosen language, for text that is not shown in the app language (the message sent to the coach). */
+export function tIn(want: Lang, key: string, ...args: unknown[]): string {
+  const hit = find(key, want)
   if (!hit) return key
   const [entry] = hit
   return fill(typeof entry === 'string' ? entry : entry.other ?? key, args)
 }
 
 /** Android getQuantityString: picks the plural category for `count`. With no args, {1} is the count. */
-export function plural(key: string, count: number, ...args: unknown[]): string {
-  const hit = find(key)
+export const plural = (key: string, count: number, ...args: unknown[]): string => pluralIn(lang, key, count, ...args)
+
+export function pluralIn(want: Lang, key: string, count: number, ...args: unknown[]): string {
+  const hit = find(key, want)
   if (!hit) return key
   const [entry, from] = hit
   const fillArgs = args.length ? args : [count]

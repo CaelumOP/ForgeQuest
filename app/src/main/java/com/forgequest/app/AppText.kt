@@ -16,6 +16,13 @@ object AppText {
 
     /** Falls back to the resource id in plain JVM unit tests, where there are no resources. */
     fun get(@StringRes id: Int, vararg args: Any): String = context?.getString(id, *args) ?: "#$id"
+
+    /** The app's resources in English whatever the app language, for text written to the coach; null in plain JVM unit tests. */
+    fun englishResources(): android.content.res.Resources? {
+        val c = context ?: return null
+        val config = android.content.res.Configuration(c.resources.configuration).apply { setLocale(java.util.Locale.ENGLISH) }
+        return c.createConfigurationContext(config).resources
+    }
 }
 
 /** Base for errors whose message is a string resource. */
