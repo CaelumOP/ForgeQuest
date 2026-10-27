@@ -196,7 +196,7 @@ internal fun forgeDarkScheme(f: FitColors) = darkColorScheme(
     background = f.background, onBackground = f.textPrimary,
     surface = f.background, onSurface = f.textPrimary, surfaceVariant = f.cardHigh, onSurfaceVariant = f.textSecondary,
     inverseSurface = f.textPrimary, inverseOnSurface = f.card,
-    outline = f.divider, outlineVariant = f.divider, scrim = Color.Black,
+    outline = Color(0xFF8E918F), outlineVariant = f.divider, scrim = Color.Black,
     surfaceContainerLowest = Color(0xFF0E0E0F), surfaceContainerLow = Color(0xFF18191A), surfaceContainer = f.card,
     surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFF333537),
 )
@@ -210,7 +210,7 @@ internal fun forgeLightScheme(f: FitColors) = lightColorScheme(
     background = f.background, onBackground = f.textPrimary,
     surface = f.background, onSurface = f.textPrimary, surfaceVariant = f.cardHigh, onSurfaceVariant = f.textSecondary,
     inverseSurface = Color(0xFF2E3133), inverseOnSurface = Color(0xFFF0F1F3),
-    outline = f.divider, outlineVariant = f.divider, scrim = Color.Black,
+    outline = Color(0xFF747775), outlineVariant = f.divider, scrim = Color.Black,
     surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF0F4F9), surfaceContainer = f.card,
     surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFFD8E0EC),
 )
