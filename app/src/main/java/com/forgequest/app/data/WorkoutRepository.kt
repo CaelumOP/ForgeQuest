@@ -23,6 +23,9 @@ import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.StreakCalculator
+import com.forgequest.app.domain.Trends
+import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.domain.WorkoutScore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -376,6 +379,33 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         return WorkoutScore.forSessions(
             snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough,
             snap.dayTags, snap.plan?.trainingDays ?: emptySet(), only,
+        )
+    }
+
+    /**
+     * The calculated debrief of one finished workout in [snap] ([WorkoutDebriefMath]): this workout, each exercise's
+     * previous time, the plan day's exercises, the weekly target, the plateau and deload report as of that day, the
+     * harder versions and the health switch. Null when the workout isn't in [snap] or has no done sets. Never stored.
+     */
+    suspend fun debrief(snap: ProgressSnapshot, sessionId: Long): WorkoutDebriefMath.Result? {
+        val session = snap.sessions.firstOrNull { it.id == sessionId } ?: return null
+        val score = scores(snap, only = sessionId)[sessionId] ?: return null
+        val planItems = session.planDayId?.let { day -> plans.allItems().filter { it.dayId == day } }.orEmpty()
+        val readiness = db.readiness().all().sortedBy { it.epochDay }
+        val report = Trends.analyzeFatigueAndPlateaus(snap.sessions, snap.doneSets, snap.exercises, readiness, session.epochDay)
+        val weeklyTarget = StreakCalculator.fullTarget(snap.plan?.trainingDays ?: emptySet(), snap.settings.weeklyTargetOverride)
+        return WorkoutDebriefMath.forSession(
+            session = session,
+            sessions = snap.sessions,
+            doneSets = snap.doneSets,
+            exercises = snap.exercises,
+            score = score,
+            planItems = planItems,
+            weeklyTarget = weeklyTarget,
+            report = report,
+            unit = snap.settings.weightUnit,
+            healthOn = snap.settings.healthEnabled,
+            equipment = snap.settings.configuredEquipment,
         )
     }
 

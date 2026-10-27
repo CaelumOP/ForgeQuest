@@ -16,6 +16,16 @@ object WorkoutScore {
 
     fun isWarmUp(block: String) = block.equals(WARM_UP_BLOCK, ignoreCase = true)
 
+    /** The kind of personal record an exercise set, from its exercise kind. */
+    enum class PrKind { WEIGHT, REPS, HOLD }
+
+    /**
+     * One exercise as the score saw it, for the debrief: its raw [trend] (null with no last time or only warm-up sets),
+     * [forgiven] when that day's recovery was low or it had a PAIN set (a drop then counts as holding steady), and the
+     * kind of personal record it set, if any.
+     */
+    data class ExerciseResult(val exerciseId: String, val trend: Trend?, val forgiven: Boolean, val pr: PrKind?)
+
     /** One exercise of the workout: today's done sets and its last time (the most recent earlier workout's done sets, empty when none). */
     class Work(val exerciseId: String, val kind: ExerciseKind, val done: List<SetEntity>, val last: List<SetEntity>)
 
@@ -32,6 +42,10 @@ object WorkoutScore {
         val firstEver: Boolean = false,
         /** The first workout after a break (the same rule as the Welcome back card, [Nudges.welcomeBack]). */
         val afterBreak: Boolean = false,
+        /** The planned sets this workout needed: [plannedSets], or two thirds of it on a rough day. */
+        val effectiveSets: Int? = null,
+        /** Per exercise, in the order given. */
+        val exercises: List<ExerciseResult> = emptyList(),
     ) {
         /** False on a first-ever or first-after-a-break workout: show the reasons without the number. */
         val showNumber: Boolean = !(firstEver || afterBreak)
@@ -55,7 +69,7 @@ object WorkoutScore {
     }
 
     /** Weights closer than this are the same weight (a 135 lb entry stored in kg). */
-    private const val SAME_WEIGHT_KG = 0.05f
+    const val SAME_WEIGHT_KG = 0.05f
 
     /**
      * Rule A of docs/plans/math-debrief-plan.md, comparing [stats] with last time.
@@ -103,13 +117,17 @@ object WorkoutScore {
         var halves = 0
         var up = 0
         var compared = 0
-        working.filter { it.done.isNotEmpty() && it.last.isNotEmpty() }.forEach { w ->
-            compared++
-            when (trend(w.kind, w.exerciseId, w.done, w.last)) {
-                Trend.UP -> { up++; halves += 2 }
-                Trend.SAME -> halves += 1
-                Trend.DOWN -> halves += if (lowReadiness || w.exerciseId in pain) 1 else 0
+        val exercises = working.mapIndexed { i, w ->
+            val forgiven = lowReadiness || w.exerciseId in pain
+            val t = if (w.done.isNotEmpty() && w.last.isNotEmpty()) trend(w.kind, w.exerciseId, w.done, w.last) else null
+            when (t) {
+                null -> {}
+                Trend.UP -> { compared++; up++; halves += 2 }
+                Trend.SAME -> { compared++; halves += 1 }
+                Trend.DOWN -> { compared++; halves += if (forgiven) 1 else 0 }
             }
+            val pr = if (work[i].done.any { it.isPr }) prKindOf(w.kind) else null
+            ExerciseResult(w.exerciseId, t, forgiven, pr)
         }
         val ratio = if (effective == null) 1.0 else sets.size / effective.toDouble()
         val completion = when {
@@ -126,7 +144,13 @@ object WorkoutScore {
         }
         val prs = work.sumOf { w -> w.done.count { it.isPr } }
         val total = 3 + completion + progress + if (prs > 0) 1 else 0
-        return Result(total.coerceIn(4, 10), sets.size, planned, up, compared, prs, rough, firstEver, afterBreak)
+        return Result(total.coerceIn(4, 10), sets.size, planned, up, compared, prs, rough, firstEver, afterBreak, effective, exercises)
+    }
+
+    fun prKindOf(kind: ExerciseKind): PrKind = when (kind) {
+        ExerciseKind.WEIGHTED -> PrKind.WEIGHT
+        ExerciseKind.REPS -> PrKind.REPS
+        ExerciseKind.HOLD -> PrKind.HOLD
     }
 
     /**

@@ -13,6 +13,17 @@ export type Trend = 'UP' | 'SAME' | 'DOWN'
 export const WARM_UP_BLOCK = 'Warm-up'
 export const isWarmUp = (block: string | undefined): boolean => block?.toLowerCase() === WARM_UP_BLOCK.toLowerCase()
 
+/** The kind of personal record an exercise set, from its exercise kind. */
+export type PrKind = 'WEIGHT' | 'REPS' | 'HOLD'
+export const prKindOf = (kind: ExerciseKind): PrKind => (kind === 'WEIGHTED' ? 'WEIGHT' : kind)
+
+/**
+ * One exercise as the score saw it, for the debrief: its raw `trend` (null with no last time or only warm-up sets),
+ * `forgiven` when that day's recovery was low or it had a PAIN set (a drop then counts as holding steady), and the kind
+ * of personal record it set, if any.
+ */
+export type ScoreExercise = { exerciseId: string; trend: Trend | null; forgiven: boolean; pr: PrKind | null }
+
 /** One exercise of the workout: today's done sets and its last time (the most recent earlier workout's done sets, empty when none). */
 export type ScoreWork = { exerciseId: string; kind: ExerciseKind; done: Done[]; last: Done[] }
 export type WorkoutScoreResult = {
@@ -25,6 +36,10 @@ export type WorkoutScoreResult = {
   afterBreak: boolean
   /** False on a first-ever or first-after-a-break workout: show the reasons without the number. */
   showNumber: boolean
+  /** The planned sets this workout needed: plannedSets, or two thirds of it on a rough day. */
+  effectiveSets?: number | null
+  /** Per exercise, in the order given. */
+  exercises?: ScoreExercise[]
 }
 
 const sum = (l: number[]) => l.reduce((a, b) => a + b, 0)
@@ -53,7 +68,7 @@ export function trendStats(kind: ExerciseKind, exerciseId: string, sets: readonl
 }
 
 /** Weights closer than this are the same weight (a 135 lb entry stored in kg). */
-const SAME_WEIGHT_KG = f(0.05)
+export const SAME_WEIGHT_KG = f(0.05)
 
 /**
  * Rule A of docs/plans/math-debrief-plan.md, comparing trendStats with last time.
@@ -99,13 +114,14 @@ export function computeWorkoutScore(
   const effective = planned == null ? null : rough ? Math.floor((67 * planned + 99) / 100) : planned
   // Twice the value of each exercise (UP 2, SAME 1, DOWN 0), so the sums stay whole numbers.
   let halves = 0; let up = 0; let compared = 0
-  for (const w of working) {
-    if (!w.done.length || !w.last.length) continue
-    compared++
-    const tr = trend(w.kind, w.exerciseId, w.done, w.last)
+  const exercises = working.map((w, i): ScoreExercise => {
+    const forgiven = lowReadiness || pain.has(w.exerciseId)
+    const tr = w.done.length && w.last.length ? trend(w.kind, w.exerciseId, w.done, w.last) : null
+    if (tr != null) compared++
     if (tr === 'UP') { up++; halves += 2 } else if (tr === 'SAME') halves += 1
-    else halves += lowReadiness || pain.has(w.exerciseId) ? 1 : 0
-  }
+    else if (tr === 'DOWN') halves += forgiven ? 1 : 0
+    return { exerciseId: w.exerciseId, trend: tr, forgiven, pr: work[i].done.some((s) => s.isPr) ? prKindOf(w.kind) : null }
+  })
   const ratio = effective == null ? 1 : sets.length / effective
   const completion = ratio >= 1 ? 3 : ratio >= 0.75 ? 2 : ratio >= 0.5 ? 1 : 0
   // min(3, floor(4 × sum / compared)) with sum = halves / 2; below 75 % of the sets, progress doesn't count.
@@ -114,7 +130,7 @@ export function computeWorkoutScore(
   const total = 3 + completion + progress + (prs > 0 ? 1 : 0)
   return {
     score: Math.min(10, Math.max(4, total)), doneSets: sets.length, plannedSets: planned, up, compared, prs,
-    rough, firstEver, afterBreak, showNumber: !(firstEver || afterBreak),
+    rough, firstEver, afterBreak, showNumber: !(firstEver || afterBreak), effectiveSets: effective, exercises,
   }
 }
 
