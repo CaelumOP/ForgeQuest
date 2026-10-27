@@ -63,3 +63,4 @@ button.home-day { cursor: pointer; }
 .home-cal { display: flex; flex-direction: column; gap: 6px; }
 .home-cal .home-s { margin: 0; white-space: normal; }
 .home-cal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-block-start: 4px; }
+.home-nudge { margin-block-start: 16px; padding-block-start: 12px; border-block-start: 1px solid var(--divider); }

@@ -72,10 +72,9 @@ export function CoachScreen(_: { param?: string }) {
           <div class="coach-card">
             <div class="coach-card-head">
               <span class="coach-ic coach-ic-blue"><KeyIcon /></span>
-              <span class="coach-card-title">{t('coach_add_key')}</span>
+              <span class="coach-card-title">{t('ai_key_needed_coach')}</span>
             </div>
-            <p class="coach-muted">{t('coach_add_key_body')}</p>
-            <Button onClick={() => { location.hash = '#/profile' }}>{t('coach_set_up_profile')}</Button>
+            <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>
           </div>
         )}
         {messages.length === 0 && (

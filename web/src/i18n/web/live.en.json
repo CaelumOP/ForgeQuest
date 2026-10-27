@@ -6,5 +6,6 @@
   "live_web_progress": "Workout progress",
   "live_web_prev": "Previous exercise",
   "live_web_next": "Next exercise",
-  "live_web_view_workout": "View workout"
+  "live_web_view_workout": "View workout",
+  "live_web_rest_over": "Rest over"
 }

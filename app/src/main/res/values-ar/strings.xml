@@ -1443,4 +1443,30 @@
     <string name="harder_switch">بدّل</string>
     <string name="harder_switched">أصبح %1$s في خطتك</string>
     <string name="update_not_ready">ما زال هذا التحديث قيد النشر. حاول مرة أخرى بعد دقائق.</string>
+    <string name="onb_days_title">كم يومًا في الأسبوع يمكنك التمرّن؟</string>
+    <string name="onb_days_hint">هذا هو هدف سلسلتك الأسبوعية، ويمكنك تغييره في أي وقت من الملف الشخصي.</string>
+    <plurals name="onb_plan_days">
+        <item quantity="zero">%d أيام في الأسبوع</item>
+        <item quantity="one">يوم واحد في الأسبوع</item>
+        <item quantity="two">يومان في الأسبوع</item>
+        <item quantity="few">%d أيام في الأسبوع</item>
+        <item quantity="many">%d يومًا في الأسبوع</item>
+        <item quantity="other">%d يوم في الأسبوع</item>
+    </plurals>
+    <string name="onb_finish">إنهاء الإعداد</string>
+    <string name="food_setup_title">اضبط أهدافك الغذائية · دقيقة واحدة</string>
+    <string name="food_setup_body">أضف وزنك وطولك وعمرك لتحصل على أهداف سعرات وبروتين تناسبك.</string>
+    <plurals name="target_nudge_body">
+        <item quantity="zero">تمرّنت مؤخرًا %1$d مرات في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+        <item quantity="one">تمرّنت مؤخرًا مرة واحدة في الأسبوع. هل تجعلها هدفك الأسبوعي؟</item>
+        <item quantity="two">تمرّنت مؤخرًا مرتين في الأسبوع. هل تجعلهما هدفك الأسبوعي؟</item>
+        <item quantity="few">تمرّنت مؤخرًا %1$d مرات في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+        <item quantity="many">تمرّنت مؤخرًا %1$d مرة في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+        <item quantity="other">تمرّنت مؤخرًا %1$d مرة في الأسبوع. هل تجعل %1$d هدفك الأسبوعي؟</item>
+    </plurals>
+    <string name="target_nudge_make">اجعله %1$d</string>
+    <string name="target_nudge_keep">أبقِ على %1$d</string>
+    <string name="ai_key_needed_coach">مفتاح Gemini المجاني يشغّل مدربك الذكي.</string>
+    <string name="ai_key_needed_food">مفتاح Gemini المجاني يشغّل ماسح الوجبات.</string>
+    <string name="ai_key_needed_button">أضف مفتاحًا مجانيًا</string>
 </resources>

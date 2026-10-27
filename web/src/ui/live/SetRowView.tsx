@@ -49,7 +49,7 @@ export function SetRowView(p: SetRowProps) {
   )
   return (
     <div class="lw-setwrap">
-      <div class={`lw-set${set.done ? ' lw-set-done' : ''}`}
+      <div class={`lw-set${set.done ? ' lw-set-done' : ''}${set.done && set.isPr ? ' lw-set-pr' : ''}`}
         onPointerDown={() => { clear(); timer.current = window.setTimeout(() => setNoteOpen(true), 550) }}
         onPointerUp={clear} onPointerLeave={clear} onPointerCancel={clear}
         onContextMenu={(e) => { e.preventDefault(); setNoteOpen(true) }}>

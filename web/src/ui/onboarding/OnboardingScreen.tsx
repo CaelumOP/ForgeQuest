@@ -1,19 +1,17 @@
 import { useState } from 'preact/hooks'
-import { getLang, setLang, t, type Lang } from '../../i18n'
+import { getLang, plural, setLang, t, type Lang } from '../../i18n'
 import { updateSettings } from '../../data/settings'
-import { logWeight } from '../../data/progress'
 import { applyPlan, seedLibrary } from '../../data/workouts'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { STARTER_PLANS, localizePlan, type PlanDraft } from '../../data/seed/starter-plans'
-import { todayEpochDay } from '../../domain/dates'
 import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
 import {
   allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, DAY_BASE, dailyBurn, GAIN_PACE, GAIN_PACES, NUTRITION_GOALS, type CutPace, type GainPace,
 } from '../../domain/nutrition'
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
 import { Button, Card, ChipGroup, Segmented, Stat, Stepper, TextField, parseNumber } from '../kit'
-import { CheckCircleIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
-import { LAST_STEP, bodyStatsReady, floorOf, initialState, planFor, presetForPlan, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
+import { CheckCircleIcon, FireIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
+import { DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, planForDays, presetForPlan, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
 import './onboarding.css'
 
 const GEMINI_MODELS = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
@@ -35,7 +33,8 @@ const emptyPlan = (): PlanDraft => ({
   days: [1, 2, 3, 4, 5, 6, 7].map((d) => ({ dayOfWeek: d, title: t('today_rest_day'), isRest: true, note: '', items: [] })),
 })
 
-const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 3
+/** Training days of starter plan [i], for its "N days a week" label. */
+const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 0
 
 /** First-run setup: language, name, goals, starter plan, optional Gemini key. Full screen, no tab bar. */
 export function OnboardingScreen({ onDone }: { onDone: () => void }) {
@@ -55,8 +54,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
       const plan = chosen ? localizePlan(chosen, getLang()) : emptyPlan()
       const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
       await applyPlan(adapted, chosen ? 'starter' : 'manual')
-      await logWeight(s.weightKg)
-      await updateSettings(settingsPatch(s, todayEpochDay(), new Date().getFullYear(), check.ok ? key.trim() : null))
+      await updateSettings(settingsPatch(s, check.ok ? key.trim() : null))
       onDone()
     } catch (e) {
       console.error('onboarding failed', e)
@@ -79,10 +77,8 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
       <div class="onb-body" key={s.step}>
         {s.step === 0 && <StepLanguage onNext={() => go(1)} />}
         {s.step === 1 && <StepWelcome s={s} update={update} />}
-        {s.step === 2 && <StepBody s={s} update={update} />}
-        {s.step === 3 && <StepPlan s={s} update={update} />}
-        {s.step === 4 && <StepGoal s={s} update={update} />}
-        {s.step === 5 && (
+        {s.step === 2 && <StepPlan s={s} update={update} />}
+        {s.step === 3 && (
           <StepKey value={key} onInput={(v) => { setKey(v.trim()); setCheck({ busy: false, ok: false, msg: null }) }} check={check} onCheck={runCheck} />
         )}
       </div>
@@ -91,8 +87,8 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
           <Button variant="text" onClick={() => go(-1)}>{t('action_back')}</Button>
           <span class="onb-spacer" />
           {s.step < LAST_STEP
-            ? <Button onClick={() => go(1)} disabled={(s.step === 1 && !s.name.trim()) || (s.step === 2 && !bodyStatsReady(s))}>{t('action_continue')}</Button>
-            : <Button onClick={finish} loading={saving}>{check.ok ? t('onb_lets_go') : t('onb_skip')}</Button>}
+            ? <Button onClick={() => go(1)} disabled={s.step === 1 && !s.name.trim()}>{t('action_continue')}</Button>
+            : <Button onClick={finish} loading={saving}>{check.ok ? t('onb_lets_go') : t('onb_finish')}</Button>}
         </div>
       )}
     </main>
@@ -123,7 +119,7 @@ function StepLanguage({ onNext }: { onNext: () => void }) {
   )
 }
 
-type StepProps = { s: OnbState; update: (f: (c: OnbState) => OnbState) => void }
+export type StepProps = { s: OnbState; update: (f: (c: OnbState) => OnbState) => void }
 
 function StepWelcome({ s, update }: StepProps) {
   return (
@@ -182,7 +178,7 @@ function RowNumber({ label, unit, value, min, max, onChange }: { label: string; 
 }
 
 /** Step 2: units, weight, height and age, one calm row each. */
-function StepBody({ s, update }: StepProps) {
+export function StepBody({ s, update }: StepProps) {
   const ar = getLang() === 'ar'
   const unit = s.unit
   const shownWeight = Math.round(fromKg(unit, s.weightKg) * 10) / 10
@@ -193,25 +189,25 @@ function StepBody({ s, update }: StepProps) {
         options={[{ value: 'KG', label: t('unit_kilograms') }, { value: 'LB', label: t('unit_pounds') }]} />
       <Row label={t('weight_body')}>
         <Stepper label={t('weight_body')} value={shownWeight} step={bodyStep(unit)} min={fromKg(unit, 30)} max={fromKg(unit, 250)}
-          format={(n) => `${n.toFixed(1)} ${unitLabel(unit, ar)}`} onChange={(v) => update((c) => setWeight(c, toKg(unit, v), trainingDaysOf))} />
+          format={(n) => `${n.toFixed(1)} ${unitLabel(unit, ar)}`} onChange={(v) => update((c) => setWeight(c, toKg(unit, v)))} />
       </Row>
       <RowNumber label={t('profile_height')} unit={t('unit_cm')} value={s.heightCm} min={120} max={230}
-        onChange={(v) => update((c) => withSuggestions({ ...c, heightCm: v }, trainingDaysOf))} />
+        onChange={(v) => update((c) => withSuggestions({ ...c, heightCm: v }))} />
       <RowNumber label={t('profile_age')} unit={t('unit_years')} value={s.age} min={10} max={100}
-        onChange={(v) => update((c) => withSuggestions({ ...c, age: v }, trainingDaysOf))} />
+        onChange={(v) => update((c) => withSuggestions({ ...c, age: v }))} />
       <h2 class="onb-h2">{t('day_web_title')}</h2>
-      <RadioCards label={t('day_web_title')} value={s.dayActivity} onPick={(v) => update((c) => withSuggestions({ ...c, dayActivity: v }, trainingDaysOf))}
+      <RadioCards label={t('day_web_title')} value={s.dayActivity} onPick={(v) => update((c) => withSuggestions({ ...c, dayActivity: v }))}
         options={DAY_ACTIVITIES.map((d) => ({ v: d, name: t(`day_web_${d.toLowerCase()}`), desc: t(`day_web_${d.toLowerCase()}_desc`) }))} />
     </>
   )
 }
 
 /** Step 4 (after the plan, so the target counts its training days): the goal and the calculated target. */
-function StepGoal({ s, update }: StepProps) {
+export function StepGoal({ s, update }: StepProps) {
   return (
     <>
       <Title title={t('goal_title')} body={t('onb_web_goal_body')} />
-      <RadioCards label={t('goal_title')} value={s.goal} onPick={(g) => update((c) => withSuggestions({ ...c, goal: g }, trainingDaysOf))}
+      <RadioCards label={t('goal_title')} value={s.goal} onPick={(g) => update((c) => withSuggestions({ ...c, goal: g }))}
         options={NUTRITION_GOALS.map((g) => ({ v: g, name: t(`goal_${g.toLowerCase()}`), desc: t(`onb_web_goal_${g.toLowerCase()}_desc`) }))} />
       <PaceControl s={s} update={update} />
       <Target s={s} update={update} />
@@ -229,12 +225,12 @@ function PaceControl({ s, update }: StepProps) {
     <>
       <h2 class="onb-h2">{t('pace_web_title')}</h2>
       {s.goal === 'CUT'
-        ? <Segmented label={t('pace_web_title')} value={s.cutPace} onChange={(p: CutPace) => update((c) => withSuggestions({ ...c, cutPace: p }, trainingDaysOf))}
+        ? <Segmented label={t('pace_web_title')} value={s.cutPace} onChange={(p: CutPace) => update((c) => withSuggestions({ ...c, cutPace: p }))}
             options={CUT_PACES.map((p) => ({
               value: p, label: t(`pace_web_${p === 'AGGRESSIVE' ? 'fast' : p.toLowerCase()}`),
               sub: t('pace_web_week', amount((s.weightKg * CUT_PACE[p].weeklyPct) / 100)), disabled: p === 'AGGRESSIVE' && fastBlocked,
             }))} />
-        : <Segmented label={t('pace_web_title')} value={s.gainPace} onChange={(p: GainPace) => update((c) => withSuggestions({ ...c, gainPace: p }, trainingDaysOf))}
+        : <Segmented label={t('pace_web_title')} value={s.gainPace} onChange={(p: GainPace) => update((c) => withSuggestions({ ...c, gainPace: p }))}
             options={GAIN_PACES.map((p) => ({ value: p, label: t(`pace_web_${p.toLowerCase()}`), sub: t('pace_web_month', amount((s.weightKg * GAIN_PACE[p].weeklyPct * 4.35) / 100)) }))} />}
       {s.goal === 'CUT' && fastBlocked && <p class="onb-note">{t('pace_web_blocked')}</p>}
     </>
@@ -246,7 +242,7 @@ function Target({ s, update }: StepProps) {
   const [editing, setEditing] = useState(false)
   if (!bodyStatsReady(s)) return <p class="onb-note">{t('onb_web_target_missing')}</p>
   const num = (n: number) => new Intl.NumberFormat(getLang()).format(n)
-  const burn = Math.round(dailyBurn(s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE', trainingDaysOf(s.planIndex), 0, DAY_BASE[s.dayActivity]) / 10) * 10
+  const burn = Math.round(dailyBurn(s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE', s.daysPerWeek, 0, DAY_BASE[s.dayActivity]) / 10) * 10
   // The difference keeps its sign next to the number in Arabic too (left-to-right isolate).
   const diff = `⁦${s.kcal >= burn ? '+' : '−'}${num(Math.abs(s.kcal - burn))}⁩`
   return (
@@ -272,11 +268,12 @@ function Target({ s, update }: StepProps) {
         </>
       )}
       <p class="onb-note">{s.goal === 'MAINTAIN' ? t('target_web_burn_only', num(burn)) : t('target_web_burn', num(burn), num(s.kcal), diff)}</p>
-      <p class="onb-note">{s.goalsTouched ? t('onb_web_target_custom') : t('target_web_from', trainingDaysOf(s.planIndex), t(`day_web_${s.dayActivity.toLowerCase()}`))}</p>
+      <p class="onb-note">{s.goalsTouched ? t('onb_web_target_custom') : t('target_web_from', s.daysPerWeek, t(`day_web_${s.dayActivity.toLowerCase()}`))}</p>
     </Card>
   )
 }
 
+/** Weekly target first (full-width control), then equipment, then plans that name how many days a week they ask for. */
 function StepPlan({ s, update }: StepProps) {
   const ar = getLang() === 'ar'
   const plans = STARTER_PLANS.map((p) => localizePlan(p, getLang()))
@@ -284,17 +281,28 @@ function StepPlan({ s, update }: StepProps) {
   return (
     <>
       <Title title={t('onb_plan_title')} body={t('onb_plan_body')} />
+      <div class="onb-days-head">
+        <span class="onb-badge"><FireIcon /></span>
+        <span class="onb-days-text">
+          <span class="onb-days-title">{t('onb_days_title')}</span>
+          <span class="onb-note">{t('onb_days_hint')}</span>
+        </span>
+      </div>
+      <Segmented label={t('onb_days_title')} value={String(s.daysPerWeek)}
+        onChange={(v) => update((c) => ({ ...c, daysPerWeek: Number(v), planIndex: planForDays(Number(v), c.preset) }))}
+        options={DAY_OPTIONS.map((d) => ({ value: String(d), label: new Intl.NumberFormat(getLang()).format(d) }))} />
       <h2 class="onb-h2">{t('onb_available_equipment')}</h2>
-      <ChipGroup label={t('onb_available_equipment')} value={s.preset} onChange={(p) => update((c) => withSuggestions({ ...c, preset: p, planIndex: planFor(p, c.planIndex) }, trainingDaysOf))}
+      <ChipGroup label={t('onb_available_equipment')} value={s.preset} onChange={(p) => update((c) => ({ ...c, preset: p, planIndex: planForDays(c.daysPerWeek, p) }))}
         options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn }))} />
       <div class="onb-plans" role="radiogroup" aria-label={t('onb_plan_title')}>
         {options.map((o, i) => {
           const on = s.planIndex === i
           return (
             <button key={i} type="button" role="radio" aria-checked={on} class={`onb-plan${on ? ' on' : ''}`}
-              onClick={() => update((c) => withSuggestions({ ...c, planIndex: i, preset: presetForPlan(i, c.preset) }, trainingDaysOf))}>
+              onClick={() => update((c) => ({ ...c, planIndex: i, preset: presetForPlan(i, c.preset) }))}>
               <span class="onb-plan-text">
                 <span class="onb-plan-name">{o.name}</span>
+                {trainingDaysOf(i) > 0 && <span class="onb-plan-days">{plural('onb_plan_days', trainingDaysOf(i))}</span>}
                 <span class="onb-plan-desc">{o.desc}</span>
               </span>
               <span class={`onb-radio${on ? ' on' : ''}`} aria-label={on ? t('onb_web_plan_selected') : undefined}>{on && <CheckCircleIcon />}</span>
