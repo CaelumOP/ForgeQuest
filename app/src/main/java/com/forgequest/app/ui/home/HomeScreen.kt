@@ -159,7 +159,7 @@ fun HomeScreen(nav: NavHostController) {
 
     val today = s.plan?.day(Dates.todayDayOfWeek())
     // On a training day with the workout still to do (or one in progress), today's card leads the page.
-    val startOnTop = open != null || (today?.day?.isRest == false && !s.workoutDoneToday && !s.excusedToday)
+    val startOnTop = open != null || (today?.day?.isRest == false && !s.workoutDoneToday && s.excusedToday == null)
     val todayCard: @Composable () -> Unit = {
         TodayCard(
             day = today,
