@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
         WeightEntity::class, ChatEntity::class, BadgeEntity::class, ReadinessDayEntity::class, DayNoteEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -93,9 +93,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v8 → v9: each workout keeps its planned set count, so editing the plan later can't change old scores. */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sessions ADD COLUMN plannedSets INTEGER")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .build()
     }
 }

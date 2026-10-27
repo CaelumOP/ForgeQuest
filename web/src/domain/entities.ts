@@ -37,6 +37,8 @@ export type SessionEntity = {
   finishedAt: number | null
   note: string
   debrief: string
+  /** The plan day's sets (warm-ups left out) when the workout was finished, so a later plan edit can't change its score. Null/absent before score v2 or with no plan day. */
+  plannedSets?: number | null
 }
 
 export type SetEntity = {

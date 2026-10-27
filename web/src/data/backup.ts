@@ -67,7 +67,7 @@ const SPECS = {
     repsMin: null, repsMax: null, seconds: null, weightKg: null, restSeconds: 60, note: '',
   },
   sessions: {
-    id: 0, planDayId: REQ, title: REQ, epochDay: REQ, startedAt: REQ, finishedAt: null, note: '', debrief: '',
+    id: 0, planDayId: REQ, title: REQ, epochDay: REQ, startedAt: REQ, finishedAt: null, note: '', debrief: '', plannedSets: null,
   },
   sets: {
     id: 0, sessionId: REQ, exerciseId: REQ, itemPosition: REQ, block: REQ, circuit: REQ, setIndex: REQ,

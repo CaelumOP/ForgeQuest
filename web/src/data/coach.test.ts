@@ -103,7 +103,7 @@ describe('debrief encode / decode', () => {
 describe('debrief request', () => {
   const input = { title: 'Push', epochDay: 20000, minutes: 40, goal: 'MAINTAIN', note: '', exercises: [] }
   it('carries the calculated score and asks the model not to score', () => {
-    const score = { score: 8, doneSets: 12, plannedSets: 12, up: 3, compared: 4, prs: 1 }
+    const score = { score: 8, doneSets: 12, plannedSets: 12, up: 3, compared: 4, prs: 1, rough: false, firstEver: false, afterBreak: false, showNumber: true }
     expect(debriefPayload({ ...input, score })).toContain('Score (calculated by the app, do not change it): 8/10. All 12 sets, up on 3 of 4, 1 PR.')
     expect(debriefPayload({ ...input, score: { ...score, doneSets: 10, compared: 0, prs: 2 } })).toContain('10 of 12 sets, 2 PRs.')
     expect(debriefPayload(input)).not.toContain('Score')

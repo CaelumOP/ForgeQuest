@@ -15,8 +15,8 @@
     {"id": 1, "dayId": 1, "position": 0, "exerciseId": "bench_press", "block": "Main", "circuit": false, "sets": 3, "repsMin": 6, "repsMax": 10, "seconds": null, "weightKg": 60.0, "restSeconds": 120, "note": "Pause on the chest."}
   ],
   "sessions": [
-    {"id": 1, "planDayId": 1, "title": "Push + core", "epochDay": 20380, "startedAt": 1760889600000, "finishedAt": 1760893200000, "note": "Slept well.", "debrief": ""},
-    {"id": 2, "planDayId": null, "title": "Quick core", "epochDay": 20381, "startedAt": 1760976000000, "finishedAt": null, "note": "", "debrief": ""}
+    {"id": 1, "planDayId": 1, "title": "Push + core", "epochDay": 20380, "startedAt": 1760889600000, "finishedAt": 1760893200000, "note": "Slept well.", "debrief": "", "plannedSets": 9},
+    {"id": 2, "planDayId": null, "title": "Quick core", "epochDay": 20381, "startedAt": 1760976000000, "finishedAt": null, "note": "", "debrief": "", "plannedSets": null}
   ],
   "sets": [
     {"id": 1, "sessionId": 1, "exerciseId": "bench_press", "itemPosition": 0, "block": "Main", "circuit": false, "setIndex": 0, "targetLabel": "6-10 reps", "reps": 8, "seconds": null, "weightKg": 60.0, "done": true, "isPr": false, "restSeconds": 120, "note": "", "effort": "OK"},

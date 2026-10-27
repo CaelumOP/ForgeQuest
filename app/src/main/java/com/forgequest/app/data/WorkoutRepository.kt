@@ -373,10 +373,16 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
 
     /** The calculated score of every finished workout in [snap], from data already loaded plus two small queries (plan items, recovery). */
     suspend fun scores(snap: ProgressSnapshot): Map<Long, WorkoutScore.Result> {
-        val planned = plans.allItems().groupBy { it.dayId }.mapValues { (_, items) -> items.sumOf { it.sets } }
+        val planned = plans.allItems().groupBy { it.dayId }.mapValues { (_, items) -> plannedSetsOf(items) }
         val rough = db.readiness().all().filter { Readiness.call(it.recovery).let { c -> c == DayCall.EASE_OFF || c == DayCall.RECOVER } }.map { it.epochDay }.toSet()
-        return WorkoutScore.forSessions(snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough)
+        return WorkoutScore.forSessions(
+            snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough,
+            snap.dayTags, snap.plan?.trainingDays ?: emptySet(),
+        )
     }
+
+    /** A plan day's sets for the score: warm-ups left out. */
+    private fun plannedSetsOf(items: List<PlanItemEntity>): Int = items.filterNot { WorkoutScore.isWarmUp(it.block) }.sumOf { it.sets }
 
     fun targetLabel(kind: ExerciseKind, item: PlanItemEntity?): String {
         if (item == null) return ""
@@ -473,7 +479,9 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 prNames += ex.name
             }
         }
-        sessions.update(session.copy(finishedAt = System.currentTimeMillis()))
+        // The plan day's sets as they are now, kept so a later plan edit can't change this workout's score.
+        val plannedSets = session.planDayId?.let { plannedSetsOf(plans.items(it)) }?.takeIf { it > 0 }
+        sessions.update(session.copy(finishedAt = System.currentTimeMillis(), plannedSets = plannedSets))
         val xp = com.forgequest.app.domain.Xp.total(1, done.size, prNames.size, 0)
         FinishResult(session.title, done.size, prNames, xp)
     }

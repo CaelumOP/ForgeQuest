@@ -79,6 +79,8 @@ data class SessionEntity(
     val note: String = "",
     /** The AI debrief card as JSON (see data/plan/Debrief.kt); empty when there is none. */
     val debrief: String = "",
+    /** The plan day's sets (warm-ups left out) when the workout was finished, so a later plan edit can't change its score. Null before v9 or with no plan day. */
+    val plannedSets: Int? = null,
 )
 
 @Serializable
