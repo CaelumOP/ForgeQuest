@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.ui.theme.itemMotion
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.components.ChoiceChip
@@ -546,14 +547,14 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
     FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
         Row {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.food_protein_of_goal, protein.roundToInt(), s.settings.proteinGoal), style = MaterialTheme.typography.titleSmall, color = c.teal)
+                Text(stringResource(R.string.food_protein_of_goal, protein.roundToInt(), s.settings.proteinGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = c.teal)
                 Text(stringResource(R.string.label_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 ProgressLine(protein / s.settings.proteinGoal.coerceAtLeast(1), c.teal, c.tealTrack, height = 5.dp)
             }
             Spacer(Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("⁦%,d / %,d⁩".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall, color = if (over) c.gold else c.blue)
+                Text("⁦%,d / %,d⁩".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = if (over) c.gold else c.blue)
                 Text(if (over) stringResource(R.string.food_calories_surplus) else stringResource(R.string.home_legend_calories), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
@@ -562,7 +563,7 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
         if (s.settings.trackCarbs) {
             val carbs = meals.sumOf { it.carbs.toDouble() }.toFloat()
             Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.food_carbs_of_goal, carbs.roundToInt(), s.settings.carbsGoal), style = MaterialTheme.typography.titleSmall, color = c.purple)
+            Text(stringResource(R.string.food_carbs_of_goal, carbs.roundToInt(), s.settings.carbsGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = c.purple)
             Text(stringResource(R.string.label_carbs), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
             Spacer(Modifier.height(6.dp))
             ProgressLine(carbs / s.settings.carbsGoal.coerceAtLeast(1), c.purple, c.purpleTrack, height = 5.dp)

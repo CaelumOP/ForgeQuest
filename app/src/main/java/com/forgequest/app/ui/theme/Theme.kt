@@ -130,6 +130,12 @@ object Fit {
 }
 
 /**
+ * Tabular (equal-width) figures, for numbers that change in place: timers, steppers, ring centres, stats.
+ * Without it a "1" is narrower than an "8" and the text shifts as the value ticks.
+ */
+fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum")
+
+/**
  * Manrope (SIL OFL) for display and title sizes: a geometric sans with open, rounded forms that reads as
  * athletic without shouting. Body and label text stay on the system sans for density and Arabic fallback.
  */

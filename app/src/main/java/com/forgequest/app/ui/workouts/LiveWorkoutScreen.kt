@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.ui.theme.itemMotion
 import android.Manifest
 import android.os.Build
@@ -235,7 +236,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(pluralStringResource(R.plurals.live_header, sets.size, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(pluralStringResource(R.plurals.live_header, sets.size, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary)
                         nextSet?.let { n -> exercises[n.exerciseId]?.let { Text(stringResource(R.string.live_now, it.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
                     }
                     IconButton(onClick = { focus = !focus; prefs.edit().putBoolean("focus", focus).apply() }) {
@@ -831,7 +832,7 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
             style = MaterialTheme.typography.titleLarge, color = tint, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(12.dp))
-        Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(88f, androidx.compose.ui.unit.TextUnitType.Sp)), fontWeight = FontWeight.Bold, color = tint)
+        Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(88f, androidx.compose.ui.unit.TextUnitType.Sp)).tabular(), fontWeight = FontWeight.Bold, color = tint)
         Spacer(Modifier.height(16.dp))
         ProgressLine(if (ready) 0f else (s / h.target.toFloat()).coerceIn(0f, 1f), if (over) c.gold else c.teal, c.tealTrack, height = 6.dp)
         Spacer(Modifier.height(8.dp))
@@ -863,7 +864,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
             Spacer(Modifier.width(10.dp))
-            Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge, color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+            Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge.tabular(), color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
             if (!big) buttons()
         }
         if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }

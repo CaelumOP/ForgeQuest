@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.components
 
+import com.forgequest.app.ui.theme.tabular
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -304,7 +305,7 @@ fun Stepper(
         ) {
             Text(
                 value,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.tabular(),
                 fontWeight = FontWeight.SemiBold,
                 color = valueColor,
                 textAlign = TextAlign.Center,
@@ -538,7 +539,7 @@ fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = 
         modifier.clip(RoundedCornerShape(16.dp)).let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(value, style = MaterialTheme.typography.titleLarge, color = color, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleLarge.tabular(), color = color, fontWeight = FontWeight.Medium, maxLines = 1)
         Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = 1)
     }
 }

@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.progress
 
+import com.forgequest.app.ui.theme.tabular
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -251,7 +252,7 @@ private fun LoadCard(d: Derived, reveal: Float) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             MiniRing((d.load / 100f).coerceIn(0f, 1f) * reveal, c.chartStrength, c.chartGainTrack, size = 84.dp, stroke = 8.dp) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${(d.load * reveal).roundToInt()}", fontFamily = Manrope, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                    Text("${(d.load * reveal).roundToInt()}", fontFamily = Manrope, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge.tabular(), color = c.textPrimary)
                     Text("%", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
             }
@@ -317,7 +318,7 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
                     Text(t.label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(t.value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                        Text(t.value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge.tabular(), color = c.textPrimary, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
                         t.delta?.let { Spacer(Modifier.width(6.dp)); DeltaChip(it, t.positive) }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -398,7 +399,7 @@ private fun ThenNowCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit) {
 private fun Total(value: String, label: String, modifier: Modifier) {
     val c = Fit.colors
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1)
+        Text(value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium.tabular(), color = c.textPrimary, maxLines = 1)
         Text(label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1)
     }
 }

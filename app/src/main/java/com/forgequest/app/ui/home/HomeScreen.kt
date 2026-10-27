@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.R
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.localTitle
@@ -360,9 +361,9 @@ private fun NutritionRings(s: ProgressSnapshot) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Units under the numbers: without them "66 / 1,005" read like a score (Google Fit labels its ring centre too).
-                Text("${s.today.protein.roundToInt()}", fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
+                Text("${s.today.protein.roundToInt()}", style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
                 Text(stringResource(R.string.home_center_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Text(stringResource(R.string.home_center_kcal, "%,d".format(s.today.kcal)), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.home_center_kcal, "%,d".format(s.today.kcal)), style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
