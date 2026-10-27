@@ -46,7 +46,7 @@ export function App() {
   return (
     <div class="shell">
       <TopBar title={t(route?.title ?? 'screen_not_found')} onBack={goBack} />
-      <div class="scroll">{route ? <route.Screen param={param} /> : <NotFoundScreen />}</div>
+      <div class="scroll scroll-push" key={path}>{route ? <route.Screen param={param} /> : <NotFoundScreen />}</div>
       <ToastHost />
     </div>
   )

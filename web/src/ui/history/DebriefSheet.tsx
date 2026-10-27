@@ -3,6 +3,7 @@ import { getLang, t } from '../../i18n'
 import type { SessionRow } from '../../data/db'
 import type { WorkoutScoreResult } from '../../domain/workout-score'
 import { canDebrief, generateDebrief } from '../../data/coach-chat'
+import { buzzError } from '../live/feedback'
 import { decodeDebriefFull } from '../../data/coach'
 import { useSettings } from '../../data/settings'
 import { Button, Sheet } from '../kit'
@@ -21,8 +22,8 @@ export function DebriefSheet({ session, score, onClose }: { session: SessionRow;
     setLoading(true)
     setFailed(false)
     generateDebrief(session.id!, true)
-      .then((d) => setFailed(d == null))
-      .catch(() => setFailed(true))
+      .then((d) => { if (d == null) buzzError(); setFailed(d == null) })
+      .catch(() => { buzzError(); setFailed(true) })
       .finally(() => setLoading(false))
   }
   // A workout with no saved debrief gets one written as the sheet opens.

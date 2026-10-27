@@ -51,3 +51,7 @@
 .hs-deb-head .hs-deb-gold { font-weight: 600; }
 .hs-deb-next { color: var(--blue); }
 .hs-actions { display: flex; align-items: center; flex-wrap: wrap; }
+
+/* Undo bar after a swiped-away workout (same look as the Food screen's). */
+.hs-undo { position: fixed; inset-inline: 16px; inset-block-end: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 4px 16px; padding-inline: 16px 4px; border-radius: 14px; background: var(--text); color: var(--bg); font-size: 14px; }
+.hs-undo button { min-block-size: 44px; padding-inline: 14px; border: 0; background: none; color: var(--teal-on-inv, var(--bg)); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }

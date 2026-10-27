@@ -138,3 +138,9 @@ button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: 
 .kit-seg-on { background: var(--acc); color: var(--on-acc); }
 .kit-seg-label { font-size: 14px; font-weight: 600; line-height: 18px; text-wrap: balance; overflow-wrap: anywhere; }
 .kit-seg-sub { font-size: 12px; line-height: 16px; opacity: 0.8; }
+
+/* Swipe to delete (SwipeRow.tsx): the row slides toward its start edge over a red layer. */
+.kit-swipe { position: relative; overflow: hidden; }
+.kit-swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-inline: 20px; background: var(--coral); color: #fff; pointer-events: none; }
+.kit-swipe-front { position: relative; touch-action: pan-y; }
+.kit-swipe-settle { transition: transform 160ms ease-out; }

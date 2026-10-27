@@ -642,7 +642,7 @@
     <string name="stepper_reps">التكرارات</string>
     <string name="unit_reps">تكرار</string>
     <string name="stepper_weight">الوزن</string>
-    <string name="cd_drag_reorder">اضغط مطولًا واسحب لإعادة الترتيب</string>
+    <string name="cd_drag_reorder">اسحب لإعادة الترتيب</string>
     <string name="cd_remove_set">حذف المجموعة</string>
     <string name="hist_no_sets">لا مجموعات</string>
     <string name="hist_no_sets_body">لم تبقَ مجموعات في هذا التمرين.</string>

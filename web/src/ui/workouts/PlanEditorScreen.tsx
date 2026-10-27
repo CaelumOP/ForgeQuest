@@ -15,10 +15,14 @@ import { fromKg, loadStep, toKg, unitLabel, type WeightUnit } from '../../domain
 import { Button, Card, Dialog, Sheet, Stepper, TextField, toast } from '../kit'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
-import { CopyIcon, DeleteIcon, DocIcon, DownIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
+import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
 import { blockLabel, dayName, isRestTitle, prescription } from './helpers'
+import { stepReorder } from './reorder'
+import { buzz } from '../live/feedback'
 import { PastePlanSheet } from '../coach/PastePlanSheet'
 import './workouts.css'
+
+const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ')
 
 type Undo = { text: string; run: () => void | Promise<void> }
 type Panel = null | 'change' | 'templates' | 'previous' | 'move' | 'rename' | 'picker' | 'paste'
@@ -37,6 +41,10 @@ export function PlanEditorScreen({ param }: { param?: string }) {
   const [undo, setUndo] = useState<Undo | null>(null)
   const timer = useRef<number>(0)
   useEffect(() => () => clearTimeout(timer.current), [])
+  // Drag a row by its handle to reorder; the Move up / Move down buttons in the item editor stay.
+  const [drag, setDrag] = useState<{ id: number; offset: number; order: number[]; start: number } | null>(null)
+  const rowEls = useRef(new Map<number, HTMLElement>())
+  const lastY = useRef(0)
 
   if (!s) return <div class="content wk" />
   const plan = s.plan
@@ -111,7 +119,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
             <label class="wk-s" for="wk-rest">{t('today_rest_day')}</label>
             <input id="wk-rest" type="checkbox" role="switch" class="wk-switch blue" checked={day.day.isRest} onChange={(e) => setRest(day.day, (e.target as HTMLInputElement).checked)} />
           </div>
-          {!day.day.isRest && day.items.map((item) => {
+          {!day.day.isRest && (drag ? drag.order.map((id) => day.items.find((i) => i.id === id)).filter((i): i is PlanItemRow => !!i) : day.items).map((item) => {
             const ex = s.exercises.get(item.exerciseId)
             const name = ex?.name ?? item.exerciseId
             const sub = [
@@ -121,7 +129,40 @@ export function PlanEditorScreen({ param }: { param?: string }) {
               t('plan_rest_seconds', item.restSeconds),
             ].filter(Boolean).join(' · ')
             return (
-              <div class="wk-item" key={item.id}>
+              <div
+                class={cx('wk-item', drag?.id === item.id && 'wk-item-drag')} key={item.id}
+                ref={(el) => { if (el) rowEls.current.set(item.id!, el); else rowEls.current.delete(item.id!) }}
+                style={drag && drag.id === item.id ? { transform: `translateY(${drag.offset}px)` } : undefined}
+              >
+                <button
+                  type="button" class="kit-iconbtn wk-ibtn wk-handle" aria-label={`${t('cd_drag_reorder')}: ${name}`}
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+                    lastY.current = e.clientY
+                    const order = day.items.map((i) => i.id!)
+                    setDrag({ id: item.id!, offset: 0, order, start: order.indexOf(item.id!) })
+                    buzz(8)
+                  }}
+                  onPointerMove={(e) => {
+                    if (!drag || drag.id !== item.id) return
+                    const step = stepReorder(drag.order, drag.id, drag.offset + e.clientY - lastY.current, (id) => rowEls.current.get(id)?.offsetHeight ?? 56)
+                    lastY.current = e.clientY
+                    if (step.swapped) buzz(8)
+                    setDrag({ ...drag, order: step.order, offset: step.offset })
+                  }}
+                  onPointerUp={() => {
+                    if (!drag || drag.id !== item.id) return
+                    const delta = drag.order.indexOf(drag.id) - drag.start
+                    setDrag(null)
+                    if (delta !== 0) void movePlanItem(item, delta)
+                  }}
+                  onPointerCancel={() => setDrag(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp') { e.preventDefault(); void movePlanItem(item, -1) }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); void movePlanItem(item, 1) }
+                  }}
+                ><DragIcon /></button>
                 <button type="button" class="wk-item-main" onClick={() => setEditing(item)}>
                   <span class="wk-item-name" style={{ whiteSpace: 'normal' }}>{name}</span>
                   <span class="wk-s">{sub}</span>

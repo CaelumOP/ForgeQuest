@@ -514,6 +514,15 @@ export async function moveSession(sessionId: number, epochDay: number): Promise<
   for (const id of new Set((await getSets(sessionId)).map((x) => x.exerciseId))) await recomputeRecords(id);
 }
 
+/** Puts back a workout removed by deleteSession (same ids), then re-checks the records it touched. */
+export async function restoreSession(session: SessionRow, sets: SetRow[]): Promise<void> {
+  await db.transaction('rw', db.sessions, db.sets, async () => {
+    await db.sessions.put(session);
+    await db.sets.bulkPut(sets);
+  });
+  for (const id of new Set(sets.map((s) => s.exerciseId))) await recomputeRecords(id);
+}
+
 export async function deleteSession(sessionId: number): Promise<void> {
   const affected = [...new Set((await getSets(sessionId)).map((s) => s.exerciseId))];
   await db.transaction('rw', db.sessions, db.sets, async () => {

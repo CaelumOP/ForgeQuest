@@ -8,7 +8,7 @@ import { scaledKcal } from '../../domain/nutrition'
 import { evaluateBadges, useProgress } from '../../data/progress'
 import { useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
-import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, TextField, toast } from '../kit'
+import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
 import { PartsSheet, PlaceField, partsCount } from './FoodParts'
 import './food.css'
@@ -364,7 +364,7 @@ export function FoodScreen(_: { param?: string }) {
         <Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setQuick(true)}>{t('food_quick_log')}</Button>
       </div>
       {meals.length === 0 && <p class="food-note">{isToday ? t('food_nothing_today') : t('food_nothing_that_day')}</p>}
-      {meals.map((m) => <MealItem key={m.id} meal={m} onDelete={() => removeMeal(m)} />)}
+      {meals.map((m) => <SwipeRow key={m.id} label={t('action_delete')} onDelete={() => removeMeal(m)}><MealItem meal={m} onDelete={() => removeMeal(m)} /></SwipeRow>)}
 
       {picked.length > 0 && (
         <div class="food-bar"><Button block onClick={logSelected}>{plural('food_log_selection', picked.length, picked.length, fmtInt(selKcal), selProtein)}</Button></div>

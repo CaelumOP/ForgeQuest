@@ -12,6 +12,7 @@ import { CameraIcon, CheckIcon, PhotoLibraryIcon } from '../icons'
 import { Button, Card, ChipGroup, NumberField, Sheet, toast } from '../kit'
 import { goBack } from '../nav'
 import { TopBar } from '../TopBar'
+import { buzzError } from '../live/feedback'
 import { badgeSuffix, catLabel } from './FoodScreen'
 import { COOKING_FATS, PORTIONS, scanMeal, scanTotals, shrinkPhoto, withGrams, type FoodScan, type ScanItem } from './scan'
 import './food.css'
@@ -172,6 +173,7 @@ export function ScanScreen(_: { param?: string }) {
       if (me === runId.current) setState({ kind: 'result', photo, scan })
     } catch (e) {
       if (me !== runId.current) return
+      buzzError()
       const { key, args } = slow ? { key: 'scan_err_slow', args: [] } : e instanceof AiError ? aiErrorKey(e) : { key: 'scan_err_generic', args: [] }
       setState({ kind: 'failed', photo, message: t(key, ...args), keyProblem: e instanceof AiError && (e.kind === 'bad_key' || e.kind === 'no_key') })
     } finally { clearTimeout(timer) }

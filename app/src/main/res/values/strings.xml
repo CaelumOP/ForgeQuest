@@ -569,7 +569,7 @@
     <string name="stepper_reps">Reps</string>
     <string name="unit_reps">reps</string>
     <string name="stepper_weight">Weight</string>
-    <string name="cd_drag_reorder">Hold and drag to reorder</string>
+    <string name="cd_drag_reorder">Drag to reorder</string>
     <string name="cd_remove_set">Remove set</string>
     <string name="hist_no_sets">No sets</string>
     <string name="hist_no_sets_body">This workout has no sets left.</string>

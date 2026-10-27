@@ -7,6 +7,7 @@ import { useLibrary } from '../../data/workouts'
 import { Button, Dialog, IconButton, Markdown, Sheet, toast } from '../kit'
 import { CalendarIcon, CheckIcon, KeyIcon, MoreIcon, SendIcon } from '../icons'
 import { CopyIcon, SparkleIcon } from '../workouts/glyphs'
+import { buzzError } from '../live/feedback'
 import { PlanPreviewSheet } from '../workouts/PlanEditorScreen'
 import './coach.css'
 
@@ -27,6 +28,14 @@ export function CoachScreen(_: { param?: string }) {
   const [stale, setStale] = useState<ChatRow | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
+  // A reply that failed buzzes once (not for the history that was already there when the screen opened).
+  const lastMsg = useRef<number | null | undefined>(undefined)
+  useEffect(() => {
+    const m = messages[messages.length - 1]
+    if (!m) return
+    if (lastMsg.current !== undefined && m.id !== lastMsg.current && m.kind === 'error') buzzError()
+    lastMsg.current = m.id ?? null
+  }, [messages])
   useEffect(() => {
     const el = listRef.current
     if (el) el.scrollTop = el.scrollHeight

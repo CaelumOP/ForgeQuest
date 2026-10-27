@@ -1,13 +1,13 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import type { SessionRow, SetRow } from '../../data/db'
 import { putSession } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
-import { allDoneSets, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
+import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
 import { formatWeight } from '../../domain/units'
-import { Button, Card, EmptyState, Sheet, TextField } from '../kit'
+import { Button, Card, EmptyState, Sheet, SwipeRow, TextField } from '../kit'
 import { ExpandMoreIcon } from '../icons'
 import { decodeDebrief, groupWeeks, minutesOf, scoreLine } from './helpers'
 import { DebriefSheet } from './DebriefSheet'
@@ -33,6 +33,24 @@ export function HistoryScreen(_: { param?: string }) {
   const [noteText, setNoteText] = useState('')
   const scores = useWorkoutScores()
   const [debriefId, setDebriefId] = useState<number | null>(null)
+  const [undo, setUndo] = useState<{ text: string; session: SessionRow; sets: SetRow[] } | null>(null)
+  const undoTimer = useRef<number>(0)
+  useEffect(() => () => clearTimeout(undoTimer.current), [])
+
+  // A swiped-away workout is deleted at once; Undo puts it back (same ids) while the bar is up.
+  const removeWorkout = async (s: SessionRow) => {
+    const sets = await getSets(s.id!)
+    await deleteSession(s.id!)
+    setUndo({ text: t('food_removed', s.title), session: s, sets })
+    clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => setUndo(null), 5000)
+  }
+  const doUndo = async () => {
+    const u = undo
+    setUndo(null)
+    clearTimeout(undoTimer.current)
+    if (u) await restoreSession(u.session, u.sets)
+  }
 
   const debriefSession = sessions.find((x) => x.id === debriefId)
   const names = new Map(library.map((e) => [e.id, e.name]))
@@ -109,6 +127,7 @@ export function HistoryScreen(_: { param?: string }) {
                     const d = decodeDebrief(s.debrief)
                     return (
                       <div class="hs-sess" key={s.id}>
+                        <SwipeRow label={t('action_delete')} radius={24} srDelete onDelete={() => void removeWorkout(s)}>
                         <Card href={`#/session/${s.id}`}>
                           <div class="hs-srow">
                             <span class="hs-date"><b>{fmt(day, { day: 'numeric' })}</b><span>{fmt(day, { weekday: 'short' })}</span></span>
@@ -119,6 +138,7 @@ export function HistoryScreen(_: { param?: string }) {
                             </span>
                           </div>
                         </Card>
+                        </SwipeRow>
                         {scores.get(s.id!) && <p class="hs-debrief hs-score">{scoreLine(scores.get(s.id!)!)}</p>}
                         {d && <p class="hs-debrief">{d.summary}</p>}
                         <div class="hs-actions">
@@ -136,6 +156,7 @@ export function HistoryScreen(_: { param?: string }) {
           )
         })}
       </div>
+      {undo && <div class="hs-undo" role="status"><span>{undo.text}</span><button type="button" onClick={() => void doUndo()}>{t('action_undo')}</button></div>}
       {debriefSession && <DebriefSheet key={debriefSession.id} session={debriefSession} score={scores.get(debriefSession.id!)} onClose={() => setDebriefId(null)} />}
       <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={t('history_web_note_title')}>
         <div class="hs-sheet">

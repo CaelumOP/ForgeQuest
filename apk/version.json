@@ -2,5 +2,6 @@
   "versionCode": 27,
   "versionName": "2.15.0",
   "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.15.0/ForgeQuest-v2.15.0.apk",
-  "notes": "• Workout score: now calculated from your sets, last time and PRs, with the reasons shown. Every journal workout has one, no AI key needed.\n• Coach debrief: the coach explains the score instead of guessing it."
+  "notes": "• Workout score: now calculated from your sets, last time and PRs, with the reasons shown. Every journal workout has one, no AI key needed.\n• Coach debrief: the coach explains the score instead of guessing it.
+• Smoother app: lists animate, swipe to delete with Undo, drag to reorder plan exercises, larger-text fixes."
 }
