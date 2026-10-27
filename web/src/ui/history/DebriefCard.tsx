@@ -25,6 +25,8 @@ export function DebriefCard({ sessionId, score, onAsked }: { sessionId: number; 
     const names = new Map(library.map((e) => [e.id, e.name]))
     return debrief ? debriefLines(debrief, lang, (id) => names.get(id) ?? id, (kg) => formatWeight(unit, kg, lang === 'ar')) : null
   }, [debrief, library, lang, unit])
+  // The first-ever and comeback headlines already say what the score's note says.
+  const sameAsHeadline = debrief?.headline.type === 'FIRST_EVER' || debrief?.headline.type === 'AFTER_BREAK'
   const ask = () => { void askCoachAboutWorkout(sessionId).then((ok) => { if (ok) { onAsked?.(); location.hash = '#/coach' } }) }
   return (
     <div class="hs-deb-card">
@@ -32,7 +34,7 @@ export function DebriefCard({ sessionId, score, onAsked }: { sessionId: number; 
         <span class="hs-deb-title">{t('debrief_title')}</span>
         {score?.showNumber && <span class={`hs-deb-gold ${scoreTone(score.score)}`}>{t('debrief_score', score.score)}</span>}
       </div>
-      {score && scoreNote(score) && <p class="hs-deb-body hs-deb-note">{scoreNote(score)}</p>}
+      {score && scoreNote(score) && !sameAsHeadline && <p class="hs-deb-body hs-deb-note">{scoreNote(score)}</p>}
       {score && <p class="hs-deb-body">{scoreReasons(score)}</p>}
       {lines && (
         <>

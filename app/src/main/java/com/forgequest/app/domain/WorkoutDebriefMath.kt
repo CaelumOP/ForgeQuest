@@ -14,13 +14,17 @@ import kotlin.math.abs
  */
 object WorkoutDebriefMath {
 
-    /** In priority order (the first that matches wins); [variants] wordings, picked by session id. */
+    /**
+     * In priority order (the first that matches wins); [variants] wordings, picked by session id. [SOME_UP] is checked
+     * before [MIXED] but listed last, so the string keys (debrief_h<position>_<n>) keep their numbers.
+     */
     enum class Headline(val variants: Int) {
         FIRST_EVER(3), AFTER_BREAK(3), ONLY_WARM_UPS(2), ALL_NEW(2), ROUGH_HELD(3), ROUGH_SCALED(3), SHORT(3),
-        PR_AND_UP(3), MOSTLY_UP(3), ALL_SAME(3), MIXED(3), MOSTLY_DOWN(3),
+        PR_AND_UP(3), MOSTLY_UP(3), ALL_SAME(3), MIXED(3), MOSTLY_DOWN(3), SOME_UP(3),
     }
 
-    data class HeadlineLine(val type: Headline, val variant: Int)
+    /** [Headline.SOME_UP] carries its numbers: up on [up] of [compared] exercises (0 for the others). */
+    data class HeadlineLine(val type: Headline, val variant: Int, val up: Int = 0, val compared: Int = 0)
 
     /** Weights are in kg; totals are reps, or seconds for holds. */
     sealed interface Win {
@@ -33,7 +37,10 @@ object WorkoutDebriefMath {
         data class MoreWork(override val exerciseId: String, val kind: ExerciseKind, val from: Int, val to: Int) : Win
         /** Same numbers with fewer Hard or more Easy sets than last time. */
         data class EffortMastery(override val exerciseId: String) : Win
+        /** Every planned set done; [sets] is the done count. */
         data class AllSets(val sets: Int) : Win
+        /** A rough day: fewer than planned, but at least the adjusted (effective) count; [sets] is the done count. */
+        data class AllAdjustedSets(val sets: Int) : Win
         data class WeeklyTarget(val target: Int) : Win
         data class BackAfterGap(override val exerciseId: String, val days: Int) : Win
         /** Starting numbers set for [count] new exercises. */
@@ -157,19 +164,27 @@ object WorkoutDebriefMath {
             )
         }
         val rough = score.rough || exs.any { it.pain }
-        val headline = headline(input, exs, rough)
+        val lowRecovery = score.lowRecovery
+        val headline = headline(input, exs, lowRecovery)
         val (next, sameRest) = nextTime(input, exs)
+        val variant = input.sessionId.mod(headline.variants.toLong()).toInt()
+        val compared = exs.filter { it.trend != null }
         return Result(
-            headline = HeadlineLine(headline, input.sessionId.mod(headline.variants.toLong()).toInt()),
+            headline = if (headline == Headline.SOME_UP) {
+                HeadlineLine(headline, variant, compared.count { it.trend == WorkoutScore.Trend.UP }, compared.size)
+            } else {
+                HeadlineLine(headline, variant)
+            },
             wins = wins(input, exs, headline),
             watch = watch(input, exs, headline, rough),
             next = next,
             sameRest = sameRest,
-            footnote = input.healthOn || rough,
+            footnote = input.healthOn || lowRecovery,
         )
     }
 
-    private fun headline(input: Input, exs: List<Ex>, rough: Boolean): Headline {
+    /** Headlines 5 and 6 only on a low-recovery day; pain alone forgives its own exercise and the normal order runs. */
+    private fun headline(input: Input, exs: List<Ex>, lowRecovery: Boolean): Headline {
         val score = input.score
         val compared = exs.filter { it.trend != null }
         val up = compared.count { it.trend == WorkoutScore.Trend.UP }
@@ -181,12 +196,14 @@ object WorkoutDebriefMath {
             score.afterBreak -> Headline.AFTER_BREAK
             exs.isEmpty() -> Headline.ONLY_WARM_UPS
             compared.isEmpty() -> Headline.ALL_NEW
-            rough && downs.isEmpty() -> Headline.ROUGH_HELD
-            rough && unforgiven == 0 -> Headline.ROUGH_SCALED
+            lowRecovery && downs.isEmpty() -> Headline.ROUGH_HELD
+            lowRecovery && unforgiven == 0 -> Headline.ROUGH_SCALED
             effective != null && score.doneSets * 4 < effective * 3 && score.prs == 0 -> Headline.SHORT
             score.prs > 0 && up * 2 >= compared.size -> Headline.PR_AND_UP
             up * 2 >= compared.size || score.prs > 0 -> Headline.MOSTLY_UP
             up == 0 && unforgiven == 0 -> Headline.ALL_SAME
+            // Up on some (under half, no PR) and nothing left unforgiven below last time.
+            up > 0 && unforgiven == 0 -> Headline.SOME_UP
             unforgiven * 2 <= compared.size -> Headline.MIXED
             else -> Headline.MOSTLY_DOWN
         }
@@ -219,8 +236,14 @@ object WorkoutDebriefMath {
                             x.working.count { effort(it) == SetEffort.EASY } > x.lastWorking.count { effort(it) == SetEffort.EASY }
                         )
             }.forEach { x -> yield(Win.EffortMastery(x.id)) }
-            // 5. Every planned set (as the score counts them) done.
-            score.effectiveSets?.let { if (score.doneSets >= it) yield(Win.AllSets(it)) }
+            // 5. Every planned set done, or on a rough day every adjusted one (as the score counts them); the done count shows.
+            val planned = score.plannedSets
+            val effective = score.effectiveSets
+            if (planned != null && score.doneSets >= planned) {
+                yield(Win.AllSets(score.doneSets))
+            } else if (effective != null && score.doneSets >= effective) {
+                yield(Win.AllAdjustedSets(score.doneSets))
+            }
             // 6. This workout is the one that reaches the weekly target.
             if (input.weeklyTarget > 0 && input.weekCount == input.weeklyTarget && input.weekCountBefore < input.weeklyTarget) {
                 yield(Win.WeeklyTarget(input.weeklyTarget))
@@ -274,7 +297,10 @@ object WorkoutDebriefMath {
         return emptyList()
     }
 
-    /** Up to 3 change lines, and whether some exercise shown keeps its numbers. */
+    /**
+     * Up to 3 change lines, then one hold-steady line (it changes nothing, so a fourth change never pushes it out), and
+     * whether some exercise shown keeps its numbers.
+     */
     private fun nextTime(input: Input, exs: List<Ex>): Pair<List<Next>, Boolean> {
         val lines = mutableListOf<Pair<Int, Next>>()
         var unchanged = false
@@ -286,7 +312,10 @@ object WorkoutDebriefMath {
             val line = nextLine(x, p, r)
             if (line == null) unchanged = true else lines += line
         }
-        return lines.sortedBy { it.first }.take(3).map { it.second } to unchanged
+        val sorted = lines.sortedBy { it.first }.map { it.second }
+        val changes = sorted.filterNot { it is Next.HoldSteady }.take(3)
+        val steady = sorted.filter { it is Next.HoldSteady }.take(1)
+        return (changes + steady) to unchanged
     }
 
     /** The one line for an exercise with its order, or null when its numbers stay the same. */

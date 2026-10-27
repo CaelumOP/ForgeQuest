@@ -60,13 +60,17 @@ describe('debrief headlines', () => {
     expect(run([warm], { sessionId: 7 }).headline).toEqual({ type: 'ONLY_WARM_UPS', variant: 1 })
     expect(run([ex('a', 'WEIGHTED', n(3, 8, 50))], { sessionId: 4 }).headline).toEqual({ type: 'ALL_NEW', variant: 0 })
   })
-  it('5-6: a rough day held steady, or scaled back smartly', () => {
+  it('5-6: a low-recovery day held steady, or scaled back smartly', () => {
     expect(run([same('a'), up('b')], { low: true }).headline.type).toBe('ROUGH_HELD')
     expect(run([same('a'), down('b')], { low: true }).headline.type).toBe('ROUGH_SCALED')
-    // Pain forgives only its own exercise: another exercise's drop stays unforgiven.
+    // Pain alone is not a rough-day headline: its exercise is forgiven and the normal order runs.
     const painDown = ex('a', 'WEIGHTED', [...n(2, 6, 40), s(6, 40, { effort: 'PAIN' })], n(3, 8, 50))
-    expect(run([painDown, same('b')]).headline.type).toBe('ROUGH_SCALED')
+    expect(run([painDown, same('b')]).headline.type).toBe('ALL_SAME')
+    expect(run([painDown, up('b')]).headline.type).toBe('MOSTLY_UP')
+    // Pain forgives only its own exercise: another exercise's drop stays unforgiven.
     expect(run([painDown, down('b'), down('c')]).headline.type).toBe('MOSTLY_DOWN')
+    // The footnote is for low recovery (or health data on), not pain alone.
+    expect(run([painDown, same('b')]).footnote).toBe(false)
   })
   it('7: under 75 % of the planned sets with no PR; a PR wins over it', () => {
     expect(run([same('a')], { planned: 12 }).headline.type).toBe('SHORT')
@@ -79,6 +83,14 @@ describe('debrief headlines', () => {
     expect(run([same('a'), same('b')]).headline.type).toBe('ALL_SAME')
     expect(run([down('a'), same('b'), same('c')]).headline.type).toBe('MIXED')
     expect(run([down('a'), down('b'), same('c')]).headline.type).toBe('MOSTLY_DOWN')
+  })
+  it('SOME_UP: up on under half, nothing dropped, carries its numbers; a drop makes it MIXED', () => {
+    expect(run([up('a'), same('b'), same('c'), same('d')], { sessionId: 7 }).headline).toEqual({ type: 'SOME_UP', variant: 1, up: 1, compared: 4 })
+    expect(run([up('a'), same('b'), same('c')]).headline).toMatchObject({ type: 'SOME_UP', up: 1, compared: 3 })
+    // A forgiven (pain) drop does not stop it.
+    const painDown = ex('p', 'WEIGHTED', [...n(2, 6, 40), s(6, 40, { effort: 'PAIN' })], n(3, 8, 50))
+    expect(run([up('a'), same('b'), painDown]).headline.type).toBe('SOME_UP')
+    expect(run([up('a'), same('b'), down('c')]).headline.type).toBe('MIXED')
   })
 })
 
@@ -101,9 +113,17 @@ describe('debrief wins', () => {
   it('effort mastery, all planned sets, weekly target', () => {
     const easier = ex('a', 'WEIGHTED', n(3, 8, 50), [...n(2, 8, 50), s(8, 50, { effort: 'HARD' })])
     expect(run([easier], { planned: 3 }).wins).toEqual([{ type: 'EFFORT_MASTERY', exerciseId: 'a' }, { type: 'ALL_SETS', sets: 3 }])
+    // The done count, not the planned one.
+    expect(run([same('a'), same('b')], { planned: 5 }).wins).toEqual([{ type: 'ALL_SETS', sets: 6 }])
     expect(run([same('a')], { weeklyTarget: 3, weekCount: 3, weekCountBefore: 2 }).wins).toEqual([{ type: 'WEEKLY_TARGET', target: 3 }])
     // Only the workout that reaches the target: a second workout that day doesn't.
     expect(run([same('a')], { weeklyTarget: 3, weekCount: 3, weekCountBefore: 3 }).wins).toEqual([])
+  })
+  it('a rough day: every adjusted set done (7 of 9, ceil(0.67 x 9) = 7), with the done count', () => {
+    const seven = [ex('a', 'WEIGHTED', n(4, 8, 50), n(4, 8, 50)), same('b')]
+    expect(run(seven, { planned: 9, low: true }).wins).toEqual([{ type: 'ALL_ADJUSTED_SETS', sets: 7 }])
+    expect(run([...seven, ex('c', 'WEIGHTED', n(2, 8, 50), n(2, 8, 50))], { planned: 9, low: true }).wins).toEqual([{ type: 'ALL_SETS', sets: 9 }])
+    expect(run([same('a'), same('b')], { planned: 9, low: true }).wins).toEqual([])
   })
   it('back after 42+ days, or starting numbers for new exercises', () => {
     expect(run([ex('a', 'WEIGHTED', n(3, 8, 50), n(3, 8, 50), { gap: 50 })]).wins).toEqual([{ type: 'BACK_AFTER_GAP', exerciseId: 'a', days: 50 }])
@@ -179,6 +199,23 @@ describe('debrief next time', () => {
     expect(old.next).toEqual([])
     expect(old.sameRest).toBe(false)
   })
+  it('hold steady at the top of the range with a Hard set, and everything else keeps its numbers', () => {
+    // Bench 3x12 @16 (item 3 sets, 8-12), the last set Hard; the previous time 3x12 @16, all OK.
+    const bench = ex('bench', 'WEIGHTED', [...n(2, 12, 16), s(12, 16, { effort: 'HARD' })], n(3, 12, 16), { item: range() })
+    const kept = ex('curl', 'WEIGHTED', [s(10, 12.5, { effort: 'HARD' }), ...n(2, 10, 12.5)], n(3, 10, 12.5), { item: range() })
+    const r = run([bench, kept])
+    expect(r.next).toEqual([{ type: 'HOLD_STEADY', exerciseId: 'bench', weightKg: 16, reps: 12, seconds: null }])
+    expect(r.sameRest).toBe(true)
+  })
+  it('three changes never push the hold-steady line out (the QA seed day)', () => {
+    const bench = ex('bench', 'WEIGHTED', [...n(2, 12, 16), s(12, 16, { effort: 'HARD' })], n(3, 12, 16), { item: range() })
+    const r = run([
+      ex('squat', 'WEIGHTED', n(3, 9, 15), n(3, 8, 15), { item: range() }), bench,
+      ex('row', 'WEIGHTED', n(3, 10, 20), n(3, 10, 20), { item: range() }), ex('plank', 'HOLD', hold(3, 35), hold(3, 35)),
+    ])
+    expect(r.next.map((x) => x.type)).toEqual(['PLUS_REP', 'PLUS_REP', 'PLUS_SECONDS', 'HOLD_STEADY'])
+    expect(r.sameRest).toBe(false)
+  })
   it('a pound user steps up 5 lb', () => {
     const kg135 = toKg('LB', 135)
     const r = run([ex('squat', 'WEIGHTED', n(3, 12, kg135), n(3, 11, kg135))], { unit: 'LB' })
@@ -246,14 +283,16 @@ describe("Gemini's 8 cases", () => {
       ex('lat_pulldown', 'WEIGHTED', [s(11, 50, { isPr: true }), ...n(2, 11, 50)], n(3, 10, 50), { item: range() }),
     ], { planned: 6 })
     expect(r.score.score).toBe(9)
-    expect(r.headline.type).toBe('ROUGH_SCALED')
+    // Pain alone: the press is forgiven and the normal order runs.
+    expect(r.headline.type).toBe('PR_AND_UP')
     expect(r.wins).toEqual([{ type: 'PR', exerciseId: 'lat_pulldown', kind: 'WEIGHT', weightKg: 50, reps: 11, seconds: null }])
     expect(r.watch).toEqual([{ type: 'PAIN_EASED', exerciseId: 'overhead_press' }])
     expect(r.next).toEqual([
       { type: 'LIGHTER', exerciseId: 'overhead_press', weightKg: 32.5, reps: 8 },
       { type: 'PLUS_REP', exerciseId: 'lat_pulldown', reps: 12, weightKg: 50 },
     ])
-    expect(r.footnote).toBe(true)
+    // No footnote: pain alone is not low recovery.
+    expect(r.footnote).toBe(false)
   })
   it('4. top of the range with a Hard set holds; the curl that felt easier loads up', () => {
     const r = run([

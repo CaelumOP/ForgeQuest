@@ -16,12 +16,12 @@ export function decodeDebrief(text: string): Debrief | null {
   } catch { return null }
 }
 
-/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. */
+/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. A rough day from pain alone says so. */
 export function scoreReasons(r: WorkoutScoreResult): string {
   const sets = r.plannedSets == null ? plural('hist_sets', r.doneSets)
     : r.doneSets >= r.plannedSets ? plural('score_sets_all', r.doneSets)
     : t('score_sets_of', r.doneSets, r.plannedSets)
-  return [sets, r.compared > 0 ? t('score_up', r.up, r.compared) : null, r.prs > 0 ? plural('score_prs', r.prs) : null, r.rough ? t('score_adjusted') : null].filter(Boolean).join(' · ')
+  return [sets, r.compared > 0 ? t('score_up', r.up, r.compared) : null, r.prs > 0 ? plural('score_prs', r.prs) : null, r.rough ? t(r.lowRecovery ? 'score_adjusted' : 'score_adjusted_pain') : null].filter(Boolean).join(' · ')
 }
 
 /** Journal row facts line: the reasons without the "8/10". */

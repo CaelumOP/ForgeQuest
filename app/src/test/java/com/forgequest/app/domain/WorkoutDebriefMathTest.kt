@@ -112,13 +112,17 @@ class WorkoutDebriefMathTest {
     }
 
     @Test
-    fun headlinesFiveAndSixRoughDays() {
+    fun headlinesFiveAndSixLowRecoveryDays() {
         assertEquals(Headline.ROUGH_HELD, run(listOf(same("a"), up("b")), low = true).headline.type)
         assertEquals(Headline.ROUGH_SCALED, run(listOf(same("a"), down("b")), low = true).headline.type)
-        // Pain forgives only its own exercise: another exercise's drop stays unforgiven.
+        // Pain alone is not a rough-day headline: its exercise is forgiven and the normal order runs.
         val painDown = ex("a", ExerciseKind.WEIGHTED, n(2, 6, 40f) + s(6, 40f, effort = "PAIN"), n(3, 8, 50f))
-        assertEquals(Headline.ROUGH_SCALED, run(listOf(painDown, same("b"))).headline.type)
+        assertEquals(Headline.ALL_SAME, run(listOf(painDown, same("b"))).headline.type)
+        assertEquals(Headline.MOSTLY_UP, run(listOf(painDown, up("b"))).headline.type)
+        // Pain forgives only its own exercise: another exercise's drop stays unforgiven.
         assertEquals(Headline.MOSTLY_DOWN, run(listOf(painDown, down("b"), down("c"))).headline.type)
+        // The footnote is for low recovery (or health data on), not pain alone.
+        assertFalse(run(listOf(painDown, same("b"))).result.footnote)
     }
 
     @Test
@@ -135,6 +139,22 @@ class WorkoutDebriefMathTest {
         assertEquals(Headline.ALL_SAME, run(listOf(same("a"), same("b"))).headline.type)
         assertEquals(Headline.MIXED, run(listOf(down("a"), same("b"), same("c"))).headline.type)
         assertEquals(Headline.MOSTLY_DOWN, run(listOf(down("a"), down("b"), same("c"))).headline.type)
+    }
+
+    @Test
+    fun someUpUnderHalfNothingDroppedCarriesItsNumbers() {
+        assertEquals(
+            WorkoutDebriefMath.HeadlineLine(Headline.SOME_UP, 1, up = 1, compared = 4),
+            run(listOf(up("a"), same("b"), same("c"), same("d")), sessionId = 7).headline,
+        )
+        val three = run(listOf(up("a"), same("b"), same("c"))).headline
+        assertEquals(Headline.SOME_UP, three.type)
+        assertEquals(1, three.up)
+        assertEquals(3, three.compared)
+        // A forgiven (pain) drop does not stop it; an unforgiven one makes it MIXED.
+        val painDown = ex("p", ExerciseKind.WEIGHTED, n(2, 6, 40f) + s(6, 40f, effort = "PAIN"), n(3, 8, 50f))
+        assertEquals(Headline.SOME_UP, run(listOf(up("a"), same("b"), painDown)).headline.type)
+        assertEquals(Headline.MIXED, run(listOf(up("a"), same("b"), down("c"))).headline.type)
     }
 
     // ---------------------------------------------------------------- Wins
@@ -161,9 +181,23 @@ class WorkoutDebriefMathTest {
     fun effortMasteryAllSetsWeeklyTarget() {
         val easier = ex("a", ExerciseKind.WEIGHTED, n(3, 8, 50f), n(2, 8, 50f) + s(8, 50f, effort = "HARD"))
         assertEquals(listOf(Win.EffortMastery("a"), Win.AllSets(3)), run(listOf(easier), planned = 3).wins)
+        // The done count, not the planned one.
+        assertEquals(listOf(Win.AllSets(6)), run(listOf(same("a"), same("b")), planned = 5).wins)
         assertEquals(listOf(Win.WeeklyTarget(3)), run(listOf(same("a")), weeklyTarget = 3, weekCount = 3, weekCountBefore = 2).wins)
         // Only the workout that reaches the target: a second workout that day doesn't.
         assertEquals(emptyList<Win>(), run(listOf(same("a")), weeklyTarget = 3, weekCount = 3, weekCountBefore = 3).wins)
+    }
+
+    @Test
+    fun roughDayEveryAdjustedSetDoneWithTheDoneCount() {
+        // 7 of 9, ceil(0.67 x 9) = 7.
+        val seven = listOf(ex("a", ExerciseKind.WEIGHTED, n(4, 8, 50f), n(4, 8, 50f)), same("b"))
+        assertEquals(listOf(Win.AllAdjustedSets(7)), run(seven, planned = 9, low = true).wins)
+        assertEquals(
+            listOf(Win.AllSets(9)),
+            run(seven + ex("c", ExerciseKind.WEIGHTED, n(2, 8, 50f), n(2, 8, 50f)), planned = 9, low = true).wins,
+        )
+        assertEquals(emptyList<Win>(), run(listOf(same("a"), same("b")), planned = 9, low = true).wins)
     }
 
     @Test
@@ -261,6 +295,35 @@ class WorkoutDebriefMathTest {
     }
 
     @Test
+    fun holdSteadyAtTheTopOfTheRangeAndEverythingElseKeepsItsNumbers() {
+        // Bench 3x12 @16 (item 3 sets, 8-12), the last set Hard; the previous time 3x12 @16, all OK.
+        val bench = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 16f) + s(12, 16f, effort = "HARD"), n(3, 12, 16f), item = range())
+        val kept = ex("curl", ExerciseKind.WEIGHTED, listOf(s(10, 12.5f, effort = "HARD")) + n(2, 10, 12.5f), n(3, 10, 12.5f), item = range())
+        val r = run(listOf(bench, kept))
+        assertEquals(listOf(Next.HoldSteady("bench", 16f, 12, null)), r.next)
+        assertTrue(r.result.sameRest)
+    }
+
+    @Test
+    fun threeChangesNeverPushTheHoldSteadyLineOut() {
+        // The QA seed day: squat +1 rep, row +1 rep, plank +5 s, bench held by a Hard set.
+        val bench = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 16f) + s(12, 16f, effort = "HARD"), n(3, 12, 16f), item = range())
+        val r = run(
+            listOf(
+                ex("squat", ExerciseKind.WEIGHTED, n(3, 9, 15f), n(3, 8, 15f), item = range()),
+                bench,
+                ex("row", ExerciseKind.WEIGHTED, n(3, 10, 20f), n(3, 10, 20f), item = range()),
+                ex("plank", ExerciseKind.HOLD, hold(3, 35), hold(3, 35)),
+            ),
+        )
+        assertEquals(
+            listOf(Next.PlusRep("squat", 10, 15f), Next.PlusRep("row", 11, 20f), Next.PlusSeconds("plank", 40), Next.HoldSteady("bench", 16f, 12, null)),
+            r.next,
+        )
+        assertFalse(r.result.sameRest)
+    }
+
+    @Test
     fun aPoundUserStepsUpFivePounds() {
         val kg135 = WeightUnit.LB.toKg(135f)
         val r = run(listOf(ex("squat", ExerciseKind.WEIGHTED, n(3, 12, kg135), n(3, 11, kg135))), unit = WeightUnit.LB)
@@ -340,11 +403,13 @@ class WorkoutDebriefMathTest {
             planned = 6,
         )
         assertEquals(9, r.score.score)
-        assertEquals(Headline.ROUGH_SCALED, r.headline.type)
+        // Pain alone: the press is forgiven and the normal order runs.
+        assertEquals(Headline.PR_AND_UP, r.headline.type)
         assertEquals(listOf(Win.Pr("lat_pulldown", WorkoutScore.PrKind.WEIGHT, 50f, 11, null)), r.wins)
         assertEquals(listOf(Watch.PainEased("overhead_press")), r.watch)
         assertEquals(listOf(Next.Lighter("overhead_press", 32.5f, 8), Next.PlusRep("lat_pulldown", 12, 50f)), r.next)
-        assertTrue(r.result.footnote)
+        // No footnote: pain alone is not low recovery.
+        assertFalse(r.result.footnote)
     }
 
     @Test

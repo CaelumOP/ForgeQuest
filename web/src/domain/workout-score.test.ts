@@ -13,7 +13,7 @@ const work = (done: S[], last: S[], id = `ex${next++}`): ScoreWork => ({ exercis
 // Each exercise has 3 sets, so 4 exercises are 12 sets.
 const same = () => work(sets(3, 8, 50), sets(3, 8, 50))
 const up = () => work(sets(3, 10, 50), sets(3, 8, 50))
-// Rule A: a lighter weight at the same reps is SAME now, so a real drop also loses reps.
+// A real drop: fewer reps at a lighter weight.
 const down = () => work(sets(3, 6, 40), sets(3, 8, 50))
 const many = (f: () => ScoreWork, n: number) => Array.from({ length: n }, f)
 const score = (w: ScoreWork[], planned: number | null, low = false) => computeWorkoutScore(w, planned, low)
@@ -44,7 +44,7 @@ describe('workout score v2', () => {
     expect(score(many(up, 2), null)).toMatchObject({ score: 9, plannedSets: null })
   })
   it('a rough day: all SAME is 8, 1 DOWN + 3 SAME is 8, all DOWN is 8 (TC-2.1)', () => {
-    expect(score(many(same, 4), 12, true)).toMatchObject({ score: 8, rough: true })
+    expect(score(many(same, 4), 12, true)).toMatchObject({ score: 8, rough: true, lowRecovery: true })
     expect(score([down(), ...many(same, 3)], 12, true).score).toBe(8)
     expect(score(many(down, 4), 12, true).score).toBe(8)
   })
@@ -56,7 +56,7 @@ describe('workout score v2', () => {
   })
   it('PAIN forgives only its own exercise (TC-2.3) and cuts the planned sets (TC-2.4)', () => {
     const painDown = work([...sets(2, 8, 40), set(8, 40, { effort: 'PAIN' })], sets(3, 8, 50))
-    expect(score([...many(down, 3), painDown], 12)).toMatchObject({ score: 6, rough: true })
+    expect(score([...many(down, 3), painDown], 12)).toMatchObject({ score: 6, rough: true, lowRecovery: false })
     const stopped = work([set(8, 40, { effort: 'PAIN' })], sets(3, 8, 50))
     expect(score([stopped, ...many(same, 3)], 12).score).toBe(8)
   })
@@ -68,8 +68,11 @@ describe('workout score v2', () => {
   })
   it('trend: a small drop is SAME, a real drop is DOWN (TC-4.3, 4.4)', () => {
     expect(trend('HOLD', 'plank', [hold(59), hold(59), hold(59)], [hold(60), hold(60), hold(60)])).toBe('SAME')
-    // Rule A: a lighter weight with the same reps keeps the total, so it holds steady (it was DOWN before).
+    // WEIGHTED "total fell" uses the volume (kg x reps): 57.5 vs 60 at the same reps is -4 %, so it holds steady.
     expect(trend('WEIGHTED', 'ex', sets(3, 8, 57.5), sets(3, 8, 60))).toBe('SAME')
+    // 12 vs 14 at the same reps: the best set and the volume both fell (-14 %), so it is a drop.
+    expect(trend('WEIGHTED', 'ex', sets(3, 10, 12), sets(3, 10, 14))).toBe('DOWN')
+    expect(trendStats('WEIGHTED', 'ex', sets(3, 10, 14)).volume).toBe(420)
     expect(trend('WEIGHTED', 'ex', sets(3, 6, 57.5), sets(3, 8, 60))).toBe('DOWN')
   })
   it('rule A scenarios', () => {

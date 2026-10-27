@@ -391,8 +391,11 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val session = snap.sessions.firstOrNull { it.id == sessionId } ?: return null
         val score = scores(snap, only = sessionId)[sessionId] ?: return null
         val planItems = session.planDayId?.let { day -> plans.allItems().filter { it.dayId == day } }.orEmpty()
-        val readiness = db.readiness().all().sortedBy { it.epochDay }
-        val report = Trends.analyzeFatigueAndPlateaus(snap.sessions, snap.doneSets, snap.exercises, readiness, session.epochDay)
+        // As of the workout's day: only workouts, sets and recovery on or before it, so an old workout keeps its own report.
+        val readiness = db.readiness().all().filter { it.epochDay <= session.epochDay }.sortedBy { it.epochDay }
+        val upTo = snap.sessions.filter { it.epochDay <= session.epochDay }
+        val upToIds = upTo.mapTo(HashSet()) { it.id }
+        val report = Trends.analyzeFatigueAndPlateaus(upTo, snap.doneSets.filter { it.sessionId in upToIds }, snap.exercises, readiness, session.epochDay)
         val weeklyTarget = StreakCalculator.fullTarget(snap.plan?.trainingDays ?: emptySet(), snap.settings.weeklyTargetOverride)
         return WorkoutDebriefMath.forSession(
             session = session,
@@ -404,7 +407,8 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             weeklyTarget = weeklyTarget,
             report = report,
             unit = snap.settings.weightUnit,
-            healthOn = snap.settings.healthEnabled,
+            // The health switch defaults to on, so it alone doesn't mean health data: it must also have been read once.
+            healthOn = snap.settings.healthEnabled && snap.settings.healthConnected,
             equipment = snap.settings.configuredEquipment,
         )
     }

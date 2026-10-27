@@ -511,9 +511,12 @@ export async function workoutDebrief(sessionId: number): Promise<DebriefResult |
   const exercises = new Map(library.map((e) => [e.id, e]));
   const planItems = session.planDayId == null ? [] : items.filter((i) => i.dayId === session.planDayId);
   const weeklyTarget = fullTarget(plan ? trainingDays(plan) : new Set(), settings.weeklyTargetOverride);
+  // As of the workout's day: only workouts, sets and recovery on or before it, so an old workout keeps its own report.
+  const upTo = sessions.filter((s) => s.epochDay <= session.epochDay);
+  const upToIds = new Set(upTo.map((s) => s.id!));
   const report = analyzeFatigueAndPlateaus(
-    sessions as never, doneSets as never, exercises as never, session.epochDay,
-    [...readiness].sort((a, b) => a.epochDay - b.epochDay),
+    upTo as never, doneSets.filter((s) => upToIds.has(s.sessionId)) as never, exercises as never, session.epochDay,
+    readiness.filter((r) => r.epochDay <= session.epochDay).sort((a, b) => a.epochDay - b.epochDay),
   );
   return debriefForSession(
     session, sessions, doneSets, exercises as never, score, planItems, weeklyTarget, report,
