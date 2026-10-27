@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeWorkoutScore, scoresForSessions, trend, type ScoreWork } from './workout-score'
+import { computeWorkoutScore, scoresForSessions, trend, trendStats, type ScoreWork } from './workout-score'
 import type { DayTag } from './progress'
 
 type S = { reps: number; seconds: number | null; weightKg: number | null; isPr: boolean; effort: string; block: string }
@@ -13,7 +13,8 @@ const work = (done: S[], last: S[], id = `ex${next++}`): ScoreWork => ({ exercis
 // Each exercise has 3 sets, so 4 exercises are 12 sets.
 const same = () => work(sets(3, 8, 50), sets(3, 8, 50))
 const up = () => work(sets(3, 10, 50), sets(3, 8, 50))
-const down = () => work(sets(3, 8, 40), sets(3, 8, 50))
+// Rule A: a lighter weight at the same reps is SAME now, so a real drop also loses reps.
+const down = () => work(sets(3, 6, 40), sets(3, 8, 50))
 const many = (f: () => ScoreWork, n: number) => Array.from({ length: n }, f)
 const score = (w: ScoreWork[], planned: number | null, low = false) => computeWorkoutScore(w, planned, low)
 
@@ -59,15 +60,34 @@ describe('workout score v2', () => {
     const stopped = work([set(8, 40, { effort: 'PAIN' })], sets(3, 8, 50))
     expect(score([stopped, ...many(same, 3)], 12).score).toBe(8)
   })
-  it('trend: 3×12@60 → 3×8@62.5 is SAME, 3×10@60 → 3×5@67.5 is SAME, 3×10@60 → 1×1@65 is DOWN (TC-3.x)', () => {
-    expect(trend('WEIGHTED', 'ex', sets(3, 8, 62.5), sets(3, 12, 60))).toBe('SAME')
+  it('trend: 3×12@60 → 3×8@62.5 is UP (rule A), 3×10@60 → 3×5@67.5 is SAME, 3×10@60 → 1×1@65 is DOWN (TC-3.x)', () => {
+    expect(trend('WEIGHTED', 'ex', sets(3, 8, 62.5), sets(3, 12, 60))).toBe('UP')
     expect(trend('WEIGHTED', 'ex', sets(3, 5, 67.5), sets(3, 10, 60))).toBe('SAME')
     expect(trend('WEIGHTED', 'ex', [set(1, 65)], sets(3, 10, 60))).toBe('DOWN')
     expect(trend('WEIGHTED', 'ex', sets(3, 8, 62.5), sets(3, 8, 60))).toBe('UP')
   })
-  it('trend: a drop of 2 % or less is SAME, a real drop is DOWN (TC-4.3, 4.4)', () => {
+  it('trend: a small drop is SAME, a real drop is DOWN (TC-4.3, 4.4)', () => {
     expect(trend('HOLD', 'plank', [hold(59), hold(59), hold(59)], [hold(60), hold(60), hold(60)])).toBe('SAME')
-    expect(trend('WEIGHTED', 'ex', sets(3, 8, 57.5), sets(3, 8, 60))).toBe('DOWN')
+    // Rule A: a lighter weight with the same reps keeps the total, so it holds steady (it was DOWN before).
+    expect(trend('WEIGHTED', 'ex', sets(3, 8, 57.5), sets(3, 8, 60))).toBe('SAME')
+    expect(trend('WEIGHTED', 'ex', sets(3, 6, 57.5), sets(3, 8, 60))).toBe('DOWN')
+  })
+  it('rule A scenarios', () => {
+    // The reset day.
+    expect(trend('WEIGHTED', 'ex', sets(3, 8, 62.5), sets(3, 12, 60))).toBe('UP')
+    // A one-rep wobble at the same weight.
+    expect(trend('WEIGHTED', 'ex', sets(3, 9, 30), [set(10, 30), set(9, 30), set(8, 30)])).toBe('SAME')
+    // Three reps fewer on every set.
+    expect(trend('WEIGHTED', 'ex', sets(3, 7, 50), sets(3, 10, 50))).toBe('DOWN')
+    // A heavy single on top keeps the 60 kg sets in the total (30 + 1 reps).
+    expect(trendStats('WEIGHTED', 'ex', [...sets(3, 10, 60), set(1, 102.5)])).toMatchObject({ total: 31, top: 60 })
+    // Holds: 10 % shorter holds steady, 20 % shorter with a lower total is down.
+    const holds = (s: number) => [hold(s), hold(s), hold(s)].map((h) => ({ ...h, weightKg: null }))
+    expect(trend('HOLD', 'plank', holds(54), holds(60))).toBe('SAME')
+    expect(trend('HOLD', 'plank', holds(48), holds(60))).toBe('DOWN')
+    // REPS: one rep fewer holds steady.
+    expect(trend('REPS', 'push_up', sets(3, 9, null), sets(3, 10, null))).toBe('SAME')
+    expect(trend('REPS', 'push_up', sets(3, 8, null), sets(3, 10, null))).toBe('DOWN')
   })
   it('trend: ramp-up sets under 60 % of the heaviest are left out of the total (TC-6.1, 6.2, 6.3)', () => {
     expect(trend('WEIGHTED', 'ex', [set(10, 20), set(5, 35), ...sets(3, 8, 60)], sets(3, 8, 60))).toBe('SAME')
