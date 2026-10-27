@@ -308,8 +308,8 @@ class CoachRepository(
 
     /**
      * The coach's short debrief of a finished workout: compares it with the last time each exercise was done before
-     * it, the effort chips and notes, and that day's readiness. Groq first when set (JSON mode), Gemini with no
-     * thinking when Groq fails or its reply can't be read; [DEBRIEF_TIMEOUT_MS] overall. Null when offline, keyless
+     * it, the effort chips and notes, and that day's readiness. Gemini first when set (no thinking), Groq in JSON mode
+     * when Gemini fails or its reply can't be read; [DEBRIEF_TIMEOUT_MS] overall. Null when offline, keyless
      * or unreadable: the screen then offers Try again. [onDemand] (asked for from the journal) ignores the setting.
      */
     suspend fun generateDebrief(sessionId: Long, onDemand: Boolean = false): WorkoutDebrief? = suspendRunCatching {
@@ -317,6 +317,7 @@ class CoachRepository(
         if (!s.debriefEnabled && !onDemand) return@suspendRunCatching null
         if (!canDebrief()) return@suspendRunCatching null
         val groqKey = settings.groqKey.value
+        val geminiKey = settings.apiKey.value
         val session = db.sessions().byId(sessionId) ?: return@suspendRunCatching null
         val sets = db.sessions().observeSets(sessionId).first().filter { it.done }
         if (sets.isEmpty()) return@suspendRunCatching null
@@ -351,12 +352,12 @@ class CoachRepository(
         """.trimIndent()
         val turns = listOf("user" to payload)
         val debrief = withTimeoutOrNull(DEBRIEF_TIMEOUT_MS) {
-            val fromGroq = if (groqKey.isBlank()) null else suspendRunCatching { groq.streamChat(groqKey, groqModel(), system, turns, jsonOutput = true) {} }
-                .onFailure { Log.w(TAG, "debrief: groq failed, using Gemini: ${it.message}") }.getOrNull()
-                ?.let { text -> WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: groq reply unreadable: ${text.take(200)}") } }
-            fromGroq ?: settings.apiKey.value.takeIf { it.isNotBlank() }?.let { key ->
-                val text = gemini.generate(key, models(), system, turns, jsonOutput = true, fast = true)
-                WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: gemini reply unreadable: ${text.take(200)}") }
+            val fromGemini = if (geminiKey.isBlank()) null else suspendRunCatching { gemini.generate(geminiKey, models(), system, turns, jsonOutput = true, fast = true) }
+                .onFailure { Log.w(TAG, "debrief: gemini failed, using Groq: ${it.message}") }.getOrNull()
+                ?.let { text -> WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: gemini reply unreadable: ${text.take(200)}") } }
+            fromGemini ?: groqKey.takeIf { it.isNotBlank() }?.let { key ->
+                val text = groq.streamChat(key, groqModel(), system, turns, jsonOutput = true) {}
+                WorkoutDebrief.parse(text) ?: null.also { Log.w(TAG, "debrief: groq reply unreadable: ${text.take(200)}") }
             }
         } ?: return@suspendRunCatching null.also { Log.w(TAG, "debrief: no readable reply within $DEBRIEF_TIMEOUT_MS ms") }
         // Re-read the workout so a note added while the coach was writing isn't overwritten.
@@ -746,7 +747,7 @@ class CoachRepository(
 
     private companion object {
         const val TAG = "FQ-AI"
-        // Runs while the summary is already showing, so it can afford a slow network and a Groq → Gemini fallback.
+        // Runs while the summary is already showing, so it can afford a slow network and a Gemini → Groq fallback.
         const val DEBRIEF_TIMEOUT_MS = 30_000L
 
         val CORE_RULES = """
