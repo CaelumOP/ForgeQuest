@@ -112,8 +112,6 @@ function forInsert<T extends AutoId>(row: T): T {
 export const putSet = (row: SetRow): Promise<number> => db.sets.put(forInsert(row));
 export const putSession = (row: SessionRow): Promise<number> => db.sessions.put(forInsert(row));
 export const putMeal = (row: MealRow): Promise<number> => db.meals.put(forInsert(row));
-export const putChat = (row: ChatRow): Promise<number> => db.chat.put(forInsert(row));
 export const putWeight = (row: WeightRow): Promise<number> => db.weights.put(row);
 export const putDayNote = (row: DayNoteRow): Promise<number> => db.dayNotes.put(row);
-export const putReadinessDay = (row: ReadinessDayRow): Promise<number> => db.readinessDays.put(row);
 export const deleteSet = (id: number): Promise<void> => db.sets.delete(id);

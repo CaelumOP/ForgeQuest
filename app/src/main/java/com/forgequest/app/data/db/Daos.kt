@@ -69,9 +69,6 @@ interface PlanDao {
     suspend fun day(id: Long): PlanDayEntity?
 
     @Query("SELECT * FROM plan_items WHERE dayId = :dayId ORDER BY position")
-    fun observeItems(dayId: Long): Flow<List<PlanItemEntity>>
-
-    @Query("SELECT * FROM plan_items WHERE dayId = :dayId ORDER BY position")
     suspend fun items(dayId: Long): List<PlanItemEntity>
 
     /** Every plan item, for the journal's planned-set totals in one query. */
@@ -136,9 +133,6 @@ interface PlanDao {
 
     @Query("DELETE FROM plans WHERE id = :planId")
     suspend fun deletePlan(planId: Long)
-
-    @Query("SELECT COUNT(*) FROM sessions WHERE planDayId IN (SELECT id FROM plan_days WHERE planId = :planId)")
-    suspend fun sessionsUsingPlan(planId: Long): Int
 }
 
 @Dao
@@ -178,9 +172,6 @@ interface SessionDao {
 
     @Query("SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id WHERE ss.finishedAt IS NOT NULL AND s.done = 1")
     fun observeAllDoneSets(): Flow<List<SetEntity>>
-
-    @Query("SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id WHERE ss.finishedAt IS NOT NULL AND s.done = 1")
-    suspend fun allDoneSets(): List<SetEntity>
 
     /** Most recent finished sets of one exercise, latest workout date first (not latest logged). Used to prefill. */
     @Query(
@@ -258,9 +249,6 @@ interface FoodDao {
 
     @Query("SELECT * FROM meals WHERE epochDay >= :fromDay ORDER BY loggedAt")
     fun observeMealsSince(fromDay: Long): Flow<List<MealEntity>>
-
-    @Query("SELECT * FROM meals WHERE epochDay >= :fromDay ORDER BY loggedAt")
-    suspend fun mealsSince(fromDay: Long): List<MealEntity>
 
     @Query("SELECT * FROM meals ORDER BY loggedAt")
     suspend fun allMeals(): List<MealEntity>

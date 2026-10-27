@@ -1,13 +1,6 @@
 export const BADGE_CATEGORIES = ['CONSISTENCY', 'SKILL', 'STRENGTH', 'NUTRITION'] as const
 export type BadgeCategory = (typeof BADGE_CATEGORIES)[number]
 
-export const BADGE_CATEGORY_LABEL: Record<BadgeCategory, string> = {
-  CONSISTENCY: 'Consistency',
-  SKILL: 'Skills',
-  STRENGTH: 'Strength',
-  NUTRITION: 'Nutrition',
-}
-
 /** Everything badge rules need, computed once from the database. */
 export type BadgeStats = {
   workouts: number

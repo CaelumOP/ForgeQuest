@@ -266,13 +266,6 @@ export async function geminiGenerate(o: GeminiOptions): Promise<string> {
   throw last;
 }
 
-/** Cheap key check for Profile: lists one model. Resolves to nothing, throws AiError. */
-export async function geminiCheckKey(apiKey: string): Promise<void> {
-  const key = apiKey.trim();
-  if (!key) throw new AiError('no_key');
-  await send(`${GEMINI_BASE}/models?pageSize=1`, { headers: { 'x-goog-api-key': key } }, aiTuning.quickTimeoutMs, undefined, 'models');
-}
-
 // ---------------------------------------------------------------- Groq
 
 export type GroqMessage = { role: 'system' | 'user' | 'assistant'; content: string };
