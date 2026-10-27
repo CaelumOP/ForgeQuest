@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.itemMotion
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -281,7 +282,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(groups, key = { it.key }) { g -> Box(Modifier.animateItem()) { cardFor(g, false) } }
+                items(groups, key = { it.key }) { g -> Box(itemMotion()) { cardFor(g, false) } }
                 item {
                     TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = PickerMode.Add }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }

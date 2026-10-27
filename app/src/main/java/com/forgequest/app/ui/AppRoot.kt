@@ -5,7 +5,8 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.core.tween
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -151,6 +152,7 @@ private fun MainScaffold() {
     val route = backStack?.destination?.route
     val showBar = tabs.any { it.route == route }
     val c = Fit.colors
+    val reduced = LocalReducedMotion.current
     // A Gemini meal shared into the app or picked in the Food tab inbox opens on the scan screen's review sheet.
     val context = LocalContext.current
     val review by context.container.meals.review.collectAsState()
@@ -198,17 +200,18 @@ private fun MainScaffold() {
                     Modifier.padding(barSpace).consumeWindowInsets(barSpace)
                 },
                 // Pushed detail screens slide in from the end edge (RTL-aware) and slide back out; tabs just fade.
+                // With reduced motion on, nothing slides: every change is a short fade.
                 enterTransition = {
-                    if (isDetailRoute(targetState.destination.route)) {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(NAV_SLIDE_MS)) + fadeIn(tween(NAV_SLIDE_MS))
-                    } else fadeIn()
+                    if (isDetailRoute(targetState.destination.route) && !reduced) {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, navSlide()) + fadeIn(navSlide())
+                    } else fadeIn(navFade(reduced))
                 },
-                exitTransition = { fadeOut() },
-                popEnterTransition = { fadeIn() },
+                exitTransition = { fadeOut(navFade(reduced)) },
+                popEnterTransition = { fadeIn(navFade(reduced)) },
                 popExitTransition = {
-                    if (isDetailRoute(initialState.destination.route)) {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(NAV_SLIDE_MS)) + fadeOut(tween(NAV_SLIDE_MS))
-                    } else fadeOut()
+                    if (isDetailRoute(initialState.destination.route) && !reduced) {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, navSlide()) + fadeOut(navSlide())
+                    } else fadeOut(navFade(reduced))
                 },
             ) {
                 composable(Routes.HOME) { HomeScreen(nav) }
@@ -240,7 +243,12 @@ private fun MainScaffold() {
     }
 }
 
-private const val NAV_SLIDE_MS = 280
+/** Detail screens slide on the Emphasized curve, the M3 token for screen-level moves. */
+private fun <T> navSlide() = ForgeMotion.timed<T>(false, ForgeMotion.Duration.MEDIUM2, ForgeMotion.Easing.Emphasized)
+
+/** Tab fades keep Compose's default fade, or the short reduced-motion fade. */
+private fun <T> navFade(reduced: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<T> =
+    if (reduced) ForgeMotion.timed(true, 0, ForgeMotion.Easing.Standard) else androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
 
 /** Pushed screens (everything except the five tabs and the live workout, which has no transition). */
 private fun isDetailRoute(route: String?): Boolean =

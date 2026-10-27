@@ -48,7 +48,9 @@ import com.forgequest.app.ui.theme.Fit
 @Composable
 fun rememberReveal(key: Any?): Float {
     val anim = remember(key) { Animatable(0f) }
-    LaunchedEffect(key) { anim.snapTo(0f); anim.animateTo(1f, tween(900)) }
+    // Reduced motion: the chart is simply there, fully drawn.
+    val reduced = com.forgequest.app.ui.theme.LocalReducedMotion.current
+    LaunchedEffect(key) { if (reduced) anim.snapTo(1f) else { anim.snapTo(0f); anim.animateTo(1f, tween(900)) } }
     return anim.value
 }
 

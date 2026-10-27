@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.theme.itemMotion
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitSwitch
@@ -402,7 +403,7 @@ fun FoodScreen(nav: NavHostController) {
                 item { Text(stringResource(R.string.food_tick_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp)) }
             }
             items(shown, key = { it.id }) { food ->
-                Box(Modifier.animateItem()) {
+                Box(itemMotion()) {
                     FoodRow(
                         food = food,
                         qty = selection[food.id]?.qty,
@@ -424,7 +425,7 @@ fun FoodScreen(nav: NavHostController) {
                 item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
             }
             items(meals, key = { "m${it.id}" }) { meal ->
-                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = Modifier.animateItem()) {
+                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {
                     MealRow(meal, onDelete = { vm.deleteMeal(meal) })
                 }
             }

@@ -226,6 +226,8 @@ fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
     // makes Compose wrap the last letter of a title onto its own line. Arabic gets the system face, untracked.
     val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"
     CompositionLocalProvider(LocalFitColors provides fit) {
-        MaterialTheme(colorScheme = scheme, shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography, content = content)
+        MaterialTheme(colorScheme = scheme, shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography) {
+            ProvideReducedMotion(content)
+        }
     }
 }
