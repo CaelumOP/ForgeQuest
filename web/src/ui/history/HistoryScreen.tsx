@@ -43,7 +43,7 @@ export function HistoryScreen(_: { param?: string }) {
     await deleteSession(s.id!)
     setUndo({ text: t('food_removed', s.title), session: s, sets })
     clearTimeout(undoTimer.current)
-    undoTimer.current = window.setTimeout(() => setUndo(null), 5000)
+    undoTimer.current = window.setTimeout(() => setUndo(null), 10000)
   }
   const doUndo = async () => {
     const u = undo

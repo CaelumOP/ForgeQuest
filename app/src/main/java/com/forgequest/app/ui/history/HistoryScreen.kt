@@ -173,7 +173,7 @@ fun HistoryScreen(nav: NavHostController) {
     val undo by vm.undo.collectAsState()
     LaunchedEffect(undo) {
         undo?.let { (text, _) ->
-            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = SnackbarDuration.Short)
+            val result = snackbar.showSnackbar(text, actionLabel = undoLabel, duration = SnackbarDuration.Long)
             if (result == SnackbarResult.ActionPerformed) vm.runUndo() else if (vm.undo.value?.first == text) vm.undo.value = null
         }
     }
