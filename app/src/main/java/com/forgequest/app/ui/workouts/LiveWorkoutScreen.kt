@@ -149,6 +149,9 @@ private fun group(sets: List<SetEntity>): List<Group> {
     return result
 }
 
+/** Seconds as minutes:seconds, with Western digits on every device. */
+private fun clock(sec: Int): String = "%d:%02d".format(Locale.US, sec / 60, sec % 60)
+
 /** How much larger than the app text size the live pager cards read. */
 private const val LIVE_TEXT_BOOST = 1.15f
 
@@ -803,8 +806,8 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
     val over = s >= h.target
     val shown = when {
         ready -> "${-s}"
-        over -> "+%d:%02d".format(java.util.Locale.US, (s - h.target) / 60, (s - h.target) % 60)
-        else -> (h.target - s).let { "%d:%02d".format(java.util.Locale.US, it / 60, it % 60) }
+        over -> "+" + clock(s - h.target)
+        else -> clock(h.target - s)
     }
     val tint = when { ready -> c.textSecondary; over -> c.gold; else -> c.teal }
     Column(
@@ -853,7 +856,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
             Spacer(Modifier.width(10.dp))
-            Text("%d:%02d".format(secondsLeft / 60, secondsLeft % 60), style = MaterialTheme.typography.titleLarge, color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+            Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge, color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
             if (!big) buttons()
         }
         if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }
@@ -1000,7 +1003,7 @@ private fun scoreColor(score: Int) = if (score >= 8) Fit.colors.gold else Fit.co
  * A null [d] shows the wait while [waiting], or with [failed], that the coach couldn't write it and a Try again; with neither, only the score.
  */
 @Composable
-fun DebriefCard(d: WorkoutDebrief?, score: WorkoutScore.Result?, failed: Boolean = false, waiting: Boolean = true, onRetry: () -> Unit = {}) {
+fun DebriefCard(d: WorkoutDebrief?, score: WorkoutScore.Result?, failed: Boolean = false, waiting: Boolean = false, onRetry: () -> Unit = {}) {
     val c = Fit.colors
     val coachPart = d != null || failed || waiting
     FitCard {

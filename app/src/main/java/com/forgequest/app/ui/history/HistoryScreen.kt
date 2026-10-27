@@ -224,7 +224,7 @@ fun HistoryScreen(nav: NavHostController) {
                                         modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 8.dp),
                                     )
                                 }
-                                com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)?.let { d ->
+                                remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }?.let { d ->
                                     Text(
                                         d.summary,
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
@@ -262,7 +262,7 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity) {
     val c = Fit.colors
     val loading by vm.debriefLoading.collectAsState()
     val failed by vm.debriefFailed.collectAsState()
-    val debrief = com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)
+    val debrief = remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }
     val score = vm.scores.collectAsState().value[session.id]
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
@@ -274,7 +274,7 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity) {
             Spacer(Modifier.height(12.dp))
             if (debrief == null && !vm.canDebrief) {
                 if (score != null) {
-                    com.forgequest.app.ui.workouts.DebriefCard(null, score, waiting = false)
+                    com.forgequest.app.ui.workouts.DebriefCard(null, score)
                     Spacer(Modifier.height(12.dp))
                 }
                 Text(stringResource(R.string.debrief_no_key), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
@@ -449,13 +449,13 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 }
             }
         }
+        val d = remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
-            val d = com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief)
             if (d != null || score != null) {
-                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(d, score, waiting = false) }
+                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(d, score) }
             }
             items(groups, key = { it.first().itemPosition }) { group ->
                 val ex = exercises[group.first().exerciseId]
