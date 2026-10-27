@@ -58,3 +58,7 @@
 .onb-target-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-block: 8px 12px; }
 .onb .kit-card { display: flex; flex-direction: column; gap: 4px; }
 .onb .kit-card .onb-row { padding-inline: 0; background: none; }
+.onb-days-head { display: flex; align-items: center; gap: 12px; margin-block-start: 4px; }
+.onb-days-text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.onb-days-title { font-size: 16px; font-weight: 500; }
+.onb-plan-days { font-size: 12px; font-weight: 500; color: var(--teal); }

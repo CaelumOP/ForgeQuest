@@ -218,8 +218,8 @@ export function ScanScreen(_: { param?: string }) {
           ) : (
             <Card>
               <div class="scan-nokey">
-                <p>{t('ai_err_missing_key')}</p>
-                <Button onClick={() => { location.hash = '#/profile' }}>{t('scan_open_profile')}</Button>
+                <p>{t('ai_key_needed_food')}</p>
+                <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>
               </div>
             </Card>
           ))}

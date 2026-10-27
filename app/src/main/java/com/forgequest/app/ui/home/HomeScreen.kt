@@ -77,6 +77,9 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.DayTag
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeeklyStreak
+import com.forgequest.app.domain.StreakCalculator
+import com.forgequest.app.domain.TargetNudge
+import com.forgequest.app.ui.onboarding.FoodTargetsSetup
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.ChoiceChip
@@ -131,6 +134,11 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     suspend fun startToday(day: PlanDayWithItems?, lighter: Boolean = false) = app.workouts.startSession(day, lighter)
 
     fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
+
+    /** Answers the one-time weekly-target question: [make] is the new target, or null to keep the current one. */
+    fun answerNudge(make: Int?) = viewModelScope.launch {
+        app.settings.update { it.copy(targetNudgeAnswered = true, weeklyTargetOverride = make ?: it.weeklyTargetOverride) }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -154,6 +162,7 @@ fun HomeScreen(nav: NavHostController) {
     val whatsNew by vm.app.updateNotice.whatsNew.collectAsState()
     var weightSheet by remember { mutableStateOf(false) }
     var tagDay by remember { mutableStateOf<Long?>(null) }
+    var foodSetup by remember { mutableStateOf(false) }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
 
@@ -248,7 +257,20 @@ fun HomeScreen(nav: NavHostController) {
         tagDay?.let { day ->
             DayTagDialog(day, s.dayTags[day], onPick = { vm.setDayTag(day, it); tagDay = null }, onDismiss = { tagDay = null })
         }
-        StreakCard(s.streak, onDayClick = { day -> tagDay = day })
+        // After the first finished workout, the body and food-goal questions that used to sit in onboarding.
+        if (s.settings.heightCm <= 0f && s.sessions.isNotEmpty()) {
+            FitCard(onClick = { foodSetup = true }) {
+                Text(stringResource(R.string.food_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Spacer(Modifier.height(4.dp))
+                Text(stringResource(R.string.food_setup_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        val weeklyTarget = StreakCalculator.fullTarget(s.plan?.trainingDays ?: emptySet(), s.settings.weeklyTargetOverride)
+        val finishedDays = s.sessions.map { it.epochDay }.toSet()
+        val nudge = TargetNudge.offer(finishedDays, weeklyTarget, minOf(finishedDays.minOrNull() ?: Dates.today(), Dates.today()), Dates.today())
+            ?.takeIf { s.settings.onboarded && TargetNudge.show(s.settings.targetNudgeAnswered, it) }
+        StreakCard(s.streak, onDayClick = { day -> tagDay = day }, nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge)
         Spacer(Modifier.height(12.dp))
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(12.dp))
@@ -280,6 +302,7 @@ fun HomeScreen(nav: NavHostController) {
         }
     }
     RaadEgg(s.settings.name, vm.app.haptics::celebrate)
+    if (foodSetup) FoodTargetsSetup(s.settings, s.latestWeight) { foodSetup = false }
 }
 
 @Composable
@@ -421,7 +444,7 @@ private fun ProgressCard(s: ProgressSnapshot, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
+private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit, nudge: Int? = null, keepTarget: Int = 0, onNudge: (Int?) -> Unit = {}) {
     val c = Fit.colors
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -487,6 +510,16 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
                     Spacer(Modifier.height(6.dp))
                     Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
+            }
+        }
+        // Asked once, after two finished weeks of 2+ workouts under the target; any answer ends it.
+        if (nudge != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(pluralStringResource(R.plurals.target_nudge_body, nudge, nudge), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                TextButton(onClick = { onNudge(null) }) { Text(stringResource(R.string.target_nudge_keep, keepTarget), color = c.textSecondary) }
+                PillButton(stringResource(R.string.target_nudge_make, nudge), onClick = { onNudge(nudge) })
             }
         }
     }

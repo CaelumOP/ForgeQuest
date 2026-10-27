@@ -17,6 +17,7 @@ import { canExcuse, greetingKey } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { RaadEgg } from './RaadEgg'
 import { CalorieCard } from './CalorieCard'
+import { FoodTargetsCard, TargetNudge } from './SetupCards'
 import './home.css'
 
 const nf = () => new Intl.NumberFormat(getLang())
@@ -69,6 +70,7 @@ export function HomeScreen(_: { param?: string }) {
         </Card>
       )}
       <CalorieCard s={s} today={today} />
+      <FoodTargetsCard s={s} />
       <Streak s={s} onDay={setTagDay} />
       <ProgressCard s={s} today={today} />
       {!startOnTop && todayCard}
@@ -251,6 +253,7 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
             : <span key={i} class="home-day">{inner}</span>
         })}
       </div>
+      <TargetNudge s={s} today={today} />
     </Card>
   )
 }

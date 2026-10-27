@@ -1314,4 +1314,22 @@
     <string name="harder_switch">Switch</string>
     <string name="harder_switched">%1$s is now in your plan</string>
     <string name="update_not_ready">This update is still being published. Try again in a few minutes.</string>
+    <string name="onb_days_title">How many days a week can you train?</string>
+    <string name="onb_days_hint">This is your weekly streak target. You can change it any time in Profile.</string>
+    <plurals name="onb_plan_days">
+        <item quantity="one">%d day a week</item>
+        <item quantity="other">%d days a week</item>
+    </plurals>
+    <string name="onb_finish">Finish setup</string>
+    <string name="food_setup_title">Set up food targets · 1 min</string>
+    <string name="food_setup_body">Add your weight, height and age to get calorie and protein targets that fit you.</string>
+    <plurals name="target_nudge_body">
+        <item quantity="one">You've trained %1$d time a week lately. Make %1$d your weekly target?</item>
+        <item quantity="other">You've trained %1$d times a week lately. Make %1$d your weekly target?</item>
+    </plurals>
+    <string name="target_nudge_make">Make it %1$d</string>
+    <string name="target_nudge_keep">Keep %1$d</string>
+    <string name="ai_key_needed_coach">A free Gemini key turns the coach on.</string>
+    <string name="ai_key_needed_food">A free Gemini key turns the meal scanner on.</string>
+    <string name="ai_key_needed_button">Add a free key</string>
 </resources>

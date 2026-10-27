@@ -1,6 +1,7 @@
 import { useRef, useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
-import { CameraIcon, DumbbellIcon, FireIcon, LeafIcon, SparkleIcon, TrophyIcon } from '../home/glyphs'
+import { CameraIcon, DumbbellIcon, LeafIcon, SparkleIcon, TrophyIcon } from '../home/glyphs'
+import { useSettings } from '../../data/settings'
 import { Button } from '../kit'
 import './onboarding.css'
 
@@ -14,18 +15,23 @@ export function markTourSeen() {
 }
 
 type Slide = { Icon: typeof LeafIcon; color: string; n: number }
-// Android has a seventh slide (Fitbit readiness); the web has no Fitbit, so it is left out.
-const SLIDES: Slide[] = [
+// Three slides: consistency, the live workout, progress and recovery. The food-scan and AI-coach slides (4, 5) only show
+// once an AI key is saved. Android has a Fitbit slide as well; the web has no Fitbit.
+const CORE: Slide[] = [
   { Icon: LeafIcon, color: '--teal', n: 1 },
-  { Icon: FireIcon, color: '--gold', n: 2 },
   { Icon: DumbbellIcon, color: '--teal', n: 3 },
-  { Icon: CameraIcon, color: '--coral', n: 4 },
-  { Icon: SparkleIcon, color: '--purple', n: 5 },
   { Icon: TrophyIcon, color: '--gold', n: 7 },
 ]
+const AI: Slide[] = [
+  { Icon: CameraIcon, color: '--coral', n: 4 },
+  { Icon: SparkleIcon, color: '--purple', n: 5 },
+]
+export const tourSlides = (hasKey: boolean): Slide[] => (hasKey ? [CORE[0], CORE[1], ...AI, CORE[2]] : CORE)
 
 /** Feature slides with Skip, page dots and Next; the last button reads `finishLabel`. Swipe or tap Next. */
 export function Tour({ finishLabel, onDone }: { finishLabel: string; onDone: () => void }) {
+  const hasKey = useSettings().apiKey.trim() !== ''
+  const SLIDES = tourSlides(hasKey)
   const [page, setPage] = useState(0)
   const track = useRef<HTMLDivElement>(null)
   const last = page === SLIDES.length - 1

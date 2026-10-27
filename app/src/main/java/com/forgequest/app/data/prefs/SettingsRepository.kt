@@ -114,6 +114,8 @@ data class Settings(
     val calorieSnoozeUntil: Long = 0,
     /** The one-time "more accurate calorie target" card was answered. */
     val calorieV2Seen: Boolean = false,
+    /** The one-time "make N your weekly target?" card on Home was answered (either way). */
+    val targetNudgeAnswered: Boolean = false,
 ) {
     val weightUnit: WeightUnit
         get() = WeightUnit.fromCodeOrLabel(unit)
@@ -182,6 +184,7 @@ class SettingsRepository(private val context: Context) {
         val targetSetDay = longPreferencesKey("target_set_day")
         val calorieSnoozeUntil = longPreferencesKey("calorie_snooze_until")
         val calorieV2Seen = booleanPreferencesKey("calorie_v2_seen")
+        val targetNudgeAnswered = booleanPreferencesKey("target_nudge_answered")
     }
 
     /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
@@ -249,6 +252,7 @@ class SettingsRepository(private val context: Context) {
             targetSetDay = this[K.targetSetDay] ?: 0,
             calorieSnoozeUntil = this[K.calorieSnoozeUntil] ?: 0,
             calorieV2Seen = this[K.calorieV2Seen] ?: false,
+            targetNudgeAnswered = this[K.targetNudgeAnswered] ?: false,
         )
     }
 
@@ -308,6 +312,7 @@ class SettingsRepository(private val context: Context) {
             p[K.targetSetDay] = s.targetSetDay
             p[K.calorieSnoozeUntil] = s.calorieSnoozeUntil
             p[K.calorieV2Seen] = s.calorieV2Seen
+            p[K.targetNudgeAnswered] = s.targetNudgeAnswered
         }
     }
 

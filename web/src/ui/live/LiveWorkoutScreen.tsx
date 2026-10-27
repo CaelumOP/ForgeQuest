@@ -19,7 +19,7 @@ import { currentGroupIndex, groupSets, groupSetsByExercise, nextUntickedSet, typ
 import { HoldOverlay, RestBar } from './Overlays'
 import { SetRowView } from './SetRowView'
 import {
-  adjustRest, holdElapsed, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
+  adjustRest, clock, holdElapsed, restLeft, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
   type HoldTimer, type RestTimer,
 } from './timers'
 import { evaluateBadges, getProgressSnapshot, markBadgesSeen } from '../../data/progress'
@@ -74,6 +74,15 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const hapticsRef = useRef(hapticsOn); hapticsRef.current = hapticsOn
   const lastCue = useRef(Number.MIN_SAFE_INTEGER)
   const restored = useRef<number | null>(null)
+  // iOS Safari has no vibration: a flash on the dock when rest ends, and the countdown in the tab title.
+  const [flash, setFlash] = useState(false)
+  const [overTitle, setOverTitle] = useState(false)
+  const baseTitle = useRef<string | null>(null)
+  useEffect(() => {
+    baseTitle.current ??= document.title
+    document.title = rest ? `${clock(restLeft(rest.endsAt, now))} · ${t('live_rest')}` : overTitle ? t('live_web_rest_over') : baseTitle.current
+  }, [rest, now, overTitle])
+  useEffect(() => () => { if (baseTitle.current != null) document.title = baseTitle.current }, [])
 
   // Screen on while open, and audio unlocked by the first tap (iOS).
   useEffect(() => {
@@ -105,7 +114,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (r && restDone(r, n)) {
         restRef.current = null; setRest(null)
         if (session?.id) saveTimers(store(), { sessionId: session.id, rest: null, hold: holdRef.current })
-        if (n - r.endsAt < 15000) alarm(hapticsRef.current)
+        if (n - r.endsAt < 15000) {
+          alarm(hapticsRef.current)
+          setFlash(true); window.setTimeout(() => setFlash(false), 700)
+          if (document.visibilityState === 'hidden') setOverTitle(true)
+        }
       }
       if (h) {
         const s = holdElapsed(h, n)
@@ -119,7 +132,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (Math.floor(n / 1000) !== Math.floor(nowRef.current / 1000) || h) { nowRef.current = n; setNow(n) }
     }
     const id = window.setInterval(tick, 250)
-    const onVisible = () => { if (document.visibilityState === 'visible') tick() }
+    const onVisible = () => { if (document.visibilityState === 'visible') { setOverTitle(false); tick() } }
     document.addEventListener('visibilitychange', onVisible)
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
   }, [session?.id])
@@ -312,6 +325,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       </div>
 
       <div class="lw-dock">
+        {flash && !rest && <div class="lw-rest-flash" role="status">{t('live_web_rest_over')}</div>}
         {rest && <RestBar rest={rest} now={now} nextLabel={nextLabel} onAdd={() => addRest(15)}
           onRemove={() => { if (restLeftNow(rest) > 15) addRest(-15); else setRestSaved(null) }} onSkip={() => setRestSaved(null)} />}
         <Button block disabled={doneCount === 0 || finishing} loading={finishing}
