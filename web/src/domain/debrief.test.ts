@@ -269,7 +269,7 @@ describe("Gemini's 8 cases", () => {
       { type: 'HOLD_STEADY', exerciseId: 'romanian_deadlift', weightKg: 70, reps: 10, seconds: null },
     ])
   })
-  it('5. after a break: score hidden, the drop still shows (only headline 12 hides it)', () => {
+  it('5. after a break: score hidden, no drop warning', () => {
     const r = run([
       ex('squat', 'WEIGHTED', n(3, 8, 60), n(3, 10, 70), { item: range(), gap: 21 }),
       ex('push_up', 'REPS', n(3, 10), n(3, 12), { item: range(), gap: 21 }),
@@ -277,7 +277,7 @@ describe("Gemini's 8 cases", () => {
     expect(r.score.showNumber).toBe(false)
     expect(r.headline.type).toBe('AFTER_BREAK')
     expect(r.wins).toEqual([{ type: 'ALL_SETS', sets: 6 }])
-    expect(r.watch).toEqual([{ type: 'DROP', exerciseId: 'squat' }])
+    expect(r.watch).toEqual([])
     expect(r.next).toEqual([
       { type: 'PLUS_REP', exerciseId: 'squat', reps: 9, weightKg: 60 },
       { type: 'PLUS_REP', exerciseId: 'push_up', reps: 11, weightKg: null },

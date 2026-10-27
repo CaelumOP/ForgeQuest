@@ -262,7 +262,8 @@ object WorkoutDebriefMath {
             exs.firstNotNullOfOrNull { x -> input.report?.stalledLifts?.firstOrNull { it.exerciseId == x.id } }
                 ?.let { return listOf(Watch.Plateau(it.exerciseId, it.sessionsCount, it.spanDays)) }
         }
-        if (headline != Headline.MOSTLY_DOWN) exs.firstOrNull { it.unforgivenDrop }?.let { return listOf(Watch.Drop(it.id)) }
+        // A comeback is never told about a drop.
+        if (headline != Headline.MOSTLY_DOWN && !score.afterBreak) exs.firstOrNull { it.unforgivenDrop }?.let { return listOf(Watch.Drop(it.id)) }
         val doneIds = input.exercises.filter { it.done.isNotEmpty() }.map { it.exerciseId }.toSet()
         val skipped = input.plannedExerciseIds.filter { it !in doneIds }
         // An unplanned exercise logged is a swap, not a skip.

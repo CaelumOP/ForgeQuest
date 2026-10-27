@@ -258,7 +258,8 @@ function watch(input: DebriefInput, exs: Ex[], headline: Headline, rough: boolea
       if (lift) return [{ type: 'PLATEAU', exerciseId: lift.exerciseId, workouts: lift.sessionsCount, days: lift.spanDays }]
     }
   }
-  if (headline !== 'MOSTLY_DOWN') {
+  // A comeback is never told about a drop.
+  if (headline !== 'MOSTLY_DOWN' && !score.afterBreak) {
     const drop = exs.find((x) => x.trend === 'DOWN' && !x.forgiven)
     if (drop) return [{ type: 'DROP', exerciseId: drop.id }]
   }

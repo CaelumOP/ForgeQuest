@@ -376,8 +376,8 @@ class WorkoutDebriefMathTest {
         assertFalse(r.score.showNumber)
         assertEquals(Headline.AFTER_BREAK, r.headline.type)
         assertEquals(listOf(Win.AllSets(6)), r.wins)
-        // Only headline 12 hides an unforgiven drop.
-        assertEquals(listOf(Watch.Drop("squat")), r.watch)
+        // A comeback is never told about a drop.
+        assertEquals(emptyList<Watch>(), r.watch)
         assertEquals(listOf(Next.PlusRep("squat", 9, 60f), Next.PlusRep("push_up", 11, null)), r.next)
     }
 
