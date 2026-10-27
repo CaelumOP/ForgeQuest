@@ -608,7 +608,7 @@ private fun WeekCard(s: ProgressSnapshot) {
                     Box(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(6.dp)).background(c.tealTrack), contentAlignment = Alignment.BottomCenter) {
                         if (n != null) Box(Modifier.fillMaxWidth().height((32 * ratio).dp.coerceAtLeast(if (ratio > 0f) 3.dp else 0.dp)).background(if (n.protein >= s.settings.proteinGoal) c.teal else c.teal.copy(alpha = 0.55f)))
                     }
-                    Text(Dates.shortDayLetters[Dates.dayOfWeek(d) - 1], style = MaterialTheme.typography.labelSmall, color = if (d == today) c.textPrimary else c.textSecondary)
+                    Text(Dates.dayShort(Dates.dayOfWeek(d)), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = if (d == today) c.textPrimary else c.textSecondary)
                 }
             }
         }

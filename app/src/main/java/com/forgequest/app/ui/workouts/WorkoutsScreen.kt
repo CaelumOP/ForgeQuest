@@ -232,11 +232,11 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    Dates.shortDayName(dow),
+                    Dates.dayShort(dow),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (isSel) c.onTeal else if (dow == today) c.teal else c.textSecondary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
                 )
                 Spacer(Modifier.height(6.dp))
                 Box(

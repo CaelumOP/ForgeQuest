@@ -16,7 +16,7 @@ import { Button, Card, Dialog, Sheet, Stepper, TextField, toast } from '../kit'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
 import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
-import { blockLabel, dayName, isRestTitle, prescription } from './helpers'
+import { blockLabel, dayName, dayShort, isRestTitle, prescription } from './helpers'
 import { stepReorder } from './reorder'
 import { buzz } from '../live/feedback'
 import { PastePlanSheet } from '../coach/PastePlanSheet'
@@ -100,7 +100,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
       <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
         {[1, 2, 3, 4, 5, 6, 7].map((dow) => (
           <button key={dow} type="button" role="tab" class="wk-day" aria-selected={dow === selected} aria-label={dayName(dow, lang)} onClick={() => setSelected(dow)}>
-            <span>{dayName(dow, lang, 'short')}</span>
+            <span>{dayShort(dow, lang)}</span>
           </button>
         ))}
       </div>
@@ -449,7 +449,7 @@ export function PlanPreviewSheet({ draft, exercises, userEquipment, onApply, onC
           const rest = d.isRest || d.items.length === 0
           return (
             <div class="wk-preview-day" key={d.dayOfWeek}>
-              <span class="wk-preview-dow">{dayName(d.dayOfWeek, lang, 'short')}</span>
+              <span class="wk-preview-dow">{dayShort(d.dayOfWeek, lang)}</span>
               <div class="wk-grow">
                 <div class="wk-t" style={{ fontWeight: 400 }}>{rest ? t('live_rest') : d.title}</div>
                 {!rest && <div class="wk-s">{d.items.map((i) => exercises.get(i.exerciseId)?.name ?? i.name ?? i.exerciseId).join(t('list_separator'))}</div>}

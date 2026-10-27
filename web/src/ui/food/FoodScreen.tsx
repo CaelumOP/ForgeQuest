@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
-import { todayEpochDay } from '../../domain/dates'
+import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import type { FoodCategory, FoodPart, FoodRow, MealRow } from '../../data/db'
 import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, placesOf, restoreMeal, saveFood, totalsOf, useFoodUsage, useFoods, useMealsOn, useRecentOneOffs, withParts } from '../../data/food'
 import { score } from '../../domain/food-search'
@@ -10,6 +10,7 @@ import { useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
 import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
+import { dayShort } from '../workouts/helpers'
 import { PartsSheet, PlaceField, partsCount } from './FoodParts'
 import './food.css'
 
@@ -103,7 +104,7 @@ function WeekCard({ proteinGoal, trackCarbs }: { proteinGoal: number; trackCarbs
         {days.map((d) => {
           const n = byDay.get(d)
           const ratio = Math.min(1, Math.max(0, (n?.protein ?? 0) / Math.max(1, proteinGoal)))
-          const letter = dayFmt(d, { weekday: 'narrow' })
+          const letter = dayShort(dayOfWeek(d), getLang())
           return (
             <div key={d} class={`food-week-col${d === today ? ' today' : ''}`} role="img" aria-label={t('food_w_week_bar', dayFmt(d, { weekday: 'long' }), fmtInt(n?.protein ?? 0))}>
               <div class="food-week-bar">

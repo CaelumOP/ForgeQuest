@@ -255,7 +255,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(Dates.dayChip(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(Dates.dayShort(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, softWrap = false)
                     }
                 }
             }
@@ -708,7 +708,7 @@ fun PlanPreviewSheet(
             Spacer(Modifier.height(12.dp))
             draft.days.sortedBy { it.dayOfWeek }.forEach { d ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                    Text(Dates.dayAbbrev(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
+                    Text(Dates.dayShort(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                         if (!d.isRest && d.items.isNotEmpty()) {

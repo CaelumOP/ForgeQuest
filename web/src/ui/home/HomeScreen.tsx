@@ -14,6 +14,7 @@ import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
 import { canExcuse, greetingKey } from './helpers'
+import { dayShort } from '../workouts/helpers'
 import { RaadEgg } from './RaadEgg'
 import { CalorieCard } from './CalorieCard'
 import './home.css'
@@ -214,7 +215,6 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
     : k.weeks === 0 && k.doneThisWeek === 0 ? t('streak_hit_to_start')
     : k.hitThisWeek ? plural('streak_best', k.best)
     : plural('streak_more_to_go', k.targetThisWeek - k.doneThisWeek)
-  const fmt = new Intl.DateTimeFormat(getLang(), { weekday: 'narrow', timeZone: 'UTC' })
   const long = new Intl.DateTimeFormat(getLang(), { weekday: 'long', timeZone: 'UTC' })
   return (
     <Card>
@@ -234,7 +234,7 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
       <div class="home-week">
         {k.days.map((state, i) => {
           const day = start + i
-          const letter = fmt.format(dayDate(day))
+          const letter = dayShort(dayOfWeek(day), getLang())
           const inner = <><DayCircle state={state} /><small>{letter}</small></>
           return canExcuse(day, today, state)
             ? <button type="button" key={i} class="home-day" aria-label={`${t('daytag_title')}: ${long.format(dayDate(day))}`} onClick={() => onDay(day)}>{inner}</button>

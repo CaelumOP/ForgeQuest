@@ -475,7 +475,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit) {
                 ) {
                     DayCircle(state)
                     Spacer(Modifier.height(6.dp))
-                    Text(Dates.shortDayLetters[i], style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                    Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
             }
         }

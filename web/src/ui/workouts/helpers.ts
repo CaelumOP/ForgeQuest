@@ -5,6 +5,16 @@ import { formatWeight, type WeightUnit } from '../../domain/units'
 import { profileFor, type Equipment } from '../../domain/exercise-swap-engine'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 
+const AR_DAYS = ['اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد']
+
+/**
+ * Short day name for day strips: "Mon" in English; in Arabic the name without «ال» ("اثنين"), which reads naturally and
+ * fits a seventh of the width (Intl's Arabic short name is the full one, and its narrow one a single, ambiguous letter).
+ */
+export function dayShort(dow: number, lang: string): string {
+  return lang === 'ar' ? AR_DAYS[dow - 1] : dayName(dow, lang, 'short')
+}
+
 /** Weekday name for 1 = Monday .. 7 = Sunday, in the app language. */
 export function dayName(dow: number, lang: string, style: 'long' | 'short' = 'long'): string {
   // 1970-01-05 was a Monday.

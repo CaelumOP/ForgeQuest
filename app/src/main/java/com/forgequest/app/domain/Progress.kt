@@ -19,23 +19,21 @@ object Dates {
 
     fun todayDayOfWeek(): Int = LocalDate.now().dayOfWeek.value
 
-    /** One-letter day names, Monday first, in the phone's language ("M T W…", "ن ث ر…"). */
-    val shortDayLetters: List<String>
-        get() = DayOfWeek.entries.map { it.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()) }
+    /**
+     * Short day name for day strips: "Mon" in English; in Arabic the name without «ال» ("اثنين", "ثلاثاء"), which reads
+     * naturally and fits a seventh of the width. Java's Arabic short name is the full one (cut to "الث…"), and its narrow
+     * one is a single letter where ث could be Tuesday or Wednesday.
+     */
+    fun dayShort(dayOfWeek: Int): String =
+        if (java.util.Locale.getDefault().language == "ar") AR_DAYS[dayOfWeek - 1] else dayName(dayOfWeek).take(3)
 
-    /** Short day names, Monday first ("Mon", "الاثنين"). */
-    fun shortDayName(dayOfWeek: Int): String =
-        DayOfWeek.of(dayOfWeek).getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())
+    private val AR_DAYS = listOf("اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت", "أحد")
 
     fun dayName(dayOfWeek: Int): String =
         DayOfWeek.of(dayOfWeek).getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
 
     /** "Mon" in English; the full name in Arabic, where cutting it leaves only «ال». */
     fun dayAbbrev(dayOfWeek: Int): String = dayName(dayOfWeek).let { if (java.util.Locale.getDefault().language == "ar") it else it.take(3) }
-
-    /** "Mon" in English, one letter in Arabic: for tight day strips. */
-    fun dayChip(dayOfWeek: Int): String =
-        if (java.util.Locale.getDefault().language == "ar") shortDayLetters[dayOfWeek - 1] else dayName(dayOfWeek).take(3)
 }
 
 // ---------------------------------------------------------------- Weekly streak

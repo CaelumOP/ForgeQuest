@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ExerciseRow } from '../../data/db'
-import { dayName, filterExercises, formVideoUrl } from './helpers'
+import { dayName, dayShort, filterExercises, formVideoUrl } from './helpers'
 
 const ex = (id: string, name: string, primary: ExerciseRow['primary'], secondary: ExerciseRow['secondary'] = []): ExerciseRow =>
   ({ id, name, kind: 'REPS', primary, secondary, videoUrl: null, custom: false })
@@ -9,6 +9,9 @@ describe('workouts helpers', () => {
   it('names weekdays from Monday', () => {
     expect(dayName(1, 'en')).toBe('Monday')
     expect(dayName(7, 'en', 'short')).toBe('Sun')
+    expect(dayShort(2, 'ar')).toBe('ثلاثاء')
+    expect(dayShort(3, 'ar')).toBe('أربعاء')
+    expect(dayShort(1, 'en')).toBe('Mon')
   })
   it('falls back to a YouTube search for a missing or bad link', () => {
     expect(formVideoUrl({ name: 'Push up', videoUrl: 'https://youtu.be/x' })).toBe('https://youtu.be/x')
