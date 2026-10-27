@@ -235,12 +235,10 @@ fun CoachScreen(nav: NavHostController) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack, 40.dp)
                                 Spacer(Modifier.width(12.dp))
-                                Text(stringResource(R.string.coach_add_key), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                                Text(stringResource(R.string.ai_key_needed_coach), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
                             }
-                            Spacer(Modifier.height(8.dp))
-                            Text(stringResource(R.string.coach_add_key_body), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                             Spacer(Modifier.height(14.dp))
-                            PillButton(stringResource(R.string.coach_set_up_profile), onClick = { nav.goToTab(Routes.PROFILE) })
+                            PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.goToTab(Routes.PROFILE) })
                         }
                     }
                 }

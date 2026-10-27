@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.AppLocale
 import com.forgequest.app.R
+import com.forgequest.app.container
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.launch
@@ -86,20 +88,25 @@ fun LanguageChoice(onChosen: () -> Unit) {
 
 private data class Slide(val icon: ImageVector, val color: @Composable () -> Color, val title: Int, val body: Int)
 
-private val slides = listOf(
+/** Consistency, plans and the live workout, progress and recovery. */
+private val coreSlides = listOf(
     Slide(Icons.Rounded.Spa, { Fit.colors.teal }, R.string.tour_1_t, R.string.tour_1_b),
-    Slide(Icons.Rounded.LocalFireDepartment, { Fit.colors.gold }, R.string.tour_2_t, R.string.tour_2_b),
     Slide(Icons.Rounded.FitnessCenter, { Fit.colors.teal }, R.string.tour_3_t, R.string.tour_3_b),
-    Slide(Icons.Rounded.CameraAlt, { Fit.colors.coral }, R.string.tour_4_t, R.string.tour_4_b),
-    Slide(Icons.Rounded.AutoAwesome, { Fit.colors.purple }, R.string.tour_5_t, R.string.tour_5_b),
-    Slide(Icons.Rounded.MonitorHeart, { Fit.colors.coral }, R.string.tour_6_t, R.string.tour_6_b),
     Slide(Icons.Rounded.EmojiEvents, { Fit.colors.gold }, R.string.tour_7_t, R.string.tour_7_b),
 )
 
-/** Seven feature slides with Skip, page dots and Next; the last button leads into setup (or back, on a replay). */
+/** Food-scan and AI-coach slides: only worth showing once an AI key is saved. */
+private val aiSlides = listOf(
+    Slide(Icons.Rounded.CameraAlt, { Fit.colors.coral }, R.string.tour_4_t, R.string.tour_4_b),
+    Slide(Icons.Rounded.AutoAwesome, { Fit.colors.purple }, R.string.tour_5_t, R.string.tour_5_b),
+)
+
+/** Three feature slides (five with an AI key) with Skip, page dots and Next; the last button leads into setup (or back, on a replay). */
 @Composable
 fun AppTour(finishLabel: String, onDone: () -> Unit) {
     val c = Fit.colors
+    val hasKey = LocalContext.current.container.settings.apiKey.collectAsState().value.isNotBlank()
+    val slides = if (hasKey) listOf(coreSlides[0], coreSlides[1]) + aiSlides + coreSlides[2] else coreSlides
     val pager = rememberPagerState { slides.size }
     val scope = rememberCoroutineScope()
     val last = pager.currentPage == slides.lastIndex

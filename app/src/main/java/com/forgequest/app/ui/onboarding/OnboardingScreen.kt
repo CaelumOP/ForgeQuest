@@ -36,6 +36,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,7 +53,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -106,7 +109,7 @@ data class OnboardingState(
     val bodyType: BodyType = BodyType.MALE,
     val weightKg: Float = 75f,
     val unit: WeightUnit = WeightUnit.KG,
-    /** 0 until typed: height and age are required before the body step continues. */
+    /** 0 until typed: height and age are needed for the food targets (set up from Home after the first workout). */
     val heightCm: Float = 0f,
     val age: Int = 0,
     val dayActivity: DayActivity = DayActivity.SITTING,
@@ -116,7 +119,9 @@ data class OnboardingState(
     val goal: NutritionGoal = NutritionGoal.MAINTAIN,
     val cutPace: CutPace = CutPace.STANDARD,
     val gainPace: GainPace = GainPace.STANDARD,
-    val planIndex: Int = 0,
+    /** Days a week the person can train: becomes the weekly streak target. */
+    val daysPerWeek: Int = 3,
+    val planIndex: Int = StarterPlans.BODYWEIGHT_INDEX,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
     val apiKey: String = "",
     val checkingKey: Boolean = false,
@@ -125,8 +130,8 @@ data class OnboardingState(
 ) {
     val male get() = bodyType == BodyType.MALE
     val bodyReady get() = heightCm in 120f..230f && age in 10..100
-    /** Training days of the chosen starter plan (3 when starting empty), for the calorie suggestion. */
-    val trainingDays get() = StarterPlans.all.getOrNull(planIndex)?.days?.count { !it.isRest && it.items.isNotEmpty() } ?: 3
+    /** Training days for the calorie suggestion: the weekly target. */
+    val trainingDays get() = daysPerWeek
     val floor get() = Nutrition.calorieFloor(weightKg, heightCm, age, male)
     val burn get() = Nutrition.dailyBurn(weightKg, heightCm, age, male, trainingDays, base = dayActivity.base)
     val fastBlocked get() = Nutrition.allowedCutPace(CutPace.AGGRESSIVE, weightKg, heightCm, age, male) != CutPace.AGGRESSIVE
@@ -190,18 +195,41 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                 ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment, dropUnfit = true).first
             }
             app.workouts.applyPlan(adaptedPlan, if (selectedPlan === emptyPlan) "manual" else "starter")
-            app.progress.logWeight(s.weightKg)
             app.settings.update {
                 it.copy(
                     onboarded = true,
                     name = s.name.trim(),
+                    bodyType = s.bodyType,
+                    equipment = s.equipmentPreset.encode(),
+                    weeklyTargetOverride = s.daysPerWeek,
+                    // A new person starts on the new suggestion, so the one-time "more accurate target" card never shows.
+                    calorieV2Seen = true,
+                )
+            }
+        }
+    }
+
+    /** Opens the food-targets setup from Home with what is already known. */
+    fun startFoodSetup(settings: com.forgequest.app.data.prefs.Settings, latestWeight: Float?) = update {
+        OnboardingState(
+            bodyType = settings.bodyType, unit = settings.weightUnit, weightKg = latestWeight ?: 75f,
+            daysPerWeek = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else 3,
+        )
+    }
+
+    /** What onboarding used to write for body and goal. */
+    fun saveFoodTargets(onDone: () -> Unit) {
+        val s = state.value
+        viewModelScope.launch {
+            app.progress.logWeight(s.weightKg)
+            app.settings.update {
+                it.copy(
                     bodyType = s.bodyType,
                     kcalGoal = s.kcal.coerceAtLeast(s.floor),
                     proteinGoal = s.protein.coerceAtLeast(60),
                     unit = s.unit.code,
                     heightCm = s.heightCm,
                     birthYear = if (s.age > 0) java.time.Year.now().value - s.age else 0,
-                    equipment = s.equipmentPreset.encode(),
                     nutritionGoal = s.goal,
                     goalSetDay = Dates.today(),
                     proteinPerKg = Nutrition.proteinPerKgFor(s.goal, s.cutPace, s.gainPace),
@@ -210,16 +238,16 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                     gainPace = s.gainPace,
                     targetWeightKg = s.weightKg,
                     targetSetDay = Dates.today(),
-                    // A new person starts on the new suggestion, so the one-time "more accurate target" card never shows.
                     calorieV2Seen = true,
                 )
             }
+            onDone()
         }
     }
 
     companion object {
-        /** Name, body, plan, goal, AI key. */
-        const val LAST_STEP = 4
+        /** Name, plan (days a week + equipment), AI key. */
+        const val LAST_STEP = 2
     }
 }
 
@@ -248,9 +276,7 @@ fun OnboardingScreen() {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 when (step) {
                     0 -> StepWelcome(s, vm)
-                    1 -> StepBody(s, vm)
-                    2 -> StepPlan(s, vm)
-                    3 -> StepGoal(s, vm)
+                    1 -> StepPlan(s, vm)
                     else -> StepKey(s, vm)
                 }
             }
@@ -258,13 +284,11 @@ fun OnboardingScreen() {
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             if (s.step > 0) TextButton(onClick = vm::back) { Text(stringResource(R.string.action_back), color = c.textSecondary) }
             Spacer(Modifier.weight(1f))
-            val canGo = when (s.step) { 0 -> s.name.isNotBlank(); 1 -> s.bodyReady; else -> true }
-            // Say why Continue is greyed out instead of leaving people guessing.
-            if (!canGo && s.step == 1) Text(stringResource(R.string.onb_body_needed), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(end = 12.dp).weight(1f, fill = false))
+            val canGo = s.step != 0 || s.name.isNotBlank()
             when {
                 s.step < OnboardingViewModel.LAST_STEP -> PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = canGo)
                 // A typed key is checked and kept by the main button too, not thrown away by "Skip".
-                s.keyOk || s.apiKey.isBlank() -> PillButton(if (s.keyOk) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_skip), onClick = vm::finish)
+                s.keyOk || s.apiKey.isBlank() -> PillButton(if (s.keyOk) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_finish), onClick = vm::finish)
                 else -> PillButton(stringResource(if (s.checkingKey) R.string.onb_checking else R.string.onb_save_key), onClick = { vm.checkKey(then = vm::finish) }, enabled = !s.checkingKey)
             }
         }
@@ -319,7 +343,7 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
 
 /** Step 2: units, weight, height and age (one calm row each), then the normal day outside workouts. */
 @Composable
-private fun StepBody(s: OnboardingState, vm: OnboardingViewModel) {
+internal fun StepBody(s: OnboardingState, vm: OnboardingViewModel) {
     Title(stringResource(R.string.onb_body_title), stringResource(R.string.onb_body_body))
     Row(Modifier.padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.unit_kilograms), s.unit == WeightUnit.KG, { vm.update { it.copy(unit = WeightUnit.KG) } })
@@ -390,7 +414,7 @@ private fun ChoiceCard(name: String, desc: String, selected: Boolean, onClick: (
 
 /** Step 4 (after the plan, so the target counts its training days): the goal, its pace and the calculated target. */
 @Composable
-private fun StepGoal(s: OnboardingState, vm: OnboardingViewModel) {
+internal fun StepGoal(s: OnboardingState, vm: OnboardingViewModel) {
     val c = Fit.colors
     Title(stringResource(R.string.goal_title), stringResource(R.string.goal_step_body))
     NutritionGoal.entries.forEach { g ->
@@ -492,6 +516,23 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     val isArabic = Locale.getDefault().language == "ar"
     Title(stringResource(R.string.onb_plan_title), stringResource(R.string.onb_plan_body))
 
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconCircle(Icons.Rounded.LocalFireDepartment, c.gold, c.goldTrack)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.onb_days_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            Text(stringResource(R.string.onb_days_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    val dayOptions = listOf(2, 3, 4, 5)
+    SegmentedTabs(
+        options = dayOptions.map { java.text.NumberFormat.getIntegerInstance().format(it) },
+        selected = dayOptions.indexOf(s.daysPerWeek),
+        onSelect = { i -> vm.update { it.copy(daysPerWeek = dayOptions[i], planIndex = planForDays(dayOptions[i], it.equipmentPreset)) } },
+    )
+    Spacer(Modifier.height(20.dp))
+
     Text(
         text = stringResource(R.string.onb_available_equipment),
         style = MaterialTheme.typography.titleSmall,
@@ -503,7 +544,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
             ChoiceChip(
                 text = if (isArabic) preset.labelAr else preset.labelEn,
                 selected = s.equipmentPreset == preset,
-                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planFor(preset, it.planIndex)) } },
+                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planForDays(it.daysPerWeek, preset)) } },
             )
         }
     }
@@ -530,6 +571,8 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
         ) {
             Column(Modifier.weight(1f)) {
                 Text(name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                val planDays = StarterPlans.all.getOrNull(index)?.days?.count { !it.isRest && it.items.isNotEmpty() } ?: 0
+                if (planDays > 0) Text(pluralStringResource(R.plurals.onb_plan_days, planDays, planDays), style = MaterialTheme.typography.labelMedium, color = c.teal)
                 Spacer(Modifier.height(4.dp))
                 Text(desc, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 3)
             }
@@ -544,17 +587,43 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     }
 }
 
-/** The starter plan that fits [preset]: weights when there are dumbbells, bodyweight when there aren't. */
-private fun planFor(preset: EquipmentPreset, current: Int): Int {
-    val hasDumbbells = Equipment.DUMBBELLS in preset.equipment
-    return when {
-        hasDumbbells && current == StarterPlans.GYM_SPLIT_INDEX && preset == EquipmentPreset.FULL_GYM -> current
-        hasDumbbells && current in listOf(StarterPlans.BODYWEIGHT_INDEX, StarterPlans.DUMBBELLS_INDEX) -> StarterPlans.DUMBBELLS_INDEX
-        hasDumbbells && current == 0 && preset in listOf(EquipmentPreset.FULL_GYM, EquipmentPreset.HOME_GYM) -> StarterPlans.DUMBBELLS_INDEX
-        !hasDumbbells && current in listOf(StarterPlans.DUMBBELLS_INDEX, StarterPlans.GYM_SPLIT_INDEX) -> StarterPlans.BODYWEIGHT_INDEX
-        // Hemo's routine needs bars; with nothing at all, the plain bodyweight plan is the honest start.
-        preset == EquipmentPreset.BODYWEIGHT_ONLY && current == 0 -> StarterPlans.BODYWEIGHT_INDEX
-        else -> current
+/**
+ * The starter plan to show as chosen for [days] a week and the picked equipment. Plans: 0 Hemo (5 days), 1 bodyweight and
+ * 2 dumbbells (both 3 days), 3 gym split (6 days). 5 gets Hemo (bodyweight when there is nothing to hang from); 2, 3 and
+ * 4 get the 3-day full body, the gentlest plan that is nearest.
+ */
+internal fun planForDays(days: Int, preset: EquipmentPreset): Int = when {
+    days >= 5 -> if (preset == EquipmentPreset.BODYWEIGHT_ONLY) StarterPlans.BODYWEIGHT_INDEX else 0
+    Equipment.DUMBBELLS in preset.equipment -> StarterPlans.DUMBBELLS_INDEX
+    else -> StarterPlans.BODYWEIGHT_INDEX
+}
+
+/** The body and food-goal steps that used to sit in onboarding, offered from Home after the first workout. */
+@Composable
+fun FoodTargetsSetup(settings: com.forgequest.app.data.prefs.Settings, latestWeight: Float?, onClose: () -> Unit) {
+    val vm = appViewModel { OnboardingViewModel(it) }
+    LaunchedEffect(Unit) { vm.startFoodSetup(settings, latestWeight) }
+    val s by vm.state.collectAsState()
+    val c = Fit.colors
+    val step = if (s.step == 0) 0 else 1
+    BackHandler { if (step == 0) onClose() else vm.back() }
+    Column(
+        Modifier.fillMaxSize().background(c.background).pointerInput(Unit) {}.statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 24.dp),
+    ) {
+        Spacer(Modifier.height(16.dp))
+        ProgressLine((step + 1) / 2f, c.teal, c.cardHigh, height = 4.dp)
+        Spacer(Modifier.height(24.dp))
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            if (step == 0) StepBody(s, vm) else StepGoal(s, vm)
+        }
+        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { if (step == 0) onClose() else vm.back() }) {
+                Text(stringResource(if (step == 0) R.string.action_cancel else R.string.action_back), color = c.textSecondary)
+            }
+            Spacer(Modifier.weight(1f))
+            if (step == 0) PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = s.bodyReady)
+            else PillButton(stringResource(R.string.action_save), onClick = { vm.saveFoodTargets(onClose) })
+        }
     }
 }
 
