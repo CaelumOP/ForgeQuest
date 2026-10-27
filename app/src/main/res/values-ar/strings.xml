@@ -701,6 +701,7 @@
     <string name="live_add_round">إضافة جولة</string>
     <string name="live_note_title">ملاحظة لهذه المجموعة</string>
     <string name="live_note_hint">كانت سهلة؛ زد الوزن في المرة القادمة</string>
+    <string name="live_add_note">إضافة ملاحظة</string>
     <string name="cd_set_done">اكتملت المجموعة</string>
     <string name="live_pr">رقم قياسي</string>
     <string name="live_rest">راحة</string>

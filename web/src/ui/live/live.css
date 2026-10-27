@@ -27,6 +27,10 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 .lw-folded { display: flex; align-items: center; gap: 10px; min-block-size: 28px; }
 .lw-folded-check { color: var(--teal); display: inline-flex; }
 .lw-folded-title { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lw-warm { display: flex; align-items: center; gap: 8px; }
+.lw-warm-main { flex: 1; min-inline-size: 0; min-block-size: 52px; display: flex; align-items: center; gap: 8px; padding: 0; background: none; color: inherit; text-align: start; }
+.lw-warm-text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
+.lw-warm-main[aria-expanded="true"] svg { transform: rotate(180deg); }
 .lw-setwrap { margin-block-start: 6px; }
 .lw-set { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 8px; padding-inline: 8px 4px; border-radius: 14px; touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 .lw-set-done { background: var(--teal-track); }

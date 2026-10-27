@@ -175,6 +175,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         if (done && set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set)) else if (!done) skipRest()
     }
 
+    /** The warm-up's single tick: marks all of one exercise's sets done (or all undone) and starts no rest timer. */
+    fun toggleAll(group: List<SetEntity>) {
+        val done = !group.all { it.done }
+        effortSetId.value = null
+        if (done) app.haptics.setDone() else app.haptics.tick()
+        viewModelScope.launch { group.filter { it.done != done }.forEach { repo.updateSet(it.copy(done = done)) } }
+    }
+
     /** What you just did becomes the starting point for the exercise's next sets you haven't touched yet. */
     private suspend fun carryForward(set: SetEntity) {
         sets.value.filter { it.itemPosition == set.itemPosition && it.exerciseId == set.exerciseId && it.setIndex > set.setIndex && !it.done && it.id !in edited }

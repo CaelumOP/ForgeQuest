@@ -612,6 +612,7 @@
     <string name="live_add_round">Add round</string>
     <string name="live_note_title">Note for this set</string>
     <string name="live_note_hint">Felt easy, add weight next time</string>
+    <string name="live_add_note">Add a note</string>
     <string name="cd_set_done">Set done</string>
     <string name="live_pr">PR</string>
     <string name="live_rest">Rest</string>

@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -370,6 +371,10 @@ private fun GroupCard(
     val all = g.allSets
     val allDone = all.isNotEmpty() && all.all { it.done }
     var open by remember(allDone) { mutableStateOf(!allDone) }
+    if (g is Group.Straight && WorkoutScore.isWarmUp(g.block)) {
+        WarmupCard(g, exercises[g.sets.first().exerciseId], vm)
+        return
+    }
     if (!open && !forceOpen) {
         val title = if (g is Group.Straight) exercises[g.sets.first().exerciseId]?.name ?: g.sets.first().exerciseId else blockLabel((g as Group.Circuit).block)
         FitCard(onClick = { open = true }, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
@@ -389,6 +394,40 @@ private fun GroupCard(
             onVideo = onVideo, onSwap = { onSwap(g.position) }, onDetail = { onDetail(g.sets.first().exerciseId) },
         )
         is Group.Circuit -> CircuitCard(g, exercises, vm, onVideo = onVideo, onSwap = onSwap)
+    }
+}
+
+/** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
+@Composable
+private fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutViewModel) {
+    val c = Fit.colors
+    val prev by vm.previous.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+    val first = g.sets.first()
+    val doneCount = g.sets.count { it.done }
+    val allDone = doneCount == g.sets.size
+    val each = if (ex?.kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, first.seconds ?: 0) else "${first.reps ?: 0}"
+    FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { expanded = !expanded }.padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("${ex?.name ?: first.exerciseId} · ${g.sets.size} × $each", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    if (doneCount > 0 && !allDone) Text("$doneCount/${g.sets.size}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+                Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(6.dp))
+            MorphCheck(allDone) { vm.toggleAll(g.sets) }
+        }
+        if (expanded) {
+            Spacer(Modifier.height(4.dp))
+            g.sets.forEach { set ->
+                SetRow(label = "${set.setIndex + 1}", sublabel = null, set = set, kind = ex?.kind ?: ExerciseKind.REPS, vm = vm, previous = prev[set.exerciseId]?.getOrNull(set.setIndex))
+            }
+        }
     }
 }
 
@@ -640,14 +679,20 @@ private fun SetRow(
     }
     // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
     AnimatedVisibility(visible = set.done && effortSetId == set.id) {
-        Row(Modifier.padding(start = 8.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            SetEffort.entries.forEach { e ->
-                ChoiceChip(
-                    stringResource(e.labelRes),
-                    set.effort == e.name,
-                    { vm.setEffort(set, e) },
-                    accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
-                )
+        Column(Modifier.padding(start = 8.dp, top = 6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SetEffort.entries.forEach { e ->
+                    ChoiceChip(
+                        stringResource(e.labelRes),
+                        set.effort == e.name,
+                        { vm.setEffort(set, e) },
+                        accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                    )
+                }
+            }
+            // Pain is worth a word: one tap opens the same note editor as a long-press.
+            if (set.effort == SetEffort.PAIN.name) {
+                TextButton(onClick = { noteDialog = true }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
             }
         }
     }

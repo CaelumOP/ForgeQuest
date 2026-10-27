@@ -7,6 +7,7 @@ import {
   useLibrary, useOpenSession, useSets, type FinishResult,
 } from '../../data/workouts'
 import { weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
+import { isWarmUp } from '../../domain/workout-score'
 import { Button, Card, Dialog, EmptyState, IconButton, Sheet, ListRow, toast } from '../kit'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
@@ -17,7 +18,7 @@ import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
 import { currentGroupIndex, groupSets, groupSetsByExercise, nextUntickedSet, type Group } from './groups'
 import { HoldOverlay, RestBar } from './Overlays'
-import { SetRowView } from './SetRowView'
+import { SetRowView, type SetRowProps } from './SetRowView'
 import {
   adjustRest, clock, holdElapsed, restLeft, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
   type HoldTimer, type RestTimer,
@@ -204,6 +205,14 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     setRestSaved(startRest(set.restSeconds, Date.now(), next ? nameOf(next.exerciseId) : null))
   }
   const save = (next: SetRow) => { void updateSet(next).catch(() => toast(t('live_web_save_failed'))) }
+  /** The warm-up's single tick: marks every set of that exercise done (or all undone), and starts no rest timer. */
+  const toggleAll = (group: SetRow[]) => {
+    unlockAudio()
+    const done = !group.every((s) => s.done)
+    setEffortSetId(null)
+    if (hapticsOn) buzz(done ? 40 : 15)
+    group.forEach((s) => { if (s.done !== done) save({ ...s, done }) })
+  }
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
@@ -282,7 +291,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const header = plural('live_header', sets.length, Math.floor(elapsed / 60), String(elapsed % 60).padStart(2, '0'), doneCount, sets.length)
   const cardFor = (g: Group, forceOpen: boolean) => (
     <GroupCard key={g.key} g={g} forceOpen={forceOpen} exercises={exercises} previous={previous} unit={unit} effortSetId={effortSetId}
-      onChange={save} onToggle={toggle} onStartHold={beginHold} harder={harder}
+      onChange={save} onToggle={toggle} onToggleAll={toggleAll} onStartHold={beginHold} harder={harder}
       onStepUp={(oldId, next) => {
         setHarder((m) => { const n = new Map(m); n.delete(oldId); return n })
         void stepUp(sid, oldId, next.id).then(() => toast(t('harder_switched', next.name)))
@@ -403,7 +412,7 @@ function setSummary(set: SetRow, kind: ExerciseRow['kind'], unit: WeightUnit): s
 
 type CardProps = {
   g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; unit: WeightUnit; effortSetId: number | null
-  onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onAddRound: (positions: number[]) => void
+  onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onAddRound: (positions: number[]) => void
   harder: Map<string, Hint>; onStepUp: (oldId: string, next: ExerciseRow) => void
 }
 
@@ -421,6 +430,34 @@ function HarderNote({ ex, hint, onStepUp }: { ex: ExerciseRow; hint: Hint | unde
   )
 }
 
+/** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
+function WarmupRow(p: { g: Extract<Group, { kind: 'straight' }>; ex: ExerciseRow | undefined; name: string; rowProps: (set: SetRow, round: number | null) => Omit<SetRowProps, 'label' | 'sublabel'>; onToggleAll: (sets: SetRow[]) => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const { g } = p
+  const first = g.sets[0]
+  const doneCount = g.sets.filter((s) => s.done).length
+  const allDone = doneCount === g.sets.length
+  const each = p.ex?.kind === 'HOLD' ? t('rx_seconds', first.seconds ?? 0) : String(first.reps ?? 0)
+  return (
+    <div data-gkey={g.key}>
+      <Card>
+        <div class="lw-warm">
+          <button type="button" class="lw-warm-main" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+            <span class="lw-warm-text">
+              <span class="lw-name">{`${p.name} · ${g.sets.length} × ${each}`}</span>
+              {doneCount > 0 && !allDone && <span class="lw-small">{`${doneCount}/${g.sets.length}`}</span>}
+            </span>
+            <ExpandMoreIcon size={20} />
+          </button>
+          <button type="button" class={`lw-tick${allDone ? ' lw-tick-on' : ''}`} role="checkbox" aria-checked={allDone} aria-label={t('cd_set_done')}
+            onClick={() => p.onToggleAll(g.sets)}><CheckIcon size={28} /></button>
+        </div>
+        {expanded && g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...p.rowProps(set, null)} />)}
+      </Card>
+    </div>
+  )
+}
+
 /** An exercise or circuit card; once every set is ticked it folds into one line (tap to open it again). */
 function GroupCard(p: CardProps) {
   const { g, exercises } = p
@@ -434,6 +471,10 @@ function GroupCard(p: CardProps) {
     set, unit: p.unit, kind: exercises.get(set.exerciseId)?.kind ?? 'REPS', previous: p.previous.get(set.exerciseId)?.[round ?? set.setIndex],
     showEffort: p.effortSetId === set.id, onChange: p.onChange, onToggle: p.onToggle, onStartHold: p.onStartHold,
   })
+
+  if (g.kind === 'straight' && isWarmUp(g.block)) {
+    return <WarmupRow g={g} ex={exercises.get(first.exerciseId)} name={name(first.exerciseId)} rowProps={rowProps} onToggleAll={p.onToggleAll} />
+  }
 
   if (!open && !p.forceOpen) {
     return (

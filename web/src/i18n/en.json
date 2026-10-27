@@ -580,6 +580,7 @@
   "lib_yours": "Your exercises",
   "list_separator": ", ",
   "live_add_exercise": "Add exercise",
+  "live_add_note": "Add a note",
   "live_add_round": "Add round",
   "live_add_set": "Add set",
   "live_badge_unlocked": "Badge unlocked: {1}",
