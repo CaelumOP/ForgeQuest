@@ -41,6 +41,7 @@ object DebriefText {
         Headline.ALL_SAME to intArrayOf(R.string.debrief_h10_1, R.string.debrief_h10_2, R.string.debrief_h10_3),
         Headline.MIXED to intArrayOf(R.string.debrief_h11_1, R.string.debrief_h11_2, R.string.debrief_h11_3),
         Headline.MOSTLY_DOWN to intArrayOf(R.string.debrief_h12_1, R.string.debrief_h12_2, R.string.debrief_h12_3),
+        Headline.SOME_UP to intArrayOf(R.string.debrief_h13_1, R.string.debrief_h13_2, R.string.debrief_h13_3),
     )
 
     /**
@@ -53,7 +54,8 @@ object DebriefText {
         fun seconds(n: Int) = count(R.plurals.debrief_n_seconds, n)
         val ids = headlines.getValue(d.headline.type)
         return Lines(
-            headline = res.getString(ids[d.headline.variant.coerceIn(0, ids.lastIndex)]),
+            // Only SOME_UP's wordings use the numbers; the others ignore them.
+            headline = res.getString(ids[d.headline.variant.coerceIn(0, ids.lastIndex)], d.headline.up, d.headline.compared),
             wins = d.wins.mapNotNull { w -> win(w, res, name, weight, ::reps, ::seconds) },
             watch = d.watch.map { w -> watch(w, res, name) },
             next = d.next.mapNotNull { n -> next(n, res, name, weight, ::reps, ::seconds) }.map { res.getString(R.string.debrief_next_time, it) },
@@ -80,6 +82,7 @@ object DebriefText {
             else res.getString(R.string.debrief_win_more_reps, name(w.exerciseId), w.from, reps(w.to))
         is Win.EffortMastery -> res.getString(R.string.debrief_win_effort, name(w.exerciseId))
         is Win.AllSets -> res.getString(R.string.debrief_win_all_sets, res.getQuantityString(R.plurals.debrief_n_sets, w.sets, w.sets))
+        is Win.AllAdjustedSets -> res.getQuantityString(R.plurals.debrief_win_all_adjusted_sets, w.sets, w.sets)
         is Win.WeeklyTarget -> res.getString(R.string.debrief_win_weekly, res.getQuantityString(R.plurals.debrief_n_workouts, w.target, w.target))
         is Win.BackAfterGap -> (w.days / 7).let { weeks -> res.getString(R.string.debrief_win_back, name(w.exerciseId), res.getQuantityString(R.plurals.debrief_n_weeks, weeks, weeks)) }
         is Win.NewStarts -> res.getString(R.string.debrief_win_new_starts, res.getQuantityString(R.plurals.debrief_n_new_exercises, w.count, w.count))

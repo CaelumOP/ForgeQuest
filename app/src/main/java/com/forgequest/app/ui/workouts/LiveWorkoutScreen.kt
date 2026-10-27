@@ -981,7 +981,7 @@ private fun WorkoutCompleteScreen(
     }
 }
 
-/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. */
+/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. A rough day from pain alone says so. */
 @Composable
 fun scoreReasons(r: WorkoutScore.Result): String {
     val sets = when {
@@ -991,7 +991,7 @@ fun scoreReasons(r: WorkoutScore.Result): String {
     }
     val up = if (r.compared > 0) stringResource(R.string.score_up, r.up, r.compared) else null
     val prs = if (r.prs > 0) pluralStringResource(R.plurals.score_prs, r.prs, r.prs) else null
-    val adjusted = if (r.rough) stringResource(R.string.score_adjusted) else null
+    val adjusted = if (r.rough) stringResource(if (r.lowRecovery) R.string.score_adjusted else R.string.score_adjusted_pain) else null
     return listOfNotNull(sets, up, prs, adjusted).joinToString(" · ")
 }
 
@@ -1021,7 +1021,9 @@ fun DebriefCard(
             Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
             if (score != null && score.showNumber) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = scoreColor(score.score))
         }
-        if (score != null && !score.showNumber) {
+        // The first-ever and comeback headlines already say what this line says.
+        val sameAsHeadline = debrief?.headline?.type.let { it == WorkoutDebriefMath.Headline.FIRST_EVER || it == WorkoutDebriefMath.Headline.AFTER_BREAK }
+        if (score != null && !score.showNumber && !sameAsHeadline) {
             Text(stringResource(if (score.firstEver) R.string.score_first_ever else R.string.score_after_break), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 2.dp))
         }
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))

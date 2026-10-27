@@ -30,7 +30,7 @@ class WorkoutScoreTest {
     // Each exercise has 3 sets, so 4 exercises are 12 sets.
     private fun same() = work(sets(3, 8, 50f), sets(3, 8, 50f))
     private fun up() = work(sets(3, 10, 50f), sets(3, 8, 50f))
-    // Rule A: a lighter weight at the same reps is SAME now, so a real drop also loses reps.
+    // A real drop: fewer reps at a lighter weight.
     private fun down() = work(sets(3, 6, 40f), sets(3, 8, 50f))
     private fun many(n: Int, f: () -> WorkoutScore.Work) = List(n) { f() }
 
@@ -88,6 +88,7 @@ class WorkoutScoreTest {
         val r = scoreOf(many(4, ::same), planned = 12, low = true)
         assertEquals(8, r.score)
         assertTrue(r.rough)
+        assertTrue(r.lowRecovery)
         assertEquals(8, scoreOf(listOf(down()) + many(3, ::same), planned = 12, low = true).score)
         assertEquals(8, scoreOf(many(4, ::down), planned = 12, low = true).score)
     }
@@ -108,6 +109,7 @@ class WorkoutScoreTest {
         val r = scoreOf(many(3, ::down) + painDown, planned = 12)
         assertEquals(6, r.score)
         assertTrue(r.rough)
+        assertFalse(r.lowRecovery)
         val stopped = work(listOf(set(8, 40f, effort = "PAIN")), sets(3, 8, 50f))
         assertEquals(8, scoreOf(listOf(stopped) + many(3, ::same), planned = 12).score)
     }
@@ -125,8 +127,11 @@ class WorkoutScoreTest {
     fun smallDropIsSameRealDropIsDown() {
         fun hold(s: Int) = set(0, 0f, seconds = s)
         assertEquals(WorkoutScore.Trend.SAME, trend(List(3) { hold(59) }, List(3) { hold(60) }, ExerciseKind.HOLD))
-        // Rule A: a lighter weight with the same reps keeps the total, so it holds steady (it was DOWN before).
+        // WEIGHTED "total fell" uses the volume (kg x reps): 57.5 vs 60 at the same reps is -4 %, so it holds steady.
         assertEquals(WorkoutScore.Trend.SAME, trend(sets(3, 8, 57.5f), sets(3, 8, 60f)))
+        // 12 vs 14 at the same reps: the best set and the volume both fell (-14 %), so it is a drop.
+        assertEquals(WorkoutScore.Trend.DOWN, trend(sets(3, 10, 12f), sets(3, 10, 14f)))
+        assertEquals(420.0, WorkoutScore.stats(ExerciseKind.WEIGHTED, "ex", sets(3, 10, 14f)).volume, 0.0)
         assertEquals(WorkoutScore.Trend.DOWN, trend(sets(3, 6, 57.5f), sets(3, 8, 60f)))
     }
 

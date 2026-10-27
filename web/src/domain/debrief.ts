@@ -19,13 +19,17 @@ import {
 
 const f = Math.fround
 
-/** In priority order (the first that matches wins), with how many wordings each has, picked by session id. */
+/**
+ * In priority order (the first that matches wins), with how many wordings each has, picked by session id. SOME_UP is
+ * checked before MIXED but listed last, so the string keys (debrief_h<position>_<n>) keep their numbers.
+ */
 export const HEADLINE_VARIANTS = {
   FIRST_EVER: 3, AFTER_BREAK: 3, ONLY_WARM_UPS: 2, ALL_NEW: 2, ROUGH_HELD: 3, ROUGH_SCALED: 3, SHORT: 3,
-  PR_AND_UP: 3, MOSTLY_UP: 3, ALL_SAME: 3, MIXED: 3, MOSTLY_DOWN: 3,
+  PR_AND_UP: 3, MOSTLY_UP: 3, ALL_SAME: 3, MIXED: 3, MOSTLY_DOWN: 3, SOME_UP: 3,
 } as const
 export type Headline = keyof typeof HEADLINE_VARIANTS
-export type HeadlineLine = { type: Headline; variant: number }
+/** SOME_UP carries its numbers: up on `up` of `compared` exercises. */
+export type HeadlineLine = { type: Headline; variant: number; up?: number; compared?: number }
 
 /** Weights are in kg; totals are reps, or seconds for holds. */
 export type Win =
@@ -36,7 +40,10 @@ export type Win =
   | { type: 'MORE_WORK'; exerciseId: string; kind: ExerciseKind; from: number; to: number }
   /** Same numbers with fewer Hard or more Easy sets than last time. */
   | { type: 'EFFORT_MASTERY'; exerciseId: string }
+  /** Every planned set done; `sets` is the done count. */
   | { type: 'ALL_SETS'; sets: number }
+  /** A rough day: fewer than planned, but at least the adjusted (effective) count; `sets` is the done count. */
+  | { type: 'ALL_ADJUSTED_SETS'; sets: number }
   | { type: 'WEEKLY_TARGET'; target: number }
   | { type: 'BACK_AFTER_GAP'; exerciseId: string; days: number }
   /** Starting numbers set for `count` new exercises. */
@@ -151,19 +158,25 @@ export function computeDebrief(input: DebriefInput): DebriefResult {
     })
   }
   const rough = score.rough || exs.some((x) => x.pain)
-  const headline = pickHeadline(input, exs, rough)
+  const lowRecovery = score.lowRecovery ?? false
+  const headline = pickHeadline(input, exs, lowRecovery)
   const { next, sameRest } = nextTime(input, exs)
+  const variant = ((input.sessionId % HEADLINE_VARIANTS[headline]) + HEADLINE_VARIANTS[headline]) % HEADLINE_VARIANTS[headline]
+  const compared = exs.filter((x) => x.trend != null)
   return {
-    headline: { type: headline, variant: ((input.sessionId % HEADLINE_VARIANTS[headline]) + HEADLINE_VARIANTS[headline]) % HEADLINE_VARIANTS[headline] },
+    headline: headline === 'SOME_UP'
+      ? { type: headline, variant, up: compared.filter((x) => x.trend === 'UP').length, compared: compared.length }
+      : { type: headline, variant },
     wins: wins(input, exs, headline),
     watch: watch(input, exs, headline, rough),
     next,
     sameRest,
-    footnote: input.healthOn || rough,
+    footnote: input.healthOn || lowRecovery,
   }
 }
 
-function pickHeadline(input: DebriefInput, exs: Ex[], rough: boolean): Headline {
+/** Headlines 5 and 6 only on a low-recovery day; pain alone forgives its own exercise and the normal order runs. */
+function pickHeadline(input: DebriefInput, exs: Ex[], lowRecovery: boolean): Headline {
   const score = input.score
   const compared = exs.filter((x) => x.trend != null)
   const up = compared.filter((x) => x.trend === 'UP').length
@@ -174,12 +187,14 @@ function pickHeadline(input: DebriefInput, exs: Ex[], rough: boolean): Headline 
   if (score.afterBreak) return 'AFTER_BREAK'
   if (!exs.length) return 'ONLY_WARM_UPS'
   if (!compared.length) return 'ALL_NEW'
-  if (rough && !downs.length) return 'ROUGH_HELD'
-  if (rough && unforgiven === 0) return 'ROUGH_SCALED'
+  if (lowRecovery && !downs.length) return 'ROUGH_HELD'
+  if (lowRecovery && unforgiven === 0) return 'ROUGH_SCALED'
   if (effective != null && score.doneSets * 4 < effective * 3 && score.prs === 0) return 'SHORT'
   if (score.prs > 0 && up * 2 >= compared.length) return 'PR_AND_UP'
   if (up * 2 >= compared.length || score.prs > 0) return 'MOSTLY_UP'
   if (up === 0 && unforgiven === 0) return 'ALL_SAME'
+  // Up on some (under half, no PR) and nothing left unforgiven below last time.
+  if (up > 0 && unforgiven === 0) return 'SOME_UP'
   if (unforgiven * 2 <= compared.length) return 'MIXED'
   return 'MOSTLY_DOWN'
 }
@@ -217,9 +232,10 @@ function wins(input: DebriefInput, exs: Ex[], headline: Headline): Win[] {
       candidates.push({ type: 'EFFORT_MASTERY', exerciseId: x.id })
     }
   }
-  // 5. Every planned set (as the score counts them) done.
+  // 5. Every planned set done, or on a rough day every adjusted one (as the score counts them); the done count shows.
   const effective = score.effectiveSets ?? null
-  if (effective != null && score.doneSets >= effective) candidates.push({ type: 'ALL_SETS', sets: effective })
+  if (score.plannedSets != null && score.doneSets >= score.plannedSets) candidates.push({ type: 'ALL_SETS', sets: score.doneSets })
+  else if (effective != null && score.doneSets >= effective) candidates.push({ type: 'ALL_ADJUSTED_SETS', sets: score.doneSets })
   // 6. This workout is the one that reaches the weekly target.
   if (input.weeklyTarget > 0 && input.weekCount === input.weeklyTarget && input.weekCountBefore < input.weeklyTarget) {
     candidates.push({ type: 'WEEKLY_TARGET', target: input.weeklyTarget })
@@ -273,7 +289,10 @@ function watch(input: DebriefInput, exs: Ex[], headline: Headline, rough: boolea
   return []
 }
 
-/** Up to 3 change lines, and whether some exercise shown keeps its numbers. */
+/**
+ * Up to 3 change lines, then one hold-steady line (it changes nothing, so a fourth change never pushes it out), and
+ * whether some exercise shown keeps its numbers.
+ */
 function nextTime(input: DebriefInput, exs: Ex[]): { next: Next[]; sameRest: boolean } {
   const lines: { order: number; line: Next }[] = []
   let unchanged = false
@@ -286,7 +305,10 @@ function nextTime(input: DebriefInput, exs: Ex[]): { next: Next[]; sameRest: boo
     if (line) lines.push(line)
     else unchanged = true
   }
-  return { next: lines.sort((a, b) => a.order - b.order).slice(0, 3).map((l) => l.line), sameRest: unchanged }
+  lines.sort((a, b) => a.order - b.order)
+  const changes = lines.filter((l) => l.line.type !== 'HOLD_STEADY').slice(0, 3)
+  const steady = lines.filter((l) => l.line.type === 'HOLD_STEADY').slice(0, 1)
+  return { next: [...changes, ...steady].map((l) => l.line), sameRest: unchanged }
 }
 
 /** The one line for an exercise with its order, or null when its numbers stay the same. */

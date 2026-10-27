@@ -1069,6 +1069,7 @@
     <string name="score_first_ever">First one done. That\'s the hardest part.</string>
     <string name="score_after_break">Back in. That\'s what counts.</string>
     <string name="score_adjusted">Adjusted for recovery</string>
+    <string name="score_adjusted_pain">Adjusted for pain</string>
     <string name="debrief_next_time">Next time: %1$s</string>
     <string name="debrief_ask_coach">Ask the coach about this workout</string>
     <string name="debrief_same_rest">Everything else: same numbers.</string>
@@ -1137,6 +1138,13 @@
     <string name="debrief_h12_1">A lighter workout today. Strength is not a straight line, and showing up counts.</string>
     <string name="debrief_h12_2">Numbers dipped today, which happens in every training block. Rest up.</string>
     <string name="debrief_h12_3">Today felt heavier. Log it, recover, and come back fresh.</string>
+    <string name="debrief_h13_1">Up on %1$d of %2$d, the rest held steady.</string>
+    <string name="debrief_h13_2">Progress on %1$d of %2$d, steady on the rest.</string>
+    <string name="debrief_h13_3">A step forward on %1$d of %2$d, and nothing slipped.</string>
+    <plurals name="debrief_win_all_adjusted_sets">
+        <item quantity="one">%1$d adjusted set done for today\'s recovery</item>
+        <item quantity="other">All %1$d adjusted sets done for today\'s recovery</item>
+    </plurals>
     <plurals name="debrief_n_reps">
         <item quantity="one">%1$d rep</item>
         <item quantity="other">%1$d reps</item>

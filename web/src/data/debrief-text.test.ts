@@ -36,6 +36,16 @@ describe('debrief text', () => {
     expect(en.sameRest).toBe('Everything else: same numbers.')
   })
 
+  it('SOME_UP shows its numbers; adjusted sets have their own line', () => {
+    const d: DebriefResult = { ...base, headline: { type: 'SOME_UP', variant: 0, up: 1, compared: 4 }, wins: [{ type: 'ALL_ADJUSTED_SETS', sets: 7 }] }
+    const en = debriefLines(d, 'en', name, (kg) => `${kg}`)
+    expect(en.headline).toBe('Up on 1 of 4, the rest held steady.')
+    expect(en.wins[0]).toBe("All 7 adjusted sets done for today's recovery")
+    const ar = debriefLines(d, 'ar', name, (kg) => `${kg}`)
+    expect(ar.headline).toContain('1 من 4')
+    expect(ar.wins[0]).toContain('(7)')
+  })
+
   it('uses Arabic plurals and no arrows', () => {
     const d: DebriefResult = {
       ...base,

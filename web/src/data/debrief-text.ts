@@ -42,6 +42,7 @@ export function debriefLines(d: DebriefResult, lang: Lang, name: (id: string) =>
           : t('debrief_win_more_reps', name(w.exerciseId), w.from, reps(w.to))
       case 'EFFORT_MASTERY': return t('debrief_win_effort', name(w.exerciseId))
       case 'ALL_SETS': return t('debrief_win_all_sets', n('debrief_n_sets', w.sets))
+      case 'ALL_ADJUSTED_SETS': return n('debrief_win_all_adjusted_sets', w.sets)
       case 'WEEKLY_TARGET': return t('debrief_win_weekly', n('debrief_n_workouts', w.target))
       case 'BACK_AFTER_GAP': return t('debrief_win_back', name(w.exerciseId), n('debrief_n_weeks', Math.trunc(w.days / 7)))
       case 'NEW_STARTS': return t('debrief_win_new_starts', n('debrief_n_new_exercises', w.count))
@@ -90,7 +91,8 @@ export function debriefLines(d: DebriefResult, lang: Lang, name: (id: string) =>
   const variants = HEADLINE_VARIANTS[d.headline.type]
   const variant = Math.min(Math.max(d.headline.variant, 0), variants - 1)
   return {
-    headline: t(`debrief_h${order}_${variant + 1}`),
+    // Only SOME_UP's wordings use the numbers; the others ignore them.
+    headline: t(`debrief_h${order}_${variant + 1}`, d.headline.up ?? 0, d.headline.compared ?? 0),
     wins: d.wins.map(win).filter((x): x is string => x != null),
     watch: d.watch.map(watch),
     next: d.next.map(next).filter((x): x is string => x != null).map((x) => t('debrief_next_time', x)),
