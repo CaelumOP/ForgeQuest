@@ -183,12 +183,22 @@ fun MuscleRecoveryMap(
             )
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            LegendDot(c.coral, stringResource(R.string.map_just_trained))
-            LegendDot(c.gold, stringResource(R.string.map_recovering))
-            LegendDot(c.teal, stringResource(R.string.map_almost_ready))
-            LegendDot(c.muscleRest, stringResource(R.string.map_fresh))
-        }
+        MapLegend()
+    }
+}
+
+/** Wraps onto a second line at large text sizes instead of running off the card. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun MapLegend() {
+    val c = Fit.colors
+    androidx.compose.foundation.layout.FlowRow(
+        Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        LegendDot(c.coral, stringResource(R.string.map_just_trained))
+        LegendDot(c.gold, stringResource(R.string.map_recovering))
+        LegendDot(c.teal, stringResource(R.string.map_almost_ready))
+        LegendDot(c.muscleRest, stringResource(R.string.map_fresh))
     }
 }
 

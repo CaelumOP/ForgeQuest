@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -708,9 +709,9 @@ fun ProfileScreen(nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         // Shortcuts to the screens that used to sit among the settings
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ShortcutCard(Icons.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f)) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
-            ShortcutCard(Icons.Rounded.FitnessCenter, c.blue, c.blueTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f)) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
+        Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ShortcutCard(Icons.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
+            ShortcutCard(Icons.Rounded.FitnessCenter, c.blue, c.blueTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -1681,8 +1682,14 @@ private fun SettingsGroup(
 /** Half-width card that opens another screen. */
 @Composable
 private fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    // At large text sizes the icon sits above the title, so a long word is never broken in the middle.
+    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
     FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (stacked) {
+            IconCircle(icon, tint, track, size = 40.dp)
+            Spacer(Modifier.height(8.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        } else Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(icon, tint, track, size = 40.dp)
             Spacer(Modifier.width(12.dp))
             Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)

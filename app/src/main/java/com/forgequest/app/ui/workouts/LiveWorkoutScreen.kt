@@ -791,14 +791,20 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
 private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Unit, onRemove: () -> Unit, onSkip: () -> Unit) {
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary)
-            Spacer(Modifier.width(10.dp))
-            Text("%d:%02d".format(secondsLeft / 60, secondsLeft % 60), style = MaterialTheme.typography.titleLarge, color = c.blue, modifier = Modifier.weight(1f))
-            TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary) }
-            TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary) }
-            TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal) }
+        // At large text sizes the three buttons drop to their own line, so the time never wraps digit by digit.
+        val big = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+        val buttons: @Composable () -> Unit = {
+            TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary, maxLines = 1) }
+            TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary, maxLines = 1) }
+            TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal, maxLines = 1) }
         }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
+            Spacer(Modifier.width(10.dp))
+            Text("%d:%02d".format(secondsLeft / 60, secondsLeft % 60), style = MaterialTheme.typography.titleLarge, color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+            if (!big) buttons()
+        }
+        if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }
         if (next != null) Text(stringResource(R.string.live_next, next), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(8.dp))
         ProgressLine(if (total == 0) 0f else secondsLeft / total.toFloat(), c.blue, c.blueTrack, height = 4.dp)

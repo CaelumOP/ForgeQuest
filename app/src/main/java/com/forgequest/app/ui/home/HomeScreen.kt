@@ -288,7 +288,7 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
                 if (s.settings.name.isNotBlank()) stringResource(R.string.home_greeting_name, greeting, s.settings.name) else greeting,
                 style = MaterialTheme.typography.headlineSmall,
                 color = c.textPrimary,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
@@ -553,6 +553,16 @@ private fun TodayCard(
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
     val noPlan = day == null
+    val big = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+    val action: @Composable () -> Unit = {
+        when {
+            hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)
+            doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
+            noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
+            !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
+            excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway)
+        }
+    }
     FitCard(onClick = onOpenPlan) {
         Text(stringResource(R.string.today_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(12.dp))
@@ -590,15 +600,13 @@ private fun TodayCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            when {
-                hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)
-                doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
-                noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
-                !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
-                excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway)
+            if (!big) {
+                Spacer(Modifier.width(12.dp))
+                action()
             }
         }
+        // At large text sizes the button sits under the text instead of squeezing it into a sliver.
+        if (big) Box(Modifier.fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.CenterEnd) { action() }
         if (lowRecovery != null && !isRest && !hasOpenSession && !doneToday && excused == null) {
             Spacer(Modifier.height(10.dp))
             Text(stringResource(R.string.today_low_recovery, lowRecovery), style = MaterialTheme.typography.bodySmall, color = c.gold)

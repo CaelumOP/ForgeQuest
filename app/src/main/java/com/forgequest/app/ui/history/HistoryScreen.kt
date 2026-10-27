@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -342,7 +343,8 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
     FitCard(onClick = onClick, padding = PaddingValues(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
-                Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(c.tealTrack),
+                // Grows with the text size instead of clipping the weekday.
+                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).clip(RoundedCornerShape(14.dp)).background(c.tealTrack).padding(horizontal = 6.dp, vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
                 Text(date.format(DateTimeFormatter.ofPattern("d")), style = MaterialTheme.typography.titleMedium, color = c.teal, fontWeight = FontWeight.Bold)
