@@ -225,13 +225,6 @@ fun HistoryScreen(nav: NavHostController) {
                                         modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 8.dp),
                                     )
                                 }
-                                remember(session.debrief) { com.forgequest.app.data.plan.WorkoutDebrief.decode(session.debrief) }?.let { d ->
-                                    Text(
-                                        d.summary,
-                                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                                        modifier = Modifier.padding(start = 12.dp, top = 2.dp, end = 8.dp),
-                                    )
-                                }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     TextButton(onClick = { noteFor = session }, modifier = Modifier.weight(1f, fill = false)) {
                                         Text(

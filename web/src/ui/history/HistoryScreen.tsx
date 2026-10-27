@@ -11,7 +11,7 @@ import { fromKg, unitLabel } from '../../domain/units'
 import type { WeightUnit } from '../../domain/units'
 import { Button, Card, EmptyState, Sheet, SwipeRow, TextField } from '../kit'
 import { ExpandMoreIcon } from '../icons'
-import { decodeDebrief, groupWeeks, minutesOf, scoreLine } from './helpers'
+import { groupWeeks, minutesOf, scoreLine } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { DebriefSheet } from './DebriefSheet'
 import './history.css'
@@ -130,7 +130,6 @@ export function HistoryScreen(_: { param?: string }) {
                     const mins = minutesOf(s)
                     const ex = [...new Set(ss.map((x) => x.exerciseId))].map((id) => names.get(id)).filter((n): n is string => !!n)
                     const prc = ss.filter((x) => x.isPr).length
-                    const d = decodeDebrief(s.debrief)
                     return (
                       <div class="hs-sess" key={s.id}>
                         <SwipeRow label={t('action_delete')} radius={24} srDelete onDelete={() => void removeWorkout(s)}>
@@ -146,7 +145,6 @@ export function HistoryScreen(_: { param?: string }) {
                         </Card>
                         </SwipeRow>
                         {scores.get(s.id!) && <p class="hs-debrief hs-score">{scoreLine(scores.get(s.id!)!)}</p>}
-                        {d && <p class="hs-debrief">{d.summary}</p>}
                         <div class="hs-actions">
                           <button type="button" class={`hs-notebtn${s.note ? ' has' : ''}`} onClick={() => { setNoteFor(s); setNoteText(s.note) }}>
                             {s.note || t('journal_add_note')}
