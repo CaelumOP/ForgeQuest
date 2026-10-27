@@ -10,6 +10,7 @@ import { EQUIPMENT, EQUIPMENT_LABEL, profileFor, rankSubstitutes, translateDraft
 import { isExerciseKind, isMuscle, MUSCLES, MUSCLE_INFO, type ExerciseKind } from '../domain/muscle';
 import { CUT_PACE, GAIN_PACE, MIN_SAFE_KCAL, MIN_SAFE_KCAL_MALE, weightTrendNote } from '../domain/nutrition';
 import { recordScore } from '../domain/progress';
+import type { WorkoutScoreResult } from '../domain/workout-score';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { BADGES, BADGES_BY_ID } from '../domain/badges';
 
@@ -26,7 +27,7 @@ export type PlanPatch = { changes: PlanChange[] };
 export type CoachPlan = PlanDraft & { basedOnHash?: string | null; patch?: PlanPatch | null };
 
 /** The coach's short take on a finished workout (Android WorkoutDebrief). */
-export type WorkoutDebrief = { score: number; summary: string; highlights: string[]; watch: string[]; nextTime: string[] };
+export type WorkoutDebrief = { score?: number; summary: string; highlights: string[]; watch: string[]; nextTime: string[] };
 
 // ---------------------------------------------------------------- Lenient JSON reading (Kotlin: isLenient, coerceInputValues)
 
@@ -406,11 +407,9 @@ export function describeChanges(patch: PlanPatch, library: Known, lang: string):
 
 // ---------------------------------------------------------------- Debrief
 
-export const MIN_SCORE = 4;
-
 /**
  * Reads the model's JSON (bare or fenced, with chatter around it); null when it isn't usable. Forgiving about shape,
- * since fast models drift: a score of 8 or "8/10", and a single string where a list was asked for.
+ * since fast models drift: a single string where a list was asked for. A "score" in the reply is ignored.
  */
 export function parseDebrief(text: string): WorkoutDebrief | null {
   const start = text.indexOf('{');
@@ -420,12 +419,9 @@ export function parseDebrief(text: string): WorkoutDebrief | null {
   if (!isObj(raw)) return null;
   const summary = strOr(raw.summary, '').trim();
   if (!summary) return null;
-  const score = typeof raw.score === 'number' || typeof raw.score === 'string' ? /\d+/.exec(String(raw.score))?.[0] : undefined;
-  if (score == null) return null;
   const list = (x: unknown, max: number) =>
     (Array.isArray(x) ? x : [x]).filter((v): v is string => typeof v === 'string').map((s) => s.trim()).filter(Boolean).slice(0, max);
   return {
-    score: clampN(parseInt(score, 10), MIN_SCORE, 10),
     summary: summary.slice(0, 240),
     highlights: list(raw.highlights, 2), watch: list(raw.watch, 1), nextTime: list(raw.nextTime ?? raw.next_time, 1),
   };
@@ -442,7 +438,7 @@ export function decodeDebriefFull(text: string): WorkoutDebrief | null {
   const summary = strOr(raw.summary, '');
   if (!summary.trim()) return null;
   return {
-    score: Math.round(Number(raw.score) || 0), summary,
+    ...(typeof raw.score === 'number' ? { score: Math.round(raw.score) } : {}), summary,
     highlights: strList(raw.highlights), watch: strList(raw.watch), nextTime: strList(raw.nextTime),
   };
 }
@@ -452,7 +448,19 @@ export type DebriefInput = {
   title: string; epochDay: number; minutes: number; goal: string; note: string
   readiness?: { recovery: number; sleepMin: number } | null
   exercises: { name: string; done: DebriefSet[]; lastTime: DebriefSet[] }[]
+  /** The calculated score, already worked out by the app (workout-score.ts). */
+  score?: WorkoutScoreResult | null
 };
+
+/** "Score (calculated by the app, do not change it): 8/10. All 12 sets, up on 3 of 4, 1 PR." */
+function scoreLine(r: WorkoutScoreResult): string {
+  const parts = [
+    r.plannedSets == null ? `${r.doneSets} sets` : r.doneSets >= r.plannedSets ? `All ${r.doneSets} sets` : `${r.doneSets} of ${r.plannedSets} sets`,
+    r.compared > 0 ? `up on ${r.up} of ${r.compared}` : null,
+    r.prs > 0 ? `${r.prs} ${r.prs > 1 ? 'PRs' : 'PR'}` : null,
+  ].filter((x): x is string => x != null);
+  return `Score (calculated by the app, do not change it): ${r.score}/10. ${parts.join(', ')}.\n`;
+}
 
 function debriefLine(list: readonly DebriefSet[]): string {
   return [...list].sort((a, b) => a.setIndex - b.setIndex).map((st) => [
@@ -471,6 +479,7 @@ export function debriefPayload(i: DebriefInput): string {
   let s = `Workout: ${i.title}, ${day}, ${i.minutes} min\nBody goal: ${i.goal}\n`;
   if (i.readiness) s += `Readiness that day: recovery ${i.readiness.recovery}%, sleep ${i.readiness.sleepMin} min\n`;
   if (i.note.trim()) s += `Their note: ${i.note}\n`;
+  if (i.score) s += scoreLine(i.score);
   for (const e of i.exercises) {
     s += `- ${e.name}: ${debriefLine(e.done)}\n`;
     if (e.lastTime.length) s += `  last time: ${debriefLine(e.lastTime)}\n`;
@@ -482,9 +491,9 @@ export function debriefSystem(lang: 'en' | 'ar'): string {
   const language = lang === 'ar' ? 'formal Modern Standard Arabic (Western digits)' : 'English';
   return [
     'You are a friendly strength coach writing a 10-second debrief of a finished workout.',
-    'Reply with ONLY a JSON object: {"score": 4-10, "summary": one short sentence, "highlights": [1-2 short items citing real numbers],',
+    'Reply with ONLY a JSON object: {"summary": one short sentence, "highlights": [1-2 short items citing real numbers],',
     '"watch": [0-1 short item: a stall, a pain/hard note, or low readiness], "nextTime": [1 short, concrete tip]}.',
-    'Finishing counts: never score below 4. Be specific, warm and brief. Write in ' + language + '.',
+    'The app already calculated the score and shows it; the summary must agree with it, never give your own. Be specific, warm and brief. Write in ' + language + '.',
   ].join('\n');
 }
 

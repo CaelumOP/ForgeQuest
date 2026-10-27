@@ -1,5 +1,6 @@
 import type { BadgeDef } from '../../domain/badges'
 import type { LevelInfo } from '../../domain/progress'
+import type { WorkoutScoreResult } from '../../domain/workout-score'
 
 /** What the "Workout complete" screen shows (Android WorkoutSummary). */
 export type WorkoutSummaryData = {
@@ -14,6 +15,8 @@ export type WorkoutSummaryData = {
   after: LevelInfo
   /** Next planned training day after today: day of week (1 = Monday) and title. */
   nextUp: { dow: number; title: string } | null
+  /** The calculated workout score and its reasons (domain/workout-score.ts). */
+  score?: WorkoutScoreResult | null
 }
 
 type PlanDays = { day: { dayOfWeek: number; title: string; isRest: boolean }; items: unknown[] }[]

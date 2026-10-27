@@ -4,12 +4,12 @@ import type { SessionRow, SetRow } from '../../data/db'
 import { putSession } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
-import { allDoneSets, useFinishedSessions, useLibrary } from '../../data/workouts'
+import { allDoneSets, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
 import { formatWeight } from '../../domain/units'
 import { Button, Card, EmptyState, Sheet, TextField } from '../kit'
 import { ExpandMoreIcon } from '../icons'
-import { decodeDebrief, groupWeeks, minutesOf } from './helpers'
+import { decodeDebrief, groupWeeks, minutesOf, scoreLine } from './helpers'
 import { DebriefSheet } from './DebriefSheet'
 import './history.css'
 
@@ -31,6 +31,7 @@ export function HistoryScreen(_: { param?: string }) {
   const [open, setOpen] = useState<Record<number, boolean>>({})
   const [noteFor, setNoteFor] = useState<SessionRow | null>(null)
   const [noteText, setNoteText] = useState('')
+  const scores = useWorkoutScores()
   const [debriefId, setDebriefId] = useState<number | null>(null)
 
   const debriefSession = sessions.find((x) => x.id === debriefId)
@@ -118,7 +119,8 @@ export function HistoryScreen(_: { param?: string }) {
                             </span>
                           </div>
                         </Card>
-                        {d && <p class="hs-debrief">{t('debrief_journal', d.score, d.summary)}</p>}
+                        {scores.get(s.id!) && <p class="hs-debrief hs-score">{scoreLine(scores.get(s.id!)!)}</p>}
+                        {d && <p class="hs-debrief">{d.summary}</p>}
                         <div class="hs-actions">
                           <button type="button" class={`hs-notebtn${s.note ? ' has' : ''}`} onClick={() => { setNoteFor(s); setNoteText(s.note) }}>
                             {s.note || t('journal_add_note')}
@@ -134,7 +136,7 @@ export function HistoryScreen(_: { param?: string }) {
           )
         })}
       </div>
-      {debriefSession && <DebriefSheet key={debriefSession.id} session={debriefSession} onClose={() => setDebriefId(null)} />}
+      {debriefSession && <DebriefSheet key={debriefSession.id} session={debriefSession} score={scores.get(debriefSession.id!)} onClose={() => setDebriefId(null)} />}
       <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={t('history_web_note_title')}>
         <div class="hs-sheet">
           <TextField label={t('history_web_note_title')} value={noteText} onInput={(v) => setNoteText(v.slice(0, 300))} multiline placeholder={t('history_web_note_hint')} />

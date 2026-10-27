@@ -25,6 +25,7 @@ import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutScore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -368,6 +369,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     private suspend fun lowReadinessToday(): Boolean {
         val day = db.readiness().get(Dates.today()) ?: return false
         return Readiness.call(day.recovery).let { it == DayCall.EASE_OFF || it == DayCall.RECOVER }
+    }
+
+    /** The calculated score of every finished workout in [snap], from data already loaded plus two small queries (plan items, recovery). */
+    suspend fun scores(snap: ProgressSnapshot): Map<Long, WorkoutScore.Result> {
+        val planned = plans.allItems().groupBy { it.dayId }.mapValues { (_, items) -> items.sumOf { it.sets } }
+        val rough = db.readiness().all().filter { Readiness.call(it.recovery).let { c -> c == DayCall.EASE_OFF || c == DayCall.RECOVER } }.map { it.epochDay }.toSet()
+        return WorkoutScore.forSessions(snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough)
     }
 
     fun targetLabel(kind: ExerciseKind, item: PlanItemEntity?): String {

@@ -1084,11 +1084,21 @@
     <string name="coach_stale_apply">Apply anyway</string>
     <string name="debrief_title">Coach\'s debrief</string>
     <string name="debrief_score">%1$d/10</string>
+    <string name="score_title">Workout score</string>
     <string name="debrief_loading">Your coach is reviewing this workout…</string>
     <string name="debrief_next_time">Next time: %1$s</string>
-    <string name="debrief_journal">Coach %1$d/10: %2$s</string>
+    <plurals name="score_sets_all">
+        <item quantity="one">All %1$d set</item>
+        <item quantity="other">All %1$d sets</item>
+    </plurals>
+    <string name="score_sets_of">%1$d of %2$d sets</string>
+    <string name="score_up">Up on %1$d of %2$d</string>
+    <plurals name="score_prs">
+        <item quantity="one">%1$d PR</item>
+        <item quantity="other">%1$d PRs</item>
+    </plurals>
     <string name="debrief_setting">Workout debrief</string>
-    <string name="debrief_setting_hint">A short AI review with a score and one tip after each workout</string>
+    <string name="debrief_setting_hint">A short AI review and one tip after each workout</string>
     <string name="debrief_failed">Your coach couldn\'t write this debrief. Check your connection and try again.</string>
     <string name="debrief_open">Coach debrief</string>
     <string name="debrief_no_key">Add a free Gemini or Groq key in Profile to get coach debriefs.</string>

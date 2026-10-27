@@ -1,6 +1,6 @@
 {
-  "versionCode": 26,
-  "versionName": "2.14.1",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.14.1/ForgeQuest-v2.14.1.apk",
-  "notes": "• Coach debrief: Gemini now writes it first, with Groq as the backup.\n• Updates: what's new shows once, after the update installs, not when checking."
+  "versionCode": 27,
+  "versionName": "2.15.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.15.0/ForgeQuest-v2.15.0.apk",
+  "notes": "• Workout score: now calculated from your sets, last time and PRs, with the reasons shown. Every journal workout has one, no AI key needed.\n• Coach debrief: the coach explains the score instead of guessing it."
 }

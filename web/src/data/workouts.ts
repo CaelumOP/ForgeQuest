@@ -16,6 +16,7 @@ import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
 import { personalRecords, recordScore, totalXp } from '../domain/progress';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
 import { nextPrefill, type PastSet } from '../domain/progression';
+import { scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
 export type ActivePlan = { plan: PlanRow; days: PlanDayWithItems[] };
@@ -477,6 +478,19 @@ export async function allDoneSets(): Promise<SetRow[]> {
   const finished = new Set((await finishedSessions()).map((s) => s.id!));
   return (await db.sets.filter((s) => s.done).toArray()).filter((s) => finished.has(s.sessionId));
 }
+
+/** The calculated score of every finished workout (domain/workout-score.ts): five small reads, never one query per row. */
+export async function allWorkoutScores(): Promise<Map<number, WorkoutScoreResult>> {
+  const [sessions, doneSets, items, readiness, library] = await Promise.all([
+    finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(),
+  ]);
+  const planned = new Map<number, number>();
+  for (const i of items) planned.set(i.dayId, (planned.get(i.dayId) ?? 0) + i.sets);
+  // Ease off (34-49) and recover (below 34): Android Readiness.call is under 50.
+  const rough = new Set(readiness.filter((r) => r.recovery < 50).map((r) => r.epochDay));
+  return scoresForSessions(sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, rough);
+}
+export const useWorkoutScores = (): Map<number, WorkoutScoreResult> => useLive(allWorkoutScores, [], new Map());
 
 /** Edits a set of a finished workout and re-checks which sets of that exercise are records. */
 export async function updateFinishedSet(set: SetRow): Promise<void> {

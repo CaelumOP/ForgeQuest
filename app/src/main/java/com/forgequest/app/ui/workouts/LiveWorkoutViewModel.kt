@@ -61,6 +61,8 @@ data class WorkoutSummary(
     val nextUp: Pair<Int, String>? = null,
     /** No reminder set yet and still one of the first workouts: offer one while consistency is fragile. */
     val offerReminder: Boolean = false,
+    /** The calculated workout score and its reasons (domain/WorkoutScore.kt). */
+    val score: com.forgequest.app.domain.WorkoutScore.Result? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -419,6 +421,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     after = after,
                     nextUp = nextUp,
                     offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
+                    score = repo.scores(snap)[s.id],
                 )
                 if (snap.settings.debriefEnabled && app.coach.canDebrief()) {
                     debriefSessionId = s.id

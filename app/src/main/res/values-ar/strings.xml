@@ -1193,11 +1193,29 @@
     <string name="coach_stale_apply">طبّقها على أي حال</string>
     <string name="debrief_title">ملخص المدرب</string>
     <string name="debrief_score">%1$d/10</string>
+    <string name="score_title">تقييم التمرين</string>
     <string name="debrief_loading">يراجع مدربك هذا التمرين…</string>
     <string name="debrief_next_time">في المرة القادمة: %1$s</string>
-    <string name="debrief_journal">المدرب %1$d/10: %2$s</string>
+    <plurals name="score_sets_all">
+        <item quantity="zero">كل المجموعات (%1$d)</item>
+        <item quantity="one">المجموعة الوحيدة</item>
+        <item quantity="two">المجموعتان كلتاهما</item>
+        <item quantity="few">كل المجموعات (%1$d)</item>
+        <item quantity="many">كل المجموعات (%1$d)</item>
+        <item quantity="other">كل المجموعات (%1$d)</item>
+    </plurals>
+    <string name="score_sets_of">%1$d من %2$d مجموعة</string>
+    <string name="score_up">تحسّن في %1$d من %2$d</string>
+    <plurals name="score_prs">
+        <item quantity="zero">0 رقم قياسي</item>
+        <item quantity="one">رقم قياسي واحد</item>
+        <item quantity="two">رقمان قياسيان</item>
+        <item quantity="few">%1$d أرقام قياسية</item>
+        <item quantity="many">%1$d رقمًا قياسيًا</item>
+        <item quantity="other">%1$d رقم قياسي</item>
+    </plurals>
     <string name="debrief_setting">ملخص ما بعد التمرين</string>
-    <string name="debrief_setting_hint">مراجعة قصيرة بالذكاء الاصطناعي مع تقييم ونصيحة بعد كل تمرين</string>
+    <string name="debrief_setting_hint">مراجعة قصيرة بالذكاء الاصطناعي ونصيحة بعد كل تمرين</string>
     <string name="debrief_failed">تعذّر على مدربك كتابة هذا الملخص. تحقّق من اتصالك ثم أعد المحاولة.</string>
     <string name="debrief_open">ملخص المدرب</string>
     <string name="debrief_no_key">أضف مفتاح Gemini أو Groq المجاني من الملف الشخصي لتحصل على ملخصات المدرب.</string>

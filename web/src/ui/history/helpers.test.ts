@@ -21,7 +21,7 @@ describe('history helpers', () => {
   it('decodes debriefs', () => {
     expect(decodeDebrief('')).toBeNull()
     expect(decodeDebrief('nope')).toBeNull()
-    expect(decodeDebrief('{"score":2,"summary":" ok "}')).toEqual({ score: 4, summary: 'ok', nextTime: [] })
+    expect(decodeDebrief('{"score":2,"summary":" ok "}')).toEqual({ summary: 'ok', nextTime: [] })
     expect(decodeDebrief('{"score":9,"summary":"x","nextTime":["add"]}')?.nextTime).toEqual(['add'])
   })
   it('minutes and iso days', () => {

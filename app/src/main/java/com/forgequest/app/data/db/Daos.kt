@@ -74,6 +74,10 @@ interface PlanDao {
     @Query("SELECT * FROM plan_items WHERE dayId = :dayId ORDER BY position")
     suspend fun items(dayId: Long): List<PlanItemEntity>
 
+    /** Every plan item, for the journal's planned-set totals in one query. */
+    @Query("SELECT * FROM plan_items")
+    suspend fun allItems(): List<PlanItemEntity>
+
     @Query("SELECT pi.* FROM plan_items pi JOIN plan_days pd ON pi.dayId = pd.id WHERE pd.planId = :planId ORDER BY pd.dayOfWeek, pi.position")
     fun observeAllItems(planId: Long): Flow<List<PlanItemEntity>>
 

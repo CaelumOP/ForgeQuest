@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
 import type { SessionRow } from '../../data/db'
+import type { WorkoutScoreResult } from '../../domain/workout-score'
 import { canDebrief, generateDebrief } from '../../data/coach-chat'
 import { decodeDebriefFull } from '../../data/coach'
 import { useSettings } from '../../data/settings'
 import { Button, Sheet } from '../kit'
+import { scoreReasons } from './helpers'
 
 /** The journal's coach debrief for one workout: the saved one, or the coach writing it now, with Try again on failure. */
-export function DebriefSheet({ session, onClose }: { session: SessionRow; onClose: () => void }) {
+export function DebriefSheet({ session, score, onClose }: { session: SessionRow; score?: WorkoutScoreResult; onClose: () => void }) {
   const settings = useSettings()
   const debrief = decodeDebriefFull(session.debrief)
   const hasKey = canDebrief(settings)
@@ -31,11 +33,19 @@ export function DebriefSheet({ session, onClose }: { session: SessionRow; onClos
     <Sheet open onClose={onClose} title={session.title}>
       <div class="hs-sheet">
         <p class="hs-deb-date">{date}</p>
+        {score && (
+          <div class="hs-deb-card">
+            <div class="hs-deb-head">
+              <span class="hs-deb-title">{t('score_title')}</span>
+              <span class="hs-deb-gold">{t('debrief_score', score.score)}</span>
+            </div>
+            <p class="hs-deb-body">{scoreReasons(score)}</p>
+          </div>
+        )}
         {!debrief && !hasKey ? <p class="hs-deb-body">{t('debrief_no_key')}</p> : (
           <div class="hs-deb-card">
             <div class="hs-deb-head">
               <span class="hs-deb-title">{t('debrief_title')}</span>
-              {debrief && <span class="hs-deb-gold">{t('debrief_score', debrief.score)}</span>}
             </div>
             {debrief ? (
               <>

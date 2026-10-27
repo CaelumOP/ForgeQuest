@@ -92,6 +92,7 @@ import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.SetEffort
+import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
@@ -898,10 +899,10 @@ private fun WorkoutCompleteScreen(
                 }
             }
         }
-        AnimatedVisibility(debrief != null || debriefLoading || debriefFailed) {
+        AnimatedVisibility(sum.score != null || debrief != null || debriefLoading || debriefFailed) {
             Column {
                 Spacer(Modifier.height(12.dp))
-                DebriefCard(debrief, failed = debriefFailed && !debriefLoading, onRetry = onRetryDebrief)
+                DebriefCard(debrief, sum.score, failed = debriefFailed && !debriefLoading, waiting = debriefLoading, onRetry = onRetryDebrief)
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -909,26 +910,45 @@ private fun WorkoutCompleteScreen(
     }
 }
 
+/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. */
+@Composable
+fun scoreReasons(r: WorkoutScore.Result): String {
+    val sets = when {
+        r.plannedSets == null -> pluralStringResource(R.plurals.hist_sets, r.doneSets, r.doneSets)
+        r.doneSets >= r.plannedSets -> pluralStringResource(R.plurals.score_sets_all, r.doneSets, r.doneSets)
+        else -> stringResource(R.string.score_sets_of, r.doneSets, r.plannedSets)
+    }
+    val up = if (r.compared > 0) stringResource(R.string.score_up, r.up, r.compared) else null
+    val prs = if (r.prs > 0) pluralStringResource(R.plurals.score_prs, r.prs, r.prs) else null
+    return listOfNotNull(sets, up, prs).joinToString(" · ")
+}
+
+/** "8/10 · All 12 sets · Up on 3 of 4 · 1 PR". */
+@Composable
+fun scoreLine(r: WorkoutScore.Result): String = stringResource(R.string.debrief_score, r.score) + " · " + scoreReasons(r)
+
 /**
- * The coach's take on the workout: score, what went well, one thing to watch, one tip. Null shows it loading, or with
- * [failed], that the coach couldn't write it and a Try again.
+ * The workout: the calculated score with its reasons at once, then the coach's words (one thing that went well, one to watch, one tip).
+ * A null [d] shows the wait while [waiting], or with [failed], that the coach couldn't write it and a Try again; with neither, only the score.
  */
 @Composable
-fun DebriefCard(d: WorkoutDebrief?, failed: Boolean = false, onRetry: () -> Unit = {}) {
+fun DebriefCard(d: WorkoutDebrief?, score: WorkoutScore.Result?, failed: Boolean = false, waiting: Boolean = true, onRetry: () -> Unit = {}) {
     val c = Fit.colors
+    val coachPart = d != null || failed || waiting
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-            if (d != null) Text(stringResource(R.string.debrief_score, d.score), style = MaterialTheme.typography.titleMedium, color = c.gold)
+            Text(stringResource(if (coachPart) R.string.debrief_title else R.string.score_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            if (score != null) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = c.gold)
         }
-        Spacer(Modifier.height(6.dp))
+        if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
+        if (coachPart) Spacer(Modifier.height(6.dp))
         if (d == null && failed) {
             Text(stringResource(R.string.debrief_failed), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 0.dp)) {
                 Text(stringResource(R.string.action_try_again), color = c.teal)
             }
         } else if (d == null) {
-            Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            if (waiting) Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         } else {
             Text(d.summary, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
             // Green for what went well, gold for what to watch, blue for next time.

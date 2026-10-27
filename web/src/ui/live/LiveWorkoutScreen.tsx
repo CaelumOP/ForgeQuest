@@ -3,7 +3,7 @@ import { getLang, plural, t, useLang } from '../../i18n'
 import type { ExerciseRow, SetRow } from '../../data/db'
 import { configuredEquipment, useSettings, weightUnit } from '../../data/settings'
 import {
-  addCustomExercise, addExercise, addSet, discardSession, finishSession, harderHint, recentDoneSets, removeSet, stepUp, swapExercise, updateSet,
+  addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishSession, harderHint, recentDoneSets, removeSet, stepUp, swapExercise, updateSet,
   useLibrary, useOpenSession, useSets, type FinishResult,
 } from '../../data/workouts'
 import { weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
@@ -243,6 +243,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
         sessionId: sid, title: result.sessionTitle, doneSets: result.doneSets, minutes: workoutMinutes(startedAt, Date.now()),
         prs: result.prs, newBadges: badges, xpGained: snap.level.totalXp - before.totalXp, before, after: snap.level,
         nextUp: nextUpDay(snap.plan?.days ?? [], dayOfWeek(todayEpochDay())),
+        score: (await allWorkoutScores()).get(sid) ?? null,
       })
     } catch {
       toast(t('live_web_save_failed'))

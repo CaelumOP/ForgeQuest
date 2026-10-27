@@ -13,7 +13,7 @@ import { db, type ChatRow, type ExerciseRow } from './db';
 import { useLive } from './live';
 import { getProgressSnapshot, type ProgressSnapshot } from './progress';
 import { configuredEquipment, loadSettings, updateSettings, type Settings } from './settings';
-import { applyPlan, doneSetsBefore, planToDraft } from './workouts';
+import { allWorkoutScores, applyPlan, doneSetsBefore, planToDraft } from './workouts';
 import { adaptPlanToEquipment, inferEquipmentFromText, type Equipment } from '../domain/exercise-swap-engine';
 import { todayEpochDay } from '../domain/dates';
 
@@ -261,7 +261,7 @@ export async function generateDebrief(sessionId: number, onDemand = false): Prom
     title: session.title, epochDay: session.epochDay, goal: s.nutritionGoal, note: session.note,
     minutes: Math.trunc(((session.finishedAt ?? Date.now()) - session.startedAt) / 60_000),
     readiness: readiness ? { recovery: readiness.recovery, sleepMin: readiness.sleepMin } : null,
-    exercises,
+    exercises, score: (await allWorkoutScores()).get(sessionId) ?? null,
   });
   const system = debriefSystem(getLang());
   const ctl = new AbortController();
