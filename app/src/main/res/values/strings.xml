@@ -1304,8 +1304,8 @@
     <string name="food_setup_title">Set up food targets · 1 min</string>
     <string name="food_setup_body">Add your weight, height and age to get calorie and protein targets that fit you.</string>
     <plurals name="target_nudge_body">
-        <item quantity="one">You've trained %1$d time a week lately. Make %1$d your weekly target?</item>
-        <item quantity="other">You've trained %1$d times a week lately. Make %1$d your weekly target?</item>
+        <item quantity="one">You\'ve trained %1$d time a week lately. Make %1$d your weekly target?</item>
+        <item quantity="other">You\'ve trained %1$d times a week lately. Make %1$d your weekly target?</item>
     </plurals>
     <string name="target_nudge_make">Make it %1$d</string>
     <string name="target_nudge_keep">Keep %1$d</string>
