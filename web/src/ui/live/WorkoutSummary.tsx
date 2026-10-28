@@ -58,7 +58,7 @@ export function WorkoutSummary({ sum, onDone, onView }: { sum: WorkoutSummaryDat
             <div class="lws-line"><span class="lws-cal"><CalendarIcon size={20} /></span><span>{t('live_next_up', dayName(sum.nextUp.dow, lang), sum.nextUp.title)}</span></div>
           </Card>
         )}
-        {sum.score && <Card class="lws-card"><DebriefCard sessionId={sum.sessionId} score={sum.score} /></Card>}
+        {sum.score && <Card class="lws-card"><DebriefCard sessionId={sum.sessionId} score={sum.score} celebrate /></Card>}
         <div class="lws-actions">
           <Button block onClick={onDone}>{t('home_done')}</Button>
           <Button block variant="tonal" onClick={onView}>{t('live_web_view_workout')}</Button>
