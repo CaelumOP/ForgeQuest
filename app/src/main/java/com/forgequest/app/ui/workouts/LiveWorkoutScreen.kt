@@ -755,7 +755,7 @@ private fun EffortGroup(selected: String, onSelect: (SetEffort) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(end = 8.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         entries.forEachIndexed { i, e ->
             val isSel = selected == e.name
-            val full = 50.dp
+            val full = 20.dp // half the 40 dp minimum height
             val seam = 6.dp
             val startCorner by animateDpAsState(if (isSel || i == 0) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortStart")
             val endCorner by animateDpAsState(if (isSel || i == entries.lastIndex) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortEnd")

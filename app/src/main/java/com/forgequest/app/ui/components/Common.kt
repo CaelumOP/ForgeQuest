@@ -6,6 +6,7 @@ import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.effectsSpec
 import com.forgequest.app.ui.theme.spatialSpec
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.SizeTransform
@@ -190,7 +191,10 @@ fun PillButton(
     // Pressed, the pill squares off to 12 dp corners and springs back on release.
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val corner by animateDpAsState(if (pressed) 12.dp else 50.dp, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "pillCorner")
+    // Half the button's height is a full pill; measured so the spring starts moving at once instead of from a clamped 50 dp.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var half by remember { mutableStateOf(24.dp) }
+    val corner by animateDpAsState(if (pressed) 12.dp else half, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "pillCorner")
     Surface(
         onClick = onClick,
         enabled = enabled,
@@ -198,7 +202,7 @@ fun PillButton(
         shape = RoundedCornerShape(corner),
         color = if (enabled) container else Fit.colors.cardHigh,
         contentColor = if (enabled) content else Fit.colors.textSecondary,
-        modifier = modifier,
+        modifier = modifier.onSizeChanged { half = with(density) { (it.height / 2).toDp() } },
     ) {
         Row(
             Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
