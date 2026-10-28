@@ -541,13 +541,14 @@ private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: (
 @Composable
 private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
     val c = Fit.colors
-    val kcal = meals.sumOf { it.kcal }
+    val kcal = com.forgequest.app.ui.components.tweenedInt(meals.sumOf { it.kcal })
     val protein = meals.sumOf { it.protein.toDouble() }.toFloat()
+    val proteinShown = com.forgequest.app.ui.components.tweenedInt(protein.roundToInt())
     val over = kcal > s.settings.kcalGoal
     FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
         Row {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.food_protein_of_goal, protein.roundToInt(), s.settings.proteinGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = c.teal)
+                Text(stringResource(R.string.food_protein_of_goal, proteinShown, s.settings.proteinGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = c.teal)
                 Text(stringResource(R.string.label_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 Spacer(Modifier.height(6.dp))
                 ProgressLine(protein / s.settings.proteinGoal.coerceAtLeast(1), c.teal, c.tealTrack, height = 5.dp)

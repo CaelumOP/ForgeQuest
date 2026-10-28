@@ -88,6 +88,7 @@ import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ConcentricRings
+import com.forgequest.app.ui.components.tweenedInt
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.Sparkline
 import com.forgequest.app.ui.components.IconCircle
@@ -372,9 +373,9 @@ private fun NutritionRings(s: ProgressSnapshot) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Units under the numbers: without them "66 / 1,005" read like a score (Google Fit labels its ring centre too).
-                Text("${s.today.protein.roundToInt()}", style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
+                Text("${tweenedInt(s.today.protein.roundToInt())}", style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
                 Text(stringResource(R.string.home_center_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Text(stringResource(R.string.home_center_kcal, "%,d".format(s.today.kcal)), style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.home_center_kcal, "%,d".format(tweenedInt(s.today.kcal))), style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -398,8 +399,9 @@ private fun Legend(color: Color, text: String) {
 @Composable
 private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
     val c = Fit.colors
-    val proteinLeft = Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein)
-    val kcalLeft = s.settings.kcalGoal - s.today.kcal
+    // The numbers glide to their new values after a meal is logged.
+    val proteinLeft = tweenedInt(Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein))
+    val kcalLeft = tweenedInt(s.settings.kcalGoal - s.today.kcal)
     Row(Modifier.fillMaxWidth()) {
         StatColumn(
             if (proteinLeft > 0) stringResource(R.string.home_protein_left_value, proteinLeft) else stringResource(R.string.home_done),

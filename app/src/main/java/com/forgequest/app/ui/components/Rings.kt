@@ -3,6 +3,15 @@ package com.forgequest.app.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.LocalReducedMotion
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -57,7 +66,25 @@ fun ConcentricRings(
     description: String? = null,
     center: @Composable () -> Unit = {},
 ) {
-    val progress = rings.mapIndexed { i, r -> animateFloatAsState(r.progress, spring(stiffness = Spring.StiffnessVeryLow), label = "ring$i") }
+    // First show: each ring sweeps in from 0 over 650 ms, 60 ms after the one outside it. Later changes glide on a soft
+    // spring. Reduced motion: the rings simply appear at their value.
+    val reduced = LocalReducedMotion.current
+    val progress = remember(rings.size) { List(rings.size) { i -> Animatable(if (reduced) rings[i].progress else 0f) } }
+    val swept = remember(rings.size) { BooleanArray(rings.size) }
+    rings.forEachIndexed { i, r ->
+        LaunchedEffect(i, r.progress, rings.size) {
+            val a = progress[i]
+            when {
+                reduced -> { swept[i] = true; a.snapTo(r.progress) }
+                !swept[i] -> {
+                    swept[i] = true
+                    delay(60L * i)
+                    a.animateTo(r.progress, tween(650, easing = ForgeMotion.Easing.EmphasizedDecelerate))
+                }
+                else -> a.animateTo(r.progress, spring(stiffness = Spring.StiffnessVeryLow))
+            }
+        }
+    }
     Box(modifier.size(size).ringSemantics(description), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size).clearAndSetSemantics {}) {
             val s = stroke.toPx()
@@ -86,6 +113,13 @@ private fun DrawScope.drawRing(radius: Float, stroke: Float, progress: Float, sp
         val extra = 360f * (progress - 1f).coerceAtMost(1f)
         drawArc(spec.color.copy(alpha = 0.55f), -90f, extra, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
     }
+}
+
+/** A number that glides to its new value (spring 0.8 / 400) instead of jumping; reduced motion jumps. */
+@Composable
+fun tweenedInt(value: Int): Int {
+    val v by animateIntAsState(value, if (LocalReducedMotion.current) snap() else spring(0.8f, 400f), label = "number")
+    return v
 }
 
 /** Single small ring, used for the week circles and rank badge. */
