@@ -113,4 +113,10 @@ div.wk-choice-main { cursor: default; }
 
 /* Drag handle on a plan row: touch-action none so the page doesn't scroll while dragging. */
 .wk-handle { touch-action: none; cursor: grab; color: var(--text-2); }
-.wk-item-drag { position: relative; z-index: 2; background: var(--card-high); box-shadow: 0 2px 10px rgb(0 0 0 / 0.2); }
+/* The lifted row (Android plan editor): raised on surface-container-highest with a soft 8dp-like shadow, corners 12 -> 20px. */
+.wk-item { transition: border-radius var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial), box-shadow var(--forge-spring-default-effects-duration) var(--forge-spring-effects), background-color var(--forge-spring-default-effects-duration) var(--forge-spring-effects); }
+.wk-item-drag { position: relative; z-index: 2; border-radius: 20px; background: var(--md-sys-color-surface-container-highest); box-shadow: 0 8px 16px rgb(0 0 0 / 0.22), 0 2px 6px rgb(0 0 0 / 0.14); }
+@media (prefers-reduced-motion: reduce) {
+  .wk-item { transition: background-color var(--forge-reduced-fade) linear; }
+  .wk-item-drag { border-radius: 12px; box-shadow: inset 0 0 0 2px var(--teal); }
+}
