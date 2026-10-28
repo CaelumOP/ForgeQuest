@@ -266,7 +266,8 @@ fun SegmentedTabs(
     val c = Fit.colors
     val tall = subs.isNotEmpty() || wrap
     // At large text sizes five equal slices can't hold their labels, so the row scrolls sideways with each label whole.
-    val scrolling = !tall && options.size >= 4 && reflowText()
+    val reflow = reflowText()
+    val scrolling = !tall && options.size >= 4 && reflow
     // Tall segments share one height, so a one-line option is as tall as a wrapped one.
     Row(
         modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh)
@@ -291,9 +292,11 @@ fun SegmentedTabs(
                         label,
                         style = MaterialTheme.typography.labelMedium,
                         color = if (isSel) c.onTeal else c.textPrimary,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
+                        // At large text the labels wrap to two lines instead of being cut short.
+                        maxLines = if (reflow && !scrolling) 2 else 1,
+                        softWrap = reflow && !scrolling,
+                        textAlign = TextAlign.Center,
+                        overflow = if (reflow && !scrolling) TextOverflow.Clip else TextOverflow.Ellipsis,
                         modifier = if (scrolling) Modifier else Modifier.weight(1f, fill = false),
                     )
                     if (i in dots) {

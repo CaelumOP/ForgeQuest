@@ -1222,7 +1222,6 @@ fun DebriefCard(
         }
         linesGo = true
     }
-    var line = 0
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -1255,11 +1254,11 @@ fun DebriefCard(
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
         if (lines != null) {
             Spacer(Modifier.height(6.dp))
-            Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, line++))
+            Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, 0))
             // Green for what went well, gold for what to watch, blue for next time.
-            lines.wins.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.riseIn(celebrate, linesGo, line++).padding(top = 4.dp)) }
-            lines.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.riseIn(celebrate, linesGo, line++).padding(top = 4.dp)) }
-            lines.next.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.riseIn(celebrate, linesGo, line++).padding(top = 4.dp)) }
+            lines.wins.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.riseIn(celebrate, linesGo, 1 + i).padding(top = 4.dp)) }
+            lines.watch.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.riseIn(celebrate, linesGo, 1 + lines.wins.size + i).padding(top = 4.dp)) }
+            lines.next.forEachIndexed { i, it -> Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.riseIn(celebrate, linesGo, 1 + lines.wins.size + lines.watch.size + i).padding(top = 4.dp)) }
             lines.sameRest?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
             lines.footnote?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp)) }
         }

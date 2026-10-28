@@ -188,8 +188,7 @@ private fun MainScaffold() {
                         selected = selected,
                         onClick = { nav.goToTab(tab.route) },
                         icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                        // No text-size cap: a long label at large text takes a second line.
-                        label = { Text(stringResource(tab.label), maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelMedium) },
+                        label = { NavLabel(stringResource(tab.label)) },
                         colors = NavigationRailItemDefaults.colors(
                             selectedIconColor = c.teal,
                             selectedTextColor = c.textPrimary,
@@ -215,8 +214,7 @@ private fun MainScaffold() {
                                 selected = selected,
                                 onClick = { nav.goToTab(tab.route) },
                                 icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                                // No text-size cap: five tabs share the width, so at large text a label wraps to two lines and the bar grows.
-                                label = { Text(stringResource(tab.label), maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelMedium) },
+                                label = { NavLabel(stringResource(tab.label)) },
                                 colors = itemColors,
                             )
                         }
@@ -302,5 +300,27 @@ fun NavHostController.goToTab(route: String) {
         popUpTo(Routes.HOME) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+/**
+ * A bar or rail label: one line, never split mid-word. This is the one kept text-size cap in the app (1.3x): a bar can't
+ * reflow, so its labels stop growing there while everything else follows the person's text size.
+ */
+@Composable
+private fun NavLabel(text: String) {
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, minOf(d.fontScale, 1.3f)),
+    ) {
+        // A long label (Arabic "الملف الشخصي") that still doesn't fit shrinks a step at a time until it does.
+        var shrink by androidx.compose.runtime.remember(text, d.fontScale) { androidx.compose.runtime.mutableFloatStateOf(1f) }
+        val style = MaterialTheme.typography.labelMedium
+        Text(
+            text, maxLines = 1, softWrap = false, textAlign = TextAlign.Center,
+            style = style.copy(fontSize = style.fontSize * shrink),
+            onTextLayout = { if (it.didOverflowWidth && shrink > 0.6f) shrink *= 0.92f },
+            modifier = Modifier.padding(horizontal = 6.dp),
+        )
     }
 }

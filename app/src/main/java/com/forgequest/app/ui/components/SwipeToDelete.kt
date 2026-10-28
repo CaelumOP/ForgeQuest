@@ -55,6 +55,16 @@ fun SwipeToDelete(
     val state = rememberSwipeToDismissBoxState(confirmValueChange = { target ->
         if (target == SwipeToDismissBoxValue.EndToStart) { latest(); true } else false
     })
+    // A row that was swiped away and then restored by Undo must show settled: the saved state can come back as
+    // "dismissed" (new composition) or the same row can stay composed; reset in both cases.
+    val startedDismissed = remember { state.currentValue == SwipeToDismissBoxValue.EndToStart }
+    LaunchedEffect(Unit) { if (startedDismissed) state.snapTo(SwipeToDismissBoxValue.Settled) }
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            kotlinx.coroutines.delay(600)
+            state.snapTo(SwipeToDismissBoxValue.Settled)
+        }
+    }
     // Crossing the delete line: one tick and the bin pops 0.8 -> 1.25 -> 1; backing off shrinks it to 0.8 again.
     val reduced = LocalReducedMotion.current
     val binScale = remember { Animatable(0.8f) }

@@ -63,6 +63,8 @@ export function SwipeRow({ onDelete, label, children, radius = 16, srDelete }: S
     if (pull > width * THRESHOLD) {
       setPull(width)
       setTimeout(onDelete, 160)
+      // If the row is still mounted afterwards (Undo brought it back), show it settled, not stuck in the red state.
+      setTimeout(() => { setSettling(true); setPull(0) }, 700)
     } else setPull(0)
   }
 
