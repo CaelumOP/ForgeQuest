@@ -150,7 +150,16 @@ class TrendsTest {
     }
 
     @Test
-    fun noActiveWeekMeansNoVolumeTrigger() {
+    fun fewerThanTwoActiveWeeksMeansNoVolumeTrigger() {
         assertEquals(false, weeks(listOf(0, 0, 2, 5, 24)).needsDeload)
+        assertEquals(false, weeks(listOf(0, 0, 2, 9, 24)).needsDeload)
+    }
+
+    @Test
+    fun backToANormalWeekAfterAShortComebackWeekIsNotOverload() {
+        // Compared with the busiest recent week: 24 / 18 = 133 %, not 24 / avg(18, 9) = 178 %.
+        val r = weeks(listOf(0, 18, 0, 9, 24))
+        assertEquals(133, r.trainingLoadPct)
+        assertEquals(false, r.needsDeload)
     }
 }

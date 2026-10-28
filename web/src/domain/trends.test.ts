@@ -128,8 +128,14 @@ describe('rule B: plateau and deload', () => {
     expect(weeks([20, 20, 3, 20, 28])).toMatchObject({ trainingLoadPct: 140, needsDeload: true })
   })
 
-  it('no active week among the previous 4: no volume trigger', () => {
+  it('fewer than 2 active weeks among the previous 4: no volume trigger', () => {
     expect(weeks([0, 0, 2, 5, 24]).needsDeload).toBe(false)
+    expect(weeks([0, 0, 2, 9, 24]).needsDeload).toBe(false)
+  })
+
+  it('back to a normal week after a short comeback week is not overload', () => {
+    // Compared with the busiest recent week: 24 / 18 = 133 %, not 24 / avg(18, 9) = 178 %.
+    expect(weeks([0, 18, 0, 9, 24])).toMatchObject({ trainingLoadPct: 133, needsDeload: false })
   })
 })
 

@@ -163,8 +163,8 @@ object Trends {
      * 1. Stalled lifts: exercises done >= 4 times across >= 21 days in the last 42 days where the last 2 workouts beat
      *    neither the earlier best set nor the earlier best total ([WorkoutScore.stats], rule A1). Unweighted holds and
      *    jumping jacks are left out.
-     * 2. Deload triggers: this week's sets >= 135 % of the average of the active weeks (6+ sets) among the previous 4
-     *    (with >= 18 sets; no active week, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
+     * 2. Deload triggers: this week's sets >= 135 % of the busiest active week (6+ sets) among the previous 4
+     *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
      *    or >= 2 stalled lifts at normal or higher load.
      */
     fun analyzeFatigueAndPlateaus(
@@ -180,7 +180,8 @@ object Trends {
         val currentWeekSets = weekly.lastOrNull() ?: 0
         // A vacation week (under 6 sets) would pull the average down and make a normal week look like a spike.
         val active = weekly.dropLast(1).filter { it >= ACTIVE_WEEK_SETS }
-        val activePct = if (active.isEmpty()) null else (currentWeekSets * 100f / active.average().toFloat()).roundToInt()
+        // Against the busiest recent week, so getting back to a normal week after a light one isn't overload.
+        val activePct = if (active.size < 2) null else (currentWeekSets * 100f / active.max().toFloat()).roundToInt()
         val loadPct = activePct ?: trainingLoad(weekly)
 
         val windowStart = today - PLATEAU_WINDOW_DAYS

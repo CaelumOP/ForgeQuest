@@ -174,8 +174,8 @@ export const PLATEAU_WINDOW_DAYS = 42
  * 1. Stalled lifts: exercises done >= 4 times across >= 21 days in the last 42 days where the last 2 workouts beat
  *    neither the earlier best set nor the earlier best total (trendStats, rule A1). Unweighted holds and jumping jacks
  *    are left out.
- * 2. Deload triggers: this week's sets >= 135 % of the average of the active weeks (6+ sets) among the previous 4
- *    (with >= 18 sets; no active week, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
+ * 2. Deload triggers: this week's sets >= 135 % of the busiest active week (6+ sets) among the previous 4
+ *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
  *    or >= 2 stalled lifts at normal or higher load.
  */
 export function analyzeFatigueAndPlateaus(
@@ -191,7 +191,8 @@ export function analyzeFatigueAndPlateaus(
   const currentWeekSets = weekly[weekly.length - 1] ?? 0
   // A vacation week (under 6 sets) would pull the average down and make a normal week look like a spike.
   const active = weekly.slice(0, -1).filter((n) => n >= ACTIVE_WEEK_SETS)
-  const activePct = active.length === 0 ? null : Math.round(f(f(currentWeekSets * 100) / f(avg(active))))
+  // Against the busiest recent week, so getting back to a normal week after a light one isn't overload.
+  const activePct = active.length < 2 ? null : Math.round(f(f(currentWeekSets * 100) / f(Math.max(...active))))
   const loadPct = activePct ?? trainingLoad(weekly)
 
   const windowStart = today - PLATEAU_WINDOW_DAYS

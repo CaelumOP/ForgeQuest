@@ -256,7 +256,11 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Ma
     val c = Fit.colors
     val debrief by vm.debrief.collectAsState()
     val score = vm.scores.collectAsState().value[session.id]
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background) {
+    // Opens fully: with system animations off, a half-open sheet landed low and couldn't be dragged up.
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background,
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
             Text(session.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             Text(
