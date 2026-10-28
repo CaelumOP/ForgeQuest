@@ -147,10 +147,21 @@ val Manrope = FontFamily(
     Font(R.font.manrope, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
 )
 
-/** Manrope for numbers, but the system face in Arabic, where the text often carries an Arabic unit Manrope lacks. */
+/**
+ * IBM Plex Sans Arabic (SIL OFL), the Arabic face: a calm, compact sans with Arabic and Latin glyphs, so Western digits
+ * and English words inside Arabic text match. Static 400, 500 and 600; Bold falls back to 600.
+ */
+val PlexArabic = FontFamily(
+    Font(R.font.ibm_plex_sans_arabic_regular, FontWeight.Normal),
+    Font(R.font.ibm_plex_sans_arabic_medium, FontWeight.Medium),
+    Font(R.font.ibm_plex_sans_arabic_semibold, FontWeight.SemiBold),
+    Font(R.font.ibm_plex_sans_arabic_semibold, FontWeight.Bold),
+)
+
+/** Manrope for numbers, but Plex Arabic in Arabic, where the text often carries an Arabic unit Manrope lacks. */
 val NumberFont: FontFamily
     @Composable @ReadOnlyComposable get() =
-        if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar") FontFamily.Default else Manrope
+        if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar") PlexArabic else Manrope
 
 private val FitTypography = Typography(
     displaySmall = TextStyle(fontFamily = Manrope, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
@@ -168,12 +179,12 @@ private val FitTypography = Typography(
 )
 
 /**
- * Arabic: system face without tracking for the display sizes, and every style picks its direction from the text
- * itself, so English data (plan notes, food names) still reads left to right with its full stop at the end.
+ * Arabic: IBM Plex Sans Arabic on every style (same sizes, weights and line heights as English), no tracking on the
+ * display sizes, and every style picks its direction from the text itself, so English data (plan notes, food names) still reads left to right with its full stop at the end.
  */
 private val ArabicTypography = FitTypography.run {
-    fun TextStyle.content() = copy(textDirection = androidx.compose.ui.text.style.TextDirection.Content)
-    fun TextStyle.plain() = copy(fontFamily = FontFamily.Default, letterSpacing = 0.sp).content()
+    fun TextStyle.content() = copy(fontFamily = PlexArabic, textDirection = androidx.compose.ui.text.style.TextDirection.Content)
+    fun TextStyle.plain() = copy(letterSpacing = 0.sp).content()
     copy(
         displaySmall = displaySmall.plain(), headlineMedium = headlineMedium.plain(), headlineSmall = headlineSmall.plain(), titleLarge = titleLarge.plain(),
         titleMedium = titleMedium.content(), titleSmall = titleSmall.content(), bodyLarge = bodyLarge.content(), bodyMedium = bodyMedium.content(),
@@ -229,7 +240,7 @@ fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
     val fit = if (dark) DarkFitColors else LightFitColors
     val scheme = if (dark) forgeDarkScheme(fit) else forgeLightScheme(fit)
     // Manrope has no Arabic glyphs, and the negative tracking on display sizes pulls joined Arabic letters apart and
-    // makes Compose wrap the last letter of a title onto its own line. Arabic gets the system face, untracked.
+    // makes Compose wrap the last letter of a title onto its own line. Arabic gets IBM Plex Sans Arabic, untracked.
     val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"
     CompositionLocalProvider(LocalFitColors provides fit) {
         MaterialTheme(colorScheme = scheme, shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography) {

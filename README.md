@@ -128,3 +128,4 @@ Release signing, the Google Drive setup and how the coach works are in the [setu
 - Foundation routine: [Hemo Calisthenics](https://www.youtube.com/@HemoCalisthenics), with each exercise linked to the moment it's shown in his videos.
 - Anatomy art: [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter) 3.2.0, MIT License © 2022 ELABBASSI Hicham. Converted into `app/src/main/assets/body_map.json`.
 - Font: [Manrope](https://fonts.google.com/specimen/Manrope), SIL Open Font License ([licence](docs/licenses/Manrope-OFL.txt)).
+- Arabic font: [IBM Plex Sans Arabic](https://github.com/google/fonts/tree/main/ofl/ibmplexsansarabic), SIL Open Font License ([licence](docs/licenses/IBMPlexSansArabic-OFL.txt)).
