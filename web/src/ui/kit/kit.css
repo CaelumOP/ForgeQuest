@@ -70,6 +70,20 @@ button.kit-card { min-block-size: 44px; }
 .kit-btn-filled:not(:disabled):active, .kit-btn-tonal:not(:disabled):active { border-radius: 12px; }
 .kit-spinner { inline-size: 16px; block-size: 16px; border-radius: 50%; border: 2px solid var(--divider); border-block-start-color: var(--teal); animation: kit-spin 0.8s linear infinite; }
 @keyframes kit-spin { to { transform: rotate(360deg); } }
+/* Material 3 Expressive loading indicator (Android LoadingIndicator): one shape that morphs between soft polygons while it turns. Color comes from `color`. */
+.kit-morph { display: inline-grid; place-items: center; inline-size: 48px; block-size: 48px; flex: none; }
+.kit-morph::before { content: ""; inline-size: 38px; block-size: 38px; background: currentColor; border-radius: 50%; animation: kit-morph 4.2s cubic-bezier(0.42, 0, 0.2, 1) infinite; }
+.kit-morph-purple { color: var(--purple); }
+.kit-morph-teal { color: var(--teal); }
+@keyframes kit-morph {
+  0% { border-radius: 50%; transform: rotate(0deg) scale(0.9); }
+  16% { border-radius: 28% 72% 30% 70% / 70% 30% 72% 28%; transform: rotate(60deg) scale(1); }
+  33% { border-radius: 22%; transform: rotate(120deg) scale(0.92); }
+  50% { border-radius: 50% 50% 18% 50% / 50% 50% 18% 50%; transform: rotate(180deg) scale(1); }
+  66% { border-radius: 64% 36% 58% 42% / 40% 62% 38% 60%; transform: rotate(240deg) scale(0.92); }
+  83% { border-radius: 36% 64% 64% 36% / 36% 36% 64% 64%; transform: rotate(300deg) scale(1); }
+  100% { border-radius: 50%; transform: rotate(360deg) scale(0.9); }
+}
 
 .kit-iconbtn { display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; flex: none; }
 .kit-iconbtn:active { background: var(--card-high); }
@@ -178,6 +192,7 @@ button.kit-stepper-val { overflow: hidden; }
   .kit-btn { transition: none; }
   .kit-swipe-bin, .kit-swipe-bin-over { animation: none; transition: none; }
   .kit-roll-up, .kit-roll-down { animation: none; }
+  .kit-morph::before { animation: none; border-radius: 28% 72% 30% 70% / 70% 30% 72% 28%; }
   .kit-spinner { animation-duration: 2s !important; animation: kit-spin 2s linear infinite !important; }
   /* Nothing slides or rises: sheets, dialogs, toasts, pushed screens and new rows just fade in, briefly. */
   .kit-sheet, .kit-dialog, .kit-toast, .kit-backdrop, .scroll-push, .food-row, .kit-swipe, .wk-item {

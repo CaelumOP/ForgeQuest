@@ -98,7 +98,7 @@ export function CoachScreen(_: { param?: string }) {
         {messages.map((m) => m.role === 'user'
           ? <div class="coach-row-user" key={m.id}><div class="coach-bubble coach-user">{m.text}</div></div>
           : <CoachMessage key={m.id} m={m} onReview={() => setPreview(m)} />)}
-        {sending && <div class="coach-typing" role="status" aria-label={t('coach_web_typing')}><i /><i /><i /></div>}
+        {sending && <div class="coach-typing" role="status" aria-label={t('coach_web_typing')}><span class="kit-morph kit-morph-purple" aria-hidden="true" /></div>}
       </div>
       {showChips && (
         <div class="coach-chips">

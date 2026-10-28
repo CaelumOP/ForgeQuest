@@ -533,14 +533,11 @@ private fun ScanningOverlay(onAskOutside: () -> Unit) {
                 .clip(RoundedCornerShape(28.dp)).background(c.card).padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // The wait: an Expressive morphing shape in the scan teal, then the step it's on.
+            com.forgequest.app.ui.components.MorphLoader(c.teal, Modifier.size(48.dp))
+            Spacer(Modifier.height(8.dp))
             AnimatedContent(step, transitionSpec = { (fadeIn() + slideInVertically { it / 2 }) togetherWith fadeOut() }, label = "step") { i ->
-                Text(steps[i], style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                steps.indices.forEach { i ->
-                    Box(Modifier.size(width = if (i == step) 22.dp else 8.dp, height = 8.dp).clip(CircleShape).background(if (i <= step) c.teal else c.cardHigh))
-                }
+                Text(steps[i], style = MaterialTheme.typography.titleMedium, color = c.textPrimary, textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(16.dp))
             TonalPill(stringResource(R.string.scan_ask_outside), onClick = onAskOutside, icon = Icons.Rounded.AutoAwesome)

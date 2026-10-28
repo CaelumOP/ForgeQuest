@@ -990,8 +990,32 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
         if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }
         if (next != null) Text(stringResource(R.string.live_next, next), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(8.dp))
-        ProgressLine(if (total == 0) 0f else secondsLeft / total.toFloat(), c.blue, c.blueTrack, height = 4.dp)
+        RestWave(if (total == 0) 0f else secondsLeft / total.toFloat())
     }
+}
+
+/** The rest countdown as an Expressive wavy bar; with reduced motion it is a flat, still bar. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RestWave(progress: Float) {
+    val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    val shown by animateFloatAsState(
+        progress.coerceIn(0f, 1f),
+        if (reduced) snap() else androidx.compose.material3.WavyProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "rest",
+    )
+    val stroke = with(androidx.compose.ui.platform.LocalDensity.current) { Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round) }
+    androidx.compose.material3.LinearWavyProgressIndicator(
+        progress = { shown },
+        modifier = Modifier.fillMaxWidth(),
+        color = c.blue,
+        trackColor = c.blueTrack,
+        stroke = stroke,
+        trackStroke = stroke,
+        amplitude = { if (reduced) 0f else 1f },
+        waveSpeed = if (reduced) 0.dp else androidx.compose.material3.WavyProgressIndicatorDefaults.LinearDeterminateWavelength,
+    )
 }
 
 @Composable

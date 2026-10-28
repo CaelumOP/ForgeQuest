@@ -636,3 +636,17 @@ fun CappedFontScale(max: Float = LARGE_TEXT, content: @Composable () -> Unit) {
         content = content,
     )
 }
+
+/**
+ * Material 3 Expressive shape-morphing loader in one accent color. With reduced motion it holds one still shape,
+ * so the wait is still shown without anything spinning or morphing.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MorphLoader(color: Color, modifier: Modifier = Modifier) {
+    if (com.forgequest.app.ui.theme.LocalReducedMotion.current) {
+        androidx.compose.material3.LoadingIndicator(progress = { 0f }, modifier = modifier, color = color)
+    } else {
+        androidx.compose.material3.LoadingIndicator(modifier = modifier, color = color)
+    }
+}
