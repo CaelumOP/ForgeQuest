@@ -4,7 +4,7 @@ import { loadSettings } from './data/settings'
 import { useLive } from './data/live'
 import { matchRoute } from './routes'
 import { InstallGate, needsInstallGate } from './ui/InstallGate'
-import { ToastHost } from './ui/kit'
+import { ToastHost, setHapticsEnabled } from './ui/kit'
 import { goBack, useRoute } from './ui/nav'
 import { NotFoundScreen } from './ui/screens'
 import { TabBar } from './ui/TabBar'
@@ -24,6 +24,7 @@ export function App() {
   const [tourOpen, setTourOpen] = useState(() => !tourSeen())
   if (gated) return <InstallGate />
   if (!settings) return <div class="shell" />
+  setHapticsEnabled(settings.hapticsEnabled !== false)
   if (!settings.onboarded) return <><OnboardingScreen onDone={() => undefined} /><ToastHost /></>
   const { route, param } = matchRoute(path)
   const tour = tourOpen && <Tour finishLabel={t('tour_done')} onDone={() => { markTourSeen(); setTourOpen(false) }} />
