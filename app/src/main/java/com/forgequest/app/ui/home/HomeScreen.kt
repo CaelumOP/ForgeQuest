@@ -46,7 +46,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -134,7 +133,7 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     /** Catches badges a workout or meal earned but that were missed (they used to be checked against stale data). */
     fun checkBadges() = viewModelScope.launch { app.progress.evaluateBadges() }
 
-    suspend fun startToday(day: PlanDayWithItems?, lighter: Boolean = false) = app.workouts.startSession(day, lighter)
+    suspend fun startToday(day: PlanDayWithItems?) = app.workouts.startSession(day)
 
     fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
 
@@ -186,17 +185,6 @@ fun HomeScreen(nav: NavHostController) {
                     nav.navigate(Routes.LIVE)
                 }
             },
-            // A red or low-yellow Fitbit morning offers a lighter session or a rest day, one tap each.
-            lowRecovery = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day
-                ?.takeIf { it.hasData && it.epochDay == Dates.today() && com.forgequest.app.domain.Readiness.isLowRecovery(it.recovery) }
-                ?.recovery,
-            onStartLighter = {
-                scope.launch {
-                    vm.startToday(today?.takeIf { !it.day.isRest }, lighter = true)
-                    nav.navigate(Routes.LIVE)
-                }
-            },
-            onRestToday = { vm.setDayTag(Dates.today(), DayTag.REST) },
             // After training, the card leads to what was done; before, to the plan.
             onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
             // A rest day can still be a training day: start the next planned workout.
@@ -220,16 +208,16 @@ fun HomeScreen(nav: NavHostController) {
             UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
         }
         whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         NutritionRings(s)
         Spacer(Modifier.height(16.dp))
-        // On a training day the workout sits right under the rings.
+        StatRow(s, onWeight = { weightSheet = true })
+        Spacer(Modifier.height(16.dp))
+        // On a training day the workout sits right under the stats.
         if (startOnTop) {
             todayCard()
             Spacer(Modifier.height(16.dp))
         }
-        StatRow(s, onWeight = { weightSheet = true })
-        Spacer(Modifier.height(16.dp))
         CalorieCardView(s, health, vm.app.settings)
 
         val unseen = s.badges.filter { !it.seen }.mapNotNull { Badges.byId[it.id] }
@@ -611,9 +599,6 @@ private fun TodayCard(
     onCantTrain: () -> Unit,
     onStart: () -> Unit,
     onOpenPlan: () -> Unit,
-    lowRecovery: Int? = null,
-    onStartLighter: () -> Unit = {},
-    onRestToday: () -> Unit = {},
     onTrainAnyway: () -> Unit = {},
 ) {
     val c = Fit.colors
@@ -673,14 +658,6 @@ private fun TodayCard(
         }
         // At large text sizes the button sits under the text instead of squeezing it into a sliver.
         if (big) Box(Modifier.fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.CenterEnd) { action() }
-        if (lowRecovery != null && !isRest && !hasOpenSession && !doneToday && excused == null) {
-            Spacer(Modifier.height(10.dp))
-            Text(stringResource(R.string.today_low_recovery, lowRecovery), style = MaterialTheme.typography.bodySmall, color = c.gold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
-                AssistChip(onClick = onStartLighter, label = { Text(stringResource(R.string.today_start_lighter)) })
-                AssistChip(onClick = onRestToday, label = { Text(stringResource(R.string.today_rest_instead)) })
-            }
-        }
         // Already trained today: another session is still one tap away.
         if (doneToday && !hasOpenSession) {
             TextButton(onClick = if (isRest) onTrainAnyway else onStart, modifier = Modifier.padding(top = 4.dp)) {
@@ -688,7 +665,7 @@ private fun TodayCard(
             }
         }
         if (!isRest && !hasOpenSession && !doneToday && excused == null) {
-            TextButton(onClick = onCantTrain, modifier = Modifier.padding(top = 4.dp)) {
+            TextButton(onClick = onCantTrain, modifier = Modifier.padding(top = 4.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 8.dp)) {
                 Text(stringResource(R.string.today_cant_train), color = c.textSecondary, style = MaterialTheme.typography.labelLarge)
             }
         }

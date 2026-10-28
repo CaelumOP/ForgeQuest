@@ -4,7 +4,7 @@
 .home-greet { margin: 0; font-size: 24px; line-height: 32px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-date { color: var(--text-2); font-size: 14px; }
 .home-rank { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 44px; min-block-size: 44px; border-radius: 50%; color: var(--blue); font-weight: 700; font-size: 16px; text-decoration: none; }
-.home-rings { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 8px; }
+.home-rings { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 4px 8px; }
 .home-rings-box { position: relative; inline-size: 210px; block-size: 210px; }
 .home-rings-box svg { position: absolute; inset: 0; }
 .home-rings-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }

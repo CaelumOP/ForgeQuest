@@ -1,6 +1,6 @@
 {
-  "versionCode": 28,
-  "versionName": "2.16.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.16.0/ForgeQuest-v2.16.0.apk",
-  "notes": "• Workout debrief: calculated from your own numbers, instant and offline, with next-time targets.\n• Fairer score: a heavier weight counts as progress, and a one-rep dip is no longer a drop.\n• Live workout: a new set tick, rolling steppers, connected effort chips, a wavy rest timer and a finish count-up.\n• Home: your rings first, today's workout right below, and an update card you can close.\n• Arabic and accessibility: a new Arabic font, Western digits, large-text layouts and screen reader labels."
+  "versionCode": 29,
+  "versionName": "2.16.1",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.16.1/ForgeQuest-v2.16.1.apk",
+  "notes": "• Home: your rings sit higher, with protein, calories and weight right below them.\n• Today's workout: a cleaner card with just Start and \"Can't train today?\"."
 }

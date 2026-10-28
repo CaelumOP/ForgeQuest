@@ -1402,9 +1402,6 @@
     <string name="progress_avg_recovery">متوسط التعافي</string>
     <string name="progress_avg_hrv">متوسط تقلّب النبض</string>
     <string name="progress_avg_sleep">متوسط النوم</string>
-    <string name="today_low_recovery">تعافيك منخفض اليوم (%1$d%%). أتخفّف التمرين أم تستريح؟</string>
-    <string name="today_start_lighter">مجموعة أقل</string>
-    <string name="today_rest_instead">استرِح اليوم</string>
     <string name="goals_fitbit_burn">تقدير المعادلة: %1$s سعرة يوميًا · متوسط Fitbit لأربعة عشر يومًا: %2$s سعرة</string>
     <!-- وجبات من Gemini -->
     <string name="meals_title">وجبات من Gemini</string>
