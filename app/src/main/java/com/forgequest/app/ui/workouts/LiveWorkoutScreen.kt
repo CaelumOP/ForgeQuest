@@ -2,6 +2,27 @@ package com.forgequest.app.ui.workouts
 
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.ui.theme.itemMotion
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.LocalReducedMotion
+import com.forgequest.app.ui.theme.effectsSpec
+import com.forgequest.app.ui.theme.spatialSpec
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -10,10 +31,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -77,7 +96,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -435,7 +453,7 @@ private fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutVi
                 Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(6.dp))
-            MorphCheck(allDone) { vm.toggleAll(g.sets) }
+            SetTick(allDone, pr = false) { vm.toggleAll(g.sets) }
         }
         if (expanded) {
             Spacer(Modifier.height(4.dp))
@@ -588,7 +606,15 @@ private fun SetRow(
     previous: SetEntity? = null,
 ) {
     val c = Fit.colors
-    val rowColor by animateColorAsState(if (set.done) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent, label = "row")
+    val prIds by vm.prSetIds.collectAsState()
+    val pr = set.isPr || set.id in prIds
+    val scheme = MaterialTheme.colorScheme
+    // Ticked rows tint primaryContainer; a PR set tints tertiaryContainer with a thin gold edge.
+    val rowColor by animateColorAsState(
+        when { set.done && pr -> scheme.tertiaryContainer; set.done -> scheme.primaryContainer; else -> Color.Transparent },
+        effectsSpec(), label = "row",
+    )
+    val rowBorder by animateColorAsState(if (set.done && pr) scheme.tertiary else Color.Transparent, effectsSpec(), label = "rowBorder")
     val flashingId by vm.newBest.collectAsState()
     val flashing = flashingId == set.id
     val flashColor by animateColorAsState(if (flashing) c.gold else c.textPrimary, label = "flash")
@@ -600,7 +626,7 @@ private fun SetRow(
     val effort = SetEffort.parse(set.effort.ifBlank { null })
     Column {
     Row(
-        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor)
+        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor).border(1.dp, rowBorder, RoundedCornerShape(14.dp))
             .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
             .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -690,7 +716,7 @@ private fun SetRow(
             }
         }
         Spacer(Modifier.width(6.dp))
-        MorphCheck(set.done) { vm.toggle(set) }
+        SetTick(set.done, pr) { vm.toggle(set) }
     }
     // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
     AnimatedVisibility(visible = set.done && effortSetId == set.id) {
@@ -771,23 +797,82 @@ fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Un
     )
 }
 
-/** Squircle that springs into a filled circle with a check when ticked. */
+/**
+ * The set tick: a 40 dp box in a 48 dp target. Empty it is a rounded square with an outline; pressed it tightens to
+ * 4 dp corners and shrinks a little; ticked it becomes a teal circle with the check drawn in. A set that beats the
+ * person's best goes gold with a star and a small pop. Reduced motion: shapes snap, colours fade in 120 ms.
+ */
 @Composable
-private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
+private fun SetTick(checked: Boolean, pr: Boolean, onToggle: () -> Unit) {
     val c = Fit.colors
+    val scheme = MaterialTheme.colorScheme
+    val reduced = LocalReducedMotion.current
     val setDoneLabel = stringResource(R.string.cd_set_done)
-    val corner by animateDpAsState(if (checked) 22.dp else 10.dp, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "corner")
-    val color by animateColorAsState(if (checked) c.teal else c.cardHigh, label = "fill")
-    val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val gold = checked && pr
+    val corner by animateDpAsState(
+        when { pressed -> 4.dp; checked -> 20.dp; else -> 10.dp },
+        spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "tickCorner",
+    )
+    val pressScale by animateFloatAsState(if (pressed) 0.9f else 1f, spatialSpec(ForgeMotion.Springs.FastSpatial), label = "tickPress")
+    val fill by animateColorAsState(
+        when { gold -> scheme.tertiary; checked -> scheme.primary; else -> Color.Transparent },
+        effectsSpec(), label = "tickFill",
+    )
+    val outline by animateColorAsState(if (checked) Color.Transparent else scheme.outline, effectsSpec(), label = "tickOutline")
+    // The check draws itself in from its short stroke to its long one.
+    val draw by animateFloatAsState(
+        if (checked) 1f else 0f,
+        if (reduced || !checked) snap() else tween(ForgeMotion.Duration.SHORT3, easing = ForgeMotion.Easing.EmphasizedDecelerate),
+        label = "tickDraw",
+    )
+    // The gold pop: 1 -> 1.3 -> 1, only when a set turns into a PR while on screen (not when scrolled back into view).
+    val pop = remember { Animatable(1f) }
+    var seen by remember { mutableStateOf(false) }
+    LaunchedEffect(gold) {
+        if (!seen) { seen = true; return@LaunchedEffect }
+        if (gold && !reduced) {
+            pop.animateTo(1.3f, ForgeMotion.Springs.FastSpatial.spec())
+            pop.animateTo(1f, ForgeMotion.Springs.FastSpatial.spec())
+        }
+    }
     Box(
-        Modifier.size(52.dp).clip(RoundedCornerShape(corner)).background(color)
-            .steadyToggleable(checked, onToggle)
+        Modifier.size(48.dp).clip(CircleShape)
+            .steadyToggleable(checked, onToggle, interaction)
             .semantics { contentDescription = setDoneLabel },
         contentAlignment = Alignment.Center,
     ) {
-        // A faint check in the empty box says "tap to tick" before the first tap (Strong does the same).
-        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.textSecondary.copy(alpha = 0.45f), modifier = Modifier.size(22.dp).scale(1f - checkScale))
-        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(28.dp).scale(checkScale))
+        Box(
+            Modifier.size(40.dp)
+                .graphicsLayer { val k = pressScale * pop.value; scaleX = k; scaleY = k }
+                .clip(RoundedCornerShape(corner))
+                .background(fill)
+                .border(2.dp, outline, RoundedCornerShape(corner)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (gold) {
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = scheme.onTertiary, modifier = Modifier.size(24.dp))
+            } else {
+                val ink = if (checked) scheme.onPrimary else c.textSecondary.copy(alpha = 0.45f)
+                Canvas(Modifier.size(24.dp)) {
+                    val u = size.minDimension / 24f
+                    val path = Path().apply {
+                        moveTo(5.5f * u, 12.5f * u); lineTo(10f * u, 17f * u); lineTo(18.5f * u, 7.5f * u)
+                    }
+                    val stroke = Stroke(width = 2.6f * u, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    if (!checked) {
+                        // A faint check in the empty box says "tap to tick" before the first tap (Strong does the same).
+                        drawPath(path, ink, style = stroke)
+                    } else {
+                        val measure = PathMeasure().apply { setPath(path, false) }
+                        val part = Path()
+                        measure.getSegment(0f, measure.length * draw, part, true)
+                        drawPath(part, ink, style = stroke)
+                    }
+                }
+            }
+        }
     }
 }
 

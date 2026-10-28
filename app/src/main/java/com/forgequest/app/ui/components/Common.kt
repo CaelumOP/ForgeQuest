@@ -379,10 +379,10 @@ private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = compose
  * A toggle for boxes inside scrolling lists (a set's tick): counts only when the finger lifts without having moved,
  * and the press ripple waits a moment, so scrolling over the boxes neither ticks them nor makes them flash.
  */
-fun Modifier.steadyToggleable(value: Boolean, onToggle: () -> Unit): Modifier = composed {
+fun Modifier.steadyToggleable(value: Boolean, onToggle: () -> Unit, interactionSource: MutableInteractionSource? = null): Modifier = composed {
     val current by rememberUpdatedState(onToggle)
     val scope = rememberCoroutineScope()
-    val interaction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: remember { MutableInteractionSource() }
     this
         .indication(interaction, ripple())
         .semantics {

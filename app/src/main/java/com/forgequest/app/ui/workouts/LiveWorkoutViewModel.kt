@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -169,7 +170,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun toggle(set: SetEntity) {
         val done = !set.done
         effortSetId.value = if (done) set.id else null
-        if (done) app.haptics.setDone() else app.haptics.tick()
+        when {
+            !done -> app.haptics.tick()
+            set.id in prSetIds.value -> app.haptics.pr()
+            else -> app.haptics.check()
+        }
         viewModelScope.launch {
             repo.updateSet(set.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null))
             if (done) carryForward(set)
@@ -181,7 +186,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun toggleAll(group: List<SetEntity>) {
         val done = !group.all { it.done }
         effortSetId.value = null
-        if (done) app.haptics.setDone() else app.haptics.tick()
+        if (done) app.haptics.check() else app.haptics.tick()
         viewModelScope.launch { group.filter { it.done != done }.forEach { repo.updateSet(it.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null)) } }
     }
 
@@ -280,6 +285,17 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             sets.maxOf { Records.score(kind, it.reps, it.seconds, it.weightKg, it.exerciseId) }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /**
+     * Sets whose numbers right now beat the person's best (same test as the gold flash). Presentation only: the live
+     * tick turns gold for them; the saved PR flag is still worked out when the workout finishes.
+     */
+    val prSetIds: StateFlow<Set<Long>> = combine(sets, bestScores, exercises) { list, best, exs ->
+        list.filter { s ->
+            val b = best[s.exerciseId] ?: return@filter false
+            Records.score(exs[s.exerciseId]?.kind ?: ExerciseKind.REPS, s.reps, s.seconds, s.weightKg, s.exerciseId) > b
+        }.map { it.id }.toSet()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     /** Id of the set whose value just beat the person's best; cleared after the flash. */
     val newBest = MutableStateFlow<Long?>(null)

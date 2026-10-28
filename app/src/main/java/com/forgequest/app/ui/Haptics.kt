@@ -36,6 +36,37 @@ class Haptics(context: Context) {
         } else VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
     }, 8)
 
+    /** Ticking a set off: one crisp click. */
+    fun check() = play({
+        if (supported(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
+            VibrationEffect.startComposition().addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f).compose()
+        } else VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+    }, 12)
+
+    /** A lighter tick than [tick]: each step of a stepper, each slot passed while dragging. */
+    fun lightTick() = play({
+        if (supported(VibrationEffect.Composition.PRIMITIVE_TICK)) {
+            VibrationEffect.startComposition().addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f).compose()
+        } else VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+    }, 5)
+
+    /** A set ticked off that beats the person's best: a double thud. Older phones get a two-pulse waveform. */
+    fun pr() {
+        if (!enabled) return
+        val v = vibrator ?: return
+        if (!v.hasVibrator()) return
+        val effect = if (supported(VibrationEffect.Composition.PRIMITIVE_THUD)) {
+            VibrationEffect.startComposition()
+                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 1f)
+                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 0.8f, 90)
+                .compose()
+        } else VibrationEffect.createWaveform(longArrayOf(0, 35, 90, 35), -1)
+        v.vibrate(effect)
+    }
+
+    /** The finish screen's score lands. */
+    fun heavyClick() = play({ VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK) }, 30)
+
     /** Ticking off a set. */
     fun setDone() = play({
         if (supported(VibrationEffect.Composition.PRIMITIVE_THUD)) {
