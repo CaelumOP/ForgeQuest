@@ -59,3 +59,9 @@
 .pf-note:active { background: var(--card-high); }
 .pf-bullet { color: var(--purple); inline-size: 16px; }
 .pf-x { color: var(--text-2); font-size: 20px; }
+
+/* Large text (see styles.css): a settings group's summary wraps in full; titles and subtitles already wrap and the
+   controls stay full width below them. */
+@media (max-width: 300px) {
+  .pf-gsum { white-space: normal; }
+}

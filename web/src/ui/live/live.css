@@ -163,3 +163,10 @@ html[dir='rtl'] .lw-wavebar { transform: scaleX(-1); }
   .lw-wave { display: none; animation: none; }
   .lw-wave-flat { display: inline; }
 }
+
+/* Large text (see styles.css): a set row splits in two tiers, set number, last-time hint and tick on top, the steppers
+   in their own full-width row below. */
+@media (max-width: 300px) {
+  .lw-set { flex-wrap: wrap; row-gap: 6px; }
+  .lw-steps { order: 1; flex: 1 0 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 8px; }
+}

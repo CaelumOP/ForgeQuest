@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import com.forgequest.app.ui.theme.LocalReducedMotion
@@ -601,7 +602,7 @@ private fun CircuitCard(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun SetRow(
     label: String?,
@@ -631,21 +632,22 @@ private fun SetRow(
     }
     val effortSetId by vm.effortSetId.collectAsState()
     val effort = SetEffort.parse(set.effort.ifBlank { null })
-    Column {
-    Row(
-        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor).border(1.dp, rowBorder, RoundedCornerShape(14.dp))
-            .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
-            .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    // From 1.35x text the row splits in two tiers: set number, last-time hint and tick on top, the steppers below.
+    val reflow = com.forgequest.app.ui.components.reflowText()
+    val rowModifier = Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor).border(1.dp, rowBorder, RoundedCornerShape(14.dp))
+        .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
+        .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
+    val number: @Composable () -> Unit = {
         if (label != null) {
             Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                 Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
             }
             Spacer(Modifier.width(10.dp))
         }
+    }
+    val info: @Composable (Modifier) -> Unit = { m ->
         Column(
-            Modifier.weight(1f).let { if (onLabelClick != null) it.clip(RoundedCornerShape(8.dp)).clickable(onClick = onLabelClick) else it },
+            m.let { if (onLabelClick != null) it.clip(RoundedCornerShape(8.dp)).clickable(onClick = onLabelClick) else it },
         ) {
             if (sublabel != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -683,8 +685,8 @@ private fun SetRow(
                 Text(set.note, style = MaterialTheme.typography.labelSmall, color = c.blue, maxLines = 2, overflow = TextOverflow.Ellipsis, fontStyle = FontStyle.Italic)
             }
         }
-        Spacer(Modifier.width(6.dp))
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    }
+    val steppers: @Composable () -> Unit = {
             when (kind) {
                 ExerciseKind.HOLD -> Row(verticalAlignment = Alignment.CenterVertically) {
                     if (!set.done) IconButton(onClick = { vm.startHold(set) }) {
@@ -721,7 +723,28 @@ private fun SetRow(
                     unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
                 )
             }
+    }
+    Column {
+    if (reflow) {
+        Column(rowModifier) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                number()
+                info(Modifier.weight(1f))
+                Spacer(Modifier.width(6.dp))
+                SetTick(set.done, pr) { vm.toggle(set) }
+            }
+            FlowRow(
+                Modifier.fillMaxWidth().padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) { steppers() }
         }
+    } else Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
+        number()
+        info(Modifier.weight(1f))
+        Spacer(Modifier.width(6.dp))
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) { steppers() }
         Spacer(Modifier.width(6.dp))
         SetTick(set.done, pr) { vm.toggle(set) }
     }
@@ -975,7 +998,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
         // At large text sizes the three buttons drop to their own line, so the time never wraps digit by digit.
-        val big = com.forgequest.app.ui.components.isLargeText()
+        val big = com.forgequest.app.ui.components.reflowText()
         val buttons: @Composable () -> Unit = {
             TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary, maxLines = 1) }
             TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary, maxLines = 1) }

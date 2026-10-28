@@ -407,3 +407,10 @@ img.step-glyph { border-radius: 5px; }
 
 /* "Tap to back up" (BackupPill.tsx): floats just above the tab bar. */
 .backup-pill { align-self: center; margin-block: 0 8px; min-block-size: 40px; padding-inline: 18px; border-radius: 20px; background: var(--teal-track); color: var(--teal); font-size: 14px; }
+
+/* Large text. Every size here is in px, so the browser's text zoom (iPhone aA / desktop zoom) narrows the layout in CSS px
+   instead of growing a root font size: 300px is about a 390px phone at 1.35x, the same point where Android reflows.
+   No cap anywhere: rows wrap. Tab labels take a second line. */
+@media (max-width: 300px) {
+  .tab-label { white-space: normal; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+}

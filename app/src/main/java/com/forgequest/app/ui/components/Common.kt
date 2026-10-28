@@ -266,7 +266,7 @@ fun SegmentedTabs(
     val c = Fit.colors
     val tall = subs.isNotEmpty() || wrap
     // At large text sizes five equal slices can't hold their labels, so the row scrolls sideways with each label whole.
-    val scrolling = !tall && options.size >= 4 && isLargeText()
+    val scrolling = !tall && options.size >= 4 && reflowText()
     // Tall segments share one height, so a one-line option is as tall as a wrapped one.
     Row(
         modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh)
@@ -601,7 +601,8 @@ fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = 
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(value, style = MaterialTheme.typography.titleLarge.tabular(), color = color, fontWeight = FontWeight.Medium, maxLines = 1)
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = 1)
+        // From 1.35x text a long caption wraps (centred) instead of being cut off.
+        Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = if (reflowText()) 2 else 1, textAlign = TextAlign.Center)
     }
 }
 
@@ -620,22 +621,12 @@ fun EmptyState(icon: ImageVector, title: String, body: String, modifier: Modifie
     }
 }
 
-/** The text size (as a multiple of the system default) above which tight layouts switch to their large-text form. */
-const val LARGE_TEXT = 1.3f
+/** The text size (as a multiple of the system default) from which tight rows reflow: wrap, stack or split into tiers. */
+const val REFLOW_TEXT = 1.35f
 
-/** True when the person's text size is above [LARGE_TEXT]. */
+/** True when the person's text size is at least [REFLOW_TEXT]. There is no text-size cap: rows reflow instead. */
 @Composable
-fun isLargeText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale > LARGE_TEXT
-
-/** Shows [content] with the text size stopping at [max], for rows whose labels share a fixed width. */
-@Composable
-fun CappedFontScale(max: Float = LARGE_TEXT, content: @Composable () -> Unit) {
-    val d = androidx.compose.ui.platform.LocalDensity.current
-    CompositionLocalProvider(
-        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, d.fontScale.coerceAtMost(max)),
-        content = content,
-    )
-}
+fun reflowText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale >= REFLOW_TEXT
 
 /**
  * Material 3 Expressive shape-morphing loader in one accent color. With reduced motion it holds one still shape,

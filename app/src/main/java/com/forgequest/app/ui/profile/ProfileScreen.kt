@@ -1654,7 +1654,8 @@ private fun SettingsGroup(
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                Text(summary, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                // From 1.35x text the summary wraps in full instead of stopping at two lines.
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = if (com.forgequest.app.ui.components.reflowText()) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.rotate(turn))
@@ -1671,7 +1672,7 @@ private fun SettingsGroup(
 @Composable
 private fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     // At large text sizes the icon sits above the title, so a long word is never broken in the middle.
-    val stacked = com.forgequest.app.ui.components.isLargeText()
+    val stacked = com.forgequest.app.ui.components.reflowText()
     FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
         if (stacked) {
             IconCircle(icon, tint, track, size = 40.dp)

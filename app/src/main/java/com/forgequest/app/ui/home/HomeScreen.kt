@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -396,13 +397,14 @@ private fun Legend(color: Color, text: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
     val c = Fit.colors
     // The numbers glide to their new values after a meal is logged.
     val proteinLeft = tweenedInt(Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein))
     val kcalLeft = tweenedInt(s.settings.kcalGoal - s.today.kcal)
-    Row(Modifier.fillMaxWidth()) {
+    val stats: @Composable RowScope.() -> Unit = {
         StatColumn(
             if (proteinLeft > 0) stringResource(R.string.home_protein_left_value, proteinLeft) else stringResource(R.string.home_done),
             if (proteinLeft > 0) stringResource(R.string.home_protein_left) else stringResource(R.string.home_protein_goal),
@@ -432,6 +434,10 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
             onClick = onWeight,
         )
     }
+    // From 1.35x text the stats wrap two to a row instead of squeezing four numbers into quarter widths.
+    if (com.forgequest.app.ui.components.reflowText()) {
+        FlowRow(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) { stats() }
+    } else Row(Modifier.fillMaxWidth()) { stats() }
 }
 
 /** The hook into the Progress screen: this month's workouts with a little trend, Whoop-style. */
@@ -613,7 +619,7 @@ private fun TodayCard(
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
     val noPlan = day == null
-    val big = com.forgequest.app.ui.components.isLargeText()
+    val big = com.forgequest.app.ui.components.reflowText()
     val action: @Composable () -> Unit = {
         when {
             hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)

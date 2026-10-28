@@ -53,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import androidx.annotation.StringRes
 import com.forgequest.app.R
@@ -187,11 +188,8 @@ private fun MainScaffold() {
                         selected = selected,
                         onClick = { nav.goToTab(tab.route) },
                         icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                        label = {
-                            com.forgequest.app.ui.components.CappedFontScale {
-                                Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium)
-                            }
-                        },
+                        // No text-size cap: a long label at large text takes a second line.
+                        label = { Text(stringResource(tab.label), maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelMedium) },
                         colors = NavigationRailItemDefaults.colors(
                             selectedIconColor = c.teal,
                             selectedTextColor = c.textPrimary,
@@ -217,12 +215,8 @@ private fun MainScaffold() {
                                 selected = selected,
                                 onClick = { nav.goToTab(tab.route) },
                                 icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                                // Five tabs share the width, so their labels stop growing past 1.3x text size.
-                                label = {
-                                    com.forgequest.app.ui.components.CappedFontScale {
-                                        Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium)
-                                    }
-                                },
+                                // No text-size cap: five tabs share the width, so at large text a label wraps to two lines and the bar grows.
+                                label = { Text(stringResource(tab.label), maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelMedium) },
                                 colors = itemColors,
                             )
                         }
