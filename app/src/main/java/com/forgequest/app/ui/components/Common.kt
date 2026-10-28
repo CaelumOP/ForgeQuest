@@ -1,6 +1,22 @@
 package com.forgequest.app.ui.components
 
 import com.forgequest.app.ui.theme.tabular
+import com.forgequest.app.container
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.effectsSpec
+import com.forgequest.app.ui.theme.spatialSpec
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -297,13 +313,17 @@ fun Stepper(
 ) {
     val c = Fit.colors
     val typeLabel = stringResource(R.string.cd_type_value)
+    // The number rolls up on + and down on −, so the change reads at a glance.
+    var direction by remember { mutableIntStateOf(1) }
+    val roll = spatialSpec(ForgeMotion.Springs.FastSpatial, IntOffset.VisibilityThreshold)
+    val fade = effectsSpec<Float>(ForgeMotion.Springs.FastEffects)
     // Minus stays left and plus right in Arabic too, like a number line.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Row(
         modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onMinus), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable { direction = -1; onMinus() }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
         Box(
@@ -314,17 +334,28 @@ fun Stepper(
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                value,
-                style = MaterialTheme.typography.labelLarge.tabular(),
-                fontWeight = FontWeight.SemiBold,
-                color = valueColor,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
+            AnimatedContent(
+                targetState = value,
+                transitionSpec = {
+                    val d = direction
+                    (slideInVertically(roll) { h -> h * d } + fadeIn(fade)) togetherWith
+                        (slideOutVertically(roll) { h -> -h * d } + fadeOut(fade)) using SizeTransform(clip = true)
+                },
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.clipToBounds().clearAndSetSemantics {},
+                label = "stepperRoll",
+            ) { shown ->
+                Text(
+                    shown,
+                    style = MaterialTheme.typography.labelLarge.tabular(),
+                    fontWeight = FontWeight.SemiBold,
+                    color = valueColor,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+            }
         }
-        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onPlus), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable { direction = 1; onPlus() }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
     }
@@ -435,6 +466,7 @@ fun NumberStepper(
     placeholder: String? = null,
 ) {
     var editing by remember { mutableStateOf(false) }
+    val haptics = LocalContext.current.container.haptics
     // Shown value runs ahead of the stored one, so holding ± keeps counting even while the database write
     // for the previous step is still on its way back.
     var local by remember { mutableStateOf(value) }
@@ -447,7 +479,8 @@ fun NumberStepper(
         if (next == local) return
         local = next
         lastCommit = android.os.SystemClock.uptimeMillis()
-        onTick?.invoke()
+        // A light tick per step unless the caller brings its own.
+        onTick?.invoke() ?: haptics.lightTick()
         onValueChange(next)
     }
     val shown = placeholder ?: (formatNumber(local, decimals) + if (unit.isNotEmpty()) " $unit" else "")

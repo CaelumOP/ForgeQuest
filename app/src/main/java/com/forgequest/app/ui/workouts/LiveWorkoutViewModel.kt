@@ -303,7 +303,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     /** Writes a typed or nudged value, clamped to a sane range. */
     fun setField(set: SetEntity, field: Field, value: Float) {
-        app.haptics.tick()
+        // The stepper gives its own light tick per step.
         edited += set.id
         val updated = when (field) {
             Field.REPS -> set.copy(reps = value.roundToInt().coerceIn(0, 999))
