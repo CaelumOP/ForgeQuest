@@ -9,7 +9,7 @@ import { scaledKcal } from '../../domain/nutrition'
 import { evaluateBadges, useProgress } from '../../data/progress'
 import { useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
-import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast } from '../kit'
+import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast, useTweened } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { PartsSheet, PlaceField, partsCount } from './FoodParts'
@@ -63,11 +63,14 @@ function DayPicker({ day, today, onShift, onToday }: { day: number; today: numbe
 }
 
 function Totals({ meals, kcalGoal, proteinGoal, carbsGoal, trackCarbs }: { meals: MealRow[]; kcalGoal: number; proteinGoal: number; carbsGoal: number; trackCarbs: boolean }) {
-  const tot = totalsOf(meals)
-  const over = tot.kcal > kcalGoal
+  const real = totalsOf(meals)
+  // The totals glide to their new values after a meal is added or removed.
+  const tot = { protein: useTweened(real.protein), kcal: useTweened(real.kcal), carbs: useTweened(real.carbs) }
+  const over = real.kcal > kcalGoal
+  let index = 0
   const ring = (value: number, goal: number, color: string, track: string, label: string, num: string, sub: string) => (
     <div class="food-ring">
-      <Ring value={goal > 0 ? value / goal : 0} color={color} track={track} size={76} stroke={8} label={label} valueText={sub}>
+      <Ring value={goal > 0 ? value / goal : 0} color={color} track={track} size={76} stroke={8} label={label} valueText={sub} index={index++}>
         <span class="food-ring-num" style={{ color: `var(${color})` }}>{num}</span>
       </Ring>
       <span class="food-ring-lbl">{label}</span>
@@ -77,9 +80,9 @@ function Totals({ meals, kcalGoal, proteinGoal, carbsGoal, trackCarbs }: { meals
   return (
     <Card>
       <div class="food-rings">
-        {ring(tot.protein, proteinGoal, '--teal', '--teal-track', t('label_protein'), fmtInt(tot.protein), t('food_protein_of_goal', fmtInt(tot.protein), fmtInt(proteinGoal)))}
-        {ring(tot.kcal, kcalGoal, over ? '--gold' : '--blue', over ? '--gold-track' : '--blue-track', over ? t('food_calories_surplus') : t('food_w_ring_kcal'), fmtInt(tot.kcal), `${fmtInt(tot.kcal)} / ${fmtInt(kcalGoal)}`)}
-        {trackCarbs && ring(tot.carbs, carbsGoal, '--purple', '--purple-track', t('label_carbs'), fmtInt(tot.carbs), t('food_carbs_of_goal', fmtInt(tot.carbs), fmtInt(carbsGoal)))}
+        {ring(real.protein, proteinGoal, '--teal', '--teal-track', t('label_protein'), fmtInt(tot.protein), t('food_protein_of_goal', fmtInt(tot.protein), fmtInt(proteinGoal)))}
+        {ring(real.kcal, kcalGoal, over ? '--gold' : '--blue', over ? '--gold-track' : '--blue-track', over ? t('food_calories_surplus') : t('food_w_ring_kcal'), fmtInt(tot.kcal), `${fmtInt(tot.kcal)} / ${fmtInt(kcalGoal)}`)}
+        {trackCarbs && ring(real.carbs, carbsGoal, '--purple', '--purple-track', t('label_carbs'), fmtInt(tot.carbs), t('food_carbs_of_goal', fmtInt(tot.carbs), fmtInt(carbsGoal)))}
       </div>
     </Card>
   )

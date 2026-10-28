@@ -9,7 +9,7 @@ import { weeklyCounts } from '../../domain/trends'
 import { bodyStep, fromKg, toKg, unitLabel, weightNumber } from '../../domain/units'
 import { BADGES } from '../../domain/badges'
 import { gramsLeft } from '../../domain/nutrition'
-import { Button, Card, Chip, Ring, Sheet, Stat, Stepper } from '../kit'
+import { Button, Card, Chip, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
@@ -108,14 +108,15 @@ function Header({ s }: { s: ProgressSnapshot }) {
   )
 }
 
-function Arc({ value, color, track, size, stroke, inset }: { value: number; color: string; track: string; size: number; stroke: number; inset: number }) {
+function Arc({ value, color, track, size, stroke, inset, index }: { value: number; color: string; track: string; size: number; stroke: number; inset: number; index: number }) {
   const v = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0))
+  const swept = useSwept()
   const r = (size - stroke) / 2 - inset
   const c = 2 * Math.PI * r
   return (
     <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`var(${track})`} stroke-width={stroke} />
-      {v > 0 && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`var(${color})`} stroke-width={stroke} stroke-linecap="round" stroke-dasharray={`${c * v} ${c}`} />}
+      {v > 0 && <circle class="kit-ring-arc" style={{ transitionDelay: `${index * 60}ms` }} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`var(${color})`} stroke-width={stroke} stroke-linecap="round" stroke-dasharray={`${c * (swept ? v : 0)} ${c}`} />}
     </g>
   )
 }
@@ -131,6 +132,8 @@ function Rings({ s }: { s: ProgressSnapshot }) {
   const size = 210
   const stroke = carbs ? 13 : 16
   const gap = stroke + 4
+  const proteinShown = Math.round(useTweened(Math.round(n.protein)))
+  const kcalShown = Math.round(useTweened(n.kcal))
   const specs = [
     { value: n.protein / goalProtein, color: '--teal', track: '--teal-track' },
     ...(carbs ? [{ value: n.carbs / Math.max(st.carbsGoal, 1), color: '--purple', track: '--purple-track' }] : []),
@@ -140,12 +143,12 @@ function Rings({ s }: { s: ProgressSnapshot }) {
     <a class="home-rings" href="#/food" aria-label={t('home_web_rings_cd', Math.round(n.protein), st.proteinGoal, nf().format(n.kcal), nf().format(st.kcalGoal))}>
       <div class="home-rings-box" style={{ inlineSize: `${size}px`, blockSize: `${size}px` }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false">
-          {specs.map((p, i) => <Arc key={i} {...p} size={size} stroke={stroke} inset={i * gap} />)}
+          {specs.map((p, i) => <Arc key={i} {...p} size={size} stroke={stroke} inset={i * gap} index={i} />)}
         </svg>
         <div class="home-rings-center">
-          <div class="home-rings-protein">{Math.round(n.protein)}</div>
+          <div class="home-rings-protein">{proteinShown}</div>
           <div class="home-rings-cap">{t('home_center_protein')}</div>
-          <div class="home-rings-kcal" style={{ color: `var(${kcalColor})` }}>{t('home_center_kcal', nf().format(n.kcal))}</div>
+          <div class="home-rings-kcal" style={{ color: `var(${kcalColor})` }}>{t('home_center_kcal', nf().format(kcalShown))}</div>
         </div>
       </div>
       <div class="home-legend">
@@ -159,8 +162,9 @@ function Rings({ s }: { s: ProgressSnapshot }) {
 
 function StatRow({ s, onWeight }: { s: ProgressSnapshot; onWeight: () => void }) {
   const { settings: st, today: n } = s
-  const proteinLeft = gramsLeft(st.proteinGoal, n.protein)
-  const kcalLeft = st.kcalGoal - n.kcal
+  // The numbers glide to their new values after a meal is logged.
+  const proteinLeft = Math.round(useTweened(gramsLeft(st.proteinGoal, n.protein)))
+  const kcalLeft = Math.round(useTweened(st.kcalGoal - n.kcal))
   const unit = weightUnit(st)
   const ar = getLang() === 'ar'
   return (
