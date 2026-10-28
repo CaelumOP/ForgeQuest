@@ -65,6 +65,9 @@ button.kit-card { min-block-size: 44px; }
 .kit-btn-text:disabled { background: transparent; }
 .kit-btn[aria-busy='true']:disabled { color: var(--text-2); }
 .kit-btn.kit-danger { color: var(--coral); }
+/* Pressed, a filled or tonal pill squares off to 12px corners and springs back (Android PillButton). */
+.kit-btn { transition: border-radius var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial); }
+.kit-btn-filled:not(:disabled):active, .kit-btn-tonal:not(:disabled):active { border-radius: 12px; }
 .kit-spinner { inline-size: 16px; block-size: 16px; border-radius: 50%; border: 2px solid var(--divider); border-block-start-color: var(--teal); animation: kit-spin 0.8s linear infinite; }
 @keyframes kit-spin { to { transform: rotate(360deg); } }
 
@@ -170,6 +173,8 @@ button.kit-stepper-val { overflow: hidden; }
 .kit-md-h3 { font-size: 16px; }
 
 @media (prefers-reduced-motion: reduce) {
+  .kit-btn { transition: none; }
+  .kit-swipe-bin, .kit-swipe-bin-over { animation: none; transition: none; }
   .kit-roll-up, .kit-roll-down { animation: none; }
   .kit-spinner { animation-duration: 2s !important; animation: kit-spin 2s linear infinite !important; }
   /* Nothing slides or rises: sheets, dialogs, toasts, pushed screens and new rows just fade in, briefly. */
@@ -195,3 +200,7 @@ button.kit-stepper-val { overflow: hidden; }
 .kit-swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-inline: 20px; background: var(--coral); color: #fff; pointer-events: none; }
 .kit-swipe-front { position: relative; touch-action: pan-y; }
 .kit-swipe-settle { transition: transform 160ms ease-out; }
+/* The bin waits at 0.8; crossing the delete line pops it 0.8 -> 1.25 -> 1 (once per crossing). */
+.kit-swipe-bin { display: inline-flex; transform: scale(0.8); transition: transform var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial); }
+.kit-swipe-bin-over { transform: scale(1); animation: kit-bin-pop calc(var(--forge-spring-fast-spatial-duration) * 1.2) var(--md-sys-motion-easing-emphasized); }
+@keyframes kit-bin-pop { 0% { transform: scale(0.8); } 45% { transform: scale(1.25); } 100% { transform: scale(1); } }
