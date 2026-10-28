@@ -20,6 +20,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import com.forgequest.app.ui.theme.ForgeMotion
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import com.forgequest.app.ui.theme.LocalReducedMotion
 import com.forgequest.app.ui.theme.effectsSpec
 import com.forgequest.app.ui.theme.spatialSpec
@@ -668,7 +671,7 @@ private fun SetRow(
                     Text(
                         stringResource(effort.labelRes),
                         style = MaterialTheme.typography.labelSmall,
-                        color = when (effort) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                        color = effortColor(effort),
                     )
                 }
             }
@@ -721,22 +724,50 @@ private fun SetRow(
     // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
     AnimatedVisibility(visible = set.done && effortSetId == set.id) {
         Column(Modifier.padding(start = 8.dp, top = 6.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SetEffort.entries.forEach { e ->
-                    ChoiceChip(
-                        stringResource(e.labelRes),
-                        set.effort == e.name,
-                        { vm.setEffort(set, e) },
-                        accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
-                    )
-                }
-            }
+            EffortGroup(selected = set.effort, onSelect = { vm.setEffort(set, it) })
             // Pain is worth a word: one tap opens the same note editor as a long-press.
             if (set.effort == SetEffort.PAIN.name) {
                 TextButton(onClick = { noteDialog = true }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
             }
         }
     }
+    }
+}
+
+/** Easy teal, OK blue, Hard purple, Pain coral. */
+@Composable
+private fun effortColor(e: SetEffort) = Fit.colors.let { c ->
+    when (e) { SetEffort.EASY -> c.teal; SetEffort.OK -> c.blue; SetEffort.HARD -> c.purple; SetEffort.PAIN -> c.coral }
+}
+
+/**
+ * Easy · OK · Hard · Pain as one connected group: round outer ends, 6 dp inner seams. The chosen one morphs into a full
+ * pill and fills with its colour. Tapping it again clears it (the view model decides that).
+ */
+@Composable
+private fun EffortGroup(selected: String, onSelect: (SetEffort) -> Unit) {
+    val c = Fit.colors
+    val entries = SetEffort.entries
+    Row(Modifier.fillMaxWidth().padding(end = 8.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        entries.forEachIndexed { i, e ->
+            val isSel = selected == e.name
+            val full = 50.dp
+            val seam = 6.dp
+            val startCorner by animateDpAsState(if (isSel || i == 0) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortStart")
+            val endCorner by animateDpAsState(if (isSel || i == entries.lastIndex) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortEnd")
+            val accent = effortColor(e)
+            val fill by animateColorAsState(if (isSel) accent else c.cardHigh, effectsSpec(), label = "effortFill")
+            val ink by animateColorAsState(if (isSel) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary, effectsSpec(), label = "effortInk")
+            val shape = RoundedCornerShape(topStart = startCorner, bottomStart = startCorner, topEnd = endCorner, bottomEnd = endCorner)
+            Box(
+                Modifier.weight(1f).heightIn(min = 40.dp).clip(shape).background(fill)
+                    .selectable(selected = isSel, role = Role.RadioButton) { onSelect(e) }
+                    .padding(horizontal = 4.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(e.labelRes), style = MaterialTheme.typography.labelLarge, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            }
+        }
     }
 }
 
