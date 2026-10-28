@@ -51,6 +51,15 @@
 .hs-deb-gold.quiet { color: var(--text-2); }
 .hs-deb-head .hs-deb-gold { font-weight: 600; }
 .hs-deb-next { color: var(--blue); }
+/* Score with its arc (DebriefCard); on the finish screen the lines rise in after the count. */
+.hs-deb-scorering { position: relative; display: inline-flex; align-items: center; justify-content: center; inline-size: 52px; block-size: 52px; font-variant-numeric: tabular-nums; }
+.hs-deb-scorering svg { position: absolute; inset: 0; }
+html[dir='rtl'] .hs-deb-scorering svg { transform: scaleX(-1); }
+.hs-deb-wait { opacity: 0; }
+.hs-deb-rise { animation: hs-deb-rise var(--forge-spring-default-spatial-duration) var(--forge-spring-default-spatial) both; }
+@keyframes hs-deb-rise { from { opacity: 0; transform: translateY(16px); } }
+@media (prefers-reduced-motion: reduce) { .hs-deb-rise { animation: kit-fade var(--forge-reduced-fade) linear both; } }
+.hs-deb-foot { margin: 6px 0 0; font-size: 12px; color: var(--text-2); }
 .hs-actions { display: flex; align-items: center; flex-wrap: wrap; }
 
 /* Undo bar after a swiped-away workout (same look as the Food screen's). */

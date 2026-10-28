@@ -1,5 +1,7 @@
 package com.forgequest.app.domain
 
+import com.forgequest.app.data.db.PlanItemEntity
+import com.forgequest.app.data.db.SetEntity
 import kotlin.math.roundToInt
 
 /**
@@ -25,6 +27,28 @@ object Progression {
 
     const val HOLD_STEP_SEC = 5
     const val HOLD_CEILING = 1.5f
+
+    /** What [next] needs for one exercise, apart from the unit and the readiness. */
+    data class Inputs(val target: Target?, val last: List<PastSet>, val previous: List<PastSet>, val warmup: Boolean)
+
+    /**
+     * The inputs to [next] for one exercise, shared by the prefill and the debrief so both read history the same way:
+     * the target from the plan [item] (null without one), the last two workouts in [recent] (done sets, newest workout
+     * first), each in set order with its effort read through [SetEffort.of], and the warm-up check (an item in the
+     * Warm-up block, or jumping jacks).
+     */
+    fun inputs(item: PlanItemEntity?, exerciseId: String?, recent: List<SetEntity>): Inputs {
+        val sessionIds = recent.map { it.sessionId }.distinct()
+        fun past(id: Long?) = recent.filter { it.sessionId == id }.sortedBy { it.setIndex }
+            .map { PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
+        val warmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || exerciseId == "jumping_jacks"
+        return Inputs(
+            target = item?.let { Target(it.sets, it.repsMin, it.repsMax, it.seconds, it.weightKg) },
+            last = past(sessionIds.getOrNull(0)),
+            previous = past(sessionIds.getOrNull(1)),
+            warmup = warmup,
+        )
+    }
 
     fun next(
         kind: ExerciseKind,

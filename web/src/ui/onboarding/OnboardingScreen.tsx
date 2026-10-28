@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { getLang, plural, setLang, t, type Lang } from '../../i18n'
+import { getLang, plural, setLang, t, type Lang, intlLocale } from '../../i18n'
 import { updateSettings } from '../../data/settings'
 import { applyPlan, seedLibrary } from '../../data/workouts'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
@@ -241,7 +241,7 @@ function PaceControl({ s, update }: StepProps) {
 function Target({ s, update }: StepProps) {
   const [editing, setEditing] = useState(false)
   if (!bodyStatsReady(s)) return <p class="onb-note">{t('onb_web_target_missing')}</p>
-  const num = (n: number) => new Intl.NumberFormat(getLang()).format(n)
+  const num = (n: number) => new Intl.NumberFormat(intlLocale()).format(n)
   const burn = Math.round(dailyBurn(s.weightKg, s.heightCm, s.age, s.bodyType === 'MALE', s.daysPerWeek, 0, DAY_BASE[s.dayActivity]) / 10) * 10
   // The difference keeps its sign next to the number in Arabic too (left-to-right isolate).
   const diff = `⁦${s.kcal >= burn ? '+' : '−'}${num(Math.abs(s.kcal - burn))}⁩`
@@ -290,7 +290,7 @@ function StepPlan({ s, update }: StepProps) {
       </div>
       <Segmented label={t('onb_days_title')} value={String(s.daysPerWeek)}
         onChange={(v) => update((c) => ({ ...c, daysPerWeek: Number(v), planIndex: planForDays(Number(v), c.preset) }))}
-        options={DAY_OPTIONS.map((d) => ({ value: String(d), label: new Intl.NumberFormat(getLang()).format(d) }))} />
+        options={DAY_OPTIONS.map((d) => ({ value: String(d), label: new Intl.NumberFormat(intlLocale()).format(d) }))} />
       <h2 class="onb-h2">{t('onb_available_equipment')}</h2>
       <ChipGroup label={t('onb_available_equipment')} value={s.preset} onChange={(p) => update((c) => ({ ...c, preset: p, planIndex: planForDays(c.daysPerWeek, p) }))}
         options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn }))} />
@@ -324,7 +324,7 @@ function StepKey({ value, onInput, check, onCheck }: { value: string; onInput: (
       <Title title={t('onb_ai_title')} body={t('onb_ai_body')} />
       <ol class="onb-steps">
         {['onb_ai_step1', 'onb_ai_step2', 'onb_ai_step3'].map((k, i) => (
-          <li key={k}><span class="onb-num" aria-hidden="true">{new Intl.NumberFormat(getLang()).format(i + 1)}</span><span>{t(k)}</span></li>
+          <li key={k}><span class="onb-num" aria-hidden="true">{new Intl.NumberFormat(intlLocale()).format(i + 1)}</span><span>{t(k)}</span></li>
         ))}
       </ol>
       <a class="kit-btn kit-btn-tonal onb-getkey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">

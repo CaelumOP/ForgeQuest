@@ -38,6 +38,17 @@ object AppLocale {
         return base.createConfigurationContext(config)
     }
 
+    /**
+     * Puts the Latin-digit default back. On every configuration change (rotation, dark mode, even with the app in the
+     * background) Android resets the default locale to the system's plain one, so until the next activity starts,
+     * String.format in a worker would print Arabic-Indic digits.
+     */
+    fun restoreDefault(context: Context) {
+        val chosen = current(context)
+        val wanted = if (chosen == SYSTEM) android.content.res.Resources.getSystem().configuration.locales[0] else Locale.forLanguageTag(chosen)
+        Locale.setDefault(withLatinDigits(wanted) ?: wanted)
+    }
+
     internal fun withLatinDigits(locale: Locale): Locale? =
         if (locale.language == "ar" && locale.getUnicodeLocaleType("nu") != "latn") {
             Locale.Builder().setLocale(locale).setUnicodeLocaleKeyword("nu", "latn").build()

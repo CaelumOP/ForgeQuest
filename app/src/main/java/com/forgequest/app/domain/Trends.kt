@@ -152,12 +152,20 @@ object Trends {
     /** Percent change between two values, rounded, or null when the base is zero. */
     fun percentChange(then: Float, now: Float): Int? = if (then == 0f) null else ((now - then) / then * 100f).roundToInt()
 
+    /** A week with fewer working sets than this is a break (vacation, sick) and stays out of the deload average. */
+    const val ACTIVE_WEEK_SETS = 6
+
+    /** How far back the plateau check looks. */
+    const val PLATEAU_WINDOW_DAYS = 42
+
     /**
      * Evaluates recent training history for:
-     * 1. Stalled lifts: exercises trained >= 3 times across >= 12 days in the last 35 days where the best score
-     *    of the most recent 2 sessions failed to beat the earlier sessions in that window.
-     * 2. Deload triggers: this week's sets >= 135 % of the 4-week average (with >= 18 sets),
-     *    >= 3 of the last 5 readiness days below 45 % recovery, or >= 2 stalled lifts at normal or higher load.
+     * 1. Stalled lifts: exercises done >= 4 times across >= 21 days in the last 42 days where the last 2 workouts beat
+     *    neither the earlier best set nor the earlier best total ([WorkoutScore.stats], rule A1). Unweighted holds and
+     *    jumping jacks are left out.
+     * 2. Deload triggers: this week's sets >= 135 % of the busiest active week (6+ sets) among the previous 4
+     *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
+     *    or >= 2 stalled lifts at normal or higher load.
      */
     fun analyzeFatigueAndPlateaus(
         sessions: List<SessionEntity>,
@@ -169,10 +177,14 @@ object Trends {
         val sessionDay = sessions.associate { it.id to it.epochDay }
         // Rolling 7-day windows, not calendar weeks: on a Monday the calendar week has 0 sets and the check went blind.
         val weekly = rollingWeeklySets(doneSets, sessionDay, 5, today)
-        val loadPct = trainingLoad(weekly)
         val currentWeekSets = weekly.lastOrNull() ?: 0
+        // A vacation week (under 6 sets) would pull the average down and make a normal week look like a spike.
+        val active = weekly.dropLast(1).filter { it >= ACTIVE_WEEK_SETS }
+        // Against the busiest recent week, so getting back to a normal week after a light one isn't overload.
+        val activePct = if (active.size < 2) null else (currentWeekSets * 100f / active.max().toFloat()).roundToInt()
+        val loadPct = activePct ?: trainingLoad(weekly)
 
-        val windowStart = today - 35
+        val windowStart = today - PLATEAU_WINDOW_DAYS
         val recentSets = doneSets.filter { s ->
             val d = sessionDay[s.sessionId] ?: return@filter false
             d in windowStart..today && !s.block.equals("Warm-up", ignoreCase = true)
@@ -184,17 +196,20 @@ object Trends {
             if (ex.id == "jumping_jacks") continue
             // A plank or dead hang held at the same time is maintenance, not a stalled lift.
             if (ex.kind == ExerciseKind.HOLD && exSets.none { (it.weightKg ?: 0f) > 0f }) continue
-            val series = bestSetSeries(exSets, ex.kind, sessionDay)
-            if (series.size < 3) continue
-            val span = (series.last().epochDay - series.first().epochDay).toInt()
-            if (span < 12) continue
-            val earlierBest = series.dropLast(2).maxOf { it.value }
-            val recentBest = series.takeLast(2).maxOf { it.value }
-            if (recentBest <= earlierBest + 0.01f) {
+            val byDay = exSets.groupBy { sessionDay.getValue(it.sessionId) }.toSortedMap()
+            if (byDay.size < 4) continue
+            val span = (byDay.lastKey() - byDay.firstKey()).toInt()
+            if (span < 21) continue
+            val stats = byDay.values.map { WorkoutScore.stats(ex.kind, exerciseId, it) }
+            val earlier = stats.dropLast(2)
+            val recent = stats.takeLast(2)
+            val earlierBest = earlier.maxOf { it.best }
+            val recentBest = recent.maxOf { it.best }
+            if (recentBest <= earlierBest + 0.01f && recent.maxOf { it.total } <= earlier.maxOf { it.total }) {
                 stalled += StalledLift(
                     exerciseId = exerciseId,
                     exerciseName = ex.name,
-                    sessionsCount = series.size,
+                    sessionsCount = byDay.size,
                     spanDays = span,
                     bestScore = maxOf(earlierBest, recentBest),
                 )
@@ -202,7 +217,7 @@ object Trends {
         }
 
         val reasons = mutableListOf<String>()
-        if (loadPct >= 135 && currentWeekSets >= 18) {
+        if (activePct != null && activePct >= 135 && currentWeekSets >= 18) {
             reasons += "acute weekly volume is $loadPct% of your 4-week average ($currentWeekSets sets)"
         }
         val recentReadiness = readinessDays.filter { it.epochDay in (today - 4)..today }
@@ -211,7 +226,7 @@ object Trends {
             reasons += "recovery has been below 45% on $lowRecoveryDays of the last ${recentReadiness.size} days"
         }
         if (stalled.size >= 2 && loadPct >= 95) {
-            reasons += "${stalled.size} lifts have plateaued for 2+ weeks (${stalled.take(3).joinToString(", ") { it.exerciseName }})"
+            reasons += "${stalled.size} lifts have plateaued for 3+ weeks (${stalled.take(3).joinToString(", ") { it.exerciseName }})"
         }
 
         return FatigueAndPlateauReport(

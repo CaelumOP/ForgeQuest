@@ -1,5 +1,7 @@
 package com.forgequest.app.domain
 
+import com.forgequest.app.data.db.PlanItemEntity
+import com.forgequest.app.data.db.SetEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -98,5 +100,23 @@ class ProgressionTest {
         val t = Progression.Target(3, 8, 12, null, 40f)
         val r = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.EASY))
         assertEquals(42.5f, r.sets[0].weightKg!!, 0.01f)
+    }
+
+    @Test
+    fun inputsReadTheLastTwoWorkoutsNewestFirstInSetOrder() {
+        fun row(session: Long, index: Int, reps: Int, effort: String = "", note: String = "") = SetEntity(
+            sessionId = session, exerciseId = "squat", itemPosition = 0, block = "Main", circuit = false, setIndex = index,
+            targetLabel = "", reps = reps, weightKg = 60f, done = true, effort = effort, note = note,
+        )
+        val recent = listOf(row(9, 1, 8, note = "knee pain"), row(9, 0, 10), row(5, 0, 12, effort = "HARD"), row(2, 0, 6))
+        val item = PlanItemEntity(dayId = 1, position = 0, exerciseId = "squat", block = "Main", circuit = false, sets = 3, repsMin = 8, repsMax = 12, weightKg = 60f)
+        val input = Progression.inputs(item, "squat", recent)
+        assertEquals(Progression.Target(3, 8, 12, null, 60f), input.target)
+        assertEquals(listOf(Progression.PastSet(10, null, 60f, SetEffort.OK), Progression.PastSet(8, null, 60f, SetEffort.PAIN)), input.last)
+        assertEquals(listOf(Progression.PastSet(12, null, 60f, SetEffort.HARD)), input.previous)
+        assertEquals(false, input.warmup)
+        assertEquals(true, Progression.inputs(item.copy(block = "warm-up"), "squat", recent).warmup)
+        assertEquals(true, Progression.inputs(null, "jumping_jacks", emptyList()).warmup)
+        assertEquals(null, Progression.inputs(null, "squat", emptyList()).target)
     }
 }

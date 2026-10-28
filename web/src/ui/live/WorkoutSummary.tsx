@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { t, useLang } from '../../i18n'
+import { t, useLang, intlLocale } from '../../i18n'
 import type { BadgeDef } from '../../domain/badges'
 import { Button, Card } from '../kit'
 import { CalendarIcon, CheckIcon } from '../icons'
@@ -7,7 +7,7 @@ import { TrophyIcon } from '../home/glyphs'
 import { dayName } from '../workouts/helpers'
 import { GRACE_MS } from '../../domain/workout-end'
 import type { WorkoutSummaryData } from './summary'
-import { scoreNote, scoreReasons, scoreTone } from '../history/helpers'
+import { DebriefCard } from '../history/DebriefCard'
 
 const tr = (key: string, fallback: string) => { const v = t(key); return v === key ? fallback : v }
 const badgeTitle = (b: BadgeDef) => tr(`badge_${b.id}_title`, b.title)
@@ -33,17 +33,7 @@ export function WorkoutSummary({ sum, onDone, onView }: { sum: WorkoutSummaryDat
           <div class="lws-stat" style={{ color: 'var(--gold)' }}><b>+{sum.xpGained}</b><span>{t('live_xp')}</span></div>
         </div>
         {sum.clippedEndAt != null && (
-          <p class="lws-xpline">{t('live_ended_at_last_set', new Date(sum.clippedEndAt - GRACE_MS).toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }))}</p>
-        )}
-        {sum.score && (
-          <Card class="lws-card">
-            <div class="lws-levelrow">
-              <span class="lws-level">{t('score_title')}</span>
-              {sum.score.showNumber && <span class={`lws-score ${scoreTone(sum.score.score)}`}>{t('debrief_score', sum.score.score)}</span>}
-            </div>
-            {scoreNote(sum.score) && <p class="lws-xpline lws-scorenote">{scoreNote(sum.score)}</p>}
-            <p class="lws-xpline">{scoreReasons(sum.score)}</p>
-          </Card>
+          <p class="lws-xpline">{t('live_ended_at_last_set', new Date(sum.clippedEndAt - GRACE_MS).toLocaleTimeString(intlLocale(lang), { hour: 'numeric', minute: '2-digit' }))}</p>
         )}
         <Card class="lws-card">
           <div class="lws-levelrow">
@@ -68,6 +58,7 @@ export function WorkoutSummary({ sum, onDone, onView }: { sum: WorkoutSummaryDat
             <div class="lws-line"><span class="lws-cal"><CalendarIcon size={20} /></span><span>{t('live_next_up', dayName(sum.nextUp.dow, lang), sum.nextUp.title)}</span></div>
           </Card>
         )}
+        {sum.score && <Card class="lws-card"><DebriefCard sessionId={sum.sessionId} score={sum.score} celebrate /></Card>}
         <div class="lws-actions">
           <Button block onClick={onDone}>{t('home_done')}</Button>
           <Button block variant="tonal" onClick={onView}>{t('live_web_view_workout')}</Button>

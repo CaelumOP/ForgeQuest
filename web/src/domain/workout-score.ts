@@ -13,42 +13,92 @@ export type Trend = 'UP' | 'SAME' | 'DOWN'
 export const WARM_UP_BLOCK = 'Warm-up'
 export const isWarmUp = (block: string | undefined): boolean => block?.toLowerCase() === WARM_UP_BLOCK.toLowerCase()
 
+/** The kind of personal record an exercise set, from its exercise kind. */
+export type PrKind = 'WEIGHT' | 'REPS' | 'HOLD'
+export const prKindOf = (kind: ExerciseKind): PrKind => (kind === 'WEIGHTED' ? 'WEIGHT' : kind)
+
+/**
+ * One exercise as the score saw it, for the debrief: its raw `trend` (null with no last time or only warm-up sets),
+ * `forgiven` when that day's recovery was low or it had a PAIN set (a drop then counts as holding steady), and the kind
+ * of personal record it set, if any.
+ */
+export type ScoreExercise = { exerciseId: string; trend: Trend | null; forgiven: boolean; pr: PrKind | null }
+
 /** One exercise of the workout: today's done sets and its last time (the most recent earlier workout's done sets, empty when none). */
 export type ScoreWork = { exerciseId: string; kind: ExerciseKind; done: Done[]; last: Done[] }
 export type WorkoutScoreResult = {
   score: number; doneSets: number; plannedSets: number | null; up: number; compared: number; prs: number
   /** Recovery under 50 or a PAIN set: drops count as holding steady and fewer sets are needed. */
   rough: boolean
+  /** That day's recovery was under 50 (a rough day from low recovery, not just from pain). */
+  lowRecovery?: boolean
   /** The person's first finished workout with done sets. */
   firstEver: boolean
   /** The first workout after a break (the same rule as the Welcome back card, progress.ts welcomeBack). */
   afterBreak: boolean
   /** False on a first-ever or first-after-a-break workout: show the reasons without the number. */
   showNumber: boolean
+  /** The planned sets this workout needed: plannedSets, or two thirds of it on a rough day. */
+  effectiveSets?: number | null
+  /** Per exercise, in the order given. */
+  exercises?: ScoreExercise[]
 }
 
 const sum = (l: number[]) => l.reduce((a, b) => a + b, 0)
+const f = Math.fround
 
 /**
- * Best set (by recordScore), total reps or seconds, and heaviest weight, compared with last time. For WEIGHTED, the total
- * leaves out ramp-up sets lighter than 60 % of that workout's heaviest. A drop of 2 % or less in the best set, or a heavier
- * load with at least half the reps (a reset to fewer reps), counts as holding steady.
+ * The numbers `trend` compares for one workout's sets of one exercise: the best set (recordScore) and its reps, the
+ * reference weight `top` (the heaviest set of 3+ reps, or the heaviest overall when every set has 1 or 2 reps) and the
+ * total reps (seconds for holds). For WEIGHTED, the total counts only sets at 60 % of `top` or more, so ramp-up sets and
+ * a heavy single tested on top of the work sets don't change it. `volume` is the sum of kg x reps over those same sets.
  */
-export function trend(kind: ExerciseKind, exerciseId: string, done: Done[], last: Done[]): Trend {
-  const best = (l: Done[]) => Math.max(...l.map((s) => recordScore(kind, s.reps, s.seconds, s.weightKg, exerciseId)))
-  const heaviest = (l: Done[]) => Math.max(...l.map((s) => s.weightKg ?? 0))
-  const total = (l: Done[]) => {
-    const top = heaviest(l)
-    const working = kind === 'WEIGHTED' && top > 0 ? l.filter((s) => (s.weightKg ?? 0) >= 0.6 * top) : l
-    return sum(working.map((s) => (kind === 'HOLD' ? s.seconds : s.reps) ?? 0))
+export type TrendStats = { best: number; bestReps: number; total: number; top: number; volume: number }
+
+export function trendStats(kind: ExerciseKind, exerciseId: string, sets: readonly Done[]): TrendStats {
+  let bestSet = sets[0]
+  let best = recordScore(kind, bestSet.reps, bestSet.seconds, bestSet.weightKg, exerciseId)
+  for (const s of sets) {
+    const v = recordScore(kind, s.reps, s.seconds, s.weightKg, exerciseId)
+    if (v > best) { best = v; bestSet = s }
   }
-  const bestNow = best(done); const bestLast = best(last)
-  const totalNow = total(done); const totalLast = total(last)
-  const heavyNow = heaviest(done); const heavyLast = heaviest(last)
-  const reset = heavyNow > heavyLast && totalNow * 2 >= totalLast
-  if (bestNow > bestLast || (totalNow > totalLast && heavyNow >= heavyLast)) return 'UP'
-  if (bestNow < 0.98 * bestLast && totalNow <= totalLast && !reset) return 'DOWN'
-  return 'SAME'
+  const pool = sets.filter((s) => (s.reps ?? 0) >= 3)
+  const top = Math.max(...(pool.length ? pool : sets).map((s) => f(s.weightKg ?? 0)))
+  const working = kind === 'WEIGHTED' && top > 0 ? sets.filter((s) => f(s.weightKg ?? 0) >= f(f(0.6) * top)) : sets
+  const total = sum(working.map((s) => (kind === 'HOLD' ? s.seconds : s.reps) ?? 0))
+  const volume = sum(working.map((s) => f(f(s.weightKg ?? 0) * (s.reps ?? 0))))
+  return { best, bestReps: bestSet.reps ?? 0, total, top, volume }
+}
+
+/** Weights closer than this are the same weight (a 135 lb entry stored in kg). */
+export const SAME_WEIGHT_KG = f(0.05)
+
+/**
+ * Rule A of docs/plans/math-debrief-plan.md, comparing trendStats with last time.
+ * - UP: a better best set; more total at the same or a heavier `top`; or (WEIGHTED) a heavier top weight with at least
+ *   60 % of last time's total, so the app's own reset (3x12 to 3x8, heavier) is progress.
+ * - DOWN only when the best set dropped (WEIGHTED: under 95 %, or 2+ fewer reps at the same weight; REPS: 2+ fewer reps
+ *   and under 95 %; HOLD: under 85 %), the total fell under 95 % (WEIGHTED: the volume, kg x reps, so a lighter weight
+ *   at the same reps counts), and it isn't a heavier reset with at least half the total.
+ * - SAME otherwise, so a one-rep wobble at the same weight holds steady.
+ */
+export function trend(kind: ExerciseKind, exerciseId: string, done: readonly Done[], last: readonly Done[]): Trend {
+  const now = trendStats(kind, exerciseId, done)
+  const was = trendStats(kind, exerciseId, last)
+  const heavier = now.top > f(was.top + SAME_WEIGHT_KG)
+  const sameOrHeavier = now.top >= f(was.top - SAME_WEIGHT_KG)
+  const up = now.best > was.best ||
+    (now.total > was.total && sameOrHeavier) ||
+    (kind === 'WEIGHTED' && heavier && now.total * 10 >= was.total * 6)
+  if (up) return 'UP'
+  const bestDropped =
+    kind === 'WEIGHTED' ? now.best < f(f(0.95) * was.best) || (sameOrHeavier && !heavier && now.bestReps <= was.bestReps - 2)
+      : kind === 'REPS' ? now.bestReps <= was.bestReps - 2 && now.best < f(f(0.95) * was.best)
+        : now.best < f(f(0.85) * was.best)
+  // Whole numbers: total < 0.95 x last and total >= 0.5 x last. WEIGHTED with weights compares the volume instead.
+  const totalFell = kind === 'WEIGHTED' && was.volume > 0 ? now.volume < 0.95 * was.volume : now.total * 100 < was.total * 95
+  const reset = heavier && now.total * 2 >= was.total
+  return bestDropped && totalFell && !reset ? 'DOWN' : 'SAME'
 }
 
 /**
@@ -68,13 +118,14 @@ export function computeWorkoutScore(
   const effective = planned == null ? null : rough ? Math.floor((67 * planned + 99) / 100) : planned
   // Twice the value of each exercise (UP 2, SAME 1, DOWN 0), so the sums stay whole numbers.
   let halves = 0; let up = 0; let compared = 0
-  for (const w of working) {
-    if (!w.done.length || !w.last.length) continue
-    compared++
-    const tr = trend(w.kind, w.exerciseId, w.done, w.last)
+  const exercises = working.map((w, i): ScoreExercise => {
+    const forgiven = lowReadiness || pain.has(w.exerciseId)
+    const tr = w.done.length && w.last.length ? trend(w.kind, w.exerciseId, w.done, w.last) : null
+    if (tr != null) compared++
     if (tr === 'UP') { up++; halves += 2 } else if (tr === 'SAME') halves += 1
-    else halves += lowReadiness || pain.has(w.exerciseId) ? 1 : 0
-  }
+    else if (tr === 'DOWN') halves += forgiven ? 1 : 0
+    return { exerciseId: w.exerciseId, trend: tr, forgiven, pr: work[i].done.some((s) => s.isPr) ? prKindOf(w.kind) : null }
+  })
   const ratio = effective == null ? 1 : sets.length / effective
   const completion = ratio >= 1 ? 3 : ratio >= 0.75 ? 2 : ratio >= 0.5 ? 1 : 0
   // min(3, floor(4 × sum / compared)) with sum = halves / 2; below 75 % of the sets, progress doesn't count.
@@ -83,7 +134,7 @@ export function computeWorkoutScore(
   const total = 3 + completion + progress + (prs > 0 ? 1 : 0)
   return {
     score: Math.min(10, Math.max(4, total)), doneSets: sets.length, plannedSets: planned, up, compared, prs,
-    rough, firstEver, afterBreak, showNumber: !(firstEver || afterBreak),
+    rough, lowRecovery: lowReadiness, firstEver, afterBreak, showNumber: !(firstEver || afterBreak), effectiveSets: effective, exercises,
   }
 }
 

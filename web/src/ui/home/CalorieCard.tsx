@@ -1,13 +1,13 @@
 // The one calorie card on Home (calorie plan v2): the one-time "more accurate target", the learned real burn, or a
 // signal from the logs. Each has one main action and a quiet "Not now". Android: CalorieCards.kt.
 import { useState } from 'preact/hooks'
-import { getLang, t } from '../../i18n'
+import { t, intlLocale } from '../../i18n'
 import { acceptCalorieCard, calorieCard, snoozeCalorieCards, suggestionFor, calorieInputs } from '../../data/calories'
 import type { ProgressSnapshot } from '../../data/progress'
 import { trainingDays } from '../../data/workouts'
 import { Button, Card } from '../kit'
 
-const nf = (n: number) => new Intl.NumberFormat(getLang()).format(n)
+const nf = (n: number) => new Intl.NumberFormat(intlLocale()).format(n)
 
 export function CalorieCard({ s, today }: { s: ProgressSnapshot; today: number }) {
   const [busy, setBusy] = useState(false)

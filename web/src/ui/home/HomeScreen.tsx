@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { getLang, plural, t } from '../../i18n'
+import { getLang, plural, t, intlLocale } from '../../i18n'
 import { logWeight, setDayTag, useProgress, type ProgressSnapshot } from '../../data/progress'
 import { planDay, startSession, useOpenSession } from '../../data/workouts'
 import { weightUnit } from '../../data/settings'
@@ -9,7 +9,7 @@ import { weeklyCounts } from '../../domain/trends'
 import { bodyStep, fromKg, toKg, unitLabel, weightNumber } from '../../domain/units'
 import { BADGES } from '../../domain/badges'
 import { gramsLeft } from '../../domain/nutrition'
-import { Button, Card, Chip, Ring, Sheet, Stat, Stepper } from '../kit'
+import { Button, Card, Chip, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
@@ -20,7 +20,7 @@ import { CalorieCard } from './CalorieCard'
 import { FoodTargetsCard, TargetNudge } from './SetupCards'
 import './home.css'
 
-const nf = () => new Intl.NumberFormat(getLang())
+const nf = () => new Intl.NumberFormat(intlLocale())
 const go = (hash: string) => { location.hash = hash }
 const dayDate = (epochDay: number) => new Date(epochDay * 86_400_000)
 
@@ -55,8 +55,8 @@ export function HomeScreen(_: { param?: string }) {
   return (
     <div class="content home">
       <Header s={s} />
-      {startOnTop && todayCard}
       <Rings s={s} />
+      {startOnTop && todayCard}
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {unseen.length > 0 && (
         <Card href="#/profile">
@@ -90,7 +90,7 @@ function badgeTitle(id: string, fallback: string): string {
 function Header({ s }: { s: ProgressSnapshot }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
-  const date = new Intl.DateTimeFormat(getLang(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
+  const date = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
   // Arabic has no use for a Latin letter: the level goes in the ring instead (Android RankInfo.mark).
   const mark = getLang() === 'ar' ? String(s.level.level) : s.level.rank.letter
   return (
@@ -108,14 +108,15 @@ function Header({ s }: { s: ProgressSnapshot }) {
   )
 }
 
-function Arc({ value, color, track, size, stroke, inset }: { value: number; color: string; track: string; size: number; stroke: number; inset: number }) {
+function Arc({ value, color, track, size, stroke, inset, index }: { value: number; color: string; track: string; size: number; stroke: number; inset: number; index: number }) {
   const v = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0))
+  const swept = useSwept()
   const r = (size - stroke) / 2 - inset
   const c = 2 * Math.PI * r
   return (
     <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`var(${track})`} stroke-width={stroke} />
-      {v > 0 && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`var(${color})`} stroke-width={stroke} stroke-linecap="round" stroke-dasharray={`${c * v} ${c}`} />}
+      {v > 0 && <circle class="kit-ring-arc" style={{ transitionDelay: `${index * 60}ms` }} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`var(${color})`} stroke-width={stroke} stroke-linecap="round" stroke-dasharray={`${c * (swept ? v : 0)} ${c}`} />}
     </g>
   )
 }
@@ -131,6 +132,8 @@ function Rings({ s }: { s: ProgressSnapshot }) {
   const size = 210
   const stroke = carbs ? 13 : 16
   const gap = stroke + 4
+  const proteinShown = Math.round(useTweened(Math.round(n.protein)))
+  const kcalShown = Math.round(useTweened(n.kcal))
   const specs = [
     { value: n.protein / goalProtein, color: '--teal', track: '--teal-track' },
     ...(carbs ? [{ value: n.carbs / Math.max(st.carbsGoal, 1), color: '--purple', track: '--purple-track' }] : []),
@@ -140,12 +143,12 @@ function Rings({ s }: { s: ProgressSnapshot }) {
     <a class="home-rings" href="#/food" aria-label={t('home_web_rings_cd', Math.round(n.protein), st.proteinGoal, nf().format(n.kcal), nf().format(st.kcalGoal))}>
       <div class="home-rings-box" style={{ inlineSize: `${size}px`, blockSize: `${size}px` }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false">
-          {specs.map((p, i) => <Arc key={i} {...p} size={size} stroke={stroke} inset={i * gap} />)}
+          {specs.map((p, i) => <Arc key={i} {...p} size={size} stroke={stroke} inset={i * gap} index={i} />)}
         </svg>
         <div class="home-rings-center">
-          <div class="home-rings-protein">{Math.round(n.protein)}</div>
+          <div class="home-rings-protein">{proteinShown}</div>
           <div class="home-rings-cap">{t('home_center_protein')}</div>
-          <div class="home-rings-kcal" style={{ color: `var(${kcalColor})` }}>{t('home_center_kcal', nf().format(n.kcal))}</div>
+          <div class="home-rings-kcal" style={{ color: `var(${kcalColor})` }}>{t('home_center_kcal', nf().format(kcalShown))}</div>
         </div>
       </div>
       <div class="home-legend">
@@ -159,8 +162,9 @@ function Rings({ s }: { s: ProgressSnapshot }) {
 
 function StatRow({ s, onWeight }: { s: ProgressSnapshot; onWeight: () => void }) {
   const { settings: st, today: n } = s
-  const proteinLeft = gramsLeft(st.proteinGoal, n.protein)
-  const kcalLeft = st.kcalGoal - n.kcal
+  // The numbers glide to their new values after a meal is logged.
+  const proteinLeft = Math.round(useTweened(gramsLeft(st.proteinGoal, n.protein)))
+  const kcalLeft = Math.round(useTweened(st.kcalGoal - n.kcal))
   const unit = weightUnit(st)
   const ar = getLang() === 'ar'
   return (
@@ -227,7 +231,7 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
     : k.weeks === 0 && k.doneThisWeek === 0 ? t('streak_hit_to_start')
     : k.hitThisWeek ? plural('streak_best', k.best)
     : plural('streak_more_to_go', k.targetThisWeek - k.doneThisWeek)
-  const long = new Intl.DateTimeFormat(getLang(), { weekday: 'long', timeZone: 'UTC' })
+  const long = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', timeZone: 'UTC' })
   return (
     <Card>
       <div class="home-streak-top">
@@ -317,7 +321,7 @@ function WeightSheet({ s, open, onClose }: { s: ProgressSnapshot; open: boolean;
 }
 
 function DayTagSheet({ day, current, onClose }: { day: number | null; current: DayTag | null; onClose: () => void }) {
-  const name = day != null ? new Intl.DateTimeFormat(getLang(), { weekday: 'long', timeZone: 'UTC' }).format(dayDate(day)) : ''
+  const name = day != null ? new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', timeZone: 'UTC' }).format(dayDate(day)) : ''
   const pick = async (tag: DayTag | null) => { if (day != null) await setDayTag(day, tag); onClose() }
   return (
     <Sheet open={day != null} onClose={onClose} title={t('daytag_title')}>

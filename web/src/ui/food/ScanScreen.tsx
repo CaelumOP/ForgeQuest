@@ -226,7 +226,7 @@ export function ScanScreen(_: { param?: string }) {
 
           {state.kind === 'busy' && (
             <div class="scan-busy" role="status" aria-live="polite">
-              <span class="kit-spinner" aria-hidden="true" />
+              <span class="kit-morph kit-morph-teal" aria-hidden="true" />
               <span>{t(STEPS[step])}</span>
             </div>
           )}

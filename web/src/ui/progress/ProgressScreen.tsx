@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'preact/hooks'
-import { getLang, plural, t } from '../../i18n'
+import { getLang, plural, t, intlLocale } from '../../i18n'
 import { useProgress, type ProgressSnapshot } from '../../data/progress'
 import { weightUnit } from '../../data/settings'
 import { trainingDays } from '../../data/workouts'
@@ -19,7 +19,7 @@ const RANGE_KEYS: Record<TrendRange, string> = {
   M1: 'progress_range_1m', M3: 'progress_range_3m', M6: 'progress_range_6m', Y1: 'progress_range_1y', ALL: 'progress_range_all',
 }
 const dateLabel = (day: number) =>
-  new Intl.DateTimeFormat(getLang(), { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(day * 86_400_000))
+  new Intl.DateTimeFormat(intlLocale(), { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(day * 86_400_000))
 
 /** Everything shown for one range, built only from the domain functions. */
 function derive(s: ProgressSnapshot, range: TrendRange) {

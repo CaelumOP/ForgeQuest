@@ -14,9 +14,11 @@ import { effortOf } from '../domain/effort';
 import { endTime, lastDoneAt } from '../domain/workout-end';
 import { translatePlanItem } from '../domain/exercise-swap-engine';
 import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
-import { dayTagMap, personalRecords, recordScore, totalXp } from '../domain/progress';
+import { dayTagMap, fullTarget, personalRecords, recordScore, totalXp } from '../domain/progress';
+import { debriefForSession, type DebriefResult } from '../domain/debrief';
+import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
-import { nextPrefill, type PastSet } from '../domain/progression';
+import { nextPrefill, progressionInputs, type PastSet } from '../domain/progression';
 import { isWarmUp, scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
@@ -330,17 +332,8 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
 /** Today's sets for one exercise from its last two finished workouts, through the Progression rules. */
 async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined): Promise<SetRow[]> {
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
-  const recent = ex ? await recentDoneSets(ex.id) : [];
-  const sessionIds = [...new Set(recent.map((s) => s.sessionId))];
-  const past = (id: number | undefined): PastSet[] =>
-    recent.filter((s) => s.sessionId === id).sort((a, b) => a.setIndex - b.setIndex)
-      .map((s) => ({ reps: s.reps, seconds: s.seconds, weightKg: s.weightKg, effort: effortOf(s.effort, s.note) }));
-  const isWarmup = item?.block.toLowerCase() === 'warm-up' || ex?.id === 'jumping_jacks';
-  const result = nextPrefill(
-    kind,
-    item ? { sets: item.sets, repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds, weightKg: item.weightKg } : null,
-    past(sessionIds[0]), past(sessionIds[1]), weightUnit(await loadSettings()), false, isWarmup,
-  );
+  const input = progressionInputs(item, ex?.id, ex ? await recentDoneSets(ex.id) : []);
+  const result = nextPrefill(kind, input.target, input.last, input.previous, weightUnit(await loadSettings()), false, input.warmup);
   const base = targetLabel(kind, item);
   const label = result.holdCeilingReached ? [base, HOLD_CEILING_NOTE].filter(Boolean).join(' · ') : base;
   return result.sets.map((p, i): SetRow => ({
@@ -503,6 +496,34 @@ export async function allWorkoutScores(only?: number): Promise<Map<number, Worko
     sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, rough, dayTagMap(notes), plan ? trainingDays(plan) : new Set(), only,
   );
 }
+/**
+ * The calculated debrief of one finished workout (domain/debrief.ts): this workout, each exercise's previous time, the
+ * plan day's exercises, the weekly target, the plateau and deload report as of that day and the harder versions.
+ * Null when the workout isn't finished or has no done sets. Never stored. No health data on the web, so healthOn is false.
+ */
+export async function workoutDebrief(sessionId: number): Promise<DebriefResult | null> {
+  const [sessions, doneSets, items, readiness, library, settings, plan, score] = await Promise.all([
+    finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(), loadSettings(),
+    getActivePlan(), allWorkoutScores(sessionId).then((m) => m.get(sessionId)),
+  ]);
+  const session = sessions.find((s) => s.id === sessionId);
+  if (!session || !score) return null;
+  const exercises = new Map(library.map((e) => [e.id, e]));
+  const planItems = session.planDayId == null ? [] : items.filter((i) => i.dayId === session.planDayId);
+  const weeklyTarget = fullTarget(plan ? trainingDays(plan) : new Set(), settings.weeklyTargetOverride);
+  // As of the workout's day: only workouts, sets and recovery on or before it, so an old workout keeps its own report.
+  const upTo = sessions.filter((s) => s.epochDay <= session.epochDay);
+  const upToIds = new Set(upTo.map((s) => s.id!));
+  const report = analyzeFatigueAndPlateaus(
+    upTo as never, doneSets.filter((s) => upToIds.has(s.sessionId)) as never, exercises as never, session.epochDay,
+    readiness.filter((r) => r.epochDay <= session.epochDay).sort((a, b) => a.epochDay - b.epochDay),
+  );
+  return debriefForSession(
+    session, sessions, doneSets, exercises as never, score, planItems, weeklyTarget, report,
+    weightUnit(settings), false, configuredEquipment(settings),
+  );
+}
+
 /** The score of one workout: only that one is calculated, from the same history. */
 export const useWorkoutScore = (id: number): WorkoutScoreResult | undefined =>
   useLive(() => allWorkoutScores(id), [id], new Map<number, WorkoutScoreResult>()).get(id);
@@ -564,3 +585,6 @@ export async function recomputeRecords(exerciseId: string): Promise<void> {
   const changed = all.filter((s) => s.isPr !== records.has(s)).map((s) => ({ ...s, isPr: records.has(s) }));
   if (changed.length) await db.sets.bulkPut(changed);
 }
+
+/** The calculated debrief of one workout, worked out again when a set is edited. */
+export const useWorkoutDebrief = (id: number): DebriefResult | null => useLive(() => workoutDebrief(id), [id], null);

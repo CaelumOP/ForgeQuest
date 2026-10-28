@@ -16,6 +16,16 @@ object WorkoutScore {
 
     fun isWarmUp(block: String) = block.equals(WARM_UP_BLOCK, ignoreCase = true)
 
+    /** The kind of personal record an exercise set, from its exercise kind. */
+    enum class PrKind { WEIGHT, REPS, HOLD }
+
+    /**
+     * One exercise as the score saw it, for the debrief: its raw [trend] (null with no last time or only warm-up sets),
+     * [forgiven] when that day's recovery was low or it had a PAIN set (a drop then counts as holding steady), and the
+     * kind of personal record it set, if any.
+     */
+    data class ExerciseResult(val exerciseId: String, val trend: Trend?, val forgiven: Boolean, val pr: PrKind?)
+
     /** One exercise of the workout: today's done sets and its last time (the most recent earlier workout's done sets, empty when none). */
     class Work(val exerciseId: String, val kind: ExerciseKind, val done: List<SetEntity>, val last: List<SetEntity>)
 
@@ -32,36 +42,66 @@ object WorkoutScore {
         val firstEver: Boolean = false,
         /** The first workout after a break (the same rule as the Welcome back card, [Nudges.welcomeBack]). */
         val afterBreak: Boolean = false,
+        /** The planned sets this workout needed: [plannedSets], or two thirds of it on a rough day. */
+        val effectiveSets: Int? = null,
+        /** Per exercise, in the order given. */
+        val exercises: List<ExerciseResult> = emptyList(),
+        /** That day's recovery was under 50 (a rough day from low recovery, not just from pain). */
+        val lowRecovery: Boolean = false,
     ) {
         /** False on a first-ever or first-after-a-break workout: show the reasons without the number. */
         val showNumber: Boolean = !(firstEver || afterBreak)
     }
 
     /**
-     * Best set (by [Records.score]), total reps or seconds, and heaviest weight, compared with last time. For WEIGHTED, the
-     * total leaves out ramp-up sets lighter than 60 % of that workout's heaviest. A drop of 2 % or less in the best set, or a
-     * heavier load with at least half the reps (a reset to fewer reps), counts as holding steady.
+     * The numbers [trend] compares for one workout's sets of one exercise: the best set ([Records.score]) and its reps,
+     * the reference weight [top] (the heaviest set of 3+ reps, or the heaviest overall when every set has 1 or 2 reps) and
+     * the total reps (seconds for holds). For WEIGHTED, the total counts only sets at 60 % of [top] or more, so ramp-up
+     * sets and a heavy single tested on top of the work sets don't change it. [volume] is the sum of kg x reps over those
+     * same sets.
+     */
+    data class Stats(val best: Float, val bestReps: Int, val total: Int, val top: Float, val volume: Double = 0.0)
+
+    fun stats(kind: ExerciseKind, exerciseId: String, sets: List<SetEntity>): Stats {
+        val bestSet = sets.maxBy { Records.score(kind, it.reps, it.seconds, it.weightKg, exerciseId) }
+        val best = Records.score(kind, bestSet.reps, bestSet.seconds, bestSet.weightKg, exerciseId)
+        val top = sets.filter { (it.reps ?: 0) >= 3 }.ifEmpty { sets }.maxOf { it.weightKg ?: 0f }
+        val working = if (kind == ExerciseKind.WEIGHTED && top > 0f) sets.filter { (it.weightKg ?: 0f) >= 0.6f * top } else sets
+        val total = working.sumOf { (if (kind == ExerciseKind.HOLD) it.seconds else it.reps) ?: 0 }
+        val volume = working.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }
+        return Stats(best, bestSet.reps ?: 0, total, top, volume)
+    }
+
+    /** Weights closer than this are the same weight (a 135 lb entry stored in kg). */
+    const val SAME_WEIGHT_KG = 0.05f
+
+    /**
+     * Rule A of docs/plans/math-debrief-plan.md, comparing [stats] with last time.
+     * - UP: a better best set; more total at the same or a heavier [Stats.top]; or (WEIGHTED) a heavier top weight with
+     *   at least 60 % of last time's total, so the app's own reset (3x12 to 3x8, heavier) is progress.
+     * - DOWN only when the best set dropped (WEIGHTED: under 95 %, or 2+ fewer reps at the same weight; REPS: 2+ fewer
+     *   reps and under 95 %; HOLD: under 85 %), the total fell under 95 % (WEIGHTED: the volume, kg x reps, so a lighter
+     *   weight at the same reps counts), and it isn't a heavier reset with at least half the total.
+     * - SAME otherwise, so a one-rep wobble at the same weight holds steady.
      */
     fun trend(kind: ExerciseKind, exerciseId: String, done: List<SetEntity>, last: List<SetEntity>): Trend {
-        fun best(l: List<SetEntity>) = l.maxOf { Records.score(kind, it.reps, it.seconds, it.weightKg, exerciseId) }
-        fun heaviest(l: List<SetEntity>) = l.maxOf { it.weightKg ?: 0f }
-        fun total(l: List<SetEntity>): Int {
-            val top = heaviest(l)
-            val working = if (kind == ExerciseKind.WEIGHTED && top > 0f) l.filter { (it.weightKg ?: 0f) >= 0.6f * top } else l
-            return working.sumOf { (if (kind == ExerciseKind.HOLD) it.seconds else it.reps) ?: 0 }
+        val now = stats(kind, exerciseId, done)
+        val was = stats(kind, exerciseId, last)
+        val heavier = now.top > was.top + SAME_WEIGHT_KG
+        val sameOrHeavier = now.top >= was.top - SAME_WEIGHT_KG
+        val up = now.best > was.best ||
+            (now.total > was.total && sameOrHeavier) ||
+            (kind == ExerciseKind.WEIGHTED && heavier && now.total * 10 >= was.total * 6)
+        if (up) return Trend.UP
+        val bestDropped = when (kind) {
+            ExerciseKind.WEIGHTED -> now.best < 0.95f * was.best || (sameOrHeavier && !heavier && now.bestReps <= was.bestReps - 2)
+            ExerciseKind.REPS -> now.bestReps <= was.bestReps - 2 && now.best < 0.95f * was.best
+            ExerciseKind.HOLD -> now.best < 0.85f * was.best
         }
-        val bestNow = best(done)
-        val bestLast = best(last)
-        val totalNow = total(done)
-        val totalLast = total(last)
-        val heavyNow = heaviest(done)
-        val heavyLast = heaviest(last)
-        val reset = heavyNow > heavyLast && totalNow * 2 >= totalLast
-        return when {
-            bestNow > bestLast || (totalNow > totalLast && heavyNow >= heavyLast) -> Trend.UP
-            bestNow < 0.98f * bestLast && totalNow <= totalLast && !reset -> Trend.DOWN
-            else -> Trend.SAME
-        }
+        // Whole numbers: total < 0.95 x last and total >= 0.5 x last. WEIGHTED with weights compares the volume instead.
+        val totalFell = if (kind == ExerciseKind.WEIGHTED && was.volume > 0.0) now.volume < 0.95 * was.volume else now.total * 100 < was.total * 95
+        val reset = heavier && now.total * 2 >= was.total
+        return if (bestDropped && totalFell && !reset) Trend.DOWN else Trend.SAME
     }
 
     /**
@@ -81,13 +121,17 @@ object WorkoutScore {
         var halves = 0
         var up = 0
         var compared = 0
-        working.filter { it.done.isNotEmpty() && it.last.isNotEmpty() }.forEach { w ->
-            compared++
-            when (trend(w.kind, w.exerciseId, w.done, w.last)) {
-                Trend.UP -> { up++; halves += 2 }
-                Trend.SAME -> halves += 1
-                Trend.DOWN -> halves += if (lowReadiness || w.exerciseId in pain) 1 else 0
+        val exercises = working.mapIndexed { i, w ->
+            val forgiven = lowReadiness || w.exerciseId in pain
+            val t = if (w.done.isNotEmpty() && w.last.isNotEmpty()) trend(w.kind, w.exerciseId, w.done, w.last) else null
+            when (t) {
+                null -> {}
+                Trend.UP -> { compared++; up++; halves += 2 }
+                Trend.SAME -> { compared++; halves += 1 }
+                Trend.DOWN -> { compared++; halves += if (forgiven) 1 else 0 }
             }
+            val pr = if (work[i].done.any { it.isPr }) prKindOf(w.kind) else null
+            ExerciseResult(w.exerciseId, t, forgiven, pr)
         }
         val ratio = if (effective == null) 1.0 else sets.size / effective.toDouble()
         val completion = when {
@@ -104,7 +148,13 @@ object WorkoutScore {
         }
         val prs = work.sumOf { w -> w.done.count { it.isPr } }
         val total = 3 + completion + progress + if (prs > 0) 1 else 0
-        return Result(total.coerceIn(4, 10), sets.size, planned, up, compared, prs, rough, firstEver, afterBreak)
+        return Result(total.coerceIn(4, 10), sets.size, planned, up, compared, prs, rough, firstEver, afterBreak, effective, exercises, lowReadiness)
+    }
+
+    fun prKindOf(kind: ExerciseKind): PrKind = when (kind) {
+        ExerciseKind.WEIGHTED -> PrKind.WEIGHT
+        ExerciseKind.REPS -> PrKind.REPS
+        ExerciseKind.HOLD -> PrKind.HOLD
     }
 
     /**

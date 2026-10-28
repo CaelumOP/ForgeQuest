@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.itemMotion
 import com.forgequest.app.R
 import com.forgequest.app.ui.localLabel
 
@@ -143,7 +144,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)) {
             if (custom.isNotEmpty()) {
                 item { Text(stringResource(R.string.lib_yours), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) }
-                items(custom, key = { it.id }) { ex -> Box(Modifier.animateItem()) { LibraryRow(ex, onClick = { editing = ex }) } }
+                items(custom, key = { it.id }) { ex -> Box(itemMotion()) { LibraryRow(ex, onClick = { editing = ex }) } }
             } else if (query.isBlank()) {
                 item {
                     Text(
@@ -153,7 +154,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
                 }
             }
             item { Text(stringResource(R.string.lib_built_in), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) }
-            items(builtIn, key = { it.id }) { ex -> Box(Modifier.animateItem()) { LibraryRow(ex, onClick = { nav.navigate(Routes.exercise(ex.id)) }) } }
+            items(builtIn, key = { it.id }) { ex -> Box(itemMotion()) { LibraryRow(ex, onClick = { nav.navigate(Routes.exercise(ex.id)) }) } }
         }
     }
 

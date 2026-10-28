@@ -22,8 +22,10 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
-import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.StreakCalculator
+import com.forgequest.app.domain.Trends
+import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.domain.WorkoutScore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -333,20 +335,16 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
      */
     private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
         val kind = ex?.kind ?: ExerciseKind.REPS
-        val recent = ex?.let { sessions.recentDoneSets(it.id) }.orEmpty()
-        val sessionIds = recent.map { it.sessionId }.distinct()
-        fun past(id: Long?) = recent.filter { it.sessionId == id }.sortedBy { it.setIndex }
-            .map { Progression.PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
-        val isWarmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || ex?.id == "jumping_jacks"
+        val input = Progression.inputs(item, ex?.id, ex?.let { sessions.recentDoneSets(it.id) }.orEmpty())
         val s = settings?.current()
         val result = Progression.next(
             kind = kind,
-            target = item?.let { Progression.Target(it.sets, it.repsMin, it.repsMax, it.seconds, it.weightKg) },
-            last = past(sessionIds.getOrNull(0)),
-            previous = past(sessionIds.getOrNull(1)),
+            target = input.target,
+            last = input.last,
+            previous = input.previous,
             unit = s?.weightUnit ?: WeightUnit.KG,
             lowReadiness = s?.healthEnabled == true && lowReadinessToday(),
-            warmup = isWarmup,
+            warmup = input.warmup,
         )
         val label = targetLabel(kind, item).let { base ->
             if (result.holdCeilingReached) listOf(base, AppText.get(R.string.rx_hold_ceiling)).filter { it.isNotBlank() }.joinToString(" · ") else base
@@ -381,6 +379,37 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         return WorkoutScore.forSessions(
             snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough,
             snap.dayTags, snap.plan?.trainingDays ?: emptySet(), only,
+        )
+    }
+
+    /**
+     * The calculated debrief of one finished workout in [snap] ([WorkoutDebriefMath]): this workout, each exercise's
+     * previous time, the plan day's exercises, the weekly target, the plateau and deload report as of that day, the
+     * harder versions and the health switch. Null when the workout isn't in [snap] or has no done sets. Never stored.
+     */
+    suspend fun debrief(snap: ProgressSnapshot, sessionId: Long): WorkoutDebriefMath.Result? {
+        val session = snap.sessions.firstOrNull { it.id == sessionId } ?: return null
+        val score = scores(snap, only = sessionId)[sessionId] ?: return null
+        val planItems = session.planDayId?.let { day -> plans.allItems().filter { it.dayId == day } }.orEmpty()
+        // As of the workout's day: only workouts, sets and recovery on or before it, so an old workout keeps its own report.
+        val readiness = db.readiness().all().filter { it.epochDay <= session.epochDay }.sortedBy { it.epochDay }
+        val upTo = snap.sessions.filter { it.epochDay <= session.epochDay }
+        val upToIds = upTo.mapTo(HashSet()) { it.id }
+        val report = Trends.analyzeFatigueAndPlateaus(upTo, snap.doneSets.filter { it.sessionId in upToIds }, snap.exercises, readiness, session.epochDay)
+        val weeklyTarget = StreakCalculator.fullTarget(snap.plan?.trainingDays ?: emptySet(), snap.settings.weeklyTargetOverride)
+        return WorkoutDebriefMath.forSession(
+            session = session,
+            sessions = snap.sessions,
+            doneSets = snap.doneSets,
+            exercises = snap.exercises,
+            score = score,
+            planItems = planItems,
+            weeklyTarget = weeklyTarget,
+            report = report,
+            unit = snap.settings.weightUnit,
+            // The health switch defaults to on, so it alone doesn't mean health data: it must also have been read once.
+            healthOn = snap.settings.healthEnabled && snap.settings.healthConnected,
+            equipment = snap.settings.configuredEquipment,
         )
     }
 

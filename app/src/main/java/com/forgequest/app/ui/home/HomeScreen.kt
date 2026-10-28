@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.R
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.localTitle
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -87,6 +89,7 @@ import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.components.ConcentricRings
+import com.forgequest.app.ui.components.tweenedInt
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.Sparkline
 import com.forgequest.app.ui.components.IconCircle
@@ -211,16 +214,20 @@ fun HomeScreen(nav: NavHostController) {
     Column(
         Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
     ) {
-        Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
+        // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
+        Box(Modifier.fillMaxWidth()) {
+            Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
+            UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
+        }
+        whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
         Spacer(Modifier.height(8.dp))
+        NutritionRings(s)
+        Spacer(Modifier.height(16.dp))
+        // On a training day the workout sits right under the rings.
         if (startOnTop) {
             todayCard()
             Spacer(Modifier.height(16.dp))
         }
-        updateBanner?.let { UpdateCard(it, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later) }
-        whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
-        NutritionRings(s)
-        Spacer(Modifier.height(16.dp))
         StatRow(s, onWeight = { weightSheet = true })
         Spacer(Modifier.height(16.dp))
         CalorieCardView(s, health, vm.app.settings)
@@ -349,6 +356,12 @@ private fun NutritionRings(s: ProgressSnapshot) {
     val kcalTrack = if (over) c.goldTrack else c.blueTrack
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         val carbsOn = s.settings.trackCarbs
+        // TalkBack reads the rings and their centre as one sentence, in ring order.
+        val ringsLabel = listOfNotNull(
+            stringResource(R.string.a11y_rings_protein, s.today.protein.roundToInt(), s.settings.proteinGoal),
+            if (carbsOn) stringResource(R.string.a11y_rings_carbs, s.today.carbs.roundToInt(), s.settings.carbsGoal) else null,
+            stringResource(R.string.a11y_rings_calories, "%,d".format(s.today.kcal), "%,d".format(s.settings.kcalGoal)),
+        ).joinToString(stringResource(R.string.list_separator))
         ConcentricRings(
             rings = listOfNotNull(
                 RingSpec(s.today.protein / goalProtein, c.teal, c.tealTrack),
@@ -357,12 +370,13 @@ private fun NutritionRings(s: ProgressSnapshot) {
             ),
             size = 210.dp,
             stroke = if (carbsOn) 13.dp else 16.dp,
+            description = ringsLabel,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Units under the numbers: without them "66 / 1,005" read like a score (Google Fit labels its ring centre too).
-                Text("${s.today.protein.roundToInt()}", fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
+                Text("${tweenedInt(s.today.protein.roundToInt())}", style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
                 Text(stringResource(R.string.home_center_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Text(stringResource(R.string.home_center_kcal, "%,d".format(s.today.kcal)), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.home_center_kcal, "%,d".format(tweenedInt(s.today.kcal))), style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -383,12 +397,14 @@ private fun Legend(color: Color, text: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
     val c = Fit.colors
-    val proteinLeft = Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein)
-    val kcalLeft = s.settings.kcalGoal - s.today.kcal
-    Row(Modifier.fillMaxWidth()) {
+    // The numbers glide to their new values after a meal is logged.
+    val proteinLeft = tweenedInt(Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein))
+    val kcalLeft = tweenedInt(s.settings.kcalGoal - s.today.kcal)
+    val stats: @Composable RowScope.() -> Unit = {
         StatColumn(
             if (proteinLeft > 0) stringResource(R.string.home_protein_left_value, proteinLeft) else stringResource(R.string.home_done),
             if (proteinLeft > 0) stringResource(R.string.home_protein_left) else stringResource(R.string.home_protein_goal),
@@ -418,6 +434,10 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
             onClick = onWeight,
         )
     }
+    // From 1.35x text the stats wrap two to a row instead of squeezing four numbers into quarter widths.
+    if (com.forgequest.app.ui.components.reflowText()) {
+        FlowRow(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) { stats() }
+    } else Row(Modifier.fillMaxWidth()) { stats() }
 }
 
 /** The hook into the Progress screen: this month's workouts with a little trend, Whoop-style. */
@@ -599,7 +619,7 @@ private fun TodayCard(
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
     val noPlan = day == null
-    val big = com.forgequest.app.ui.components.isLargeText()
+    val big = com.forgequest.app.ui.components.reflowText()
     val action: @Composable () -> Unit = {
         when {
             hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)

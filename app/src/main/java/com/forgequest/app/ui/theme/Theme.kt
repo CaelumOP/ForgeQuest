@@ -1,7 +1,10 @@
 package com.forgequest.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -16,6 +19,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.forgequest.app.R
 
@@ -127,6 +131,12 @@ object Fit {
 }
 
 /**
+ * Tabular (equal-width) figures, for numbers that change in place: timers, steppers, ring centres, stats.
+ * Without it a "1" is narrower than an "8" and the text shifts as the value ticks.
+ */
+fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum")
+
+/**
  * Manrope (SIL OFL) for display and title sizes: a geometric sans with open, rounded forms that reads as
  * athletic without shouting. Body and label text stay on the system sans for density and Arabic fallback.
  */
@@ -138,10 +148,21 @@ val Manrope = FontFamily(
     Font(R.font.manrope, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
 )
 
-/** Manrope for numbers, but the system face in Arabic, where the text often carries an Arabic unit Manrope lacks. */
+/**
+ * IBM Plex Sans Arabic (SIL OFL), the Arabic face: a calm, compact sans with Arabic and Latin glyphs, so Western digits
+ * and English words inside Arabic text match. Static 400, 500 and 600; Bold falls back to 600.
+ */
+val PlexArabic = FontFamily(
+    Font(R.font.ibm_plex_sans_arabic_regular, FontWeight.Normal),
+    Font(R.font.ibm_plex_sans_arabic_medium, FontWeight.Medium),
+    Font(R.font.ibm_plex_sans_arabic_semibold, FontWeight.SemiBold),
+    Font(R.font.ibm_plex_sans_arabic_semibold, FontWeight.Bold),
+)
+
+/** Manrope for numbers, but Plex Arabic in Arabic, where the text often carries an Arabic unit Manrope lacks. */
 val NumberFont: FontFamily
     @Composable @ReadOnlyComposable get() =
-        if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar") FontFamily.Default else Manrope
+        if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar") PlexArabic else Manrope
 
 private val FitTypography = Typography(
     displaySmall = TextStyle(fontFamily = Manrope, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
@@ -159,12 +180,12 @@ private val FitTypography = Typography(
 )
 
 /**
- * Arabic: system face without tracking for the display sizes, and every style picks its direction from the text
- * itself, so English data (plan notes, food names) still reads left to right with its full stop at the end.
+ * Arabic: IBM Plex Sans Arabic on every style (same sizes, weights and line heights as English), no tracking on the
+ * display sizes, and every style picks its direction from the text itself, so English data (plan notes, food names) still reads left to right with its full stop at the end.
  */
 private val ArabicTypography = FitTypography.run {
-    fun TextStyle.content() = copy(textDirection = androidx.compose.ui.text.style.TextDirection.Content)
-    fun TextStyle.plain() = copy(fontFamily = FontFamily.Default, letterSpacing = 0.sp).content()
+    fun TextStyle.content() = copy(fontFamily = PlexArabic, textDirection = androidx.compose.ui.text.style.TextDirection.Content)
+    fun TextStyle.plain() = copy(letterSpacing = 0.sp).content()
     copy(
         displaySmall = displaySmall.plain(), headlineMedium = headlineMedium.plain(), headlineSmall = headlineSmall.plain(), titleLarge = titleLarge.plain(),
         titleMedium = titleMedium.content(), titleSmall = titleSmall.content(), bodyLarge = bodyLarge.content(), bodyMedium = bodyMedium.content(),
@@ -172,34 +193,61 @@ private val ArabicTypography = FitTypography.run {
     )
 }
 
+/**
+ * The full Material 3 colour scheme, built from [FitColors] so built-in components (switches, snackbars, sheets, chips,
+ * the navigation bar) pick up our palette without per-call colours. Our hex values win wherever the Material spec
+ * differs; roles we have no colour for take the spec's value. Surface containers step up in tone from the canvas:
+ * lowest, low, container (our card), high (our raised card), highest. No dynamic colour: the palette is the brand.
+ */
+internal fun forgeDarkScheme(f: FitColors) = darkColorScheme(
+    primary = f.teal, onPrimary = f.onTeal, primaryContainer = f.tealTrack, onPrimaryContainer = f.teal,
+    inversePrimary = LightFitColors.teal,
+    secondary = f.blue, onSecondary = Color(0xFF003062), secondaryContainer = f.blueTrack, onSecondaryContainer = f.blue,
+    tertiary = f.gold, onTertiary = Color(0xFF3F2E00), tertiaryContainer = f.goldTrack, onTertiaryContainer = f.gold,
+    error = f.coral, onError = Color(0xFF601410), errorContainer = f.coralTrack, onErrorContainer = f.coral,
+    background = f.background, onBackground = f.textPrimary,
+    surface = f.background, onSurface = f.textPrimary, surfaceVariant = f.cardHigh, onSurfaceVariant = f.textSecondary,
+    inverseSurface = f.textPrimary, inverseOnSurface = f.card,
+    outline = Color(0xFF8E918F), outlineVariant = f.divider, scrim = Color.Black,
+    surfaceContainerLowest = Color(0xFF0E0E0F), surfaceContainerLow = Color(0xFF18191A), surfaceContainer = f.card,
+    surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFF333537),
+)
+
+internal fun forgeLightScheme(f: FitColors) = lightColorScheme(
+    primary = f.teal, onPrimary = f.onTeal, primaryContainer = f.tealTrack, onPrimaryContainer = Color(0xFF00413A),
+    inversePrimary = DarkFitColors.teal,
+    secondary = f.blue, onSecondary = Color.White, secondaryContainer = f.blueTrack, onSecondaryContainer = Color(0xFF0B3C86),
+    tertiary = f.gold, onTertiary = Color.White, tertiaryContainer = f.goldTrack, onTertiaryContainer = Color(0xFF261900),
+    error = f.coral, onError = Color.White, errorContainer = f.coralTrack, onErrorContainer = Color(0xFF410E0B),
+    background = f.background, onBackground = f.textPrimary,
+    surface = f.background, onSurface = f.textPrimary, surfaceVariant = f.cardHigh, onSurfaceVariant = f.textSecondary,
+    inverseSurface = Color(0xFF2E3133), inverseOnSurface = Color(0xFFF0F1F3),
+    outline = Color(0xFF747775), outlineVariant = f.divider, scrim = Color.Black,
+    surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF0F4F9), surfaceContainer = f.card,
+    surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFFD8E0EC),
+)
+
+/** The M3 shape scale, set explicitly. Our own components keep their corners (cards 24, pills fully round). */
+private val ForgeShapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(28.dp),
+)
+
 @Composable
 fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val fit = if (dark) DarkFitColors else LightFitColors
-    val scheme = if (dark) {
-        darkColorScheme(
-            primary = fit.teal, onPrimary = fit.onTeal, primaryContainer = fit.tealTrack, onPrimaryContainer = fit.teal,
-            secondary = fit.blue, secondaryContainer = fit.blueTrack, onSecondaryContainer = fit.blue,
-            background = fit.background, onBackground = fit.textPrimary,
-            surface = fit.background, onSurface = fit.textPrimary, onSurfaceVariant = fit.textSecondary,
-            surfaceContainerLowest = fit.background, surfaceContainerLow = fit.card, surfaceContainer = fit.card,
-            surfaceContainerHigh = fit.card, surfaceContainerHighest = fit.cardHigh,
-            outline = fit.divider, outlineVariant = fit.divider, error = fit.coral,
-        )
-    } else {
-        lightColorScheme(
-            primary = fit.teal, onPrimary = fit.onTeal, primaryContainer = fit.tealTrack, onPrimaryContainer = Color(0xFF00413A),
-            secondary = fit.blue, secondaryContainer = fit.blueTrack, onSecondaryContainer = Color(0xFF0B3C86),
-            background = fit.background, onBackground = fit.textPrimary,
-            surface = fit.background, onSurface = fit.textPrimary, onSurfaceVariant = fit.textSecondary,
-            surfaceContainerLowest = fit.card, surfaceContainerLow = fit.card, surfaceContainer = fit.card,
-            surfaceContainerHigh = fit.card, surfaceContainerHighest = fit.cardHigh,
-            outline = fit.divider, outlineVariant = fit.divider, error = fit.coral,
-        )
-    }
+    val scheme = if (dark) forgeDarkScheme(fit) else forgeLightScheme(fit)
     // Manrope has no Arabic glyphs, and the negative tracking on display sizes pulls joined Arabic letters apart and
-    // makes Compose wrap the last letter of a title onto its own line. Arabic gets the system face, untracked.
+    // makes Compose wrap the last letter of a title onto its own line. Arabic gets IBM Plex Sans Arabic, untracked.
     val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"
     CompositionLocalProvider(LocalFitColors provides fit) {
-        MaterialTheme(colorScheme = scheme, typography = if (arabic) ArabicTypography else FitTypography, content = content)
+        // Expressive motion for the stock components (sheets, switches, indicators). Colors, shapes and type are ours, so
+        // plain MaterialTheme with the motion scheme, not MaterialExpressiveTheme, which also swaps component defaults.
+        MaterialTheme(colorScheme = scheme, motionScheme = MotionScheme.expressive(), shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography) {
+            ProvideReducedMotion(content)
+        }
     }
 }

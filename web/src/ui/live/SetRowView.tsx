@@ -1,16 +1,16 @@
-import { useRef, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
 import type { SetRow } from '../../data/db'
 import type { ExerciseKind } from '../../domain/muscle'
 import { SET_EFFORTS, parseEffort, type SetEffort } from '../../domain/effort'
 import { fromKg, loadStep, toKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
-import { Chip, Sheet, Stepper, TextField, Button } from '../kit'
-import { CheckIcon } from '../icons'
+import { Chip, Sheet, Stepper, TextField, Button, haptics } from '../kit'
 import { clampField } from './groups'
 import { PlayIcon } from './glyphs'
 
 const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: 'effort_ok', HARD: 'effort_hard', PAIN: 'effort_pain' }
-const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'HARD' ? 'gold' : 'teal')
+/** Easy teal, OK blue, Hard purple, Pain coral. */
+const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'HARD' ? 'purple' : e === 'OK' ? 'blue' : 'teal')
 
 export type SetRowProps = {
   label: string | null
@@ -19,6 +19,8 @@ export type SetRowProps = {
   kind: ExerciseKind
   unit: WeightUnit
   previous?: SetRow
+  /** The set's numbers beat the person's best: a done tick turns gold with a star. */
+  pr?: boolean
   showEffort: boolean
   onChange: (next: SetRow) => void
   onToggle: (set: SetRow) => void
@@ -31,6 +33,34 @@ export function previousText(prev: SetRow, kind: ExerciseKind, unit: WeightUnit)
   if (kind === 'HOLD') return t('rx_seconds', prev.seconds ?? 0)
   if (kind === 'WEIGHTED') return `${prev.reps ?? 0} × ${weightNumber(unit, prev.weightKg ?? 0)} ${unitLabel(unit, getLang() === 'ar')}`
   return String(prev.reps ?? 0)
+}
+
+/**
+ * The set tick (Android SetTick): a 40px box in a 48px target. Empty: rounded square with an outline; pressed: tighter
+ * corners and a little smaller; ticked: a teal circle with the check drawn in; a PR: gold with a star and a pop.
+ */
+export function SetTick({ checked, pr = false, onToggle }: { checked: boolean; pr?: boolean; onToggle: () => void }) {
+  const gold = checked && pr
+  // Pop only when a set turns gold on screen, not when a gold row is drawn again.
+  const was = useRef(gold)
+  const [pop, setPop] = useState(false)
+  useEffect(() => {
+    if (gold && !was.current) setPop(true)
+    if (!gold) setPop(false)
+    was.current = gold
+  }, [gold])
+  return (
+    <button type="button" class={`lw-tick${checked ? ' lw-tick-on' : ''}${gold ? ' lw-tick-pr' : ''}${pop ? ' lw-tick-pop' : ''}`}
+      role="checkbox" aria-checked={checked} aria-label={t('cd_set_done')} onClick={onToggle}>
+      <span class="lw-tick-box" onAnimationEnd={() => setPop(false)}>
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          {gold
+            ? <path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            : <path class="lw-tick-path" pathLength={1} fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5.5 12.5 10 17l8.5-9.5" />}
+        </svg>
+      </span>
+    </button>
+  )
 }
 
 /** One set: number, previous-performance hint, steppers and the big tick (Android SetRow). Long-press opens the note. */
@@ -49,7 +79,7 @@ export function SetRowView(p: SetRowProps) {
   )
   return (
     <div class="lw-setwrap">
-      <div class={`lw-set${set.done ? ' lw-set-done' : ''}${set.done && set.isPr ? ' lw-set-pr' : ''}`}
+      <div class={`lw-set${set.done ? ' lw-set-done' : ''}${set.done && (set.isPr || p.pr) ? ' lw-set-pr' : ''}`}
         onPointerDown={() => { clear(); timer.current = window.setTimeout(() => setNoteOpen(true), 550) }}
         onPointerUp={clear} onPointerLeave={clear} onPointerCancel={clear}
         onContextMenu={(e) => { e.preventDefault(); setNoteOpen(true) }}>
@@ -82,14 +112,18 @@ export function SetRowView(p: SetRowProps) {
           )}
           {(kind === 'WEIGHTED' || set.weightKg != null) && weightStepper}
         </div>
-        <button type="button" class={`lw-tick${set.done ? ' lw-tick-on' : ''}`} role="checkbox" aria-checked={set.done} aria-label={t('cd_set_done')}
-          onClick={() => p.onToggle(set)}><CheckIcon size={28} /></button>
+        <SetTick checked={set.done} pr={set.isPr || p.pr} onToggle={() => p.onToggle(set)} />
       </div>
       {set.done && p.showEffort && (
         <div class="lw-efforts">
-          {SET_EFFORTS.map((e) => (
-            <Chip key={e} label={t(EFFORT_KEY[e])} selected={set.effort === e} accent={accentOf(e)} onClick={() => save({ effort: set.effort === e ? '' : e })} />
-          ))}
+          {/* One connected group: round outer ends, 6px seams; the chosen effort morphs into a full pill in its colour. */}
+          <div class="lw-effort-group" role="radiogroup" aria-label={t('a11y_set_effort')}>
+            {SET_EFFORTS.map((e) => (
+              <button key={e} type="button" role="radio" aria-checked={set.effort === e}
+                class={`lw-effort-seg kit-accent-${accentOf(e)}${set.effort === e ? ' lw-effort-on' : ''}`}
+                onClick={() => { haptics.tick(); save({ effort: set.effort === e ? '' : e }) }}>{t(EFFORT_KEY[e])}</button>
+            ))}
+          </div>
           {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}
         </div>
       )}

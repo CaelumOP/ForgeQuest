@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { getLang, t } from '../../i18n'
+import { getLang, t, intlLocale } from '../../i18n'
 import type { SetRow } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
@@ -39,7 +39,7 @@ function metricsFor(kind: ExerciseKind, wu: WeightUnit, arabic: boolean): Metric
 }
 
 const dateText = (epochDay: number, style: 'long' | 'short') =>
-  new Date(epochDay * 86_400_000).toLocaleDateString(getLang(), style === 'long'
+  new Date(epochDay * 86_400_000).toLocaleDateString(intlLocale(), style === 'long'
     ? { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }
     : { month: 'short', day: 'numeric', timeZone: 'UTC' })
 

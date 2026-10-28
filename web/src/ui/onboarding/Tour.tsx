@@ -1,5 +1,5 @@
 import { useRef, useState } from 'preact/hooks'
-import { getLang, t } from '../../i18n'
+import { t, intlLocale } from '../../i18n'
 import { CameraIcon, DumbbellIcon, LeafIcon, SparkleIcon, TrophyIcon } from '../home/glyphs'
 import { useSettings } from '../../data/settings'
 import { Button } from '../kit'
@@ -35,7 +35,7 @@ export function Tour({ finishLabel, onDone }: { finishLabel: string; onDone: () 
   const [page, setPage] = useState(0)
   const track = useRef<HTMLDivElement>(null)
   const last = page === SLIDES.length - 1
-  const num = new Intl.NumberFormat(getLang())
+  const num = new Intl.NumberFormat(intlLocale())
 
   const onScroll = () => {
     const el = track.current

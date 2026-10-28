@@ -64,3 +64,9 @@ button.home-day { cursor: pointer; }
 .home-cal .home-s { margin: 0; white-space: normal; }
 .home-cal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-block-start: 4px; }
 .home-nudge { margin-block-start: 16px; padding-block-start: 12px; border-block-start: 1px solid var(--divider); }
+
+/* Large text (see styles.css): the stats wrap two to a row instead of four squeezed numbers. */
+@media (max-width: 300px) {
+  .home-stats { flex-wrap: wrap; row-gap: 8px; }
+  .home-stats > * { flex: 1 0 50%; }
+}

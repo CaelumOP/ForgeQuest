@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
@@ -17,14 +16,14 @@ val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPasswor
 
 android {
     namespace = "com.forgequest.app"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.forgequest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "2.15.0"
+        versionCode = 28
+        versionName = "2.16.0"
 
         // QA only: `-PgeminiBase=http://10.0.2.2:8765/v1beta` points a build at a local test server.
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"
@@ -83,7 +82,7 @@ ksp {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2025.02.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.15.0")
@@ -97,7 +96,8 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
+    // Pinned past the BOM: the Expressive components (LoadingIndicator, wavy progress) ship only in 1.5.
+    implementation("androidx.compose.material3:material3:1.5.0-beta02")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
 

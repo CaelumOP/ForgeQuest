@@ -3,22 +3,22 @@ import { getLang, plural, t, useLang } from '../../i18n'
 import type { ExerciseRow, SetRow } from '../../data/db'
 import { configuredEquipment, useSettings, weightUnit } from '../../data/settings'
 import {
-  addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishSession, harderHint, recentDoneSets, removeSet, stepUp, swapExercise, updateSet,
+  addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishSession, harderHint, recentDoneSets, recentDoneSetsAll, removeSet, stepUp, swapExercise, updateSet,
   useLibrary, useOpenSession, useSets, type FinishResult,
 } from '../../data/workouts'
 import { weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
 import { isWarmUp } from '../../domain/workout-score'
-import { Button, Card, Dialog, EmptyState, IconButton, Sheet, ListRow, toast } from '../kit'
+import { Button, Card, Dialog, EmptyState, IconButton, Sheet, ListRow, haptics, toast } from '../kit'
+import { recordScore } from '../../domain/progress'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
-import { runDebriefInBackground } from '../coach/debrief'
 import { autoBackup } from '../../data/drive'
 import { blockLabel, openFormVideo } from '../workouts/helpers'
 import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
 import { currentGroupIndex, groupSets, groupSetsByExercise, nextUntickedSet, type Group } from './groups'
 import { HoldOverlay, RestBar } from './Overlays'
-import { SetRowView, type SetRowProps } from './SetRowView'
+import { SetRowView, SetTick, type SetRowProps } from './SetRowView'
 import {
   adjustRest, clock, holdElapsed, restLeft, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
   type HoldTimer, type RestTimer,
@@ -30,10 +30,10 @@ import { WorkoutSummary } from './WorkoutSummary'
 import './live.css'
 
 /**
- * After finishSession: the Coach's debrief of the workout (Android generateDebrief) runs in the background and is saved on the
- * session row; the summary screen shows it when it arrives. The per-set effort chips (Easy, OK, Hard, Pain) are ported in SetRowView.
+ * After finishSession: the backup runs in the background. The debrief on the summary is calculated when the card opens.
+ * The per-set effort chips (Easy, OK, Hard, Pain) are ported in SetRowView.
  */
-export function onWorkoutFinished(sessionId: number, _result: FinishResult): void { runDebriefInBackground(sessionId); void autoBackup('workout') }
+export function onWorkoutFinished(_sessionId: number, _result: FinishResult): void { void autoBackup('workout') }
 
 const FOCUS_KEY = 'fq.live.focus'
 const store = (): Storage | null => { try { return sessionStorage } catch { return null } }
@@ -66,6 +66,8 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const [summary, setDone] = useState<WorkoutSummaryData | null>(null)
   const [previous, setPrevious] = useState<Map<string, SetRow[]>>(new Map())
   const [harder, setHarder] = useState<Map<string, Hint>>(new Map())
+  // Best score ever per exercise (finished workouts only), so a set that beats it shows a gold tick.
+  const [best, setBest] = useState<Map<string, number>>(new Map())
 
   const restRef = useRef(rest); restRef.current = rest
   const holdRef = useRef(hold); holdRef.current = hold
@@ -151,6 +153,22 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     return () => { live = false }
   }, [sets.map((s) => s.exerciseId).join('|'), session?.id])
 
+  useEffect(() => {
+    const missing = [...new Set(sets.map((s) => s.exerciseId))].filter((id) => !best.has(id))
+    if (!missing.length || exercises.size === 0) return
+    let live = true
+    void Promise.all(missing.map(async (id) => {
+      const kind = exercises.get(id)?.kind ?? 'REPS'
+      const done = await recentDoneSetsAll(id)
+      return [id, done.length ? Math.max(...done.map((s) => recordScore(kind, s.reps, s.seconds, s.weightKg, id))) : Infinity] as const
+    })).then((rows) => { if (live) setBest((m) => new Map([...m, ...rows])) })
+    return () => { live = false }
+  }, [sets.map((s) => s.exerciseId).join('|'), exercises.size])
+  const prIds = useMemo(() => new Set(sets.filter((s) => {
+    const b = best.get(s.exerciseId)
+    return b != null && Number.isFinite(b) && recordScore(exercises.get(s.exerciseId)?.kind ?? 'REPS', s.reps, s.seconds, s.weightKg, s.exerciseId) > b
+  }).map((s) => s.id!)), [sets, best, exercises])
+
   // A bodyweight move that has become easy offers its harder version (or a slower tempo); checked once per exercise.
   const hintChecked = useRef(new Set<string>())
   useEffect(() => {
@@ -210,14 +228,14 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     unlockAudio()
     const done = !group.every((s) => s.done)
     setEffortSetId(null)
-    if (hapticsOn) buzz(done ? 40 : 15)
+    if (done) haptics.check(); else haptics.tick()
     group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt: done ? Date.now() : null }) })
   }
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
     setEffortSetId(done ? (set.id ?? null) : null)
-    if (hapticsOn) buzz(done ? 40 : 15)
+    if (!done) haptics.tick(); else if (prIds.has(set.id!)) haptics.pr(); else haptics.check()
     save({ ...set, done, doneAt: done ? Date.now() : null })
     if (done && set.restSeconds > 0) startRestFor(set)
     else if (!done) setRestSaved(null)
@@ -291,7 +309,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const elapsed = Math.max(0, Math.floor((now - session.startedAt) / 1000))
   const header = plural('live_header', sets.length, Math.floor(elapsed / 60), String(elapsed % 60).padStart(2, '0'), doneCount, sets.length)
   const cardFor = (g: Group, forceOpen: boolean) => (
-    <GroupCard key={g.key} g={g} forceOpen={forceOpen} exercises={exercises} previous={previous} unit={unit} effortSetId={effortSetId}
+    <GroupCard key={g.key} g={g} forceOpen={forceOpen} exercises={exercises} previous={previous} prIds={prIds} unit={unit} effortSetId={effortSetId}
       onChange={save} onToggle={toggle} onToggleAll={toggleAll} onStartHold={beginHold} harder={harder}
       onStepUp={(oldId, next) => {
         setHarder((m) => { const n = new Map(m); n.delete(oldId); return n })
@@ -412,12 +430,14 @@ function setSummary(set: SetRow, kind: ExerciseRow['kind'], unit: WeightUnit): s
 }
 
 type CardProps = {
-  g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; unit: WeightUnit; effortSetId: number | null
+  g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; prIds: Set<number>; unit: WeightUnit; effortSetId: number | null
   onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onAddRound: (positions: number[]) => void
   harder: Map<string, Hint>; onStepUp: (oldId: string, next: ExerciseRow) => void
 }
 
 type Hint = { next: ExerciseRow | null }
+
+const prIds = (p: CardProps, set: SetRow) => set.id != null && p.prIds.has(set.id)
 
 /** "Wide knee push-up is getting easy": one tap switches to the harder version, or a tempo tip when there is none. */
 function HarderNote({ ex, hint, onStepUp }: { ex: ExerciseRow; hint: Hint | undefined; onStepUp: (oldId: string, next: ExerciseRow) => void }) {
@@ -450,8 +470,7 @@ function WarmupRow(p: { g: Extract<Group, { kind: 'straight' }>; ex: ExerciseRow
             </span>
             <ExpandMoreIcon size={20} />
           </button>
-          <button type="button" class={`lw-tick${allDone ? ' lw-tick-on' : ''}`} role="checkbox" aria-checked={allDone} aria-label={t('cd_set_done')}
-            onClick={() => p.onToggleAll(g.sets)}><CheckIcon size={28} /></button>
+          <SetTick checked={allDone} onToggle={() => p.onToggleAll(g.sets)} />
         </div>
         {expanded && g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...p.rowProps(set, null)} />)}
       </Card>
@@ -470,7 +489,7 @@ function GroupCard(p: CardProps) {
   const name = (id: string) => exercises.get(id)?.name ?? id
   const rowProps = (set: SetRow, round: number | null) => ({
     set, unit: p.unit, kind: exercises.get(set.exerciseId)?.kind ?? 'REPS', previous: p.previous.get(set.exerciseId)?.[round ?? set.setIndex],
-    showEffort: p.effortSetId === set.id, onChange: p.onChange, onToggle: p.onToggle, onStartHold: p.onStartHold,
+    pr: prIds(p, set), showEffort: p.effortSetId === set.id, onChange: p.onChange, onToggle: p.onToggle, onStartHold: p.onStartHold,
   })
 
   if (g.kind === 'straight' && isWarmUp(g.block)) {

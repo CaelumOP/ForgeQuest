@@ -12,9 +12,9 @@
 [dir="rtl"] .food .mirror { transform: scaleX(-1); }
 .food-rings { display: flex; justify-content: space-around; gap: 8px; }
 .food-ring { display: flex; flex-direction: column; align-items: center; gap: 6px; min-inline-size: 0; }
-.food-ring-num { font-size: 16px; font-weight: 600; line-height: 20px; }
+.food-ring-num { font-size: 16px; font-weight: 600; line-height: 20px; font-variant-numeric: tabular-nums; }
 .food-ring-lbl { font-size: 12px; line-height: 16px; color: var(--text-2); text-align: center; }
-.food-ring-goal { font-size: 12px; line-height: 16px; color: var(--text-2); }
+.food-ring-goal { font-size: 12px; line-height: 16px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .food-week-title { font-size: 14px; font-weight: 500; margin: 0; }
 .food-week-sub { font-size: 12px; line-height: 16px; color: var(--text-2); margin: 2px 0 12px; }
 .food-week-bars { display: flex; gap: 6px; align-items: flex-end; }
@@ -72,7 +72,6 @@
 .scan-file { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
 .scan-photo { inline-size: 100%; max-block-size: 220px; object-fit: cover; border-radius: 20px; background: var(--card-high); }
 .scan-busy { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-block: 16px; font-size: 15px; }
-.scan-busy .kit-spinner { inline-size: 28px; block-size: 28px; }
 .scan-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .scan-actions > .kit-btn-filled { flex: 1; }
 .scan-fail h2 { margin: 0 0 6px; font-size: 16px; font-weight: 500; }

@@ -211,15 +211,16 @@ fun WorkoutsScreen(nav: NavHostController) {
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int) -> Unit) {
     val c = Fit.colors
     val today = Dates.todayDayOfWeek()
     val dayRestCd = stringResource(R.string.day_cd_rest)
     val dayTrainingCd = stringResource(R.string.day_cd_training)
-    // Seven chips share the width, so the day names stop growing at 1.3x text (like the bottom bar) instead of turning into "الث…".
-    com.forgequest.app.ui.components.CappedFontScale {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    // Seven chips share the width. From 1.35x text they wrap to two rows (four and three) so the full day names,
+    // Arabic ones too, never turn into "الث…".
+    val chips: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
         (1..7).forEach { dow ->
             val isSel = dow == selected
             val rest = days.firstOrNull { it.day.dayOfWeek == dow }?.day?.isRest ?: true
@@ -250,7 +251,14 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
             }
         }
     }
-    }
+    if (com.forgequest.app.ui.components.reflowText()) {
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            maxItemsInEachRow = 4,
+        ) { chips() }
+    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { chips() }
 }
 
 @Composable

@@ -1,5 +1,24 @@
 package com.forgequest.app.ui.components
 
+import com.forgequest.app.ui.theme.tabular
+import com.forgequest.app.container
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.effectsSpec
+import com.forgequest.app.ui.theme.spatialSpec
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -30,6 +49,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,10 +102,12 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.LaunchedEffect
 import java.util.Locale
+import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.alpha
@@ -115,8 +142,21 @@ fun FitSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: 
     androidx.compose.material3.Switch(
         // A gap before the switch, so a long subtitle beside it never runs into it.
         checked, onCheckedChange, modifier = Modifier.padding(start = 12.dp), enabled = enabled,
-        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Fit.colors.teal, checkedThumbColor = Fit.colors.card),
+        colors = fitSwitchColors(Fit.colors.teal),
     )
+
+/**
+ * Switch colours: the checked track is [checked], the unchecked track stays our raised card. The theme's
+ * surfaceContainerHighest is one step brighter, so the unchecked track is pinned here to keep the look.
+ */
+@Composable
+fun fitSwitchColors(checked: Color) = Fit.colors.let { c ->
+    androidx.compose.material3.SwitchDefaults.colors(
+        checkedTrackColor = checked, checkedThumbColor = c.card,
+        uncheckedTrackColor = c.cardHigh,
+        disabledUncheckedTrackColor = c.cardHigh.copy(alpha = 0.12f).compositeOver(c.background),
+    )
+}
 
 /** Short message at the bottom of the screen, for results that need no action. */
 fun android.content.Context.toast(message: String) = android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show()
@@ -147,13 +187,22 @@ fun PillButton(
     content: Color = Fit.colors.onTeal,
     enabled: Boolean = true,
 ) {
+    // Pressed, the pill squares off to 12 dp corners and springs back on release.
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    // Half the button's height is a full pill; measured so the spring starts moving at once instead of from a clamped 50 dp.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var half by remember { mutableStateOf(24.dp) }
+    val press by animateFloatAsState(if (pressed) 1f else 0f, spatialSpec(ForgeMotion.Springs.FastSpatial), label = "pillPress")
+    val corner = androidx.compose.ui.unit.lerp(half, 12.dp, press).coerceAtLeast(0.dp)
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(50),
+        interactionSource = interaction,
+        shape = RoundedCornerShape(corner),
         color = if (enabled) container else Fit.colors.cardHigh,
         contentColor = if (enabled) content else Fit.colors.textSecondary,
-        modifier = modifier,
+        modifier = modifier.onSizeChanged { half = with(density) { (it.height / 2).toDp() } },
     ) {
         Row(
             Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -217,7 +266,8 @@ fun SegmentedTabs(
     val c = Fit.colors
     val tall = subs.isNotEmpty() || wrap
     // At large text sizes five equal slices can't hold their labels, so the row scrolls sideways with each label whole.
-    val scrolling = !tall && options.size >= 4 && isLargeText()
+    val reflow = reflowText()
+    val scrolling = !tall && options.size >= 4 && reflow
     // Tall segments share one height, so a one-line option is as tall as a wrapped one.
     Row(
         modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh)
@@ -242,9 +292,11 @@ fun SegmentedTabs(
                         label,
                         style = MaterialTheme.typography.labelMedium,
                         color = if (isSel) c.onTeal else c.textPrimary,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
+                        // At large text the labels wrap to two lines instead of being cut short.
+                        maxLines = if (reflow && !scrolling) 2 else 1,
+                        softWrap = reflow && !scrolling,
+                        textAlign = TextAlign.Center,
+                        overflow = if (reflow && !scrolling) TextOverflow.Clip else TextOverflow.Ellipsis,
                         modifier = if (scrolling) Modifier else Modifier.weight(1f, fill = false),
                     )
                     if (i in dots) {
@@ -270,34 +322,54 @@ fun Stepper(
     valueColor: Color = Fit.colors.textPrimary,
     minValueWidth: Dp = 40.dp,
     onValueClick: (() -> Unit)? = null,
+    /** Extra TalkBack semantics on the value, e.g. a range so a swipe adjusts it. */
+    valueSemantics: (SemanticsPropertyReceiver.() -> Unit)? = null,
 ) {
     val c = Fit.colors
     val typeLabel = stringResource(R.string.cd_type_value)
+    // The number rolls up on + and down on −, so the change reads at a glance.
+    var direction by remember { mutableIntStateOf(1) }
+    val roll = spatialSpec(ForgeMotion.Springs.FastSpatial, IntOffset.VisibilityThreshold)
+    val fade = effectsSpec<Float>(ForgeMotion.Springs.FastEffects)
     // Minus stays left and plus right in Arabic too, like a number line.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Row(
         modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onMinus), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable { direction = -1; onMinus() }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
         Box(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
+                // TalkBack hears the value ("82.5 kg") as the control's state, once.
+                .semantics(mergeDescendants = true) { stateDescription = value; valueSemantics?.invoke(this) }
                 .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                value,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = valueColor,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-            )
+            AnimatedContent(
+                targetState = value,
+                transitionSpec = {
+                    val d = direction
+                    (slideInVertically(roll) { h -> h * d } + fadeIn(fade)) togetherWith
+                        (slideOutVertically(roll) { h -> -h * d } + fadeOut(fade)) using SizeTransform(clip = true)
+                },
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.clipToBounds().clearAndSetSemantics {},
+                label = "stepperRoll",
+            ) { shown ->
+                Text(
+                    shown,
+                    style = MaterialTheme.typography.labelLarge.tabular(),
+                    fontWeight = FontWeight.SemiBold,
+                    color = valueColor,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+            }
         }
-        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable(onPlus), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable { direction = 1; onPlus() }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
     }
@@ -352,10 +424,10 @@ private fun Modifier.repeatingClickable(onClick: () -> Unit): Modifier = compose
  * A toggle for boxes inside scrolling lists (a set's tick): counts only when the finger lifts without having moved,
  * and the press ripple waits a moment, so scrolling over the boxes neither ticks them nor makes them flash.
  */
-fun Modifier.steadyToggleable(value: Boolean, onToggle: () -> Unit): Modifier = composed {
+fun Modifier.steadyToggleable(value: Boolean, onToggle: () -> Unit, interactionSource: MutableInteractionSource? = null): Modifier = composed {
     val current by rememberUpdatedState(onToggle)
     val scope = rememberCoroutineScope()
-    val interaction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: remember { MutableInteractionSource() }
     this
         .indication(interaction, ripple())
         .semantics {
@@ -408,6 +480,7 @@ fun NumberStepper(
     placeholder: String? = null,
 ) {
     var editing by remember { mutableStateOf(false) }
+    val haptics = LocalContext.current.container.haptics
     // Shown value runs ahead of the stored one, so holding ± keeps counting even while the database write
     // for the previous step is still on its way back.
     var local by remember { mutableStateOf(value) }
@@ -420,7 +493,8 @@ fun NumberStepper(
         if (next == local) return
         local = next
         lastCommit = android.os.SystemClock.uptimeMillis()
-        onTick?.invoke()
+        // A light tick per step unless the caller brings its own.
+        onTick?.invoke() ?: haptics.lightTick()
         onValueChange(next)
     }
     val shown = placeholder ?: (formatNumber(local, decimals) + if (unit.isNotEmpty()) " $unit" else "")
@@ -432,6 +506,11 @@ fun NumberStepper(
         valueColor = valueColor,
         minValueWidth = minValueWidth,
         onValueClick = { editing = true },
+        // A range like a slider's, so TalkBack can adjust it with a swipe (or the volume keys) in steps of [step].
+        valueSemantics = {
+            progressBarRangeInfo = ProgressBarRangeInfo(local.coerceIn(min, max), min..max, (((max - min) / step).roundToInt() - 1).coerceAtLeast(0))
+            setProgress { target -> commit(min + ((target - min) / step).roundToInt() * step); true }
+        },
     )
     if (editing) {
         NumberEntryDialog(
@@ -524,8 +603,9 @@ fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = 
         modifier.clip(RoundedCornerShape(16.dp)).let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(value, style = MaterialTheme.typography.titleLarge, color = color, fontWeight = FontWeight.Medium, maxLines = 1)
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleLarge.tabular(), color = color, fontWeight = FontWeight.Medium, maxLines = 1)
+        // From 1.35x text a long caption wraps (centred) instead of being cut off.
+        Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = if (reflowText()) 2 else 1, textAlign = TextAlign.Center)
     }
 }
 
@@ -544,19 +624,23 @@ fun EmptyState(icon: ImageVector, title: String, body: String, modifier: Modifie
     }
 }
 
-/** The text size (as a multiple of the system default) above which tight layouts switch to their large-text form. */
-const val LARGE_TEXT = 1.3f
+/** The text size (as a multiple of the system default) from which tight rows reflow: wrap, stack or split into tiers. */
+const val REFLOW_TEXT = 1.35f
 
-/** True when the person's text size is above [LARGE_TEXT]. */
+/** True when the person's text size is at least [REFLOW_TEXT]. There is no text-size cap: rows reflow instead. */
 @Composable
-fun isLargeText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale > LARGE_TEXT
+fun reflowText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale >= REFLOW_TEXT
 
-/** Shows [content] with the text size stopping at [max], for rows whose labels share a fixed width. */
+/**
+ * Material 3 Expressive shape-morphing loader in one accent color. With reduced motion it holds one still shape,
+ * so the wait is still shown without anything spinning or morphing.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun CappedFontScale(max: Float = LARGE_TEXT, content: @Composable () -> Unit) {
-    val d = androidx.compose.ui.platform.LocalDensity.current
-    CompositionLocalProvider(
-        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, d.fontScale.coerceAtMost(max)),
-        content = content,
-    )
+fun MorphLoader(color: Color, modifier: Modifier = Modifier) {
+    if (com.forgequest.app.ui.theme.LocalReducedMotion.current) {
+        androidx.compose.material3.LoadingIndicator(progress = { 0f }, modifier = modifier, color = color)
+    } else {
+        androidx.compose.material3.LoadingIndicator(modifier = modifier, color = color)
+    }
 }

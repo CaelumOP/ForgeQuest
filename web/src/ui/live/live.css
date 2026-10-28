@@ -4,6 +4,8 @@
 .lw-progress > div { block-size: 100%; background: var(--teal); transition: inline-size 0.2s; }
 .lw-head { display: flex; align-items: center; gap: 4px; padding-block: max(4px, env(safe-area-inset-top)) 4px; padding-inline: 4px 12px; }
 .lw-head-text { flex: 1; min-inline-size: 0; }
+/* The workout clock in the header ticks every second: equal-width digits keep it still. */
+.lw-head .lw-small { font-variant-numeric: tabular-nums; }
 .lw-title { margin: 0; font-size: 17px; line-height: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lw-now { font-size: 12px; color: var(--teal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lw-discard.kit-btn-text { color: var(--text-2); padding-inline: 8px; }
@@ -33,27 +35,57 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 .lw-warm-main[aria-expanded="true"] svg { transform: rotate(180deg); }
 .lw-setwrap { margin-block-start: 6px; }
 .lw-set { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 8px; padding-inline: 8px 4px; border-radius: 14px; touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+/* Ticked rows tint primaryContainer; a PR row tints tertiaryContainer with a thin gold edge. */
+.lw-set { transition: background-color var(--forge-spring-default-effects-duration) var(--forge-spring-effects), box-shadow var(--forge-spring-default-effects-duration) var(--forge-spring-effects); }
 .lw-set-done { background: var(--teal-track); }
+.lw-set-done.lw-set-pr { background: var(--gold-track); box-shadow: inset 0 0 0 1px var(--gold); }
 .lw-num { inline-size: 28px; block-size: 28px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--card-high); color: var(--text-2); font-size: 12px; font-weight: 500; }
 .lw-setinfo { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
 .lw-sublabel { font-size: 14px; }
 .lw-sublabel-btn { background: transparent; color: var(--text); padding: 0; border-radius: 8px; text-align: start; font-weight: 400; min-block-size: 44px; }
 .lw-pr { background: var(--gold-track); color: var(--gold); border-radius: 10px; padding: 1px 6px; font-weight: 700; }
-.lw-effort-coral { color: var(--coral); } .lw-effort-gold { color: var(--gold); } .lw-effort-teal { color: var(--teal); }
+.lw-effort-coral { color: var(--coral); } .lw-effort-gold { color: var(--gold); } .lw-effort-teal { color: var(--teal); } .lw-effort-blue { color: var(--blue); } .lw-effort-purple { color: var(--purple); }
 .lw-note { font-size: 12px; font-style: italic; color: var(--blue); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .lw-steps { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .lw-holdrow { display: flex; align-items: center; }
 .lw-play { inline-size: 44px; padding: 0; background: transparent; color: var(--teal); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
-.lw-tick { flex: none; inline-size: 52px; block-size: 52px; min-block-size: 52px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--card-high); color: var(--text-2); transition: border-radius 0.2s, background 0.2s; }
-.lw-tick-on { border-radius: 26px; background: var(--teal); color: var(--on-teal); animation: lw-tick-pulse 0.15s ease-out; }
-/* No vibration on iPhone: the tick pulses, the rest bar flashes when rest ends, a PR glows softly. */
-@keyframes lw-tick-pulse { 0% { transform: scale(1); background: var(--gold); } 50% { transform: scale(1.18); background: var(--gold); } 100% { transform: scale(1); background: var(--teal); } }
-.lw-set-pr { animation: lw-pr-glow 1.4s ease-out; }
-@keyframes lw-pr-glow { 0% { box-shadow: 0 0 0 0 transparent; } 30% { box-shadow: 0 0 14px 2px color-mix(in srgb, var(--gold) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+/* The set tick (SetTick): a 40px box in a 48px target that morphs from a rounded square into a circle. */
+.lw-tick { flex: none; inline-size: 48px; block-size: 48px; min-block-size: 48px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-2); -webkit-tap-highlight-color: transparent; }
+.lw-tick-box {
+  inline-size: 40px; block-size: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
+  background: transparent; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text-2) 75%, transparent);
+  transition: border-radius var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial), transform var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial),
+    background-color var(--forge-spring-default-effects-duration) var(--forge-spring-effects), box-shadow var(--forge-spring-default-effects-duration) var(--forge-spring-effects), color var(--forge-spring-default-effects-duration) var(--forge-spring-effects);
+}
+.lw-tick-path { stroke-dasharray: 1; stroke-dashoffset: 0; opacity: 0.45; }
+.lw-tick-on .lw-tick-box { border-radius: 20px; background: var(--teal); color: var(--on-teal); box-shadow: inset 0 0 0 2px transparent; }
+.lw-tick-on .lw-tick-path { opacity: 1; animation: lw-draw var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized-decelerate) both; }
+.lw-tick-pr .lw-tick-box { background: var(--gold); color: var(--bg); }
+.lw-tick:active .lw-tick-box { border-radius: 4px; transform: scale(0.9); }
+.lw-tick-pop .lw-tick-box { animation: lw-pop calc(var(--forge-spring-fast-spatial-duration) * 1.4) var(--md-sys-motion-easing-emphasized); }
+@keyframes lw-draw { from { stroke-dashoffset: 1; } }
+@keyframes lw-pop { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
 .lw-rest-flash { display: flex; align-items: center; justify-content: center; min-block-size: 44px; border-radius: 20px; background: var(--teal); color: var(--on-teal); font-weight: 600; animation: lw-flash 0.7s ease-out both; }
 @keyframes lw-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .lw-tick-on, .lw-set-pr, .lw-rest-flash { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .lw-rest-flash, .lw-tick-on .lw-tick-path, .lw-tick-pop .lw-tick-box { animation: none; }
+  /* Shapes snap; colours still fade, briefly. */
+  .lw-tick-box { transition: background-color var(--forge-reduced-fade) linear, box-shadow var(--forge-reduced-fade) linear, color var(--forge-reduced-fade) linear; }
+  .lw-tick:active .lw-tick-box { transform: none; }
+}
 .lw-efforts { display: flex; flex-wrap: wrap; gap: 6px; padding-block-start: 6px; padding-inline-start: 8px; }
+.lw-effort-group { flex-basis: 100%; display: flex; gap: 2px; padding-inline-end: 8px; }
+.lw-effort-seg {
+  flex: 1; min-inline-size: 0; min-block-size: 44px; padding-inline: 4px; border: 0; border-radius: 6px; background: var(--card-high); color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+  transition: border-radius var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial), background-color var(--forge-spring-default-effects-duration) var(--forge-spring-effects), color var(--forge-spring-default-effects-duration) var(--forge-spring-effects);
+}
+.lw-effort-seg:first-child { border-start-start-radius: 22px; border-end-start-radius: 22px; }
+.lw-effort-seg:last-child { border-start-end-radius: 22px; border-end-end-radius: 22px; }
+.lw-effort-seg.lw-effort-on { border-radius: 22px; background: var(--acc); color: var(--on-acc); }
+@media (prefers-reduced-motion: reduce) {
+  .lw-effort-seg { transition: background-color var(--forge-reduced-fade) linear, color var(--forge-reduced-fade) linear; }
+}
 .lw-dock { display: flex; flex-direction: column; gap: 8px; padding-block: 8px max(16px, env(safe-area-inset-bottom)); padding-inline: 16px; background: var(--bg); }
 .lw-rest { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px; border-radius: 20px; background: var(--card-high); }
 .lw-rest-row { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
@@ -95,7 +127,7 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 .lws-level { flex: 1; font-size: 16px; font-weight: 600; }
 .lws-levelup { color: var(--gold); animation: lws-pulse 0.9s ease-in-out 0.5s 2; }
 .lws-rank { font-size: 14px; font-weight: 500; color: var(--blue); }
-.lws-score { font-size: 16px; font-weight: 600; color: var(--gold); }
+.lws-score { font-size: 16px; font-weight: 600; color: var(--gold); font-variant-numeric: tabular-nums; }
 .lws-score.quiet { color: var(--text-2); }
 .lws-scorenote { color: var(--text); }
 .lws-bar { block-size: 8px; border-radius: 4px; background: var(--blue-track); margin-block: 12px 6px; overflow: hidden; }
@@ -117,3 +149,24 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 /* "Ready for a harder version" note */
 .lw-harder { display: flex; align-items: center; gap: 8px; margin-block: 8px 4px; padding-block: 8px; padding-inline: 12px; border-radius: 12px; background: var(--teal-track); color: var(--text); font-size: 14px; line-height: 1.45; }
 .lw-harder-text { flex: 1; min-inline-size: 0; }
+
+/* Rest countdown: Material 3 Expressive wavy bar (Android LinearWavyProgressIndicator). The wave travels one wavelength a second. */
+.lw-wavebar { display: block; inline-size: 100%; block-size: 10px; overflow: visible; }
+html[dir='rtl'] .lw-wavebar { transform: scaleX(-1); }
+.lw-wave, .lw-wave-flat, .lw-wave-track { fill: none; stroke-width: 4px; stroke-linecap: round; }
+.lw-wave, .lw-wave-flat { stroke: var(--blue); }
+.lw-wave-track { stroke: var(--blue-track); }
+.lw-wave { animation: lw-wave 1s linear infinite; }
+.lw-wave-flat { display: none; }
+@keyframes lw-wave { to { transform: translateX(40px); } }
+@media (prefers-reduced-motion: reduce) {
+  .lw-wave { display: none; animation: none; }
+  .lw-wave-flat { display: inline; }
+}
+
+/* Large text (see styles.css): a set row splits in two tiers, set number, last-time hint and tick on top, the steppers
+   in their own full-width row below. */
+@media (max-width: 300px) {
+  .lw-set { flex-wrap: wrap; row-gap: 6px; }
+  .lw-steps { order: 1; flex: 1 0 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 8px; }
+}

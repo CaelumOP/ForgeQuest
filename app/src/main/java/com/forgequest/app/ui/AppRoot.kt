@@ -5,11 +5,17 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.core.tween
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -29,6 +35,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -44,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import androidx.annotation.StringRes
 import com.forgequest.app.R
@@ -151,43 +161,68 @@ private fun MainScaffold() {
     val route = backStack?.destination?.route
     val showBar = tabs.any { it.route == route }
     val c = Fit.colors
+    val reduced = LocalReducedMotion.current
     // A Gemini meal shared into the app or picked in the Food tab inbox opens on the scan screen's review sheet.
     val context = LocalContext.current
     val review by context.container.meals.review.collectAsState()
     LaunchedEffect(review) { if (review != null && route != Routes.SCAN) nav.navigate(Routes.SCAN) { launchSingleTop = true } }
 
+    // 600 dp and wider (tablets, unfolded foldables): the bar becomes a rail on the start edge and the content stays one
+    // 640 dp column in the middle. Phones are unchanged.
+    val wide = LocalConfiguration.current.screenWidthDp >= 600
+    val itemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = c.teal,
+        selectedTextColor = c.textPrimary,
+        indicatorColor = c.tealTrack,
+        unselectedIconColor = c.textSecondary,
+        unselectedTextColor = c.textSecondary,
+    )
+
     CompositionLocalProvider(LocalSnackbar provides snackbar) {
+        Row(Modifier.fillMaxSize()) {
+        if (wide && showBar) {
+            NavigationRail(containerColor = c.card) {
+                tabs.forEach { tab ->
+                    val selected = route == tab.route
+                    NavigationRailItem(
+                        selected = selected,
+                        onClick = { nav.goToTab(tab.route) },
+                        icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
+                        label = { NavLabel(stringResource(tab.label)) },
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = c.teal,
+                            selectedTextColor = c.textPrimary,
+                            indicatorColor = c.tealTrack,
+                            unselectedIconColor = c.textSecondary,
+                            unselectedTextColor = c.textSecondary,
+                        ),
+                    )
+                }
+            }
+        }
         Scaffold(
+            modifier = Modifier.weight(1f),
             containerColor = c.background,
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
-                if (showBar) {
-                    NavigationBar(containerColor = c.card, tonalElevation = 0.dp) {
+                if (showBar && !wide) {
+                    // Container is the theme's surfaceContainer, which is our card.
+                    NavigationBar(tonalElevation = 0.dp) {
                         tabs.forEach { tab ->
                             val selected = route == tab.route
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = { nav.goToTab(tab.route) },
                                 icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                                // Five tabs share the width, so their labels stop growing past 1.3x text size.
-                                label = {
-                                    com.forgequest.app.ui.components.CappedFontScale {
-                                        Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium)
-                                    }
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = c.teal,
-                                    selectedTextColor = c.textPrimary,
-                                    indicatorColor = c.tealTrack,
-                                    unselectedIconColor = c.textSecondary,
-                                    unselectedTextColor = c.textSecondary,
-                                ),
+                                label = { NavLabel(stringResource(tab.label)) },
+                                colors = itemColors,
                             )
                         }
                     }
                 }
             },
         ) { padding ->
+          Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             NavHost(
                 navController = nav,
                 startDestination = Routes.HOME,
@@ -195,19 +230,20 @@ private fun MainScaffold() {
                 // (Coach input) sit right on top of it instead of a bar-height above.
                 modifier = (if (showBar) PaddingValues(bottom = padding.calculateBottomPadding()) else PaddingValues(0.dp)).let { barSpace ->
                     Modifier.padding(barSpace).consumeWindowInsets(barSpace)
-                },
+                }.let { if (wide) it.widthIn(max = 640.dp).fillMaxHeight() else it },
                 // Pushed detail screens slide in from the end edge (RTL-aware) and slide back out; tabs just fade.
+                // With reduced motion on, nothing slides: every change is a short fade.
                 enterTransition = {
-                    if (isDetailRoute(targetState.destination.route)) {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(NAV_SLIDE_MS)) + fadeIn(tween(NAV_SLIDE_MS))
-                    } else fadeIn()
+                    if (isDetailRoute(targetState.destination.route) && !reduced) {
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, navSlide()) + fadeIn(navSlide())
+                    } else fadeIn(navFade(reduced))
                 },
-                exitTransition = { fadeOut() },
-                popEnterTransition = { fadeIn() },
+                exitTransition = { fadeOut(navFade(reduced)) },
+                popEnterTransition = { fadeIn(navFade(reduced)) },
                 popExitTransition = {
-                    if (isDetailRoute(initialState.destination.route)) {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(NAV_SLIDE_MS)) + fadeOut(tween(NAV_SLIDE_MS))
-                    } else fadeOut()
+                    if (isDetailRoute(initialState.destination.route) && !reduced) {
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, navSlide()) + fadeOut(navSlide())
+                    } else fadeOut(navFade(reduced))
                 },
             ) {
                 composable(Routes.HOME) { HomeScreen(nav) }
@@ -235,11 +271,18 @@ private fun MainScaffold() {
                     SessionDetailScreen(nav, entry.arguments?.getLong("id") ?: 0L)
                 }
             }
+          }
+        }
         }
     }
 }
 
-private const val NAV_SLIDE_MS = 280
+/** Detail screens slide on the Emphasized curve, the M3 token for screen-level moves. */
+private fun <T> navSlide() = ForgeMotion.timed<T>(false, ForgeMotion.Duration.MEDIUM2, ForgeMotion.Easing.Emphasized)
+
+/** Tab fades keep Compose's default fade, or the short reduced-motion fade. */
+private fun <T> navFade(reduced: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<T> =
+    if (reduced) ForgeMotion.timed(true, 0, ForgeMotion.Easing.Standard) else androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
 
 /** Pushed screens (everything except the five tabs and the live workout, which has no transition). */
 private fun isDetailRoute(route: String?): Boolean =
@@ -257,5 +300,27 @@ fun NavHostController.goToTab(route: String) {
         popUpTo(Routes.HOME) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+/**
+ * A bar or rail label: one line, never split mid-word. This is the one kept text-size cap in the app (1.3x): a bar can't
+ * reflow, so its labels stop growing there while everything else follows the person's text size.
+ */
+@Composable
+private fun NavLabel(text: String) {
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, minOf(d.fontScale, 1.3f)),
+    ) {
+        // A long label (Arabic "الملف الشخصي") that still doesn't fit shrinks a step at a time until it does.
+        var shrink by androidx.compose.runtime.remember(text, d.fontScale) { androidx.compose.runtime.mutableFloatStateOf(1f) }
+        val style = MaterialTheme.typography.labelMedium
+        Text(
+            text, maxLines = 1, softWrap = false, textAlign = TextAlign.Center,
+            style = style.copy(fontSize = style.fontSize * shrink),
+            onTextLayout = { if (it.didOverflowWidth && shrink > 0.6f) shrink *= 0.92f },
+            modifier = Modifier.padding(horizontal = 6.dp),
+        )
     }
 }

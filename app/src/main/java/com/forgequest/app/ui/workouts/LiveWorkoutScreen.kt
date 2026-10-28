@@ -1,5 +1,36 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.tabular
+import com.forgequest.app.ui.theme.itemMotion
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.container
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import com.forgequest.app.ui.theme.LocalReducedMotion
+import com.forgequest.app.ui.theme.effectsSpec
+import com.forgequest.app.ui.theme.spatialSpec
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -8,10 +39,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -75,7 +104,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -91,7 +119,11 @@ import androidx.navigation.NavHostController
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.data.plan.WorkoutDebrief
+import com.forgequest.app.data.DebriefText
+import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutDebriefMath
+import com.forgequest.app.ui.goToTab
+import kotlinx.coroutines.launch
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.WorkoutScore
@@ -180,10 +212,12 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
-        val debrief by vm.debrief.collectAsState()
-        val debriefLoading by vm.debriefLoading.collectAsState()
-        val debriefFailed by vm.debriefFailed.collectAsState()
-        WorkoutCompleteScreen(sum, debrief, debriefLoading, debriefFailed, onRetryDebrief = vm::retryDebrief, onRemind = vm::remindMe, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
+        val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
+            scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sum.sessionId); nav.goToTab(Routes.COACH) }
+        } else null
+        WorkoutCompleteScreen(sum, onAskCoach = askCoach, onRemind = vm::remindMe, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -228,7 +262,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(pluralStringResource(R.plurals.live_header, sets.size, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(pluralStringResource(R.plurals.live_header, sets.size, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary)
                         nextSet?.let { n -> exercises[n.exerciseId]?.let { Text(stringResource(R.string.live_now, it.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
                     }
                     IconButton(onClick = { focus = !focus; prefs.edit().putBoolean("focus", focus).apply() }) {
@@ -275,7 +309,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(groups, key = { it.key }) { g -> Box(Modifier.animateItem()) { cardFor(g, false) } }
+                items(groups, key = { it.key }) { g -> Box(itemMotion()) { cardFor(g, false) } }
                 item {
                     TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = PickerMode.Add }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }
@@ -427,7 +461,7 @@ private fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutVi
                 Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(6.dp))
-            MorphCheck(allDone) { vm.toggleAll(g.sets) }
+            SetTick(allDone, pr = false) { vm.toggleAll(g.sets) }
         }
         if (expanded) {
             Spacer(Modifier.height(4.dp))
@@ -568,7 +602,7 @@ private fun CircuitCard(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun SetRow(
     label: String?,
@@ -580,7 +614,15 @@ private fun SetRow(
     previous: SetEntity? = null,
 ) {
     val c = Fit.colors
-    val rowColor by animateColorAsState(if (set.done) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent, label = "row")
+    val prIds by vm.prSetIds.collectAsState()
+    val pr = set.isPr || set.id in prIds
+    val scheme = MaterialTheme.colorScheme
+    // Ticked rows tint primaryContainer; a PR set tints tertiaryContainer with a thin gold edge.
+    val rowColor by animateColorAsState(
+        when { set.done && pr -> scheme.tertiaryContainer; set.done -> scheme.primaryContainer; else -> Color.Transparent },
+        effectsSpec(), label = "row",
+    )
+    val rowBorder by animateColorAsState(if (set.done && pr) scheme.tertiary else Color.Transparent, effectsSpec(), label = "rowBorder")
     val flashingId by vm.newBest.collectAsState()
     val flashing = flashingId == set.id
     val flashColor by animateColorAsState(if (flashing) c.gold else c.textPrimary, label = "flash")
@@ -590,21 +632,22 @@ private fun SetRow(
     }
     val effortSetId by vm.effortSetId.collectAsState()
     val effort = SetEffort.parse(set.effort.ifBlank { null })
-    Column {
-    Row(
-        Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor)
-            .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
-            .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    // From 1.35x text the row splits in two tiers: set number, last-time hint and tick on top, the steppers below.
+    val reflow = com.forgequest.app.ui.components.reflowText()
+    val rowModifier = Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor).border(1.dp, rowBorder, RoundedCornerShape(14.dp))
+        .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
+        .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
+    val number: @Composable () -> Unit = {
         if (label != null) {
             Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                 Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
             }
             Spacer(Modifier.width(10.dp))
         }
+    }
+    val info: @Composable (Modifier) -> Unit = { m ->
         Column(
-            Modifier.weight(1f).let { if (onLabelClick != null) it.clip(RoundedCornerShape(8.dp)).clickable(onClick = onLabelClick) else it },
+            m.let { if (onLabelClick != null) it.clip(RoundedCornerShape(8.dp)).clickable(onClick = onLabelClick) else it },
         ) {
             if (sublabel != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -634,7 +677,7 @@ private fun SetRow(
                     Text(
                         stringResource(effort.labelRes),
                         style = MaterialTheme.typography.labelSmall,
-                        color = when (effort) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
+                        color = effortColor(effort),
                     )
                 }
             }
@@ -642,8 +685,8 @@ private fun SetRow(
                 Text(set.note, style = MaterialTheme.typography.labelSmall, color = c.blue, maxLines = 2, overflow = TextOverflow.Ellipsis, fontStyle = FontStyle.Italic)
             }
         }
-        Spacer(Modifier.width(6.dp))
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    }
+    val steppers: @Composable () -> Unit = {
             when (kind) {
                 ExerciseKind.HOLD -> Row(verticalAlignment = Alignment.CenterVertically) {
                     if (!set.done) IconButton(onClick = { vm.startHold(set) }) {
@@ -680,29 +723,78 @@ private fun SetRow(
                     unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
                 )
             }
+    }
+    Column {
+    if (reflow) {
+        Column(rowModifier) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                number()
+                info(Modifier.weight(1f))
+                Spacer(Modifier.width(6.dp))
+                SetTick(set.done, pr) { vm.toggle(set) }
+            }
+            FlowRow(
+                Modifier.fillMaxWidth().padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) { steppers() }
         }
+    } else Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
+        number()
+        info(Modifier.weight(1f))
         Spacer(Modifier.width(6.dp))
-        MorphCheck(set.done) { vm.toggle(set) }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) { steppers() }
+        Spacer(Modifier.width(6.dp))
+        SetTick(set.done, pr) { vm.toggle(set) }
     }
     // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
     AnimatedVisibility(visible = set.done && effortSetId == set.id) {
         Column(Modifier.padding(start = 8.dp, top = 6.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SetEffort.entries.forEach { e ->
-                    ChoiceChip(
-                        stringResource(e.labelRes),
-                        set.effort == e.name,
-                        { vm.setEffort(set, e) },
-                        accent = when (e) { SetEffort.PAIN -> c.coral; SetEffort.HARD -> c.gold; else -> c.teal },
-                    )
-                }
-            }
+            EffortGroup(selected = set.effort, onSelect = { vm.setEffort(set, it) })
             // Pain is worth a word: one tap opens the same note editor as a long-press.
             if (set.effort == SetEffort.PAIN.name) {
                 TextButton(onClick = { noteDialog = true }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
             }
         }
     }
+    }
+}
+
+/** Easy teal, OK blue, Hard purple, Pain coral. */
+@Composable
+private fun effortColor(e: SetEffort) = Fit.colors.let { c ->
+    when (e) { SetEffort.EASY -> c.teal; SetEffort.OK -> c.blue; SetEffort.HARD -> c.purple; SetEffort.PAIN -> c.coral }
+}
+
+/**
+ * Easy · OK · Hard · Pain as one connected group: round outer ends, 6 dp inner seams. The chosen one morphs into a full
+ * pill and fills with its colour. Tapping it again clears it (the view model decides that).
+ */
+@Composable
+private fun EffortGroup(selected: String, onSelect: (SetEffort) -> Unit) {
+    val c = Fit.colors
+    val entries = SetEffort.entries
+    Row(Modifier.fillMaxWidth().padding(end = 8.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        entries.forEachIndexed { i, e ->
+            val isSel = selected == e.name
+            val full = 20.dp // half the 40 dp minimum height
+            val seam = 6.dp
+            val startCorner by animateDpAsState(if (isSel || i == 0) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortStart")
+            val endCorner by animateDpAsState(if (isSel || i == entries.lastIndex) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortEnd")
+            val accent = effortColor(e)
+            val fill by animateColorAsState(if (isSel) accent else c.cardHigh, effectsSpec(), label = "effortFill")
+            val ink by animateColorAsState(if (isSel) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary, effectsSpec(), label = "effortInk")
+            val shape = RoundedCornerShape(topStart = startCorner, bottomStart = startCorner, topEnd = endCorner, bottomEnd = endCorner)
+            Box(
+                Modifier.weight(1f).heightIn(min = 40.dp).clip(shape).background(fill)
+                    .selectable(selected = isSel, role = Role.RadioButton) { onSelect(e) }
+                    .padding(horizontal = 4.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(e.labelRes), style = MaterialTheme.typography.labelLarge, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            }
+        }
     }
 }
 
@@ -763,23 +855,82 @@ fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Un
     )
 }
 
-/** Squircle that springs into a filled circle with a check when ticked. */
+/**
+ * The set tick: a 40 dp box in a 48 dp target. Empty it is a rounded square with an outline; pressed it tightens to
+ * 4 dp corners and shrinks a little; ticked it becomes a teal circle with the check drawn in. A set that beats the
+ * person's best goes gold with a star and a small pop. Reduced motion: shapes snap, colours fade in 120 ms.
+ */
 @Composable
-private fun MorphCheck(checked: Boolean, onToggle: () -> Unit) {
+private fun SetTick(checked: Boolean, pr: Boolean, onToggle: () -> Unit) {
     val c = Fit.colors
+    val scheme = MaterialTheme.colorScheme
+    val reduced = LocalReducedMotion.current
     val setDoneLabel = stringResource(R.string.cd_set_done)
-    val corner by animateDpAsState(if (checked) 22.dp else 10.dp, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "corner")
-    val color by animateColorAsState(if (checked) c.teal else c.cardHigh, label = "fill")
-    val checkScale by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "check")
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val gold = checked && pr
+    val corner by animateDpAsState(
+        when { pressed -> 4.dp; checked -> 20.dp; else -> 10.dp },
+        spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "tickCorner",
+    )
+    val pressScale by animateFloatAsState(if (pressed) 0.9f else 1f, spatialSpec(ForgeMotion.Springs.FastSpatial), label = "tickPress")
+    val fill by animateColorAsState(
+        when { gold -> scheme.tertiary; checked -> scheme.primary; else -> Color.Transparent },
+        effectsSpec(), label = "tickFill",
+    )
+    val outline by animateColorAsState(if (checked) Color.Transparent else scheme.outline, effectsSpec(), label = "tickOutline")
+    // The check draws itself in from its short stroke to its long one.
+    val draw by animateFloatAsState(
+        if (checked) 1f else 0f,
+        if (reduced || !checked) snap() else tween(ForgeMotion.Duration.SHORT3, easing = ForgeMotion.Easing.EmphasizedDecelerate),
+        label = "tickDraw",
+    )
+    // The gold pop: 1 -> 1.3 -> 1, only when a set turns into a PR while on screen (not when scrolled back into view).
+    val pop = remember { Animatable(1f) }
+    var seen by remember { mutableStateOf(false) }
+    LaunchedEffect(gold) {
+        if (!seen) { seen = true; return@LaunchedEffect }
+        if (gold && !reduced) {
+            pop.animateTo(1.3f, ForgeMotion.Springs.FastSpatial.spec())
+            pop.animateTo(1f, ForgeMotion.Springs.FastSpatial.spec())
+        }
+    }
     Box(
-        Modifier.size(52.dp).clip(RoundedCornerShape(corner)).background(color)
-            .steadyToggleable(checked, onToggle)
+        Modifier.size(48.dp).clip(CircleShape)
+            .steadyToggleable(checked, onToggle, interaction)
             .semantics { contentDescription = setDoneLabel },
         contentAlignment = Alignment.Center,
     ) {
-        // A faint check in the empty box says "tap to tick" before the first tap (Strong does the same).
-        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.textSecondary.copy(alpha = 0.45f), modifier = Modifier.size(22.dp).scale(1f - checkScale))
-        Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(28.dp).scale(checkScale))
+        Box(
+            Modifier.size(40.dp)
+                .graphicsLayer { val k = pressScale * pop.value; scaleX = k; scaleY = k }
+                .clip(RoundedCornerShape(corner))
+                .background(fill)
+                .border(2.dp, outline, RoundedCornerShape(corner)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (gold) {
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = scheme.onTertiary, modifier = Modifier.size(24.dp))
+            } else {
+                val ink = if (checked) scheme.onPrimary else c.textSecondary.copy(alpha = 0.45f)
+                Canvas(Modifier.size(24.dp)) {
+                    val u = size.minDimension / 24f
+                    val path = Path().apply {
+                        moveTo(5.5f * u, 12.5f * u); lineTo(10f * u, 17f * u); lineTo(18.5f * u, 7.5f * u)
+                    }
+                    val stroke = Stroke(width = 2.6f * u, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    if (!checked) {
+                        // A faint check in the empty box says "tap to tick" before the first tap (Strong does the same).
+                        drawPath(path, ink, style = stroke)
+                    } else {
+                        val measure = PathMeasure().apply { setPath(path, false) }
+                        val part = Path()
+                        measure.getSegment(0f, measure.length * draw, part, true)
+                        drawPath(part, ink, style = stroke)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -824,7 +975,7 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
             style = MaterialTheme.typography.titleLarge, color = tint, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(12.dp))
-        Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(88f, androidx.compose.ui.unit.TextUnitType.Sp)), fontWeight = FontWeight.Bold, color = tint)
+        Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(88f, androidx.compose.ui.unit.TextUnitType.Sp)).tabular(), fontWeight = FontWeight.Bold, color = tint)
         Spacer(Modifier.height(16.dp))
         ProgressLine(if (ready) 0f else (s / h.target.toFloat()).coerceIn(0f, 1f), if (over) c.gold else c.teal, c.tealTrack, height = 6.dp)
         Spacer(Modifier.height(8.dp))
@@ -847,7 +998,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
         // At large text sizes the three buttons drop to their own line, so the time never wraps digit by digit.
-        val big = com.forgequest.app.ui.components.isLargeText()
+        val big = com.forgequest.app.ui.components.reflowText()
         val buttons: @Composable () -> Unit = {
             TextButton(onClick = onRemove) { Text(stringResource(R.string.live_rest_minus), color = c.textPrimary, maxLines = 1) }
             TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary, maxLines = 1) }
@@ -856,23 +1007,44 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
             Spacer(Modifier.width(10.dp))
-            Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge, color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+            Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge.tabular(), color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
             if (!big) buttons()
         }
         if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }
         if (next != null) Text(stringResource(R.string.live_next, next), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(8.dp))
-        ProgressLine(if (total == 0) 0f else secondsLeft / total.toFloat(), c.blue, c.blueTrack, height = 4.dp)
+        RestWave(if (total == 0) 0f else secondsLeft / total.toFloat())
     }
+}
+
+/** The rest countdown as an Expressive wavy bar; with reduced motion it is a flat, still bar. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RestWave(progress: Float) {
+    val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    val shown by animateFloatAsState(
+        progress.coerceIn(0f, 1f),
+        if (reduced) snap() else androidx.compose.material3.WavyProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "rest",
+    )
+    val stroke = with(androidx.compose.ui.platform.LocalDensity.current) { Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round) }
+    androidx.compose.material3.LinearWavyProgressIndicator(
+        progress = { shown },
+        modifier = Modifier.fillMaxWidth(),
+        color = c.blue,
+        trackColor = c.blueTrack,
+        stroke = stroke,
+        trackStroke = stroke,
+        amplitude = { if (reduced) 0f else 1f },
+        waveSpeed = if (reduced) 0.dp else androidx.compose.material3.WavyProgressIndicatorDefaults.LinearDeterminateWavelength,
+    )
 }
 
 @Composable
 private fun WorkoutCompleteScreen(
     sum: WorkoutSummary,
-    debrief: WorkoutDebrief?,
-    debriefLoading: Boolean,
-    debriefFailed: Boolean,
-    onRetryDebrief: () -> Unit,
+    onAskCoach: (() -> Unit)?,
     onRemind: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -969,18 +1141,16 @@ private fun WorkoutCompleteScreen(
                 }
             }
         }
-        AnimatedVisibility(sum.score != null || debrief != null || debriefLoading || debriefFailed) {
-            Column {
-                Spacer(Modifier.height(12.dp))
-                DebriefCard(debrief, sum.score, failed = debriefFailed && !debriefLoading, waiting = debriefLoading, onRetry = onRetryDebrief)
-            }
+        if (sum.score != null || sum.debrief != null) {
+            Spacer(Modifier.height(12.dp))
+            DebriefCard(sum.debrief, sum.score, sum.exerciseNames, sum.unit, onAskCoach, celebrate = true)
         }
         Spacer(Modifier.height(24.dp))
         PillButton(stringResource(R.string.home_done), onClick = onDone, modifier = Modifier.fillMaxWidth())
     }
 }
 
-/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. */
+/** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. A rough day from pain alone says so. */
 @Composable
 fun scoreReasons(r: WorkoutScore.Result): String {
     val sets = when {
@@ -990,8 +1160,28 @@ fun scoreReasons(r: WorkoutScore.Result): String {
     }
     val up = if (r.compared > 0) stringResource(R.string.score_up, r.up, r.compared) else null
     val prs = if (r.prs > 0) pluralStringResource(R.plurals.score_prs, r.prs, r.prs) else null
-    val adjusted = if (r.rough) stringResource(R.string.score_adjusted) else null
+    val adjusted = if (r.rough) stringResource(if (r.lowRecovery) R.string.score_adjusted else R.string.score_adjusted_pain) else null
     return listOfNotNull(sets, up, prs, adjusted).joinToString(" · ")
+}
+
+/**
+ * One debrief line fading in and rising 16 dp, [index] × 70 ms after [go] (DefaultSpatial). Off when not [enabled];
+ * reduced motion makes it a short fade with no rise.
+ */
+@Composable
+private fun Modifier.riseIn(enabled: Boolean, go: Boolean, index: Int): Modifier {
+    if (!enabled) return this
+    val reduced = LocalReducedMotion.current
+    val p = remember { Animatable(0f) }
+    LaunchedEffect(go) {
+        if (!go) return@LaunchedEffect
+        delay(70L * index)
+        p.animateTo(1f, if (reduced) tween(ForgeMotion.REDUCED_FADE_MS) else ForgeMotion.Springs.DefaultSpatial.spec())
+    }
+    return graphicsLayer {
+        alpha = p.value.coerceIn(0f, 1f)
+        translationY = if (reduced) 0f else (1f - p.value) * 16.dp.toPx()
+    }
 }
 
 /** N/10 only from 8 up is gold; 4 to 7 stay quiet. */
@@ -999,36 +1189,83 @@ fun scoreReasons(r: WorkoutScore.Result): String {
 private fun scoreColor(score: Int) = if (score >= 8) Fit.colors.gold else Fit.colors.textSecondary
 
 /**
- * The workout: the calculated score with its reasons at once, then the coach's words (one thing that went well, one to watch, one tip).
- * A null [d] shows the wait while [waiting], or with [failed], that the coach couldn't write it and a Try again; with neither, only the score.
+ * The workout debrief: the calculated score with its reasons, then the headline, what went well (teal), what to watch
+ * (gold) and next time (blue), all worked out from the person's numbers ([DebriefText]). [onAskCoach] shows the coach
+ * button; null hides it (no AI key). [names] maps an exercise id to its name.
  */
 @Composable
-fun DebriefCard(d: WorkoutDebrief?, score: WorkoutScore.Result?, failed: Boolean = false, waiting: Boolean = false, onRetry: () -> Unit = {}) {
+fun DebriefCard(
+    debrief: WorkoutDebriefMath.Result?,
+    score: WorkoutScore.Result?,
+    names: Map<String, String>,
+    unit: WeightUnit,
+    onAskCoach: (() -> Unit)? = null,
+    /** True on the finish screen only: the score counts up and the lines rise in. Reopened from the journal it just shows. */
+    celebrate: Boolean = false,
+) {
     val c = Fit.colors
-    val coachPart = d != null || failed || waiting
+    val context = LocalContext.current
+    val res = context.resources
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current
+    val lines = remember(debrief, names, unit, locale) { debrief?.let { d -> DebriefText.render(d, res, { id -> names[id] ?: id }) { kg -> unit.format(kg) } } }
+    val reduced = LocalReducedMotion.current
+    val counting = celebrate && score != null && score.showNumber
+    // 0 -> score over 650 ms; the arc follows the same value. Reduced motion lands on the score at once.
+    val count = remember { Animatable(if (counting && !reduced) 0f else (score?.score ?: 0).toFloat()) }
+    // The lines below wait for the count to land (at once when there is no count).
+    var linesGo by remember { mutableStateOf(!celebrate) }
+    LaunchedEffect(Unit) {
+        if (!celebrate) return@LaunchedEffect
+        if (counting) {
+            if (!reduced) count.animateTo(score!!.score.toFloat(), tween(650, easing = ForgeMotion.Easing.EmphasizedDecelerate))
+            context.container.haptics.heavyClick()
+        }
+        linesGo = true
+    }
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(if (coachPart) R.string.debrief_title else R.string.score_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-            if (score != null && score.showNumber) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = scoreColor(score.score))
+            Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            if (score != null && score.showNumber) {
+                val arcColor = scoreColor(score.score)
+                val track = MaterialTheme.colorScheme.surfaceContainerHighest
+                Box(contentAlignment = Alignment.Center) {
+                    // A thin arc that sweeps to score/10 with the count.
+                    Canvas(Modifier.size(52.dp).clearAndSetSemantics {}) {
+                        val w = 3.dp.toPx()
+                        val inset = w / 2
+                        val arcSize = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+                        val tl = androidx.compose.ui.geometry.Offset(inset, inset)
+                        drawArc(track, 0f, 360f, false, tl, arcSize, style = Stroke(w))
+                        drawArc(arcColor, -90f, 360f * (count.value / 10f).coerceIn(0f, 1f), false, tl, arcSize, style = Stroke(w, cap = StrokeCap.Round))
+                    }
+                    Text(
+                        stringResource(R.string.debrief_score, count.value.roundToInt()),
+                        style = MaterialTheme.typography.labelLarge.tabular(), color = arcColor,
+                        modifier = Modifier.semantics { contentDescription = res.getString(R.string.debrief_score, score.score) },
+                    )
+                }
+            }
         }
-        if (score != null && !score.showNumber) {
+        // The first-ever and comeback headlines already say what this line says.
+        val sameAsHeadline = debrief?.headline?.type.let { it == WorkoutDebriefMath.Headline.FIRST_EVER || it == WorkoutDebriefMath.Headline.AFTER_BREAK }
+        if (score != null && !score.showNumber && !sameAsHeadline) {
             Text(stringResource(if (score.firstEver) R.string.score_first_ever else R.string.score_after_break), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 2.dp))
         }
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
-        if (coachPart) Spacer(Modifier.height(6.dp))
-        if (d == null && failed) {
-            Text(stringResource(R.string.debrief_failed), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                Text(stringResource(R.string.action_try_again), color = c.teal)
-            }
-        } else if (d == null) {
-            if (waiting) Text(stringResource(R.string.debrief_loading), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        } else {
-            Text(d.summary, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        if (lines != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, 0))
             // Green for what went well, gold for what to watch, blue for next time.
-            d.highlights.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(top = 4.dp)) }
-            d.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(top = 4.dp)) }
-            d.nextTime.forEach { Text(stringResource(R.string.debrief_next_time, it), style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.padding(top = 4.dp)) }
+            lines.wins.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.riseIn(celebrate, linesGo, 1 + i).padding(top = 4.dp)) }
+            lines.watch.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.riseIn(celebrate, linesGo, 1 + lines.wins.size + i).padding(top = 4.dp)) }
+            lines.next.forEachIndexed { i, it -> Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.riseIn(celebrate, linesGo, 1 + lines.wins.size + lines.watch.size + i).padding(top = 4.dp)) }
+            lines.sameRest?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
+            lines.footnote?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp)) }
+        }
+        if (onAskCoach != null) {
+            TextButton(onClick = onAskCoach, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                Text(stringResource(R.string.debrief_ask_coach), color = c.teal)
+            }
         }
     }
 }

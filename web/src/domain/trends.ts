@@ -3,6 +3,7 @@ import { weekStart } from './dates'
 import type { ExerciseEntity, ReadinessDayEntity, SessionEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
 import { recordScore } from './progress'
+import { trendStats } from './workout-score'
 
 const f = Math.fround
 const avg = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0) / xs.length
@@ -163,12 +164,19 @@ export function percentChange(then: number, now: number): number | null {
   return then === 0 ? null : Math.round(f(f(f(now - then) / then) * 100))
 }
 
+/** A week with fewer working sets than this is a break (vacation, sick) and stays out of the deload average. */
+export const ACTIVE_WEEK_SETS = 6
+/** How far back the plateau check looks. */
+export const PLATEAU_WINDOW_DAYS = 42
+
 /**
  * Evaluates recent training history for:
- * 1. Stalled lifts: exercises trained >= 3 times across >= 12 days in the last 35 days where the best score
- *    of the most recent 2 sessions failed to beat the earlier sessions in that window.
- * 2. Deload triggers: this week's sets >= 135 % of the 4-week average (with >= 18 sets),
- *    >= 3 of the last 5 readiness days below 45 % recovery, or >= 2 stalled lifts at normal or higher load.
+ * 1. Stalled lifts: exercises done >= 4 times across >= 21 days in the last 42 days where the last 2 workouts beat
+ *    neither the earlier best set nor the earlier best total (trendStats, rule A1). Unweighted holds and jumping jacks
+ *    are left out.
+ * 2. Deload triggers: this week's sets >= 135 % of the busiest active week (6+ sets) among the previous 4
+ *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
+ *    or >= 2 stalled lifts at normal or higher load.
  */
 export function analyzeFatigueAndPlateaus(
   sessions: readonly SessionEntity[],
@@ -180,10 +188,14 @@ export function analyzeFatigueAndPlateaus(
   const sessionDay = new Map(sessions.map((s) => [s.id, s.epochDay]))
   // Rolling 7-day windows, not calendar weeks: on a Monday the calendar week has 0 sets and the check went blind.
   const weekly = rollingWeeklySets(doneSets, sessionDay, 5, today)
-  const loadPct = trainingLoad(weekly)
   const currentWeekSets = weekly[weekly.length - 1] ?? 0
+  // A vacation week (under 6 sets) would pull the average down and make a normal week look like a spike.
+  const active = weekly.slice(0, -1).filter((n) => n >= ACTIVE_WEEK_SETS)
+  // Against the busiest recent week, so getting back to a normal week after a light one isn't overload.
+  const activePct = active.length < 2 ? null : Math.round(f(f(currentWeekSets * 100) / f(Math.max(...active))))
+  const loadPct = activePct ?? trainingLoad(weekly)
 
-  const windowStart = today - 35
+  const windowStart = today - PLATEAU_WINDOW_DAYS
   const byExercise = new Map<string, SetEntity[]>()
   for (const s of doneSets) {
     const d = sessionDay.get(s.sessionId)
@@ -199,19 +211,29 @@ export function analyzeFatigueAndPlateaus(
     if (!ex || ex.id === 'jumping_jacks') continue
     // A plank or dead hang held at the same time is maintenance, not a stalled lift.
     if (ex.kind === 'HOLD' && !exSets.some((s) => (s.weightKg ?? 0) > 0)) continue
-    const series = bestSetSeries(exSets, ex.kind, sessionDay)
-    if (series.length < 3) continue
-    const span = series[series.length - 1].epochDay - series[0].epochDay
-    if (span < 12) continue
-    const earlierBest = Math.max(...series.slice(0, -2).map((p) => p.value))
-    const recentBest = Math.max(...series.slice(-2).map((p) => p.value))
-    if (recentBest <= f(earlierBest + f(0.01))) {
-      stalled.push({ exerciseId, exerciseName: ex.name, sessionsCount: series.length, spanDays: span, bestScore: Math.max(earlierBest, recentBest) })
+    const byDay = new Map<number, SetEntity[]>()
+    for (const s of exSets) {
+      const d = sessionDay.get(s.sessionId)!
+      byDay.set(d, [...(byDay.get(d) ?? []), s])
+    }
+    if (byDay.size < 4) continue
+    const days = [...byDay.keys()].sort((a, b) => a - b)
+    const span = days[days.length - 1] - days[0]
+    if (span < 21) continue
+    const stats = days.map((d) => trendStats(ex.kind, exerciseId, byDay.get(d)!))
+    const earlier = stats.slice(0, -2)
+    const recent = stats.slice(-2)
+    const earlierBest = Math.max(...earlier.map((x) => x.best))
+    const recentBest = Math.max(...recent.map((x) => x.best))
+    const earlierTotal = Math.max(...earlier.map((x) => x.total))
+    const recentTotal = Math.max(...recent.map((x) => x.total))
+    if (recentBest <= f(earlierBest + f(0.01)) && recentTotal <= earlierTotal) {
+      stalled.push({ exerciseId, exerciseName: ex.name, sessionsCount: days.length, spanDays: span, bestScore: Math.max(earlierBest, recentBest) })
     }
   }
 
   const reasons: string[] = []
-  if (loadPct >= 135 && currentWeekSets >= 18) {
+  if (activePct != null && activePct >= 135 && currentWeekSets >= 18) {
     reasons.push(`acute weekly volume is ${loadPct}% of your 4-week average (${currentWeekSets} sets)`)
   }
   const recentReadiness = readinessDays.filter((r) => r.epochDay >= today - 4 && r.epochDay <= today)
@@ -220,7 +242,7 @@ export function analyzeFatigueAndPlateaus(
     reasons.push(`recovery has been below 45% on ${lowRecoveryDays} of the last ${recentReadiness.length} days`)
   }
   if (stalled.length >= 2 && loadPct >= 95) {
-    reasons.push(`${stalled.length} lifts have plateaued for 2+ weeks (${stalled.slice(0, 3).map((s) => s.exerciseName).join(', ')})`)
+    reasons.push(`${stalled.length} lifts have plateaued for 3+ weeks (${stalled.slice(0, 3).map((s) => s.exerciseName).join(', ')})`)
   }
 
   return {

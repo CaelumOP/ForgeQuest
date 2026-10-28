@@ -60,6 +60,11 @@ class ForgeQuestApp : Application() {
 
     override fun attachBaseContext(base: Context) = super.attachBaseContext(AppLocale.wrap(base))
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        AppLocale.restoreDefault(this)
+    }
+
     override fun onCreate() {
         super.onCreate()
         AppText.init(this)

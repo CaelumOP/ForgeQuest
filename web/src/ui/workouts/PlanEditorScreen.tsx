@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { getLang, plural, t, useLang } from '../../i18n'
+import { getLang, plural, t, useLang, intlLocale } from '../../i18n'
 import type { ExerciseRow, PlanDayRow, PlanItemRow, PlanRow } from '../../data/db'
 import { useProgress } from '../../data/progress'
 import { configuredEquipment, weightUnit } from '../../data/settings'
@@ -12,13 +12,12 @@ import { adaptPlanToEquipment, EQUIPMENT, type Equipment } from '../../domain/ex
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 import { fromKg, loadStep, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, Card, Dialog, Sheet, Stepper, TextField, toast } from '../kit'
+import { Button, Card, Dialog, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
 import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
 import { blockLabel, dayName, dayShort, isRestTitle, prescription } from './helpers'
 import { stepReorder } from './reorder'
-import { buzz } from '../live/feedback'
 import { PastePlanSheet } from '../coach/PastePlanSheet'
 import './workouts.css'
 
@@ -132,7 +131,8 @@ export function PlanEditorScreen({ param }: { param?: string }) {
               <div
                 class={cx('wk-item', drag?.id === item.id && 'wk-item-drag')} key={item.id}
                 ref={(el) => { if (el) rowEls.current.set(item.id!, el); else rowEls.current.delete(item.id!) }}
-                style={drag && drag.id === item.id ? { transform: `translateY(${drag.offset}px)` } : undefined}
+                // Lifted: 3 % larger (not under reduced motion, where a teal outline marks it instead).
+                style={drag && drag.id === item.id ? { transform: `translateY(${drag.offset}px)${reducedMotion() ? '' : ' scale(1.03)'}` } : undefined}
               >
                 <button
                   type="button" class="kit-iconbtn wk-ibtn wk-handle" aria-label={`${t('cd_drag_reorder')}: ${name}`}
@@ -142,19 +142,20 @@ export function PlanEditorScreen({ param }: { param?: string }) {
                     lastY.current = e.clientY
                     const order = day.items.map((i) => i.id!)
                     setDrag({ id: item.id!, offset: 0, order, start: order.indexOf(item.id!) })
-                    buzz(8)
+                    haptics.heavyClick()
                   }}
                   onPointerMove={(e) => {
                     if (!drag || drag.id !== item.id) return
                     const step = stepReorder(drag.order, drag.id, drag.offset + e.clientY - lastY.current, (id) => rowEls.current.get(id)?.offsetHeight ?? 56)
                     lastY.current = e.clientY
-                    if (step.swapped) buzz(8)
+                    if (step.swapped) haptics.lightTick()
                     setDrag({ ...drag, order: step.order, offset: step.offset })
                   }}
                   onPointerUp={() => {
                     if (!drag || drag.id !== item.id) return
                     const delta = drag.order.indexOf(drag.id) - drag.start
                     setDrag(null)
+                    haptics.tick()
                     if (delta !== 0) void movePlanItem(item, delta)
                   }}
                   onPointerCancel={() => setDrag(null)}
@@ -385,7 +386,7 @@ function PreviousSheet({ open, onClose, plans, onActivate, onDelete }: { open: b
           <div class="wk-opt-row" key={p.id}>
             <button type="button" class={`wk-opt${p.active ? ' on' : ''}`} disabled={p.active} onClick={() => onActivate(p)}>
               <span class="wk-t">{p.name}</span>
-              <span class="wk-s">{[src(p), new Date(p.createdAt).toLocaleDateString(getLang(), { dateStyle: 'medium' }), p.active ? t('plan_current') : null].filter(Boolean).join(' · ')}</span>
+              <span class="wk-s">{[src(p), new Date(p.createdAt).toLocaleDateString(intlLocale(), { dateStyle: 'medium' }), p.active ? t('plan_current') : null].filter(Boolean).join(' · ')}</span>
             </button>
             {!p.active && <button type="button" class="kit-iconbtn wk-ibtn" aria-label={`${t('cd_delete_plan')}: ${p.name}`} onClick={() => setDel(p)}><DeleteIcon /></button>}
           </div>

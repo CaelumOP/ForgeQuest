@@ -6,7 +6,6 @@ import com.forgequest.app.AppContainer
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.data.plan.WorkoutDebrief
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Nudges
 import com.forgequest.app.domain.SetEffort
@@ -23,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -65,6 +65,12 @@ data class WorkoutSummary(
     val score: com.forgequest.app.domain.WorkoutScore.Result? = null,
     /** Set when the end was pulled back to the last set: when that was (epoch ms). */
     val clippedEndAt: Long? = null,
+    val sessionId: Long = 0L,
+    /** The calculated debrief of this workout (domain/WorkoutDebriefMath.kt); null when it has no done sets. */
+    val debrief: com.forgequest.app.domain.WorkoutDebriefMath.Result? = null,
+    /** Exercise id → name, for the debrief's lines. */
+    val exerciseNames: Map<String, String> = emptyMap(),
+    val unit: WeightUnit = WeightUnit.KG,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -103,11 +109,6 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val hold = MutableStateFlow<HoldTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
     val summary = MutableStateFlow<WorkoutSummary?>(null)
-    /** The coach's debrief under the summary; loads in the background. When it can't be written, [debriefFailed] offers Try again. */
-    val debrief = MutableStateFlow<WorkoutDebrief?>(null)
-    val debriefLoading = MutableStateFlow(false)
-    val debriefFailed = MutableStateFlow(false)
-    private var debriefSessionId = 0L
     val finishing = MutableStateFlow(false)
 
     /**
@@ -169,7 +170,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun toggle(set: SetEntity) {
         val done = !set.done
         effortSetId.value = if (done) set.id else null
-        if (done) app.haptics.setDone() else app.haptics.tick()
+        when {
+            !done -> app.haptics.tick()
+            set.id in prSetIds.value -> app.haptics.pr()
+            else -> app.haptics.check()
+        }
         viewModelScope.launch {
             repo.updateSet(set.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null))
             if (done) carryForward(set)
@@ -181,7 +186,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun toggleAll(group: List<SetEntity>) {
         val done = !group.all { it.done }
         effortSetId.value = null
-        if (done) app.haptics.setDone() else app.haptics.tick()
+        if (done) app.haptics.check() else app.haptics.tick()
         viewModelScope.launch { group.filter { it.done != done }.forEach { repo.updateSet(it.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null)) } }
     }
 
@@ -281,13 +286,24 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    /**
+     * Sets whose numbers right now beat the person's best (same test as the gold flash). Presentation only: the live
+     * tick turns gold for them; the saved PR flag is still worked out when the workout finishes.
+     */
+    val prSetIds: StateFlow<Set<Long>> = combine(sets, bestScores, exercises) { list, best, exs ->
+        list.filter { s ->
+            val b = best[s.exerciseId] ?: return@filter false
+            Records.score(exs[s.exerciseId]?.kind ?: ExerciseKind.REPS, s.reps, s.seconds, s.weightKg, s.exerciseId) > b
+        }.map { it.id }.toSet()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
     /** Id of the set whose value just beat the person's best; cleared after the flash. */
     val newBest = MutableStateFlow<Long?>(null)
     private val celebrated = mutableSetOf<Long>()
 
     /** Writes a typed or nudged value, clamped to a sane range. */
     fun setField(set: SetEntity, field: Field, value: Float) {
-        app.haptics.tick()
+        // The stepper gives its own light tick per step.
         edited += set.id
         val updated = when (field) {
             Field.REPS -> set.copy(reps = value.roundToInt().coerceIn(0, 999))
@@ -435,31 +451,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
                     score = repo.scores(snap, only = s.id)[s.id],
                     clippedEndAt = result.endedAt.takeIf { result.clipped },
+                    sessionId = s.id,
+                    debrief = repo.debrief(snap, s.id),
+                    exerciseNames = snap.exercises.mapValues { it.value.name },
+                    unit = snap.settings.weightUnit,
                 )
-                if (snap.settings.debriefEnabled && app.coach.canDebrief()) {
-                    debriefSessionId = s.id
-                    retryDebrief()
-                }
             } finally {
                 finishing.value = false
             }
-        }
-    }
-
-    /**
-     * Asks the coach for the debrief of the workout just finished. In its own job so it never holds up the summary.
-     * App scope, not viewModelScope: leaving this screen must not cancel it, since it saves to the journal entry.
-     */
-    fun retryDebrief() {
-        if (debriefSessionId == 0L || debriefLoading.value) return
-        debriefLoading.value = true
-        debriefFailed.value = false
-        app.appScope.launch {
-            val d = app.coach.generateDebrief(debriefSessionId)
-            debrief.value = d
-            debriefFailed.value = d == null
-            if (d == null) app.haptics.error()
-            debriefLoading.value = false
         }
     }
 

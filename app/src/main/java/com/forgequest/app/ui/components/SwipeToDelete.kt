@@ -15,6 +15,11 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.graphics.graphicsLayer
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +55,28 @@ fun SwipeToDelete(
     val state = rememberSwipeToDismissBoxState(confirmValueChange = { target ->
         if (target == SwipeToDismissBoxValue.EndToStart) { latest(); true } else false
     })
-    LaunchedEffect(state.targetValue) { if (state.targetValue == SwipeToDismissBoxValue.EndToStart) haptics.tick() }
+    // A row that was swiped away and then restored by Undo must show settled: the saved state can come back as
+    // "dismissed" (new composition) or the same row can stay composed; reset in both cases.
+    val startedDismissed = remember { state.currentValue == SwipeToDismissBoxValue.EndToStart }
+    LaunchedEffect(Unit) { if (startedDismissed) state.snapTo(SwipeToDismissBoxValue.Settled) }
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            kotlinx.coroutines.delay(600)
+            state.snapTo(SwipeToDismissBoxValue.Settled)
+        }
+    }
+    // Crossing the delete line: one tick and the bin pops 0.8 -> 1.25 -> 1; backing off shrinks it to 0.8 again.
+    val reduced = LocalReducedMotion.current
+    val binScale = remember { Animatable(0.8f) }
+    LaunchedEffect(state.targetValue) {
+        if (state.targetValue == SwipeToDismissBoxValue.EndToStart) {
+            haptics.tick()
+            if (reduced) binScale.snapTo(1f) else {
+                binScale.animateTo(1.25f, ForgeMotion.Springs.FastSpatial.spec())
+                binScale.animateTo(1f, ForgeMotion.Springs.FastSpatial.spec())
+            }
+        } else binScale.animateTo(0.8f, ForgeMotion.spatial(reduced, ForgeMotion.Springs.FastSpatial))
+    }
     val label = stringResource(R.string.action_delete)
     SwipeToDismissBox(
         state = state,
@@ -59,7 +85,7 @@ fun SwipeToDelete(
         backgroundContent = {
             if (state.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
                 Box(Modifier.fillMaxSize().clip(shape).background(c.coral).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
-                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = Color.White)
+                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.graphicsLayer { scaleX = binScale.value; scaleY = binScale.value })
                 }
             }
         },

@@ -257,7 +257,6 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { CalorieUi.withTarget(it, kcal.coerceIn(floor, Nutrition.MAX_SAFE_KCAL), snap?.latestWeight, Dates.today()) }
     }
 
-    fun setDebrief(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(debriefEnabled = on) } }
 
     fun setCarbs(track: Boolean? = null, goal: Int? = null) = viewModelScope.launch {
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
@@ -1082,17 +1081,6 @@ fun ProfileScreen(nav: NavHostController) {
                     }
                     FitSwitch(settings.hapticsEnabled, null)
                 }
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    Modifier.fillMaxWidth().toggleable(settings.debriefEnabled, role = Role.Switch) { vm.setDebrief(it) },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.debrief_setting), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                        Text(stringResource(R.string.debrief_setting_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    }
-                    FitSwitch(settings.debriefEnabled, null)
-                }
             }
         }
 
@@ -1666,7 +1654,8 @@ private fun SettingsGroup(
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                Text(summary, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                // From 1.35x text the summary wraps in full instead of stopping at two lines.
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = if (com.forgequest.app.ui.components.reflowText()) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.rotate(turn))
@@ -1683,7 +1672,7 @@ private fun SettingsGroup(
 @Composable
 private fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     // At large text sizes the icon sits above the title, so a long word is never broken in the middle.
-    val stacked = com.forgequest.app.ui.components.isLargeText()
+    val stacked = com.forgequest.app.ui.components.reflowText()
     FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
         if (stacked) {
             IconCircle(icon, tint, track, size = 40.dp)

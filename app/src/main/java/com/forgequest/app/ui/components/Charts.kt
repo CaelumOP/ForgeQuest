@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -48,15 +50,21 @@ import com.forgequest.app.ui.theme.Fit
 @Composable
 fun rememberReveal(key: Any?): Float {
     val anim = remember(key) { Animatable(0f) }
-    LaunchedEffect(key) { anim.snapTo(0f); anim.animateTo(1f, tween(900)) }
+    // Reduced motion: the chart is simply there, fully drawn.
+    val reduced = com.forgequest.app.ui.theme.LocalReducedMotion.current
+    LaunchedEffect(key) { if (reduced) anim.snapTo(1f) else { anim.snapTo(0f); anim.animateTo(1f, tween(900)) } }
     return anim.value
 }
 
+/** TalkBack: the chart reads as one [description], or not at all when the card's text already says it. */
+private fun Modifier.chartSemantics(description: String?): Modifier =
+    clearAndSetSemantics { if (description != null) contentDescription = description }
+
 /** Tiny trend line for metric tiles: 2 dp line, faint area, emphasised last point. */
 @Composable
-fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier, reveal: Float = 1f) {
+fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier, reveal: Float = 1f, description: String? = null) {
     val card = Fit.colors.card
-    Canvas(modifier.fillMaxWidth().height(36.dp)) {
+    Canvas(modifier.fillMaxWidth().height(36.dp).chartSemantics(description)) {
         if (values.size < 2) return@Canvas
         val lo = values.min()
         val hi = values.max()
@@ -78,8 +86,8 @@ fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier, 
 
 /** Weekly bars with the latest one emphasised. 4 dp rounded tops anchored to the baseline. */
 @Composable
-fun BarRow(values: List<Int>, color: Color, track: Color, modifier: Modifier = Modifier, reveal: Float = 1f, highlightLast: Boolean = true) {
-    Canvas(modifier.fillMaxWidth().height(44.dp)) {
+fun BarRow(values: List<Int>, color: Color, track: Color, modifier: Modifier = Modifier, reveal: Float = 1f, highlightLast: Boolean = true, description: String? = null) {
+    Canvas(modifier.fillMaxWidth().height(44.dp).chartSemantics(description)) {
         if (values.isEmpty()) return@Canvas
         val max = values.max().coerceAtLeast(1)
         val gap = 4.dp.toPx()
@@ -110,9 +118,15 @@ fun TrendChart(
     average: List<TrendPoint>? = null,
     showRecords: Boolean = true,
     format: (Float) -> String = { "%.0f".format(it) },
+    /** What TalkBack reads; by default the first and last points and the best one. */
+    description: String? = null,
     dateLabel: (Long) -> String,
 ) {
     val c = Fit.colors
+    val summary = description ?: if (points.size >= 2) {
+        val first = points.first(); val last = points.last(); val best = points.maxBy { it.value }
+        stringResource(R.string.a11y_chart_summary, points.size, format(first.value), dateLabel(first.epochDay), format(last.value), dateLabel(last.epochDay), format(best.value))
+    } else null
     val measurer = rememberTextMeasurer()
     val prLabel = stringResource(R.string.live_pr)
     var scrub by remember { mutableIntStateOf(-1) }
@@ -120,6 +134,7 @@ fun TrendChart(
     Column(modifier) {
         Canvas(
             Modifier.fillMaxWidth().height(170.dp)
+                .chartSemantics(summary)
                 .pointerInput(points) {
                     detectDragGestures(onDragEnd = { scrub = -1 }, onDragCancel = { scrub = -1 }) { change, _ ->
                         if (points.size >= 2) scrub = ((change.position.x - 28.dp.toPx()) / ((size.width - 40.dp.toPx()) / (points.size - 1))).toInt().coerceIn(0, points.lastIndex)
@@ -185,10 +200,10 @@ fun TrendChart(
 
 /** GitHub-style consistency grid: rows are weekdays, columns are weeks, oldest on the left. */
 @Composable
-fun Heatmap(grid: List<List<Trends.DayCell>>, color: Color, modifier: Modifier = Modifier, reveal: Float = 1f) {
+fun Heatmap(grid: List<List<Trends.DayCell>>, color: Color, modifier: Modifier = Modifier, reveal: Float = 1f, description: String? = null) {
     val c = Fit.colors
     val weeks = grid.firstOrNull()?.size ?: return
-    Canvas(modifier.fillMaxWidth().height((7 * 14 + 6 * 4).dp)) {
+    Canvas(modifier.fillMaxWidth().height((7 * 14 + 6 * 4).dp).chartSemantics(description)) {
         val gap = 4.dp.toPx()
         val cell = ((size.width - gap * (weeks - 1)) / weeks).coerceAtMost(14.dp.toPx())
         val shown = (weeks * reveal).toInt().coerceIn(1, weeks)
