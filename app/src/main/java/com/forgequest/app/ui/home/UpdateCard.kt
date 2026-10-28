@@ -12,6 +12,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NewReleases
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.IntOffset
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
@@ -32,14 +48,34 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.theme.Fit
 
 /**
- * "There's an update!" at the top of Home, kept to one row so it never pushes the day off screen: the version, then
- * Update (download with progress, then Android's installer) or Later. The notes wait for the What's new dialog.
+ * The update card laid over Home's greeting row: it fades and slides down from the top when an update arrives and goes
+ * back up when dismissed. Reduced motion: no slide, a short fade.
  */
 @Composable
-fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit) {
+fun UpdateOverlay(banner: UpdateBanner?, onUpdate: () -> Unit, onLater: () -> Unit, modifier: Modifier = Modifier) {
+    val reduced = LocalReducedMotion.current
+    // Keeps the last banner on screen while the card animates out.
+    var last by remember { mutableStateOf(banner) }
+    if (banner != null) last = banner
+    AnimatedVisibility(
+        visible = banner != null,
+        modifier = modifier,
+        enter = fadeIn(ForgeMotion.effects(reduced)) + slideInVertically(ForgeMotion.spatial(reduced, visibilityThreshold = IntOffset.VisibilityThreshold)) { -it },
+        exit = fadeOut(ForgeMotion.effects(reduced)) + slideOutVertically(ForgeMotion.spatial(reduced, visibilityThreshold = IntOffset.VisibilityThreshold)) { -it },
+    ) {
+        last?.let { UpdateCard(it, onUpdate, onLater, Modifier.padding(top = 8.dp)) }
+    }
+}
+
+/**
+ * "There's an update!" kept to one row: the version, then Update (download with progress, then Android's installer)
+ * and an X that hides it until later. The notes wait for the What's new dialog.
+ */
+@Composable
+fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit, modifier: Modifier = Modifier) {
     val c = Fit.colors
     val accent = if (b.latest.critical) c.coral else c.teal
-    FitCard(padding = PaddingValues(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp)) {
+    FitCard(modifier = modifier, padding = PaddingValues(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(Icons.Rounded.SystemUpdate, accent, if (b.latest.critical) c.coralTrack else c.tealTrack, size = 32.dp)
             Spacer(Modifier.width(10.dp))
@@ -48,8 +84,11 @@ fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit) {
                 Text(stringResource(R.string.update_available, b.latest.versionName), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (b.progress == null) {
-                if (!b.latest.critical) TextButton(onClick = onLater) { Text(stringResource(R.string.update_later), color = c.textSecondary) }
                 TextButton(onClick = onUpdate) { Text(stringResource(R.string.update_now), color = accent, style = MaterialTheme.typography.labelLarge) }
+            }
+            // The X does what Later did. A critical update can't be put off, as before.
+            if (!b.latest.critical) IconButton(onClick = onLater) {
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_dismiss), tint = c.textSecondary)
             }
         }
         val progress = b.progress
@@ -70,7 +109,6 @@ fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit) {
             }
         }
     }
-    Spacer(Modifier.height(12.dp))
 }
 
 /** Shown once, the first time a new version opens: the release notes from version.json. */

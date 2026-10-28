@@ -55,8 +55,8 @@ export function HomeScreen(_: { param?: string }) {
   return (
     <div class="content home">
       <Header s={s} />
-      {startOnTop && todayCard}
       <Rings s={s} />
+      {startOnTop && todayCard}
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {unseen.length > 0 && (
         <Card href="#/profile">

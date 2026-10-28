@@ -212,16 +212,20 @@ fun HomeScreen(nav: NavHostController) {
     Column(
         Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
     ) {
-        Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
+        // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
+        Box(Modifier.fillMaxWidth()) {
+            Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
+            UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
+        }
+        whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
         Spacer(Modifier.height(8.dp))
+        NutritionRings(s)
+        Spacer(Modifier.height(16.dp))
+        // On a training day the workout sits right under the rings.
         if (startOnTop) {
             todayCard()
             Spacer(Modifier.height(16.dp))
         }
-        updateBanner?.let { UpdateCard(it, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later) }
-        whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
-        NutritionRings(s)
-        Spacer(Modifier.height(16.dp))
         StatRow(s, onWeight = { weightSheet = true })
         Spacer(Modifier.height(16.dp))
         CalorieCardView(s, health, vm.app.settings)

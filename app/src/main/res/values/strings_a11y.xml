@@ -7,4 +7,5 @@
     <string name="a11y_load_ring">Training load %1$d percent</string>
     <string name="a11y_chart_summary">Chart of %1$d points, from %2$s on %3$s to %4$s on %5$s, best %6$s</string>
     <string name="a11y_muscle_recovering">%1$s, %2$d%% recovered</string>
+    <string name="cd_dismiss">Dismiss</string>
 </resources>
