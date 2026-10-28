@@ -6,6 +6,8 @@ import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.effectsSpec
 import com.forgequest.app.ui.theme.spatialSpec
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.fadeIn
@@ -185,10 +187,15 @@ fun PillButton(
     content: Color = Fit.colors.onTeal,
     enabled: Boolean = true,
 ) {
+    // Pressed, the pill squares off to 12 dp corners and springs back on release.
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val corner by animateDpAsState(if (pressed) 12.dp else 50.dp, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "pillCorner")
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(50),
+        interactionSource = interaction,
+        shape = RoundedCornerShape(corner),
         color = if (enabled) container else Fit.colors.cardHigh,
         contentColor = if (enabled) content else Fit.colors.textSecondary,
         modifier = modifier,
