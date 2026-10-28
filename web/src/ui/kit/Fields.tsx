@@ -1,6 +1,7 @@
-import { useId, useState } from 'preact/hooks'
+import { useId, useRef, useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import { AddIcon, RemoveIcon } from '../icons'
+import { haptics } from './haptics'
 
 export type TextFieldProps = {
   label: string
@@ -89,7 +90,16 @@ export type StepperProps = { value: number; onChange: (v: number) => void; min?:
 /** Minus / number / plus with 44px targets; `label` names it for screen readers. Tap the number to type one. */
 export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, label, format }: StepperProps) {
   const [draft, setDraft] = useState<string | null>(null)
+  // The number rolls up on + and down on − (only after a step, so it doesn't roll when the screen opens).
+  const dir = useRef<0 | 1 | -1>(0)
   const set = (n: number) => onChange(Math.min(max, Math.max(min, Math.round(n * 1000) / 1000)))
+  const step1 = (d: 1 | -1, from: number) => {
+    const next = Math.min(max, Math.max(min, Math.round((from + d * step) * 1000) / 1000))
+    if (next === value) return
+    dir.current = d
+    haptics.lightTick()
+    set(next)
+  }
   const shown = format ? format(value) : String(value)
   const typed = draft == null ? NaN : parseNumber(draft)
   // While typing, − and + step from the typed number (the blur that saves it hasn't re-rendered yet).
@@ -100,7 +110,7 @@ export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, la
   }
   return (
     <div class="kit-stepper" role="group" aria-label={label}>
-      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_decrease', shown)} disabled={value <= min} onClick={() => set(base - step)}><RemoveIcon /></button>
+      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_decrease', shown)} disabled={value <= min} onClick={() => step1(-1, base)}><RemoveIcon /></button>
       {draft == null
         // A slider to screen readers: it names the value, and arrow keys (or a swipe) step it. A tap types one.
         ? <button
@@ -108,10 +118,10 @@ export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, la
             aria-valuenow={value} aria-valuemin={Number.isFinite(min) ? min : undefined} aria-valuemax={Number.isFinite(max) ? max : undefined} aria-valuetext={shown}
             onClick={() => setDraft(String(value))}
             onKeyDown={(e) => {
-              if (e.key === 'ArrowUp') { e.preventDefault(); set(value + step) }
-              if (e.key === 'ArrowDown') { e.preventDefault(); set(value - step) }
+              if (e.key === 'ArrowUp') { e.preventDefault(); step1(1, value) }
+              if (e.key === 'ArrowDown') { e.preventDefault(); step1(-1, value) }
             }}
-          >{shown}</button>
+          ><span key={shown} class={dir.current === 0 ? 'kit-roll' : `kit-roll ${dir.current > 0 ? 'kit-roll-up' : 'kit-roll-down'}`}>{shown}</span></button>
         : <input
             class="kit-stepper-input" aria-label={label} value={draft} autoFocus
             inputMode={Number.isInteger(step) && Number.isInteger(min) ? 'numeric' : 'decimal'} enterKeyHint="done"
@@ -120,7 +130,7 @@ export function Stepper({ value, onChange, min = 0, max = Infinity, step = 1, la
             onBlur={commit}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setDraft(null) }}
           />}
-      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_increase', shown)} disabled={value >= max} onClick={() => set(base + step)}><AddIcon /></button>
+      <button type="button" class="kit-iconbtn kit-iconbtn-tonal" aria-label={t('cd_increase', shown)} disabled={value >= max} onClick={() => step1(1, base)}><AddIcon /></button>
     </div>
   )
 }

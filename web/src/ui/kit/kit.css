@@ -141,6 +141,13 @@ textarea.kit-input { resize: vertical; }
 .kit-stepper-val { min-inline-size: 56px; text-align: center; font-size: 20px; line-height: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
 /* The number is a button (tap to type): looks like plain text with a faint underline hint. */
 button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: none; color: var(--text); border-radius: 10px; text-decoration: underline dotted var(--text-2); text-underline-offset: 6px; }
+/* Stepper roll: the new number slides in from below on +, from above on − (clipped). */
+button.kit-stepper-val { overflow: hidden; }
+.kit-roll { display: inline-block; }
+.kit-roll-up { animation: kit-roll-up var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial); }
+.kit-roll-down { animation: kit-roll-down var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial); }
+@keyframes kit-roll-up { from { transform: translateY(100%); opacity: 0; } }
+@keyframes kit-roll-down { from { transform: translateY(-100%); opacity: 0; } }
 .kit-stepper-input { inline-size: 96px; min-block-size: 44px; padding: 4px 8px; text-align: center; font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; border-color: var(--teal); }
 
 /* Empty state */
@@ -163,6 +170,7 @@ button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: 
 .kit-md-h3 { font-size: 16px; }
 
 @media (prefers-reduced-motion: reduce) {
+  .kit-roll-up, .kit-roll-down { animation: none; }
   .kit-spinner { animation-duration: 2s !important; animation: kit-spin 2s linear infinite !important; }
   /* Nothing slides or rises: sheets, dialogs, toasts, pushed screens and new rows just fade in, briefly. */
   .kit-sheet, .kit-dialog, .kit-toast, .kit-backdrop, .scroll-push, .food-row, .kit-swipe, .wk-item {
