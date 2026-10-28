@@ -20,6 +20,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.container
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -1092,7 +1096,7 @@ private fun WorkoutCompleteScreen(
         }
         if (sum.score != null || sum.debrief != null) {
             Spacer(Modifier.height(12.dp))
-            DebriefCard(sum.debrief, sum.score, sum.exerciseNames, sum.unit, onAskCoach)
+            DebriefCard(sum.debrief, sum.score, sum.exerciseNames, sum.unit, onAskCoach, celebrate = true)
         }
         Spacer(Modifier.height(24.dp))
         PillButton(stringResource(R.string.home_done), onClick = onDone, modifier = Modifier.fillMaxWidth())
@@ -1113,6 +1117,26 @@ fun scoreReasons(r: WorkoutScore.Result): String {
     return listOfNotNull(sets, up, prs, adjusted).joinToString(" · ")
 }
 
+/**
+ * One debrief line fading in and rising 16 dp, [index] × 70 ms after [go] (DefaultSpatial). Off when not [enabled];
+ * reduced motion makes it a short fade with no rise.
+ */
+@Composable
+private fun Modifier.riseIn(enabled: Boolean, go: Boolean, index: Int): Modifier {
+    if (!enabled) return this
+    val reduced = LocalReducedMotion.current
+    val p = remember { Animatable(0f) }
+    LaunchedEffect(go) {
+        if (!go) return@LaunchedEffect
+        delay(70L * index)
+        p.animateTo(1f, if (reduced) tween(ForgeMotion.REDUCED_FADE_MS) else ForgeMotion.Springs.DefaultSpatial.spec())
+    }
+    return graphicsLayer {
+        alpha = p.value.coerceIn(0f, 1f)
+        translationY = if (reduced) 0f else (1f - p.value) * 16.dp.toPx()
+    }
+}
+
 /** N/10 only from 8 up is gold; 4 to 7 stay quiet. */
 @Composable
 private fun scoreColor(score: Int) = if (score >= 8) Fit.colors.gold else Fit.colors.textSecondary
@@ -1129,15 +1153,52 @@ fun DebriefCard(
     names: Map<String, String>,
     unit: WeightUnit,
     onAskCoach: (() -> Unit)? = null,
+    /** True on the finish screen only: the score counts up and the lines rise in. Reopened from the journal it just shows. */
+    celebrate: Boolean = false,
 ) {
     val c = Fit.colors
-    val res = LocalContext.current.resources
+    val context = LocalContext.current
+    val res = context.resources
     val locale = androidx.compose.ui.platform.LocalConfiguration.current
     val lines = remember(debrief, names, unit, locale) { debrief?.let { d -> DebriefText.render(d, res, { id -> names[id] ?: id }) { kg -> unit.format(kg) } } }
+    val reduced = LocalReducedMotion.current
+    val counting = celebrate && score != null && score.showNumber
+    // 0 -> score over 650 ms; the arc follows the same value. Reduced motion lands on the score at once.
+    val count = remember { Animatable(if (counting && !reduced) 0f else (score?.score ?: 0).toFloat()) }
+    // The lines below wait for the count to land (at once when there is no count).
+    var linesGo by remember { mutableStateOf(!celebrate) }
+    LaunchedEffect(Unit) {
+        if (!celebrate) return@LaunchedEffect
+        if (counting) {
+            if (!reduced) count.animateTo(score!!.score.toFloat(), tween(650, easing = ForgeMotion.Easing.EmphasizedDecelerate))
+            context.container.haptics.heavyClick()
+        }
+        linesGo = true
+    }
+    var line = 0
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.debrief_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-            if (score != null && score.showNumber) Text(stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.titleMedium, color = scoreColor(score.score))
+            if (score != null && score.showNumber) {
+                val arcColor = scoreColor(score.score)
+                val track = MaterialTheme.colorScheme.surfaceContainerHighest
+                Box(contentAlignment = Alignment.Center) {
+                    // A thin arc that sweeps to score/10 with the count.
+                    Canvas(Modifier.size(52.dp).clearAndSetSemantics {}) {
+                        val w = 3.dp.toPx()
+                        val inset = w / 2
+                        val arcSize = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+                        val tl = androidx.compose.ui.geometry.Offset(inset, inset)
+                        drawArc(track, 0f, 360f, false, tl, arcSize, style = Stroke(w))
+                        drawArc(arcColor, -90f, 360f * (count.value / 10f).coerceIn(0f, 1f), false, tl, arcSize, style = Stroke(w, cap = StrokeCap.Round))
+                    }
+                    Text(
+                        stringResource(R.string.debrief_score, count.value.roundToInt()),
+                        style = MaterialTheme.typography.labelLarge.tabular(), color = arcColor,
+                        modifier = Modifier.semantics { contentDescription = res.getString(R.string.debrief_score, score.score) },
+                    )
+                }
+            }
         }
         // The first-ever and comeback headlines already say what this line says.
         val sameAsHeadline = debrief?.headline?.type.let { it == WorkoutDebriefMath.Headline.FIRST_EVER || it == WorkoutDebriefMath.Headline.AFTER_BREAK }
@@ -1147,11 +1208,11 @@ fun DebriefCard(
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
         if (lines != null) {
             Spacer(Modifier.height(6.dp))
-            Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, line++))
             // Green for what went well, gold for what to watch, blue for next time.
-            lines.wins.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(top = 4.dp)) }
-            lines.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(top = 4.dp)) }
-            lines.next.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.padding(top = 4.dp)) }
+            lines.wins.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.riseIn(celebrate, linesGo, line++).padding(top = 4.dp)) }
+            lines.watch.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.riseIn(celebrate, linesGo, line++).padding(top = 4.dp)) }
+            lines.next.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.riseIn(celebrate, linesGo, line++).padding(top = 4.dp)) }
             lines.sameRest?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
             lines.footnote?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp)) }
         }
