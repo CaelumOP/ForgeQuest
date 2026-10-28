@@ -4,12 +4,13 @@ import type { SetRow } from '../../data/db'
 import type { ExerciseKind } from '../../domain/muscle'
 import { SET_EFFORTS, parseEffort, type SetEffort } from '../../domain/effort'
 import { fromKg, loadStep, toKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
-import { Chip, Sheet, Stepper, TextField, Button } from '../kit'
+import { Chip, Sheet, Stepper, TextField, Button, haptics } from '../kit'
 import { clampField } from './groups'
 import { PlayIcon } from './glyphs'
 
 const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: 'effort_ok', HARD: 'effort_hard', PAIN: 'effort_pain' }
-const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'HARD' ? 'gold' : 'teal')
+/** Easy teal, OK blue, Hard purple, Pain coral. */
+const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'HARD' ? 'purple' : e === 'OK' ? 'blue' : 'teal')
 
 export type SetRowProps = {
   label: string | null
@@ -115,9 +116,14 @@ export function SetRowView(p: SetRowProps) {
       </div>
       {set.done && p.showEffort && (
         <div class="lw-efforts">
-          {SET_EFFORTS.map((e) => (
-            <Chip key={e} label={t(EFFORT_KEY[e])} selected={set.effort === e} accent={accentOf(e)} onClick={() => save({ effort: set.effort === e ? '' : e })} />
-          ))}
+          {/* One connected group: round outer ends, 6px seams; the chosen effort morphs into a full pill in its colour. */}
+          <div class="lw-effort-group" role="radiogroup" aria-label={t('a11y_set_effort')}>
+            {SET_EFFORTS.map((e) => (
+              <button key={e} type="button" role="radio" aria-checked={set.effort === e}
+                class={`lw-effort-seg kit-accent-${accentOf(e)}${set.effort === e ? ' lw-effort-on' : ''}`}
+                onClick={() => { haptics.tick(); save({ effort: set.effort === e ? '' : e }) }}>{t(EFFORT_KEY[e])}</button>
+            ))}
+          </div>
           {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}
         </div>
       )}
