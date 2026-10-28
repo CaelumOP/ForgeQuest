@@ -1253,9 +1253,6 @@
     <string name="progress_avg_recovery">Avg recovery</string>
     <string name="progress_avg_hrv">Avg HRV</string>
     <string name="progress_avg_sleep">Avg sleep</string>
-    <string name="today_low_recovery">Recovery is low today (%1$d%%). Go lighter or rest?</string>
-    <string name="today_start_lighter">One set less</string>
-    <string name="today_rest_instead">Rest today</string>
     <string name="goals_fitbit_burn">Formula estimate: %1$s kcal a day · Fitbit 14-day average: %2$s kcal</string>
     <!-- Meals from the Gemini Gem -->
     <string name="meals_title">Meals from Gemini</string>
