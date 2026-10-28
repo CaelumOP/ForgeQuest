@@ -7,7 +7,6 @@ import com.forgequest.app.ui.theme.effectsSpec
 import com.forgequest.app.ui.theme.spatialSpec
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.VisibilityThreshold
@@ -194,7 +193,8 @@ fun PillButton(
     // Half the button's height is a full pill; measured so the spring starts moving at once instead of from a clamped 50 dp.
     val density = androidx.compose.ui.platform.LocalDensity.current
     var half by remember { mutableStateOf(24.dp) }
-    val corner by animateDpAsState(if (pressed) 12.dp else half, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "pillCorner")
+    val press by animateFloatAsState(if (pressed) 1f else 0f, spatialSpec(ForgeMotion.Springs.FastSpatial), label = "pillPress")
+    val corner = androidx.compose.ui.unit.lerp(half, 12.dp, press).coerceAtLeast(0.dp)
     Surface(
         onClick = onClick,
         enabled = enabled,
