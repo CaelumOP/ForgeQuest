@@ -63,6 +63,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.border
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.LocalReducedMotion
+import com.forgequest.app.ui.theme.effectsSpec
+import com.forgequest.app.ui.theme.spatialSpec
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.zIndex
@@ -290,12 +297,30 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                           key(item.id) {
                             val ex = s.exercises[item.exerciseId]
                             val dragging = dragId == item.id
+                            // Lifted: a touch larger, raised with a shadow, corners 12 -> 20 dp. Reduced motion: a teal outline instead.
+                            val reduced = LocalReducedMotion.current
+                            val lift by animateFloatAsState(if (dragging) 1f else 0f, spatialSpec(ForgeMotion.Springs.FastSpatial), label = "lift")
+                            val liftedBg by animateColorAsState(
+                                if (dragging) MaterialTheme.colorScheme.surfaceContainerHighest else androidx.compose.ui.graphics.Color.Transparent,
+                                effectsSpec(), label = "liftBg",
+                            )
+                            val rowShape = RoundedCornerShape(androidx.compose.ui.unit.lerp(12.dp, 20.dp, lift.coerceIn(0f, 1.2f)))
                             Row(
                                 Modifier.fillMaxWidth()
                                     .zIndex(if (dragging) 1f else 0f)
-                                    .graphicsLayer { translationY = if (dragging) dragOffset else 0f; alpha = if (dragging) 0.92f else 1f }
+                                    .graphicsLayer {
+                                        translationY = if (dragging) dragOffset else 0f
+                                        if (!reduced) {
+                                            val k = 1f + 0.03f * lift
+                                            scaleX = k; scaleY = k
+                                            shadowElevation = 8.dp.toPx() * lift.coerceIn(0f, 1f)
+                                        }
+                                        shape = rowShape
+                                        clip = true
+                                    }
                                     .onSizeChanged { heights[item.id] = it.height }
-                                    .clip(RoundedCornerShape(12.dp)).background(if (dragging) c.cardHigh else androidx.compose.ui.graphics.Color.Transparent)
+                                    .background(liftedBg)
+                                    .then(if (reduced && dragging) Modifier.border(2.dp, c.teal, rowShape) else Modifier)
                                     .clickable { editing = item }.padding(vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -303,7 +328,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                                     Icons.Rounded.DragHandle, contentDescription = dragLabel, tint = c.textSecondary,
                                     modifier = Modifier.size(40.dp).pointerInput(item.id) {
                                         detectDragGesturesAfterLongPress(
-                                            onDragStart = { dragId = item.id; dragOffset = 0f; dragStart = order.indexOf(item.id); haptics.tick() },
+                                            onDragStart = { dragId = item.id; dragOffset = 0f; dragStart = order.indexOf(item.id); haptics.heavyClick() },
                                             onDrag = { change, amount ->
                                                 change.consume()
                                                 dragOffset += amount.y
@@ -313,16 +338,17 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                                                 if (dragOffset > 0f && below != null && dragOffset > below / 2f) {
                                                     order = order.toMutableList().also { it.add(i + 1, it.removeAt(i)) }
                                                     dragOffset -= below
-                                                    haptics.tick()
+                                                    haptics.lightTick()
                                                 } else if (dragOffset < 0f && above != null && -dragOffset > above / 2f) {
                                                     order = order.toMutableList().also { it.add(i - 1, it.removeAt(i)) }
                                                     dragOffset += above
-                                                    haptics.tick()
+                                                    haptics.lightTick()
                                                 }
                                             },
                                             onDragEnd = {
                                                 val delta = order.indexOf(item.id) - dragStart
                                                 dragId = null; dragOffset = 0f
+                                                haptics.tick()
                                                 if (delta != 0) vm.move(item, delta)
                                             },
                                             onDragCancel = { dragId = null; dragOffset = 0f; order = day.items.map { it.id } },
