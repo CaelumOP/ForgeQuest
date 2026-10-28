@@ -3,6 +3,7 @@ package com.forgequest.app.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -243,7 +244,9 @@ fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
     // makes Compose wrap the last letter of a title onto its own line. Arabic gets IBM Plex Sans Arabic, untracked.
     val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"
     CompositionLocalProvider(LocalFitColors provides fit) {
-        MaterialTheme(colorScheme = scheme, shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography) {
+        // Expressive motion for the stock components (sheets, switches, indicators). Colors, shapes and type are ours, so
+        // plain MaterialTheme with the motion scheme, not MaterialExpressiveTheme, which also swaps component defaults.
+        MaterialTheme(colorScheme = scheme, motionScheme = MotionScheme.expressive(), shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography) {
             ProvideReducedMotion(content)
         }
     }
