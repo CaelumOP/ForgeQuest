@@ -11,6 +11,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -30,6 +35,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -158,12 +166,49 @@ private fun MainScaffold() {
     val review by context.container.meals.review.collectAsState()
     LaunchedEffect(review) { if (review != null && route != Routes.SCAN) nav.navigate(Routes.SCAN) { launchSingleTop = true } }
 
+    // 600 dp and wider (tablets, unfolded foldables): the bar becomes a rail on the start edge and the content stays one
+    // 640 dp column in the middle. Phones are unchanged.
+    val wide = LocalConfiguration.current.screenWidthDp >= 600
+    val itemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = c.teal,
+        selectedTextColor = c.textPrimary,
+        indicatorColor = c.tealTrack,
+        unselectedIconColor = c.textSecondary,
+        unselectedTextColor = c.textSecondary,
+    )
+
     CompositionLocalProvider(LocalSnackbar provides snackbar) {
+        Row(Modifier.fillMaxSize()) {
+        if (wide && showBar) {
+            NavigationRail(containerColor = c.card) {
+                tabs.forEach { tab ->
+                    val selected = route == tab.route
+                    NavigationRailItem(
+                        selected = selected,
+                        onClick = { nav.goToTab(tab.route) },
+                        icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
+                        label = {
+                            com.forgequest.app.ui.components.CappedFontScale {
+                                Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                            }
+                        },
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = c.teal,
+                            selectedTextColor = c.textPrimary,
+                            indicatorColor = c.tealTrack,
+                            unselectedIconColor = c.textSecondary,
+                            unselectedTextColor = c.textSecondary,
+                        ),
+                    )
+                }
+            }
+        }
         Scaffold(
+            modifier = Modifier.weight(1f),
             containerColor = c.background,
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
-                if (showBar) {
+                if (showBar && !wide) {
                     // Container is the theme's surfaceContainer, which is our card.
                     NavigationBar(tonalElevation = 0.dp) {
                         tabs.forEach { tab ->
@@ -178,19 +223,14 @@ private fun MainScaffold() {
                                         Text(stringResource(tab.label), maxLines = 1, style = MaterialTheme.typography.labelMedium)
                                     }
                                 },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = c.teal,
-                                    selectedTextColor = c.textPrimary,
-                                    indicatorColor = c.tealTrack,
-                                    unselectedIconColor = c.textSecondary,
-                                    unselectedTextColor = c.textSecondary,
-                                ),
+                                colors = itemColors,
                             )
                         }
                     }
                 }
             },
         ) { padding ->
+          Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             NavHost(
                 navController = nav,
                 startDestination = Routes.HOME,
@@ -198,7 +238,7 @@ private fun MainScaffold() {
                 // (Coach input) sit right on top of it instead of a bar-height above.
                 modifier = (if (showBar) PaddingValues(bottom = padding.calculateBottomPadding()) else PaddingValues(0.dp)).let { barSpace ->
                     Modifier.padding(barSpace).consumeWindowInsets(barSpace)
-                },
+                }.let { if (wide) it.widthIn(max = 640.dp).fillMaxHeight() else it },
                 // Pushed detail screens slide in from the end edge (RTL-aware) and slide back out; tabs just fade.
                 // With reduced motion on, nothing slides: every change is a short fade.
                 enterTransition = {
@@ -239,6 +279,8 @@ private fun MainScaffold() {
                     SessionDetailScreen(nav, entry.arguments?.getLong("id") ?: 0L)
                 }
             }
+          }
+        }
         }
     }
 }
