@@ -216,6 +216,34 @@ class BadgesTest {
         assertFalse("workouts_50" in unlocked)
     }
 
+    private fun unlocked(stats: BadgeStats) = Badges.all.filter { it.unlocked(stats) }.map { it.id }.toSet()
+
+    @Test
+    fun pullUpRepBadgesCountChinUpsAndWeightedVariants() {
+        for (id in listOf("pull_up", "chin_up", "weighted_pull_up", "weighted_chin_up")) {
+            val got = unlocked(BadgeStats(bestReps = mapOf(id to 10)))
+            assertTrue(id, "str_pull_1" in got && "str_pull_10" in got)
+        }
+        assertFalse("str_pull_1" in unlocked(BadgeStats(bestReps = mapOf("australian_pull_up" to 20))))
+    }
+
+    @Test
+    fun weightedPullUpBadgeCountsAddedWeightOnAnyPullUp() {
+        for (id in listOf("weighted_pull_up", "weighted_chin_up", "pull_up", "chin_up")) {
+            assertTrue(id, "str_weighted_pull_20" in unlocked(BadgeStats(bestWeight = mapOf(id to 20f))))
+        }
+        assertFalse("str_weighted_pull_20" in unlocked(BadgeStats(bestWeight = mapOf("chin_up" to 19f))))
+    }
+
+    @Test
+    fun dipBadgesCountBothDips() {
+        assertTrue("str_dip_15" in unlocked(BadgeStats(bestReps = mapOf("weighted_dip" to 15))))
+        assertTrue("str_dip_15" in unlocked(BadgeStats(bestReps = mapOf("dip" to 15))))
+        assertTrue("str_weighted_dip_30" in unlocked(BadgeStats(bestWeight = mapOf("dip" to 30f))))
+        assertTrue("str_weighted_dip_30" in unlocked(BadgeStats(bestWeight = mapOf("weighted_dip" to 30f))))
+        assertFalse("str_dip_15" in unlocked(BadgeStats(bestReps = mapOf("bent_leg_bench_dip" to 30))))
+    }
+
     @Test
     fun badgeIdsAreUnique() {
         assertEquals(Badges.all.size, Badges.all.map { it.id }.toSet().size)

@@ -25,7 +25,13 @@ data class BadgeDef(
 object Badges {
     private fun reps(id: String, n: Int): (BadgeStats) -> Boolean = { (it.bestReps[id] ?: 0) >= n }
     private fun hold(id: String, s: Int): (BadgeStats) -> Boolean = { (it.bestSeconds[id] ?: 0) >= s }
-    private fun load(id: String, kg: Float): (BadgeStats) -> Boolean = { (it.bestWeight[id] ?: 0f) >= kg }
+    /** Best reps across [ids], so a chin-up or weighted pull-up set counts for a pull-up badge. */
+    private fun repsAny(ids: List<String>, n: Int): (BadgeStats) -> Boolean = { s -> ids.maxOf { s.bestReps[it] ?: 0 } >= n }
+    /** Best added weight across [ids]; a plain pull-up or dip logged with added weight counts too. */
+    private fun loadAny(ids: List<String>, kg: Float): (BadgeStats) -> Boolean = { s -> ids.maxOf { s.bestWeight[it] ?: 0f } >= kg }
+
+    private val PULL_UPS = listOf("pull_up", "chin_up", "weighted_pull_up", "weighted_chin_up")
+    private val DIPS = listOf("dip", "weighted_dip")
 
     /**
      * How far along a locked counting badge is (done, needed), for "8 / 10" on the badges screen; null for one-off
@@ -62,11 +68,11 @@ object Badges {
         BadgeDef("str_knee_push_20", "Foundation push", "20 knee push-ups in one set", BadgeCategory.STRENGTH, reps("knee_push_up", 20)),
         BadgeDef("str_aus_pull_15", "Foundation pull", "15 Australian pull-ups in one set", BadgeCategory.STRENGTH, reps("australian_pull_up", 15)),
         BadgeDef("str_push_30", "Push-up 30", "30 push-ups in one set", BadgeCategory.STRENGTH, reps("push_up", 30)),
-        BadgeDef("str_pull_1", "First pull-up", "Your first full pull-up", BadgeCategory.STRENGTH, reps("pull_up", 1)),
-        BadgeDef("str_pull_10", "Pull-up 10", "10 pull-ups in one set", BadgeCategory.STRENGTH, reps("pull_up", 10)),
-        BadgeDef("str_dip_15", "Dip 15", "15 dips in one set", BadgeCategory.STRENGTH, reps("dip", 15)),
-        BadgeDef("str_weighted_pull_20", "+20 kg pull-up", "Pull-up with 20 kg added", BadgeCategory.STRENGTH, load("weighted_pull_up", 20f)),
-        BadgeDef("str_weighted_dip_30", "+30 kg dip", "Dip with 30 kg added", BadgeCategory.STRENGTH, load("weighted_dip", 30f)),
+        BadgeDef("str_pull_1", "First pull-up", "Your first full pull-up", BadgeCategory.STRENGTH, repsAny(PULL_UPS, 1)),
+        BadgeDef("str_pull_10", "Pull-up 10", "10 pull-ups in one set", BadgeCategory.STRENGTH, repsAny(PULL_UPS, 10)),
+        BadgeDef("str_dip_15", "Dip 15", "15 dips in one set", BadgeCategory.STRENGTH, repsAny(DIPS, 15)),
+        BadgeDef("str_weighted_pull_20", "+20 kg pull-up", "Pull-up with 20 kg added", BadgeCategory.STRENGTH, loadAny(PULL_UPS, 20f)),
+        BadgeDef("str_weighted_dip_30", "+30 kg dip", "Dip with 30 kg added", BadgeCategory.STRENGTH, loadAny(DIPS, 30f)),
 
         BadgeDef("food_first", "First bite", "Log your first meal", BadgeCategory.NUTRITION) { it.mealsLogged >= 1 },
         BadgeDef("food_scan", "Snap & log", "Log a meal with the camera", BadgeCategory.NUTRITION) { it.mealsScanned >= 1 },
