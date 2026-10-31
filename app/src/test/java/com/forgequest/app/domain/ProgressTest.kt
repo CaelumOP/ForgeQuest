@@ -152,7 +152,7 @@ class RecoveryTest {
     @Test
     fun oldSessionsAreFullyRecovered() {
         val now = 100 * hour
-        assertTrue(Recovery.compute(listOf(Triple(Muscle.QUADS, now - 49 * hour, 1f)), now).isEmpty())
+        assertTrue(Recovery.compute(listOf(Triple(Muscle.QUADS, now - 61 * hour, 1f)), now).isEmpty())
     }
 
     @Test
@@ -171,6 +171,29 @@ class RecoveryTest {
             now,
         )
         assertEquals(1f - 2f / 48f, r.getValue(Muscle.BICEPS).fatigue, 0.001f)
+    }
+
+    /** Four hard sets on an exercise that only works [muscle], finished at hour 0; its fatigue at [afterHours]. */
+    private fun fourHardSets(muscle: Muscle, afterHours: Long): Float? {
+        val ex = ExerciseEntity("ex", "Ex", ExerciseKind.REPS, listOf(muscle), emptyList())
+        val sets = (0 until 4).map {
+            SetEntity(
+                sessionId = 1, exerciseId = "ex", itemPosition = 0, block = "Main", circuit = false, setIndex = it,
+                targetLabel = "", reps = 10, done = true, effort = "HARD",
+            )
+        }
+        val hits = Recovery.sessionHits(sets, mapOf("ex" to ex), mapOf(1L to 0L))
+        return Recovery.compute(hits, afterHours * hour)[muscle]?.fatigue
+    }
+
+    @Test
+    fun recoveryWindowDependsOnTheMuscle() {
+        for ((muscle, window) in listOf(Muscle.QUADS to 60L, Muscle.BICEPS to 48L, Muscle.ABS to 36L)) {
+            assertEquals(window.toFloat(), Recovery.windowHours(muscle))
+            assertTrue(muscle.name, (fourHardSets(muscle, window - 1) ?: 0f) > 0f)
+            assertEquals(muscle.name, null, fourHardSets(muscle, window))
+        }
+        assertEquals(48f, Recovery.windowHours(Muscle.ADDUCTORS))
     }
 
     @Test

@@ -264,7 +264,20 @@ data class MuscleRecovery(
 )
 
 object Recovery {
+    /** Hours a full session takes to clear for a muscle not listed in [windowHours]. */
     const val WINDOW_HOURS = 48f
+    /** The longest window: workouts older than this can't leave any fatigue. */
+    const val MAX_WINDOW_HOURS = 60f
+
+    private val SLOW = setOf(Muscle.QUADS, Muscle.HAMSTRINGS, Muscle.GLUTES, Muscle.LOWER_BACK)
+    private val FAST = setOf(Muscle.ABS, Muscle.OBLIQUES, Muscle.CALVES, Muscle.FOREARMS, Muscle.TIBIALIS)
+
+    /** Hours a full session on [muscle] takes to clear: 60 for big leg and lower-back muscles, 36 for small ones, else 48. */
+    fun windowHours(muscle: Muscle): Float = when (muscle) {
+        in SLOW -> MAX_WINDOW_HOURS
+        in FAST -> 36f
+        else -> WINDOW_HOURS
+    }
     /** Number of full working sets on a primary muscle that constitutes a 100 % (48-hour) session stimulus. */
     private const val FULL_SESSION_EFFECTIVE_SETS = 4f
     private val HIGH_SKILL_LOW_REP_IDS = setOf(
@@ -360,23 +373,24 @@ object Recovery {
      * [hits] = (muscle, trainedAtMillis, weight) where weight in (0, 1] is the session stimulus
      * (1.0 = full primary session needing 48 h, 0.5 = secondary/moderate session needing 24 h,
      * 0.25 = single working set needing 12 h).
-     * Fatigue clears at a constant physiological rate of 1 / 48 per hour. Sessions add up: what's left of an earlier
+     * Fatigue clears at a constant rate of 1 / [windowHours] per hour (60, 48 or 36 h by muscle). Sessions add up: what's left of an earlier
      * session plus the new one (capped at 1), so training a muscle twice in a day counts both (audit 2026-10-24).
      */
     fun compute(hits: List<Triple<Muscle, Long, Float>>, now: Long): Map<Muscle, MuscleRecovery> {
         val result = mutableMapOf<Muscle, MuscleRecovery>()
         for ((muscle, muscleHits) in hits.filter { it.third > 0f && it.second <= now }.groupBy { it.first }) {
+            val window = windowHours(muscle)
             var fatigue = 0f
             var lastAt = Long.MIN_VALUE
             for ((_, at, weight) in muscleHits.sortedBy { it.second }) {
-                if (lastAt != Long.MIN_VALUE) fatigue = (fatigue - (at - lastAt) / 3_600_000f / WINDOW_HOURS).coerceAtLeast(0f)
+                if (lastAt != Long.MIN_VALUE) fatigue = (fatigue - (at - lastAt) / 3_600_000f / window).coerceAtLeast(0f)
                 fatigue = (fatigue + weight.coerceIn(0f, 1f)).coerceAtMost(1f)
                 lastAt = at
             }
-            fatigue -= (now - lastAt) / 3_600_000f / WINDOW_HOURS
+            fatigue -= (now - lastAt) / 3_600_000f / window
             if (fatigue <= 0f) continue
             // + 0.001 so float noise never turns 36 h into 35.
-            result[muscle] = MuscleRecovery(fatigue, (fatigue * WINDOW_HOURS + 0.001f).toInt().coerceAtLeast(1))
+            result[muscle] = MuscleRecovery(fatigue, (fatigue * window + 0.001f).toInt().coerceAtLeast(1))
         }
         return result
     }

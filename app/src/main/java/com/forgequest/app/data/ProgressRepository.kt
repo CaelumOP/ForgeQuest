@@ -131,7 +131,7 @@ class ProgressRepository(
 
         val now = System.currentTimeMillis()
         val recentFinishedAt = r.sessions
-            .mapNotNull { s -> s.finishedAt?.takeIf { now - it in 0L..(49L * 3_600_000L) }?.let { s.id to it } }
+            .mapNotNull { s -> s.finishedAt?.takeIf { now - it in 0L..((Recovery.MAX_WINDOW_HOURS.toLong() + 1) * 3_600_000L) }?.let { s.id to it } }
             .toMap()
         val recentSets = if (recentFinishedAt.isEmpty()) emptyList() else r.sets.filter { it.sessionId in recentFinishedAt }
         val hits = Recovery.sessionHits(recentSets, exercises, recentFinishedAt)
