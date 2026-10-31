@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { dayOfWeek, epochDayOf } from './dates'
 import type { ExerciseEntity, SetEntity } from './entities'
 import {
-  computeRecovery, computeStreak, effectiveSetEffort, fullTarget, levelFor, missedInARow, personalRecords, rankFor,
-  recordScore, shouldRemind, totalXp, weeksToLock, welcomeBack, type DayTag, type MuscleHit,
+  cappedSets, computeRecovery, computeStreak, effectiveSetEffort, fullTarget, levelFor, missedInARow, personalRecords, rankFor,
+  recordScore, setsForXp, shouldRemind, totalXp, XP_PER_SET, XP_SET_CAP_FROM_DAY, weeksToLock, welcomeBack, type DayTag, type MuscleHit,
 } from './progress'
 
 // Hemo foundation: Mon, Tue, Wed, Fri, Sat
@@ -110,6 +110,17 @@ describe('XpTest', () => {
 
   it('totalAddsAllSources', () => {
     expect(totalXp(1, 10, 1, 1)).toBe(50 + 20 + 25 + 100)
+  })
+
+  it('setXpIsCappedAt25SetsFromTheCutOff', () => {
+    const after = XP_SET_CAP_FROM_DAY
+    const before = XP_SET_CAP_FROM_DAY - 1
+    expect(XP_SET_CAP_FROM_DAY).toBe(epochDayOf(2026, 11, 1))
+    expect(setsForXp(30, after) * XP_PER_SET).toBe(25 * XP_PER_SET)
+    expect(setsForXp(30, before) * XP_PER_SET).toBe(30 * XP_PER_SET)
+    expect(setsForXp(10, after)).toBe(10)
+    expect(setsForXp(10, before)).toBe(10)
+    expect(cappedSets(new Map([[1, 30], [2, 30], [3, 10]]), new Map([[1, after], [2, before], [3, after]]))).toBe(25 + 30 + 10)
   })
 })
 

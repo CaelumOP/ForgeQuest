@@ -124,6 +124,18 @@ class XpTest {
     fun totalAddsAllSources() {
         assertEquals(50 + 20 + 25 + 100, Xp.total(workouts = 1, doneSets = 10, prs = 1, badges = 1))
     }
+
+    @Test
+    fun setXpIsCappedAt25SetsFromTheCutOff() {
+        val after = Xp.SET_CAP_FROM_DAY
+        val before = Xp.SET_CAP_FROM_DAY - 1
+        assertEquals(25 * Xp.PER_SET, Xp.setsForXp(30, after) * Xp.PER_SET)
+        assertEquals(30 * Xp.PER_SET, Xp.setsForXp(30, before) * Xp.PER_SET)
+        assertEquals(10, Xp.setsForXp(10, after))
+        assertEquals(10, Xp.setsForXp(10, before))
+        assertEquals(25 + 30 + 10, Xp.cappedSets(mapOf(1L to 30, 2L to 30, 3L to 10), mapOf(1L to after, 2L to before, 3L to after)))
+        assertEquals(java.time.LocalDate.of(2026, 11, 1).toEpochDay(), Xp.SET_CAP_FROM_DAY)
+    }
 }
 
 class RecoveryTest {

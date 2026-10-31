@@ -217,6 +217,17 @@ object Xp {
     const val PER_SET = 2
     const val PER_PR = 25
     const val PER_BADGE = 100
+    /** Working sets per workout that earn set XP, for workouts on or after [SET_CAP_FROM_DAY]. */
+    const val XP_SET_CAP = 25
+    /** 2026-11-01: older workouts keep their uncapped set XP. */
+    const val SET_CAP_FROM_DAY = 20758L
+
+    /** Sets of one workout dated [epochDay] that earn XP: warm-ups count as before, but at most [XP_SET_CAP] from the cut-off on. */
+    fun setsForXp(doneSets: Int, epochDay: Long): Int = if (epochDay >= SET_CAP_FROM_DAY) min(doneSets, XP_SET_CAP) else doneSets
+
+    /** [setsForXp] summed over workouts; [setsBySession] holds each workout's done-set count, [dayOf] its epoch day. */
+    fun cappedSets(setsBySession: Map<Long, Int>, dayOf: Map<Long, Long>): Int =
+        setsBySession.entries.sumOf { (id, n) -> setsForXp(n, dayOf[id] ?: Long.MIN_VALUE) }
 
     /** XP needed to go from [level] to [level] + 1. */
     fun stepFor(level: Int) = 100 + 50 * (level - 1)

@@ -144,7 +144,12 @@ class ProgressRepository(
 
         val stats = statsFor(r, streak.best, byDay, settings.proteinGoal)
         val level = Xp.levelFor(
-            Xp.total(r.sessions.size, r.sets.size, r.sets.count { it.isPr }, r.badges.size)
+            Xp.total(
+                r.sessions.size,
+                Xp.cappedSets(r.sets.groupingBy { it.sessionId }.eachCount(), r.sessions.associate { it.id to it.epochDay }),
+                r.sets.count { it.isPr },
+                r.badges.size,
+            )
         )
         return ProgressSnapshot(
             settings, plan, streak, level, recovery, r.badges, todayNutrition, byDay, weights,

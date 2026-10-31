@@ -204,6 +204,21 @@ export const XP_PER_WORKOUT = 50
 export const XP_PER_SET = 2
 export const XP_PER_PR = 25
 export const XP_PER_BADGE = 100
+/** Working sets per workout that earn set XP, for workouts on or after `XP_SET_CAP_FROM_DAY`. */
+export const XP_SET_CAP = 25
+/** 2026-11-01: older workouts keep their uncapped set XP. */
+export const XP_SET_CAP_FROM_DAY = 20758
+
+/** Sets of one workout dated `epochDay` that earn XP: warm-ups count as before, but at most `XP_SET_CAP` from the cut-off on. */
+export const setsForXp = (doneSets: number, epochDay: number): number =>
+  epochDay >= XP_SET_CAP_FROM_DAY ? Math.min(doneSets, XP_SET_CAP) : doneSets
+
+/** `setsForXp` summed over workouts: `setsBySession` holds each workout's done-set count, `dayOf` its epoch day. */
+export function cappedSets(setsBySession: ReadonlyMap<number, number>, dayOf: ReadonlyMap<number, number>): number {
+  let total = 0
+  for (const [id, n] of setsBySession) total += setsForXp(n, dayOf.get(id) ?? -Infinity)
+  return total
+}
 
 /** XP needed to go from [level] to [level] + 1. */
 export const xpStepFor = (level: number): number => 100 + 50 * (level - 1)
