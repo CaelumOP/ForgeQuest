@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.RadioButtonChecked
@@ -285,6 +286,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
     fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = WeightUnit.fromCodeOrLabel(unit).code) } }
+    fun setJustLog(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(justLog = on) } }
     fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
@@ -611,11 +613,13 @@ fun ProfileScreen(nav: NavHostController) {
         }
     }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
-    DisposableEffect(Unit) { onDispose { vm.markBadgesSeen() } }
+    // In "Just log" mode badges aren't shown here, so they stay new for when it's turned off.
+    DisposableEffect(Unit) { onDispose { if (vm.snapshot.value?.settings?.justLog != true) vm.markBadgesSeen() } }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val settings = s.settings
     val configuredEq = settings.configuredEquipment
+    val justLog = settings.justLog
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
@@ -635,18 +639,21 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        // Rank
+        // Rank ("Just log" mode: the name and workout count only; XP keeps adding up out of sight)
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MiniRing(s.level.progress, c.blue, c.blueTrack, size = 64.dp, stroke = 4.dp) {
-                    Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
+                if (!justLog) {
+                    MiniRing(s.level.progress, c.blue, c.blueTrack, size = 64.dp, stroke = 4.dp) {
+                        Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(16.dp))
                 }
-                Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(settings.name.ifBlank { stringResource(R.string.profile_default_name) }, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                    Text(stringResource(R.string.profile_rank_line, s.level.rank.letter, s.level.rank.localTitle(), s.level.level), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                    if (!justLog) Text(stringResource(R.string.profile_rank_line, s.level.rank.letter, s.level.rank.localTitle(), s.level.level), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 }
             }
+            if (!justLog) {
             Spacer(Modifier.height(16.dp))
             ProgressLine(s.level.progress, c.blue, c.blueTrack, height = 8.dp)
             Spacer(Modifier.height(6.dp))
@@ -656,17 +663,20 @@ fun ProfileScreen(nav: NavHostController) {
                 stringResource(R.string.profile_xp_how, com.forgequest.app.domain.Xp.PER_WORKOUT, com.forgequest.app.domain.Xp.PER_SET, com.forgequest.app.domain.Xp.PER_PR, com.forgequest.app.domain.Xp.PER_BADGE),
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp),
             )
+            }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
                 com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", stringResource(R.string.tab_workouts), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
-                com.forgequest.app.ui.components.StatColumn("${s.streak.best}", stringResource(R.string.profile_best_streak), c.gold, Modifier.weight(1f))
-                com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", stringResource(R.string.profile_badges), c.purple, Modifier.weight(1f))
+                if (!justLog) {
+                    com.forgequest.app.ui.components.StatColumn("${s.streak.best}", stringResource(R.string.profile_best_streak), c.gold, Modifier.weight(1f))
+                    com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", stringResource(R.string.profile_badges), c.purple, Modifier.weight(1f))
+                }
             }
         }
         Spacer(Modifier.height(12.dp))
 
         // Badges
-        FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.BADGES) }) {
+        if (!justLog) FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.BADGES) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.profile_badges), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -685,7 +695,7 @@ fun ProfileScreen(nav: NavHostController) {
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        if (!justLog) Spacer(Modifier.height(12.dp))
 
         // Body weight stays out: it is logged often.
         // Body weight
@@ -1033,7 +1043,7 @@ fun ProfileScreen(nav: NavHostController) {
                         minValueWidth = 84.dp,
                     )
                 }
-                Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                if (!justLog) Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
 
@@ -1045,12 +1055,23 @@ fun ProfileScreen(nav: NavHostController) {
                     configuredEq.isEmpty() -> stringResource(R.string.summary_equipment_unset)
                     else -> stringResource(R.string.equipment_custom)
                 },
-                if (settings.reminderHour < 0) stringResource(R.string.summary_reminder_off) else stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour)),
+                when {
+                    justLog -> stringResource(R.string.just_log_title)
+                    settings.reminderHour < 0 -> stringResource(R.string.summary_reminder_off)
+                    else -> stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour))
+                },
             ),
             open = "training" in openGroups, onToggle = { toggleGroup("training") },
         ) {
             EquipmentCard(activePreset, configuredEq, onPreset = { vm.setEquipment(it.encode()) }, onItem = { vm.toggleEquipmentItem(it, configuredEq) })
             FitCard {
+                SwitchHeader(
+                    Icons.Rounded.Checklist, c.teal, c.tealTrack, stringResource(R.string.just_log_title),
+                    stringResource(R.string.just_log_subtitle), justLog,
+                ) { vm.setJustLog(it) }
+            }
+            // Workout reminders are part of the consistency side, so "Just log" mode puts them away (the hour is kept).
+            if (!justLog) FitCard {
                 SwitchHeader(
                     Icons.Rounded.Notifications, c.gold, c.goldTrack, stringResource(R.string.profile_reminder),
                     if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),

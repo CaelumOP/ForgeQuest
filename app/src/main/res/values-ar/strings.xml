@@ -534,6 +534,8 @@
     <string name="unit_pounds">رطل</string>
     <string name="profile_vibration">الاهتزاز</string>
     <string name="profile_vibration_hint">نقرات خفيفة مع الأزرار، واهتزاز عند إنهاء كل مجموعة</string>
+    <string name="just_log_title">التسجيل فقط</string>
+    <string name="just_log_subtitle">تتبُّع تمارينك فحسب، دون سلاسل أو مستويات أو شارات أو جاهزية.</string>
     <string name="profile_reminder">تذكير التمرين</string>
     <string name="profile_reminder_off">متوقف. تنبيه في أيام التمرين إن لم تسجّل شيئًا.</string>
     <string name="profile_reminder_on">في أيام التمرين الساعة %1$s، إن لم تسجّل شيئًا بعد.</string>
@@ -602,6 +604,8 @@
     <string name="onb_your_name">اسمك</string>
     <string name="onb_plan_title">اختر خطة البداية</string>
     <string name="onb_plan_body">يمكنك تعديلها، أو طلب تغييرها من المدرب، أو استيراد خطتك لاحقًا.</string>
+    <string name="onb_mode_habit">بناء عادة</string>
+    <string name="onb_mode_just_log">تسجيل تماريني فقط</string>
     <string name="onb_start_empty">البدء دون خطة</string>
     <string name="onb_start_empty_desc">لا خطة بعد؛ أضف تمارينك يومًا بيوم.</string>
     <string name="onb_optional">اختياري</string>

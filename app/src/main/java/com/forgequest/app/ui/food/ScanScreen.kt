@@ -271,7 +271,7 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             }
             val badges = app.progress.evaluateBadges()
             app.haptics.celebrate()
-            loggedSummary = app.str(R.string.scan_logged_summary, name, kcal, protein.roundToInt()) + if (badges.isNotEmpty()) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
+            loggedSummary = app.str(R.string.scan_logged_summary, name, kcal, protein.roundToInt()) + if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
             logged.value = true
         }
     }

@@ -465,6 +465,8 @@
     <string name="unit_pounds">Pounds</string>
     <string name="profile_vibration">Vibration feedback</string>
     <string name="profile_vibration_hint">Ticks on steppers, a thud when a set is done</string>
+    <string name="just_log_title">Just log</string>
+    <string name="just_log_subtitle">Only track your training: no streaks, levels, badges or readiness.</string>
     <string name="profile_reminder">Workout reminder</string>
     <string name="profile_reminder_off">Off. A nudge on planned days if nothing is logged yet.</string>
     <string name="profile_reminder_on">On planned days at %1$s, only if nothing is logged yet.</string>
@@ -533,6 +535,8 @@
     <string name="onb_your_name">Your name</string>
     <string name="onb_plan_title">Pick a starting plan</string>
     <string name="onb_plan_body">You can edit it, ask the coach to change it, or import your own later.</string>
+    <string name="onb_mode_habit">Build a habit</string>
+    <string name="onb_mode_just_log">Just log my training</string>
     <string name="onb_start_empty">Start empty</string>
     <string name="onb_start_empty_desc">No plan yet. Add your own exercises day by day.</string>
     <string name="onb_optional">Optional</string>

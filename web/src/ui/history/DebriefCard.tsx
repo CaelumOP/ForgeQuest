@@ -91,7 +91,8 @@ export function DebriefCard({ sessionId, score, onAsked, celebrate = false }: { 
       {score && <p class="hs-deb-body">{scoreReasons(score)}</p>}
       {lines && (
         <>
-          {(() => { const r = rise(); return <p class={cls('hs-deb-main', r)} style={r.style}>{lines.headline}</p> })()}
+          {/* "Just log" mode drops the motivational headline; the score, reasons and facts stay. */}
+          {!settings.justLog && (() => { const r = rise(); return <p class={cls('hs-deb-main', r)} style={r.style}>{lines.headline}</p> })()}
           {lines.wins.map((x) => { const r = rise(); return <p class={cls('hs-deb-line hs-deb-good', r)} style={r.style} key={x}>{`• ${x}`}</p> })}
           {lines.watch.map((x) => { const r = rise(); return <p class={cls('hs-deb-line hs-deb-gold', r)} style={r.style} key={x}>{`• ${x}`}</p> })}
           {lines.next.map((x) => { const r = rise(); return <p class={cls('hs-deb-line hs-deb-next', r)} style={r.style} key={x}>{x}</p> })}

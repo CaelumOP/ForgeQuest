@@ -253,7 +253,7 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
             app.haptics.setDone()
             val badges = app.progress.evaluateBadges()
             message.value = app.plural(R.plurals.food_logged_items, picked.size, picked.size) +
-                if (badges.isNotEmpty()) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
+                if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
         }
     }
 

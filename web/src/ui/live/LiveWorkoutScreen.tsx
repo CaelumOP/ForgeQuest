@@ -276,9 +276,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       const before = (await getProgressSnapshot()).level
       const result = await finishSession(sid, tickAll)
       const badges = await evaluateBadges()
-      // The summary shows them, so Home shouldn't announce them a second time.
-      if (badges.length > 0) await markBadgesSeen()
       const snap = await getProgressSnapshot()
+      const justLog = snap.settings.justLog
+      // The summary shows them, so Home shouldn't announce them a second time. "Just log" mode doesn't show them,
+      // so they stay new for when it's turned off.
+      if (badges.length > 0 && !justLog) await markBadgesSeen()
       if (hapticsOn) buzz([60, 40, 120])
       onWorkoutFinished(sid, result)
       setDone({
@@ -287,6 +289,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
         nextUp: nextUpDay(snap.plan?.days ?? [], dayOfWeek(todayEpochDay())),
         score: (await allWorkoutScores()).get(sid) ?? null,
         clippedEndAt: result.clipped ? result.endedAt : null,
+        justLog,
       })
     } catch {
       toast(t('live_web_save_failed'))

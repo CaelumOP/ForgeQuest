@@ -41,6 +41,7 @@ const ICONS: Record<string, string> = {
   about: 'M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
   weight: 'M12 3a4 4 0 00-4 4h8a4 4 0 00-4-4zM5 9l-2 12h18L19 9z',
   chart: 'M3.5 18.5l6-6 4 4L22 6.92 20.59 5.5l-7.09 8-4-4L2 17z',
+  checklist: 'M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z',
   dumbbell: 'M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 2.71 4.14 2 7.71z',
 }
 const Glyph = ({ name, size = 22 }: { name: string; size?: number }) => (
@@ -81,10 +82,12 @@ function Group({ id, accent, icon, title, sum, open, onToggle, children }: {
   )
 }
 
-function Switch({ label, hint, on, onChange, disabled }: { label: string; hint?: string; on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+/** A switch row; with `icon` it is a card header (icon + title + subtitle + switch), like Android's SwitchHeader. */
+function Switch({ label, hint, on, onChange, disabled, icon, accent = 'teal' }: { label: string; hint?: string; on: boolean; onChange: (v: boolean) => void; disabled?: boolean; icon?: string; accent?: Accent }) {
   return (
     <button type="button" class="pf-switchrow" role="switch" aria-checked={on} disabled={disabled} onClick={() => onChange(!on)}>
-      <span class="pf-grow"><span class="pf-t">{label}</span>{hint && <span class="pf-s">{hint}</span>}</span>
+      {icon && <span class={`pf-ic pf-${accent}`}><Glyph name={icon} /></span>}
+      <span class="pf-grow"><span class={icon ? 'pf-h3 pf-block' : 'pf-t'}>{label}</span>{hint && <span class="pf-s">{hint}</span>}</span>
       <span class={on ? 'pf-switch pf-switch-on' : 'pf-switch'} aria-hidden="true"><span class="pf-knob" /></span>
     </button>
   )
@@ -204,9 +207,10 @@ export function ProfileScreen() {
         </Card>
       )}
 
-      {snap && <RankCard snap={snap} name={s.name} />}
+      {snap && <RankCard snap={snap} name={s.name} justLog={s.justLog} />}
 
-      <Card href="#/badges">
+      {/* "Just log" mode: no badges entry (they keep unlocking and come back when it's turned off). */}
+      {!s.justLog && <Card href="#/badges">
         <div class="pf-row">
           <span class="pf-grow">
             <span class="pf-h3 pf-block">{t('profile_badges')}</span>
@@ -215,7 +219,7 @@ export function ProfileScreen() {
           <span class="pf-more">{t('action_see_all')}</span>
         </div>
         {snap && <BadgeRow snap={snap} />}
-      </Card>
+      </Card>}
 
       <Card>
         <div class="pf-row">
@@ -337,7 +341,7 @@ export function ProfileScreen() {
             <Stepper label={t('profile_workouts_per_week')} value={weekly} min={1} max={7}
               onChange={(v) => void lockThenSet({ weeklyTargetOverride: stepWeekly(weekly, v > weekly ? 1 : -1, planDays) })} />
           </Setting>
-          <p class="pf-s">{t('profile_streak_explain')}</p>
+          {!s.justLog && <p class="pf-s">{t('profile_streak_explain')}</p>}
         </Card>
       </Group>
 
@@ -353,6 +357,9 @@ export function ProfileScreen() {
           <ChipGroup multiple label={t('equipment_step_items')} value={EQUIPMENT.filter((e) => configured.has(e))}
             onChange={(next) => { const added = EQUIPMENT.find((e) => next.includes(e) && !configured.has(e)); const removed = EQUIPMENT.find((e) => !next.includes(e) && configured.has(e)); const item = added ?? removed; if (item) void set({ equipment: toggleEquipment(configured, item) }) }}
             options={EQUIPMENT.map((e) => ({ value: e, label: eqLabel(e) }))} />
+        </Card>
+        <Card>
+          <Switch icon="checklist" label={t('just_log_title')} hint={t('just_log_subtitle')} on={s.justLog} onChange={(v) => void set({ justLog: v })} />
         </Card>
         <Card>
           <Switch label={t('profile_vibration')} hint={t('profile_vibration_hint')} on={s.hapticsEnabled} onChange={(v) => void set({ hapticsEnabled: v })} />
@@ -416,25 +423,30 @@ export function ProfileScreen() {
   )
 }
 
-function RankCard({ snap, name }: { snap: ProgressSnapshot; name: string }) {
+/** "Just log" mode: the name and workout count only; XP keeps adding up out of sight. */
+function RankCard({ snap, name, justLog }: { snap: ProgressSnapshot; name: string; justLog: boolean }) {
   const { level } = snap
   return (
     <Card>
       <div class="pf-row">
-        <Ring value={level.progress} color="--blue" track="--blue-track" size={64} stroke={4} label={level.rank.letter}>
-          <span class="pf-rank">{level.rank.letter}</span>
-        </Ring>
+        {!justLog && (
+          <Ring value={level.progress} color="--blue" track="--blue-track" size={64} stroke={4} label={level.rank.letter}>
+            <span class="pf-rank">{level.rank.letter}</span>
+          </Ring>
+        )}
         <span class="pf-grow">
           <h2 class="pf-name">{name.trim() || t('profile_default_name')}</h2>
-          <span class="pf-s">{t('profile_rank_line', level.rank.letter, level.rank.title, level.level)}</span>
+          {!justLog && <span class="pf-s">{t('profile_rank_line', level.rank.letter, level.rank.title, level.level)}</span>}
         </span>
       </div>
-      <progress class="pf-xp" max={1} value={level.progress} aria-label={t('profile_xp_line', level.xpIntoLevel, level.xpForNextLevel, level.level + 1)} />
-      <span class="pf-s">{t('profile_xp_line', level.xpIntoLevel, level.xpForNextLevel, level.level + 1)}</span>
+      {!justLog && <>
+        <progress class="pf-xp" max={1} value={level.progress} aria-label={t('profile_xp_line', level.xpIntoLevel, level.xpForNextLevel, level.level + 1)} />
+        <span class="pf-s">{t('profile_xp_line', level.xpIntoLevel, level.xpForNextLevel, level.level + 1)}</span>
+      </>}
       <div class="pf-stats">
         <Stat value={snap.sessions.length} label={t('tab_workouts')} accent="teal" />
-        <Stat value={snap.streak.best} label={t('profile_best_streak')} accent="gold" />
-        <Stat value={`${snap.badges.length}/${BADGES.length}`} label={t('profile_badges')} accent="purple" />
+        {!justLog && <Stat value={snap.streak.best} label={t('profile_best_streak')} accent="gold" />}
+        {!justLog && <Stat value={`${snap.badges.length}/${BADGES.length}`} label={t('profile_badges')} accent="purple" />}
       </div>
     </Card>
   )

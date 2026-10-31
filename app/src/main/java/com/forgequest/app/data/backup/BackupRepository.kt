@@ -69,6 +69,8 @@ data class BackupSettings(
     val gainPace: String = "STANDARD",
     val targetWeightKg: Float = 0f,
     val targetSetDay: Long = 0,
+    /** Added in 2.17.0; older backups have no field and restore as false. */
+    val justLog: Boolean = false,
 ) {
     companion object {
         fun from(s: Settings) = BackupSettings(
@@ -100,6 +102,7 @@ data class BackupSettings(
             gainPace = s.gainPace.name,
             targetWeightKg = s.targetWeightKg,
             targetSetDay = s.targetSetDay,
+            justLog = s.justLog,
         )
     }
 
@@ -132,6 +135,7 @@ data class BackupSettings(
         gainPace = GainPace.parse(gainPace),
         targetWeightKg = targetWeightKg,
         targetSetDay = targetSetDay,
+        justLog = justLog,
     )
 }
 
