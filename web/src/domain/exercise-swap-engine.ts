@@ -5,7 +5,7 @@ import { isExerciseKind, isMuscle, type ExerciseKind } from './muscle'
 const f = Math.fround
 
 /** Equipment categories for filtering and biomechanical exercise substitution. */
-export const EQUIPMENT = ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_BARS_OR_BENCH', 'DUMBBELLS', 'KETTLEBELL', 'BARBELL_RACK', 'CABLES_MACHINES'] as const
+export const EQUIPMENT = ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_BARS_OR_BENCH', 'DUMBBELLS', 'KETTLEBELL', 'BARBELL_RACK', 'CABLES_MACHINES', 'BAND'] as const
 export type Equipment = (typeof EQUIPMENT)[number]
 
 export const EQUIPMENT_LABEL: Record<Equipment, { en: string; ar: string }> = {
@@ -16,6 +16,7 @@ export const EQUIPMENT_LABEL: Record<Equipment, { en: string; ar: string }> = {
   KETTLEBELL: { en: 'Kettlebell', ar: 'كيتل بيل' },
   BARBELL_RACK: { en: 'Barbell & rack', ar: 'بار وراك' },
   CABLES_MACHINES: { en: 'Cables & gym machines', ar: 'أجهزة وكوابل النادي' },
+  BAND: { en: 'Resistance band', ar: 'حزام مطاطي' },
 }
 
 /** Lowest score a plan auto-swap accepts: a related movement (18) plus some shared muscles, or the same pattern. */
@@ -139,6 +140,7 @@ export type MovementPattern =
   | 'HORIZONTAL_PUSH' | 'DIP_PUSH' | 'VERTICAL_PUSH' | 'LATERAL_RAISE' | 'VERTICAL_PULL' | 'HORIZONTAL_PULL'
   | 'UPPER_BACK_PULL' | 'SQUAT_BILATERAL' | 'SQUAT_UNILATERAL' | 'HIP_HINGE' | 'KNEE_FLEXION' | 'ELBOW_FLEXION'
   | 'ELBOW_EXTENSION' | 'CORE_ANTI_EXTENSION' | 'CORE_FLEXION_ROTATION' | 'ANKLE_FLEXION' | 'CARRY_CONDITIONING'
+  | 'HIP_ADDUCTION'
 
 export const MOVEMENT_PATTERN_LABEL: Record<MovementPattern, { en: string; ar: string }> = {
   HORIZONTAL_PUSH: { en: 'Horizontal push', ar: 'دفع أفقي' },
@@ -158,6 +160,7 @@ export const MOVEMENT_PATTERN_LABEL: Record<MovementPattern, { en: string; ar: s
   CORE_FLEXION_ROTATION: { en: 'Core flexion / rotation', ar: 'ثني والتواء البطن' },
   ANKLE_FLEXION: { en: 'Calf / ankle flexion', ar: 'بطة وقصبة الساق' },
   CARRY_CONDITIONING: { en: 'Loaded carry / conditioning', ar: 'حمل ولياقة عامة' },
+  HIP_ADDUCTION: { en: 'Hip adduction (inner thigh)', ar: 'ضمّ الورك (باطن الفخذ)' },
 }
 
 export type JointAngle =
@@ -166,6 +169,7 @@ export type JointAngle =
   | 'KNEE_DOMINANT_BILATERAL' | 'KNEE_DOMINANT_SPLIT' | 'HIP_EXTENSION_SUPINE' | 'HIP_HINGE_STANDING' | 'HAMSTRING_CURL'
   | 'SAGITTAL_SUPINATED' | 'SAGITTAL_NEUTRAL' | 'SAGITTAL_TRICEP' | 'ISOMETRIC_PLANK' | 'SPINAL_FLEXION'
   | 'HANGING_HIP_FLEXION' | 'ROTATIONAL' | 'PLANTAR_FLEXION' | 'DORSI_FLEXION' | 'LOCOMOTION'
+  | 'FRONTAL_ADDUCTION'
 
 export type BiomechanicalProfile = {
   equipment: Equipment
@@ -184,7 +188,7 @@ export type SwapCandidate = {
 const prof = (equipment: Equipment, pattern: MovementPattern, angle: JointAngle, ...preferredSwaps: string[]): BiomechanicalProfile =>
   ({ equipment, pattern, angle, preferredSwaps })
 
-/** Explicit biomechanical profiles for all 90 built-in exercises in the exercise catalog. */
+/** Explicit biomechanical profiles for all 100 built-in exercises in the exercise catalog. */
 export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new Map([
   // Warm-up / conditioning
   ['jumping_jacks', prof('BODYWEIGHT', 'CARRY_CONDITIONING', 'LOCOMOTION', 'burpee', 'calf_raise')],
@@ -276,7 +280,19 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
   ['skull_crusher', prof('BARBELL_RACK', 'ELBOW_EXTENSION', 'SAGITTAL_TRICEP', 'tricep_pushdown', 'diamond_push_up', 'dip', 'bent_leg_bench_dip')],
   ['shrug', prof('DUMBBELLS', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'farmers_carry', 'face_pull', 'scapular_australian_pull_up')],
   ['cable_crunch', prof('CABLES_MACHINES', 'CORE_FLEXION_ROTATION', 'SPINAL_FLEXION', 'crunch', 'hanging_knee_raise', 'hanging_leg_raise', 'hollow_hold')],
-  ['tibialis_raise', prof('BODYWEIGHT', 'ANKLE_FLEXION', 'DORSI_FLEXION', 'calf_raise', 'calf_raise_turned_out')],
+  ['tibialis_raise', prof('BODYWEIGHT', 'ANKLE_FLEXION', 'DORSI_FLEXION', 'band_dorsiflexion', 'heel_walk', 'calf_raise')],
+  ['heel_walk', prof('BODYWEIGHT', 'ANKLE_FLEXION', 'DORSI_FLEXION', 'tibialis_raise', 'band_dorsiflexion')],
+  ['band_dorsiflexion', prof('BAND', 'ANKLE_FLEXION', 'DORSI_FLEXION', 'tibialis_raise', 'heel_walk')],
+
+  // Adductors, obliques and forearms
+  ['copenhagen_plank_short', prof('DIP_BARS_OR_BENCH', 'HIP_ADDUCTION', 'ISOMETRIC_PLANK', 'copenhagen_plank_long', 'side_plank', 'side_lying_hip_adduction')],
+  ['copenhagen_plank_long', prof('DIP_BARS_OR_BENCH', 'HIP_ADDUCTION', 'ISOMETRIC_PLANK', 'copenhagen_plank_short', 'side_plank', 'side_lying_hip_adduction')],
+  ['side_lying_hip_adduction', prof('BODYWEIGHT', 'HIP_ADDUCTION', 'FRONTAL_ADDUCTION', 'band_hip_adduction', 'cossack_squat', 'copenhagen_plank_short')],
+  ['cossack_squat', prof('BODYWEIGHT', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'lunge', 'side_lying_hip_adduction', 'bulgarian_split_squat')],
+  ['band_hip_adduction', prof('BAND', 'HIP_ADDUCTION', 'FRONTAL_ADDUCTION', 'side_lying_hip_adduction', 'cossack_squat')],
+  ['side_plank', prof('BODYWEIGHT', 'CORE_ANTI_EXTENSION', 'ISOMETRIC_PLANK', 'plank', 'hollow_hold', 'copenhagen_plank_short')],
+  ['bicycle_crunch', prof('BODYWEIGHT', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'russian_twist', 'crunch', 'plank_shoulder_taps')],
+  ['wrist_curl', prof('DUMBBELLS', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'hammer_curl', 'farmers_carry', 'dead_hang')],
 
   // Kettlebells and dumbbells at home
   ['kb_swing', prof('KETTLEBELL', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'kb_deadlift', 'romanian_deadlift', 'hip_bridge', 'hip_thrust')],
@@ -306,6 +322,7 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     : has('kb_', 'kettlebell') ? 'KETTLEBELL'
     : has('db_', 'dumbbell', 'curl', 'lateral') ? 'DUMBBELLS'
     : has('pull_up', 'chin_up', 'hang', 'lever', 'muscle_up') ? 'PULL_UP_BAR'
+    : has('band', 'resistance') ? 'BAND'
     : has('dip', 'australian', 'row') ? 'DIP_BARS_OR_BENCH'
     : ex.kind === 'WEIGHTED' ? 'DUMBBELLS'
     : 'BODYWEIGHT'
@@ -325,6 +342,7 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     : main === 'TRICEPS' ? 'ELBOW_EXTENSION'
     : ex.kind === 'HOLD' && (main === 'ABS' || main === 'OBLIQUES') ? 'CORE_ANTI_EXTENSION'
     : main === 'ABS' || main === 'OBLIQUES' ? 'CORE_FLEXION_ROTATION'
+    : main === 'ADDUCTORS' ? 'HIP_ADDUCTION'
     : main === 'CALVES' || main === 'TIBIALIS' ? 'ANKLE_FLEXION'
     : main === 'SHOULDERS' ? 'VERTICAL_PUSH'
     : 'CARRY_CONDITIONING'
@@ -346,6 +364,7 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     CORE_FLEXION_ROTATION: 'SPINAL_FLEXION',
     ANKLE_FLEXION: 'PLANTAR_FLEXION',
     CARRY_CONDITIONING: 'LOCOMOTION',
+    HIP_ADDUCTION: 'FRONTAL_ADDUCTION',
   }
   return { equipment: eq, pattern, angle: angle[pattern], preferredSwaps: [] }
 }

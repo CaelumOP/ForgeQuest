@@ -49,10 +49,10 @@ describe('web additions', () => {
   it('reads three English and three Arabic sentences', () => {
     expect(inferEquipmentFromText('I have a pull-up bar and dumbbells')).toEqual(set('PULL_UP_BAR', 'DUMBBELLS', 'BODYWEIGHT'))
     expect(inferEquipmentFromText('No equipment, just me')).toEqual(set('BODYWEIGHT'))
-    expect(inferEquipmentFromText('I train at a commercial gym')?.size).toBe(7)
+    expect(inferEquipmentFromText('I train at a commercial gym')?.size).toBe(8)
     expect(inferEquipmentFromText('عندي بار عقلة')).toEqual(set('PULL_UP_BAR', 'BODYWEIGHT'))
     expect(inferEquipmentFromText('ما عندي دمبل لكن عندي عقلة')).toEqual(set('PULL_UP_BAR', 'BODYWEIGHT'))
-    expect(inferEquipmentFromText('أتمرن في النادي')?.size).toBe(7)
+    expect(inferEquipmentFromText('أتمرن في النادي')?.size).toBe(8)
   })
 
   // Audit #7: swaps, plan adaptation (plateau case is in trends.test.ts).
