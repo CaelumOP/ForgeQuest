@@ -46,6 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -281,7 +282,7 @@ fun HomeScreen(nav: NavHostController) {
     if (weightSheet) {
         val unit = s.settings.weightUnit
         var kg by remember { mutableFloatStateOf(s.latestWeight ?: 75f) }
-        ModalBottomSheet(onDismissRequest = { weightSheet = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { weightSheet = false }, containerColor = c.card) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.weight_log_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(20.dp))

@@ -435,7 +435,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
         val context = LocalContext.current
         val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
         val copied = stringResource(R.string.plan_prompt_copied)
-        ModalBottomSheet(onDismissRequest = { changePlan = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { changePlan = false }, containerColor = c.card) {
             Column(Modifier.padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
                 ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
@@ -459,7 +459,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     }
 
     if (templates) {
-        ModalBottomSheet(onDismissRequest = { templates = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { templates = false }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_ready_made_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
@@ -476,7 +476,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
 
     if (previous) {
         var toDelete by remember { mutableStateOf<PlanEntity?>(null) }
-        ModalBottomSheet(onDismissRequest = { previous = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { previous = false }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_previous), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(stringResource(R.string.plan_previous_tap), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
