@@ -99,6 +99,8 @@
     <string name="badge_first_workout_desc">Finish your first workout</string>
     <string name="badge_workouts_10_title">Ten in</string>
     <string name="badge_workouts_10_desc">Finish 10 workouts</string>
+    <string name="badge_workouts_25_title">Quarter century</string>
+    <string name="badge_workouts_25_desc">Finish 25 workouts</string>
     <string name="badge_workouts_50_title">Half century</string>
     <string name="badge_workouts_50_desc">Finish 50 workouts</string>
     <string name="badge_workouts_100_title">Hundred club</string>

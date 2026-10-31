@@ -245,6 +245,17 @@ class BadgesTest {
     }
 
     @Test
+    fun twentyFiveWorkoutsBadgeSitsBetweenTenAndFifty() {
+        assertFalse("workouts_25" in unlocked(BadgeStats(workouts = 24)))
+        val got = unlocked(BadgeStats(workouts = 25))
+        assertTrue("workouts_25" in got && "workouts_10" in got && "workouts_50" !in got)
+        val ids = Badges.all.map { it.id }
+        assertEquals(ids.indexOf("workouts_10") + 1, ids.indexOf("workouts_25"))
+        assertEquals(ids.indexOf("workouts_25") + 1, ids.indexOf("workouts_50"))
+        assertEquals(10 to 25, Badges.progress("workouts_25", BadgeStats(workouts = 10)))
+    }
+
+    @Test
     fun badgeIdsAreUnique() {
         assertEquals(Badges.all.size, Badges.all.map { it.id }.toSet().size)
     }

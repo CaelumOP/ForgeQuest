@@ -51,6 +51,7 @@ object Badges {
     val all: List<BadgeDef> = listOf(
         BadgeDef("first_workout", "First step", "Finish your first workout", BadgeCategory.CONSISTENCY) { it.workouts >= 1 },
         BadgeDef("workouts_10", "Ten in", "Finish 10 workouts", BadgeCategory.CONSISTENCY) { it.workouts >= 10 },
+        BadgeDef("workouts_25", "Quarter century", "Finish 25 workouts", BadgeCategory.CONSISTENCY) { it.workouts >= 25 },
         BadgeDef("workouts_50", "Half century", "Finish 50 workouts", BadgeCategory.CONSISTENCY) { it.workouts >= 50 },
         BadgeDef("workouts_100", "Hundred club", "Finish 100 workouts", BadgeCategory.CONSISTENCY) { it.workouts >= 100 },
         BadgeDef("streak_4", "One month strong", "Hit your weekly target 4 weeks in a row", BadgeCategory.CONSISTENCY) { it.bestStreakWeeks >= 4 },

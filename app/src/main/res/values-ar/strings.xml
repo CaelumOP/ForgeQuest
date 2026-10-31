@@ -128,6 +128,8 @@
     <string name="badge_first_workout_desc">أنهِ تمرينك الأول</string>
     <string name="badge_workouts_10_title">عشرة تمارين</string>
     <string name="badge_workouts_10_desc">أنهِ 10 تمارين</string>
+    <string name="badge_workouts_25_title">خمسة وعشرون تمرينًا</string>
+    <string name="badge_workouts_25_desc">أنهِ 25 تمرينًا</string>
     <string name="badge_workouts_50_title">خمسون تمرينًا</string>
     <string name="badge_workouts_50_desc">أنهِ 50 تمرينًا</string>
     <string name="badge_workouts_100_title">مئة تمرين</string>

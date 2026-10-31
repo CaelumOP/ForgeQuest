@@ -44,6 +44,7 @@ const b = (id: string, title: string, description: string, category: BadgeCatego
 export const BADGES: readonly BadgeDef[] = [
   b('first_workout', 'First step', 'Finish your first workout', 'CONSISTENCY', (s) => s.workouts >= 1),
   b('workouts_10', 'Ten in', 'Finish 10 workouts', 'CONSISTENCY', (s) => s.workouts >= 10),
+  b('workouts_25', 'Quarter century', 'Finish 25 workouts', 'CONSISTENCY', (s) => s.workouts >= 25),
   b('workouts_50', 'Half century', 'Finish 50 workouts', 'CONSISTENCY', (s) => s.workouts >= 50),
   b('workouts_100', 'Hundred club', 'Finish 100 workouts', 'CONSISTENCY', (s) => s.workouts >= 100),
   b('streak_4', 'One month strong', 'Hit your weekly target 4 weeks in a row', 'CONSISTENCY', (s) => s.bestStreakWeeks >= 4),

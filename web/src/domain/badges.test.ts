@@ -38,6 +38,15 @@ describe('BadgesTest', () => {
     expect(unlocked({ bestReps: { bent_leg_bench_dip: 30 } }).has('str_dip_15')).toBe(false)
   })
 
+  it('twentyFiveWorkoutsBadgeSitsBetweenTenAndFifty', () => {
+    expect(unlocked({ workouts: 24 }).has('workouts_25')).toBe(false)
+    const got = unlocked({ workouts: 25 })
+    expect(got.has('workouts_25') && got.has('workouts_10') && !got.has('workouts_50')).toBe(true)
+    const ids = BADGES.map((b) => b.id)
+    expect(ids.indexOf('workouts_25')).toBe(ids.indexOf('workouts_10') + 1)
+    expect(ids.indexOf('workouts_50')).toBe(ids.indexOf('workouts_25') + 1)
+  })
+
   it('badgeIdsAreUnique', () => {
     expect(new Set(BADGES.map((b) => b.id)).size).toBe(BADGES.length)
   })
