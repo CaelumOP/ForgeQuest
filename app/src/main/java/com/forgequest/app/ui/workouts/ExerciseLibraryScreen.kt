@@ -40,7 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.forgequest.app.ui.components.rememberFullSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -162,7 +162,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         var name by remember(ex.id) { mutableStateOf(ex.name) }
         var kind by remember(ex.id) { mutableStateOf(ex.kind) }
         var muscle by remember(ex.id) { mutableStateOf(ex.primary.firstOrNull() ?: Muscle.CHEST) }
-        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { editing = null }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { editing = null }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.lib_edit), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 usage?.let { u ->

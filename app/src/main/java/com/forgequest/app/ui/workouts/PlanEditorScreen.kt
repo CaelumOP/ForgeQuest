@@ -35,7 +35,7 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.rounded.ViewList
+import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,7 +47,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.forgequest.app.ui.components.rememberFullSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -433,9 +433,9 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     if (changePlan) {
         // Most used first; each choice has an ⓘ that explains what it does.
         val context = LocalContext.current
-        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+        val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
         val copied = stringResource(R.string.plan_prompt_copied)
-        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { changePlan = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { changePlan = false }, containerColor = c.card) {
             Column(Modifier.padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
                 ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
@@ -443,13 +443,13 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                         TonalPill(stringResource(R.string.plan_gemini_copy), onClick = {
                             // The app copies res/raw/plan_prompt.txt, mirrored in docs/prompts/plan-from-youtube.md.
                             val prompt = context.resources.openRawResource(R.raw.plan_prompt).bufferedReader().use { it.readText() }
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                            clipboard.copy(prompt)
                             if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copied) }
                         }, icon = Icons.Rounded.ContentCopy)
                         TonalPill(stringResource(R.string.plan_gemini_paste), onClick = { changePlan = false; paste = true }, icon = Icons.Rounded.ContentPaste)
                     }
                 }
-                ChoiceRow(Icons.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_info), onClick = { changePlan = false; templates = true })
+                ChoiceRow(Icons.AutoMirrored.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_info), onClick = { changePlan = false; templates = true })
                 if (allPlans.size > 1) {
                     ChoiceRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_info), onClick = { changePlan = false; previous = true })
                 }
@@ -459,7 +459,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     }
 
     if (templates) {
-        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { templates = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { templates = false }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_ready_made_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
@@ -476,7 +476,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
 
     if (previous) {
         var toDelete by remember { mutableStateOf<PlanEntity?>(null) }
-        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { previous = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { previous = false }, containerColor = c.card) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_previous), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(stringResource(R.string.plan_previous_tap), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -640,7 +640,7 @@ private fun ItemEditorSheet(
 ) {
     val c = Fit.colors
     var draft by remember { mutableStateOf(item) }
-    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
+    ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -716,7 +716,7 @@ fun PlanPreviewSheet(
         else ExerciseSwapEngine.adaptPlanToEquipment(draft, exercises, userEquipment).second
     }
 
-    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
+    ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
             Text(draft.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             if (draft.description.isNotBlank()) {

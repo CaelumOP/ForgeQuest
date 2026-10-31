@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ShowChart
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -142,7 +142,7 @@ fun ProgressScreen(nav: NavHostController) {
         }
         if (s.sessions.isEmpty()) {
             FitCard(Modifier.padding(16.dp)) {
-                EmptyState(Icons.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body))
+                EmptyState(Icons.AutoMirrored.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body))
             }
             return
         }

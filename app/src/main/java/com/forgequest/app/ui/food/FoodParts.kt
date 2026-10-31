@@ -27,7 +27,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.forgequest.app.ui.components.rememberFullSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,7 +70,7 @@ fun PartsSheet(foodName: String, initial: List<FoodPart>, carbsOn: Boolean, onSa
     var parts by remember { mutableStateOf(initial) }
     var editing by remember { mutableStateOf<Int?>(null) }
     val on = parts.filter { it.on }
-    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
+    ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
             Text(stringResource(R.string.food_parts_title, foodName), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(4.dp))
