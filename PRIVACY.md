@@ -1,8 +1,8 @@
 # ForgeQuest privacy policy
 
-_Last updated: October 19, 2026_
+_Last updated: November 1, 2026_
 
-ForgeQuest is a personal fitness app for Android. This page explains what it does with your data.
+ForgeQuest is a personal fitness app for Android, with a web app for iPhone at https://caelumop.github.io/ForgeQuest. This page explains what both do with your data. The web app has its own section below.
 
 ## What stays on your phone
 
@@ -19,7 +19,18 @@ You can disconnect at any time in the app (Profile › Google Drive › Disconne
 
 ## AI features
 
-The coach and meal scanning send your messages, meal photos and a summary of your training to Google Gemini, and to Groq if you add a Groq key, using API keys you provide. Those services handle the data under their own privacy policies; free keys may let them use it to improve their models. Your keys are stored encrypted on your phone.
+The coach and meal scanning send your messages, meal photos and a summary of your training to Google Gemini, and to Groq if you add a Groq key, using API keys you provide. Those services handle the data under their own privacy policies; free keys may let them use it to improve their models. In the Android app, your keys are stored encrypted on your phone.
+
+## Web app (iPhone)
+
+The web app works like the Android app, with these differences:
+
+- **Where your data is kept**: in your browser's storage for the ForgeQuest site (IndexedDB), on your phone only. There is no server.
+- **AI keys**: stored in the browser's storage **unencrypted**. They are never put in backups and never sent anywhere except to Gemini or Groq for your requests. Clearing the site's data (or deleting the Home Screen app) removes them.
+- **Google Drive backup is optional**: it asks only for the app data folder permission (`drive.appdata`) and uses the same hidden backup file as the Android app, so a backup moves between the two. The sign-in token is kept in the browser for about an hour. The web app makes no Google Docs.
+- **No Health Connect**: the web app does not read health data.
+- **Crash reports**: if the app hits an error, the error message, app build, time and browser name are kept in the browser. The next time you open the app it offers to share that report; nothing is sent unless you choose to share it.
+- **No tracking or analytics.**
 
 ## Health Connect
 
@@ -33,7 +44,7 @@ ForgeQuest does not sell or share your data, show ads, or use analytics or track
 
 ## Deleting your data
 
-Uninstalling the app deletes everything on your phone. Backups and Docs in your Google Drive stay until you delete them there.
+Uninstalling the Android app deletes everything on your phone. In the web app, deleting the Home Screen app or clearing the site's data in your browser settings does the same. Backups and Docs in your Google Drive stay until you delete them there.
 
 ## Contact
 
