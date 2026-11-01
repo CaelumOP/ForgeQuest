@@ -1,6 +1,6 @@
 {
-  "versionCode": 30,
-  "versionName": "2.17.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.17.0/ForgeQuest-v2.17.0.apk",
-  "notes": "• Just log mode: only track your training, without streaks, levels, badges or readiness.\n• New exercises: adductors, tibialis, side plank, bicycle crunch and wrist curls.\n• Recovery: big muscles take longer to recover than small ones.\n• Badges: chin-ups and weighted variations count, plus a new 25-workout badge.\n• Smoother sheets and small fixes."
+  "versionCode": 31,
+  "versionName": "2.18.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.18.0/ForgeQuest-v2.18.0.apk",
+  "notes": "• New look: softer cards, more breathing room and calmer motion.\n• One accent colour: teal for everything you tap; other colours show your data.\n• Rings fill smoothly, with a light tick when you reach a goal.\n• Meals from Gemini: share the Gem's reply to ForgeQuest instead of using the Doc.\n• Fixes for large text sizes."
 }
