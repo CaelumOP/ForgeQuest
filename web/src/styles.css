@@ -175,6 +175,13 @@
 @font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/ibm-plex-sans-arabic-Regular.woff2') format('woff2'); }
 @font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/ibm-plex-sans-arabic-Medium.woff2') format('woff2'); }
 @font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/ibm-plex-sans-arabic-SemiBold.woff2') format('woff2'); }
+/* Manrope (SIL OFL, public/fonts/Manrope-OFL.txt): titles and numbers, as on Android. Cut from app/src/main/res/font/manrope.ttf
+   to Latin and weights 500-600 only (19 KB). Arabic UI keeps Plex, since its numbers often carry an Arabic unit. */
+@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 500 600; font-display: swap; src: url('/fonts/manrope-latin.woff2') format('woff2'); unicode-range: U+0020-007E, U+00A0-00FF, U+2009, U+2013-2014, U+2018-201D, U+2022, U+2026, U+202F, U+2212; }
+html:not([lang='ar']) :is(h1, h2, h3):not(.kit-section-title),
+html:not([lang='ar']) :is(.kit-stat-value, .kit-stepper-val, .kit-ring-center, .home-rings-protein, .home-rings-kcal) {
+  font-family: 'Manrope', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overscroll-behavior: none; }
