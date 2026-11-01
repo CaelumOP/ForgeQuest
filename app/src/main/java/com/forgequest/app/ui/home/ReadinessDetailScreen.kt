@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -103,7 +104,7 @@ fun ReadinessDetailScreen(nav: NavHostController, kind: ReadinessKind) {
             Text(stringResource(R.string.ready_no_data), style = MaterialTheme.typography.bodyLarge, color = c.textSecondary, modifier = Modifier.padding(20.dp))
             return@Column
         }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding()) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter).navigationBarsPadding()) {
             SegmentedTabs(listOf(stringResource(R.string.ready_tab_day), stringResource(R.string.ready_tab_week)), tab, onSelect = { tab = it })
             Spacer(Modifier.height(20.dp))
             when (kind) {
@@ -224,7 +225,7 @@ private fun WeekChart(values: List<Float?>, days: List<Long>, maxY: Float, ticks
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Text("···", color = TargetGreen, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.ready_target_legend), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
     }
@@ -247,11 +248,11 @@ private fun exerciseName(type: Int): Int = when (type) {
 private fun ShareBar(label: String, share: Float, color: Color) {
     val c = Fit.colors
     Text(label, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-    Spacer(Modifier.height(6.dp))
+    Spacer(Modifier.height(8.dp))
     Box(Modifier.fillMaxWidth().height(28.dp).clip(ForgeShape.Sm).background(c.cardHigh)) {
         if (share > 0f) Box(Modifier.fillMaxWidth(share.coerceIn(0.04f, 1f)).fillMaxHeight().clip(ForgeShape.Sm).background(color))
     }
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(12.dp))
 }
 
 // ---------------------------------------------------------------- recovery
@@ -323,7 +324,7 @@ private fun Hypnogram(start: Instant, end: Instant, segments: List<com.forgeques
     lanes.forEachIndexed { i, (stage, label) ->
         val share = if (stage != 0 && asleep > 0) " (" + (100 * minutes[i] / asleep) + "%)" else ""
         Text(stringResource(label) + " · " + hm(minutes[i]) + share, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         val color = StageColors[stage]
         Canvas(Modifier.fillMaxWidth().height(22.dp)) {
             drawRoundRect(c.cardHigh, Offset.Zero, size, CornerRadius(size.height / 2))
@@ -340,7 +341,7 @@ private fun Hypnogram(start: Instant, end: Instant, segments: List<com.forgeques
                 drawRoundRect(color, Offset(x0, 0f), Size((x1 - x0).coerceAtLeast(3.dp.toPx()), size.height), CornerRadius(size.height / 2))
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
     }
     if (segments.isEmpty()) Text(stringResource(R.string.ready_no_stages), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     val zone = ZoneId.systemDefault()

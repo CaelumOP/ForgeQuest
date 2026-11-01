@@ -176,7 +176,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             Spacer(Modifier.height(16.dp))
             FitCard {
                 Text(stringResource(R.string.detail_progress), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 SegmentedTabs(metrics.map { it.label }, metricIndex.coerceIn(0, metrics.lastIndex), { metricIndex = it })
                 Spacer(Modifier.height(16.dp))
                 if (points.size < 2) {

@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.progress
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import androidx.compose.foundation.background
@@ -147,7 +148,7 @@ fun ProgressScreen(nav: NavHostController) {
             }
             return
         }
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             SegmentedTabs(
                 listOf(R.string.progress_range_1m, R.string.progress_range_3m, R.string.progress_range_6m, R.string.progress_range_1y, R.string.progress_range_all).map { stringResource(it) },
                 rangeIndex, onSelect = { rangeIndex = it },
@@ -183,10 +184,10 @@ fun ProgressScreen(nav: NavHostController) {
             FitCard {
                 Text(stringResource(R.string.progress_consistency), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Text(pluralStringResource(R.plurals.progress_workout_days, d.workoutDaysInRange, d.workoutDaysInRange), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 Heatmap(d.grid, c.chartStrength, reveal = reveal)
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     LegendDot(c.cardHigh, stringResource(R.string.progress_legend_rest))
                     LegendDot(c.chartStrength.copy(alpha = 0.55f), stringResource(R.string.progress_legend_workout))
                     LegendDot(c.gold, stringResource(R.string.progress_legend_record))
@@ -199,7 +200,7 @@ fun ProgressScreen(nav: NavHostController) {
 
             FitCard {
                 Text(stringResource(R.string.progress_all_time), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth()) {
                     Total("%,d".format(d.lifetime.workouts), stringResource(R.string.progress_total_workouts), Modifier.weight(1f))
                     Total("%,d".format(d.lifetime.reps), stringResource(R.string.progress_total_reps), Modifier.weight(1f))
@@ -233,7 +234,7 @@ private fun RecoveryTrendCard(rows: List<com.forgequest.app.data.db.ReadinessDay
             recovery, com.forgequest.app.ui.home.recoveryTint(recovery.map { it.value }.average().roundToInt()), reveal = reveal,
             average = Trends.movingAverage(recovery), showRecords = false, format = { "${it.roundToInt()}%" }, dateLabel = dateLabel,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth()) {
             Total("${recovery.map { it.value }.average().roundToInt()}%", stringResource(R.string.progress_avg_recovery), Modifier.weight(1f))
             Total(if (hrv.isEmpty()) "—" else "${hrv.average().roundToInt()} ms", stringResource(R.string.progress_avg_hrv), Modifier.weight(1f))
@@ -257,11 +258,11 @@ private fun LoadCard(d: Derived, reveal: Float) {
                     Text("%", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.progress_load), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                 Text(stringResource(R.string.progress_load_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(pluralStringResource(R.plurals.progress_sets_this_week, thisWeek, thisWeek), style = MaterialTheme.typography.labelLarge, color = c.textPrimary, modifier = Modifier.weight(1f, fill = false))
                     Spacer(Modifier.width(8.dp))
@@ -313,14 +314,14 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
         tiles += Tile(stringResource(R.string.progress_tile_workouts), "$now", if (target > 0 && now >= target) stringResource(R.string.progress_on_target) else null, target > 0 && now >= target, d.weeklyWorkouts.takeLast(12).map { it.toFloat() }, c.chartCalories)
     }
     tiles.chunked(2).forEach { row ->
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             row.forEach { t ->
                 Column(Modifier.weight(1f).clip(ForgeShape.Md).background(c.card).padding(12.dp, 12.dp, 12.dp, 8.dp)) {
                     Text(t.label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(t.value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge.tabular(), color = c.textPrimary, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-                        t.delta?.let { Spacer(Modifier.width(6.dp)); DeltaChip(it, t.positive) }
+                        t.delta?.let { Spacer(Modifier.width(8.dp)); DeltaChip(it, t.positive) }
                     }
                     Spacer(Modifier.height(4.dp))
                     Sparkline(t.spark, t.color, reveal = reveal)
@@ -343,7 +344,7 @@ private fun StrengthCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reve
     FitCard {
         Text(stringResource(R.string.progress_strength), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
         Text(stringResource(R.string.progress_strength_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             d.topIds.forEach { id -> ChoiceChip(s.exercises[id]?.name ?: id, selected == id, { selected = id }) }
         }
@@ -381,12 +382,12 @@ private fun ThenNowCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit) {
     FitCard {
         Text(stringResource(R.string.progress_then_now), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
         Text(stringResource(R.string.progress_then_now_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         rows.forEach { r ->
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(r.then, fontFamily = NumberFont, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = c.textSecondary, modifier = Modifier.weight(1f))
                 Text(if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) "←" else "→", fontWeight = FontWeight.Bold, color = if (r.up) c.chartGain else c.textSecondary)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1.4f)) {
                     Text(r.now, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = if (r.up) c.chartGain else c.textPrimary)
                     Text(r.label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)

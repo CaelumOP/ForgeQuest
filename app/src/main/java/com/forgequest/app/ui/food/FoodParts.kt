@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -72,11 +73,11 @@ fun PartsSheet(foodName: String, initial: List<FoodPart>, carbsOn: Boolean, onSa
     var editing by remember { mutableStateOf<Int?>(null) }
     val on = parts.filter { it.on }
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
             Text(stringResource(R.string.food_parts_title, foodName), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(4.dp))
             Text(stringResource(R.string.food_parts_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.food_kcal, on.sumOf { it.kcal }), style = MaterialTheme.typography.titleMedium, color = c.blue)
                 Spacer(Modifier.width(12.dp))

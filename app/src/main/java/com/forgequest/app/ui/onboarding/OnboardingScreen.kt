@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.onboarding
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import android.content.Intent
 import android.net.Uri
@@ -338,7 +339,7 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
     )
     Spacer(Modifier.height(28.dp))
     Text(stringResource(R.string.onb_body_type), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.body_male), s.bodyType == BodyType.MALE, { vm.update { it.copy(bodyType = BodyType.MALE) } })
         ChoiceChip(stringResource(R.string.body_female), s.bodyType == BodyType.FEMALE, { vm.update { it.copy(bodyType = BodyType.FEMALE) } })
@@ -370,7 +371,7 @@ private fun NumberRow(label: String, unit: String, value: Int, range: IntRange, 
     val c = Fit.colors
     var text by remember { mutableStateOf(if (value > 0) value.toString() else "") }
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card).padding(horizontal = 20.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card).padding(horizontal = ForgeSpace.Gutter, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -505,7 +506,7 @@ private fun Target(s: OnboardingState, vm: OnboardingViewModel) {
 private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String, decimals: Int = 0) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card).padding(horizontal = 20.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card).padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -536,7 +537,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
             Text(stringResource(R.string.onb_days_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
     }
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(12.dp))
     val dayOptions = listOf(2, 3, 4, 5)
     SegmentedTabs(
         options = dayOptions.map { java.text.NumberFormat.getIntegerInstance().format(it) },
@@ -560,7 +561,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
             )
         }
     }
-    Spacer(Modifier.height(6.dp))
+    Spacer(Modifier.height(8.dp))
     Text(stringResource(R.string.onb_equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     Spacer(Modifier.height(20.dp))
 

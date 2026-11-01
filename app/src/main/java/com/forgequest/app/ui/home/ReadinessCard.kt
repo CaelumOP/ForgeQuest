@@ -109,7 +109,7 @@ private fun MessageCard(body: String, action: String, onAction: () -> Unit) {
         Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(4.dp))
         Text(body, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         PillButton(action, onAction)
     }
     Spacer(Modifier.height(12.dp))
@@ -187,7 +187,7 @@ private fun Dial(fraction: Float, color: Color, value: String, label: String, si
             }
             Text(value, style = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = c.textPrimary)
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
     }
 }
@@ -226,7 +226,7 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
             Dial(d.recovery / 100f, recColor, "${d.recovery}%", stringResource(R.string.ready_recovery), 116.dp, 11.dp, true) { onOpen(ReadinessKind.RECOVERY) }
             Dial((d.strain / 21).toFloat(), StrainColor, "%.1f".format(Locale.US, d.strain), stringResource(R.string.ready_strain), 84.dp, 8.dp, false) { onOpen(ReadinessKind.STRAIN) }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
         Text(stringResource(title), style = MaterialTheme.typography.headlineSmall, color = recColor)
         Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         Spacer(Modifier.height(8.dp))
@@ -252,7 +252,7 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
         // Only the good mornings get a tap: people often miss feeling groggy but always notice feeling great.
         TextButton(onClick = { onFeltGreat(!d.feltGreat) }) {
             Icon(Icons.Rounded.Bolt, contentDescription = null, tint = if (d.feltGreat) c.gold else c.textSecondary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(stringResource(if (d.feltGreat) R.string.ready_felt_great_on else R.string.ready_felt_great), color = if (d.feltGreat) c.gold else c.textSecondary)
         }
     }

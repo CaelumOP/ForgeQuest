@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -241,7 +242,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                 Text(s.plan?.plan?.name ?: stringResource(R.string.plan_no_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
             TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(16.dp))
@@ -438,7 +439,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
         val copied = stringResource(R.string.plan_prompt_copied)
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { changePlan = false }, containerColor = c.card) {
             Column(Modifier.padding(bottom = 32.dp)) {
-                Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = ForgeSpace.Gutter, vertical = 8.dp))
                 ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
                     Row(Modifier.padding(start = 70.dp, end = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TonalPill(stringResource(R.string.plan_gemini_copy), onClick = {
@@ -461,7 +462,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
 
     if (templates) {
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { templates = false }, containerColor = c.card) {
-            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+            Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_ready_made_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
                 StarterPlans.all.forEach { plan ->
@@ -478,7 +479,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     if (previous) {
         var toDelete by remember { mutableStateOf<PlanEntity?>(null) }
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { previous = false }, containerColor = c.card) {
-            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+            Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_previous), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(stringResource(R.string.plan_previous_tap), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(12.dp))
@@ -614,7 +615,7 @@ private fun ChoiceRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconCircle(icon, c.teal, c.tealTrack, 40.dp)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
             IconButton(onClick = { showInfo = !showInfo }) {
                 Icon(Icons.Rounded.Info, contentDescription = stringResource(R.string.cd_what_is_this, title), tint = if (showInfo) c.teal else c.textSecondary)
@@ -642,7 +643,7 @@ private fun ItemEditorSheet(
     val c = Fit.colors
     var draft by remember { mutableStateOf(item) }
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                 TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz)
@@ -718,7 +719,7 @@ fun PlanPreviewSheet(
     }
 
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
             Text(draft.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             if (draft.description.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))

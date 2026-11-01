@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import android.app.Activity
 import android.content.Intent
@@ -622,14 +623,14 @@ fun ProfileScreen(nav: NavHostController) {
     val configuredEq = settings.configuredEquipment
     val justLog = settings.justLog
 
-    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
         Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
 
         if (apiKey.isBlank()) {
             FitCard(onClick = { keyDialog = true }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Key, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(stringResource(R.string.profile_setup_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -657,7 +658,7 @@ fun ProfileScreen(nav: NavHostController) {
             if (!justLog) {
             Spacer(Modifier.height(16.dp))
             ProgressLine(s.level.progress, c.blue, c.blueTrack, height = 8.dp)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.profile_xp_line, s.level.xpIntoLevel, s.level.xpForNextLevel, s.level.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             // How XP is earned and what the letter means, which nothing else on screen says.
             Text(
@@ -703,7 +704,7 @@ fun ProfileScreen(nav: NavHostController) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.MonitorWeight, c.teal, c.tealTrack)
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.weight_body), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(s.latestWeight?.let { settings.weightUnit.format(it) } ?: stringResource(R.string.profile_not_logged), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
@@ -763,7 +764,7 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Accessibility, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_about_you), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(stringResource(R.string.profile_about_you_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -807,14 +808,14 @@ fun ProfileScreen(nav: NavHostController) {
                     onSelect = { i -> vm.setNutrition { it.copy(dayActivity = DayActivity.entries[i]) } },
                     wrap = true,
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 // With a watch, the steps decide; the choice above is the fallback for days it isn't worn.
                 Text(
                     steps?.let { stringResource(R.string.steps_using, "%,d".format(it.avgSteps)) } ?: stringResource(settings.dayActivity.descRes),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
                 if (settings.heightCm <= 0f || age <= 0) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.gold)
                 }
             }
@@ -858,7 +859,7 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.TrackChanges, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 }
                 val trainingDaysForKcal = CalorieUi.trainingDays(settings, planDays)
@@ -1127,7 +1128,7 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Psychology, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(
@@ -1140,7 +1141,7 @@ fun ProfileScreen(nav: NavHostController) {
                 }
                 val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
                 if (notes.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     // The list grows and shrinks smoothly as notes are added or removed.
                     Column(Modifier.animateContentSize()) {
                         notes.forEach { note ->
@@ -1176,7 +1177,7 @@ fun ProfileScreen(nav: NavHostController) {
                     )
                 }
                 if (settings.bridgeEnabled) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", Locale.getDefault())
                     fun at(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).format(fmt)
                     Text(
@@ -1185,7 +1186,7 @@ fun ProfileScreen(nav: NavHostController) {
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                     if (settings.bridgeIssues.isNotBlank()) Text(stringResource(R.string.bridge_issues, settings.bridgeIssues), style = MaterialTheme.typography.bodySmall, color = c.coral)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TonalPill(stringResource(R.string.bridge_sync), onClick = { vm.syncBridge() })
                         TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
@@ -1209,7 +1210,7 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 SwitchHeader(Icons.Rounded.Restaurant, c.teal, c.tealTrack, stringResource(R.string.meals_title), stringResource(R.string.meals_hint), settings.geminiMealsEnabled) { vm.setGeminiMeals(it) }
                 if (settings.geminiMealsEnabled) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncMeals)
                         TonalPill(stringResource(R.string.meals_copy_gem), onClick = {
@@ -1251,12 +1252,12 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Palette, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Text(stringResource(R.string.profile_appearance), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.profile_theme), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 SegmentedTabs(
                     listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_light), stringResource(R.string.theme_dark)),
                     when (settings.theme) { "light" -> 1; "dark" -> 2; else -> 0 },
@@ -1264,7 +1265,7 @@ fun ProfileScreen(nav: NavHostController) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.profile_language), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 val languages = listOf(com.forgequest.app.AppLocale.SYSTEM, "en", "ar")
                 SegmentedTabs(
                     listOf(stringResource(R.string.language_system), "English", "العربية"),
@@ -1276,7 +1277,7 @@ fun ProfileScreen(nav: NavHostController) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.profile_weights), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 SegmentedTabs(
                     listOf(stringResource(R.string.unit_kilograms), stringResource(R.string.unit_pounds)),
                     if (settings.weightUnit == WeightUnit.LB) 1 else 0,
@@ -1307,13 +1308,13 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Backup, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_backup_file), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(stringResource(R.string.profile_your_data_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(stringResource(R.string.profile_save_file), onClick = { saveLauncher.launch(vm.app.backup.exportFileName()) }, icon = Icons.Rounded.SaveAlt)
                     TonalPill(stringResource(R.string.profile_share_file), onClick = vm::exportData, icon = Icons.Rounded.Share)
@@ -1324,7 +1325,7 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Cloud, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.drive_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(
@@ -1337,7 +1338,7 @@ fun ProfileScreen(nav: NavHostController) {
                         )
                     }
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 if (settings.driveEmail.isBlank()) {
                     PillButton(stringResource(R.string.drive_connect), onClick = vm::connectDrive, modifier = Modifier.fillMaxWidth())
                 } else {
@@ -1367,14 +1368,14 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         Text(stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 TonalPill(stringResource(R.string.profile_hemo_youtube), onClick = {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/@HemoCalisthenics")))
                 }, icon = Icons.AutoMirrored.Rounded.OpenInNew)
@@ -1405,9 +1406,9 @@ fun ProfileScreen(nav: NavHostController) {
             text = {
                 Column {
                     Text(stringResource(R.string.key_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(stringResource(R.string.key_dialog_privacy), color = c.textSecondary, style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) }) {
                         Text(stringResource(R.string.key_dialog_open_studio), color = c.teal)
                     }
@@ -1439,7 +1440,7 @@ fun ProfileScreen(nav: NavHostController) {
             text = {
                 Column {
                     Text(stringResource(R.string.groq_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }) {
                         Text(stringResource(R.string.groq_dialog_open), color = c.teal)
                     }
@@ -1583,7 +1584,7 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
             }
             if (isNew) Box(Modifier.size(12.dp).clip(CircleShape).background(c.coral))
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(title, style = MaterialTheme.typography.labelSmall, color = if (unlocked) c.textPrimary else c.textSecondary, textAlign = TextAlign.Center, maxLines = 2)
         if (!unlocked && progress != null && progress.first > 0) Text("⁦${progress.first} / ${progress.second}⁩", style = MaterialTheme.typography.labelSmall, color = c.gold)
     }
@@ -1616,7 +1617,7 @@ private fun SwitchHeader(icon: ImageVector, tint: androidx.compose.ui.graphics.C
     val c = Fit.colors
     Row(Modifier.fillMaxWidth().toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onToggle), verticalAlignment = Alignment.CenterVertically) {
         IconCircle(icon, tint, track)
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -1631,7 +1632,7 @@ private fun SettingsRow(icon: ImageVector, tint: androidx.compose.ui.graphics.Co
     FitCard(onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(icon, tint, track)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -1673,7 +1674,7 @@ private fun SettingsGroup(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(icon, tint, track)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 // From 1.35x text the summary wraps in full instead of stopping at two lines.
@@ -1722,7 +1723,7 @@ private fun EquipmentCard(active: EquipmentPreset?, configured: Set<Equipment>, 
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.equipment_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 Text(stringResource(R.string.equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -1769,7 +1770,7 @@ private fun EquipmentStep(number: Int, title: String, hint: String) {
         Box(Modifier.size(24.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {
             Text("$number", style = MaterialTheme.typography.labelMedium, color = c.teal, fontWeight = FontWeight.Bold)
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(12.dp))
         Column {
             Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.semantics { heading() })
             Text(hint, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

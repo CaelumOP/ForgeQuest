@@ -129,7 +129,7 @@ fun AppTour(finishLabel: String, onDone: () -> Unit) {
             }
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 repeat(slides.size) { i ->
                     val on = i == pager.currentPage
                     Box(Modifier.height(8.dp).width(if (on) 22.dp else 8.dp).clip(CircleShape).background(if (on) c.teal else c.cardHigh))

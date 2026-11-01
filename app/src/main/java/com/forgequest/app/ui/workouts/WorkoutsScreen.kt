@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.R
@@ -126,7 +127,7 @@ fun WorkoutsScreen(nav: NavHostController) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.workouts_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
@@ -239,7 +240,7 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
                     maxLines = 1,
                     softWrap = false,
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Box(
                     Modifier.size(6.dp).clip(CircleShape).background(
                         when {
@@ -295,7 +296,7 @@ private fun DayCard(
         Spacer(Modifier.height(8.dp))
         val blocks = day.items.groupBy { it.block }
         blocks.forEach { (block, items) ->
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(blockLabel(block), style = MaterialTheme.typography.labelLarge, color = c.teal)
                 if (items.first().circuit) {

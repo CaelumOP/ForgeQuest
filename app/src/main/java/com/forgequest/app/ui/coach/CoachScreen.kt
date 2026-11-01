@@ -242,7 +242,7 @@ fun CoachScreen(nav: NavHostController) {
                                 Spacer(Modifier.width(12.dp))
                                 Text(stringResource(R.string.ai_key_needed_coach), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
                             }
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(12.dp))
                             PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.goToTab(Routes.PROFILE) })
                         }
                     }
@@ -358,7 +358,7 @@ private fun Welcome(enabled: Boolean, onSuggestion: (String) -> Unit) {
         IconCircle(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack, 64.dp)
         Spacer(Modifier.height(16.dp))
         Text(stringResource(R.string.coach_welcome_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             stringResource(R.string.coach_welcome_body),
             style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
@@ -382,7 +382,7 @@ private fun UserBubble(text: String) {
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
         Box(
             Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(topStart = ForgeShape.MdRadius, topEnd = ForgeShape.MdRadius, bottomStart = ForgeShape.MdRadius, bottomEnd = 4.dp))
-                .background(c.blueTrack).padding(horizontal = 16.dp, vertical = 12.dp),
+                .background(c.tealTrack).padding(horizontal = 16.dp, vertical = 12.dp),
         ) { Text(text, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary) }
     }
 }
@@ -394,9 +394,9 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
     Column(Modifier.fillMaxWidth().padding(end = 24.dp)) {
         if (m.kind == "checkin") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.gold, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.coach_weekly_checkin), style = MaterialTheme.typography.labelLarge, color = c.gold)
+                Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.teal, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.coach_weekly_checkin), style = MaterialTheme.typography.labelLarge, color = c.teal)
             }
         }
         Box(
@@ -419,7 +419,7 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.coach_copy_details), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
             }
         }
@@ -469,7 +469,7 @@ private fun StreamingBubble(text: String, writingPlan: Boolean) {
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.coach_writing_week), style = MaterialTheme.typography.labelLarge, color = c.teal)
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(color = c.teal, trackColor = c.tealTrack, modifier = Modifier.fillMaxWidth().clip(CircleShape))
                 } else {
                     Box(Modifier.padding(top = 4.dp).size(width = 10.dp, height = 3.dp).alpha(a).clip(CircleShape).background(c.teal))
@@ -484,7 +484,7 @@ private fun CheckinNote() {
     val c = Fit.colors
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
         Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.coach_checkin_background), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
     }
 }

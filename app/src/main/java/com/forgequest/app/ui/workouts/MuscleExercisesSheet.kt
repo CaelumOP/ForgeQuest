@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,7 +69,7 @@ fun MuscleExercisesSheet(
         MuscleExercises.list(muscle, library, planExerciseIds, equipment, allEquipment)
     }
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 20.dp).navigationBarsPadding()) {
+        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = ForgeSpace.Gutter).navigationBarsPadding()) {
             item {
                 Text(muscle.localLabel(), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 MuscleExercises.COMPANIONS[muscle]?.let { more ->
@@ -78,7 +79,7 @@ fun MuscleExercisesSheet(
                     )
                 }
                 if (recovery != null && recovery.hoursUntilReady > 0) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         stringResource(R.string.muscle_recovering_note, recovery.hoursUntilReady),
                         style = MaterialTheme.typography.bodySmall, color = c.textPrimary,

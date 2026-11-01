@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.history
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.material.icons.rounded.ExpandMore
 
@@ -200,7 +201,7 @@ fun HistoryScreen(nav: NavHostController) {
             }
             return
         }
-        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             weeks.entries.forEachIndexed { index, (week, sessions) ->
                 val expanded = open[week] ?: (index == 0)
                 item(key = "w$week") {
@@ -311,7 +312,7 @@ private fun WeekCard(
             if (prs > 0) {
                 PrTag()
                 if (prs > 1) Text(" ×$prs", style = MaterialTheme.typography.labelSmall, color = c.gold)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
             }
             Icon(
                 if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
@@ -338,7 +339,7 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
                 Text(date.format(DateTimeFormatter.ofPattern("d")), style = MaterialTheme.typography.titleMedium, color = c.teal, fontWeight = FontWeight.Bold)
                 Text(com.forgequest.app.domain.Dates.dayShort(date.dayOfWeek.value), style = MaterialTheme.typography.labelSmall, color = c.teal)
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(session.title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -449,7 +450,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
         val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
             scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sessionId); nav.goToTab(Routes.COACH) }
         } else null
-        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap)) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
@@ -474,7 +475,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                             Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                                 Text("${index + 1}", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                             }
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 if (set.isPr) PrTag()
                                 if (set.note.isNotBlank()) Text(set.note, style = MaterialTheme.typography.labelSmall, color = c.blue, maxLines = 2, overflow = TextOverflow.Ellipsis)

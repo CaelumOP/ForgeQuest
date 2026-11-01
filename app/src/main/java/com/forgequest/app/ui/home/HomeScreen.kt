@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.R
@@ -205,7 +206,7 @@ fun HomeScreen(nav: NavHostController) {
     }
 
     Column(
-        Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter),
     ) {
         // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
         Box(Modifier.fillMaxWidth()) {
@@ -231,7 +232,7 @@ fun HomeScreen(nav: NavHostController) {
             FitCard(onClick = { nav.goToTab(Routes.PROFILE) }, padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(pluralStringResource(R.plurals.home_new_badges, unseen.size, unseen.size), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Text(unseen.map { it.localTitle() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -388,7 +389,7 @@ private fun NutritionRings(s: ProgressSnapshot) {
 private fun Legend(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         Text(text, style = MaterialTheme.typography.labelMedium, color = Fit.colors.textSecondary)
     }
 }
@@ -490,7 +491,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit, nudge: 
                     modifier = Modifier.size(28.dp),
                 )
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     pluralStringResource(R.plurals.streak_weeks, streak.weeks, streak.weeks),
@@ -526,7 +527,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit, nudge: 
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     DayCircle(state)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
             }
@@ -630,7 +631,7 @@ private fun TodayCard(
             if (noPlan && !hasOpenSession) IconCircle(Icons.Rounded.Edit, c.teal, c.tealTrack)
             else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.textSecondary, c.cardHigh)
             else IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {

@@ -327,7 +327,7 @@ fun ScanScreen(nav: NavHostController) {
                             .clip(ForgeShape.Md).background(Fit.colors.card).padding(16.dp),
                     ) {
                         Text(stringResource(R.string.ai_key_needed_food), style = MaterialTheme.typography.bodyMedium, color = Fit.colors.textPrimary)
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(12.dp))
                         PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.popBackStack(); nav.goToTab(Routes.PROFILE) })
                     }
                 }
@@ -427,7 +427,7 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
                 } else {
                     PillButton(stringResource(R.string.scan_allow_camera), onClick = { askedBefore.value = true; permission.launch(Manifest.permission.CAMERA) })
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 com.forgequest.app.ui.components.PillButton(stringResource(R.string.photo_choose_gallery), { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, container = Color.Black.copy(alpha = 0.55f), content = Color.White)
             }
         }
@@ -555,10 +555,10 @@ private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, o
         ) {
             // A missing or rejected key isn't the meal's fault: say what's actually needed.
             Text(stringResource(if (keyProblem) R.string.scan_key_needed_title else R.string.scan_failed_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
-            Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
                 when {
                     keyProblem -> PillButton(stringResource(R.string.scan_open_profile), onClick = onOpenProfile)
@@ -566,7 +566,7 @@ private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, o
                 }
             }
             if (onAskOutside != null) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 PillButton(stringResource(R.string.scan_ask_outside), onClick = onAskOutside, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.fillMaxWidth())
             }
         }
@@ -582,14 +582,14 @@ private fun OutsideCard(wrongFormat: Boolean, onRetake: () -> Unit, onAskAgain: 
                 .clip(ForgeShape.Lg).background(c.card).padding(24.dp),
         ) {
             Text(stringResource(R.string.scan_outside_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 stringResource(if (wrongFormat) R.string.scan_outside_wrong_format else R.string.scan_outside_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (wrongFormat) c.coral else c.textSecondary,
             )
-            Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
                 PillButton(stringResource(R.string.scan_ask_again), onClick = onAskAgain, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.weight(1f))
             }
@@ -658,7 +658,7 @@ private fun ResultSheet(
                     .verticalScroll(rememberScrollState()).navigationBarsPadding().padding(20.dp),
             ) {
                 Box(Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).clip(CircleShape).background(c.divider))
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.Top) {
                     BasicTextField(
                         value = dish,
@@ -714,19 +714,19 @@ private fun ResultSheet(
                         }
                     }
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.scan_portion_size), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
                 SegmentedTabs(Portion.entries.map { stringResource(it.label) + " " + "${it.factor}×".replace(".0×", "×") }, Portion.entries.indexOf(portion), onSelect = { portion = Portion.entries[it] })
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.scan_extra_fat), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
                 SegmentedTabs(CookingFat.entries.map { f -> stringResource(f.label) + if (f.kcal > 0) " +" + stringResource(R.string.food_kcal, f.kcal) else "" }, CookingFat.entries.indexOf(fat), onSelect = { fat = CookingFat.entries[it] })
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.scan_meal), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
                 SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.scan_save_to_foods), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
@@ -739,12 +739,12 @@ private fun ResultSheet(
                         Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                         FitSwitch(pin, { pin = it })
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     PlaceField(place, { place = it }, places)
                 }
                 Spacer(Modifier.height(16.dp))
                 // Clear of the gesture bar; the Log button sat under the home handle.
-                Row(Modifier.navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PillButton(stringResource(R.string.scan_retake), onClick = onRetake, container = c.cardHigh, content = c.textPrimary)
                     PillButton(
                         stringResource(R.string.scan_log_meal),

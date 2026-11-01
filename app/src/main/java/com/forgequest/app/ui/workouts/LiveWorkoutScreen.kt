@@ -423,7 +423,7 @@ private fun GroupCard(
         FitCard(onClick = { open = true }, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(pluralStringResource(R.plurals.live_folded, all.size, all.size), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                 Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
@@ -462,7 +462,7 @@ private fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutVi
                 }
                 Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
             }
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             SetTick(allDone, pr = false) { vm.toggleAll(g.sets) }
         }
         if (expanded) {
@@ -598,7 +598,7 @@ private fun CircuitCard(
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = { vm.addRound(g.positions) }) {
             Icon(Icons.Rounded.Add, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.live_add_round), color = c.teal)
         }
     }
@@ -644,7 +644,7 @@ private fun SetRow(
             Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                 Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
             }
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
         }
     }
     val info: @Composable (Modifier) -> Unit = { m ->
@@ -671,11 +671,11 @@ private fun SetRow(
                     Text(set.targetLabel, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
                 if (set.isPr) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     PrTag()
                 }
                 if (set.effort.isNotBlank() && effort != SetEffort.OK) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         stringResource(effort.labelRes),
                         style = MaterialTheme.typography.labelSmall,
@@ -732,7 +732,7 @@ private fun SetRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 number()
                 info(Modifier.weight(1f))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 SetTick(set.done, pr) { vm.toggle(set) }
             }
             FlowRow(
@@ -745,9 +745,9 @@ private fun SetRow(
     } else Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
         number()
         info(Modifier.weight(1f))
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) { steppers() }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         SetTick(set.done, pr) { vm.toggle(set) }
     }
     // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
@@ -819,7 +819,7 @@ fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Un
             Column {
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     quickTags.forEach { (chipLabel, tagValue) ->
                         val active = text.contains(tagValue, ignoreCase = true)
@@ -838,7 +838,7 @@ fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Un
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = ForgeShape.Md,
                     placeholder = { Text(stringResource(R.string.live_note_hint)) },
@@ -962,7 +962,7 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
         over -> "+" + clock(s - h.target)
         else -> clock(h.target - s)
     }
-    val tint = when { ready -> c.textSecondary; over -> c.gold; else -> c.teal }
+    val tint = when { ready -> c.textSecondary; over -> c.teal; else -> c.teal }
     Column(
         Modifier.fillMaxSize().background(c.background).clickable(enabled = false) {}.statusBarsPadding().navigationBarsPadding().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -979,7 +979,7 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
         Spacer(Modifier.height(12.dp))
         Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(88f, androidx.compose.ui.unit.TextUnitType.Sp)).tabular(), fontWeight = FontWeight.Bold, color = tint)
         Spacer(Modifier.height(16.dp))
-        ProgressLine(if (ready) 0f else (s / h.target.toFloat()).coerceIn(0f, 1f), if (over) c.gold else c.teal, c.tealTrack, height = 6.dp)
+        ProgressLine(if (ready) 0f else (s / h.target.toFloat()).coerceIn(0f, 1f), c.teal, c.tealTrack, height = 6.dp)
         Spacer(Modifier.height(8.dp))
         Text(stringResource(R.string.hold_target, h.target), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         Spacer(Modifier.weight(1f))
@@ -989,7 +989,7 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
             modifier = Modifier.fillMaxWidth(),
         )
         if (!ready && !over) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.hold_stop_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
         }
     }
@@ -1008,7 +1008,7 @@ private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Un
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
             Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge.tabular(), color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
             if (!big) buttons()
         }
@@ -1093,7 +1093,7 @@ private fun WorkoutCompleteScreen(
             Spacer(Modifier.height(12.dp))
             val from = if (leveledUp) 0f else sum.before.progress
             ProgressLine(if (filled) sum.after.progress else from, c.blue, c.blueTrack, height = 8.dp)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.profile_xp_line, sum.after.xpIntoLevel, sum.after.xpForNextLevel, sum.after.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
         }
@@ -1104,7 +1104,7 @@ private fun WorkoutCompleteScreen(
                 sum.prs.forEach { name ->
                     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         PrTag()
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(stringResource(R.string.live_new_record, name), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                     }
                 }
@@ -1112,7 +1112,7 @@ private fun WorkoutCompleteScreen(
                     val title = badge.localTitle()
                     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(stringResource(R.string.live_badge_unlocked, title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                     }
                 }
@@ -1124,7 +1124,7 @@ private fun WorkoutCompleteScreen(
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.Notifications, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(if (reminded) R.string.live_reminder_on else R.string.live_reminder_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Text(stringResource(R.string.live_reminder_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -1142,7 +1142,7 @@ private fun WorkoutCompleteScreen(
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(12.dp))
                     Text(stringResource(R.string.live_next_up, com.forgequest.app.domain.Dates.dayName(dow), title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                 }
             }
@@ -1262,7 +1262,7 @@ fun DebriefCard(
         }
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
         if (lines != null) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             if (showHeadline) Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, 0))
             // Green for what went well, gold for what to watch, blue for next time.
             lines.wins.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.riseIn(celebrate, linesGo, 1 + i).padding(top = 4.dp)) }
