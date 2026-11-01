@@ -227,12 +227,12 @@ internal fun forgeLightScheme(f: FitColors) = lightColorScheme(
     surfaceContainerHigh = f.cardHigh, surfaceContainerHighest = Color(0xFFD8E0EC),
 )
 
-/** The M3 shape scale, set explicitly. Our own components keep their corners (cards 24, pills fully round). */
+/** The M3 shape scale on the Soft Coach radii (12 / 20 / 28, see DESIGN.md). Pills are fully round. */
 private val ForgeShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp),
+    extraSmall = RoundedCornerShape(12.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
     extraLarge = RoundedCornerShape(28.dp),
 )
 
@@ -244,9 +244,9 @@ fun ForgeQuestTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
     // makes Compose wrap the last letter of a title onto its own line. Arabic gets IBM Plex Sans Arabic, untracked.
     val arabic = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar"
     CompositionLocalProvider(LocalFitColors provides fit) {
-        // Expressive motion for the stock components (sheets, switches, indicators). Colors, shapes and type are ours, so
-        // plain MaterialTheme with the motion scheme, not MaterialExpressiveTheme, which also swaps component defaults.
-        MaterialTheme(colorScheme = scheme, motionScheme = MotionScheme.expressive(), shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography) {
+        // Standard (no-bounce) motion for the stock components (sheets, switches, indicators): Soft Coach is calm. Colors,
+        // shapes and type are ours, so plain MaterialTheme with the motion scheme, not MaterialExpressiveTheme.
+        MaterialTheme(colorScheme = scheme, motionScheme = MotionScheme.standard(), shapes = ForgeShapes, typography = if (arabic) ArabicTypography else FitTypography) {
             ProvideReducedMotion(content)
         }
     }

@@ -116,15 +116,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.ForgeSpace
 
-val CardShape = RoundedCornerShape(24.dp)
+val CardShape = ForgeShape.Lg
 
 /** Borderless Google Fit card. */
 @Composable
 fun FitCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    padding: PaddingValues = PaddingValues(20.dp),
+    padding: PaddingValues = PaddingValues(ForgeSpace.CardPadding),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = Fit.colors
@@ -162,7 +164,7 @@ fun fitSwitchColors(checked: Color) = Fit.colors.let { c ->
 fun android.content.Context.toast(message: String) = android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show()
 
 @Composable
-fun IconCircle(icon: ImageVector, tint: Color, track: Color, size: Dp = 48.dp) {
+fun IconCircle(icon: ImageVector, tint: Color, track: Color, size: Dp = 40.dp) {
     Box(Modifier.size(size).clip(CircleShape).background(track), contentAlignment = Alignment.Center) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size * 0.5f))
     }
@@ -187,14 +189,14 @@ fun PillButton(
     content: Color = Fit.colors.onTeal,
     enabled: Boolean = true,
 ) {
-    // Pressed, the pill squares off to 12 dp corners and springs back on release.
+    // Pressed, the pill squares off to 20 dp corners and springs back on release.
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     // Half the button's height is a full pill; measured so the spring starts moving at once instead of from a clamped 50 dp.
     val density = androidx.compose.ui.platform.LocalDensity.current
     var half by remember { mutableStateOf(24.dp) }
     val press by animateFloatAsState(if (pressed) 1f else 0f, spatialSpec(ForgeMotion.Springs.FastSpatial), label = "pillPress")
-    val corner = androidx.compose.ui.unit.lerp(half, 12.dp, press).coerceAtLeast(0.dp)
+    val corner = androidx.compose.ui.unit.lerp(half, ForgeShape.MdRadius, press).coerceAtLeast(0.dp)
     Surface(
         onClick = onClick,
         enabled = enabled,
@@ -202,7 +204,7 @@ fun PillButton(
         shape = RoundedCornerShape(corner),
         color = if (enabled) container else Fit.colors.cardHigh,
         contentColor = if (enabled) content else Fit.colors.textSecondary,
-        modifier = modifier.onSizeChanged { half = with(density) { (it.height / 2).toDp() } },
+        modifier = modifier.heightIn(min = 52.dp).onSizeChanged { half = with(density) { (it.height / 2).toDp() } },
     ) {
         Row(
             Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -231,7 +233,7 @@ fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     val c = Fit.colors
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(50),
+        shape = ForgeShape.Full,
         modifier = modifier.semantics { this.selected = selected },
         color = if (selected) accent else c.cardHigh,
         contentColor = if (selected) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary,
@@ -270,14 +272,14 @@ fun SegmentedTabs(
     val scrolling = !tall && options.size >= 4 && reflow
     // Tall segments share one height, so a one-line option is as tall as a wrapped one.
     Row(
-        modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(if (tall) 24 else 50)).background(c.cardHigh)
+        modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(if (tall) ForgeShape.Lg else ForgeShape.Full).background(c.cardHigh)
             .then(if (scrolling) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier).padding(4.dp),
     ) {
         options.forEachIndexed { i, label ->
             val isSel = i == selected
             val off = i in disabled
             Box(
-                (if (scrolling) Modifier else Modifier.weight(1f)).fillMaxHeight().clip(RoundedCornerShape(if (tall) 20 else 50)).background(if (isSel) c.teal else Color.Transparent)
+                (if (scrolling) Modifier else Modifier.weight(1f)).fillMaxHeight().clip(if (tall) ForgeShape.Md else ForgeShape.Full).background(if (isSel) c.teal else Color.Transparent)
                     .selectable(selected = isSel, enabled = !off, role = Role.Tab) { onSelect(i) }
                     .alpha(if (off) 0.4f else 1f).padding(vertical = 9.dp, horizontal = if (scrolling) 14.dp else 4.dp),
                 contentAlignment = Alignment.Center,
@@ -334,7 +336,7 @@ fun Stepper(
     // Minus stays left and plus right in Arabic too, like a number line.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Row(
-        modifier.clip(RoundedCornerShape(50)).background(c.cardHigh),
+        modifier.clip(ForgeShape.Full).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable { direction = -1; onMinus() }, contentAlignment = Alignment.Center) {
@@ -344,7 +346,7 @@ fun Stepper(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
                 // TalkBack hears the value ("82.5 kg") as the control's state, once.
                 .semantics(mergeDescendants = true) { stateDescription = value; valueSemantics?.invoke(this) }
-                .let { if (onValueClick != null) it.clip(RoundedCornerShape(10.dp)).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }
+                .let { if (onValueClick != null) it.clip(ForgeShape.Sm).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -567,7 +569,7 @@ fun NumberEntryDialog(
                         imeAction = ImeAction.Done,
                     ),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { if (valid) onConfirm(parsed!!) }),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = ForgeShape.Md,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, errorBorderColor = c.coral,
                         focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, cursorColor = c.teal,
@@ -591,8 +593,8 @@ fun NumberEntryDialog(
 @Composable
 fun ProgressLine(progress: Float, color: Color, track: Color, modifier: Modifier = Modifier, height: Dp = 6.dp) {
     val animated by animateFloatAsState(progress.coerceIn(0f, 1f), spring(stiffness = Spring.StiffnessLow), label = "progress")
-    Box(modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(50)).background(track)) {
-        Box(Modifier.fillMaxWidth(animated).height(height).clip(RoundedCornerShape(50)).background(color))
+    Box(modifier.fillMaxWidth().height(height).clip(ForgeShape.Full).background(track)) {
+        Box(Modifier.fillMaxWidth(animated).height(height).clip(ForgeShape.Full).background(color))
     }
 }
 
@@ -600,7 +602,7 @@ fun ProgressLine(progress: Float, color: Color, track: Color, modifier: Modifier
 @Composable
 fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     Column(
-        modifier.clip(RoundedCornerShape(16.dp)).let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(vertical = 6.dp),
+        modifier.clip(ForgeShape.Md).let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(value, style = MaterialTheme.typography.titleLarge.tabular(), color = color, fontWeight = FontWeight.Medium, maxLines = 1)

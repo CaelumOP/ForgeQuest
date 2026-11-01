@@ -26,22 +26,22 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 
-/** One spring: how bouncy ([dampingRatio], 1 = no overshoot) and how quick ([stiffness]). */
+/** One spring: how much it overshoots ([dampingRatio], 1 = none) and how quick ([stiffness]). */
 @Immutable
 class SpringToken(val dampingRatio: Float, val stiffness: Float) {
     fun <T> spec(visibilityThreshold: T? = null): SpringSpec<T> = spring(dampingRatio, stiffness, visibilityThreshold)
 }
 
 /**
- * Motion tokens. Spatial springs move things (position, size, corners) and may overshoot a little; effects springs
- * change colour and alpha and never overshoot. Easing and duration tokens are for timed sweeps and screen changes.
+ * Motion tokens (Soft Coach, see DESIGN.md). Spatial springs move things (position, size, corners) and are barely
+ * under-damped at most: no bounce. Effects springs change colour and alpha and never overshoot. Easing and duration tokens are for timed sweeps and screen changes.
  * The web app has the same tokens as CSS variables in web/src/ui/kit/kit.css.
  */
 object ForgeMotion {
     object Springs {
-        val FastSpatial = SpringToken(0.6f, 800f)
-        val DefaultSpatial = SpringToken(0.7f, 380f)
-        val SlowSpatial = SpringToken(0.8f, 200f)
+        val FastSpatial = SpringToken(0.9f, 700f)
+        val DefaultSpatial = SpringToken(0.9f, 380f)
+        val SlowSpatial = SpringToken(1.0f, 200f)
         val FastEffects = SpringToken(1f, 3800f)
         val DefaultEffects = SpringToken(1f, 1600f)
         val SlowEffects = SpringToken(1f, 800f)
@@ -61,6 +61,9 @@ object ForgeMotion {
         const val MEDIUM2 = 300
         const val MEDIUM4 = 400
         const val LONG2 = 500
+
+        /** The one authored moment: a progress ring filling. */
+        const val RING = 900
     }
 
     /** With reduced motion on, effects become a short linear fade of this length. */
