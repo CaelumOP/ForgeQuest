@@ -68,7 +68,12 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric reads the exported Room schemas as test assets (MigrationTest).
+        unitTests.isIncludeAndroidResources = true
     }
+
+    // Robolectric only sees the variant's merged assets, so the schemas ride along in debug builds (about 230 KB; never in release).
+    sourceSets.getByName("debug").assets.srcDir("$projectDir/schemas")
 }
 
 kotlin {
@@ -128,4 +133,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
+    testImplementation("androidx.room:room-testing:$room")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }
