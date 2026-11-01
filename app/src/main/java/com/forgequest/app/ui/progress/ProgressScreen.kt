@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.progress
 
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -314,7 +315,7 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
     tiles.chunked(2).forEach { row ->
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             row.forEach { t ->
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(c.card).padding(14.dp, 12.dp, 14.dp, 10.dp)) {
+                Column(Modifier.weight(1f).clip(ForgeShape.Md).background(c.card).padding(12.dp, 12.dp, 12.dp, 8.dp)) {
                     Text(t.label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {

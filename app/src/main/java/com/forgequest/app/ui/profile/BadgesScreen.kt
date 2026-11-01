@@ -77,7 +77,7 @@ fun BadgesScreen(nav: NavHostController) {
                     Text(cat.localLabel(), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                     Spacer(Modifier.height(10.dp))
                     Badges.all.filter { it.category == cat }.chunked(4).forEach { row ->
-                        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                             row.forEach { b ->
                                 val got = owned[b.id]
                                 BadgeChip(b.localTitle(), b.localDescription(), badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f), progress = Badges.progress(b.id, s.stats))

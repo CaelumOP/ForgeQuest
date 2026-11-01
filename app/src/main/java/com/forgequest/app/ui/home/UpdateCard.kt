@@ -95,8 +95,8 @@ fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit, modif
         when {
             progress != null -> {
                 Spacer(Modifier.height(8.dp))
-                if (progress < 0f) LinearProgressIndicator(Modifier.fillMaxWidth().padding(end = 6.dp), color = accent)
-                else LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().padding(end = 6.dp), color = accent)
+                if (progress < 0f) LinearProgressIndicator(Modifier.fillMaxWidth().padding(end = 8.dp), color = accent)
+                else LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().padding(end = 8.dp), color = accent)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     if (progress < 0f) stringResource(R.string.update_downloading) else stringResource(R.string.update_progress, (progress * 100).toInt()),
@@ -118,7 +118,7 @@ fun WhatsNewDialog(v: LatestVersion, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = c.card,
-        icon = { IconCircle(Icons.Rounded.NewReleases, c.purple, c.purpleTrack, size = 40.dp) },
+        icon = { IconCircle(Icons.Rounded.NewReleases, c.teal, c.tealTrack, size = 40.dp) },
         title = { Text(stringResource(R.string.whats_new_title, v.versionName), style = MaterialTheme.typography.titleLarge, color = c.textPrimary) },
         text = {
             Text(v.notes, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.verticalScroll(rememberScrollState()))

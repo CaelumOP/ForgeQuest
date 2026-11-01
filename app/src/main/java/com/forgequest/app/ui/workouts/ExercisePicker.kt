@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeShape
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -151,7 +152,7 @@ fun ExercisePickerSheet(
                 placeholder = { Text(stringResource(R.string.picker_search)) },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 singleLine = true,
-                shape = RoundedCornerShape(50),
+                shape = ForgeShape.Full,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = c.teal, unfocusedBorderColor = c.divider,
                     focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, cursorColor = c.teal,
@@ -219,7 +220,7 @@ fun ExercisePickerSheet(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = c.teal,
                                 fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                             )
                         }
                         items(topSwaps, key = { "swap_${it.exercise.id}" }) { cand ->
@@ -228,7 +229,7 @@ fun ExercisePickerSheet(
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 3.dp)
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(ForgeShape.Md)
                                     .background(c.tealTrack.copy(alpha = 0.45f))
                                     .clickable { onPick(ex) }
                                     .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -245,7 +246,7 @@ fun ExercisePickerSheet(
                                 Spacer(Modifier.width(8.dp))
                                 Box(
                                     Modifier
-                                        .clip(RoundedCornerShape(50))
+                                        .clip(ForgeShape.Full)
                                         .background(c.tealTrack)
                                         .padding(horizontal = 8.dp, vertical = 3.dp)
                                 ) {
@@ -266,7 +267,7 @@ fun ExercisePickerSheet(
                     items(filtered, key = { it.id }) { ex ->
                         val prof = remember(ex.id) { ExerciseSwapEngine.profileFor(ex) }
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onPick(ex) }.padding(horizontal = 8.dp, vertical = 12.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable { onPick(ex) }.padding(horizontal = 8.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -281,7 +282,7 @@ fun ExercisePickerSheet(
                     }
                     item {
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { creating = true }.padding(horizontal = 8.dp, vertical = 16.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable { creating = true }.padding(horizontal = 8.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = null, tint = c.teal)
@@ -307,7 +308,7 @@ private fun CreateExerciseForm(initialName: String, initialMuscle: Muscle?, onCr
     Column(Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = name, onValueChange = { name = it.take(40) }, label = { Text(stringResource(R.string.picker_exercise_name)) }, singleLine = true,
-            shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
+            shape = ForgeShape.Md, modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
         )
         Spacer(Modifier.height(14.dp))

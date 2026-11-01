@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -174,7 +175,7 @@ private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () ->
 @Composable
 private fun Dial(fraction: Float, color: Color, value: String, label: String, size: Dp, stroke: Dp, big: Boolean, onClick: () -> Unit) {
     val c = Fit.colors
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(6.dp)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(ForgeShape.Md).clickable(onClick = onClick).padding(6.dp)
         .semantics(mergeDescendants = true) { contentDescription = "$label $value" }) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
             Canvas(Modifier.size(size)) {

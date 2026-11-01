@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.R
 import com.forgequest.app.domain.Nutrition
@@ -332,7 +333,7 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
             Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
         // The rank letter alone meant nothing to new people; the level under it says what the ring is.
-        if (showRank) Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (showRank) Column(Modifier.clip(ForgeShape.Sm).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
                 Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
             }
@@ -521,7 +522,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit, nudge: 
                 // Today and the last 3 days can be excused (sick, travel...) with a tap; workouts can't.
                 val canTag = day in (today - ProgressRepository.EXCUSE_BACK_DAYS)..today && state != DayState.DONE && state != DayState.OFF
                 Column(
-                    Modifier.clip(RoundedCornerShape(12.dp)).let { if (canTag) it.clickable(onClickLabel = stringResource(R.string.daytag_title)) { onDayClick(day) } else it },
+                    Modifier.clip(ForgeShape.Sm).let { if (canTag) it.clickable(onClickLabel = stringResource(R.string.daytag_title)) { onDayClick(day) } else it },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     DayCircle(state)
@@ -627,7 +628,7 @@ private fun TodayCard(
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (noPlan && !hasOpenSession) IconCircle(Icons.Rounded.Edit, c.teal, c.tealTrack)
-            else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.blue, c.blueTrack)
+            else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.textSecondary, c.cardHigh)
             else IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {

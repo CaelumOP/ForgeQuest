@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -76,7 +77,7 @@ fun PutInPlanSheet(
                         if (d.items.any { it.exerciseId == ex.id }) stringResource(R.string.plan_put_in_already) else null,
                     ).joinToString(" · ")
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { dayOfWeek = d.day.dayOfWeek }.padding(vertical = 10.dp),
+                        Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { dayOfWeek = d.day.dayOfWeek }.padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -105,7 +106,7 @@ fun PutInPlanSheet(
                     }
                     items(rows, key = { it.first.id }) { (item, e, close) ->
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onReplace(day, item) }.padding(vertical = 10.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { onReplace(day, item) }.padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {

@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.ui.theme.itemMotion
 import androidx.compose.animation.core.Animatable
@@ -452,7 +453,7 @@ private fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutVi
     FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { expanded = !expanded }.padding(vertical = 6.dp),
+                Modifier.weight(1f).clip(ForgeShape.Sm).clickable { expanded = !expanded }.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -496,7 +497,7 @@ private fun StraightCard(
     // A set added or removed grows or shrinks the card smoothly instead of jumping.
     FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onDetail)) {
+            Column(Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onDetail)) {
                 Text(ex?.name ?: g.sets.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 val target = g.sets.first().targetLabel
                 Text(if (target.isNotBlank()) stringResource(R.string.live_target, g.sets.size, target) else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -527,7 +528,7 @@ private fun HarderNote(ex: ExerciseEntity, vm: LiveWorkoutViewModel) {
     val hint = hints[ex.id] ?: return
     val context = androidx.compose.ui.platform.LocalContext.current
     Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp).clip(RoundedCornerShape(12.dp)).background(c.tealTrack).padding(horizontal = 12.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp).clip(ForgeShape.Sm).background(c.tealTrack).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.AutoMirrored.Rounded.TrendingUp, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
@@ -635,9 +636,9 @@ private fun SetRow(
     val effort = SetEffort.parse(set.effort.ifBlank { null })
     // From 1.35x text the row splits in two tiers: set number, last-time hint and tick on top, the steppers below.
     val reflow = com.forgequest.app.ui.components.reflowText()
-    val rowModifier = Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(rowColor).border(1.dp, rowBorder, RoundedCornerShape(14.dp))
+    val rowModifier = Modifier.fillMaxWidth().padding(top = 8.dp).clip(ForgeShape.Sm).background(rowColor).border(1.dp, rowBorder, ForgeShape.Sm)
         .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
-        .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
+        .padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)
     val number: @Composable () -> Unit = {
         if (label != null) {
             Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
@@ -648,7 +649,7 @@ private fun SetRow(
     }
     val info: @Composable (Modifier) -> Unit = { m ->
         Column(
-            m.let { if (onLabelClick != null) it.clip(RoundedCornerShape(8.dp)).clickable(onClick = onLabelClick) else it },
+            m.let { if (onLabelClick != null) it.clip(ForgeShape.Sm).clickable(onClick = onLabelClick) else it },
         ) {
             if (sublabel != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -735,7 +736,7 @@ private fun SetRow(
                 SetTick(set.done, pr) { vm.toggle(set) }
             }
             FlowRow(
-                Modifier.fillMaxWidth().padding(top = 6.dp),
+                Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 itemVerticalAlignment = Alignment.CenterVertically,
@@ -751,7 +752,7 @@ private fun SetRow(
     }
     // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
     AnimatedVisibility(visible = set.done && effortSetId == set.id) {
-        Column(Modifier.padding(start = 8.dp, top = 6.dp)) {
+        Column(Modifier.padding(start = 8.dp, top = 8.dp)) {
             EffortGroup(selected = set.effort, onSelect = { vm.setEffort(set, it) })
             // Pain is worth a word: one tap opens the same note editor as a long-press.
             if (set.effort == SetEffort.PAIN.name) {
@@ -839,7 +840,7 @@ fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Un
                 }
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
-                    value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                    value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = ForgeShape.Md,
                     placeholder = { Text(stringResource(R.string.live_note_hint)) },
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     modifier = Modifier.fillMaxWidth(),
@@ -938,7 +939,7 @@ private fun SetTick(checked: Boolean, pr: Boolean, onToggle: () -> Unit) {
 @Composable
 fun PrTag() {
     val c = Fit.colors
-    Box(Modifier.clip(RoundedCornerShape(50)).background(c.goldTrack).padding(horizontal = 6.dp, vertical = 1.dp)) {
+    Box(Modifier.clip(ForgeShape.Full).background(c.goldTrack).padding(horizontal = 8.dp, vertical = 1.dp)) {
         Text(stringResource(R.string.live_pr), style = MaterialTheme.typography.labelSmall, color = c.gold, fontWeight = FontWeight.Bold)
     }
 }
@@ -997,7 +998,7 @@ private fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: (
 @Composable
 private fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Unit, onRemove: () -> Unit, onSkip: () -> Unit) {
     val c = Fit.colors
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(c.cardHigh).padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(ForgeShape.Md).background(c.cardHigh).padding(16.dp)) {
         // At large text sizes the three buttons drop to their own line, so the time never wraps digit by digit.
         val big = com.forgequest.app.ui.components.reflowText()
         val buttons: @Composable () -> Unit = {
@@ -1122,7 +1123,7 @@ private fun WorkoutCompleteScreen(
             Spacer(Modifier.height(12.dp))
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Notifications, c.gold, c.goldTrack)
+                    IconCircle(Icons.Rounded.Notifications, c.teal, c.tealTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(if (reminded) R.string.live_reminder_on else R.string.live_reminder_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)

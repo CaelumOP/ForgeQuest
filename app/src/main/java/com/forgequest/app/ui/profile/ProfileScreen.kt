@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import com.forgequest.app.ui.theme.ForgeShape
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -627,7 +628,7 @@ fun ProfileScreen(nav: NavHostController) {
         if (apiKey.isBlank()) {
             FitCard(onClick = { keyDialog = true }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack)
+                    IconCircle(Icons.Rounded.Key, c.teal, c.tealTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -720,7 +721,7 @@ fun ProfileScreen(nav: NavHostController) {
         // Shortcuts to the screens that used to sit among the settings
         Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ShortcutCard(Icons.AutoMirrored.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
-            ShortcutCard(Icons.Rounded.FitnessCenter, c.blue, c.blueTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
+            ShortcutCard(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -748,7 +749,7 @@ fun ProfileScreen(nav: NavHostController) {
         SettingsSection(stringResource(R.string.settings_section_settings))
 
         SettingsGroup(
-            Icons.Rounded.Accessibility, c.coral, c.coralTrack, stringResource(R.string.settings_group_body),
+            Icons.Rounded.Accessibility, c.teal, c.tealTrack, stringResource(R.string.settings_group_body),
             if (settings.heightCm <= 0f || age <= 0) summary(stringResource(R.string.summary_body_not_set), stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off))
             else summary(
                 stringResource(if (settings.bodyType == BodyType.FEMALE) R.string.body_female else R.string.body_male),
@@ -761,7 +762,7 @@ fun ProfileScreen(nav: NavHostController) {
         ) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Accessibility, c.coral, c.coralTrack)
+                    IconCircle(Icons.Rounded.Accessibility, c.teal, c.tealTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_about_you), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -819,7 +820,7 @@ fun ProfileScreen(nav: NavHostController) {
             }
             FitCard {
                 SwitchHeader(
-                    Icons.Rounded.MonitorHeart, c.coral, c.coralTrack, stringResource(R.string.profile_health_title),
+                    Icons.Rounded.MonitorHeart, c.teal, c.tealTrack, stringResource(R.string.profile_health_title),
                     stringResource(if (connected) R.string.profile_health_on else R.string.profile_health_hint), connected,
                 ) { on ->
                     when {
@@ -838,14 +839,14 @@ fun ProfileScreen(nav: NavHostController) {
                 }
             }
             SettingsRow(
-                Icons.Rounded.PanTool, c.purple, c.purpleTrack,
+                Icons.Rounded.PanTool, c.teal, c.tealTrack,
                 stringResource(R.string.profile_hand_size),
                 if (settings.handLengthCm > 0f) stringResource(R.string.profile_hand_value, "%.1f".format(settings.handLengthCm), "%.1f".format(settings.palmWidthCm)) else stringResource(R.string.profile_hand_hint),
             ) { handDialog = true }
         }
 
         SettingsGroup(
-            Icons.Rounded.TrackChanges, c.gold, c.goldTrack, stringResource(R.string.settings_group_goals),
+            Icons.Rounded.TrackChanges, c.teal, c.tealTrack, stringResource(R.string.settings_group_goals),
             summary(
                 stringResource(settings.nutritionGoal.labelRes),
                 "%,d %s".format(settings.kcalGoal, stringResource(R.string.unit_kcal)),
@@ -856,7 +857,7 @@ fun ProfileScreen(nav: NavHostController) {
         ) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.TrackChanges, c.gold, c.goldTrack)
+                    IconCircle(Icons.Rounded.TrackChanges, c.teal, c.tealTrack)
                     Spacer(Modifier.width(14.dp))
                     Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 }
@@ -890,7 +891,7 @@ fun ProfileScreen(nav: NavHostController) {
                             disabled = if (fastBlocked) setOf(paces.indexOf(CutPace.AGGRESSIVE)) else emptySet(),
                             wrap = true,
                         )
-                        if (fastBlocked) Text(stringResource(R.string.pace_blocked), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+                        if (fastBlocked) Text(stringResource(R.string.pace_blocked), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp))
                         Spacer(Modifier.height(8.dp))
                     }
                     NutritionGoal.GAIN -> {
@@ -936,7 +937,7 @@ fun ProfileScreen(nav: NavHostController) {
                     unit = stringResource(R.string.unit_kcal),
                 )
                 val suggested = kcalFor(settings.nutritionGoal)
-                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         when {
                             !hasBodyStats -> stringResource(R.string.goals_suggest_missing)
@@ -951,7 +952,7 @@ fun ProfileScreen(nav: NavHostController) {
                     }
                 }
                 if (settings.kcalGoal <= floor) {
-                    Text(stringResource(R.string.profile_floor_hint, "%,d".format(floor)), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
+                    Text(stringResource(R.string.profile_floor_hint, "%,d".format(floor)), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 8.dp))
                 }
                 // What the Fitbit measured against what the formula guesses, once there are two weeks of it.
                 val fitbitKcal = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day?.kcalAvg14
@@ -959,7 +960,7 @@ fun ProfileScreen(nav: NavHostController) {
                 if (fitbitKcal != null && maintain != null && hasBodyStats) {
                     Text(
                         stringResource(R.string.goals_fitbit_burn, "%,d".format(maintain), "%,d".format(fitbitKcal)),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 6.dp),
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
                 SettingStepper(
@@ -996,7 +997,7 @@ fun ProfileScreen(nav: NavHostController) {
                     }
                 }
                 // The whole row toggles, not just the switch.
-                Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                     FitSwitch(settings.trackCarbs, null)
                 }
@@ -1031,7 +1032,7 @@ fun ProfileScreen(nav: NavHostController) {
                     }
                 }
                 val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
-                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_workouts_per_week), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
                         if (settings.weeklyTargetOverride == 0) Text(stringResource(R.string.profile_from_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -1073,7 +1074,7 @@ fun ProfileScreen(nav: NavHostController) {
             // Workout reminders are part of the consistency side, so "Just log" mode puts them away (the hour is kept).
             if (!justLog) FitCard {
                 SwitchHeader(
-                    Icons.Rounded.Notifications, c.gold, c.goldTrack, stringResource(R.string.profile_reminder),
+                    Icons.Rounded.Notifications, c.teal, c.tealTrack, stringResource(R.string.profile_reminder),
                     if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
                     settings.reminderHour >= 0,
                 ) { vm.setReminder(if (it) 18 else -1) }
@@ -1106,7 +1107,7 @@ fun ProfileScreen(nav: NavHostController) {
         }
 
         SettingsGroup(
-            Icons.Rounded.Psychology, c.purple, c.purpleTrack, stringResource(R.string.settings_group_coach),
+            Icons.Rounded.Psychology, c.teal, c.tealTrack, stringResource(R.string.settings_group_coach),
             summary(
                 stringResource(if (apiKey.isBlank()) R.string.summary_gemini_off else R.string.summary_gemini_on),
                 stringResource(if (groqKey.isBlank()) R.string.summary_groq_off else R.string.summary_groq_on),
@@ -1114,18 +1115,18 @@ fun ProfileScreen(nav: NavHostController) {
             open = "coach" in openGroups, onToggle = { toggleGroup("coach") },
         ) {
             SettingsRow(
-                Icons.Rounded.Key, c.blue, c.blueTrack,
+                Icons.Rounded.Key, c.teal, c.tealTrack,
                 stringResource(R.string.profile_ai_key),
                 if (apiKey.isBlank()) stringResource(R.string.profile_key_not_set) else stringResource(R.string.profile_key_connected),
             ) { keyDialog = true }
             SettingsRow(
-                Icons.Rounded.Bolt, c.gold, c.goldTrack,
+                Icons.Rounded.Bolt, c.teal, c.tealTrack,
                 stringResource(R.string.groq_key_title),
                 if (groqKey.isBlank()) stringResource(R.string.groq_key_off) else stringResource(R.string.groq_key_on),
             ) { groqDialog = true }
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Psychology, c.purple, c.purpleTrack)
+                    IconCircle(Icons.Rounded.Psychology, c.teal, c.tealTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -1144,7 +1145,7 @@ fun ProfileScreen(nav: NavHostController) {
                     Column(Modifier.animateContentSize()) {
                         notes.forEach { note ->
                             Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.removeNote(note) }.padding(vertical = 6.dp, horizontal = 4.dp),
+                                Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.removeNote(note) }.padding(vertical = 8.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
@@ -1161,7 +1162,7 @@ fun ProfileScreen(nav: NavHostController) {
             FitCard {
                 // Turning it on explains what it is first: a stray tap on the title used to start a Google sign-in out of nowhere.
                 var explainBridge by remember { mutableStateOf(false) }
-                SwitchHeader(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { on ->
+                SwitchHeader(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { on ->
                     if (on) explainBridge = true else vm.setBridge(false)
                 }
                 if (explainBridge) {
@@ -1238,7 +1239,7 @@ fun ProfileScreen(nav: NavHostController) {
         }
 
         SettingsGroup(
-            Icons.Rounded.Palette, c.blue, c.blueTrack, stringResource(R.string.settings_group_app),
+            Icons.Rounded.Palette, c.teal, c.tealTrack, stringResource(R.string.settings_group_app),
             summary(
                 stringResource(when (settings.theme) { "light" -> R.string.theme_light; "dark" -> R.string.theme_dark; else -> R.string.theme_system }),
                 when (com.forgequest.app.AppLocale.current(context)) { "en" -> "English"; "ar" -> "العربية"; else -> stringResource(R.string.language_system) },
@@ -1249,7 +1250,7 @@ fun ProfileScreen(nav: NavHostController) {
         ) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Palette, c.blue, c.blueTrack)
+                    IconCircle(Icons.Rounded.Palette, c.teal, c.tealTrack)
                     Spacer(Modifier.width(14.dp))
                     Text(stringResource(R.string.profile_appearance), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 }
@@ -1284,12 +1285,12 @@ fun ProfileScreen(nav: NavHostController) {
             }
             FitCard {
                 SwitchHeader(
-                    Icons.Rounded.Lock, c.coral, c.coralTrack, stringResource(R.string.profile_app_lock),
+                    Icons.Rounded.Lock, c.teal, c.tealTrack, stringResource(R.string.profile_app_lock),
                     stringResource(if (!canLock) R.string.profile_lock_unavailable else if (settings.biometricLock) R.string.profile_lock_on else R.string.profile_lock_off),
                     settings.biometricLock && canLock, enabled = canLock,
                 ) { vm.setLock(it) }
             }
-            SettingsRow(Icons.Rounded.AutoAwesome, c.purple, c.purpleTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
+            SettingsRow(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
                 nav.navigate(com.forgequest.app.ui.Routes.TOUR)
             }
         }
@@ -1305,7 +1306,7 @@ fun ProfileScreen(nav: NavHostController) {
         ) {
             FitCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Backup, c.blue, c.blueTrack)
+                    IconCircle(Icons.Rounded.Backup, c.teal, c.tealTrack)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_backup_file), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -1399,7 +1400,7 @@ fun ProfileScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { keyDialog = false },
             containerColor = c.card,
-            icon = { Icon(Icons.Rounded.Lock, contentDescription = null, tint = c.blue) },
+            icon = { Icon(Icons.Rounded.Lock, contentDescription = null, tint = c.teal) },
             title = { Text(stringResource(R.string.key_dialog_title), color = c.textPrimary) },
             text = {
                 Column {
@@ -1408,12 +1409,12 @@ fun ProfileScreen(nav: NavHostController) {
                     Text(stringResource(R.string.key_dialog_privacy), color = c.textSecondary, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
                     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) }) {
-                        Text(stringResource(R.string.key_dialog_open_studio), color = c.blue)
+                        Text(stringResource(R.string.key_dialog_open_studio), color = c.teal)
                     }
                     OutlinedTextField(
                         value = key, onValueChange = { key = it.trim() }, singleLine = true,
                         placeholder = { Text(if (apiKey.isBlank()) stringResource(R.string.key_paste) else stringResource(R.string.key_paste_new)) },
-                        visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp),
+                        visualTransformation = PasswordVisualTransformation(), shape = ForgeShape.Md,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     )
                 }
@@ -1433,19 +1434,19 @@ fun ProfileScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { groqDialog = false },
             containerColor = c.card,
-            icon = { Icon(Icons.Rounded.Bolt, contentDescription = null, tint = c.gold) },
+            icon = { Icon(Icons.Rounded.Bolt, contentDescription = null, tint = c.teal) },
             title = { Text(stringResource(R.string.groq_key_title), color = c.textPrimary) },
             text = {
                 Column {
                     Text(stringResource(R.string.groq_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(10.dp))
                     TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }) {
-                        Text(stringResource(R.string.groq_dialog_open), color = c.blue)
+                        Text(stringResource(R.string.groq_dialog_open), color = c.teal)
                     }
                     OutlinedTextField(
                         value = key, onValueChange = { key = it.trim() }, singleLine = true,
                         placeholder = { Text(if (groqKey.isBlank()) stringResource(R.string.key_paste) else stringResource(R.string.key_paste_new)) },
-                        visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp),
+                        visualTransformation = PasswordVisualTransformation(), shape = ForgeShape.Md,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     )
                 }
@@ -1488,7 +1489,7 @@ fun ProfileScreen(nav: NavHostController) {
                     Text(stringResource(R.string.notes_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
-                        value = note, onValueChange = { note = it.take(160) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                        value = note, onValueChange = { note = it.take(160) }, singleLine = true, shape = ForgeShape.Md,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -1573,7 +1574,7 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
     val c = Fit.colors
     var open by remember { mutableStateOf(false) }
     Column(
-        modifier.clip(RoundedCornerShape(16.dp)).clickable { open = true }.padding(vertical = 6.dp, horizontal = 2.dp),
+        modifier.clip(ForgeShape.Md).clickable { open = true }.padding(vertical = 8.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(contentAlignment = Alignment.TopEnd) {
@@ -1642,7 +1643,7 @@ private fun SettingsRow(icon: ImageVector, tint: androidx.compose.ui.graphics.Co
 @Composable
 private fun SettingStepper(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String = "", decimals: Int = 0, placeholder: String? = null) {
     val c = Fit.colors
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
         NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp, placeholder = placeholder)
     }
@@ -1764,7 +1765,7 @@ private fun EquipmentCard(active: EquipmentPreset?, configured: Set<Equipment>, 
 @Composable
 private fun EquipmentStep(number: Int, title: String, hint: String) {
     val c = Fit.colors
-    Row(Modifier.padding(top = 16.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(top = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(24.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {
             Text("$number", style = MaterialTheme.typography.labelMedium, color = c.teal, fontWeight = FontWeight.Bold)
         }
@@ -1780,7 +1781,7 @@ private fun EquipmentStep(number: Int, title: String, hint: String) {
 @Composable
 private fun ChoiceRow(title: String, subtitle: String?, selected: Boolean, radio: Boolean, onClick: (() -> Unit)?) {
     val c = Fit.colors
-    val shape = RoundedCornerShape(14.dp)
+    val shape = ForgeShape.Sm
     val base = Modifier.fillMaxWidth().padding(vertical = 2.dp).clip(shape).background(if (selected) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent)
     val touch = when {
         onClick == null -> base

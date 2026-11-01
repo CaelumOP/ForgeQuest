@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -71,8 +72,8 @@ fun RaadEgg(name: String, onBuzz: () -> Unit) {
                     rotationZ = -6f + 4f * sin(t * 25f)
                     val pulse = 1f + 0.08f * sin(t * 40f)
                     scaleX = pulse; scaleY = pulse
-                }.background(Brush.horizontalGradient(listOf(Color(0xFFFF5252), Color(0xFFFFC107), Color(0xFF00BFA5))), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 28.dp, vertical = 14.dp),
+                }.background(Brush.horizontalGradient(listOf(Color(0xFFFF5252), Color(0xFFFFC107), Color(0xFF00BFA5))), ForgeShape.Md)
+                    .padding(horizontal = 28.dp, vertical = 12.dp),
             ) {
                 Text("اسامه عمك!!!", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false, style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Rtl))
             }

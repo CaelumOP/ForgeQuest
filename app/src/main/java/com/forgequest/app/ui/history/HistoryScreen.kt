@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.history
 
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.material.icons.rounded.ExpandMore
 
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -210,7 +211,7 @@ fun HistoryScreen(nav: NavHostController) {
                         item(key = "d$day") {
                             Text(
                                 LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
-                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.animateItem().padding(start = 8.dp, top = 6.dp),
+                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.animateItem().padding(start = 8.dp, top = 8.dp),
                             )
                         }
                         items(daySessions, key = { it.id }) { session ->
@@ -331,7 +332,7 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
                 // Grows with the text size instead of clipping the weekday.
-                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).clip(RoundedCornerShape(14.dp)).background(c.tealTrack).padding(horizontal = 6.dp, vertical = 4.dp),
+                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).clip(ForgeShape.Sm).background(c.tealTrack).padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
                 Text(date.format(DateTimeFormatter.ofPattern("d")), style = MaterialTheme.typography.titleMedium, color = c.teal, fontWeight = FontWeight.Bold)
@@ -459,14 +460,14 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 val ex = exercises[group.first().exerciseId]
                 val kind = ex?.kind ?: ExerciseKind.REPS
                 FitCard(padding = PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { nav.navigate(Routes.exercise(group.first().exerciseId)) }) {
+                    Column(Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { nav.navigate(Routes.exercise(group.first().exerciseId)) }) {
                         Text(ex?.name ?: group.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                         Text(ex?.musclesLabel().orEmpty().ifBlank { group.first().block }, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                     Spacer(Modifier.height(4.dp))
                     group.sortedBy { it.setIndex }.forEachIndexed { index, set ->
                         Row(
-                            Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(12.dp))
+                            Modifier.fillMaxWidth().padding(top = 8.dp).clip(ForgeShape.Sm)
                                 .combinedClickable(onClick = {}, onLongClick = { noteFor = set }, onLongClickLabel = stringResource(R.string.cd_add_note)),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

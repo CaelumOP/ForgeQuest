@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.itemMotion
 import com.forgequest.app.R
 import com.forgequest.app.ui.localLabel
@@ -127,7 +128,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         }
         OutlinedTextField(
             value = query, onValueChange = { query = it }, placeholder = { Text(stringResource(R.string.lib_search)) },
-            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) }, singleLine = true, shape = RoundedCornerShape(50),
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) }, singleLine = true, shape = ForgeShape.Full,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
                 cursorColor = c.teal, unfocusedLeadingIconColor = c.textSecondary, focusedLeadingIconColor = c.teal,
@@ -173,7 +174,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
                 }
                 Spacer(Modifier.height(14.dp))
                 OutlinedTextField(
-                    value = name, onValueChange = { name = it.take(40) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                    value = name, onValueChange = { name = it.take(40) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = ForgeShape.Md,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -229,7 +230,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
 private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -238,7 +239,7 @@ private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit) {
         }
         if (ex.custom) {
             Spacer(Modifier.width(8.dp))
-            Box(Modifier.clip(RoundedCornerShape(50)).background(c.purpleTrack).padding(horizontal = 8.dp, vertical = 2.dp)) {
+            Box(Modifier.clip(ForgeShape.Full).background(c.purpleTrack).padding(horizontal = 8.dp, vertical = 2.dp)) {
                 Text(stringResource(R.string.lib_custom), style = MaterialTheme.typography.labelSmall, color = c.purple)
             }
         }

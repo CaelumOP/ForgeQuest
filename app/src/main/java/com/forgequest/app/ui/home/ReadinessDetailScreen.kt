@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -247,8 +248,8 @@ private fun ShareBar(label: String, share: Float, color: Color) {
     val c = Fit.colors
     Text(label, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
     Spacer(Modifier.height(6.dp))
-    Box(Modifier.fillMaxWidth().height(28.dp).clip(RoundedCornerShape(14.dp)).background(c.cardHigh)) {
-        if (share > 0f) Box(Modifier.fillMaxWidth(share.coerceIn(0.04f, 1f)).fillMaxHeight().clip(RoundedCornerShape(14.dp)).background(color))
+    Box(Modifier.fillMaxWidth().height(28.dp).clip(ForgeShape.Sm).background(c.cardHigh)) {
+        if (share > 0f) Box(Modifier.fillMaxWidth(share.coerceIn(0.04f, 1f)).fillMaxHeight().clip(ForgeShape.Sm).background(color))
     }
     Spacer(Modifier.height(14.dp))
 }

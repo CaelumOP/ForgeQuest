@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.R
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.ui.localLabel
@@ -323,7 +324,7 @@ fun ScanScreen(nav: NavHostController) {
                 if (!vm.hasKey) {
                     Column(
                         Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 64.dp)
-                            .clip(RoundedCornerShape(20.dp)).background(Fit.colors.card).padding(16.dp),
+                            .clip(ForgeShape.Md).background(Fit.colors.card).padding(16.dp),
                     ) {
                         Text(stringResource(R.string.ai_key_needed_food), style = MaterialTheme.typography.bodyMedium, color = Fit.colors.textPrimary)
                         Spacer(Modifier.height(10.dp))
@@ -460,8 +461,8 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
             Row(Modifier.fillMaxWidth().padding(horizontal = 36.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                     Box(
-                        Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.18f))
-                            .border(1.5.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
+                        Modifier.size(52.dp).clip(ForgeShape.Sm).background(Color.White.copy(alpha = 0.18f))
+                            .border(1.5.dp, Color.White.copy(alpha = 0.7f), ForgeShape.Sm)
                             .clickable { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Rounded.PhotoLibrary, contentDescription = stringResource(R.string.photo_choose_gallery), tint = Color.White) }
@@ -529,7 +530,7 @@ private fun ScanningOverlay(onAskOutside: () -> Unit) {
         }
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(24.dp)
-                .clip(RoundedCornerShape(28.dp)).background(c.card).padding(horizontal = 24.dp, vertical = 20.dp),
+                .clip(ForgeShape.Lg).background(c.card).padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // The wait: an Expressive morphing shape in the scan teal, then the step it's on.
@@ -550,7 +551,7 @@ private fun ErrorCard(message: String, canRetry: Boolean, keyProblem: Boolean, o
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp)
-                .clip(RoundedCornerShape(28.dp)).background(c.card).padding(24.dp),
+                .clip(ForgeShape.Lg).background(c.card).padding(24.dp),
         ) {
             // A missing or rejected key isn't the meal's fault: say what's actually needed.
             Text(stringResource(if (keyProblem) R.string.scan_key_needed_title else R.string.scan_failed_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
@@ -578,7 +579,7 @@ private fun OutsideCard(wrongFormat: Boolean, onRetake: () -> Unit, onAskAgain: 
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp)
-                .clip(RoundedCornerShape(28.dp)).background(c.card).padding(24.dp),
+                .clip(ForgeShape.Lg).background(c.card).padding(24.dp),
         ) {
             Text(stringResource(R.string.scan_outside_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             Spacer(Modifier.height(6.dp))
@@ -653,7 +654,7 @@ private fun ResultSheet(
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(shown, enter = slideInVertically { it } + fadeIn(), modifier = Modifier.align(Alignment.BottomCenter)) {
             Column(
-                Modifier.fillMaxWidth().heightIn(max = 640.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(c.card)
+                Modifier.fillMaxWidth().heightIn(max = 640.dp).clip(RoundedCornerShape(topStart = ForgeShape.LgRadius, topEnd = ForgeShape.LgRadius)).background(c.card)
                     .verticalScroll(rememberScrollState()).navigationBarsPadding().padding(20.dp),
             ) {
                 Box(Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).clip(CircleShape).background(c.divider))
@@ -690,8 +691,8 @@ private fun ResultSheet(
                 items.forEachIndexed { i, item ->
                     val on = i in included
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp)).background(c.cardHigh)
-                            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(ForgeShape.Md).background(c.cardHigh)
+                            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
@@ -703,7 +704,7 @@ private fun ResultSheet(
                             }
                         }
                         Spacer(Modifier.width(8.dp))
-                        Column(Modifier.weight(1f).padding(end = 12.dp).clip(RoundedCornerShape(8.dp)).clickable { editingGrams = i }.padding(vertical = 4.dp)) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp).clip(ForgeShape.Sm).clickable { editingGrams = i }.padding(vertical = 4.dp)) {
                             Text(item.name, style = MaterialTheme.typography.bodyMedium, color = if (on) c.textPrimary else c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(if (item.grams > 0) stringResource(R.string.scan_about_grams, item.grams) else stringResource(R.string.scan_set_grams), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         }

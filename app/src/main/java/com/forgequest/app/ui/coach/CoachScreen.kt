@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.coach
 
+import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.pluralStringResource
@@ -199,7 +201,7 @@ fun CoachScreen(nav: NavHostController) {
                     Text(stringResource(R.string.coach_model_header), style = MaterialTheme.typography.labelMedium, color = c.textSecondary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                     val last by vm.lastAnswer.collectAsState()
                     last?.let { (who, ms) ->
-                        if (ms >= 0) Text(stringResource(R.string.coach_answered_by, who, "%.1f".format(ms / 1000f)), style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp))
+                        if (ms >= 0) Text(stringResource(R.string.coach_answered_by, who, "%.1f".format(ms / 1000f)), style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
                     }
                     listOf(
                         Triple("auto", R.string.coach_model_auto, stringResource(R.string.coach_model_auto_hint)),
@@ -234,9 +236,9 @@ fun CoachScreen(nav: NavHostController) {
             ) {
                 if (!hasKey) {
                     item {
-                        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.card).padding(20.dp)) {
+                        Column(Modifier.fillMaxWidth().clip(ForgeShape.Lg).background(c.card).padding(20.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconCircle(Icons.Rounded.Key, c.blue, c.blueTrack, 40.dp)
+                                IconCircle(Icons.Rounded.Key, c.teal, c.tealTrack, 40.dp)
                                 Spacer(Modifier.width(12.dp))
                                 Text(stringResource(R.string.ai_key_needed_coach), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
                             }
@@ -273,14 +275,14 @@ fun CoachScreen(nav: NavHostController) {
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                         .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(c.background.copy(alpha = 0f), c.background.copy(alpha = 0.92f), c.background)))
                         .horizontalScroll(rememberScrollState())
-                        .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 10.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     suggestions.take(3).map { stringResource(it) }.forEach { s ->
                         Box(
-                            Modifier.clip(RoundedCornerShape(50)).background(c.card)
-                                .border(1.dp, c.divider.copy(alpha = 0.7f), RoundedCornerShape(50))
-                                .clickable { vm.send(s) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                            Modifier.clip(ForgeShape.Full).background(c.card)
+                                .border(1.dp, c.divider.copy(alpha = 0.7f), ForgeShape.Full)
+                                .clickable { vm.send(s) }.padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
                             Text(s, style = MaterialTheme.typography.labelLarge, color = c.textPrimary, maxLines = 1)
                         }
@@ -294,7 +296,7 @@ fun CoachScreen(nav: NavHostController) {
                 onValueChange = { input = it },
                 placeholder = { Text(stringResource(R.string.coach_input_hint)) },
                 enabled = hasKey,
-                shape = RoundedCornerShape(28.dp),
+                shape = ForgeShape.Lg,
                 maxLines = 5,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = c.card, unfocusedContainerColor = c.card, disabledContainerColor = c.card,
@@ -366,7 +368,7 @@ private fun Welcome(enabled: Boolean, onSuggestion: (String) -> Unit) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             suggestions.map { stringResource(it) }.forEach { s ->
                 Box(
-                    Modifier.clip(RoundedCornerShape(50)).background(c.card).clickable(enabled = enabled) { onSuggestion(s) }
+                    Modifier.clip(ForgeShape.Full).background(c.card).clickable(enabled = enabled) { onSuggestion(s) }
                         .padding(horizontal = 16.dp, vertical = 10.dp).alpha(if (enabled) 1f else 0.5f),
                 ) { Text(s, style = MaterialTheme.typography.labelLarge, color = c.textPrimary) }
             }
@@ -379,7 +381,7 @@ private fun UserBubble(text: String) {
     val c = Fit.colors
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
         Box(
-            Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp, bottomStart = 22.dp, bottomEnd = 6.dp))
+            Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(topStart = ForgeShape.MdRadius, topEnd = ForgeShape.MdRadius, bottomStart = ForgeShape.MdRadius, bottomEnd = 4.dp))
                 .background(c.blueTrack).padding(horizontal = 16.dp, vertical = 12.dp),
         ) { Text(text, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary) }
     }
@@ -391,14 +393,14 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
     val isError = m.kind == "error"
     Column(Modifier.fillMaxWidth().padding(end = 24.dp)) {
         if (m.kind == "checkin") {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                 Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.gold, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(stringResource(R.string.coach_weekly_checkin), style = MaterialTheme.typography.labelLarge, color = c.gold)
             }
         }
         Box(
-            Modifier.clip(RoundedCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomStart = 22.dp, bottomEnd = 22.dp))
+            Modifier.clip(RoundedCornerShape(topStart = 4.dp, topEnd = ForgeShape.MdRadius, bottomStart = ForgeShape.MdRadius, bottomEnd = ForgeShape.MdRadius))
                 .background(if (isError) c.coralTrack else c.card).padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             MarkdownText(m.text, color = c.textPrimary)
@@ -409,7 +411,7 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
             val scope = rememberCoroutineScope()
             val copiedLabel = stringResource(R.string.coach_copied)
             Row(
-                Modifier.padding(top = 2.dp).clip(RoundedCornerShape(50)).clickable {
+                Modifier.padding(top = 2.dp).clip(ForgeShape.Full).clickable {
                     clipboard.copy("${m.text}\n${m.detail}")
                     // Android 13+ shows its own copied-to-clipboard preview.
                     if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copiedLabel) }
@@ -423,7 +425,7 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
         }
         if (plan != null) {
             Spacer(Modifier.height(8.dp))
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(c.card).padding(16.dp)) {
+            Column(Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.card).padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.CalendarMonth, c.teal, c.tealTrack, 40.dp)
                     Spacer(Modifier.width(12.dp))
@@ -454,7 +456,7 @@ private fun StreamingBubble(text: String, writingPlan: Boolean) {
     val a by t.animateFloat(0.2f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "caretAlpha")
     Column(Modifier.fillMaxWidth().padding(end = 24.dp)) {
         Box(
-            Modifier.clip(RoundedCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomStart = 22.dp, bottomEnd = 22.dp))
+            Modifier.clip(RoundedCornerShape(topStart = 4.dp, topEnd = ForgeShape.MdRadius, bottomStart = ForgeShape.MdRadius, bottomEnd = ForgeShape.MdRadius))
                 .background(c.card).padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Column {
@@ -491,7 +493,7 @@ private fun CheckinNote() {
 @Composable
 private fun TypingDots() {
     val c = Fit.colors
-    Box(Modifier.clip(RoundedCornerShape(22.dp)).background(c.card).padding(horizontal = 10.dp, vertical = 4.dp)) {
+    Box(Modifier.clip(ForgeShape.Md).background(c.card).padding(horizontal = 10.dp, vertical = 4.dp)) {
         com.forgequest.app.ui.components.MorphLoader(c.purple, Modifier.size(40.dp))
     }
 }
