@@ -1411,7 +1411,7 @@
     <string name="goals_fitbit_burn">تقدير المعادلة: %1$s سعرة يوميًا · متوسط Fitbit لأربعة عشر يومًا: %2$s سعرة</string>
     <!-- وجبات من Gemini -->
     <string name="meals_title">وجبات من Gemini</string>
-    <string name="meals_hint">يضيف Gem «ForgeQuest Food» كل وجبة إلى المستند «ForgeQuest meals from Gemini» في Drive، وتنتظر الوجبات الجديدة تأكيدك في تبويب الطعام.</string>
+    <string name="meals_hint">شارك رد Gem «ForgeQuest Food» من Gemini إلى ForgeQuest، وتُقرأ أيضًا الوجبات الموجودة في المستند القديم «ForgeQuest meals from Gemini». وتنتظر الوجبات الجديدة تأكيدك في تبويب الطعام.</string>
     <string name="meals_copy_gem">نسخ تعليمات الـ Gem</string>
     <string name="meals_syncing">جارٍ البحث عن وجبات…</string>
     <string name="meals_synced">وجبات جديدة من Gemini في تبويب الطعام: %d</string>
