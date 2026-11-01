@@ -15,6 +15,7 @@ enum class Equipment(val labelEn: String, val labelAr: String) {
     KETTLEBELL("Kettlebell", "كيتل بيل"),
     BARBELL_RACK("Barbell & rack", "بار وراك"),
     CABLES_MACHINES("Cables & gym machines", "أجهزة وكوابل النادي"),
+    BAND("Resistance band", "حزام مطاطي"),
 }
 
 /** Parses a comma-separated equipment setting string into a Set<Equipment>. Empty string means "not configured". */
@@ -175,6 +176,7 @@ enum class MovementPattern(val labelEn: String, val labelAr: String) {
     CORE_FLEXION_ROTATION("Core flexion / rotation", "ثني والتواء البطن"),
     ANKLE_FLEXION("Calf / ankle flexion", "بطة وقصبة الساق"),
     CARRY_CONDITIONING("Loaded carry / conditioning", "حمل ولياقة عامة"),
+    HIP_ADDUCTION("Hip adduction (inner thigh)", "ضمّ الورك (باطن الفخذ)"),
 }
 
 enum class JointAngle {
@@ -203,6 +205,7 @@ enum class JointAngle {
     PLANTAR_FLEXION,
     DORSI_FLEXION,
     LOCOMOTION,
+    FRONTAL_ADDUCTION,
 }
 
 data class BiomechanicalProfile(
@@ -231,7 +234,7 @@ object ExerciseSwapEngine {
         vararg swaps: String,
     ) = BiomechanicalProfile(eq, pat, ang, swaps.toList())
 
-    /** Explicit biomechanical profiles for all 90 built-in exercises in ExerciseCatalog. */
+    /** Explicit biomechanical profiles for all 100 built-in exercises in ExerciseCatalog. */
     val catalogProfiles: Map<String, BiomechanicalProfile> = mapOf(
         // Warm-up / conditioning
         "jumping_jacks" to prof(Equipment.BODYWEIGHT, MovementPattern.CARRY_CONDITIONING, JointAngle.LOCOMOTION, "burpee", "calf_raise"),
@@ -323,7 +326,19 @@ object ExerciseSwapEngine {
         "skull_crusher" to prof(Equipment.BARBELL_RACK, MovementPattern.ELBOW_EXTENSION, JointAngle.SAGITTAL_TRICEP, "tricep_pushdown", "diamond_push_up", "dip", "bent_leg_bench_dip"),
         "shrug" to prof(Equipment.DUMBBELLS, MovementPattern.UPPER_BACK_PULL, JointAngle.HIGH_EXTERNAL_ROTATION, "farmers_carry", "face_pull", "scapular_australian_pull_up"),
         "cable_crunch" to prof(Equipment.CABLES_MACHINES, MovementPattern.CORE_FLEXION_ROTATION, JointAngle.SPINAL_FLEXION, "crunch", "hanging_knee_raise", "hanging_leg_raise", "hollow_hold"),
-        "tibialis_raise" to prof(Equipment.BODYWEIGHT, MovementPattern.ANKLE_FLEXION, JointAngle.DORSI_FLEXION, "calf_raise", "calf_raise_turned_out"),
+        "tibialis_raise" to prof(Equipment.BODYWEIGHT, MovementPattern.ANKLE_FLEXION, JointAngle.DORSI_FLEXION, "band_dorsiflexion", "heel_walk", "calf_raise"),
+        "heel_walk" to prof(Equipment.BODYWEIGHT, MovementPattern.ANKLE_FLEXION, JointAngle.DORSI_FLEXION, "tibialis_raise", "band_dorsiflexion"),
+        "band_dorsiflexion" to prof(Equipment.BAND, MovementPattern.ANKLE_FLEXION, JointAngle.DORSI_FLEXION, "tibialis_raise", "heel_walk"),
+
+        // Adductors, obliques and forearms
+        "copenhagen_plank_short" to prof(Equipment.DIP_BARS_OR_BENCH, MovementPattern.HIP_ADDUCTION, JointAngle.ISOMETRIC_PLANK, "copenhagen_plank_long", "side_plank", "side_lying_hip_adduction"),
+        "copenhagen_plank_long" to prof(Equipment.DIP_BARS_OR_BENCH, MovementPattern.HIP_ADDUCTION, JointAngle.ISOMETRIC_PLANK, "copenhagen_plank_short", "side_plank", "side_lying_hip_adduction"),
+        "side_lying_hip_adduction" to prof(Equipment.BODYWEIGHT, MovementPattern.HIP_ADDUCTION, JointAngle.FRONTAL_ADDUCTION, "band_hip_adduction", "cossack_squat", "copenhagen_plank_short"),
+        "cossack_squat" to prof(Equipment.BODYWEIGHT, MovementPattern.SQUAT_UNILATERAL, JointAngle.KNEE_DOMINANT_SPLIT, "lunge", "side_lying_hip_adduction", "bulgarian_split_squat"),
+        "band_hip_adduction" to prof(Equipment.BAND, MovementPattern.HIP_ADDUCTION, JointAngle.FRONTAL_ADDUCTION, "side_lying_hip_adduction", "cossack_squat"),
+        "side_plank" to prof(Equipment.BODYWEIGHT, MovementPattern.CORE_ANTI_EXTENSION, JointAngle.ISOMETRIC_PLANK, "plank", "hollow_hold", "copenhagen_plank_short"),
+        "bicycle_crunch" to prof(Equipment.BODYWEIGHT, MovementPattern.CORE_FLEXION_ROTATION, JointAngle.ROTATIONAL, "russian_twist", "crunch", "plank_shoulder_taps"),
+        "wrist_curl" to prof(Equipment.DUMBBELLS, MovementPattern.ELBOW_FLEXION, JointAngle.SAGITTAL_SUPINATED, "hammer_curl", "farmers_carry", "dead_hang"),
 
         // Kettlebells and dumbbells at home
         "kb_swing" to prof(Equipment.KETTLEBELL, MovementPattern.HIP_HINGE, JointAngle.HIP_HINGE_STANDING, "kb_deadlift", "romanian_deadlift", "hip_bridge", "hip_thrust"),
@@ -351,6 +366,7 @@ object ExerciseSwapEngine {
             "kb_" in lower || "kettlebell" in lower -> Equipment.KETTLEBELL
             "db_" in lower || "dumbbell" in lower || "curl" in lower || "lateral" in lower -> Equipment.DUMBBELLS
             "pull_up" in lower || "chin_up" in lower || "hang" in lower || "lever" in lower || "muscle_up" in lower -> Equipment.PULL_UP_BAR
+            "band" in lower || "resistance" in lower -> Equipment.BAND
             "dip" in lower || "australian" in lower || "row" in lower -> Equipment.DIP_BARS_OR_BENCH
             ex.kind == ExerciseKind.WEIGHTED -> Equipment.DUMBBELLS
             else -> Equipment.BODYWEIGHT
@@ -371,6 +387,7 @@ object ExerciseSwapEngine {
             mainMuscle == Muscle.TRICEPS -> MovementPattern.ELBOW_EXTENSION
             ex.kind == ExerciseKind.HOLD && (mainMuscle == Muscle.ABS || mainMuscle == Muscle.OBLIQUES) -> MovementPattern.CORE_ANTI_EXTENSION
             mainMuscle == Muscle.ABS || mainMuscle == Muscle.OBLIQUES -> MovementPattern.CORE_FLEXION_ROTATION
+            mainMuscle == Muscle.ADDUCTORS -> MovementPattern.HIP_ADDUCTION
             mainMuscle == Muscle.CALVES || mainMuscle == Muscle.TIBIALIS -> MovementPattern.ANKLE_FLEXION
             mainMuscle == Muscle.SHOULDERS -> MovementPattern.VERTICAL_PUSH
             else -> MovementPattern.CARRY_CONDITIONING
@@ -393,6 +410,7 @@ object ExerciseSwapEngine {
             MovementPattern.CORE_FLEXION_ROTATION -> JointAngle.SPINAL_FLEXION
             MovementPattern.ANKLE_FLEXION -> JointAngle.PLANTAR_FLEXION
             MovementPattern.CARRY_CONDITIONING -> JointAngle.LOCOMOTION
+            MovementPattern.HIP_ADDUCTION -> JointAngle.FRONTAL_ADDUCTION
         }
         return BiomechanicalProfile(eq, pattern, angle)
     }

@@ -514,7 +514,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val now = System.currentTimeMillis()
         val end = com.forgequest.app.domain.WorkoutEnd.endTime(now, sessions.lastDoneAt(sessionId))
         sessions.update(session.copy(finishedAt = end, plannedSets = plannedSets))
-        val xp = com.forgequest.app.domain.Xp.total(1, done.size, prNames.size, 0)
+        val xp = com.forgequest.app.domain.Xp.run { total(1, setsForXp(done.size, session.epochDay), prNames.size, 0) }
         FinishResult(session.title, done.size, prNames, xp, endedAt = end, clipped = end != now)
     }
 

@@ -121,6 +121,8 @@ data class OnboardingState(
     val gainPace: GainPace = GainPace.STANDARD,
     /** Days a week the person can train: becomes the weekly streak target. */
     val daysPerWeek: Int = 3,
+    /** "Just log my training" picked on the plan step: no streaks, levels, badges or readiness. */
+    val justLog: Boolean = false,
     val planIndex: Int = StarterPlans.BODYWEIGHT_INDEX,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
     val apiKey: String = "",
@@ -202,6 +204,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                     bodyType = s.bodyType,
                     equipment = s.equipmentPreset.encode(),
                     weeklyTargetOverride = s.daysPerWeek,
+                    justLog = s.justLog,
                     // A new person starts on the new suggestion, so the one-time "more accurate target" card never shows.
                     calorieV2Seen = true,
                 )
@@ -515,6 +518,14 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     val c = Fit.colors
     val isArabic = Locale.getDefault().language == "ar"
     Title(stringResource(R.string.onb_plan_title), stringResource(R.string.onb_plan_body))
+
+    // Habit (streaks, levels, badges) or just counting the training; Profile can change it later.
+    SegmentedTabs(
+        options = listOf(stringResource(R.string.onb_mode_habit), stringResource(R.string.onb_mode_just_log)),
+        selected = if (s.justLog) 1 else 0,
+        onSelect = { i -> vm.update { it.copy(justLog = i == 1) } },
+    )
+    Spacer(Modifier.height(20.dp))
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconCircle(Icons.Rounded.LocalFireDepartment, c.gold, c.goldTrack)

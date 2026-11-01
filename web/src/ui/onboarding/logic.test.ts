@@ -31,6 +31,8 @@ describe('onboarding logic', () => {
     const out = settingsPatch(s, null)({ ...DEFAULT_SETTINGS, apiKey: 'old' })
     expect(out).toMatchObject({ onboarded: true, name: 'Sam', weeklyTargetOverride: 4, calorieV2Seen: true, apiKey: 'old', heightCm: 0, kcalGoal: 2200 })
     expect(settingsPatch(s, 'k')(DEFAULT_SETTINGS).apiKey).toBe('k')
+    expect(out.justLog).toBe(false)
+    expect(settingsPatch({ ...s, justLog: true }, null)(DEFAULT_SETTINGS).justLog).toBe(true)
   })
   it('writes the body and goal fields when the food targets are saved', () => {
     const s = { ...initialState(), unit: 'LB' as const, age: 30, heightCm: 175, kcal: 900, protein: 20 }

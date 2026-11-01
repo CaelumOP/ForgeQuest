@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { dayOfWeek, epochDayOf } from './dates'
 import type { ExerciseEntity, SetEntity } from './entities'
+import type { Muscle } from './muscle'
 import {
-  computeRecovery, computeStreak, effectiveSetEffort, fullTarget, levelFor, missedInARow, personalRecords, rankFor,
-  recordScore, shouldRemind, totalXp, weeksToLock, welcomeBack, type DayTag, type MuscleHit,
+  cappedSets, computeRecovery, recoveryWindowHours, sessionHits, computeStreak, effectiveSetEffort, fullTarget, levelFor, missedInARow, personalRecords, rankFor,
+  recordScore, setsForXp, shouldRemind, totalXp, XP_PER_SET, XP_SET_CAP_FROM_DAY, weeksToLock, welcomeBack, type DayTag, type MuscleHit,
 } from './progress'
 
 // Hemo foundation: Mon, Tue, Wed, Fri, Sat
@@ -111,6 +112,17 @@ describe('XpTest', () => {
   it('totalAddsAllSources', () => {
     expect(totalXp(1, 10, 1, 1)).toBe(50 + 20 + 25 + 100)
   })
+
+  it('setXpIsCappedAt25SetsFromTheCutOff', () => {
+    const after = XP_SET_CAP_FROM_DAY
+    const before = XP_SET_CAP_FROM_DAY - 1
+    expect(XP_SET_CAP_FROM_DAY).toBe(epochDayOf(2026, 11, 1))
+    expect(setsForXp(30, after) * XP_PER_SET).toBe(25 * XP_PER_SET)
+    expect(setsForXp(30, before) * XP_PER_SET).toBe(30 * XP_PER_SET)
+    expect(setsForXp(10, after)).toBe(10)
+    expect(setsForXp(10, before)).toBe(10)
+    expect(cappedSets(new Map([[1, 30], [2, 30], [3, 10]]), new Map([[1, after], [2, before], [3, after]]))).toBe(25 + 30 + 10)
+  })
 })
 
 describe('RecoveryTest', () => {
@@ -124,7 +136,7 @@ describe('RecoveryTest', () => {
   })
 
   it('oldSessionsAreFullyRecovered', () => {
-    expect(computeRecovery([['QUADS', now - 49 * hour, 1]], now).size).toBe(0)
+    expect(computeRecovery([['QUADS', now - 61 * hour, 1]], now).size).toBe(0)
   })
 
   it('secondaryMusclesAreHalfAsTired', () => {
@@ -135,6 +147,24 @@ describe('RecoveryTest', () => {
     // 1.0 ten hours ago has 0.833 left when 0.5 more lands (capped at 1), then 2 h of clearing.
     const hits: MuscleHit[] = [['BICEPS', now - 2 * hour, 0.5], ['BICEPS', now - 10 * hour, 1]]
     expect(computeRecovery(hits, now).get('BICEPS')!.fatigue).toBeCloseTo(1 - 2 / 48, 3)
+  })
+
+  it('recoveryWindowDependsOnTheMuscle', () => {
+    // Four hard sets on an exercise that only works the muscle, finished at hour 0.
+    const fourHardSets = (muscle: Muscle, afterHours: number) => {
+      const ex: ExerciseEntity = { id: 'ex', name: 'Ex', kind: 'REPS', primary: [muscle], secondary: [] }
+      const sets: SetEntity[] = [0, 1, 2, 3].map((i) => ({
+        id: i, sessionId: 1, exerciseId: 'ex', itemPosition: 0, block: 'Main', circuit: false, setIndex: i,
+        targetLabel: '', reps: 10, seconds: null, weightKg: null, done: true, isPr: false, restSeconds: 60, note: '', effort: 'HARD',
+      }))
+      return computeRecovery(sessionHits(sets, new Map([['ex', ex]]), new Map([[1, 0]])), afterHours * hour).get(muscle)?.fatigue
+    }
+    for (const [muscle, window] of [['QUADS', 60], ['BICEPS', 48], ['ABS', 36]] as const) {
+      expect(recoveryWindowHours(muscle)).toBe(window)
+      expect(fourHardSets(muscle, window - 1) ?? 0).toBeGreaterThan(0)
+      expect(fourHardSets(muscle, window)).toBeUndefined()
+    }
+    expect(recoveryWindowHours('ADDUCTORS')).toBe(48)
   })
 
   it('twoSessionsTwelveHoursApartNeedThirtySixHours', () => {

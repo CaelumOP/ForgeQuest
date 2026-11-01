@@ -33,6 +33,8 @@ export function HomeScreen(_: { param?: string }) {
   const today = todayEpochDay()
   const plan = s.plan
   const todayPlan = plan ? planDay(plan, dayOfWeek(today)) ?? null : null
+  // "Just log" mode: no streak, rank or badges here; the data stays and comes back when it's turned off.
+  const justLog = s.settings.justLog
   const unseen = s.badges.filter((b) => !b.seen).map((b) => BADGES.find((d) => d.id === b.id)).filter((d) => d != null)
 
   const start = async () => {
@@ -48,17 +50,17 @@ export function HomeScreen(_: { param?: string }) {
       s={s} title={todayPlan?.day.title ?? ''} isRest={!todayPlan || todayPlan.day.isRest} noPlan={!todayPlan}
       note={todayPlan?.day.note ?? ''}
       names={[...new Set((todayPlan?.items ?? []).map((i) => s.exercises.get(i.exerciseId)?.name).filter((n): n is string => !!n))]}
-      hasOpen={!!open} onStart={start} onCant={() => setTagDay(today)}
+      hasOpen={!!open} onStart={start} onCant={justLog ? undefined : () => setTagDay(today)}
     />
   )
 
   return (
     <div class="content home">
-      <Header s={s} />
+      <Header s={s} showRank={!justLog} />
       <Rings s={s} />
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {startOnTop && todayCard}
-      {unseen.length > 0 && (
+      {unseen.length > 0 && !justLog && (
         <Card href="#/profile">
           <div class="home-row">
             <span class="home-ic" style={{ background: 'var(--gold-track)', color: 'var(--gold)' }}><TrophyIcon /></span>
@@ -71,7 +73,7 @@ export function HomeScreen(_: { param?: string }) {
       )}
       <CalorieCard s={s} today={today} />
       <FoodTargetsCard s={s} />
-      <Streak s={s} onDay={setTagDay} />
+      {!justLog && <Streak s={s} onDay={setTagDay} />}
       <ProgressCard s={s} today={today} />
       {!startOnTop && todayCard}
       <WeightSheet s={s} open={weightOpen} onClose={() => setWeightOpen(false)} />
@@ -87,7 +89,7 @@ function badgeTitle(id: string, fallback: string): string {
   return v === key ? fallback : v
 }
 
-function Header({ s }: { s: ProgressSnapshot }) {
+function Header({ s, showRank }: { s: ProgressSnapshot; showRank: boolean }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
   const date = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
@@ -99,11 +101,13 @@ function Header({ s }: { s: ProgressSnapshot }) {
         <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
         <div class="home-date">{date}</div>
       </div>
-      <a class="home-rank" href="#/progress" aria-label={t('home_web_rank_cd', mark)}>
-        <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
-          <span class="home-rank-letter">{mark}</span>
-        </Ring>
-      </a>
+      {showRank && (
+        <a class="home-rank" href="#/progress" aria-label={t('home_web_rank_cd', mark)}>
+          <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
+            <span class="home-rank-letter">{mark}</span>
+          </Ring>
+        </a>
+      )}
     </div>
   )
 }
@@ -264,7 +268,9 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
 
 function TodayCard(p: {
   s: ProgressSnapshot; title: string; isRest: boolean; noPlan: boolean; note: string; names: string[]
-  hasOpen: boolean; onStart: () => void; onCant: () => void
+  hasOpen: boolean; onStart: () => void
+  /** Undefined in "Just log" mode: no streak to excuse a day from. */
+  onCant?: () => void
 }) {
   const { s, isRest, noPlan, hasOpen } = p
   const done = s.workoutDoneToday
@@ -295,7 +301,7 @@ function TodayCard(p: {
           : noPlan ? <Button onClick={() => go('#/workouts')}>{t('action_set_up')}</Button>
           : !isRest ? <Button onClick={p.onStart}>{t('action_start')}</Button> : null}
       </div>
-      {!isRest && !hasOpen && !done && !excused && (
+      {p.onCant && !isRest && !hasOpen && !done && !excused && (
         <Button variant="text" class="home-cant" onClick={p.onCant}>{t('today_cant_train')}</Button>
       )}
     </Card>

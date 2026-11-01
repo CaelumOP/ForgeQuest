@@ -18,6 +18,8 @@ export type OnbState = {
   name: string
   bodyType: BodyType
   daysPerWeek: number
+  /** "Just log my training" picked on the plan step: no streaks, levels, badges or readiness. */
+  justLog: boolean
   weightKg: number
   unit: WeightUnit
   heightCm: number
@@ -44,7 +46,7 @@ export function planForDays(days: number, preset: EquipmentPreset): number {
 }
 
 export const initialState = (): OnbState => ({
-  step: 0, name: '', bodyType: 'MALE', daysPerWeek: DEFAULT_DAYS, weightKg: 75, unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
+  step: 0, name: '', bodyType: 'MALE', daysPerWeek: DEFAULT_DAYS, justLog: false, weightKg: 75, unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
   goalsTouched: false, goal: 'MAINTAIN', dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD',
   planIndex: planForDays(DEFAULT_DAYS, 'CALISTHENICS_PARK'), preset: 'CALISTHENICS_PARK',
 })
@@ -86,6 +88,7 @@ export function settingsPatch(s: OnbState, key: string | null): (c: Settings) =>
     bodyType: s.bodyType,
     equipment: encodePreset(s.preset),
     weeklyTargetOverride: s.daysPerWeek,
+    justLog: s.justLog,
     // a new person starts on the new suggestion, so the one-time "more accurate target" card never shows
     calorieV2Seen: true,
     apiKey: key ?? c.apiKey,

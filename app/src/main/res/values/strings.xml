@@ -99,6 +99,8 @@
     <string name="badge_first_workout_desc">Finish your first workout</string>
     <string name="badge_workouts_10_title">Ten in</string>
     <string name="badge_workouts_10_desc">Finish 10 workouts</string>
+    <string name="badge_workouts_25_title">Quarter century</string>
+    <string name="badge_workouts_25_desc">Finish 25 workouts</string>
     <string name="badge_workouts_50_title">Half century</string>
     <string name="badge_workouts_50_desc">Finish 50 workouts</string>
     <string name="badge_workouts_100_title">Hundred club</string>
@@ -182,7 +184,7 @@
     <string name="cd_edit_plan">Edit plan</string>
     <string name="workouts_set_up_plan">Set up a plan</string>
     <string name="recovery_title">Muscle recovery</string>
-    <string name="recovery_subtitle">Based on the last 48 hours</string>
+    <string name="recovery_subtitle">Based on your recent workouts</string>
     <string name="workouts_quick">Quick workout without a plan</string>
     <string name="day_cd_rest">%1$s, rest</string>
     <string name="day_cd_training">%1$s, training</string>
@@ -463,6 +465,8 @@
     <string name="unit_pounds">Pounds</string>
     <string name="profile_vibration">Vibration feedback</string>
     <string name="profile_vibration_hint">Ticks on steppers, a thud when a set is done</string>
+    <string name="just_log_title">Just log</string>
+    <string name="just_log_subtitle">Only track your training: no streaks, levels, badges or readiness.</string>
     <string name="profile_reminder">Workout reminder</string>
     <string name="profile_reminder_off">Off. A nudge on planned days if nothing is logged yet.</string>
     <string name="profile_reminder_on">On planned days at %1$s, only if nothing is logged yet.</string>
@@ -531,6 +535,8 @@
     <string name="onb_your_name">Your name</string>
     <string name="onb_plan_title">Pick a starting plan</string>
     <string name="onb_plan_body">You can edit it, ask the coach to change it, or import your own later.</string>
+    <string name="onb_mode_habit">Build a habit</string>
+    <string name="onb_mode_just_log">Just log my training</string>
     <string name="onb_start_empty">Start empty</string>
     <string name="onb_start_empty_desc">No plan yet. Add your own exercises day by day.</string>
     <string name="onb_optional">Optional</string>
@@ -1407,4 +1413,9 @@
     <string name="ai_key_needed_coach">A free Gemini key turns the coach on.</string>
     <string name="ai_key_needed_food">A free Gemini key turns the meal scanner on.</string>
     <string name="ai_key_needed_button">Add a free key</string>
+
+    <!-- Crash report prompt on Home -->
+    <string name="crash_prompt">ForgeQuest closed unexpectedly last time. Send a crash report?</string>
+    <string name="crash_send">Send</string>
+    <string name="crash_dismiss">Dismiss</string>
 </resources>

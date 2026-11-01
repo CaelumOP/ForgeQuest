@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.RadioButtonChecked
@@ -63,18 +64,18 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.MonitorWeight
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PanTool
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.ShowChart
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.SportsGymnastics
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.TrackChanges
-import androidx.compose.material.icons.rounded.Undo
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -285,6 +286,7 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
     fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = WeightUnit.fromCodeOrLabel(unit).code) } }
+    fun setJustLog(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(justLog = on) } }
     fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
@@ -611,11 +613,13 @@ fun ProfileScreen(nav: NavHostController) {
         }
     }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
-    DisposableEffect(Unit) { onDispose { vm.markBadgesSeen() } }
+    // In "Just log" mode badges aren't shown here, so they stay new for when it's turned off.
+    DisposableEffect(Unit) { onDispose { if (vm.snapshot.value?.settings?.justLog != true) vm.markBadgesSeen() } }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val settings = s.settings
     val configuredEq = settings.configuredEquipment
+    val justLog = settings.justLog
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
@@ -635,18 +639,21 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        // Rank
+        // Rank ("Just log" mode: the name and workout count only; XP keeps adding up out of sight)
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MiniRing(s.level.progress, c.blue, c.blueTrack, size = 64.dp, stroke = 4.dp) {
-                    Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
+                if (!justLog) {
+                    MiniRing(s.level.progress, c.blue, c.blueTrack, size = 64.dp, stroke = 4.dp) {
+                        Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.headlineSmall, color = c.blue, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(16.dp))
                 }
-                Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(settings.name.ifBlank { stringResource(R.string.profile_default_name) }, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                    Text(stringResource(R.string.profile_rank_line, s.level.rank.letter, s.level.rank.localTitle(), s.level.level), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                    if (!justLog) Text(stringResource(R.string.profile_rank_line, s.level.rank.letter, s.level.rank.localTitle(), s.level.level), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 }
             }
+            if (!justLog) {
             Spacer(Modifier.height(16.dp))
             ProgressLine(s.level.progress, c.blue, c.blueTrack, height = 8.dp)
             Spacer(Modifier.height(6.dp))
@@ -656,17 +663,20 @@ fun ProfileScreen(nav: NavHostController) {
                 stringResource(R.string.profile_xp_how, com.forgequest.app.domain.Xp.PER_WORKOUT, com.forgequest.app.domain.Xp.PER_SET, com.forgequest.app.domain.Xp.PER_PR, com.forgequest.app.domain.Xp.PER_BADGE),
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp),
             )
+            }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
                 com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", stringResource(R.string.tab_workouts), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
-                com.forgequest.app.ui.components.StatColumn("${s.streak.best}", stringResource(R.string.profile_best_streak), c.gold, Modifier.weight(1f))
-                com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", stringResource(R.string.profile_badges), c.purple, Modifier.weight(1f))
+                if (!justLog) {
+                    com.forgequest.app.ui.components.StatColumn("${s.streak.best}", stringResource(R.string.profile_best_streak), c.gold, Modifier.weight(1f))
+                    com.forgequest.app.ui.components.StatColumn("${s.badges.size}/${Badges.all.size}", stringResource(R.string.profile_badges), c.purple, Modifier.weight(1f))
+                }
             }
         }
         Spacer(Modifier.height(12.dp))
 
         // Badges
-        FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.BADGES) }) {
+        if (!justLog) FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.BADGES) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.profile_badges), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -685,7 +695,7 @@ fun ProfileScreen(nav: NavHostController) {
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        if (!justLog) Spacer(Modifier.height(12.dp))
 
         // Body weight stays out: it is logged often.
         // Body weight
@@ -709,7 +719,7 @@ fun ProfileScreen(nav: NavHostController) {
 
         // Shortcuts to the screens that used to sit among the settings
         Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ShortcutCard(Icons.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
+            ShortcutCard(Icons.AutoMirrored.Rounded.ShowChart, c.teal, c.tealTrack, stringResource(R.string.profile_progress_title), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }
             ShortcutCard(Icons.Rounded.FitnessCenter, c.blue, c.blueTrack, stringResource(R.string.profile_exercise_library), Modifier.weight(1f).fillMaxHeight()) { nav.navigate(com.forgequest.app.ui.Routes.LIBRARY) }
         }
         Spacer(Modifier.height(12.dp))
@@ -1033,7 +1043,7 @@ fun ProfileScreen(nav: NavHostController) {
                         minValueWidth = 84.dp,
                     )
                 }
-                Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                if (!justLog) Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
 
@@ -1045,12 +1055,23 @@ fun ProfileScreen(nav: NavHostController) {
                     configuredEq.isEmpty() -> stringResource(R.string.summary_equipment_unset)
                     else -> stringResource(R.string.equipment_custom)
                 },
-                if (settings.reminderHour < 0) stringResource(R.string.summary_reminder_off) else stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour)),
+                when {
+                    justLog -> stringResource(R.string.just_log_title)
+                    settings.reminderHour < 0 -> stringResource(R.string.summary_reminder_off)
+                    else -> stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour))
+                },
             ),
             open = "training" in openGroups, onToggle = { toggleGroup("training") },
         ) {
             EquipmentCard(activePreset, configuredEq, onPreset = { vm.setEquipment(it.encode()) }, onItem = { vm.toggleEquipmentItem(it, configuredEq) })
             FitCard {
+                SwitchHeader(
+                    Icons.Rounded.Checklist, c.teal, c.tealTrack, stringResource(R.string.just_log_title),
+                    stringResource(R.string.just_log_subtitle), justLog,
+                ) { vm.setJustLog(it) }
+            }
+            // Workout reminders are part of the consistency side, so "Just log" mode puts them away (the hour is kept).
+            if (!justLog) FitCard {
                 SwitchHeader(
                     Icons.Rounded.Notifications, c.gold, c.goldTrack, stringResource(R.string.profile_reminder),
                     if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
@@ -1136,7 +1157,7 @@ fun ProfileScreen(nav: NavHostController) {
             }
             var pasteOpen by remember { mutableStateOf(false) }
             val bridgeScope = rememberCoroutineScope()
-            val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+            val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
             FitCard {
                 // Turning it on explains what it is first: a stray tap on the title used to start a Google sign-in out of nowhere.
                 var explainBridge by remember { mutableStateOf(false) }
@@ -1168,7 +1189,7 @@ fun ProfileScreen(nav: NavHostController) {
                         TonalPill(stringResource(R.string.bridge_sync), onClick = { vm.syncBridge() })
                         TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
                             val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                            clipboard.copy(prompt)
                             context.toast(context.getString(R.string.bridge_prompt_copied))
                         })
                     }
@@ -1176,7 +1197,7 @@ fun ProfileScreen(nav: NavHostController) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TonalPill(stringResource(R.string.bridge_copy_data), onClick = {
                             bridgeScope.launch {
-                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(vm.bridgeData()))
+                                clipboard.copy(vm.bridgeData())
                                 context.toast(context.getString(R.string.bridge_data_copied))
                             }
                         }, tint = c.textSecondary)
@@ -1195,7 +1216,7 @@ fun ProfileScreen(nav: NavHostController) {
                             val hand = if (settings.handLengthCm > 0f) "MY HAND: length ${settings.handLengthCm} cm, palm width ${settings.palmWidthCm} cm." else ""
                             val prompt = context.resources.openRawResource(R.raw.food_gem_prompt).bufferedReader().use { it.readText() }
                                 .replace(Regex("MY HAND:[^\n]*\n"), if (hand.isBlank()) "" else hand + " When my hand is in the photo, use it as an exact ruler.\n")
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(prompt))
+                            clipboard.copy(prompt)
                             context.toast(context.getString(R.string.bridge_prompt_copied))
                         })
                     }
@@ -1296,7 +1317,7 @@ fun ProfileScreen(nav: NavHostController) {
                     PillButton(stringResource(R.string.profile_save_file), onClick = { saveLauncher.launch(vm.app.backup.exportFileName()) }, icon = Icons.Rounded.SaveAlt)
                     TonalPill(stringResource(R.string.profile_share_file), onClick = vm::exportData, icon = Icons.Rounded.Share)
                     TonalPill(stringResource(R.string.profile_import), onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, icon = Icons.Rounded.Download)
-                    if (safetyCopies.isNotEmpty()) TonalPill(stringResource(R.string.profile_undo_restore), onClick = vm::previewUndoRestore, icon = Icons.Rounded.Undo)
+                    if (safetyCopies.isNotEmpty()) TonalPill(stringResource(R.string.profile_undo_restore), onClick = vm::previewUndoRestore, icon = Icons.AutoMirrored.Rounded.Undo)
                 }
             }
             FitCard {
@@ -1355,7 +1376,7 @@ fun ProfileScreen(nav: NavHostController) {
                 Spacer(Modifier.height(10.dp))
                 TonalPill(stringResource(R.string.profile_hemo_youtube), onClick = {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/@HemoCalisthenics")))
-                }, icon = Icons.Rounded.OpenInNew)
+                }, icon = Icons.AutoMirrored.Rounded.OpenInNew)
             }
         }
         val latest by vm.update.collectAsState()

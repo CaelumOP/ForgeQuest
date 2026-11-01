@@ -128,6 +128,8 @@
     <string name="badge_first_workout_desc">أنهِ تمرينك الأول</string>
     <string name="badge_workouts_10_title">عشرة تمارين</string>
     <string name="badge_workouts_10_desc">أنهِ 10 تمارين</string>
+    <string name="badge_workouts_25_title">خمسة وعشرون تمرينًا</string>
+    <string name="badge_workouts_25_desc">أنهِ 25 تمرينًا</string>
     <string name="badge_workouts_50_title">خمسون تمرينًا</string>
     <string name="badge_workouts_50_desc">أنهِ 50 تمرينًا</string>
     <string name="badge_workouts_100_title">مئة تمرين</string>
@@ -215,7 +217,7 @@
     <string name="cd_edit_plan">تعديل الخطة</string>
     <string name="workouts_set_up_plan">إعداد خطة</string>
     <string name="recovery_title">تعافي العضلات</string>
-    <string name="recovery_subtitle">بناءً على آخر 48 ساعة</string>
+    <string name="recovery_subtitle">بناءً على تمارينك الأخيرة</string>
     <string name="workouts_quick">تمرين سريع بدون خطة</string>
     <string name="day_cd_rest">%1$s، راحة</string>
     <string name="day_cd_training">%1$s، تمرين</string>
@@ -532,6 +534,8 @@
     <string name="unit_pounds">رطل</string>
     <string name="profile_vibration">الاهتزاز</string>
     <string name="profile_vibration_hint">نقرات خفيفة مع الأزرار، واهتزاز عند إنهاء كل مجموعة</string>
+    <string name="just_log_title">التسجيل فقط</string>
+    <string name="just_log_subtitle">تتبُّع تمارينك فحسب، دون سلاسل أو مستويات أو شارات أو جاهزية.</string>
     <string name="profile_reminder">تذكير التمرين</string>
     <string name="profile_reminder_off">متوقف. تنبيه في أيام التمرين إن لم تسجّل شيئًا.</string>
     <string name="profile_reminder_on">في أيام التمرين الساعة %1$s، إن لم تسجّل شيئًا بعد.</string>
@@ -600,6 +604,8 @@
     <string name="onb_your_name">اسمك</string>
     <string name="onb_plan_title">اختر خطة البداية</string>
     <string name="onb_plan_body">يمكنك تعديلها، أو طلب تغييرها من المدرب، أو استيراد خطتك لاحقًا.</string>
+    <string name="onb_mode_habit">بناء عادة</string>
+    <string name="onb_mode_just_log">تسجيل تماريني فقط</string>
     <string name="onb_start_empty">البدء دون خطة</string>
     <string name="onb_start_empty_desc">لا خطة بعد؛ أضف تمارينك يومًا بيوم.</string>
     <string name="onb_optional">اختياري</string>
@@ -1579,4 +1585,9 @@
     <string name="ai_key_needed_coach">مفتاح Gemini المجاني يشغّل مدربك الذكي.</string>
     <string name="ai_key_needed_food">مفتاح Gemini المجاني يشغّل ماسح الوجبات.</string>
     <string name="ai_key_needed_button">أضف مفتاحًا مجانيًا</string>
+
+    <!-- Crash report prompt on Home -->
+    <string name="crash_prompt">أُغلق ForgeQuest على نحوٍ غير متوقع في المرة السابقة. أتودّ إرسال تقرير بالعطل؟</string>
+    <string name="crash_send">إرسال</string>
+    <string name="crash_dismiss">تجاهل</string>
 </resources>

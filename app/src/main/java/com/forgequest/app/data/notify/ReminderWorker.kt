@@ -36,7 +36,8 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
             Dates.today(), snap.plan?.trainingDays ?: emptySet(), workoutDays, snap.dayTags.keys,
             workoutDays.minOrNull() ?: Dates.today(),
         )
-        val remind = Nudges.shouldRemind(planned, snap.workoutDoneToday, snap.excusedToday != null, missed)
+        // "Just log" mode has no consistency side: stay quiet, but keep the booking so turning it off brings reminders back.
+        val remind = !settings.justLog && Nudges.shouldRemind(planned, snap.workoutDoneToday, snap.excusedToday != null, missed)
         if (remind && app.workouts.openSessionNow() == null) {
             val count = today!!.items.map { it.exerciseId }.distinct().size
             app.notifier.showReminder(app.str(R.string.notif_reminder_title, today.day.title), app.plural(R.plurals.notif_reminder_body, count, count))

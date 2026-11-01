@@ -124,6 +124,18 @@ class XpTest {
     fun totalAddsAllSources() {
         assertEquals(50 + 20 + 25 + 100, Xp.total(workouts = 1, doneSets = 10, prs = 1, badges = 1))
     }
+
+    @Test
+    fun setXpIsCappedAt25SetsFromTheCutOff() {
+        val after = Xp.SET_CAP_FROM_DAY
+        val before = Xp.SET_CAP_FROM_DAY - 1
+        assertEquals(25 * Xp.PER_SET, Xp.setsForXp(30, after) * Xp.PER_SET)
+        assertEquals(30 * Xp.PER_SET, Xp.setsForXp(30, before) * Xp.PER_SET)
+        assertEquals(10, Xp.setsForXp(10, after))
+        assertEquals(10, Xp.setsForXp(10, before))
+        assertEquals(25 + 30 + 10, Xp.cappedSets(mapOf(1L to 30, 2L to 30, 3L to 10), mapOf(1L to after, 2L to before, 3L to after)))
+        assertEquals(java.time.LocalDate.of(2026, 11, 1).toEpochDay(), Xp.SET_CAP_FROM_DAY)
+    }
 }
 
 class RecoveryTest {
@@ -140,7 +152,7 @@ class RecoveryTest {
     @Test
     fun oldSessionsAreFullyRecovered() {
         val now = 100 * hour
-        assertTrue(Recovery.compute(listOf(Triple(Muscle.QUADS, now - 49 * hour, 1f)), now).isEmpty())
+        assertTrue(Recovery.compute(listOf(Triple(Muscle.QUADS, now - 61 * hour, 1f)), now).isEmpty())
     }
 
     @Test
@@ -159,6 +171,29 @@ class RecoveryTest {
             now,
         )
         assertEquals(1f - 2f / 48f, r.getValue(Muscle.BICEPS).fatigue, 0.001f)
+    }
+
+    /** Four hard sets on an exercise that only works [muscle], finished at hour 0; its fatigue at [afterHours]. */
+    private fun fourHardSets(muscle: Muscle, afterHours: Long): Float? {
+        val ex = ExerciseEntity("ex", "Ex", ExerciseKind.REPS, listOf(muscle), emptyList())
+        val sets = (0 until 4).map {
+            SetEntity(
+                sessionId = 1, exerciseId = "ex", itemPosition = 0, block = "Main", circuit = false, setIndex = it,
+                targetLabel = "", reps = 10, done = true, effort = "HARD",
+            )
+        }
+        val hits = Recovery.sessionHits(sets, mapOf("ex" to ex), mapOf(1L to 0L))
+        return Recovery.compute(hits, afterHours * hour)[muscle]?.fatigue
+    }
+
+    @Test
+    fun recoveryWindowDependsOnTheMuscle() {
+        for ((muscle, window) in listOf(Muscle.QUADS to 60L, Muscle.BICEPS to 48L, Muscle.ABS to 36L)) {
+            assertEquals(window.toFloat(), Recovery.windowHours(muscle))
+            assertTrue(muscle.name, (fourHardSets(muscle, window - 1) ?: 0f) > 0f)
+            assertEquals(muscle.name, null, fourHardSets(muscle, window))
+        }
+        assertEquals(48f, Recovery.windowHours(Muscle.ADDUCTORS))
     }
 
     @Test
@@ -202,6 +237,45 @@ class BadgesTest {
         assertTrue("str_pull_10" in unlocked)
         assertTrue("skill_dead_hang" in unlocked)
         assertFalse("workouts_50" in unlocked)
+    }
+
+    private fun unlocked(stats: BadgeStats) = Badges.all.filter { it.unlocked(stats) }.map { it.id }.toSet()
+
+    @Test
+    fun pullUpRepBadgesCountChinUpsAndWeightedVariants() {
+        for (id in listOf("pull_up", "chin_up", "weighted_pull_up", "weighted_chin_up")) {
+            val got = unlocked(BadgeStats(bestReps = mapOf(id to 10)))
+            assertTrue(id, "str_pull_1" in got && "str_pull_10" in got)
+        }
+        assertFalse("str_pull_1" in unlocked(BadgeStats(bestReps = mapOf("australian_pull_up" to 20))))
+    }
+
+    @Test
+    fun weightedPullUpBadgeCountsAddedWeightOnAnyPullUp() {
+        for (id in listOf("weighted_pull_up", "weighted_chin_up", "pull_up", "chin_up")) {
+            assertTrue(id, "str_weighted_pull_20" in unlocked(BadgeStats(bestWeight = mapOf(id to 20f))))
+        }
+        assertFalse("str_weighted_pull_20" in unlocked(BadgeStats(bestWeight = mapOf("chin_up" to 19f))))
+    }
+
+    @Test
+    fun dipBadgesCountBothDips() {
+        assertTrue("str_dip_15" in unlocked(BadgeStats(bestReps = mapOf("weighted_dip" to 15))))
+        assertTrue("str_dip_15" in unlocked(BadgeStats(bestReps = mapOf("dip" to 15))))
+        assertTrue("str_weighted_dip_30" in unlocked(BadgeStats(bestWeight = mapOf("dip" to 30f))))
+        assertTrue("str_weighted_dip_30" in unlocked(BadgeStats(bestWeight = mapOf("weighted_dip" to 30f))))
+        assertFalse("str_dip_15" in unlocked(BadgeStats(bestReps = mapOf("bent_leg_bench_dip" to 30))))
+    }
+
+    @Test
+    fun twentyFiveWorkoutsBadgeSitsBetweenTenAndFifty() {
+        assertFalse("workouts_25" in unlocked(BadgeStats(workouts = 24)))
+        val got = unlocked(BadgeStats(workouts = 25))
+        assertTrue("workouts_25" in got && "workouts_10" in got && "workouts_50" !in got)
+        val ids = Badges.all.map { it.id }
+        assertEquals(ids.indexOf("workouts_10") + 1, ids.indexOf("workouts_25"))
+        assertEquals(ids.indexOf("workouts_25") + 1, ids.indexOf("workouts_50"))
+        assertEquals(10 to 25, Badges.progress("workouts_25", BadgeStats(workouts = 10)))
     }
 
     @Test

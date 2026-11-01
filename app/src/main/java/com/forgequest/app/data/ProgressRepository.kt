@@ -131,7 +131,7 @@ class ProgressRepository(
 
         val now = System.currentTimeMillis()
         val recentFinishedAt = r.sessions
-            .mapNotNull { s -> s.finishedAt?.takeIf { now - it in 0L..(49L * 3_600_000L) }?.let { s.id to it } }
+            .mapNotNull { s -> s.finishedAt?.takeIf { now - it in 0L..((Recovery.MAX_WINDOW_HOURS.toLong() + 1) * 3_600_000L) }?.let { s.id to it } }
             .toMap()
         val recentSets = if (recentFinishedAt.isEmpty()) emptyList() else r.sets.filter { it.sessionId in recentFinishedAt }
         val hits = Recovery.sessionHits(recentSets, exercises, recentFinishedAt)
@@ -144,7 +144,12 @@ class ProgressRepository(
 
         val stats = statsFor(r, streak.best, byDay, settings.proteinGoal)
         val level = Xp.levelFor(
-            Xp.total(r.sessions.size, r.sets.size, r.sets.count { it.isPr }, r.badges.size)
+            Xp.total(
+                r.sessions.size,
+                Xp.cappedSets(r.sets.groupingBy { it.sessionId }.eachCount(), r.sessions.associate { it.id to it.epochDay }),
+                r.sets.count { it.isPr },
+                r.badges.size,
+            )
         )
         return ProgressSnapshot(
             settings, plan, streak, level, recovery, r.badges, todayNutrition, byDay, weights,

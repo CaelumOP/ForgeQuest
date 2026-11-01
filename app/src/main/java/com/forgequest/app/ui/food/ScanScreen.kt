@@ -92,11 +92,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -271,7 +270,7 @@ class ScanViewModel(val app: AppContainer) : ViewModel() {
             }
             val badges = app.progress.evaluateBadges()
             app.haptics.celebrate()
-            loggedSummary = app.str(R.string.scan_logged_summary, name, kcal, protein.roundToInt()) + if (badges.isNotEmpty()) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
+            loggedSummary = app.str(R.string.scan_logged_summary, name, kcal, protein.roundToInt()) + if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
             logged.value = true
         }
     }
@@ -294,11 +293,11 @@ fun ScanScreen(nav: NavHostController) {
     BackHandler { if (state is ScanState.Camera || (state as? ScanState.Result)?.gemini != null) nav.popBackStack() else vm.retake() }
 
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
     val askOutside: (String) -> Unit = { photo ->
         vm.askOutside(photo) { uri, prompt ->
             // Some AI apps drop the text that comes with a shared photo, so the prompt is on the clipboard too.
-            clipboard.setText(AnnotatedString(prompt))
+            clipboard.copy(prompt)
             val send = Intent(Intent.ACTION_SEND).setType("image/jpeg")
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .putExtra(Intent.EXTRA_TEXT, prompt)
@@ -310,7 +309,7 @@ fun ScanScreen(nav: NavHostController) {
     // The clipboard is only readable while the window has focus, so check when focus comes back from the other app.
     val windowInfo = LocalWindowInfo.current
     LaunchedEffect(Unit) {
-        snapshotFlow { windowInfo.isWindowFocused }.collect { focused -> if (focused) vm.onReturn(clipboard.getText()?.text) }
+        snapshotFlow { windowInfo.isWindowFocused }.collect { focused -> if (focused) vm.onReturn(clipboard.read()) }
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -318,7 +317,7 @@ fun ScanScreen(nav: NavHostController) {
             ScanState.Camera -> Box(Modifier.fillMaxSize()) {
                 CameraView(
                     onCaptured = vm::analyzeBytes, onPicked = vm::analyzeUri, onClose = { nav.popBackStack() },
-                    onPaste = { vm.paste(clipboard.getText()?.text) { res -> context.toast(context.getString(res)) } },
+                    onPaste = { clipboard.readThen { text -> vm.paste(text) { res -> context.toast(context.getString(res)) } } },
                 )
                 // No key yet: say so up front instead of failing after the photo.
                 if (!vm.hasKey) {

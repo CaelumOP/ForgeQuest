@@ -46,6 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import com.forgequest.app.ui.components.rememberFullSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -169,6 +170,8 @@ fun HomeScreen(nav: NavHostController) {
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
 
     val today = s.plan?.day(Dates.todayDayOfWeek())
+    // "Just log" mode: no streak, levels, badges or readiness on Home; the data stays and comes back when it's turned off.
+    val justLog = s.settings.justLog
     // On a training day with the workout still to do (or one in progress), today's card leads the page.
     val startOnTop = open != null || (today?.day?.isRest == false && !s.workoutDoneToday && s.excusedToday == null)
     val todayCard: @Composable () -> Unit = {
@@ -179,6 +182,7 @@ fun HomeScreen(nav: NavHostController) {
             doneToday = s.workoutDoneToday,
             excused = s.excusedToday,
             onCantTrain = { tagDay = Dates.today() },
+            showCantTrain = !justLog,
             onStart = {
                 scope.launch {
                     vm.startToday(today?.takeIf { !it.day.isRest })
@@ -204,10 +208,11 @@ fun HomeScreen(nav: NavHostController) {
     ) {
         // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
         Box(Modifier.fillMaxWidth()) {
-            Header(s, onRankClick = { nav.navigate(Routes.PROGRESS) })
+            Header(s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROGRESS) })
             UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
         }
         whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
+        CrashCard(Modifier.padding(top = 8.dp))
         Spacer(Modifier.height(4.dp))
         NutritionRings(s)
         Spacer(Modifier.height(16.dp))
@@ -221,7 +226,7 @@ fun HomeScreen(nav: NavHostController) {
         CalorieCardView(s, health, vm.app.settings)
 
         val unseen = s.badges.filter { !it.seen }.mapNotNull { Badges.byId[it.id] }
-        if (unseen.isNotEmpty()) {
+        if (unseen.isNotEmpty() && !justLog) {
             FitCard(onClick = { nav.goToTab(Routes.PROFILE) }, padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
@@ -235,7 +240,7 @@ fun HomeScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        ReadinessCard(
+        if (!justLog) ReadinessCard(
             health, enabled = s.settings.healthEnabled, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") },
             refreshing = refreshing, note = refreshNote,
             onRefresh = vm.refreshWatch::tap, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
@@ -268,8 +273,10 @@ fun HomeScreen(nav: NavHostController) {
             TargetNudge.offer(finishedDays, weeklyTarget, minOf(finishedDays.minOrNull() ?: todayDay, todayDay), todayDay)
                 ?.takeIf { s.settings.onboarded && TargetNudge.show(s.settings.targetNudgeAnswered, it) }
         }
-        StreakCard(s.streak, onDayClick = { day -> tagDay = day }, nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge)
-        Spacer(Modifier.height(12.dp))
+        if (!justLog) {
+            StreakCard(s.streak, onDayClick = { day -> tagDay = day }, nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge)
+            Spacer(Modifier.height(12.dp))
+        }
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
         Spacer(Modifier.height(12.dp))
 
@@ -281,7 +288,7 @@ fun HomeScreen(nav: NavHostController) {
     if (weightSheet) {
         val unit = s.settings.weightUnit
         var kg by remember { mutableFloatStateOf(s.latestWeight ?: 75f) }
-        ModalBottomSheet(onDismissRequest = { weightSheet = false }, containerColor = c.card) {
+        ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { weightSheet = false }, containerColor = c.card) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.weight_log_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(20.dp))
@@ -304,7 +311,7 @@ fun HomeScreen(nav: NavHostController) {
 }
 
 @Composable
-private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
+private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit) {
     val c = Fit.colors
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
@@ -325,7 +332,7 @@ private fun Header(s: ProgressSnapshot, onRankClick: () -> Unit) {
             Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
         // The rank letter alone meant nothing to new people; the level under it says what the ring is.
-        Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (showRank) Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
                 Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
             }
@@ -597,6 +604,7 @@ private fun TodayCard(
     doneToday: Boolean,
     excused: DayTag?,
     onCantTrain: () -> Unit,
+    showCantTrain: Boolean,
     onStart: () -> Unit,
     onOpenPlan: () -> Unit,
     onTrainAnyway: () -> Unit = {},
@@ -664,7 +672,7 @@ private fun TodayCard(
                 Text(stringResource(R.string.today_train_again), color = c.teal, style = MaterialTheme.typography.labelLarge)
             }
         }
-        if (!isRest && !hasOpenSession && !doneToday && excused == null) {
+        if (showCantTrain && !isRest && !hasOpenSession && !doneToday && excused == null) {
             TextButton(onClick = onCantTrain, modifier = Modifier.padding(top = 4.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 8.dp)) {
                 Text(stringResource(R.string.today_cant_train), color = c.textSecondary, style = MaterialTheme.typography.labelLarge)
             }

@@ -116,6 +116,8 @@ data class Settings(
     val calorieV2Seen: Boolean = false,
     /** The one-time "make N your weekly target?" card on Home was answered (either way). */
     val targetNudgeAnswered: Boolean = false,
+    /** "Just log" mode: hides streaks, levels, badges, readiness and consistency reminders. Nothing is deleted; XP still accrues. */
+    val justLog: Boolean = false,
 ) {
     val weightUnit: WeightUnit
         get() = WeightUnit.fromCodeOrLabel(unit)
@@ -185,6 +187,7 @@ class SettingsRepository(private val context: Context) {
         val calorieSnoozeUntil = longPreferencesKey("calorie_snooze_until")
         val calorieV2Seen = booleanPreferencesKey("calorie_v2_seen")
         val targetNudgeAnswered = booleanPreferencesKey("target_nudge_answered")
+        val justLog = booleanPreferencesKey("just_log")
     }
 
     /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
@@ -253,6 +256,7 @@ class SettingsRepository(private val context: Context) {
             calorieSnoozeUntil = this[K.calorieSnoozeUntil] ?: 0,
             calorieV2Seen = this[K.calorieV2Seen] ?: false,
             targetNudgeAnswered = this[K.targetNudgeAnswered] ?: false,
+            justLog = this[K.justLog] ?: false,
         )
     }
 
@@ -313,6 +317,7 @@ class SettingsRepository(private val context: Context) {
             p[K.calorieSnoozeUntil] = s.calorieSnoozeUntil
             p[K.calorieV2Seen] = s.calorieV2Seen
             p[K.targetNudgeAnswered] = s.targetNudgeAnswered
+            p[K.justLog] = s.justLog
         }
     }
 

@@ -19,6 +19,8 @@ export interface BackupSettings {
   carbsGoal: number; proteinPerKg: number; fatSharePct: number; equipment: string; bodyFatPct: number;
   nutritionGoal: string; goalSetDay: number; debriefEnabled: boolean;
   dayActivity: string; cutPace: string; gainPace: string; targetWeightKg: number; targetSetDay: number;
+  /** Added in 2.17.0; older backups have none and restore as false. */
+  justLog: boolean;
 }
 
 export const DEFAULT_BACKUP_SETTINGS: Readonly<BackupSettings> = Object.freeze({
@@ -28,6 +30,7 @@ export const DEFAULT_BACKUP_SETTINGS: Readonly<BackupSettings> = Object.freeze({
   carbsGoal: 250, proteinPerKg: 1.8, fatSharePct: 25, equipment: '', bodyFatPct: 0,
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true,
   dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
+  justLog: false,
 });
 
 export interface BackupFile {

@@ -389,6 +389,10 @@ img.step-glyph { border-radius: 5px; }
 /* Dev screens (#/check). */
 .page { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 16px 24px; padding-inline: 16px; }
 .muted { color: var(--text-2); margin: 0; }
+/* Screen error card (ErrorBoundary.tsx) and the crash report prompt (CrashPrompt.tsx). */
+.error-card-title { margin: 0 0 6px; font-size: 17px; font-weight: 600; }
+.crash-prompt { padding-inline: max(16px, env(safe-area-inset-left), env(safe-area-inset-right)); margin-block-end: 8px; }
+.error-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 16px; }
 .page label { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 420px; }
 
 /* Pushed screens slide in from the end edge; rows fade up when they are inserted. */

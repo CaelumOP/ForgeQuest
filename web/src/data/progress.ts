@@ -11,7 +11,7 @@ import { todayEpochDay } from '../domain/dates';
 import type { SetEntity } from '../domain/entities';
 import type { Muscle } from '../domain/muscle';
 import {
-  computeRecovery, computeStreak, dayTagMap, fullTarget, levelFor, sessionHits, totalXp, weeksToLock,
+  cappedSets, computeRecovery, MAX_RECOVERY_WINDOW_HOURS, computeStreak, dayTagMap, fullTarget, levelFor, sessionHits, totalXp, weeksToLock,
   type DayTag, type LevelInfo, type MuscleRecovery, type WeeklyStreak,
 } from '../domain/progress';
 
@@ -73,7 +73,7 @@ export async function getProgressSnapshot(now = Date.now(), save = true): Promis
   const streak = computeStreak(workoutDays, planned, settings.weeklyTargetOverride, start, today, new Set(dayTags.keys()), locked);
 
   const recentFinishedAt = new Map<number, number>();
-  for (const s of sessions) if (now - s.finishedAt! >= 0 && now - s.finishedAt! <= 49 * 3_600_000) recentFinishedAt.set(s.id!, s.finishedAt!);
+  for (const s of sessions) if (now - s.finishedAt! >= 0 && now - s.finishedAt! <= (MAX_RECOVERY_WINDOW_HOURS + 1) * 3_600_000) recentFinishedAt.set(s.id!, s.finishedAt!);
   const recentSets = recentFinishedAt.size ? sets.filter((s) => recentFinishedAt.has(s.sessionId)) : [];
   const recovery = computeRecovery(sessionHits(recentSets as SetEntity[], exercises, recentFinishedAt), now);
 
@@ -87,7 +87,10 @@ export async function getProgressSnapshot(now = Date.now(), save = true): Promis
   const todayNutrition = byDayMap.get(today) ?? { epochDay: today, kcal: 0, protein: 0, carbs: 0 };
 
   const stats = statsFor(sets, sessions.length, streak.best, nutritionByDay, settings.proteinGoal, mealCount, scannedCount);
-  const level = levelFor(totalXp(sessions.length, sets.length, sets.filter((s) => s.isPr).length, badges.length));
+  const setsBySession = new Map<number, number>();
+  for (const s of sets) setsBySession.set(s.sessionId, (setsBySession.get(s.sessionId) ?? 0) + 1);
+  const xpSets = cappedSets(setsBySession, new Map(sessions.map((s) => [s.id!, s.epochDay])));
+  const level = levelFor(totalXp(sessions.length, xpSets, sets.filter((s) => s.isPr).length, badges.length));
   return {
     settings, plan, streak, level, recovery, badges, today: todayNutrition, nutritionByDay, weights, sessions,
     doneSets: sets, exercises, stats, dayTags,

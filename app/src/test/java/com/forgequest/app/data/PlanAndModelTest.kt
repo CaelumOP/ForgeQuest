@@ -83,6 +83,18 @@ class StarterPlanTest {
     fun catalogIdsAreUnique() {
         assertEquals(ExerciseCatalog.all.size, ExerciseCatalog.all.map { it.id }.toSet().size)
     }
+
+    @Test
+    fun everyMuscleGroupHasAtLeastTwoPrimaryExercises() {
+        com.forgequest.app.domain.Muscle.entries.forEach { m ->
+            assertTrue("$m has fewer than 2 primary exercises", ExerciseCatalog.all.count { m in it.primary } >= 2)
+        }
+    }
+
+    @Test
+    fun everyCatalogExerciseHasAnArabicName() {
+        ExerciseCatalog.all.forEach { assertTrue("${it.id} has no Arabic name", !com.forgequest.app.data.seed.ExerciseNamesAr.byId[it.id].isNullOrBlank()) }
+    }
 }
 
 class ModelPickTest {

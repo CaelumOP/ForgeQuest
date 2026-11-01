@@ -9,12 +9,11 @@ export type MuscleExercise = { exercise: ExerciseEntity; main: boolean; tier: Ti
 /** The plan's exercises first, then the rest; `hidden` = how many the equipment filter left out. */
 export type MuscleExerciseList = { inPlan: MuscleExercise[]; others: MuscleExercise[]; hidden: number }
 
-/** Muscles with one built-in exercise show with a bigger neighbour, so no list opens nearly empty. */
-export const COMPANIONS: Partial<Record<Muscle, Muscle[]>> = {
-  OBLIQUES: ['ABS'],
-  ADDUCTORS: ['QUADS', 'GLUTES'],
-  TIBIALIS: ['CALVES'],
-}
+/**
+ * Muscles with too few built-in exercises show with a bigger neighbour, so no list opens nearly empty. Empty since
+ * 2.17.0 added exercises for obliques, adductors and tibialis; kept for future muscles.
+ */
+export const COMPANIONS: Partial<Record<Muscle, Muscle[]>> = {}
 
 const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
