@@ -2,6 +2,8 @@
 
 Android app (Kotlin/Compose) in `app/`, the reference. Web PWA port in `web/` (see `web/CLAUDE.md`). English and formal Arabic, kept in sync.
 
+UI on both platforms follows `DESIGN.md` (Soft Coach); see the `forgequest-design` skill.
+
 ## Never delete or rename without asking the user
 These are used from outside the code, so nothing in the repo "references" them, and a dead-code check will flag them anyway:
 - `apk/version.json` and the release APK naming (`ForgeQuest-vX.Y.Z.apk`): installed apps read them to find updates.
