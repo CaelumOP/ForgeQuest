@@ -1,0 +1,12 @@
+{
+  "error_screen_title": "Something went wrong on this screen.",
+  "error_screen_body": "Your data is safe. Go back, or reload the app.",
+  "error_back": "Back",
+  "error_reload": "Reload",
+  "error_toast": "Something went wrong",
+  "crash_prompt_title": "ForgeQuest hit an error last time.",
+  "crash_prompt_body": "Sending the report helps fix it. It has no personal data.",
+  "crash_send": "Send crash report",
+  "crash_dismiss": "Dismiss",
+  "crash_copied": "Crash report copied"
+}

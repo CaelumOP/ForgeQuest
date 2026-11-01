@@ -1,0 +1,12 @@
+{
+  "error_screen_title": "حدث خطأ في هذه الشاشة.",
+  "error_screen_body": "بياناتك محفوظة. ارجع، أو أعد تحميل التطبيق.",
+  "error_back": "رجوع",
+  "error_reload": "إعادة التحميل",
+  "error_toast": "حدث خطأ ما",
+  "crash_prompt_title": "واجه ForgeQuest خطأً في المرة السابقة.",
+  "crash_prompt_body": "يساعد إرسال التقرير على إصلاح الخطأ، ولا يتضمن أي بيانات شخصية.",
+  "crash_send": "إرسال تقرير الخطأ",
+  "crash_dismiss": "تجاهل",
+  "crash_copied": "نُسخ تقرير الخطأ"
+}

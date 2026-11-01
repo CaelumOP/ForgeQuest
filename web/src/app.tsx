@@ -9,6 +9,7 @@ import { goBack, useRoute } from './ui/nav'
 import { NotFoundScreen } from './ui/screens'
 import { TabBar } from './ui/TabBar'
 import { BackupPill } from './ui/BackupPill'
+import { ScreenBoundary } from './ui/ErrorBoundary'
 import { UpdatePill } from './ui/UpdatePill'
 import { TopBar } from './ui/TopBar'
 import { OnboardingScreen } from './ui/onboarding/OnboardingScreen'
@@ -33,7 +34,7 @@ export function App() {
     return (
       <div class="shell">
         <TopBar title={t(route.title)} />
-        <main class="scroll"><route.Screen /></main>
+        <main class="scroll"><ScreenBoundary key={path}><route.Screen /></ScreenBoundary></main>
         <UpdatePill />
         <BackupPill />
         <TabBar route={path} />
@@ -43,11 +44,11 @@ export function App() {
     )
   }
   // "bare" screens (live workout, camera) draw their own header.
-  if (route?.bare) return <div class="shell"><route.Screen param={param} /><ToastHost /></div>
+  if (route?.bare) return <div class="shell"><ScreenBoundary key={path}><route.Screen param={param} /></ScreenBoundary><ToastHost /></div>
   return (
     <div class="shell">
       <TopBar title={t(route?.title ?? 'screen_not_found')} onBack={goBack} />
-      <div class="scroll scroll-push" key={path}>{route ? <route.Screen param={param} /> : <NotFoundScreen />}</div>
+      <div class="scroll scroll-push" key={path}>{route ? <ScreenBoundary key={path}><route.Screen param={param} /></ScreenBoundary> : <NotFoundScreen />}</div>
       <ToastHost />
     </div>
   )
