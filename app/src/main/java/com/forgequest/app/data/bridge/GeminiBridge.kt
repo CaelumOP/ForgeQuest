@@ -88,7 +88,8 @@ class GeminiBridge(
             chat.insert(ChatEntity(role = "coach", text = context.getString(R.string.bridge_week_title) + "\n\n" + reply.week, kind = "gemini", createdAt = now))
         }
         reply.planJson?.let { json ->
-            suspendRunCatching { coach.parsePlanText("```json\n$json\n```") }.getOrNull()?.let { plan ->
+            // The reply is already in the app's plan shape; only ask the AI to convert it when it doesn't parse.
+            (PlanJson.parsePasted(json) ?: suspendRunCatching { coach.parsePlanText("```json\n$json\n```") }.getOrNull())?.let { plan ->
                 chat.insert(
                     ChatEntity(role = "coach", text = context.getString(R.string.bridge_plan_card), planJson = PlanJson.encode(plan), createdAt = now + 1)
                 )

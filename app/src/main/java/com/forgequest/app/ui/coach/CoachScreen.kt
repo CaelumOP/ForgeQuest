@@ -47,6 +47,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.rounded.Key
@@ -224,35 +225,36 @@ fun CoachScreen(nav: NavHostController) {
                         )
                     }
                     androidx.compose.material3.HorizontalDivider(color = c.divider)
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    val personal by com.forgequest.app.PersonalTools.flow(ctx).collectAsState()
-                    if (personal == true) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.ask_gemini)) }, onClick = {
-                            menu = false
-                            val question = input
-                            val arabic = ctx.resources.configuration.locales[0].language == "ar"
-                            scope.launch {
-                                val data = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { ctx.container.bridge.dataText() }
-                                val opened = com.forgequest.app.data.bridge.AskGemini.send(ctx, com.forgequest.app.data.bridge.AskGemini.prompt(data, question, arabic))
-                                ctx.toast(ctx.getString(if (opened) R.string.ask_gemini_sent else R.string.ask_gemini_copied))
-                            }
-                        })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.paste_gemini_reply)) }, onClick = {
-                            menu = false
-                            val clip = (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
-                                .primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
-                            if (clip.contains(com.forgequest.app.data.bridge.BridgeFormat.HEADER)) {
-                                scope.launch {
-                                    ctx.container.bridge.applyText(clip)
-                                    ctx.toast(ctx.getString(R.string.paste_gemini_done))
-                                }
-                            } else {
-                                ctx.toast(ctx.getString(R.string.paste_gemini_none))
-                            }
-                        })
-                    }
                     DropdownMenuItem(text = { Text(stringResource(R.string.coach_clear)) }, onClick = { menu = false; confirmClear = true })
                 }
+            }
+        }
+        // Personal tools (owner only): the Gemini app round trip, one tap each, in plain sight.
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val personal by com.forgequest.app.PersonalTools.flow(ctx).collectAsState()
+        if (personal == true) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TonalPill(stringResource(R.string.ask_gemini), onClick = {
+                    val question = input
+                    val arabic = ctx.resources.configuration.locales[0].language == "ar"
+                    scope.launch {
+                        val data = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { ctx.container.bridge.dataText() }
+                        val opened = com.forgequest.app.data.bridge.AskGemini.send(ctx, com.forgequest.app.data.bridge.AskGemini.prompt(data, question, arabic))
+                        ctx.toast(ctx.getString(if (opened) R.string.ask_gemini_sent else R.string.ask_gemini_copied))
+                    }
+                }, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.weight(1f))
+                TonalPill(stringResource(R.string.paste_gemini_reply), onClick = {
+                    val clip = (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                        .primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
+                    if (clip.contains(com.forgequest.app.data.bridge.BridgeFormat.HEADER)) {
+                        scope.launch {
+                            ctx.container.bridge.applyText(clip)
+                            ctx.toast(ctx.getString(R.string.paste_gemini_done))
+                        }
+                    } else {
+                        ctx.toast(ctx.getString(R.string.paste_gemini_none))
+                    }
+                }, icon = Icons.Rounded.ContentPaste, modifier = Modifier.weight(1f))
             }
         }
         // Out of the way while typing, so a tap near Send never sends a suggestion instead.
