@@ -98,6 +98,8 @@ Manrope for display, titles and numbers; the system sans for body and labels; IB
 style in Arabic, untracked, with direction taken from the text. Numbers that change in place use tabular figures.
 Body small gets a taller line (22) for an airier read. Everything must still work at 200% font scale: text
 wraps to two lines instead of being cut, rows grow taller, nothing overlaps.
+Fonts ship with the app (Android `res/font`, web `/fonts`, precached by the service worker), never from a font
+CDN, and only in the weights the styles use: Manrope 500–600, Plex Arabic 400 / 500 / 600.
 
 ## Layout
 - Screen gutter 20, card padding 24, gap between cards 16. Inside a card: 16 between groups, 8 within a group.
@@ -136,6 +138,15 @@ friends. Web: `web/src/ui/kit`. Screens use these and don't restyle them. The li
   logging food or finishing a workout. When a ring reaches its goal, one soft haptic tick. Nothing else celebrates.
 - **Reduced motion** (system setting): every animation becomes a 120 ms fade or an instant change.
 
+## Loading & Waiting
+- **Local first.** Logging food, ticking a set or saving a plan changes the screen at once. Mistakes are fixed
+  with the Undo snackbar, not a confirm dialog beforehand.
+- **One tap, one request.** A button that starts network work (AI, Drive backup, sync) shows its busy state and
+  ignores more taps until the work ends. Timeouts end in a kind message that says what to do next.
+- **Nothing jumps.** A card waiting for content keeps its final size and shows either still placeholder blocks
+  in card-high (sm / md corners) or one small neutral indicator. No shimmer sweeps: they are a gradient and
+  decorative motion.
+
 ## Decisions Log
 - 2026-11-01: Soft Coach picked over Quiet Material and Clear Instrument.
 - 2026-11-01: Inputs reviewed: gstack (ideas only: this file's format, the authored moment, audit → fix → verify),
@@ -144,3 +155,5 @@ friends. Web: `web/src/ui/kit`. Screens use these and don't restyle them. The li
 - 2026-11-01: Palette hex values kept (contrast already verified); only their use changes.
 - 2026-11-01: Corners 8 sizes → 3 (12 / 20 / 28) + full. Card corners 24 → 28, card padding 20 → 24.
 - 2026-11-01: Springs lose their bounce (damping 0.6–0.8 → 0.9–1.0).
+- 2026-11-01: Input reviewed: Instagram "app-performance toolkit" (31 speed tips). Kept the client-side ones as
+  Loading & Waiting rules, the font rule and a slow-device check; skipped the server-side ones (no backend).
