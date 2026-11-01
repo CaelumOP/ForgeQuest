@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { reducedMotion } from './haptics'
+import { haptics, reducedMotion } from './haptics'
 
 /** False on the first frame, then true: a ring drawn at 0 first sweeps to its value through the CSS transition. */
 export function useSwept(): boolean {
@@ -63,6 +63,12 @@ export type RingProps = {
 export function Ring({ value, color = '--teal', track = '--teal-track', size = 96, stroke = 10, label, valueText, children, index = 0 }: RingProps) {
   const v = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0))
   const swept = useSwept()
+  // One soft tick when the ring reaches its goal after it was first shown (not on the first render).
+  const prev = useRef(v)
+  useEffect(() => {
+    if (prev.current < 1 && v >= 1) haptics.lightTick()
+    prev.current = v
+  }, [v])
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   const pct = Math.round(v * 100)

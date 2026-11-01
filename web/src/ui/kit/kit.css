@@ -16,12 +16,13 @@
   --md-sys-motion-duration-medium2: 300ms;
   --md-sys-motion-duration-medium4: 400ms;
   --md-sys-motion-duration-long2: 500ms;
-  --forge-spring-fast-spatial: cubic-bezier(0.3, 1.3, 0.5, 1);
-  --forge-spring-fast-spatial-duration: 350ms;
-  --forge-spring-default-spatial: cubic-bezier(0.3, 1.15, 0.5, 1);
-  --forge-spring-default-spatial-duration: 470ms;
-  --forge-spring-slow-spatial: cubic-bezier(0.3, 1.05, 0.5, 1);
-  --forge-spring-slow-spatial-duration: 570ms;
+  /* Soft Coach: spatial springs settle without overshoot (Android damping 0.9-1.0), so a plain decelerate curve. */
+  --forge-spring-fast-spatial: cubic-bezier(0.2, 0, 0, 1);
+  --forge-spring-fast-spatial-duration: 300ms;
+  --forge-spring-default-spatial: cubic-bezier(0.2, 0, 0, 1);
+  --forge-spring-default-spatial-duration: 400ms;
+  --forge-spring-slow-spatial: cubic-bezier(0.2, 0, 0, 1);
+  --forge-spring-slow-spatial-duration: 500ms;
   /* The three effects springs share one curve (critically damped); only their length differs. */
   --forge-spring-effects: cubic-bezier(0.3, 0.7, 0.4, 1);
   --forge-spring-fast-effects-duration: 140ms;
@@ -32,9 +33,6 @@
 }
 @supports (transition-timing-function: linear(0, 1)) {
   :root {
-    --forge-spring-fast-spatial: linear(0, 0.071, 0.235, 0.436, 0.632, 0.801, 0.93, 1.018, 1.069, 1.092, 1.094, 1.082, 1.065, 1.046, 1.028, 1.013, 1.003, 0.996, 0.992, 0.991, 0.991, 0.993, 0.995, 0.996, 1);
-    --forge-spring-default-spatial: linear(0, 0.061, 0.201, 0.372, 0.542, 0.693, 0.816, 0.908, 0.972, 1.013, 1.036, 1.045, 1.045, 1.041, 1.033, 1.025, 1.018, 1.011, 1.006, 1.003, 1, 0.999, 0.998, 0.998, 1);
-    --forge-spring-slow-spatial: linear(0, 0.047, 0.156, 0.292, 0.432, 0.563, 0.677, 0.772, 0.847, 0.904, 0.945, 0.975, 0.994, 1.006, 1.012, 1.015, 1.015, 1.014, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1);
     --forge-spring-effects: linear(0, 0.049, 0.157, 0.285, 0.411, 0.525, 0.623, 0.705, 0.771, 0.824, 0.866, 0.898, 0.923, 0.943, 0.957, 0.968, 0.976, 0.982, 0.987, 0.99, 0.993, 0.995, 0.996, 0.997, 1);
   }
 }
@@ -46,8 +44,8 @@
 .kit-accent-text { --acc: var(--text); }
 
 /* Card */
-.kit-card { display: block; inline-size: 100%; border-radius: 24px; background: var(--card); color: var(--text); text-align: start; text-decoration: none; font: inherit; border: 0; }
-.kit-card-pad { padding: 20px; }
+.kit-card { display: block; inline-size: 100%; border-radius: var(--r-lg); background: var(--card); color: var(--text); text-align: start; text-decoration: none; font: inherit; border: 0; }
+.kit-card-pad { padding: var(--card-pad); }
 button.kit-card { min-block-size: 44px; }
 .kit-card-tap:active { background: var(--card-high); }
 
@@ -55,51 +53,51 @@ button.kit-card { min-block-size: 44px; }
 .kit-section-title { margin: 0; font-size: 16px; line-height: 22px; font-weight: 500; }
 
 /* Buttons */
-.kit-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 44px; min-inline-size: 44px; padding-block: 0; padding-inline: 24px; border: 0; border-radius: 22px; font-size: 14px; font-weight: 500; line-height: 20px; cursor: pointer; }
+.kit-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 52px; min-inline-size: 52px; padding-block: 0; padding-inline: 24px; border: 0; border-radius: var(--r-full); font-size: 14px; font-weight: 500; line-height: 20px; cursor: pointer; }
 .kit-btn-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kit-btn-block { display: flex; inline-size: 100%; }
 .kit-btn-filled { background: var(--teal); color: var(--on-teal); }
 .kit-btn-tonal { background: var(--card-high); color: var(--text); }
-.kit-btn-text { background: transparent; color: var(--teal); padding-inline: 16px; }
+.kit-btn-text { background: transparent; color: var(--teal); padding-inline: 16px; min-block-size: 48px; }
 .kit-btn:disabled { background: var(--card-high); color: var(--text-2); cursor: default; }
 .kit-btn-text:disabled { background: transparent; }
 .kit-btn[aria-busy='true']:disabled { color: var(--text-2); }
 .kit-btn.kit-danger { color: var(--coral); }
 /* Pressed, a filled or tonal pill squares off to 12px corners and springs back (Android PillButton). */
 .kit-btn { transition: border-radius var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial); }
-.kit-btn-filled:not(:disabled):active, .kit-btn-tonal:not(:disabled):active { border-radius: 12px; }
-.kit-spinner { inline-size: 16px; block-size: 16px; border-radius: 50%; border: 2px solid var(--divider); border-block-start-color: var(--teal); animation: kit-spin 0.8s linear infinite; }
+.kit-btn-filled:not(:disabled):active, .kit-btn-tonal:not(:disabled):active { border-radius: var(--r-sm); }
+.kit-spinner { inline-size: 16px; block-size: 16px; border-radius: var(--r-full); border: 2px solid var(--divider); border-block-start-color: var(--teal); animation: kit-spin 0.8s linear infinite; }
 @keyframes kit-spin { to { transform: rotate(360deg); } }
 /* Material 3 Expressive loading indicator (Android LoadingIndicator): one shape that morphs between soft polygons while it turns. Color comes from `color`. */
 .kit-morph { display: inline-grid; place-items: center; inline-size: 48px; block-size: 48px; flex: none; }
-.kit-morph::before { content: ""; inline-size: 38px; block-size: 38px; background: currentColor; border-radius: 50%; animation: kit-morph 4.2s cubic-bezier(0.42, 0, 0.2, 1) infinite; }
+.kit-morph::before { content: ""; inline-size: 38px; block-size: 38px; background: currentColor; border-radius: var(--r-full); animation: kit-morph 4.2s cubic-bezier(0.42, 0, 0.2, 1) infinite; }
 .kit-morph-purple { color: var(--purple); }
 .kit-morph-teal { color: var(--teal); }
 @keyframes kit-morph {
-  0% { border-radius: 50%; transform: rotate(0deg) scale(0.9); }
+  0% { border-radius: var(--r-full); transform: rotate(0deg) scale(0.9); }
   16% { border-radius: 28% 72% 30% 70% / 70% 30% 72% 28%; transform: rotate(60deg) scale(1); }
   33% { border-radius: 22%; transform: rotate(120deg) scale(0.92); }
-  50% { border-radius: 50% 50% 18% 50% / 50% 50% 18% 50%; transform: rotate(180deg) scale(1); }
+  50% { border-radius: var(--r-full) 50% 18% 50% / 50% 50% 18% 50%; transform: rotate(180deg) scale(1); }
   66% { border-radius: 64% 36% 58% 42% / 40% 62% 38% 60%; transform: rotate(240deg) scale(0.92); }
   83% { border-radius: 36% 64% 64% 36% / 36% 36% 64% 64%; transform: rotate(300deg) scale(1); }
-  100% { border-radius: 50%; transform: rotate(360deg) scale(0.9); }
+  100% { border-radius: var(--r-full); transform: rotate(360deg) scale(0.9); }
 }
 
-.kit-iconbtn { display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; flex: none; }
+.kit-iconbtn { display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; border: 0; border-radius: var(--r-full); background: transparent; color: var(--text); cursor: pointer; flex: none; }
 .kit-iconbtn:active { background: var(--card-high); }
 .kit-iconbtn-tonal { background: var(--card-high); }
 .kit-iconbtn:disabled { color: var(--text-2); opacity: 0.5; cursor: default; }
 
 /* Chips */
 .kit-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.kit-chip { min-block-size: 44px; padding-block: 0; padding-inline: 16px; border: 0; border-radius: 22px; background: var(--card-high); color: var(--text); font-size: 14px; font-weight: 500; line-height: 20px; cursor: pointer; }
+.kit-chip { min-block-size: 44px; padding-block: 0; padding-inline: 16px; border: 0; border-radius: var(--r-full); background: var(--card-high); color: var(--text); font-size: 14px; font-weight: 500; line-height: 20px; cursor: pointer; }
 .kit-chip-on { background: var(--acc); color: var(--on-acc); }
 
 /* List rows */
-.kit-row { display: flex; align-items: center; gap: 14px; inline-size: 100%; min-block-size: 56px; padding-block: 8px; padding-inline: 16px; border: 0; border-radius: 16px; background: var(--card); color: var(--text); text-align: start; text-decoration: none; font: inherit; }
+.kit-row { display: flex; align-items: center; gap: 14px; inline-size: 100%; min-block-size: 56px; padding-block: 8px; padding-inline: 16px; border: 0; border-radius: var(--r-md); background: var(--card); color: var(--text); text-align: start; text-decoration: none; font: inherit; }
 .kit-row-tap { cursor: pointer; }
 .kit-row-tap:active { background: var(--card-high); }
-.kit-row-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 40px; block-size: 40px; border-radius: 50%; background: var(--teal-track); color: var(--teal); }
+.kit-row-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 40px; block-size: 40px; border-radius: var(--r-full); background: var(--teal-track); color: var(--teal); }
 .kit-row-text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
 .kit-row-title { font-size: 16px; line-height: 22px; font-weight: 500; overflow-wrap: anywhere; }
 .kit-row-sub { font-size: 14px; line-height: 20px; color: var(--text-2); overflow-wrap: anywhere; }
@@ -116,7 +114,7 @@ button.kit-card { min-block-size: 44px; }
 .kit-ring svg { display: block; }
 html[dir='rtl'] .kit-ring svg { transform: scaleX(-1); }
 /* Rings sweep in from 0 on first show (650 ms, 60 ms apart via an inline delay) and glide to later values. */
-.kit-ring-arc { transition: stroke-dasharray 650ms var(--md-sys-motion-easing-emphasized-decelerate); }
+.kit-ring-arc { transition: stroke-dasharray var(--dur-ring) var(--ease-enter); }
 @media (prefers-reduced-motion: reduce) { .kit-ring-arc { transition: none; } }
 .kit-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; text-align: center; }
 
@@ -130,21 +128,21 @@ html[dir='rtl'] .kit-chart-svg { transform: scaleX(-1); }
 /* Overlays */
 .kit-layer { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
 .kit-layer-center { align-items: center; padding-inline: 24px; }
-.kit-backdrop { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(2px); animation: kit-fade 0.2s; }
+.kit-backdrop { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(2px); animation: kit-fade var(--dur-short) var(--ease-standard); }
 .kit-sheet, .kit-dialog { position: relative; background: var(--card-high); color: var(--text); }
-.kit-sheet { inline-size: 100%; max-inline-size: 640px; max-block-size: 90dvh; display: flex; flex-direction: column; border-start-start-radius: 28px; border-start-end-radius: 28px; padding-inline: max(20px, env(safe-area-inset-left), env(safe-area-inset-right)); padding-block-end: max(16px, env(safe-area-inset-bottom)); animation: kit-rise 0.25s ease-out; }
+.kit-sheet { inline-size: 100%; max-inline-size: 640px; max-block-size: 90dvh; display: flex; flex-direction: column; border-start-start-radius: var(--r-lg); border-start-end-radius: var(--r-lg); padding-inline: max(20px, env(safe-area-inset-left), env(safe-area-inset-right)); padding-block-end: max(16px, env(safe-area-inset-bottom)); animation: kit-rise var(--dur-medium) var(--ease-enter); }
 .kit-sheet:focus, .kit-dialog:focus { outline: none; }
 .kit-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 56px; }
 .kit-sheet-title { margin: 0; font-size: 20px; line-height: 26px; font-weight: 600; }
 .kit-sheet-body { overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; padding-block-end: 8px; }
-.kit-dialog { inline-size: 100%; max-inline-size: 420px; border-radius: 28px; padding: 24px; display: flex; flex-direction: column; gap: 12px; animation: kit-fade 0.2s; }
+.kit-dialog { inline-size: 100%; max-inline-size: 420px; border-radius: var(--r-lg); padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; animation: kit-fade var(--dur-short) var(--ease-standard); }
 .kit-dialog-msg { margin: 0; white-space: pre-line; color: var(--text-2); font-size: 14px; line-height: 20px; }
 .kit-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 @keyframes kit-fade { from { opacity: 0; } }
 @keyframes kit-rise { from { transform: translateY(32px); opacity: 0; } }
 
 .kit-toasts { position: fixed; z-index: 60; inset-inline: 0; inset-block-end: max(16px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; padding-inline: 16px; pointer-events: none; }
-.kit-toast { max-inline-size: 420px; padding-block: 12px; padding-inline: 20px; border-radius: 16px; background: var(--text); color: var(--bg); font-size: 14px; line-height: 20px; animation: kit-rise 0.2s ease-out; }
+.kit-toast { max-inline-size: 420px; padding-block: 12px; padding-inline: 20px; border-radius: var(--r-md); background: var(--text); color: var(--bg); font-size: 14px; line-height: 20px; animation: kit-rise var(--dur-short) var(--ease-enter); }
 
 /* Fields */
 .kit-field { display: flex; flex-direction: column; gap: 6px; }
@@ -159,7 +157,7 @@ textarea.kit-input { resize: vertical; }
 .kit-stepper { display: inline-flex; align-items: center; gap: 4px; }
 .kit-stepper-val { min-inline-size: 56px; text-align: center; font-size: 20px; line-height: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
 /* The number is a button (tap to type): looks like plain text with a faint underline hint. */
-button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: none; color: var(--text); border-radius: 10px; text-decoration: underline dotted var(--text-2); text-underline-offset: 6px; }
+button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: none; color: var(--text); border-radius: var(--r-sm); text-decoration: underline dotted var(--text-2); text-underline-offset: 6px; }
 /* Stepper roll: the new number slides in from below on +, from above on − (clipped). */
 button.kit-stepper-val { overflow: hidden; }
 .kit-roll { display: inline-block; }
@@ -171,7 +169,7 @@ button.kit-stepper-val { overflow: hidden; }
 
 /* Empty state */
 .kit-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-block: 32px; padding-inline: 24px; text-align: center; }
-.kit-empty-icon { display: inline-flex; align-items: center; justify-content: center; inline-size: 64px; block-size: 64px; border-radius: 50%; background: var(--card-high); color: var(--text-2); }
+.kit-empty-icon { display: inline-flex; align-items: center; justify-content: center; inline-size: 64px; block-size: 64px; border-radius: var(--r-full); background: var(--card-high); color: var(--text-2); }
 .kit-empty-title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; }
 .kit-empty-body { margin: 0; max-inline-size: 32ch; color: var(--text-2); font-size: 14px; line-height: 20px; }
 
@@ -182,7 +180,7 @@ button.kit-stepper-val { overflow: hidden; }
 .kit-md ul, .kit-md ol { padding-inline: 24px 0; }
 .kit-md li { margin-block-end: 4px; }
 .kit-md a { color: var(--teal); }
-.kit-md code { padding-inline: 4px; border-radius: 6px; background: var(--card-high); font-size: 14px; }
+.kit-md code { padding-inline: 4px; border-radius: var(--r-sm); background: var(--card-high); font-size: 14px; }
 .kit-md-h { font-weight: 600; }
 .kit-md-h1 { font-size: 20px; line-height: 26px; }
 .kit-md-h2 { font-size: 18px; line-height: 24px; }
@@ -205,8 +203,8 @@ button.kit-stepper-val { overflow: hidden; }
 .kit-dialog .kit-btn-tonal { background: var(--card); }
 
 /* Segmented control: equal-width options that always fit; the label may wrap, the second line is smaller. */
-.kit-seg { display: grid; gap: 4px; padding: 4px; border-radius: 26px; background: var(--card-high); }
-.kit-seg-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-inline-size: 0; min-block-size: 44px; padding-block: 6px; padding-inline: 6px; border: 0; border-radius: 22px; background: none; color: var(--text); font: inherit; text-align: center; cursor: pointer; }
+.kit-seg { display: grid; gap: 4px; padding: 4px; border-radius: var(--r-full); background: var(--card-high); }
+.kit-seg-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-inline-size: 0; min-block-size: 44px; padding-block: 6px; padding-inline: 6px; border: 0; border-radius: var(--r-full); background: none; color: var(--text); font: inherit; text-align: center; cursor: pointer; }
 .kit-seg-opt:disabled { opacity: 0.4; cursor: default; }
 .kit-seg-on { background: var(--acc); color: var(--on-acc); }
 .kit-seg-label { font-size: 14px; font-weight: 600; line-height: 18px; text-wrap: balance; overflow-wrap: anywhere; }
@@ -216,7 +214,7 @@ button.kit-stepper-val { overflow: hidden; }
 .kit-swipe { position: relative; overflow: hidden; }
 .kit-swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-inline: 20px; background: var(--coral); color: #fff; pointer-events: none; }
 .kit-swipe-front { position: relative; touch-action: pan-y; }
-.kit-swipe-settle { transition: transform 160ms ease-out; }
+.kit-swipe-settle { transition: transform var(--dur-short) var(--ease-standard); }
 /* The bin waits at 0.8; crossing the delete line pops it 0.8 -> 1.25 -> 1 (once per crossing). */
 .kit-swipe-bin { display: inline-flex; transform: scale(0.8); transition: transform var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial); }
 .kit-swipe-bin-over { transform: scale(1); animation: kit-bin-pop calc(var(--forge-spring-fast-spatial-duration) * 1.2) var(--md-sys-motion-easing-emphasized); }
