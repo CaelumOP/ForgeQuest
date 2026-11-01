@@ -139,7 +139,7 @@ function KeyField({ title, value, status, onSave, onRemove, body, link }: {
   }
   return (
     <Card>
-      <CardTitle icon="coach" accent="blue" title={title} hint={status} />
+      <CardTitle icon="coach" accent="teal" title={title} hint={status} />
       {body && <p class="pf-s pf-block">{body}</p>}
       <TextField label={title} type="password" autocomplete="off" value={text} onInput={setText} placeholder={value ? '••••••••' : ''} />
       <div class="pf-actions">
@@ -202,7 +202,7 @@ export function ProfileScreen() {
     <div class="content pf">
       {s.apiKey === '' && (
         <Card>
-          <CardTitle icon="coach" accent="blue" title={t('profile_setup_title')} hint={t('profile_setup_body')} />
+          <CardTitle icon="coach" accent="teal" title={t('profile_setup_title')} hint={t('profile_setup_body')} />
           <div class="pf-actions"><Button onClick={() => { openGroup('coach'); document.getElementById('pf-coach')?.scrollIntoView({ block: 'center' }) }}>{t('profile_add_key')}</Button></div>
         </Card>
       )}
@@ -237,16 +237,16 @@ export function ProfileScreen() {
 
       <div class="pf-shortcuts">
         <Card href="#/progress"><span class="pf-short"><span class="pf-ic pf-teal"><Glyph name="chart" /></span>{t('profile_progress_title')}</span></Card>
-        <Card href="#/library"><span class="pf-short"><span class="pf-ic pf-blue"><Glyph name="training" /></span>{t('profile_exercise_library')}</span></Card>
+        <Card href="#/library"><span class="pf-short"><span class="pf-ic pf-teal"><Glyph name="training" /></span>{t('profile_exercise_library')}</span></Card>
       </div>
 
       <SectionHeader title={t('settings_section_settings')} />
 
-      <Group id="body" accent="coral" icon="body" title={t('settings_group_body')} open={isOpen('body')} onToggle={() => toggle('body')}
+      <Group id="body" accent="teal" icon="body" title={t('settings_group_body')} open={isOpen('body')} onToggle={() => toggle('body')}
         sum={bodySet ? summary(t(s.bodyType === 'FEMALE' ? 'body_female' : 'body_male'), `${s.heightCm} ${t('unit_cm')}`, `${age} ${t('unit_years')}`, dayLabel) : t('summary_body_not_set')}>
         <Card>
-          <CardTitle icon="body" accent="coral" title={t('profile_about_you')} hint={t('profile_about_you_hint')} />
-          <ChipGroup label={t('profile_about_you')} accent="coral" value={s.bodyType} onChange={(v) => void set({ bodyType: v })}
+          <CardTitle icon="body" accent="teal" title={t('profile_about_you')} hint={t('profile_about_you_hint')} />
+          <ChipGroup label={t('profile_about_you')} accent="teal" value={s.bodyType} onChange={(v) => void set({ bodyType: v })}
             options={[{ value: 'MALE', label: t('body_male') }, { value: 'FEMALE', label: t('body_female') }]} />
           <Setting label={t('profile_height')}>
             <Stepper label={t('profile_height')} value={s.heightCm > 0 ? s.heightCm : 170} min={120} max={230} onChange={(v) => void set({ heightCm: v })} format={(n) => s.heightCm > 0 ? `${n} ${t('unit_cm')}` : `– ${t('unit_cm')}`} />
@@ -259,13 +259,13 @@ export function ProfileScreen() {
           </Setting>
           <p class="pf-s">{t('pf_web_bodyfat_hint')}</p>
           <span class="pf-t">{t('pf_web_day_title')}</span>
-          <Segmented label={t('day_web_title')} accent="coral" value={s.dayActivity} onChange={(d: DayActivity) => nutrition({ dayActivity: d })}
+          <Segmented label={t('day_web_title')} accent="teal" value={s.dayActivity} onChange={(d: DayActivity) => nutrition({ dayActivity: d })}
             options={DAY_ACTIVITIES.map((d) => ({ value: d, label: t(`day_web_${d.toLowerCase()}`) }))} />
           <p class="pf-s">{t(`day_web_${s.dayActivity.toLowerCase()}_desc`)}</p>
           {!bodySet && <p class="pf-s pf-warn">{t('profile_body_not_set')}</p>}
         </Card>
         <Card>
-          <CardTitle icon="body" accent="purple" title={t('profile_hand_size')} hint={s.handLengthCm > 0 ? t('profile_hand_value', s.handLengthCm.toFixed(1), s.palmWidthCm.toFixed(1)) : t('profile_hand_hint')} />
+          <CardTitle icon="body" accent="teal" title={t('profile_hand_size')} hint={s.handLengthCm > 0 ? t('profile_hand_value', s.handLengthCm.toFixed(1), s.palmWidthCm.toFixed(1)) : t('profile_hand_hint')} />
           <div class="pf-two">
             <NumberField label={t('hand_length')} unit={t('unit_cm')} decimal min={5} max={40} value={s.handLengthCm > 0 ? s.handLengthCm : null} onChange={(v) => void set({ handLengthCm: v ?? 0 })} />
             <NumberField label={t('hand_palm')} unit={t('unit_cm')} decimal min={3} max={20} value={s.palmWidthCm > 0 ? s.palmWidthCm : null} onChange={(v) => void set({ palmWidthCm: v ?? 0 })} />
@@ -273,16 +273,16 @@ export function ProfileScreen() {
         </Card>
       </Group>
 
-      <Group id="goals" accent="gold" icon="goals" title={t('settings_group_goals')} open={isOpen('goals')} onToggle={() => toggle('goals')}
+      <Group id="goals" accent="teal" icon="goals" title={t('settings_group_goals')} open={isOpen('goals')} onToggle={() => toggle('goals')}
         sum={summary(goalLabel(s.nutritionGoal), `${num(s.kcalGoal)} ${t('unit_kcal')}`, `${s.proteinGoal} ${t('unit_g')}`, t('summary_per_week', weekly))}>
         <Card>
-          <CardTitle icon="goals" accent="gold" title={t('profile_daily_targets')} />
+          <CardTitle icon="goals" accent="teal" title={t('profile_daily_targets')} />
           <span class="pf-t">{t('goal_title')}</span>
-          <ChipGroup label={t('goal_title')} accent="gold" value={s.nutritionGoal} onChange={(g) => nutrition({ nutritionGoal: g })}
+          <ChipGroup label={t('goal_title')} accent="teal" value={s.nutritionGoal} onChange={(g) => nutrition({ nutritionGoal: g })}
             options={NUTRITION_GOALS.map((g) => ({ value: g, label: goalLabel(g) }))} />
           {s.nutritionGoal !== 'MAINTAIN' && <span class="pf-t">{t('pace_web_title')}</span>}
           {s.nutritionGoal === 'CUT' && (
-            <Segmented label={t('pace_web_title')} accent="gold" value={s.cutPace} onChange={(p: CutPace) => nutrition({ cutPace: p })}
+            <Segmented label={t('pace_web_title')} accent="teal" value={s.cutPace} onChange={(p: CutPace) => nutrition({ cutPace: p })}
               options={CUT_PACES.map((p) => ({
                 value: p, label: t(`pace_web_${p === 'AGGRESSIVE' ? 'fast' : p.toLowerCase()}`),
                 sub: latestKg != null ? t('pace_web_week', paceAmount((latestKg * CUT_PACE[p].weeklyPct) / 100)) : undefined,
@@ -291,7 +291,7 @@ export function ProfileScreen() {
           )}
           {s.nutritionGoal === 'CUT' && fastBlocked && <p class="pf-s">{t('pace_web_blocked')}</p>}
           {s.nutritionGoal === 'GAIN' && (
-            <Segmented label={t('pace_web_title')} accent="gold" value={s.gainPace} onChange={(p: GainPace) => nutrition({ gainPace: p })}
+            <Segmented label={t('pace_web_title')} accent="teal" value={s.gainPace} onChange={(p: GainPace) => nutrition({ gainPace: p })}
               options={GAIN_PACES.map((p) => ({
                 value: p, label: t(`pace_web_${p.toLowerCase()}`),
                 sub: latestKg != null ? t('pace_web_month', paceAmount((latestKg * GAIN_PACE[p].weeklyPct * 4.35) / 100)) : undefined,
@@ -366,14 +366,14 @@ export function ProfileScreen() {
         </Card>
       </Group>
 
-      <Group id="coach" accent="purple" icon="coach" title={t('settings_group_coach')} open={isOpen('coach')} onToggle={() => toggle('coach')}
+      <Group id="coach" accent="teal" icon="coach" title={t('settings_group_coach')} open={isOpen('coach')} onToggle={() => toggle('coach')}
         sum={summary(t(s.apiKey ? 'summary_gemini_on' : 'summary_gemini_off'), t(s.groqKey ? 'summary_groq_on' : 'summary_groq_off'))}>
         <KeyField title={t('profile_ai_key')} value={s.apiKey} status={t(s.apiKey ? 'profile_key_connected' : 'profile_key_not_set')} body={`${t('profile_web_key_body')} ${t('key_dialog_privacy')}`}
           link="https://aistudio.google.com/apikey" onSave={(k) => set({ apiKey: k })} onRemove={() => set({ apiKey: '' })} />
         <KeyField title={t('groq_key_title')} value={s.groqKey} status={t(s.groqKey ? 'groq_key_on' : 'groq_key_off')} onSave={(k) => set({ groqKey: k })} onRemove={() => set({ groqKey: '' })} />
         <Card>
           <span class="pf-h3">{t('coach_model_header')}</span>
-          <ChipGroup label={t('coach_model_header')} accent="purple" value={s.coachModel} onChange={(v) => void set({ coachModel: v })}
+          <ChipGroup label={t('coach_model_header')} accent="teal" value={s.coachModel} onChange={(v) => void set({ coachModel: v })}
             options={[
               { value: 'auto', label: t('coach_model_auto') }, { value: 'lite', label: t('coach_model_lite') },
               { value: 'flash', label: t('coach_model_flash') }, { value: 'pro', label: t('coach_model_pro') },
@@ -381,7 +381,7 @@ export function ProfileScreen() {
           <span class="pf-s">{t(`coach_model_${['lite', 'flash', 'pro'].includes(s.coachModel) ? s.coachModel : 'auto'}_hint`)}</span>
         </Card>
         <Card>
-          <CardTitle icon="coach" accent="purple" title={t('profile_coach_memory')} hint={notes.length === 0 ? t('profile_memory_empty') : t('profile_memory_hint')} />
+          <CardTitle icon="coach" accent="teal" title={t('profile_coach_memory')} hint={notes.length === 0 ? t('profile_memory_empty') : t('profile_memory_hint')} />
           {notes.map((n) => (
             <button key={n} type="button" class="pf-note" onClick={() => void set({ coachNotes: removeNote(s.coachNotes, n) })} aria-label={`${t('cd_remove')}: ${n}`}>
               <span class="pf-bullet" aria-hidden="true">•</span><span class="pf-grow">{n}</span><span class="pf-x" aria-hidden="true">×</span>
@@ -394,18 +394,18 @@ export function ProfileScreen() {
         </Card>
       </Group>
 
-      <Group id="app" accent="blue" icon="app" title={t('settings_group_app')} open={isOpen('app')} onToggle={() => toggle('app')}
+      <Group id="app" accent="teal" icon="app" title={t('settings_group_app')} open={isOpen('app')} onToggle={() => toggle('app')}
         sum={summary(themeLabel(theme), lang === 'ar' ? 'العربية' : 'English', unitLabel(unit, ar))}>
         <Card>
-          <CardTitle icon="app" accent="blue" title={t('profile_appearance')} />
+          <CardTitle icon="app" accent="teal" title={t('profile_appearance')} />
           <span class="pf-t">{t('profile_theme')}</span>
-          <ChipGroup label={t('profile_theme')} accent="blue" value={theme} onChange={changeTheme}
+          <ChipGroup label={t('profile_theme')} accent="teal" value={theme} onChange={changeTheme}
             options={(['system', 'light', 'dark'] as Theme[]).map((v) => ({ value: v, label: themeLabel(v) }))} />
           <span class="pf-t">{t('profile_language')}</span>
-          <ChipGroup label={t('profile_language')} accent="blue" value={lang} onChange={(v: Lang) => setLang(v)}
+          <ChipGroup label={t('profile_language')} accent="teal" value={lang} onChange={(v: Lang) => setLang(v)}
             options={[{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }]} />
           <span class="pf-t">{t('profile_weights')}</span>
-          <ChipGroup label={t('profile_weights')} accent="blue" value={unit} onChange={(v) => void set({ unit: v === 'LB' ? 'lb' : 'kg' })}
+          <ChipGroup label={t('profile_weights')} accent="teal" value={unit} onChange={(v) => void set({ unit: v === 'LB' ? 'lb' : 'kg' })}
             options={[{ value: 'KG', label: t('unit_kilograms') }, { value: 'LB', label: t('unit_pounds') }]} />
         </Card>
       </Group>

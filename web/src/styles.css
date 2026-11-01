@@ -304,9 +304,9 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
 .content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--card-gap);
   padding-block: 8px 24px;
-  padding-inline: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
+  padding-inline: max(var(--gutter), env(safe-area-inset-left), env(safe-area-inset-right));
   max-inline-size: 640px;
 }
 .content p { margin: 0; }

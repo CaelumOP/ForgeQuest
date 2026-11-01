@@ -1,19 +1,19 @@
-.hs-head { padding-inline: 16px; }
+.hs-head { padding-inline: var(--gutter); }
 .hs-title { margin: 0; font-size: 22px; font-weight: 600; color: var(--text); }
 .hs-sub { margin: 2px 0 0; font-size: 13px; color: var(--text-2); }
-.hs-list { display: flex; flex-direction: column; gap: 8px; padding-inline: 16px; }
+.hs-list { display: flex; flex-direction: column; gap: var(--card-gap); padding-inline: var(--gutter); }
 .hs-week { display: flex; align-items: center; gap: 8px; width: 100%; text-align: start; min-height: 44px; }
 .hs-week-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .hs-week-title { font-size: 16px; font-weight: 600; color: var(--text); }
 .hs-meta { font-size: 13px; color: var(--text-2); }
-.hs-chev { color: var(--text-2); display: inline-flex; transition: transform .15s; }
+.hs-chev { color: var(--text-2); display: inline-flex; transition: transform var(--dur-short) var(--ease-standard); }
 .hs-chev.open { transform: rotate(180deg); }
-.hs-pr { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: var(--gold-track); color: var(--gold); font-size: 11px; font-weight: 700; }
+.hs-pr { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--r-full); background: var(--gold-track); color: var(--gold); font-size: 11px; font-weight: 700; }
 .hs-prx { font-size: 11px; color: var(--gold); }
 .hs-day { margin: 6px 0 0; padding-inline-start: 8px; font-size: 14px; font-weight: 500; color: var(--text-2); }
 .hs-sess { display: flex; flex-direction: column; gap: 2px; padding-inline-start: 8px; }
-.hs-srow { display: flex; align-items: center; gap: 14px; width: 100%; text-align: start; min-height: 48px; }
-.hs-date { flex: none; width: 48px; height: 48px; border-radius: 14px; background: var(--teal-track); color: var(--teal); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.hs-srow { display: flex; align-items: center; gap: 16px; width: 100%; text-align: start; min-height: 48px; }
+.hs-date { flex: none; width: 48px; height: 48px; border-radius: var(--r-sm); background: var(--teal-track); color: var(--teal); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .hs-date b { font-size: 16px; line-height: 1.1; }
 .hs-date span { font-size: 11px; }
 .hs-stext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -25,13 +25,13 @@
 .hs-notebtn { align-self: flex-start; min-height: 44px; padding-inline: 12px; background: none; border: 0; font: inherit; font-size: 13px; color: var(--teal); text-align: start; cursor: pointer; }
 .hs-notebtn.has { color: var(--text-2); font-style: italic; }
 .hs-hint { margin: 0; font-size: 13px; color: var(--text-2); }
-.hs-ex { display: block; text-decoration: none; color: inherit; border-radius: 8px; padding-block: 2px; }
+.hs-ex { display: block; text-decoration: none; color: inherit; border-radius: var(--r-sm); padding-block: 2px; }
 .hs-ex-name { display: block; font-size: 16px; font-weight: 600; color: var(--text); }
-.hs-set { display: flex; align-items: center; gap: 10px; padding-block: 8px; border-top: 1px solid var(--divider); user-select: none; -webkit-touch-callout: none; }
+.hs-set { display: flex; align-items: center; gap: 12px; padding-block: 8px; border-top: 1px solid var(--divider); user-select: none; -webkit-touch-callout: none; }
 .hs-set:first-of-type { border-top: 0; }
-.hs-num { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--card-high); color: var(--text-2); font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.hs-num { flex: none; width: 28px; height: 28px; border-radius: var(--r-full); background: var(--card-high); color: var(--text-2); font-size: 12px; display: flex; align-items: center; justify-content: center; }
 .hs-setinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.hs-setnote { font-size: 12px; color: var(--blue); background: none; border: 0; padding: 0; text-align: start; font-family: inherit; cursor: pointer; }
+.hs-setnote { font-size: 12px; color: var(--teal); background: none; border: 0; padding: 0; text-align: start; font-family: inherit; cursor: pointer; }
 .hs-steps { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .hs-deb-score { font-size: 28px; font-weight: 700; color: var(--teal); }
 .hs-deb-title { font-weight: 600; color: var(--text); }
@@ -39,7 +39,7 @@
 .hs-toolbar { display: flex; align-items: center; gap: 4px; justify-content: space-between; padding-inline: 16px; }
 .hs-toolbar-text { flex: 1; min-width: 0; }
 .hs-toolbar .hs-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hs-datefield { width: 100%; min-height: 44px; font-size: 16px; padding-inline: 12px; border-radius: 12px; border: 1px solid var(--divider); background: var(--card); color: var(--text); font-family: inherit; box-sizing: border-box; }
+.hs-datefield { width: 100%; min-height: 44px; font-size: 16px; padding-inline: 12px; border-radius: var(--r-sm); border: 1px solid var(--divider); background: var(--card); color: var(--text); font-family: inherit; box-sizing: border-box; }
 .hs-sheet { display: flex; flex-direction: column; gap: 12px; }
 .hs-deb-date { margin: 0; font-size: 13px; color: var(--text-2); }
 .hs-deb-card { display: flex; flex-direction: column; gap: 4px; }
@@ -63,5 +63,5 @@ html[dir='rtl'] .hs-deb-scorering svg { transform: scaleX(-1); }
 .hs-actions { display: flex; align-items: center; flex-wrap: wrap; }
 
 /* Undo bar after a swiped-away workout (same look as the Food screen's). */
-.hs-undo { position: fixed; inset-inline: 16px; inset-block-end: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 4px 16px; padding-inline: 16px 4px; border-radius: 14px; background: var(--text); color: var(--bg); font-size: 14px; }
-.hs-undo button { min-block-size: 44px; padding-inline: 14px; border: 0; background: none; color: var(--teal-on-inv, var(--bg)); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.hs-undo { position: fixed; inset-inline: 16px; inset-block-end: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 4px 16px; padding-inline: 16px 4px; border-radius: var(--r-sm); background: var(--text); color: var(--bg); font-size: 14px; }
+.hs-undo button { min-block-size: 44px; padding-inline: 16px; border: 0; background: none; color: var(--teal-on-inv, var(--bg)); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
