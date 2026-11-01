@@ -1590,4 +1590,12 @@
     <string name="crash_prompt">أُغلق ForgeQuest على نحوٍ غير متوقع في المرة السابقة. أتودّ إرسال تقرير بالعطل؟</string>
     <string name="crash_send">إرسال</string>
     <string name="crash_dismiss">تجاهل</string>
+    <string name="personal_tools_on">تم تفعيل الأدوات الشخصية</string>
+    <string name="personal_tools_off">تم إيقاف الأدوات الشخصية</string>
+    <string name="ask_gemini">اسأل Gemini</string>
+    <string name="ask_gemini_sent">أُرسل السؤال إلى Gemini. انسخ رده كاملًا، ثم عُد واضغط «لصق رد Gemini».</string>
+    <string name="ask_gemini_copied">لم يُعثر على تطبيق Gemini. نُسخ سؤالك، فألصقه في صفحة Gemini.</string>
+    <string name="paste_gemini_reply">لصق رد Gemini</string>
+    <string name="paste_gemini_none">لم يُعثر على رد ForgeQuest. انسخ رد Gemini كاملًا أولًا.</string>
+    <string name="paste_gemini_done">أُضيف رد Gemini إلى المدرب.</string>
 </resources>
