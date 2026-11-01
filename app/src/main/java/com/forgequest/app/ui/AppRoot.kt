@@ -320,7 +320,7 @@ private fun NavLabel(text: String) {
             text, maxLines = 1, softWrap = false, textAlign = TextAlign.Center,
             style = style.copy(fontSize = style.fontSize * shrink),
             onTextLayout = { if (it.didOverflowWidth && shrink > 0.6f) shrink *= 0.92f },
-            modifier = Modifier.padding(horizontal = 6.dp),
+            modifier = Modifier.padding(horizontal = 8.dp),
         )
     }
 }

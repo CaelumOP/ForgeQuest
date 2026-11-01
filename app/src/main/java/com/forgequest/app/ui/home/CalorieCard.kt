@@ -91,7 +91,7 @@ fun CalorieCardView(s: ProgressSnapshot, health: HealthState?, settings: Setting
             Spacer(Modifier.width(12.dp))
             Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Text(body, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {

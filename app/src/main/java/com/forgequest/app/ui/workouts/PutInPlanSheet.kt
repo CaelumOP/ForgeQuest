@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,7 +64,7 @@ fun PutInPlanSheet(
     var dayOfWeek by rememberSaveable { mutableStateOf<Int?>(null) }
     val day = dayOfWeek?.let { plan.day(it) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberFullSheetState(), containerColor = c.card) {
-        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 20.dp).navigationBarsPadding()) {
+        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = ForgeSpace.Gutter).navigationBarsPadding()) {
             if (day == null) {
                 item {
                     Text(stringResource(R.string.plan_put_in_title, ex.name), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.semantics { heading() })
@@ -76,7 +78,7 @@ fun PutInPlanSheet(
                         if (d.items.any { it.exerciseId == ex.id }) stringResource(R.string.plan_put_in_already) else null,
                     ).joinToString(" · ")
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { dayOfWeek = d.day.dayOfWeek }.padding(vertical = 10.dp),
+                        Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { dayOfWeek = d.day.dayOfWeek }.padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -105,7 +107,7 @@ fun PutInPlanSheet(
                     }
                     items(rows, key = { it.first.id }) { (item, e, close) ->
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onReplace(day, item) }.padding(vertical = 10.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { onReplace(day, item) }.padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {

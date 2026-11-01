@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.onboarding
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -331,13 +333,13 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
         label = { Text(stringResource(R.string.onb_your_name)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-        shape = RoundedCornerShape(16.dp),
+        shape = ForgeShape.Md,
         colors = fieldColors(),
         modifier = Modifier.fillMaxWidth().focusRequester(focus),
     )
     Spacer(Modifier.height(28.dp))
     Text(stringResource(R.string.onb_body_type), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.body_male), s.bodyType == BodyType.MALE, { vm.update { it.copy(bodyType = BodyType.MALE) } })
         ChoiceChip(stringResource(R.string.body_female), s.bodyType == BodyType.FEMALE, { vm.update { it.copy(bodyType = BodyType.FEMALE) } })
@@ -369,7 +371,7 @@ private fun NumberRow(label: String, unit: String, value: Int, range: IntRange, 
     val c = Fit.colors
     var text by remember { mutableStateOf(if (value > 0) value.toString() else "") }
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card).padding(horizontal = 20.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card).padding(horizontal = ForgeSpace.Gutter, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -384,7 +386,7 @@ private fun NumberRow(label: String, unit: String, value: Int, range: IntRange, 
             singleLine = true,
             textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = TextAlign.Center),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-            shape = RoundedCornerShape(14.dp),
+            shape = ForgeShape.Sm,
             colors = fieldColors(),
             modifier = Modifier.width(96.dp),
         )
@@ -398,9 +400,9 @@ private fun NumberRow(label: String, unit: String, value: Int, range: IntRange, 
 private fun ChoiceCard(name: String, desc: String, selected: Boolean, onClick: () -> Unit) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card)
-            .then(if (selected) Modifier.border(2.dp, c.teal, RoundedCornerShape(20.dp)) else Modifier)
-            .clickable(onClick = onClick).padding(18.dp),
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card)
+            .then(if (selected) Modifier.border(2.dp, c.teal, ForgeShape.Md) else Modifier)
+            .clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -435,7 +437,7 @@ internal fun StepGoal(s: OnboardingState, vm: OnboardingViewModel) {
                 subs = paces.map { stringResource(R.string.pace_week, s.unit.format(s.weightKg * it.weeklyPct / 100f)) },
                 disabled = if (s.fastBlocked) setOf(paces.indexOf(CutPace.AGGRESSIVE)) else emptySet(),
             )
-            if (s.fastBlocked) Text(stringResource(R.string.pace_blocked), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+            if (s.fastBlocked) Text(stringResource(R.string.pace_blocked), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp))
             Spacer(Modifier.height(12.dp))
         }
         NutritionGoal.GAIN -> {
@@ -468,7 +470,7 @@ private fun Target(s: OnboardingState, vm: OnboardingViewModel) {
     val burn = (s.burn / 10f).roundToInt() * 10
     // The difference keeps its sign next to the number in Arabic too (left-to-right isolate).
     val diff = "⁦${if (s.kcal >= burn) "+" else "−"}${nf.format(abs(s.kcal - burn))}⁩"
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(c.card).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.card).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.target_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
             if (!editing) TextButton(onClick = { editing = true }) { Text(stringResource(R.string.target_adjust), color = c.teal) }
@@ -504,7 +506,7 @@ private fun Target(s: OnboardingState, vm: OnboardingViewModel) {
 private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String, decimals: Int = 0) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card).padding(horizontal = 20.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card).padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -535,7 +537,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
             Text(stringResource(R.string.onb_days_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
     }
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(12.dp))
     val dayOptions = listOf(2, 3, 4, 5)
     SegmentedTabs(
         options = dayOptions.map { java.text.NumberFormat.getIntegerInstance().format(it) },
@@ -559,7 +561,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
             )
         }
     }
-    Spacer(Modifier.height(6.dp))
+    Spacer(Modifier.height(8.dp))
     Text(stringResource(R.string.onb_equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     Spacer(Modifier.height(20.dp))
 
@@ -567,8 +569,8 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     options.forEachIndexed { index, (name, desc) ->
         val selected = s.planIndex == index
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(c.card)
-                .then(if (selected) Modifier.border(2.dp, c.teal, RoundedCornerShape(20.dp)) else Modifier)
+            Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card)
+                .then(if (selected) Modifier.border(2.dp, c.teal, ForgeShape.Md) else Modifier)
                 .clickable {
                     val autoPreset = when {
                         index == StarterPlans.GYM_SPLIT_INDEX -> EquipmentPreset.FULL_GYM
@@ -577,7 +579,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
                     }
                     vm.update { it.copy(planIndex = index, equipmentPreset = autoPreset) }
                 }
-                .padding(18.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
@@ -643,7 +645,7 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
     val c = Fit.colors
     val context = LocalContext.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconCircle(Icons.Rounded.AutoAwesome, c.blue, c.blueTrack)
+        IconCircle(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack)
         Spacer(Modifier.width(12.dp))
         Text(stringResource(R.string.onb_optional), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
     }
@@ -670,8 +672,8 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
         stringResource(R.string.onb_get_key),
         onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) },
         icon = Icons.Rounded.OpenInNew,
-        container = c.blueTrack,
-        content = c.blue,
+        container = c.tealTrack,
+        content = c.teal,
     )
     Spacer(Modifier.height(20.dp))
     OutlinedTextField(
@@ -680,7 +682,7 @@ private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
         label = { Text(stringResource(R.string.onb_key_label)) },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
-        shape = RoundedCornerShape(16.dp),
+        shape = ForgeShape.Md,
         colors = fieldColors(),
         modifier = Modifier.fillMaxWidth(),
     )

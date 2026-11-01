@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.history
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.material.icons.rounded.ExpandMore
 
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -199,7 +201,7 @@ fun HistoryScreen(nav: NavHostController) {
             }
             return
         }
-        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             weeks.entries.forEachIndexed { index, (week, sessions) ->
                 val expanded = open[week] ?: (index == 0)
                 item(key = "w$week") {
@@ -210,7 +212,7 @@ fun HistoryScreen(nav: NavHostController) {
                         item(key = "d$day") {
                             Text(
                                 LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
-                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.animateItem().padding(start = 8.dp, top = 6.dp),
+                                style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.animateItem().padding(start = 8.dp, top = 8.dp),
                             )
                         }
                         items(daySessions, key = { it.id }) { session ->
@@ -310,7 +312,7 @@ private fun WeekCard(
             if (prs > 0) {
                 PrTag()
                 if (prs > 1) Text(" ×$prs", style = MaterialTheme.typography.labelSmall, color = c.gold)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
             }
             Icon(
                 if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
@@ -331,13 +333,13 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
                 // Grows with the text size instead of clipping the weekday.
-                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).clip(RoundedCornerShape(14.dp)).background(c.tealTrack).padding(horizontal = 6.dp, vertical = 4.dp),
+                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).clip(ForgeShape.Sm).background(c.tealTrack).padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
                 Text(date.format(DateTimeFormatter.ofPattern("d")), style = MaterialTheme.typography.titleMedium, color = c.teal, fontWeight = FontWeight.Bold)
                 Text(com.forgequest.app.domain.Dates.dayShort(date.dayOfWeek.value), style = MaterialTheme.typography.labelSmall, color = c.teal)
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(session.title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -448,7 +450,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
         val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
             scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sessionId); nav.goToTab(Routes.COACH) }
         } else null
-        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap)) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
@@ -459,21 +461,21 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 val ex = exercises[group.first().exerciseId]
                 val kind = ex?.kind ?: ExerciseKind.REPS
                 FitCard(padding = PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { nav.navigate(Routes.exercise(group.first().exerciseId)) }) {
+                    Column(Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { nav.navigate(Routes.exercise(group.first().exerciseId)) }) {
                         Text(ex?.name ?: group.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                         Text(ex?.musclesLabel().orEmpty().ifBlank { group.first().block }, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                     Spacer(Modifier.height(4.dp))
                     group.sortedBy { it.setIndex }.forEachIndexed { index, set ->
                         Row(
-                            Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(12.dp))
+                            Modifier.fillMaxWidth().padding(top = 8.dp).clip(ForgeShape.Sm)
                                 .combinedClickable(onClick = {}, onLongClick = { noteFor = set }, onLongClickLabel = stringResource(R.string.cd_add_note)),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                                 Text("${index + 1}", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                             }
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 if (set.isPr) PrTag()
                                 if (set.note.isNotBlank()) Text(set.note, style = MaterialTheme.typography.labelSmall, color = c.blue, maxLines = 2, overflow = TextOverflow.Ellipsis)

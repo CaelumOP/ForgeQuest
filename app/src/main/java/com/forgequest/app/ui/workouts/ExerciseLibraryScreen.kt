@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.itemMotion
 import com.forgequest.app.R
 import com.forgequest.app.ui.localLabel
@@ -127,7 +129,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         }
         OutlinedTextField(
             value = query, onValueChange = { query = it }, placeholder = { Text(stringResource(R.string.lib_search)) },
-            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) }, singleLine = true, shape = RoundedCornerShape(50),
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) }, singleLine = true, shape = ForgeShape.Full,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
                 cursorColor = c.teal, unfocusedLeadingIconColor = c.textSecondary, focusedLeadingIconColor = c.teal,
@@ -163,7 +165,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         var kind by remember(ex.id) { mutableStateOf(ex.kind) }
         var muscle by remember(ex.id) { mutableStateOf(ex.primary.firstOrNull() ?: Muscle.CHEST) }
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { editing = null }, containerColor = c.card) {
-            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+            Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.lib_edit), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 usage?.let { u ->
                     Text(
@@ -171,25 +173,25 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                     )
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
-                    value = name, onValueChange = { name = it.take(40) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                    value = name, onValueChange = { name = it.take(40) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = ForgeShape.Md,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.picker_measured_in), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExerciseKind.entries.forEach { k -> ChoiceChip(k.label(), kind == k, { kind = k }) }
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.picker_main_muscle), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Muscle.entries.forEach { m -> ChoiceChip(m.localLabel(), muscle == m, { muscle = m }) }
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TonalPill(stringResource(R.string.lib_merge_into), onClick = { merging = ex; editing = null })
                     TonalPill(stringResource(R.string.action_delete), onClick = { confirmDelete = ex; editing = null }, tint = c.coral)
@@ -229,7 +231,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
 private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -238,8 +240,8 @@ private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit) {
         }
         if (ex.custom) {
             Spacer(Modifier.width(8.dp))
-            Box(Modifier.clip(RoundedCornerShape(50)).background(c.purpleTrack).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                Text(stringResource(R.string.lib_custom), style = MaterialTheme.typography.labelSmall, color = c.purple)
+            Box(Modifier.clip(ForgeShape.Full).background(c.cardHigh).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                Text(stringResource(R.string.lib_custom), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
             }
         }
     }

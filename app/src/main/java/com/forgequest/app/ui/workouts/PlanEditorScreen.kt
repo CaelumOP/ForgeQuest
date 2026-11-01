@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -240,7 +242,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                 Text(s.plan?.plan?.name ?: stringResource(R.string.plan_no_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
             TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(16.dp))
@@ -248,7 +250,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                 (1..7).forEach { dow ->
                     val sel = dow == selectedDay
                     Box(
-                        Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (sel) c.teal else c.card)
+                        Modifier.weight(1f).clip(ForgeShape.Sm).background(if (sel) c.teal else c.card)
                             .selectable(selected = sel, role = Role.Tab) { selectedDay = dow }
                             .semantics { contentDescription = Dates.dayName(dow) }
                             .padding(vertical = 10.dp),
@@ -264,7 +266,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Row(
-                                Modifier.clip(RoundedCornerShape(8.dp)).clickable { moveDay = true }.padding(end = 4.dp),
+                                Modifier.clip(ForgeShape.Sm).clickable { moveDay = true }.padding(end = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(Dates.dayName(selectedDay), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
@@ -272,7 +274,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                             }
                             Text(
                                 day.day.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary,
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = !day.day.isRest) { renaming = true },
+                                modifier = Modifier.clip(ForgeShape.Sm).clickable(enabled = !day.day.isRest) { renaming = true },
                             )
                         }
                         Text(stringResource(R.string.today_rest_day), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
@@ -280,7 +282,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                         Switch(
                             checked = day.day.isRest,
                             onCheckedChange = { vm.setRest(day.day, it) },
-                            colors = com.forgequest.app.ui.components.fitSwitchColors(c.blue),
+                            colors = com.forgequest.app.ui.components.fitSwitchColors(c.teal),
                         )
                     }
                     if (!day.day.isRest) {
@@ -437,7 +439,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
         val copied = stringResource(R.string.plan_prompt_copied)
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { changePlan = false }, containerColor = c.card) {
             Column(Modifier.padding(bottom = 32.dp)) {
-                Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = ForgeSpace.Gutter, vertical = 8.dp))
                 ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
                     Row(Modifier.padding(start = 70.dp, end = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TonalPill(stringResource(R.string.plan_gemini_copy), onClick = {
@@ -460,11 +462,11 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
 
     if (templates) {
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { templates = false }, containerColor = c.card) {
-            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+            Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_ready_made_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
                 StarterPlans.all.forEach { plan ->
-                    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(18.dp)).background(c.cardHigh).clickable { templates = false; vm.preview(plan) }.padding(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(ForgeShape.Md).background(c.cardHigh).clickable { templates = false; vm.preview(plan) }.padding(16.dp)) {
                         Text(plan.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Spacer(Modifier.height(4.dp))
                         Text(plan.description, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -477,13 +479,13 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     if (previous) {
         var toDelete by remember { mutableStateOf<PlanEntity?>(null) }
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { previous = false }, containerColor = c.card) {
-            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+            Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_previous), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(stringResource(R.string.plan_previous_tap), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 Spacer(Modifier.height(12.dp))
                 allPlans.forEach { plan ->
                     Row(
-                        Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(18.dp)).background(if (plan.active) c.tealTrack else c.cardHigh)
+                        Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(ForgeShape.Md).background(if (plan.active) c.tealTrack else c.cardHigh)
                             .clickable(enabled = !plan.active) { previous = false; vm.activate(plan) }.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -529,7 +531,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                     (1..7).filter { it != selectedDay }.forEach { dow ->
                         val target = s.plan.day(dow)
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.swapDays(s.plan.plan.id, selectedDay, dow); moveDay = false; selectedDay = dow }.padding(vertical = 10.dp, horizontal = 8.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.swapDays(s.plan.plan.id, selectedDay, dow); moveDay = false; selectedDay = dow }.padding(vertical = 10.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(Dates.dayName(dow), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -554,7 +556,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
                     value = text, onValueChange = { text = it },
                     placeholder = { Text(stringResource(R.string.plan_paste_hint_text)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = ForgeShape.Md,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                 )
             },
@@ -587,7 +589,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
             containerColor = c.card,
             title = { Text(stringResource(R.string.plan_day_name), color = c.textPrimary) },
             text = {
-                OutlinedTextField(value = title, onValueChange = { title = it.take(40) }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                OutlinedTextField(value = title, onValueChange = { title = it.take(40) }, singleLine = true, shape = ForgeShape.Md,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary))
             },
             confirmButton = { TextButton(onClick = { vm.rename(day.day, title.trim().ifEmpty { workoutLabel }); renaming = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
@@ -613,7 +615,7 @@ private fun ChoiceRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconCircle(icon, c.teal, c.tealTrack, 40.dp)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
             IconButton(onClick = { showInfo = !showInfo }) {
                 Icon(Icons.Rounded.Info, contentDescription = stringResource(R.string.cd_what_is_this, title), tint = if (showInfo) c.teal else c.textSecondary)
@@ -641,7 +643,7 @@ private fun ItemEditorSheet(
     val c = Fit.colors
     var draft by remember { mutableStateOf(item) }
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                 TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz)
@@ -693,7 +695,7 @@ private fun ItemEditorSheet(
 private fun EditorRow(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String = "", decimals: Int = 0) {
     val c = Fit.colors
     val haptics = LocalContext.current.container.haptics
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
         NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 72.dp, onTick = haptics::tick)
     }
@@ -717,7 +719,7 @@ fun PlanPreviewSheet(
     }
 
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
             Text(draft.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             if (draft.description.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))
@@ -725,7 +727,7 @@ fun PlanPreviewSheet(
             }
             Spacer(Modifier.height(12.dp))
             draft.days.sortedBy { it.dayOfWeek }.forEach { d ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     Text(Dates.dayShort(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)

@@ -48,7 +48,7 @@ fun CrashCard(modifier: Modifier = Modifier) {
         Column(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.BugReport, c.coral, c.coralTrack, size = 32.dp)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Text(
                     stringResource(R.string.crash_prompt), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary,
                     modifier = Modifier.weight(1f).padding(end = 10.dp),

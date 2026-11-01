@@ -79,7 +79,7 @@ export function CoachScreen(_: { param?: string }) {
         {!hasKey && (
           <div class="coach-card">
             <div class="coach-card-head">
-              <span class="coach-ic coach-ic-blue"><KeyIcon /></span>
+              <span class="coach-ic coach-ic-teal"><KeyIcon /></span>
               <span class="coach-card-title">{t('ai_key_needed_coach')}</span>
             </div>
             <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>

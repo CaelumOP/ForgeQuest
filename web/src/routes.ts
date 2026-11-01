@@ -1,5 +1,6 @@
 import type { FunctionComponent } from 'preact'
 import { AiCheck } from './dev/AiCheck'
+import { DesignScreen } from './ui/design/DesignScreen'
 import { KitGallery } from './dev/KitGallery'
 import { ViewportCheck } from './dev/ViewportCheck'
 import { CoachScreen } from './ui/coach/CoachScreen'
@@ -39,6 +40,8 @@ export const routes: Record<string, Route> = {
   '/badges': { title: 'tab_profile', Screen: BadgesScreen },
   '/scan': { title: 'tab_food', Screen: ScanScreen, bare: true },
   '/about': { title: 'settings_group_about', Screen: AboutScreen },
+  // Hidden design catalogue (DESIGN.md). Not linked from any menu.
+  '/design': { title: 'screen_ai_check', Screen: DesignScreen as Screen, bare: true },
   // Measures the Home Screen app's real height; the iPhone Simulator check (.github/ios-sim/shots.py) opens it.
   '/viewport': { title: 'screen_ai_check', Screen: ViewportCheck, bare: true },
   // Dev screens: only in `npm run dev`, so the production build leaves them out.

@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.R
 
@@ -125,7 +127,7 @@ fun WorkoutsScreen(nav: NavHostController) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.workouts_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
@@ -140,7 +142,7 @@ fun WorkoutsScreen(nav: NavHostController) {
         if (open != null) {
             FitCard(onClick = { nav.navigate(Routes.LIVE) }, padding = PaddingValues(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(c.coral))
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(c.teal))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.today_in_progress), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
@@ -225,7 +227,7 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
             val isSel = dow == selected
             val rest = days.firstOrNull { it.day.dayOfWeek == dow }?.day?.isRest ?: true
             Column(
-                Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(if (isSel) c.teal else c.card)
+                Modifier.weight(1f).clip(ForgeShape.Md).background(if (isSel) c.teal else c.card)
                     .selectable(selected = isSel, role = Role.Tab) { onSelect(dow) }
                     .semantics { contentDescription = if (rest) dayRestCd.format(Dates.dayName(dow)) else dayTrainingCd.format(Dates.dayName(dow)) }
                     .padding(vertical = 10.dp),
@@ -238,7 +240,7 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
                     maxLines = 1,
                     softWrap = false,
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Box(
                     Modifier.size(6.dp).clip(CircleShape).background(
                         when {
@@ -294,7 +296,7 @@ private fun DayCard(
         Spacer(Modifier.height(8.dp))
         val blocks = day.items.groupBy { it.block }
         blocks.forEach { (block, items) ->
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(blockLabel(block), style = MaterialTheme.typography.labelLarge, color = c.teal)
                 if (items.first().circuit) {
@@ -307,7 +309,7 @@ private fun DayCard(
             items.forEach { item ->
                 val ex = exercises[item.exerciseId]
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onExercise(item.exerciseId) }.padding(vertical = 8.dp),
+                    Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { onExercise(item.exerciseId) }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -333,7 +335,7 @@ private fun DayCard(
 @Composable
 private fun HeaderAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Column(
-        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
+        Modifier.clip(ForgeShape.Sm).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(icon, contentDescription = null, tint = Fit.colors.textPrimary)

@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.ui.theme.itemMotion
 import com.forgequest.app.domain.Nutrition
@@ -97,6 +99,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
@@ -334,8 +337,8 @@ fun FoodScreen(nav: NavHostController) {
     Box(Modifier.fillMaxSize().background(c.background)) {
         LazyColumn(
             Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = if (selection.isEmpty()) 24.dp else 96.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, bottom = if (selection.isEmpty()) 24.dp else 96.dp),
+            verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap),
         ) {
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -391,7 +394,7 @@ fun FoodScreen(nav: NavHostController) {
                             Text(stringResource(R.string.food_none_in_category, category.localLabel()), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                             Spacer(Modifier.height(4.dp))
                             Text(stringResource(R.string.food_empty_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(12.dp))
                             TonalPill(stringResource(R.string.food_add_a_food), onClick = {
                                 editing = FoodEntity(name = "", category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
                             }, icon = Icons.Rounded.Add)
@@ -483,7 +486,7 @@ private fun GeminiInbox(meals: List<GeminiMeal>, onOpen: (GeminiMeal) -> Unit, o
     val c = Fit.colors
     FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = c.purple, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.meals_inbox_title, meals.size), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
         }
@@ -498,8 +501,8 @@ private fun GeminiInbox(meals: List<GeminiMeal>, onOpen: (GeminiMeal) -> Unit, o
                 else -> LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern)))
             } + (meal.localTime()?.let { " · " + it.format(DateTimeFormatter.ofPattern("HH:mm")) } ?: "")
             Row(
-                Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp)).background(c.cardHigh)
-                    .clickable { onOpen(meal) }.padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(ForgeShape.Md).background(c.cardHigh)
+                    .clickable { onOpen(meal) }.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -529,7 +532,7 @@ private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: (
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             if (!isToday) {
-                Text(stringResource(R.string.food_back_to_today), style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onToday).padding(horizontal = 6.dp, vertical = 2.dp))
+                Text(stringResource(R.string.food_back_to_today), style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.clip(ForgeShape.Sm).clickable(onClick = onToday).padding(horizontal = 8.dp, vertical = 2.dp))
             }
         }
         IconButton(onClick = onNext, enabled = !isToday) {
@@ -545,19 +548,19 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
     val protein = meals.sumOf { it.protein.toDouble() }.toFloat()
     val proteinShown = com.forgequest.app.ui.components.tweenedInt(protein.roundToInt())
     val over = kcal > s.settings.kcalGoal
-    FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
+    FitCard {
         Row {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.food_protein_of_goal, proteinShown, s.settings.proteinGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = c.teal)
                 Text(stringResource(R.string.label_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 ProgressLine(protein / s.settings.proteinGoal.coerceAtLeast(1), c.teal, c.tealTrack, height = 5.dp)
             }
             Spacer(Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
                 Text("⁦%,d / %,d⁩".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = if (over) c.gold else c.blue)
                 Text(if (over) stringResource(R.string.food_calories_surplus) else stringResource(R.string.home_legend_calories), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
             }
         }
@@ -566,7 +569,7 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
             Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.food_carbs_of_goal, carbs.roundToInt(), s.settings.carbsGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = c.purple)
             Text(stringResource(R.string.label_carbs), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             ProgressLine(carbs / s.settings.carbsGoal.coerceAtLeast(1), c.purple, c.purpleTrack, height = 5.dp)
         }
     }
@@ -584,7 +587,7 @@ private fun WeekCard(s: ProgressSnapshot) {
     val avgKcal = logged.sumOf { it.kcal } / logged.size
     val avgProtein = (logged.sumOf { it.protein.toDouble() } / logged.size).roundToInt()
     val hits = logged.count { it.protein >= s.settings.proteinGoal }
-    FitCard(padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
+    FitCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.food_last_7_days), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
@@ -596,15 +599,20 @@ private fun WeekCard(s: ProgressSnapshot) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
             days.forEach { d ->
                 val n = byDay[d]
                 val ratio = ((n?.protein ?: 0f) / s.settings.proteinGoal.coerceAtLeast(1)).coerceIn(0f, 1f)
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(6.dp)).background(c.tealTrack), contentAlignment = Alignment.BottomCenter) {
+                    Box(Modifier.fillMaxWidth().height(32.dp).clip(ForgeShape.Sm).background(c.tealTrack), contentAlignment = Alignment.BottomCenter) {
                         if (n != null) Box(Modifier.fillMaxWidth().height((32 * ratio).dp.coerceAtLeast(if (ratio > 0f) 3.dp else 0.dp)).background(if (n.protein >= s.settings.proteinGoal) c.teal else c.teal.copy(alpha = 0.55f)))
                     }
-                    Text(Dates.dayShort(Dates.dayOfWeek(d)), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = if (d == today) c.textPrimary else c.textSecondary)
+                    // At 200% text a 3-letter day no longer fits a seventh of the card: shrink it instead of cutting it.
+                    Text(
+                        Dates.dayShort(Dates.dayOfWeek(d)), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall,
+                        color = if (d == today) c.textPrimary else c.textSecondary,
+                        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = MaterialTheme.typography.labelSmall.fontSize),
+                    )
                 }
             }
         }
@@ -622,7 +630,7 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () ->
         trailingIcon = if (query.isNotEmpty()) ({
             IconButton(onClick = { onChange("") }) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.food_search_clear), tint = c.textSecondary) }
         }) else null,
-        singleLine = true, shape = RoundedCornerShape(24.dp),
+        singleLine = true, shape = ForgeShape.Lg,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onDone() }),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
@@ -639,7 +647,7 @@ private fun RestaurantShortcuts(places: List<String>, onPick: (String) -> Unit) 
     val c = Fit.colors
     Column {
         Text(stringResource(R.string.food_restaurants), style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp))
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             places.forEach { p -> ChoiceChip(p, false, { onPick(p) }) }
         }
@@ -657,14 +665,14 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbs
     var category by remember { mutableStateOf(initial) }
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Text(stringResource(R.string.food_quick_log), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Text(stringResource(R.string.food_quick_log_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             // Recent one-offs fill the form in one tap (MacroFactor and MyFitnessPal lead with recents).
             if (recent.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.food_recent), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     recent.forEach { m ->
                         ChoiceChip("${m.name} · ${m.kcal}", m.name == name, {
@@ -674,21 +682,21 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbs
                 }
             }
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.food_what_was_it)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.food_what_was_it)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors, modifier = Modifier.fillMaxWidth())
             EstimateButton(name, estimate) { k, p, cb -> kcal = k.toString(); protein = p; carbs = cb }
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-                OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
             }
             if (carbsOn) {
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(carbs, { carbs = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.label_carbs_g)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(carbs, { carbs = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.label_carbs_g)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
             Spacer(Modifier.height(16.dp))
             PillButton(
@@ -708,7 +716,7 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
     val selected = qty != null
     val bg by animateColorAsState(if (selected) c.tealTrack else c.card, label = "bg")
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(bg)
+        Modifier.fillMaxWidth().clip(ForgeShape.Md).background(bg)
             .combinedClickable(onClick = onToggle, onLongClick = onEdit, onClickLabel = stringResource(if (selected) R.string.cd_deselect else R.string.cd_select), onLongClickLabel = stringResource(R.string.cd_edit))
             .semantics { this.selected = selected }
             .padding(start = 12.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
@@ -721,7 +729,7 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
             if (selected) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_selected), tint = c.onTeal, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(c.cardHigh).clickable(onClick = onPhoto), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(ForgeShape.Sm).background(c.cardHigh).clickable(onClick = onPhoto), contentAlignment = Alignment.Center) {
             if (food.photoPath != null) {
                 AsyncImage(model = File(food.photoPath), contentDescription = food.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             } else {
@@ -748,7 +756,7 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
                 Text(
                     partsCount(food.parts) + " · " + stringResource(R.string.food_parts_change),
                     style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onParts).padding(vertical = 4.dp),
+                    modifier = Modifier.padding(top = 2.dp).clip(ForgeShape.Sm).clickable(onClick = onParts).padding(vertical = 4.dp),
                 )
             }
         }
@@ -777,11 +785,11 @@ private fun MealRow(meal: MealEntity, onDelete: () -> Unit) {
     val c = Fit.colors
     val time = Instant.ofEpochMilli(meal.loggedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.card).padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.card).padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (meal.photoPath != null && meal.photoPath != SCANNED_NO_PHOTO) {
-            AsyncImage(File(meal.photoPath), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)))
+            AsyncImage(File(meal.photoPath), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(ForgeShape.Sm))
             Spacer(Modifier.width(12.dp))
         }
         Column(Modifier.weight(1f).padding(end = 8.dp)) {
@@ -806,7 +814,7 @@ fun PhotoSourceSheet(onUri: (Uri) -> Unit, onBitmap: (Bitmap) -> Unit, onRemove:
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) onUri(uri) else onDismiss() }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp -> if (bmp != null) onBitmap(bmp) else onDismiss() }
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Text(stringResource(R.string.food_photo), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(12.dp))
             SheetAction(Icons.Rounded.PhotoLibrary, stringResource(R.string.photo_choose_gallery)) { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
@@ -819,7 +827,7 @@ fun PhotoSourceSheet(onUri: (Uri) -> Unit, onBitmap: (Bitmap) -> Unit, onRemove:
 @Composable
 private fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, onClick: () -> Unit) {
     val c = Fit.colors
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 14.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable(onClick = onClick).padding(vertical = 12.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, tint = c.teal)
         Spacer(Modifier.width(16.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
@@ -842,15 +850,15 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
     var editParts by remember { mutableStateOf(false) }
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Text(if (food.id == 0L) stringResource(R.string.food_add_title) else stringResource(R.string.food_edit_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(name, { name = it.take(48) }, label = { Text(stringResource(R.string.label_name)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors, modifier = Modifier.fillMaxWidth())
             if (parts.isNotEmpty()) {
                 // With parts, the numbers come from the ticked parts: change a part's grams instead of typing totals.
                 val on = parts.filter { it.on }
-                Spacer(Modifier.height(10.dp))
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.cardHigh).clickable { editParts = true }.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Spacer(Modifier.height(12.dp))
+                Column(Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.cardHigh).clickable { editParts = true }.padding(horizontal = 12.dp, vertical = 10.dp)) {
                     Text(
                         listOf(stringResource(R.string.food_kcal, on.sumOf { it.kcal }), stringResource(R.string.food_g_protein, on.sumOf { it.protein.toDouble() }.roundToInt())).joinToString(" · "),
                         style = MaterialTheme.typography.bodyLarge, color = c.textPrimary,
@@ -859,24 +867,24 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
                 }
             } else {
                 EstimateButton(name, estimate) { k, p, cb -> kcal = k.toString(); protein = p; carbs = cb }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(kcal, { kcal = it.filter(Char::isDigit).take(5) }, label = { Text(stringResource(R.string.home_legend_calories)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-                    OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                    OutlinedTextField(protein, { protein = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.home_legend_protein)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
                 }
                 if (carbsOn) {
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(carbs, { carbs = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.label_carbs_g)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors,
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(carbs, { carbs = it.filter { ch -> ch.isDigit() || ch == '.' }.take(5) }, label = { Text(stringResource(R.string.label_carbs_g)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             PlaceField(place, { place = it }, places)
-            Spacer(Modifier.height(10.dp))
-            OutlinedTextField(serving, { serving = it.take(32) }, label = { Text(stringResource(R.string.food_serving_hint)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = fieldColors, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(serving, { serving = it.take(32) }, label = { Text(stringResource(R.string.food_serving_hint)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
             SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -914,7 +922,7 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
 private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onResult: (Int, String, String) -> Unit) {
     val c = Fit.colors
     if (estimate == null) {
-        Text(stringResource(R.string.food_estimate_needs_key), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+        Text(stringResource(R.string.food_estimate_needs_key), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp))
         return
     }
     val scope = rememberCoroutineScope()
@@ -940,8 +948,8 @@ private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forg
         },
         enabled = name.isNotBlank() && !busy,
     ) {
-        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = c.purple, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
+        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
         Text(stringResource(if (busy) R.string.food_estimating else R.string.food_estimate), color = c.purple)
     }
     error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.coral) }

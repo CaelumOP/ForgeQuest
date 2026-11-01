@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -67,7 +69,7 @@ fun MuscleExercisesSheet(
         MuscleExercises.list(muscle, library, planExerciseIds, equipment, allEquipment)
     }
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 20.dp).navigationBarsPadding()) {
+        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = ForgeSpace.Gutter).navigationBarsPadding()) {
             item {
                 Text(muscle.localLabel(), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                 MuscleExercises.COMPANIONS[muscle]?.let { more ->
@@ -77,11 +79,11 @@ fun MuscleExercisesSheet(
                     )
                 }
                 if (recovery != null && recovery.hoursUntilReady > 0) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         stringResource(R.string.muscle_recovering_note, recovery.hoursUntilReady),
                         style = MaterialTheme.typography.bodySmall, color = c.textPrimary,
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.goldTrack).padding(12.dp),
+                        modifier = Modifier.fillMaxWidth().clip(ForgeShape.Sm).background(c.goldTrack).padding(12.dp),
                     )
                 }
                 if (list.hidden > 0 || allEquipment) {
@@ -119,7 +121,7 @@ private fun SectionTitle(text: String) {
 private fun ExerciseRow(row: MuscleExercise, onOpen: (String) -> Unit) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onOpen(row.exercise.id) }.padding(vertical = 10.dp),
+        Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { onOpen(row.exercise.id) }.padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -146,6 +148,6 @@ fun TierBadge(tier: Tier) {
     }
     Text(
         stringResource(label), style = MaterialTheme.typography.labelSmall, color = fg,
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(bg).padding(horizontal = 10.dp, vertical = 4.dp),
+        modifier = Modifier.clip(ForgeShape.Full).background(bg).padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }

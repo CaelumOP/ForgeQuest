@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.R
 import com.forgequest.app.domain.Nutrition
@@ -204,7 +206,7 @@ fun HomeScreen(nav: NavHostController) {
     }
 
     Column(
-        Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter),
     ) {
         // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
         Box(Modifier.fillMaxWidth()) {
@@ -230,7 +232,7 @@ fun HomeScreen(nav: NavHostController) {
             FitCard(onClick = { nav.goToTab(Routes.PROFILE) }, padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(pluralStringResource(R.plurals.home_new_badges, unseen.size, unseen.size), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Text(unseen.map { it.localTitle() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -332,7 +334,7 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
             Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
         // The rank letter alone meant nothing to new people; the level under it says what the ring is.
-        if (showRank) Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (showRank) Column(Modifier.clip(ForgeShape.Sm).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
                 Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
             }
@@ -387,7 +389,7 @@ private fun NutritionRings(s: ProgressSnapshot) {
 private fun Legend(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         Text(text, style = MaterialTheme.typography.labelMedium, color = Fit.colors.textSecondary)
     }
 }
@@ -489,7 +491,7 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit, nudge: 
                     modifier = Modifier.size(28.dp),
                 )
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     pluralStringResource(R.plurals.streak_weeks, streak.weeks, streak.weeks),
@@ -521,11 +523,11 @@ private fun StreakCard(streak: WeeklyStreak, onDayClick: (Long) -> Unit, nudge: 
                 // Today and the last 3 days can be excused (sick, travel...) with a tap; workouts can't.
                 val canTag = day in (today - ProgressRepository.EXCUSE_BACK_DAYS)..today && state != DayState.DONE && state != DayState.OFF
                 Column(
-                    Modifier.clip(RoundedCornerShape(12.dp)).let { if (canTag) it.clickable(onClickLabel = stringResource(R.string.daytag_title)) { onDayClick(day) } else it },
+                    Modifier.clip(ForgeShape.Sm).let { if (canTag) it.clickable(onClickLabel = stringResource(R.string.daytag_title)) { onDayClick(day) } else it },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     DayCircle(state)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
             }
@@ -558,8 +560,8 @@ private fun DayCircle(state: DayState) {
         DayState.MISSED -> MiniRing(0f, c.teal, c.cardHigh, size = size, stroke = 2.5.dp) {
             Box(Modifier.size(4.dp).clip(CircleShape).background(c.textSecondary.copy(alpha = 0.5f)))
         }
-        DayState.REST -> Box(Modifier.size(size).clip(CircleShape).background(c.blueTrack), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Bedtime, contentDescription = stringResource(R.string.cd_rest), tint = c.blue, modifier = Modifier.size(16.dp))
+        DayState.REST -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Bedtime, contentDescription = stringResource(R.string.cd_rest), tint = c.textSecondary, modifier = Modifier.size(16.dp))
         }
         DayState.OFF -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh.copy(alpha = 0.5f)))
         DayState.EXCUSED -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
@@ -627,9 +629,9 @@ private fun TodayCard(
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (noPlan && !hasOpenSession) IconCircle(Icons.Rounded.Edit, c.teal, c.tealTrack)
-            else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.blue, c.blueTrack)
+            else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.textSecondary, c.cardHigh)
             else IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {

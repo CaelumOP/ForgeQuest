@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.food
 
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
@@ -71,11 +73,11 @@ fun PartsSheet(foodName: String, initial: List<FoodPart>, carbsOn: Boolean, onSa
     var editing by remember { mutableStateOf<Int?>(null) }
     val on = parts.filter { it.on }
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
             Text(stringResource(R.string.food_parts_title, foodName), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(4.dp))
             Text(stringResource(R.string.food_parts_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.food_kcal, on.sumOf { it.kcal }), style = MaterialTheme.typography.titleMedium, color = c.blue)
                 Spacer(Modifier.width(12.dp))
@@ -108,7 +110,7 @@ fun PartsSheet(foodName: String, initial: List<FoodPart>, carbsOn: Boolean, onSa
 private fun PartRow(part: FoodPart, onToggle: () -> Unit, onGrams: () -> Unit) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp)).background(c.cardHigh).padding(horizontal = 12.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(ForgeShape.Md).background(c.cardHigh).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(36.dp).clip(CircleShape).clickable(onClick = onToggle), contentAlignment = Alignment.Center) {
@@ -117,7 +119,7 @@ private fun PartRow(part: FoodPart, onToggle: () -> Unit, onGrams: () -> Unit) {
             }
         }
         Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f).padding(end = 12.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onGrams).padding(vertical = 4.dp)) {
+        Column(Modifier.weight(1f).padding(end = 12.dp).clip(ForgeShape.Sm).clickable(onClick = onGrams).padding(vertical = 4.dp)) {
             Text(part.name, style = MaterialTheme.typography.bodyMedium, color = if (part.on) c.textPrimary else c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(if (part.grams > 0) stringResource(R.string.scan_about_grams, part.grams) else stringResource(R.string.scan_set_grams), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
@@ -137,7 +139,7 @@ private fun PartRow(part: FoodPart, onToggle: () -> Unit, onGrams: () -> Unit) {
 fun PlaceField(value: String, onChange: (String) -> Unit, places: List<String>) {
     val c = Fit.colors
     val colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
-    OutlinedTextField(value, { onChange(it.take(48).replace("\n", "")) }, label = { Text(stringResource(R.string.food_place)) }, singleLine = true, shape = RoundedCornerShape(16.dp), colors = colors, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(value, { onChange(it.take(48).replace("\n", "")) }, label = { Text(stringResource(R.string.food_place)) }, singleLine = true, shape = ForgeShape.Md, colors = colors, modifier = Modifier.fillMaxWidth())
     val typed = value.trim()
     val suggestions = remember(typed, places) {
         if (typed.length < 2) emptyList()

@@ -1,0 +1,24 @@
+/* #/design catalogue (dev page). Tokens and kit only; logical properties only. */
+.ds { display: flex; flex-direction: column; block-size: 100dvh; background: var(--bg); color: var(--text); }
+.ds-scroll { flex: 1; min-block-size: 0; overflow-y: auto; padding-block: var(--sp-md) var(--sp-xxl); padding-inline: var(--gutter); display: flex; flex-direction: column; gap: var(--card-gap); }
+.ds-bar { display: flex; flex-wrap: wrap; gap: var(--sp-xs); }
+.ds h3 { margin: 0 0 var(--sp-sm); font-size: 16px; line-height: 22px; font-weight: 500; }
+.ds-stack { display: flex; flex-direction: column; gap: var(--sp-md); }
+.ds-wrap { display: flex; flex-wrap: wrap; gap: var(--sp-xs); align-items: center; }
+.ds-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--sp-sm); }
+.ds-sw { display: flex; flex-direction: column; gap: var(--sp-xxs); min-inline-size: 0; font-size: 12px; line-height: 16px; color: var(--text-2); overflow-wrap: anywhere; }
+.ds-sw i { display: block; block-size: 44px; border-radius: var(--r-sm); border: 1px solid var(--divider); }
+.ds-type > div { margin-block-end: var(--sp-xs); overflow-wrap: anywhere; }
+.ds-type small { display: block; font-size: 12px; line-height: 16px; font-weight: 400; color: var(--text-2); }
+.ds-radius { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: var(--sp-sm); }
+.ds-radius div { min-block-size: 64px; padding: var(--sp-xs); background: var(--card-high); font-size: 12px; line-height: 16px; display: flex; align-items: center; justify-content: center; text-align: center; }
+.ds-space { display: flex; align-items: center; gap: var(--sp-sm); font-size: 12px; line-height: 16px; margin-block-end: var(--sp-xxs); }
+.ds-space i { display: block; block-size: 12px; background: var(--teal); border-radius: var(--r-full); flex: none; }
+.ds-line { block-size: 8px; border-radius: var(--r-full); background: var(--teal-track); overflow: hidden; }
+.ds-line > div { block-size: 100%; border-radius: var(--r-full); background: var(--teal); transition: inline-size var(--dur-long) var(--ease-standard); }
+.ds-tile { padding: var(--sp-md); border-radius: var(--r-md); background: var(--card-high); }
+.ds-sw-btn { inline-size: 52px; block-size: 32px; min-block-size: 32px; border-radius: var(--r-full); border: 0; padding: 0; background: var(--card-high); position: relative; cursor: pointer; flex: none; }
+.ds-sw-btn::after { content: ""; position: absolute; inset-block-start: 4px; inset-inline-start: 4px; inline-size: 24px; block-size: 24px; border-radius: var(--r-full); background: var(--text-2); transition: inset-inline-start var(--dur-short) var(--ease-standard); }
+.ds-sw-btn[aria-checked="true"] { background: var(--teal); }
+.ds-sw-btn[aria-checked="true"]::after { inset-inline-start: 24px; background: var(--on-teal); }
+.ds-motion { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-lg); }

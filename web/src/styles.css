@@ -1,5 +1,11 @@
 /* Colors from the Android theme (app/.../ui/theme/Theme.kt): light on :root, dark via data-theme or the system. */
 :root {
+  /* Soft Coach tokens (DESIGN.md). Radii: three sizes plus full. */
+  --r-sm: 12px; --r-md: 20px; --r-lg: 28px; --r-full: 9999px;
+  --sp-xxs: 4px; --sp-xs: 8px; --sp-sm: 12px; --sp-md: 16px; --sp-lg: 24px; --sp-xl: 32px; --sp-xxl: 48px;
+  --gutter: 20px; --card-pad: 24px; --card-gap: 16px;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1); --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --dur-short: 200ms; --dur-medium: 300ms; --dur-long: 500ms; --dur-ring: 900ms;
   color-scheme: light;
   --bg: #f6f8fc;
   --card: #ffffff;
@@ -190,13 +196,13 @@ input, select, textarea, button { font-family: inherit; font-size: 16px; }
 input, select, textarea {
   min-height: 44px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--divider);
   background: var(--card);
   color: var(--text);
 }
 button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
-button { min-height: 44px; padding-block: 0; padding-inline: 24px; border: 0; border-radius: 22px; background: var(--teal); color: var(--on-teal); font-weight: 600; }
+button { min-height: 44px; padding-block: 0; padding-inline: 24px; border: 0; border-radius: var(--r-full); background: var(--teal); color: var(--on-teal); font-weight: 600; }
 
 /* App shell: top bar, one scrolling area, tab bar. Only the middle scrolls. */
 /* 100dvh keeps the tab bar on screen. position: fixed + inset: 0 pushed it off the bottom on iPhone (2026-10-24). */
@@ -233,7 +239,7 @@ body:has(:is(input, textarea, select):focus) :is(.tab-bar, .backup-pill) { displ
   inline-size: 44px;
   min-block-size: 44px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--r-full);
   background: transparent;
   color: var(--text);
 }
@@ -269,13 +275,13 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
   justify-content: center;
   inline-size: 56px;
   block-size: 30px;
-  border-radius: 15px;
-  transition: background-color 0.2s, color 0.2s;
+  border-radius: var(--r-full);
+  transition: background-color var(--dur-short) var(--ease-standard), color var(--dur-short) var(--ease-standard);
 }
 .tab-label { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab[aria-current='page'] { color: var(--text); }
 .tab[aria-current='page'] .tab-icon { background: var(--teal-track); color: var(--teal); }
-.tab:focus-visible { outline-offset: -2px; border-radius: 12px; }
+.tab:focus-visible { outline-offset: -2px; border-radius: var(--r-sm); }
 
 /* Tablet and wider: the bottom bar becomes a rail on the start edge (right in Arabic, grid follows the direction),
    and content stays one 640px column in the middle. */
@@ -298,9 +304,9 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
 .content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--card-gap);
   padding-block: 8px 24px;
-  padding-inline: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
+  padding-inline: max(var(--gutter), env(safe-area-inset-left), env(safe-area-inset-right));
   max-inline-size: 640px;
 }
 .content p { margin: 0; }
@@ -312,7 +318,7 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
   justify-content: space-between;
   min-block-size: 52px;
   padding-inline: 16px;
-  border-radius: 16px;
+  border-radius: var(--r-md);
   background: var(--card);
   color: var(--text);
   text-decoration: none;
@@ -336,7 +342,7 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
 }
 .gate h1 { margin: 8px 0 0; font-size: 24px; line-height: 1.3; max-inline-size: 22ch; }
 .gate > p { margin: 0; max-inline-size: 34ch; }
-.gate-icon { border-radius: 20px; }
+.gate-icon { border-radius: var(--r-md); }
 .lang-toggle {
   position: absolute;
   inset-block-start: max(12px, env(safe-area-inset-top));
@@ -365,7 +371,7 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
   min-block-size: 56px;
   padding-block: 8px;
   padding-inline: 14px;
-  border-radius: 16px;
+  border-radius: var(--r-md);
   background: var(--card);
 }
 .gate-steps li > span:nth-child(2) { flex: 1; }
@@ -376,14 +382,14 @@ html[dir='rtl'] .back svg, html:not([dir='rtl']) .forward { transform: scaleX(-1
   justify-content: center;
   inline-size: 28px;
   block-size: 28px;
-  border-radius: 50%;
+  border-radius: var(--r-full);
   background: var(--teal);
   color: var(--on-teal);
   font-weight: 600;
   font-size: 14px;
 }
 .step-glyph { flex: none; display: inline-flex; color: var(--blue); }
-img.step-glyph { border-radius: 5px; }
+img.step-glyph { border-radius: var(--r-sm); }
 /* The Share glyph is a real button: 44px target, tinted so it reads as tappable. */
 
 /* Dev screens (#/check). */
@@ -401,8 +407,8 @@ img.step-glyph { border-radius: 5px; }
 @keyframes fq-push { from { opacity: 0; transform: translateX(calc(28px * var(--dir))); } to { opacity: 1; transform: none; } }
 @keyframes fq-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* Emphasized curve, medium length: the M3 tokens for a screen-level move (kit.css), like the Android app. */
-.scroll-push { animation: fq-push var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized); }
-.food-row, .kit-swipe, .wk-item { animation: fq-in 200ms ease-out; }
+.scroll-push { animation: fq-push var(--dur-medium) var(--ease-standard); }
+.food-row, .kit-swipe, .wk-item { animation: fq-in var(--dur-short) var(--ease-enter); }
 
 /* Reduced motion: nothing moves. Entrances that matter become short fades instead (kit.css). */
 @media (prefers-reduced-motion: reduce) {
@@ -410,7 +416,7 @@ img.step-glyph { border-radius: 5px; }
 }
 
 /* "Tap to back up" (BackupPill.tsx): floats just above the tab bar. */
-.backup-pill { align-self: center; margin-block: 0 8px; min-block-size: 40px; padding-inline: 18px; border-radius: 20px; background: var(--teal-track); color: var(--teal); font-size: 14px; }
+.backup-pill { align-self: center; margin-block: 0 8px; min-block-size: 40px; padding-inline: 18px; border-radius: var(--r-md); background: var(--teal-track); color: var(--teal); font-size: 14px; }
 
 /* Large text. Every size here is in px, so the browser's text zoom (iPhone aA / desktop zoom) narrows the layout in CSS px
    instead of growing a root font size: 300px is about a 390px phone at 1.35x, the same point where Android reflows.

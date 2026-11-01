@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 
@@ -175,7 +176,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             Spacer(Modifier.height(16.dp))
             FitCard {
                 Text(stringResource(R.string.detail_progress), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 SegmentedTabs(metrics.map { it.label }, metricIndex.coerceIn(0, metrics.lastIndex), { metricIndex = it })
                 Spacer(Modifier.height(16.dp))
                 if (points.size < 2) {
@@ -201,7 +202,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                     history.reversed().take(20).forEach { (session, sets) ->
                         Spacer(Modifier.height(4.dp))
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { nav.navigate(Routes.session(session.id)) }.padding(vertical = 6.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { nav.navigate(Routes.session(session.id)) }.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -248,7 +249,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                     Text(stringResource(R.string.detail_link_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
-                        value = url, onValueChange = { url = it }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                        value = url, onValueChange = { url = it }, singleLine = true, shape = ForgeShape.Md,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     )
                 }

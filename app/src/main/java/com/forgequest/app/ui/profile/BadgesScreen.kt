@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.R
 import com.forgequest.app.ui.localTitle
 import com.forgequest.app.ui.localDescription
@@ -57,7 +58,7 @@ fun BadgesScreen(nav: NavHostController) {
                 Text(stringResource(R.string.profile_badges_unlocked, s.badges.size, Badges.all.size), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             // The closest locked badge, so there's always a clear next goal.
             Badges.all.filter { it.id !in owned }
                 .mapNotNull { b -> Badges.progress(b.id, s.stats)?.let { b to it } }
@@ -75,9 +76,9 @@ fun BadgesScreen(nav: NavHostController) {
             BadgeCategory.entries.forEach { cat ->
                 FitCard {
                     Text(cat.localLabel(), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Badges.all.filter { it.category == cat }.chunked(4).forEach { row ->
-                        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                             row.forEach { b ->
                                 val got = owned[b.id]
                                 BadgeChip(b.localTitle(), b.localDescription(), badgeIcon(cat), unlocked = got != null, isNew = got?.seen == false, modifier = Modifier.weight(1f), progress = Badges.progress(b.id, s.stats))

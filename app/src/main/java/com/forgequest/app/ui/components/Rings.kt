@@ -9,6 +9,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.forgequest.app.container
 import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.LocalReducedMotion
 import kotlinx.coroutines.delay
@@ -66,9 +68,11 @@ fun ConcentricRings(
     description: String? = null,
     center: @Composable () -> Unit = {},
 ) {
-    // First show: each ring sweeps in from 0 over 650 ms, 60 ms after the one outside it. Later changes glide on a soft
-    // spring. Reduced motion: the rings simply appear at their value.
+    // First show: each ring sweeps in from 0 over 900 ms, 60 ms after the one outside it. Later changes take the same
+    // 900 ms sweep. Crossing 100 % after the first show gives one soft tick. Reduced motion: the rings appear at their value.
     val reduced = LocalReducedMotion.current
+    val haptics = LocalContext.current.container.haptics
+    val lastTarget = remember(rings.size) { FloatArray(rings.size) { i -> rings[i].progress } }
     val progress = remember(rings.size) { List(rings.size) { i -> Animatable(if (reduced) rings[i].progress else 0f) } }
     val swept = remember(rings.size) { BooleanArray(rings.size) }
     rings.forEachIndexed { i, r ->
@@ -79,9 +83,14 @@ fun ConcentricRings(
                 !swept[i] -> {
                     swept[i] = true
                     delay(60L * i)
-                    a.animateTo(r.progress, tween(650, easing = ForgeMotion.Easing.EmphasizedDecelerate))
+                    a.animateTo(r.progress, tween(ForgeMotion.Duration.RING, easing = ForgeMotion.Easing.EmphasizedDecelerate))
+                    lastTarget[i] = r.progress
                 }
-                else -> a.animateTo(r.progress, spring(stiffness = Spring.StiffnessVeryLow))
+                else -> {
+                    if (lastTarget[i] < 1f && r.progress >= 1f) haptics.lightTick()
+                    lastTarget[i] = r.progress
+                    a.animateTo(r.progress, tween(ForgeMotion.Duration.RING, easing = ForgeMotion.Easing.EmphasizedDecelerate))
+                }
             }
         }
     }

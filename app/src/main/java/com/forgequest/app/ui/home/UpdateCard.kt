@@ -78,7 +78,7 @@ fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit, modif
     FitCard(modifier = modifier, padding = PaddingValues(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(Icons.Rounded.SystemUpdate, accent, if (b.latest.critical) c.coralTrack else c.tealTrack, size = 32.dp)
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(if (b.latest.critical) R.string.update_critical_title else R.string.update_banner_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(stringResource(R.string.update_available, b.latest.versionName), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -95,8 +95,8 @@ fun UpdateCard(b: UpdateBanner, onUpdate: () -> Unit, onLater: () -> Unit, modif
         when {
             progress != null -> {
                 Spacer(Modifier.height(8.dp))
-                if (progress < 0f) LinearProgressIndicator(Modifier.fillMaxWidth().padding(end = 6.dp), color = accent)
-                else LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().padding(end = 6.dp), color = accent)
+                if (progress < 0f) LinearProgressIndicator(Modifier.fillMaxWidth().padding(end = 8.dp), color = accent)
+                else LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().padding(end = 8.dp), color = accent)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     if (progress < 0f) stringResource(R.string.update_downloading) else stringResource(R.string.update_progress, (progress * 100).toInt()),
@@ -118,7 +118,7 @@ fun WhatsNewDialog(v: LatestVersion, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = c.card,
-        icon = { IconCircle(Icons.Rounded.NewReleases, c.purple, c.purpleTrack, size = 40.dp) },
+        icon = { IconCircle(Icons.Rounded.NewReleases, c.teal, c.tealTrack, size = 40.dp) },
         title = { Text(stringResource(R.string.whats_new_title, v.versionName), style = MaterialTheme.typography.titleLarge, color = c.textPrimary) },
         text = {
             Text(v.notes, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.verticalScroll(rememberScrollState()))
