@@ -24,10 +24,12 @@ export function App() {
   const path = useRoute()
   const settings = useLive(loadSettings, [], null) // null until the first read, so a returning person never sees a flash of setup
   const [tourOpen, setTourOpen] = useState(() => !tourSeen())
-  if (gated) return <InstallGate />
+  // The design catalogue (#/design) opens in any browser tab, before install or setup, so it can be browsed anywhere.
+  const catalogue = path === '/design'
+  if (gated && !catalogue) return <InstallGate />
   if (!settings) return <div class="shell" />
   setHapticsEnabled(settings.hapticsEnabled !== false)
-  if (!settings.onboarded) return <><OnboardingScreen onDone={() => undefined} /><ToastHost /></>
+  if (!settings.onboarded && !catalogue) return <><OnboardingScreen onDone={() => undefined} /><ToastHost /></>
   const { route, param } = matchRoute(path)
   const tour = tourOpen && <Tour finishLabel={t('tour_done')} onDone={() => { markTourSeen(); setTourOpen(false) }} />
 
