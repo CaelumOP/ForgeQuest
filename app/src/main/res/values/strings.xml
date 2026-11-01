@@ -1262,7 +1262,7 @@
     <string name="goals_fitbit_burn">Formula estimate: %1$s kcal a day · Fitbit 14-day average: %2$s kcal</string>
     <!-- Meals from the Gemini Gem -->
     <string name="meals_title">Meals from Gemini</string>
-    <string name="meals_hint">Your \"ForgeQuest Food\" Gem adds each meal to \"ForgeQuest meals from Gemini\" in Drive. New meals wait on the Food tab for you to confirm.</string>
+    <string name="meals_hint">In Gemini, share your \"ForgeQuest Food\" Gem\'s reply to ForgeQuest. Meals still in the old \"ForgeQuest meals from Gemini\" Doc are read too. New meals wait on the Food tab for you to confirm.</string>
     <string name="meals_copy_gem">Copy Gem instructions</string>
     <string name="meals_syncing">Checking for meals…</string>
     <string name="meals_synced">%d new meals from Gemini on the Food tab</string>
