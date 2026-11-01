@@ -1413,4 +1413,9 @@
     <string name="ai_key_needed_coach">A free Gemini key turns the coach on.</string>
     <string name="ai_key_needed_food">A free Gemini key turns the meal scanner on.</string>
     <string name="ai_key_needed_button">Add a free key</string>
+
+    <!-- Crash report prompt on Home -->
+    <string name="crash_prompt">ForgeQuest closed unexpectedly last time. Send a crash report?</string>
+    <string name="crash_send">Send</string>
+    <string name="crash_dismiss">Dismiss</string>
 </resources>

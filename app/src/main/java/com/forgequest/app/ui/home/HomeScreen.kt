@@ -212,6 +212,7 @@ fun HomeScreen(nav: NavHostController) {
             UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
         }
         whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
+        CrashCard(Modifier.padding(top = 8.dp))
         Spacer(Modifier.height(4.dp))
         NutritionRings(s)
         Spacer(Modifier.height(16.dp))

@@ -1585,4 +1585,9 @@
     <string name="ai_key_needed_coach">مفتاح Gemini المجاني يشغّل مدربك الذكي.</string>
     <string name="ai_key_needed_food">مفتاح Gemini المجاني يشغّل ماسح الوجبات.</string>
     <string name="ai_key_needed_button">أضف مفتاحًا مجانيًا</string>
+
+    <!-- Crash report prompt on Home -->
+    <string name="crash_prompt">أُغلق ForgeQuest على نحوٍ غير متوقع في المرة السابقة. أتودّ إرسال تقرير بالعطل؟</string>
+    <string name="crash_send">إرسال</string>
+    <string name="crash_dismiss">تجاهل</string>
 </resources>

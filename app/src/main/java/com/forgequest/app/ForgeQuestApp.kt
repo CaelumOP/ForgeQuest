@@ -67,6 +67,8 @@ class ForgeQuestApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // First, so a crash anywhere after this is saved for the "Send a crash report?" card on Home.
+        com.forgequest.app.data.crash.CrashReport.install(this)
         AppText.init(this)
         container = AppContainer(this)
         container.appScope.launch { container.workouts.seedLibrary() }
