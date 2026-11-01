@@ -9,6 +9,7 @@ import { goBack, useRoute } from './ui/nav'
 import { NotFoundScreen } from './ui/screens'
 import { TabBar } from './ui/TabBar'
 import { BackupPill } from './ui/BackupPill'
+import { CrashPrompt } from './ui/CrashPrompt'
 import { ScreenBoundary } from './ui/ErrorBoundary'
 import { UpdatePill } from './ui/UpdatePill'
 import { TopBar } from './ui/TopBar'
@@ -35,6 +36,7 @@ export function App() {
       <div class="shell">
         <TopBar title={t(route.title)} />
         <main class="scroll"><ScreenBoundary key={path}><route.Screen /></ScreenBoundary></main>
+        <CrashPrompt />
         <UpdatePill />
         <BackupPill />
         <TabBar route={path} />

@@ -1,4 +1,5 @@
 import { Component, type ComponentChildren } from 'preact'
+import { saveCrash } from '../data/crash'
 import { t } from '../i18n'
 import { Button, Card } from './kit'
 import { goBack } from './nav'
@@ -19,6 +20,7 @@ export class ScreenBoundary extends Component<Props, State> {
 
   componentDidCatch(error: unknown) {
     console.error(error)
+    saveCrash(error) // offered as a crash report on the next launch
   }
 
   render() {

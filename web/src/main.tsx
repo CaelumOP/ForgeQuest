@@ -1,12 +1,18 @@
 import { render } from 'preact'
-import { getLang } from './i18n' // sets <html lang dir> before the first paint
+import { getLang, t } from './i18n' // sets <html lang dir> before the first paint
 import './ui/theme' // sets <html data-theme>
 import { App } from './app'
 import { requestPersistence } from './data/db'
 import { autoBackup, preloadGis } from './data/drive'
+import { saveCrash } from './data/crash'
 import { loadSettings } from './data/settings'
 import { seedLibrary } from './data/workouts'
+import { toast } from './ui/kit'
 import './styles.css'
+
+// Crashes are kept on this phone only (no network); the next launch offers to share the last one (CrashPrompt).
+addEventListener('error', (e) => saveCrash(e.error ?? e.message))
+addEventListener('unhandledrejection', (e) => { saveCrash(e.reason); toast(t('error_toast')) })
 
 // Built-in exercises (names in the current language) and a request to keep data under storage pressure.
 void seedLibrary(getLang())
