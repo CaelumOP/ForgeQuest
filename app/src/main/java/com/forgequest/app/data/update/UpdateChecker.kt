@@ -47,6 +47,8 @@ class UpdateChecker(private val context: Context, private val http: OkHttpClient
 
     /** Downloads the APK into the shared cache folder and returns it. [onProgress] gets 0..1, or -1 when the size is unknown. */
     suspend fun download(latest: LatestVersion, onProgress: (Float) -> Unit = {}): File = withContext(Dispatchers.IO) {
+        // Only this repo's GitHub Releases: a changed version.json alone can't point the app at another file.
+        if (!isTrustedApkUrl(latest.apk)) throw UntrustedApk()
         val file = File(File(context.cacheDir, "export").apply { mkdirs() }, "ForgeQuest-${latest.versionName}.apk")
         http.newCall(Request.Builder().url(latest.apk).build()).execute().use { r ->
             if (!r.isSuccessful) throw IOException("HTTP ${r.code}")
@@ -74,8 +76,33 @@ class UpdateChecker(private val context: Context, private val http: OkHttpClient
             file.delete()
             throw NotPublishedYet()
         }
+        // Same app, same signing key, or it doesn't get near the installer.
+        if (info.packageName != context.packageName || !sameSigner(file)) {
+            file.delete()
+            throw UntrustedApk()
+        }
         file
     }
+
+    /** True when the APK at [apk] is signed with exactly the certificates of the installed app. */
+    @Suppress("DEPRECATION")
+    private fun sameSigner(apk: File): Boolean {
+        val pm = context.packageManager
+        return if (Build.VERSION.SDK_INT >= 28) {
+            val flag = android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+            val theirs = pm.getPackageArchiveInfo(apk.path, flag)?.signingInfo?.apkContentsSigners
+            val ours = pm.getPackageInfo(context.packageName, flag).signingInfo?.apkContentsSigners
+            !theirs.isNullOrEmpty() && !ours.isNullOrEmpty() && theirs.toSet() == ours.toSet()
+        } else {
+            val flag = android.content.pm.PackageManager.GET_SIGNATURES
+            val theirs = pm.getPackageArchiveInfo(apk.path, flag)?.signatures
+            val ours = pm.getPackageInfo(context.packageName, flag).signatures
+            !theirs.isNullOrEmpty() && !ours.isNullOrEmpty() && theirs.toSet() == ours.toSet()
+        }
+    }
+
+    /** The APK came from somewhere else, or is another app or another signer's build. */
+    class UntrustedApk : IOException("Untrusted APK")
 
     /** The download was an older build: the new one is still being published. */
     class NotPublishedYet : IOException("APK not published yet")
@@ -95,7 +122,11 @@ class UpdateChecker(private val context: Context, private val http: OkHttpClient
         )
     }
 
-    private companion object {
-        const val VERSION_URL = "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/version.json"
+    companion object {
+        private const val VERSION_URL = "https://raw.githubusercontent.com/CaelumOP/ForgeQuest/main/apk/version.json"
+        private const val RELEASES = "https://github.com/CaelumOP/ForgeQuest/releases/download/"
+
+        /** Release files of this repo only. */
+        fun isTrustedApkUrl(url: String): Boolean = url.startsWith(RELEASES) && url.length > RELEASES.length && ".." !in url
     }
 }
