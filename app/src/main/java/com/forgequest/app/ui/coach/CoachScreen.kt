@@ -46,7 +46,6 @@ import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.MoreVert
@@ -405,13 +404,13 @@ private fun CoachMessage(m: ChatEntity, plan: PlanDraft?, onPreview: () -> Unit,
             MarkdownText(m.text, color = c.textPrimary)
         }
         if (isError && m.detail.isNotBlank()) {
-            val clipboard = LocalClipboardManager.current
+            val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
             val snackbar = LocalSnackbar.current
             val scope = rememberCoroutineScope()
             val copiedLabel = stringResource(R.string.coach_copied)
             Row(
                 Modifier.padding(top = 2.dp).clip(RoundedCornerShape(50)).clickable {
-                    clipboard.setText(AnnotatedString("${m.text}\n${m.detail}"))
+                    clipboard.copy("${m.text}\n${m.detail}")
                     // Android 13+ shows its own copied-to-clipboard preview.
                     if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copiedLabel) }
                 }.padding(horizontal = 8.dp, vertical = 8.dp),

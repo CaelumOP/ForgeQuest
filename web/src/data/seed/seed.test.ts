@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 // Raw Android sources, read at test time so the web seed cannot drift from the Kotlin reference.
 import exerciseCatalogKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/ExerciseCatalog.kt?raw'
 import starterPlansKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/StarterPlans.kt?raw'
+import { MUSCLES } from '../../domain/muscle'
 import { EXERCISE_CATALOG } from './exercise-catalog'
 import { EXERCISE_NAMES_AR } from './exercise-names-ar'
 import { localizePlan, STARTER_PLANS, STARTER_PLANS_AR } from './starter-plans'
@@ -19,6 +20,16 @@ describe('seed data mirrors the Android catalog', () => {
     const arIds = Object.keys(EXERCISE_NAMES_AR)
     for (const id of ids) expect(EXERCISE_NAMES_AR[id], id).toBeTruthy()
     for (const id of arIds) expect(ids.has(id), id).toBe(true)
+  })
+
+  it('every muscle group has at least 2 primary exercises, and the new weak-muscle moves exist', () => {
+    for (const m of MUSCLES) {
+      expect(EXERCISE_CATALOG.filter((e) => e.primary.includes(m)).length, m).toBeGreaterThanOrEqual(2)
+    }
+    const adductors = EXERCISE_CATALOG.filter((e) => e.primary.includes('ADDUCTORS')).map((e) => e.id)
+    expect(adductors).toEqual(expect.arrayContaining(['copenhagen_plank_short', 'copenhagen_plank_long', 'side_lying_hip_adduction', 'cossack_squat', 'band_hip_adduction']))
+    const tibialis = EXERCISE_CATALOG.filter((e) => e.primary.includes('TIBIALIS')).map((e) => e.id)
+    expect(tibialis).toEqual(expect.arrayContaining(['tibialis_raise', 'heel_walk', 'band_dorsiflexion']))
   })
 
   it('every exerciseId used in the starter plans exists in the catalog', () => {

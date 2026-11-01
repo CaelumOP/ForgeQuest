@@ -30,7 +30,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.forgequest.app.ui.components.rememberFullSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -113,7 +113,7 @@ fun ExercisePickerSheet(
     var onlyMyEquipment by remember { mutableStateOf(configuredEq.isNotEmpty() && configuredEq.size < Equipment.entries.size) }
     var selectedEquipment by remember { mutableStateOf<Equipment?>(null) }
     var creating by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberFullSheetState()
 
     val effectiveEquipment = remember(configuredEq, onlyMyEquipment, selectedEquipment) {
         when {

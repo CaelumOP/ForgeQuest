@@ -12,11 +12,12 @@ const INTERMEDIATE = new Set([
   'burpee', 'push_up', 'diamond_push_up', 'pike_push_up', 'pull_up', 'chin_up', 'dip', 'bulgarian_split_squat',
   'hollow_hold', 'hanging_knee_raise', 'weighted_push_up', 'bench_press', 'overhead_press', 'barbell_row', 'deadlift',
   'romanian_deadlift', 'back_squat', 'skull_crusher', 'kb_swing', 'kb_clean', 'turkish_get_up', 'db_lunge',
+  'copenhagen_plank_short', 'cossack_squat',
 ])
 const ADVANCED = new Set([
   'pistol_squat', 'nordic_curl', 'hanging_leg_raise', 'muscle_up', 'l_sit', 'handstand_hold', 'handstand_push_up',
   'tuck_planche', 'pseudo_planche_push_up', 'tuck_front_lever', 'front_lever_row', 'back_lever_tuck',
-  'weighted_pull_up', 'weighted_chin_up', 'weighted_dip', 'kb_snatch',
+  'weighted_pull_up', 'weighted_chin_up', 'weighted_dip', 'kb_snatch', 'copenhagen_plank_long',
 ])
 
 export function tierOf(ex: ExerciseEntity): Tier | null {
