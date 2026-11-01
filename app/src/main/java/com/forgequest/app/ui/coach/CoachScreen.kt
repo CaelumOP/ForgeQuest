@@ -79,6 +79,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
+import com.forgequest.app.container
+import com.forgequest.app.ui.components.toast
 import com.forgequest.app.data.CoachRepository
 import com.forgequest.app.data.db.ChatEntity
 import com.forgequest.app.data.db.ExerciseEntity
@@ -178,6 +180,7 @@ fun CoachScreen(nav: NavHostController) {
     val c = Fit.colors
     var input by remember { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     var preview by remember { mutableStateOf<ChatEntity?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -221,6 +224,33 @@ fun CoachScreen(nav: NavHostController) {
                         )
                     }
                     androidx.compose.material3.HorizontalDivider(color = c.divider)
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    val personal by com.forgequest.app.PersonalTools.flow(ctx).collectAsState()
+                    if (personal == true) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.ask_gemini)) }, onClick = {
+                            menu = false
+                            val question = input
+                            val arabic = ctx.resources.configuration.locales[0].language == "ar"
+                            scope.launch {
+                                val data = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { ctx.container.bridge.dataText() }
+                                val opened = com.forgequest.app.data.bridge.AskGemini.send(ctx, com.forgequest.app.data.bridge.AskGemini.prompt(data, question, arabic))
+                                ctx.toast(ctx.getString(if (opened) R.string.ask_gemini_sent else R.string.ask_gemini_copied))
+                            }
+                        })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.paste_gemini_reply)) }, onClick = {
+                            menu = false
+                            val clip = (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                                .primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
+                            if (clip.contains(com.forgequest.app.data.bridge.BridgeFormat.HEADER)) {
+                                scope.launch {
+                                    ctx.container.bridge.applyText(clip)
+                                    ctx.toast(ctx.getString(R.string.paste_gemini_done))
+                                }
+                            } else {
+                                ctx.toast(ctx.getString(R.string.paste_gemini_none))
+                            }
+                        })
+                    }
                     DropdownMenuItem(text = { Text(stringResource(R.string.coach_clear)) }, onClick = { menu = false; confirmClear = true })
                 }
             }

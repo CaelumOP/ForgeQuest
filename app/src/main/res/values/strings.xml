@@ -1418,4 +1418,12 @@
     <string name="crash_prompt">ForgeQuest closed unexpectedly last time. Send a crash report?</string>
     <string name="crash_send">Send</string>
     <string name="crash_dismiss">Dismiss</string>
+    <string name="personal_tools_on">Personal tools on</string>
+    <string name="personal_tools_off">Personal tools off</string>
+    <string name="ask_gemini">Ask Gemini</string>
+    <string name="ask_gemini_sent">Sent to Gemini. Copy its whole reply, then come back and tap Paste Gemini reply.</string>
+    <string name="ask_gemini_copied">Gemini app not found. Your question is copied: paste it on the Gemini page.</string>
+    <string name="paste_gemini_reply">Paste Gemini reply</string>
+    <string name="paste_gemini_none">No ForgeQuest reply found. Copy Gemini\'s whole reply first.</string>
+    <string name="paste_gemini_done">Gemini\'s reply is in your coach.</string>
 </resources>
