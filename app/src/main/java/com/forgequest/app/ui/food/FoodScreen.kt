@@ -74,7 +74,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.forgequest.app.ui.components.rememberFullSheetState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -253,7 +253,7 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
             app.haptics.setDone()
             val badges = app.progress.evaluateBadges()
             message.value = app.plural(R.plurals.food_logged_items, picked.size, picked.size) +
-                if (badges.isNotEmpty()) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
+                if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
         }
     }
 
@@ -656,7 +656,7 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbs
     var protein by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(initial) }
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
-    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
+    ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
             Text(stringResource(R.string.food_quick_log), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Text(stringResource(R.string.food_quick_log_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -805,7 +805,7 @@ fun PhotoSourceSheet(onUri: (Uri) -> Unit, onBitmap: (Bitmap) -> Unit, onRemove:
     val c = Fit.colors
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) onUri(uri) else onDismiss() }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp -> if (bmp != null) onBitmap(bmp) else onDismiss() }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = c.card) {
+    ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
             Text(stringResource(R.string.food_photo), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(12.dp))
@@ -841,7 +841,7 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
     var parts by remember { mutableStateOf(food.parts) }
     var editParts by remember { mutableStateOf(false) }
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary)
-    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = c.card) {
+    ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
             Text(if (food.id == 0L) stringResource(R.string.food_add_title) else stringResource(R.string.food_edit_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             Spacer(Modifier.height(16.dp))

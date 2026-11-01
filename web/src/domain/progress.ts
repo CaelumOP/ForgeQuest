@@ -204,6 +204,21 @@ export const XP_PER_WORKOUT = 50
 export const XP_PER_SET = 2
 export const XP_PER_PR = 25
 export const XP_PER_BADGE = 100
+/** Working sets per workout that earn set XP, for workouts on or after `XP_SET_CAP_FROM_DAY`. */
+export const XP_SET_CAP = 25
+/** 2026-11-01: older workouts keep their uncapped set XP. */
+export const XP_SET_CAP_FROM_DAY = 20758
+
+/** Sets of one workout dated `epochDay` that earn XP: warm-ups count as before, but at most `XP_SET_CAP` from the cut-off on. */
+export const setsForXp = (doneSets: number, epochDay: number): number =>
+  epochDay >= XP_SET_CAP_FROM_DAY ? Math.min(doneSets, XP_SET_CAP) : doneSets
+
+/** `setsForXp` summed over workouts: `setsBySession` holds each workout's done-set count, `dayOf` its epoch day. */
+export function cappedSets(setsBySession: ReadonlyMap<number, number>, dayOf: ReadonlyMap<number, number>): number {
+  let total = 0
+  for (const [id, n] of setsBySession) total += setsForXp(n, dayOf.get(id) ?? -Infinity)
+  return total
+}
 
 /** XP needed to go from [level] to [level] + 1. */
 export const xpStepFor = (level: number): number => 100 + 50 * (level - 1)
@@ -243,7 +258,17 @@ export type MuscleRecovery = {
 /** (muscle, trainedAtMillis, stimulus weight in (0, 1]) */
 export type MuscleHit = [Muscle, number, number]
 
+/** Hours a full session takes to clear for a muscle not listed in `recoveryWindowHours`. */
 export const RECOVERY_WINDOW_HOURS = 48
+/** The longest window: workouts older than this can't leave any fatigue. */
+export const MAX_RECOVERY_WINDOW_HOURS = 60
+
+const SLOW_MUSCLES: ReadonlySet<Muscle> = new Set<Muscle>(['QUADS', 'HAMSTRINGS', 'GLUTES', 'LOWER_BACK'])
+const FAST_MUSCLES: ReadonlySet<Muscle> = new Set<Muscle>(['ABS', 'OBLIQUES', 'CALVES', 'FOREARMS', 'TIBIALIS'])
+
+/** Hours a full session on `muscle` takes to clear: 60 for big leg and lower-back muscles, 36 for small ones, else 48. */
+export const recoveryWindowHours = (muscle: Muscle): number =>
+  SLOW_MUSCLES.has(muscle) ? MAX_RECOVERY_WINDOW_HOURS : FAST_MUSCLES.has(muscle) ? 36 : RECOVERY_WINDOW_HOURS
 /** Number of full working sets on a primary muscle that constitutes a 100 % (48-hour) session stimulus. */
 const FULL_SESSION_EFFECTIVE_SETS = 4
 const HIGH_SKILL_LOW_REP_IDS = new Set([
@@ -319,7 +344,7 @@ export function effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): number {
 }
 
 /**
- * Fatigue per muscle at [now]. Fatigue clears at 1 / WINDOW_HOURS per hour. Sessions add up: what's left of an
+ * Fatigue per muscle at [now]. Fatigue clears at 1 / recoveryWindowHours per hour (60, 48 or 36 h by muscle). Sessions add up: what's left of an
  * earlier session plus the new one (capped at 1), so training a muscle twice in a day counts both (audit 2026-10-24).
  */
 export function computeRecovery(hits: readonly MuscleHit[], now: number): Map<Muscle, MuscleRecovery> {
@@ -327,17 +352,18 @@ export function computeRecovery(hits: readonly MuscleHit[], now: number): Map<Mu
   for (const h of hits) if (h[2] > 0 && h[1] <= now) byMuscle.set(h[0], [...(byMuscle.get(h[0]) ?? []), h])
   const result = new Map<Muscle, MuscleRecovery>()
   for (const [muscle, list] of byMuscle) {
+    const window = recoveryWindowHours(muscle)
     let fatigue = 0
     let lastAt: number | null = null
     for (const [, at, weight] of [...list].sort((a, b) => a[1] - b[1])) {
-      if (lastAt != null) fatigue = Math.max(f(fatigue - f(f(f(at - lastAt) / 3_600_000) / RECOVERY_WINDOW_HOURS)), 0)
+      if (lastAt != null) fatigue = Math.max(f(fatigue - f(f(f(at - lastAt) / 3_600_000) / window)), 0)
       fatigue = Math.min(f(fatigue + clamp(f(weight), 0, 1)), 1)
       lastAt = at
     }
-    fatigue = f(fatigue - f(f(f(now - lastAt!) / 3_600_000) / RECOVERY_WINDOW_HOURS))
+    fatigue = f(fatigue - f(f(f(now - lastAt!) / 3_600_000) / window))
     if (fatigue <= 0) continue
     // + 0.001 so float noise never turns 36 h into 35.
-    result.set(muscle, { fatigue, hoursUntilReady: Math.max(Math.trunc(f(fatigue * RECOVERY_WINDOW_HOURS + f(0.001))), 1) })
+    result.set(muscle, { fatigue, hoursUntilReady: Math.max(Math.trunc(f(fatigue * window + f(0.001))), 1) })
   }
   return result
 }

@@ -7,7 +7,7 @@ import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, pla
 import { score } from '../../domain/food-search'
 import { scaledKcal } from '../../domain/nutrition'
 import { evaluateBadges, useProgress } from '../../data/progress'
-import { useSettings } from '../../data/settings'
+import { loadSettings, useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
 import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast, useTweened } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
@@ -20,7 +20,8 @@ const CATS: FoodCategory[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACKS', 'DRINKS'
 export async function badgeSuffix(): Promise<string> {
   try {
     const b = (await evaluateBadges())[0]
-    if (!b) return ''
+    // "Just log" mode keeps badges out of sight (they still unlock and show when it's turned off).
+    if (!b || (await loadSettings()).justLog) return ''
     const key = `badge_${b.id}_title`
     const v = t(key)
     return t('badge_unlocked_suffix', v === key ? b.title : v)

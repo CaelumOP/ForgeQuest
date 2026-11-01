@@ -1,6 +1,6 @@
 {
-  "versionCode": 29,
-  "versionName": "2.16.1",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.16.1/ForgeQuest-v2.16.1.apk",
-  "notes": "• Home: your rings sit higher, with protein, calories and weight right below them.\n• Today's workout: a cleaner card with just Start and \"Can't train today?\"."
+  "versionCode": 30,
+  "versionName": "2.17.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.17.0/ForgeQuest-v2.17.0.apk",
+  "notes": "• Just log mode: only track your training, without streaks, levels, badges or readiness.\n• New exercises: adductors, tibialis, side plank, bicycle crunch and wrist curls.\n• Recovery: big muscles take longer to recover than small ones.\n• Badges: chin-ups and weighted variations count, plus a new 25-workout badge.\n• Smoother sheets and small fixes."
 }

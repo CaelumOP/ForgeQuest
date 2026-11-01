@@ -20,6 +20,7 @@ import com.forgequest.app.domain.SetEffort
 private val badgeText: Map<String, Pair<Int, Int>> = mapOf(
     "first_workout" to (R.string.badge_first_workout_title to R.string.badge_first_workout_desc),
     "workouts_10" to (R.string.badge_workouts_10_title to R.string.badge_workouts_10_desc),
+    "workouts_25" to (R.string.badge_workouts_25_title to R.string.badge_workouts_25_desc),
     "workouts_50" to (R.string.badge_workouts_50_title to R.string.badge_workouts_50_desc),
     "workouts_100" to (R.string.badge_workouts_100_title to R.string.badge_workouts_100_desc),
     "streak_4" to (R.string.badge_streak_4_title to R.string.badge_streak_4_desc),

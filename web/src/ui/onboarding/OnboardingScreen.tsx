@@ -281,6 +281,10 @@ function StepPlan({ s, update }: StepProps) {
   return (
     <>
       <Title title={t('onb_plan_title')} body={t('onb_plan_body')} />
+      {/* Habit (streaks, levels, badges) or just counting the training; Profile can change it later. */}
+      <Segmented label={t('just_log_title')} value={s.justLog ? 'log' : 'habit'}
+        onChange={(v) => update((c) => ({ ...c, justLog: v === 'log' }))}
+        options={[{ value: 'habit', label: t('onb_mode_habit') }, { value: 'log', label: t('onb_mode_just_log') }]} />
       <div class="onb-days-head">
         <span class="onb-badge"><FireIcon /></span>
         <span class="onb-days-text">

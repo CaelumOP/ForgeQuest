@@ -5,6 +5,7 @@ import { db, putSession, putSet } from './db';
 import {
   applyBackup, buildBackup, decodeBackup, encodeBackup, listSafetyCopies, DEFAULT_BACKUP_SETTINGS,
 } from './backup';
+import { loadSettings } from './settings';
 
 const fixture = () => JSON.parse(fixtureText) as Record<string, unknown>;
 const withoutCreatedAt = (o: Record<string, unknown>) => {
@@ -114,6 +115,19 @@ describe('backup', () => {
     const back = out.foods.find((x) => x.name === f.foods[0].name)!;
     expect(back.place).toBe('كفتيريا افراح وتهاني');
     expect(back.parts).toEqual(parts);
+  });
+
+  it('carries "Just log" mode, and an older backup without it restores as false', async () => {
+    const f = fixture() as { settings: Record<string, unknown> };
+    f.settings.justLog = true;
+    expect((await applyBackup(decodeBackup(JSON.stringify(f))))?.justLog).toBe(true);
+    expect((await loadSettings()).justLog).toBe(true);
+    expect((await buildBackup()).settings?.justLog).toBe(true);
+    const old = fixtureText.replace(',"justLog":false', '');
+    expect(old).not.toContain('justLog');
+    expect(decodeBackup(old).settings?.justLog).toBe(false);
+    await applyBackup(decodeBackup(old));
+    expect((await loadSettings()).justLog).toBe(false);
   });
 
   it('fills Kotlin defaults for missing fields and rejects missing required ones', () => {

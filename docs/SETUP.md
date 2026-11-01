@@ -49,6 +49,44 @@ gh secret set KEY_PASSWORD -R CaelumOP/ForgeQuest -b android
 
 The workflow refuses to publish an APK whose signer differs from the committed one.
 
+## Bad release
+
+A release that breaks something is fixed by shipping a newer one. Never delete a release or force-push main.
+
+**Android.** Phones only install a higher `versionCode`, so going back means going forward:
+
+1. Revert the bad change on a branch (`git revert <sha>`).
+2. Bump `versionCode` and `versionName` in `app/build.gradle.kts` and the same values in `apk/version.json` (with the
+   new `apk` URL), as for any release.
+3. Open the PR and merge it. CI publishes the fixed APK as a new GitHub Release, and phones offer it as an update.
+
+**Web.** Revert the bad change and merge. The Pages workflow redeploys the site, and people get it through the
+"Update ready" pill (it appears when the app comes back to the front).
+
+**Check afterwards:**
+
+- The Actions runs for the merge are green (Android build and/or Pages deploy).
+- The new GitHub Release exists and has `ForgeQuest-vX.Y.Z.apk` attached.
+- `apk/version.json` on main has the new `versionCode`, and its `apk` URL opens that file.
+- For the web: https://caelumop.github.io/ForgeQuest opens and shows the fix after tapping "Update ready".
+
+**Tell the testers** what broke, that a fix is out, and to install the update (Android) or tap "Update ready" (web).
+
+### If something is on fire
+
+- **The update banner is broken** (offers a missing file, or loops): make `apk/version.json` on main point to the last
+  good release (its `versionCode`, `versionName` and `apk` URL) and merge that right away, so phones stop being offered
+  the broken one. Then ship the fix as a new, higher version.
+- **The web deploy is broken** (blank page or failing Pages run): revert the last web merge, or re-run the last good
+  "ForgeQuest Web" run from Actions. People who already loaded the broken version get the fixed one through "Update
+  ready". Only as a last resort, once the fix is live, can someone delete and re-add the Home Screen app: that wipes its
+  data, so it needs a Drive backup to restore from.
+- **The keystore is lost**: don't build with another key, because phones will refuse the update. Restore
+  `debug.keystore` from your backup. Until then, cloud builds still sign with the copy in the repo secrets, so
+  releases through CI keep working (secrets can't be read back, so they are not a way to recover the file). If the
+  file and the secrets are both gone, testers must uninstall and reinstall (back up to Drive or a file first), and Drive sign-in needs a new OAuth
+  client for the new SHA-1. See "Release signing" above.
+
 ## AI features (meal scan + coach)
 
 Each person uses their own free Gemini key:

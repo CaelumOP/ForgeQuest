@@ -30,7 +30,13 @@ export type BadgeDef = {
 
 const reps = (id: string, n: number) => (s: BadgeStats) => (s.bestReps[id] ?? 0) >= n
 const hold = (id: string, sec: number) => (s: BadgeStats) => (s.bestSeconds[id] ?? 0) >= sec
-const load = (id: string, kg: number) => (s: BadgeStats) => (s.bestWeight[id] ?? 0) >= kg
+/** Best reps across `ids`, so a chin-up or weighted pull-up set counts for a pull-up badge. */
+const repsAny = (ids: readonly string[], n: number) => (s: BadgeStats) => Math.max(...ids.map((id) => s.bestReps[id] ?? 0)) >= n
+/** Best added weight across `ids`; a plain pull-up or dip logged with added weight counts too. */
+const loadAny = (ids: readonly string[], kg: number) => (s: BadgeStats) => Math.max(...ids.map((id) => s.bestWeight[id] ?? 0)) >= kg
+
+const PULL_UPS = ['pull_up', 'chin_up', 'weighted_pull_up', 'weighted_chin_up'] as const
+const DIPS = ['dip', 'weighted_dip'] as const
 
 const b = (id: string, title: string, description: string, category: BadgeCategory, unlocked: (s: BadgeStats) => boolean): BadgeDef =>
   ({ id, title, description, category, unlocked })
@@ -38,6 +44,7 @@ const b = (id: string, title: string, description: string, category: BadgeCatego
 export const BADGES: readonly BadgeDef[] = [
   b('first_workout', 'First step', 'Finish your first workout', 'CONSISTENCY', (s) => s.workouts >= 1),
   b('workouts_10', 'Ten in', 'Finish 10 workouts', 'CONSISTENCY', (s) => s.workouts >= 10),
+  b('workouts_25', 'Quarter century', 'Finish 25 workouts', 'CONSISTENCY', (s) => s.workouts >= 25),
   b('workouts_50', 'Half century', 'Finish 50 workouts', 'CONSISTENCY', (s) => s.workouts >= 50),
   b('workouts_100', 'Hundred club', 'Finish 100 workouts', 'CONSISTENCY', (s) => s.workouts >= 100),
   b('streak_4', 'One month strong', 'Hit your weekly target 4 weeks in a row', 'CONSISTENCY', (s) => s.bestStreakWeeks >= 4),
@@ -55,11 +62,11 @@ export const BADGES: readonly BadgeDef[] = [
   b('str_knee_push_20', 'Foundation push', '20 knee push-ups in one set', 'STRENGTH', reps('knee_push_up', 20)),
   b('str_aus_pull_15', 'Foundation pull', '15 Australian pull-ups in one set', 'STRENGTH', reps('australian_pull_up', 15)),
   b('str_push_30', 'Push-up 30', '30 push-ups in one set', 'STRENGTH', reps('push_up', 30)),
-  b('str_pull_1', 'First pull-up', 'Your first full pull-up', 'STRENGTH', reps('pull_up', 1)),
-  b('str_pull_10', 'Pull-up 10', '10 pull-ups in one set', 'STRENGTH', reps('pull_up', 10)),
-  b('str_dip_15', 'Dip 15', '15 dips in one set', 'STRENGTH', reps('dip', 15)),
-  b('str_weighted_pull_20', '+20 kg pull-up', 'Pull-up with 20 kg added', 'STRENGTH', load('weighted_pull_up', 20)),
-  b('str_weighted_dip_30', '+30 kg dip', 'Dip with 30 kg added', 'STRENGTH', load('weighted_dip', 30)),
+  b('str_pull_1', 'First pull-up', 'Your first full pull-up', 'STRENGTH', repsAny(PULL_UPS, 1)),
+  b('str_pull_10', 'Pull-up 10', '10 pull-ups in one set', 'STRENGTH', repsAny(PULL_UPS, 10)),
+  b('str_dip_15', 'Dip 15', '15 dips in one set', 'STRENGTH', repsAny(DIPS, 15)),
+  b('str_weighted_pull_20', '+20 kg pull-up', 'Pull-up with 20 kg added', 'STRENGTH', loadAny(PULL_UPS, 20)),
+  b('str_weighted_dip_30', '+30 kg dip', 'Dip with 30 kg added', 'STRENGTH', loadAny(DIPS, 30)),
 
   b('food_first', 'First bite', 'Log your first meal', 'NUTRITION', (s) => s.mealsLogged >= 1),
   b('food_scan', 'Snap & log', 'Log a meal with the camera', 'NUTRITION', (s) => s.mealsScanned >= 1),

@@ -14,7 +14,7 @@ import { effortOf } from '../domain/effort';
 import { endTime, lastDoneAt } from '../domain/workout-end';
 import { translatePlanItem } from '../domain/exercise-swap-engine';
 import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
-import { dayTagMap, fullTarget, personalRecords, recordScore, totalXp } from '../domain/progress';
+import { dayTagMap, fullTarget, personalRecords, recordScore, setsForXp, totalXp } from '../domain/progress';
 import { debriefForSession, type DebriefResult } from '../domain/debrief';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
@@ -457,7 +457,7 @@ export function finishSession(sessionId: number, tickAll = false): Promise<Finis
     const planned = session.planDayId == null ? 0 : plannedSetsOf(await db.planItems.where('dayId').equals(session.planDayId).toArray());
     const endedAt = endTime(now, lastDoneAt(done));
     await db.sessions.put({ ...session, finishedAt: endedAt, plannedSets: planned > 0 ? planned : null });
-    return { sessionTitle: session.title, doneSets: done.length, prs, xpGained: totalXp(1, done.length, prs.length, 0), endedAt, clipped: endedAt !== now };
+    return { sessionTitle: session.title, doneSets: done.length, prs, xpGained: totalXp(1, setsForXp(done.length, session.epochDay), prs.length, 0), endedAt, clipped: endedAt !== now };
   });
 }
 

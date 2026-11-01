@@ -101,6 +101,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.map
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1066,7 +1067,7 @@ private fun WorkoutCompleteScreen(
         Row(Modifier.fillMaxWidth()) {
             com.forgequest.app.ui.components.StatColumn("${sum.doneSets}", stringResource(R.string.live_sets), c.teal, Modifier.weight(1f))
             com.forgequest.app.ui.components.StatColumn(stringResource(R.string.hist_minutes, sum.minutes), stringResource(R.string.profile_time), c.blue, Modifier.weight(1f))
-            com.forgequest.app.ui.components.StatColumn("⁦+${sum.xpGained}⁩", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
+            if (!sum.justLog) com.forgequest.app.ui.components.StatColumn("⁦+${sum.xpGained}⁩", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
         }
         sum.clippedEndAt?.let { end ->
             Spacer(Modifier.height(8.dp))
@@ -1075,6 +1076,8 @@ private fun WorkoutCompleteScreen(
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center,
             )
         }
+        // "Just log" mode: XP still accrues, but the level card stays out of sight.
+        if (!sum.justLog) {
         Spacer(Modifier.height(24.dp))
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1092,7 +1095,9 @@ private fun WorkoutCompleteScreen(
             Spacer(Modifier.height(6.dp))
             Text(stringResource(R.string.profile_xp_line, sum.after.xpIntoLevel, sum.after.xpForNextLevel, sum.after.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
-        if (sum.prs.isNotEmpty() || sum.newBadges.isNotEmpty()) {
+        }
+        val badges = if (sum.justLog) emptyList() else sum.newBadges
+        if (sum.prs.isNotEmpty() || badges.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             FitCard {
                 sum.prs.forEach { name ->
@@ -1102,7 +1107,7 @@ private fun WorkoutCompleteScreen(
                         Text(stringResource(R.string.live_new_record, name), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                     }
                 }
-                sum.newBadges.forEach { badge ->
+                badges.forEach { badge ->
                     val title = badge.localTitle()
                     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
@@ -1205,6 +1210,9 @@ fun DebriefCard(
 ) {
     val c = Fit.colors
     val context = LocalContext.current
+    // "Just log" mode drops the motivational headline; the score, reasons and facts stay.
+    val justLog by remember { context.container.settings.settings.map { it.justLog } }.collectAsState(initial = false)
+    val showHeadline = !justLog
     val res = context.resources
     val locale = androidx.compose.ui.platform.LocalConfiguration.current
     val lines = remember(debrief, names, unit, locale) { debrief?.let { d -> DebriefText.render(d, res, { id -> names[id] ?: id }) { kg -> unit.format(kg) } } }
@@ -1254,7 +1262,7 @@ fun DebriefCard(
         if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
         if (lines != null) {
             Spacer(Modifier.height(6.dp))
-            Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, 0))
+            if (showHeadline) Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, 0))
             // Green for what went well, gold for what to watch, blue for next time.
             lines.wins.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.riseIn(celebrate, linesGo, 1 + i).padding(top = 4.dp)) }
             lines.watch.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.riseIn(celebrate, linesGo, 1 + lines.wins.size + i).padding(top = 4.dp)) }

@@ -67,6 +67,8 @@ export interface Settings {
   calorieV2Seen: boolean;
   /** The one-time "make N your weekly target?" card on Home was answered (either way). */
   targetNudgeAnswered: boolean;
+  /** "Just log" mode: hides streaks, levels, badges and readiness. Nothing is deleted; XP still adds up. */
+  justLog: boolean;
   /** Gemini key. Never in a backup, never logged. */
   apiKey: string;
   /** Optional Groq key. Never in a backup, never logged. */
@@ -81,7 +83,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   trackCarbs: false, carbsGoal: 250, proteinPerKg: 1.8, fatSharePct: 25, equipment: '', bodyFatPct: 0,
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true, apiKey: '', groqKey: '',
   dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
-  calorieSnoozeUntil: 0, calorieV2Seen: false, targetNudgeAnswered: false,
+  calorieSnoozeUntil: 0, calorieV2Seen: false, targetNudgeAnswered: false, justLog: false,
 } satisfies Settings);
 
 const SETTINGS_KEY = 'settings';
@@ -146,6 +148,7 @@ export function toBackupSettings(s: Settings): BackupSettings {
     fatSharePct: s.fatSharePct, equipment: s.equipment, bodyFatPct: s.bodyFatPct, nutritionGoal: s.nutritionGoal,
     goalSetDay: s.goalSetDay, debriefEnabled: s.debriefEnabled,
     dayActivity: s.dayActivity, cutPace: s.cutPace, gainPace: s.gainPace, targetWeightKg: s.targetWeightKg, targetSetDay: s.targetSetDay,
+    justLog: s.justLog,
   };
 }
 
@@ -163,7 +166,7 @@ export function fromBackupSettings(b: BackupSettings, s: Settings): Settings {
     nutritionGoal: (NUTRITION_GOALS as readonly string[]).includes(b.nutritionGoal) ? b.nutritionGoal : s.nutritionGoal,
     goalSetDay: b.goalSetDay, debriefEnabled: b.debriefEnabled,
     dayActivity: parseDayActivity(b.dayActivity), cutPace: parseCutPace(b.cutPace), gainPace: parseGainPace(b.gainPace),
-    targetWeightKg: b.targetWeightKg, targetSetDay: b.targetSetDay,
+    targetWeightKg: b.targetWeightKg, targetSetDay: b.targetSetDay, justLog: b.justLog,
   });
 }
 

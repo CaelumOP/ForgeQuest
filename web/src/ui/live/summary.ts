@@ -19,6 +19,8 @@ export type WorkoutSummaryData = {
   score?: WorkoutScoreResult | null
   /** Set when the end was pulled back to the last set: when the workout ended (epoch ms). */
   clippedEndAt?: number | null
+  /** "Just log" mode: no XP, level or badges on the finish screen. */
+  justLog?: boolean
 }
 
 type PlanDays = { day: { dayOfWeek: number; title: string; isRest: boolean }; items: unknown[] }[]

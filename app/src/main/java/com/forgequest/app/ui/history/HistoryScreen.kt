@@ -259,7 +259,7 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Ma
     // Opens fully: with system animations off, a half-open sheet landed low and couldn't be dragged up.
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background,
-        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = com.forgequest.app.ui.components.rememberFullSheetState(),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
             Text(session.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)

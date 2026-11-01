@@ -22,8 +22,8 @@ android {
         applicationId = "com.forgequest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 29
-        versionName = "2.16.1"
+        versionCode = 30
+        versionName = "2.17.0"
 
         // QA only: `-PgeminiBase=http://10.0.2.2:8765/v1beta` points a build at a local test server.
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"
@@ -68,7 +68,12 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric reads the exported Room schemas as test assets (MigrationTest).
+        unitTests.isIncludeAndroidResources = true
     }
+
+    // Robolectric only sees the variant's merged assets, so the schemas ride along in debug builds (about 230 KB; never in release).
+    sourceSets.getByName("debug").assets.srcDir("$projectDir/schemas")
 }
 
 kotlin {
@@ -128,4 +133,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
+    testImplementation("androidx.room:room-testing:$room")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }

@@ -15,12 +15,11 @@ data class MuscleExerciseList(val inPlan: List<MuscleExercise>, val others: List
  * Web: domain/muscle-exercises.ts.
  */
 object MuscleExercises {
-    /** Muscles with one built-in exercise show with a bigger neighbour, so no list opens nearly empty. */
-    val COMPANIONS = mapOf(
-        Muscle.OBLIQUES to listOf(Muscle.ABS),
-        Muscle.ADDUCTORS to listOf(Muscle.QUADS, Muscle.GLUTES),
-        Muscle.TIBIALIS to listOf(Muscle.CALVES),
-    )
+    /**
+     * Muscles with too few built-in exercises show with a bigger neighbour, so no list opens nearly empty. Empty since
+     * 2.17.0 added exercises for obliques, adductors and tibialis; kept for future muscles.
+     */
+    val COMPANIONS: Map<Muscle, List<Muscle>> = emptyMap()
 
     /**
      * Exercises that work [muscle] (or its companions) as a primary or secondary muscle. Plan exercises come first;

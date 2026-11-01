@@ -68,6 +68,8 @@ data class WorkoutSummary(
     val sessionId: Long = 0L,
     /** The calculated debrief of this workout (domain/WorkoutDebriefMath.kt); null when it has no done sets. */
     val debrief: com.forgequest.app.domain.WorkoutDebriefMath.Result? = null,
+    /** "Just log" mode: no XP, level, badges or motivational headline on the finish screen. */
+    val justLog: Boolean = false,
     /** Exercise id → name, for the debrief's lines. */
     val exerciseNames: Map<String, String> = emptyMap(),
     val unit: WeightUnit = WeightUnit.KG,
@@ -427,8 +429,10 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 val before = app.progress.freshSnapshot().level
                 val result = repo.finishSession(s.id, tickAll = tickAll)
                 val badges = app.progress.evaluateBadges()
-                // The summary below shows them, so Home shouldn't announce them a second time.
-                if (badges.isNotEmpty()) app.progress.markBadgesSeen()
+                val justLog = app.settings.current().justLog
+                // The summary below shows them, so Home shouldn't announce them a second time. In "Just log" mode they
+                // aren't shown, so they stay new for when the mode is turned off.
+                if (badges.isNotEmpty() && !justLog) app.progress.markBadgesSeen()
                 // Straight from the database, with this workout and its badges in, or the summary shows "+0 XP".
                 val snap = app.progress.freshSnapshot()
                 val after = snap.level
@@ -448,13 +452,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     before = before,
                     after = after,
                     nextUp = nextUp,
-                    offerReminder = snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
+                    offerReminder = !justLog && snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
                     score = repo.scores(snap, only = s.id)[s.id],
                     clippedEndAt = result.endedAt.takeIf { result.clipped },
                     sessionId = s.id,
                     debrief = repo.debrief(snap, s.id),
                     exerciseNames = snap.exercises.mapValues { it.value.name },
                     unit = snap.settings.weightUnit,
+                    justLog = justLog,
                 )
             } finally {
                 finishing.value = false
