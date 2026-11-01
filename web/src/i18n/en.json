@@ -1167,7 +1167,7 @@
   "ready_week_avg_night": "average night this week",
   "ready_yesterday": "Yesterday's score: last night's sleep hasn't reached the app yet. Sync Fitbit, then tap refresh.",
   "ready_zones": "Heart-rate zones today",
-  "recovery_subtitle": "Based on the last 48 hours",
+  "recovery_subtitle": "Based on your recent workouts",
   "recovery_title": "Muscle recovery",
   "restore_body": "Everything on this phone is replaced. A copy of what's here now is kept, so you can undo this with Undo last restore in Profile → Backup and sync.",
   "restore_src_copy": "the copy saved before your last restore",

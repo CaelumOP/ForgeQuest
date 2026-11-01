@@ -184,7 +184,7 @@
     <string name="cd_edit_plan">Edit plan</string>
     <string name="workouts_set_up_plan">Set up a plan</string>
     <string name="recovery_title">Muscle recovery</string>
-    <string name="recovery_subtitle">Based on the last 48 hours</string>
+    <string name="recovery_subtitle">Based on your recent workouts</string>
     <string name="workouts_quick">Quick workout without a plan</string>
     <string name="day_cd_rest">%1$s, rest</string>
     <string name="day_cd_training">%1$s, training</string>

@@ -217,7 +217,7 @@
     <string name="cd_edit_plan">تعديل الخطة</string>
     <string name="workouts_set_up_plan">إعداد خطة</string>
     <string name="recovery_title">تعافي العضلات</string>
-    <string name="recovery_subtitle">بناءً على آخر 48 ساعة</string>
+    <string name="recovery_subtitle">بناءً على تمارينك الأخيرة</string>
     <string name="workouts_quick">تمرين سريع بدون خطة</string>
     <string name="day_cd_rest">%1$s، راحة</string>
     <string name="day_cd_training">%1$s، تمرين</string>
