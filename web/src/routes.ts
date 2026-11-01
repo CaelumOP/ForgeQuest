@@ -39,11 +39,12 @@ export const routes: Record<string, Route> = {
   '/badges': { title: 'tab_profile', Screen: BadgesScreen },
   '/scan': { title: 'tab_food', Screen: ScanScreen, bare: true },
   '/about': { title: 'settings_group_about', Screen: AboutScreen },
+  // Measures the Home Screen app's real height; the iPhone Simulator check (.github/ios-sim/shots.py) opens it.
+  '/viewport': { title: 'screen_ai_check', Screen: ViewportCheck, bare: true },
   // Dev screens: only in `npm run dev`, so the production build leaves them out.
   ...(import.meta.env.DEV ? {
     '/check': { title: 'screen_ai_check', Screen: AiCheck as Screen },
     '/kit': { title: 'screen_ai_check', Screen: KitGallery as Screen },
-    '/viewport': { title: 'screen_ai_check', Screen: ViewportCheck, bare: true },
   } : {}),
 }
 
