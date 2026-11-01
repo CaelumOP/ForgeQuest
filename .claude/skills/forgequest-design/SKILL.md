@@ -20,4 +20,5 @@ Read `DESIGN.md` at the repo root first. It is the source of truth; this skill i
 5. Home layout stays: header, big rings, stats row, workout card, readiness.
 6. Arabic: logical start/end only, directional icons flip, Plex Arabic, no tracking. Strings stay in sync EN + formal AR.
 7. 200% text: wraps, never clips or overlaps. Tap targets 48 dp / 44 px.
-8. Verify with real screenshots (emulator / browser), not mock-ups.
+8. Loading: local actions show at once (Undo, not confirm); network buttons go busy and ignore repeat taps; waiting cards keep their size, no shimmer.
+9. Verify with real screenshots (emulator / browser), not mock-ups. For anything that loads or calls the network, also try it slow: browser DevTools "Slow 4G" with 4x CPU throttling, or a low-end emulator. Busy states show, nothing sends twice, nothing jumps when content arrives.
