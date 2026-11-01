@@ -560,8 +560,8 @@ private fun DayCircle(state: DayState) {
         DayState.MISSED -> MiniRing(0f, c.teal, c.cardHigh, size = size, stroke = 2.5.dp) {
             Box(Modifier.size(4.dp).clip(CircleShape).background(c.textSecondary.copy(alpha = 0.5f)))
         }
-        DayState.REST -> Box(Modifier.size(size).clip(CircleShape).background(c.blueTrack), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Bedtime, contentDescription = stringResource(R.string.cd_rest), tint = c.blue, modifier = Modifier.size(16.dp))
+        DayState.REST -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Bedtime, contentDescription = stringResource(R.string.cd_rest), tint = c.textSecondary, modifier = Modifier.size(16.dp))
         }
         DayState.OFF -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh.copy(alpha = 0.5f)))
         DayState.EXCUSED -> Box(Modifier.size(size).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {

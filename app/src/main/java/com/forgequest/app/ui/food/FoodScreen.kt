@@ -99,6 +99,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
@@ -606,7 +607,12 @@ private fun WeekCard(s: ProgressSnapshot) {
                     Box(Modifier.fillMaxWidth().height(32.dp).clip(ForgeShape.Sm).background(c.tealTrack), contentAlignment = Alignment.BottomCenter) {
                         if (n != null) Box(Modifier.fillMaxWidth().height((32 * ratio).dp.coerceAtLeast(if (ratio > 0f) 3.dp else 0.dp)).background(if (n.protein >= s.settings.proteinGoal) c.teal else c.teal.copy(alpha = 0.55f)))
                     }
-                    Text(Dates.dayShort(Dates.dayOfWeek(d)), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = if (d == today) c.textPrimary else c.textSecondary)
+                    // At 200% text a 3-letter day no longer fits a seventh of the card: shrink it instead of cutting it.
+                    Text(
+                        Dates.dayShort(Dates.dayOfWeek(d)), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall,
+                        color = if (d == today) c.textPrimary else c.textSecondary,
+                        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = MaterialTheme.typography.labelSmall.fontSize),
+                    )
                 }
             }
         }
