@@ -862,10 +862,6 @@
     <string name="ready_strain">Strain</string>
     <string name="ready_no_sleep">no sleep recorded last night</string>
     <string name="ready_learning">Learning your normal: %1$d of %2$d nights</string>
-    <string name="ready_hrv">HRV %1$d ms (usual %2$d)</string>
-    <string name="ready_hrv_only">HRV %1$d ms</string>
-    <string name="ready_rhr">resting HR %1$d (usual %2$d)</string>
-    <string name="ready_rhr_only">resting HR %1$d</string>
     <string name="dur_hm">%1$dh %2$dm</string>
     <string name="call_peak_t">Peak</string>
     <string name="call_peak_b">Fully charged. A great day to chase a record.</string>
@@ -878,16 +874,15 @@
     <string name="call_recover_t">Recover</string>
     <string name="call_recover_b">Rest, walk or do mobility. Recovery is training too.</string>
     <string name="ready_no_data">No Fitbit data for last night yet. Wear it to bed and your recovery shows up here in the morning.</string>
-    <string name="ready_target">Strain target %1$d–%2$d</string>
-    <string name="ready_need_tonight">Sleep need tonight %1$s</string>
     <string name="ready_felt_great">I feel great today</string>
     <string name="ready_felt_great_on">Feeling great, noted</string>
     <string name="ready_usual">usual %1$s</string>
+    <string name="ready_sleep_mark">full score at %1$s</string>
     <string name="ready_c_hrv">Heart rate variability</string>
     <string name="ready_c_rhr">Resting heart rate</string>
     <string name="ready_c_resp">Breathing rate</string>
     <string name="ready_c_sleep">Sleep performance</string>
-    <string name="ready_recovery_explain">Compared with your own last 60 days. HRV matters most and uses a 7-day average, so one odd night doesn\'t swing it. Green 67+, yellow 34–66, red below.</string>
+    <string name="ready_recovery_explain">Compared with your own last 60 days. HRV matters most: mostly last night, steadied by the week behind it. A normal day for you sits around 75%. Green 67+, yellow 51–66, red below.</string>
     <string name="ready_c_tonight">Need tonight</string>
     <string name="ready_debt">Includes %1$s of sleep debt from recent short nights.</string>
     <string name="ready_c_steps">Steps</string>
@@ -901,7 +896,6 @@
     <string name="band_all_out">All out</string>
     <string name="profile_health_title">Fitbit readiness</string>
     <string name="profile_health_hint">Off · turn on to get recovery, sleep and strain from your Fitbit through Health Connect</string>
-    <string name="ready_tap_hint">Tap a dial for details</string>
     <string name="profile_health_on">Connected · recovery, sleep and strain on Home</string>
     <string name="profile_body_not_set">Not set yet: these show defaults. Tap + or − to set yours.</string>
     <string name="profile_version">Version %1$s</string>
@@ -1237,7 +1231,6 @@
     <string name="ready_yesterday">Yesterday\'s score: last night\'s sleep hasn\'t reached the app yet. Sync Fitbit, then tap refresh.</string>
     <string name="ready_refreshing">Refreshing</string>
     <string name="ready_no_strain_yet">No strain recorded yet today. It builds up from your heart rate as you move and train.</string>
-    <string name="ready_sleep_only">No heart data from your watch yet, so recovery is based on your sleep alone.</string>
     <string name="ready_updated">Updated just now.</string>
     <string name="ready_new_night">Last night\'s sleep is in.</string>
     <string name="ready_waiting">Still no new sleep from Fitbit. It can take a few minutes after syncing, so the app checks again every minute.</string>

@@ -44,6 +44,9 @@ data class Baseline(val mean: Double, val sd: Double, val days: Int)
 enum class DayCall { PEAK, READY, STEADY, EASE_OFF, RECOVER }
 enum class StrainBand { LIGHT, MODERATE, HIGH, ALL_OUT }
 
+/** Where one of today's numbers sits against the person's own baseline. [USUAL] is the normal range, not a middle verdict. */
+enum class Trend { BETTER, USUAL, WORSE }
+
 /**
  * Whoop-style recovery, sleep and strain from Fitbit data. Whoop doesn't publish its formulas, so these follow its
  * documented inputs and the published methods behind them:
@@ -136,7 +139,22 @@ object Readiness {
         return if (abs(diff) <= swc) 0.0 else (diff - (if (diff > 0) swc else -swc)) / sd
     }
 
-    /** 1–99 %. HRV weighs most, then resting heart rate, then sleep, then breathing rate. A normal day lands near 60 %. */
+    /**
+     * The same z the score uses, read as a direction. A number inside the dead zone is [Trend.USUAL]: 74 bpm against a
+     * usual 72 is a normal morning, so it must not be shown as a bad one.
+     */
+    fun trendOf(z: Double?): Trend? = when {
+        z == null -> null
+        z > 0 -> Trend.BETTER
+        z < 0 -> Trend.WORSE
+        else -> Trend.USUAL
+    }
+
+    /**
+     * 1–99 %. HRV weighs most, then resting heart rate, then sleep, then breathing rate. A normal day lands near 75 %:
+     * an ordinary morning is a green morning, and the colour is saved for days that really are off. [call] holds the
+     * advice steady across that shift, so the same body gets the same session it did before.
+     */
     fun recovery(hrvLn: Double?, rhr: Double?, resp: Double?, sleepPerf: Int?, hrvBase: Baseline?, rhrBase: Baseline?, respBase: Baseline?): Int {
         var sum = 0.0
         var weight = 0.0
@@ -148,22 +166,26 @@ object Readiness {
         // At least half the full weight in the divisor: before HRV and resting-HR baselines exist (first days with a
         // watch), one short night alone can't swing the score as if it were a full reading (6 h used to give 37 %).
         val z = if (weight > 0) sum / maxOf(weight, 0.5) else 0.0
-        return (100 / (1 + exp(-(1.4 * z + 0.4)))).roundToInt().coerceIn(1, 99)
+        return (100 / (1 + exp(-(1.4 * z + 1.1)))).roundToInt().coerceIn(1, 99)
     }
 
-    /** Recovery calls for an easier day: ease off or recover (below 50). */
+    /** Recovery calls for an easier day: ease off or recover (below 67 on the re-centred scale). */
     fun isLowRecovery(recovery: Int): Boolean = call(recovery).let { it == DayCall.EASE_OFF || it == DayCall.RECOVER }
 
+    /**
+     * The session to do today. The thresholds are the old 85/67/50/34 carried onto the re-centred scale, so a given
+     * morning gets exactly the advice it got before: only the number and its colour moved, never the training.
+     */
     fun call(recovery: Int): DayCall = when {
-        recovery >= 85 -> DayCall.PEAK
-        recovery >= 67 -> DayCall.READY
-        recovery >= 50 -> DayCall.STEADY
-        recovery >= 34 -> DayCall.EASE_OFF
+        recovery >= 92 -> DayCall.PEAK
+        recovery >= 80 -> DayCall.READY
+        recovery >= 67 -> DayCall.STEADY
+        recovery >= 51 -> DayCall.EASE_OFF
         else -> DayCall.RECOVER
     }
 
-    /** Whoop's recovery colours: green 67+, yellow 34–66, red below. */
-    fun recoveryZone(recovery: Int): Int = when { recovery >= 67 -> 2; recovery >= 34 -> 1; else -> 0 }
+    /** Green 67+, yellow 51–66, red below: one colour per [call], so a yellow card never reads "recover". */
+    fun recoveryZone(recovery: Int): Int = when { recovery >= 67 -> 2; recovery >= 51 -> 1; else -> 0 }
 
     // ---------- Strain ----------
 

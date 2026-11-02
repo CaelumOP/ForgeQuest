@@ -1,6 +1,7 @@
 package com.forgequest.app.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -56,12 +57,15 @@ class ReadinessTest {
     @Test fun recoveryMovesTheRightWayAndIgnoresSmallWiggles() {
         val hrv = Baseline(ln(28.0), 0.12, 20); val rhr = Baseline(68.0, 3.0, 20); val resp = Baseline(16.3, 0.6, 20)
         val usual = Readiness.recovery(ln(28.0), 68.0, 16.3, 85, hrv, rhr, resp)
-        assertTrue(usual in 57..63)
+        // Everything at its own baseline is an ordinary morning, and an ordinary morning is green.
+        assertTrue(usual in 72..78)
+        assertEquals(2, Readiness.recoveryZone(usual))
+        assertEquals(DayCall.STEADY, Readiness.call(usual))
         // HRV 29 vs 28 is inside the smallest worthwhile change: same score.
         assertEquals(usual, Readiness.recovery(ln(29.0), 68.0, 16.3, 85, hrv, rhr, resp))
         val good = Readiness.recovery(ln(37.0), 63.0, 15.6, 100, hrv, rhr, resp)
         val bad = Readiness.recovery(ln(20.0), 74.0, 17.5, 40, hrv, rhr, resp)
-        assertTrue(good >= 85 && bad < 34)
+        assertTrue(good >= 92 && bad < 51)
         assertEquals(DayCall.PEAK, Readiness.call(good))
         assertEquals(DayCall.RECOVER, Readiness.call(bad))
     }
@@ -92,6 +96,17 @@ class ReadinessTest {
         assertEquals(2.0, Readiness.zoneMinutes(zoneHard, 190, 65.0)[3], 0.01)
         assertEquals(StrainBand.MODERATE, Readiness.band(11.8))
         assertEquals(4.0..7.0, Readiness.strainTarget(30))
-        assertEquals(7.0..10.0, Readiness.strainTarget(34))
+        assertEquals(7.0..10.0, Readiness.strainTarget(55))
+    }
+
+    @Test fun aSmallRiseInRestingHeartRateIsStillTheNormalRange() {
+        // The morning in the screenshots: resting HR 74 against a usual 72, breathing 16.4 against 16.1. Both sit
+        // inside half a standard deviation, so the score counted them as neutral and the dots must say the same.
+        assertEquals(Trend.USUAL, Readiness.trendOf(Readiness.zWithSwc(72.0 - 74.0, 4.0)))
+        assertEquals(Trend.USUAL, Readiness.trendOf(Readiness.zWithSwc(16.1 - 16.4, 0.8)))
+        // A real rise still reads as worse, and a real drop as better.
+        assertEquals(Trend.WORSE, Readiness.trendOf(Readiness.zWithSwc(72.0 - 82.0, 4.0)))
+        assertEquals(Trend.BETTER, Readiness.trendOf(Readiness.zWithSwc(72.0 - 64.0, 4.0)))
+        assertNull(Readiness.trendOf(null))
     }
 }
