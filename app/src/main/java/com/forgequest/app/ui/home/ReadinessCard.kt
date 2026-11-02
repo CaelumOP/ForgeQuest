@@ -193,9 +193,6 @@ private fun Dial(fraction: Float, color: Color, value: String, label: String, si
 }
 
 @Composable
-private fun hm(min: Int) = stringResource(R.string.dur_hm, min / 60, min % 60)
-
-@Composable
 private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit, onRefresh: () -> Unit) {
     val c = Fit.colors
     val recColor = recoveryColor(d.recovery)
@@ -206,7 +203,6 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
         DayCall.EASE_OFF -> R.string.call_ease_t to R.string.call_ease_b
         DayCall.RECOVER -> R.string.call_recover_t to R.string.call_recover_b
     }
-    val target = Readiness.strainTarget(d.recovery)
     FitCard {
         TitleRow(refreshing, onRefresh)
         NoteLine(note)
@@ -229,25 +225,12 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
         Spacer(Modifier.height(12.dp))
         Text(stringResource(title), style = MaterialTheme.typography.headlineSmall, color = recColor)
         Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        Spacer(Modifier.height(8.dp))
-        // The numbers behind the call, in the person's own terms.
-        val why = buildList {
-            d.hrv?.let { h -> add(d.hrvUsual?.let { stringResource(R.string.ready_hrv, h.toInt(), it.toInt()) } ?: stringResource(R.string.ready_hrv_only, h.toInt())) }
-            d.rhr?.let { r -> add(d.rhrUsual?.let { stringResource(R.string.ready_rhr, r.toInt(), it.toInt()) } ?: stringResource(R.string.ready_rhr_only, r.toInt())) }
-        }
-        if (why.isNotEmpty()) Text(why.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        // Sleep came through but no heart data: say what the score rests on instead of leaving the dashes unexplained.
-        else if (d.night != null) Text(stringResource(R.string.ready_sleep_only), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        Text(
-            stringResource(R.string.ready_target, target.start.toInt(), target.endInclusive.toInt()) + " · " + stringResource(R.string.ready_need_tonight, hm(d.sleepNeedTonight)),
-            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-        )
+        // The dials and the call are the whole card; HRV, resting HR, the strain target and tonight's sleep need all
+        // live on the detail pages a tap away, so Home stays one glance.
         if (d.baselineNights < Readiness.MIN_BASELINE_DAYS) {
             Spacer(Modifier.height(4.dp))
             Text(stringResource(R.string.ready_learning, d.baselineNights, Readiness.MIN_BASELINE_DAYS), style = MaterialTheme.typography.bodySmall, color = c.gold)
         }
-        Spacer(Modifier.height(2.dp))
-        Text(stringResource(R.string.ready_tap_hint), style = MaterialTheme.typography.labelSmall, color = c.textSecondary.copy(alpha = 0.7f))
         Spacer(Modifier.height(2.dp))
         // Only the good mornings get a tap: people often miss feeling groggy but always notice feeling great.
         TextButton(onClick = { onFeltGreat(!d.feltGreat) }) {

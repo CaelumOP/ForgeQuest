@@ -28,6 +28,7 @@ import com.forgequest.app.domain.Night
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.SleepPiece
+import com.forgequest.app.domain.Trend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +78,13 @@ data class DayReadiness(
     val rhrUsual: Double?,
     val resp: Double?,
     val respUsual: Double?,
+    /**
+     * Which way each number moved against the baseline, decided by the same dead zone the score uses so a dot on the
+     * Recovery page can never contradict the score above it.
+     */
+    val hrvTrend: Trend? = null,
+    val rhrTrend: Trend? = null,
+    val respTrend: Trend? = null,
     /** Nights with HRV in the last 60 days; under [Readiness.MIN_BASELINE_DAYS] the score is still learning. */
     val baselineNights: Int,
     /** Oldest first, today last. */
@@ -85,6 +93,18 @@ data class DayReadiness(
 ) {
     val hasData get() = night != null || hrv != null || rhr != null
 }
+
+/** One day's recovery score with the baselines it was scored against, so the UI can explain it without redoing the maths. */
+private data class DayScore(
+    val recovery: Int,
+    val hrvUsual: Double?,
+    val rhrUsual: Double?,
+    val respUsual: Double?,
+    val hrvTrend: Trend?,
+    val rhrTrend: Trend?,
+    val respTrend: Trend?,
+    val baselineNights: Int,
+)
 
 sealed interface HealthState {
     data object Unavailable : HealthState
@@ -116,6 +136,14 @@ class HealthRepository(private val context: Context, private val settings: Setti
 
     private val _state = MutableStateFlow<HealthState>(HealthState.Loading)
     val state: StateFlow<HealthState> = _state
+
+    /**
+     * Debug builds only: put a made-up day on the readiness screens, so they can be checked on an emulator with no
+     * watch and no Health Connect records. Does nothing in a release build; see DebugBench for how it is driven.
+     */
+    fun debugShow(day: DayReadiness) {
+        if (com.forgequest.app.BuildConfig.DEBUG) _state.value = HealthState.Ready(day)
+    }
 
     fun available(): Boolean = HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
 
@@ -267,7 +295,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
         fun perfFor(d: LocalDate) = nightOf(d)?.let { Readiness.sleepPerformance(it.asleepMin, needFor(d)) }
 
         // Baselines from the 60 days before the given day.
-        fun recoveryFor(d: LocalDate): Triple<Int, Pair<Double?, Double?>, Int> {
+        fun recoveryFor(d: LocalDate): DayScore {
             val past = (1L..60L).map { d.minusDays(it) }
             val hrvHistory = past.mapNotNull(::hrvFor)
             val hrvBase = Readiness.baseline(hrvHistory.filter { it > 0 }.map { kotlin.math.ln(it) }, floorSd = 0.05)
@@ -275,19 +303,34 @@ class HealthRepository(private val context: Context, private val settings: Setti
             val respBase = Readiness.baseline(past.mapNotNull(::respFor), floorSd = 0.5)
             val last7 = (0L..6L).mapNotNull { hrvFor(d.minusDays(it)) }
             val signal = Readiness.hrvSignal(hrvFor(d), last7)
-            val rec = Readiness.recovery(signal, rhrFor(d), respFor(d), perfFor(d), hrvBase, rhrBase, respBase)
-            return Triple(rec, Pair(hrvBase?.mean?.let { exp(it) }, rhrBase?.mean), hrvHistory.size)
+            val rhr = rhrFor(d)
+            val resp = respFor(d)
+            val rec = Readiness.recovery(signal, rhr, resp, perfFor(d), hrvBase, rhrBase, respBase)
+            // Each trend reads the same z the score read, so a dot can never call a morning bad that the score counted as normal.
+            return DayScore(
+                recovery = rec,
+                hrvUsual = hrvBase?.mean?.let { exp(it) },
+                rhrUsual = rhrBase?.mean,
+                respUsual = respBase?.mean,
+                hrvTrend = Readiness.trendOf(if (signal != null && hrvBase != null) Readiness.zWithSwc(signal - hrvBase.mean, hrvBase.sd) else null),
+                rhrTrend = Readiness.trendOf(if (rhr != null && rhrBase != null) Readiness.zWithSwc(rhrBase.mean - rhr, rhrBase.sd) else null),
+                respTrend = Readiness.trendOf(if (resp != null && respBase != null) Readiness.zWithSwc(respBase.mean - resp, respBase.sd) else null),
+                baselineNights = hrvHistory.size,
+            )
         }
 
         // Like Whoop, a day starts when you wake up: after midnight but before tonight's sleep is recorded, keep showing
         // the night you last woke from instead of an empty card.
         val day = if (nightOf(today) == null && nightOf(today.minusDays(1)) != null) today.minusDays(1) else today
-        val (recovery, usual, baselineNights) = recoveryFor(day)
-        val respUsual = Readiness.median((1L..30L).mapNotNull { respFor(day.minusDays(it)) })
+        val score = recoveryFor(day)
+        val recovery = score.recovery
+        val baselineNights = score.baselineNights
+        // The same mean the score compared against; the 30-day median only stands in before a baseline exists.
+        val respUsual = score.respUsual ?: Readiness.median((1L..30L).mapNotNull { respFor(day.minusDays(it)) })
         val week = (6L downTo 0L).map { back ->
             val d = day.minusDays(back)
             val hasSignal = nightOf(d) != null || rhrFor(d) != null
-            DaySummary(d.toEpochDay(), if (hasSignal) (if (back == 0L) recovery else recoveryFor(d).first) else null, nightOf(d)?.asleepMin, perfFor(d), strainOf(d))
+            DaySummary(d.toEpochDay(), if (hasSignal) (if (back == 0L) recovery else recoveryFor(d).recovery) else null, nightOf(d)?.asleepMin, perfFor(d), strainOf(d))
         }
 
         // Health Connect's own totals merge Google Fit, Fitbit and the phone instead of adding them up. A day carried past
@@ -339,6 +382,15 @@ class HealthRepository(private val context: Context, private val settings: Setti
                 )
             )
         }
+        // Rescore the stored days so the coach, the Gemini bridge and the backup never read a mix of scales after the
+        // score is re-centred. Only the score is rewritten: sleep, strain and "felt great" stay as they were recorded,
+        // and a day with no row is left alone. It settles after one refresh and writes nothing from then on.
+        for (back in 1L..30L) {
+            val past = day.minusDays(back)
+            val stored = dao.get(past.toEpochDay()) ?: continue
+            val rescored = recoveryFor(past).recovery
+            if (rescored != stored.recovery) dao.upsert(stored.copy(recovery = rescored, updatedAt = System.currentTimeMillis()))
+        }
 
         return DayReadiness(
             epochDay = day.toEpochDay(),
@@ -358,9 +410,12 @@ class HealthRepository(private val context: Context, private val settings: Setti
             kcalBurned = totals?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories?.toInt() ?: 0,
             kcalAvg14 = kcalAvg14,
             dailySteps = dailySteps,
-            hrv = hrvFor(day), hrvUsual = usual.first,
-            rhr = rhrFor(day), rhrUsual = usual.second,
+            hrv = hrvFor(day), hrvUsual = score.hrvUsual,
+            rhr = rhrFor(day), rhrUsual = score.rhrUsual,
             resp = respFor(day), respUsual = respUsual,
+            hrvTrend = score.hrvTrend,
+            rhrTrend = score.rhrTrend,
+            respTrend = score.respTrend,
             baselineNights = baselineNights,
             week = week,
             feltGreat = felt,

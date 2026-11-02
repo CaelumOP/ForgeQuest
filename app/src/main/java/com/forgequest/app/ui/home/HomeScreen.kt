@@ -247,8 +247,11 @@ fun HomeScreen(nav: NavHostController) {
             refreshing = refreshing, note = refreshNote,
             onRefresh = vm.refreshWatch::tap, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
         )
-        // Today's line from the owner's Gemini automation, when the bridge is on.
-        if (s.settings.bridgeEnabled && s.settings.bridgeToday.isNotBlank()) {
+        // Today's line from the owner's Gemini automation, when the bridge is on. Yesterday's line is dropped rather
+        // than left up: it quotes yesterday's recovery and sleep, which contradicts the card right above it.
+        val bridgeIsToday = s.settings.bridgeLastReadAt > 0L &&
+            java.time.Instant.ofEpochMilli(s.settings.bridgeLastReadAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == java.time.LocalDate.now()
+        if (s.settings.bridgeEnabled && s.settings.bridgeToday.isNotBlank() && bridgeIsToday) {
             FitCard {
                 Text(stringResource(R.string.bridge_home_title), style = MaterialTheme.typography.labelLarge, color = c.purple)
                 Spacer(Modifier.height(4.dp))

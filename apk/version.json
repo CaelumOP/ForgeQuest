@@ -1,6 +1,6 @@
 {
-  "versionCode": 32,
-  "versionName": "2.18.1",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.18.1/ForgeQuest-v2.18.1.apk",
-  "notes": "• Gemini plans: a pasted or shared Gemini reply now shows its plan to review and apply.\n• Small fixes."
+  "versionCode": 33,
+  "versionName": "2.18.2",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.18.2/ForgeQuest-v2.18.2.apk",
+  "notes": "• Recovery now reads on a scale where a normal day is green; the session it recommends is unchanged.\n• A reading inside your normal range no longer shows as red.\n• Home's readiness card is tidier, and yesterday's Gemini note no longer lingers."
 }

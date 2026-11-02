@@ -967,10 +967,6 @@
     <string name="ready_strain">الإجهاد</string>
     <string name="ready_no_sleep">لم يُسجَّل نوم في الليلة الماضية</string>
     <string name="ready_learning">جارٍ التعرّف على معدلاتك المعتادة: %1$d من %2$d ليالٍ</string>
-    <string name="ready_hrv">تقلّب نبض القلب %1$d م.ث (المعتاد %2$d)</string>
-    <string name="ready_hrv_only">تقلّب نبض القلب %1$d م.ث</string>
-    <string name="ready_rhr">نبض الراحة %1$d (المعتاد %2$d)</string>
-    <string name="ready_rhr_only">نبض الراحة %1$d</string>
     <string name="dur_hm">%1$d س %2$d د</string>
     <string name="call_peak_t">في القمة</string>
     <string name="call_peak_b">طاقتك في أوجها؛ يوم مثالي لتحطيم رقم قياسي.</string>
@@ -983,16 +979,15 @@
     <string name="call_recover_t">استشفاء</string>
     <string name="call_recover_b">استرح، أو امشِ، أو أدِّ تمارين مرونة؛ فالتعافي جزء من التدريب.</string>
     <string name="ready_no_data">لا توجد بيانات Fitbit لليلة الماضية بعد. ارتدِه عند النوم ليظهر تعافيك هنا صباحًا.</string>
-    <string name="ready_target">هدف الإجهاد ⁦%1$d–%2$d⁩</string>
-    <string name="ready_need_tonight">النوم المطلوب الليلة %1$s</string>
     <string name="ready_felt_great">أشعر بنشاط كبير اليوم</string>
     <string name="ready_felt_great_on">سُجّل شعورك بالنشاط</string>
     <string name="ready_usual">المعتاد %1$s</string>
+    <string name="ready_sleep_mark">الدرجة الكاملة عند %1$s</string>
     <string name="ready_c_hrv">تقلّب نبض القلب</string>
     <string name="ready_c_rhr">نبض الراحة</string>
     <string name="ready_c_resp">معدل التنفس</string>
     <string name="ready_c_sleep">أداء النوم</string>
-    <string name="ready_recovery_explain">يُقارَن بآخر 60 يومًا لك. تقلّب نبض القلب أهم العوامل، ويُحسب بمتوسط 7 أيام كي لا تقلب ليلةٌ شاذة النتيجة. الأخضر 67 فأكثر، والأصفر ⁦34–66⁩، والأحمر دون ذلك.</string>
+    <string name="ready_recovery_explain">يُقارَن بآخر 60 يومًا لك. تقلّب نبض القلب أهم العوامل: ليلتك الأخيرة في المقام الأول، يهدّئها أسبوعٌ سابق لها. ويومك المعتاد يدور حول 75٪. الأخضر 67 فأكثر، والأصفر ⁦51–66⁩، والأحمر دون ذلك.</string>
     <string name="ready_c_tonight">المطلوب الليلة</string>
     <string name="ready_debt">يشمل %1$s من دين النوم المتراكم من الليالي القصيرة الأخيرة.</string>
     <string name="ready_c_steps">الخطوات</string>
@@ -1006,7 +1001,6 @@
     <string name="band_all_out">أقصى جهد</string>
     <string name="profile_health_title">جاهزية Fitbit</string>
     <string name="profile_health_hint">متوقف · فعّله لتحصل على التعافي والنوم والإجهاد من Fitbit عبر Health Connect</string>
-    <string name="ready_tap_hint">اضغط على أي دائرة لعرض التفاصيل</string>
     <string name="profile_health_on">متصل · التعافي والنوم والإجهاد في الرئيسية</string>
     <string name="profile_body_not_set">لم تُحدَّد بعد، وهذه قيم افتراضية. اضغط + أو − لتحديد قيمك.</string>
     <string name="profile_version">الإصدار %1$s</string>
@@ -1386,7 +1380,6 @@
     <string name="ready_yesterday">هذه نتيجة الأمس، إذ لم يصل نوم الليلة الماضية إلى التطبيق بعد. زامِن Fitbit ثم اضغط على زر التحديث.</string>
     <string name="ready_refreshing">جارٍ التحديث</string>
     <string name="ready_no_strain_yet">لم يُسجَّل أي إجهاد اليوم بعد، وهو يتراكم من نبض قلبك كلما تحرّكت وتمرّنت.</string>
-    <string name="ready_sleep_only">لم تصل بيانات القلب من ساعتك بعد، لذا يعتمد التعافي على نومك وحده.</string>
     <string name="ready_updated">حُدِّثت البيانات للتو.</string>
     <string name="ready_new_night">وصل نوم الليلة الماضية.</string>
     <string name="ready_waiting">لم يصل نوم جديد من Fitbit بعد. قد يستغرق ذلك بضع دقائق بعد المزامنة، لذا يعيد التطبيق التحقق كل دقيقة.</string>

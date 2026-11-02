@@ -90,6 +90,10 @@ readiness. Soft Coach changes spacing, corners and colour use there, never the l
 - **Blue, gold and purple are data colours.** They appear only where they name a measurement: the nutrition rings,
   macro stats, charts, the muscle map. Never on buttons, chips or decoration.
 - **Coral means danger.** Delete, errors, over a limit. Not for "you missed a day": missed days are neutral grey.
+- **Recovery has its own traffic light**, the one exception to the palette: green 67+, amber 51–66, red below. One
+  colour per verdict, so the ring, the week chart and the "Steady"/"Recover" line always agree. A normal day for the
+  wearer scores around 75, which is green: amber and red are kept for days that really are off, and a reading inside
+  the person's own normal range (resting HR 74 against a usual 72) gets a neutral grey dot, never a red one.
 - Tracks (pale tints) are backgrounds for their own colour only.
 - Surfaces step up in tone (background → card → card-high). No shadows, no gradients, no glows, no blur.
 

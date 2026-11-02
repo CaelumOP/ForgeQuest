@@ -62,6 +62,7 @@ import com.forgequest.app.data.health.DayReadiness
 import com.forgequest.app.data.health.HealthState
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.StrainBand
+import com.forgequest.app.domain.Trend
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.theme.Fit
 import java.time.Instant
@@ -79,10 +80,16 @@ internal val StrainTint = Color(0xFF3A8DFF)
 private val TargetGreen = Color(0xFF7BD88F)
 private val StageColors = listOf(Color(0xFFF48FB1), Color(0xFF8AB4F8), Color(0xFF7E57C2), Color(0xFFB3E5FC)) // awake, light, deep, REM
 
+// The recovery traffic light, the one place in the app outside the Soft Coach palette: green, amber and red carry a
+// meaning no accent colour does. Named here so the score, the dials, the week chart and the metric dots share them.
+private val RecoveryGreen = Color(0xFF16C784)
+private val RecoveryAmber = Color(0xFFF2C94C)
+private val RecoveryRed = Color(0xFFEB5757)
+
 internal fun recoveryTint(recovery: Int): Color = when (Readiness.recoveryZone(recovery)) {
-    2 -> Color(0xFF16C784)
-    1 -> Color(0xFFF2C94C)
-    else -> Color(0xFFEB5757)
+    2 -> RecoveryGreen
+    1 -> RecoveryAmber
+    else -> RecoveryRed
 }
 
 /** Full-page detail in the style of Google Health: Day and Week tabs, a big number, charts with axes, and an About section. */
@@ -151,18 +158,28 @@ private fun SectionTitle(text: String) {
     Spacer(Modifier.height(12.dp))
 }
 
-/** A row like Google Health's: label, value, and how it compares with the person's usual. */
+/**
+ * A row like Google Health's: label, value, and how it compares with the person's usual. A number inside the normal
+ * range gets a grey dot, not a red one: being 2 bpm off your own average is an ordinary morning.
+ */
 @Composable
-private fun MetricRow(label: String, value: String, usual: String?, better: Boolean?) {
+private fun MetricRow(label: String, value: String, sub: String?, trend: Trend?) {
     val c = Fit.colors
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
         Column(horizontalAlignment = Alignment.End) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (better != null) Box(Modifier.padding(end = 8.dp).width(8.dp).height(8.dp).clip(CircleShape).background(if (better) Color(0xFF16C784) else Color(0xFFEB5757)))
+                if (trend != null) {
+                    val dot = when (trend) {
+                        Trend.BETTER -> RecoveryGreen
+                        Trend.USUAL -> c.textSecondary
+                        Trend.WORSE -> RecoveryRed
+                    }
+                    Box(Modifier.padding(end = 8.dp).width(8.dp).height(8.dp).clip(CircleShape).background(dot))
+                }
                 Text(value, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             }
-            if (usual != null) Text(stringResource(R.string.ready_usual, usual), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
     }
 }
@@ -273,11 +290,17 @@ private fun RecoveryDay(d: DayReadiness) {
     SectionTitle(stringResource(R.string.ready_contributors))
     val ms = stringResource(R.string.unit_ms)
     val bpm = stringResource(R.string.unit_bpm)
-    MetricRow(stringResource(R.string.ready_c_hrv), d.hrv?.let { "${it.toInt()} $ms" } ?: "—", d.hrvUsual?.let { "${it.toInt()} $ms" }, d.hrv?.let { h -> d.hrvUsual?.let { h >= it } })
-    MetricRow(stringResource(R.string.ready_c_rhr), d.rhr?.let { "${it.toInt()} $bpm" } ?: "—", d.rhrUsual?.let { "${it.toInt()} $bpm" }, d.rhr?.let { r -> d.rhrUsual?.let { r <= it } })
+    MetricRow(stringResource(R.string.ready_c_hrv), d.hrv?.let { "${it.toInt()} $ms" } ?: "—", d.hrvUsual?.let { stringResource(R.string.ready_usual, "${it.toInt()} $ms") }, d.hrvTrend)
+    MetricRow(stringResource(R.string.ready_c_rhr), d.rhr?.let { "${it.toInt()} $bpm" } ?: "—", d.rhrUsual?.let { stringResource(R.string.ready_usual, "${it.toInt()} $bpm") }, d.rhrTrend)
     val brpm = stringResource(R.string.unit_brpm)
-    MetricRow(stringResource(R.string.ready_c_resp), d.resp?.let { "%.1f %s".format(Locale.US, it, brpm) } ?: "—", d.respUsual?.let { "%.1f %s".format(Locale.US, it, brpm) }, d.resp?.let { r -> d.respUsual?.let { r <= it } })
-    MetricRow(stringResource(R.string.ready_c_sleep), d.sleepPerf?.let { "$it%" } ?: "—", null, d.sleepPerf?.let { it >= 85 })
+    MetricRow(stringResource(R.string.ready_c_resp), d.resp?.let { "%.1f %s".format(Locale.US, it, brpm) } ?: "—", d.respUsual?.let { stringResource(R.string.ready_usual, "%.1f %s".format(Locale.US, it, brpm)) }, d.respTrend)
+    // Sleep has no 60-day baseline behind it: 85 % is the mark where it stops adding to or taking from the score, so
+    // the row names that instead of leaving the only line on the page without a reference.
+    MetricRow(
+        stringResource(R.string.ready_c_sleep), d.sleepPerf?.let { "$it%" } ?: "—",
+        d.sleepPerf?.let { stringResource(R.string.ready_sleep_mark, "85%") },
+        Readiness.trendOf(d.sleepPerf?.let { Readiness.zWithSwc((it - 85) / 15.0, 1.0) }),
+    )
     if (d.baselineNights < Readiness.MIN_BASELINE_DAYS) {
         Spacer(Modifier.height(8.dp))
         Text(stringResource(R.string.ready_learning, d.baselineNights, Readiness.MIN_BASELINE_DAYS), style = MaterialTheme.typography.bodySmall, color = Fit.colors.gold)
@@ -412,15 +435,17 @@ private fun StrainDay(d: DayReadiness) {
     }
     SectionTitle(stringResource(R.string.ready_how_earned))
     // No strain yet: "other activity 100%" on a 0.0 day read as broken.
-    if (d.strain < 0.1) Text(stringResource(R.string.ready_no_strain_yet), style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
-    else ShareBar(stringResource(R.string.ready_earned_workouts, (d.workoutShare * 100).toInt()), d.workoutShare, StrainTint)
     val fq = (d.workoutShare * 100).toInt()
+    // An empty bar labelled "0 %" reads as broken, so a source that earned nothing today is simply left out.
+    if (d.strain < 0.1) Text(stringResource(R.string.ready_no_strain_yet), style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary)
+    else if (fq > 0) ShareBar(stringResource(R.string.ready_earned_workouts, fq), d.workoutShare, StrainTint)
     val other = (d.otherShare * 100).toInt()
     if (d.strain >= 0.1 && (d.otherWorkouts.isNotEmpty() || other > 0)) {
         val named = d.otherWorkouts.map { (it.title ?: stringResource(exerciseName(it.exerciseType))) + " " + stringResource(R.string.ready_minutes, it.minutes) }.joinToString(" · ")
         ShareBar(stringResource(R.string.ready_earned_other_workouts, other) + if (named.isNotEmpty()) "\n$named" else "", d.otherShare, StrainTint.copy(alpha = 0.8f))
     }
-    if (d.strain >= 0.1) ShareBar(stringResource(R.string.ready_earned_other, (100 - fq - other).coerceAtLeast(0)), (1f - d.workoutShare - d.otherShare).coerceAtLeast(0f), StrainTint.copy(alpha = 0.6f))
+    val rest = (100 - fq - other).coerceAtLeast(0)
+    if (d.strain >= 0.1 && rest > 0) ShareBar(stringResource(R.string.ready_earned_other, rest), (1f - d.workoutShare - d.otherShare).coerceAtLeast(0f), StrainTint.copy(alpha = 0.6f))
     SectionTitle(stringResource(R.string.ready_zones))
     val names = listOf(R.string.zone_1, R.string.zone_2, R.string.zone_3, R.string.zone_4, R.string.zone_5)
     d.zoneMin.forEachIndexed { i, m ->
