@@ -1,0 +1,36 @@
+Gulf products: 35685
+with kcal+protein as published: 14922
+filled from twins: 14
+written: 14936 (41%)
+with Arabic name: 731
+still missing: 20749; top 30 by scans:
+  6281006408647 | Vaseline | 140
+  3600541177741 | 68YN5T 400ml | 111
+  3600540539397 | garnier | 91
+  5011321361058 | شامبو | 45
+  4005900008985 | nivea Soft | 41
+  6281006408708 | Vaselene | 37
+  16103403 | elviva | 34
+  8690526055657 | Eti Wafe'up extra Cocoa Cream Wafer | 33
+  6221048407772 | Signal | 29
+  8001090151780 | Pantene oil replacement | 25
+  50064861 | Vaseline lip therapy | 25
+  4809013300017 | deg | 22
+  3610340634185 | ultra doux shampoo | 20
+  8992803658439 | PT SPARINDO MUSTIKA | 19
+  6297000611020 | Mai Dubai Water Bottle | 19
+  5410076881840 | Champú PANTENE | 17
+  0305210287303 | Vaseline Cocoa Radiant Body Oil | 17
+  8697420532437 | Ultra Compact Baby | 16
+  8445290454102 | Nescafe AzerA | 16
+  3610340652349 | Garnier | 16
+  0033200194705 | Arm&Hammer | 15
+  6281101220755 | Water | 13
+  6281064110025 | Salt | 13
+  6111259634282 | CRAKS CHOC | 13
+  3504105035778 | Gentle cleansing gel | 13
+  6291003635229 | Tifanny | 12
+  6281100031031 | Rana Hot Sauce | 12
+  3350900000011 | Lait crème concentré | 12
+  6920354821660 | Colgate 75ml tp natural extracts lemon | 11
+  3610340078781 | Garnier | 11

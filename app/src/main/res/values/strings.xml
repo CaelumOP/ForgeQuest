@@ -1419,4 +1419,26 @@
     <string name="paste_gemini_reply">Paste Gemini reply</string>
     <string name="paste_gemini_none">No ForgeQuest reply found. Copy Gemini\'s whole reply first.</string>
     <string name="paste_gemini_done">Gemini\'s reply is in your coach.</string>
+    <string name="food_from_list">From the food list</string>
+    <string name="food_per_100g">%1$s kcal per 100 g</string>
+    <string name="food_unit_grams">Grams</string>
+    <string name="food_unit_serving">Serving</string>
+    <string name="food_amount_count">How many (%1$s)</string>
+    <string name="food_amount_summary">%1$d kcal · %2$s g protein · %3$s g carbs (%4$s g)</string>
+    <string name="barcode_scan">Scan barcode</string>
+    <string name="barcode_hint">Point the camera at the barcode on the pack.</string>
+    <string name="barcode_label_hint">Fit the nutrition table in frame, then take the photo.</string>
+    <string name="barcode_looking">Looking it up…</string>
+    <string name="barcode_reading">Reading the label…</string>
+    <string name="barcode_missing_title">Not in the food list yet</string>
+    <string name="barcode_missing_body">Take a photo of the nutrition label and it will be read for you, then saved under this barcode.</string>
+    <string name="barcode_offline_title">Couldn\'t reach the online food list</string>
+    <string name="barcode_offline_body">Check your connection and scan again, or take a photo of the nutrition label instead.</string>
+    <string name="barcode_label_photo">Photo of the label</string>
+    <string name="barcode_scan_again">Scan again</string>
+    <string name="barcode_try_again">Try again</string>
+    <string name="barcode_label_failed">Couldn\'t read that label</string>
+    <string name="barcode_err_label">The numbers on that label weren\'t clear. Try again with the nutrition table filling the frame.</string>
+    <string name="barcode_unnamed">Product %1$s</string>
+    <string name="profile_credits_data">Food data: Open Food Facts (ODbL), Saudi Food and Drug Authority, USDA.</string>
 </resources>

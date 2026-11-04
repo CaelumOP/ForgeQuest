@@ -1372,6 +1372,7 @@ fun ProfileScreen(nav: NavHostController) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                         Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Text(stringResource(R.string.profile_credits_data), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         val taps = remember { longArrayOf(0, 0, 0, 0, 0, 0, 0) }
                         Text(
                             stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),

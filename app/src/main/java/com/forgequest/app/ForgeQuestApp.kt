@@ -3,6 +3,7 @@ package com.forgequest.app
 import android.app.Application
 import android.content.Context
 import com.forgequest.app.data.CoachRepository
+import com.forgequest.app.data.CatalogRepository
 import com.forgequest.app.data.FoodRepository
 import com.forgequest.app.data.ProgressRepository
 import com.forgequest.app.data.WorkoutRepository
@@ -35,6 +36,9 @@ class AppContainer(context: Context) {
     val workouts = WorkoutRepository(db, settings)
     val progress = ProgressRepository(db, settings, workouts, appScope)
     val food = FoodRepository(context, db, settings, gemini, models)
+    val catalog = CatalogRepository(context)
+    private val openFoodFacts = com.forgequest.app.data.OpenFoodFacts(http, "ForgeQuest/${BuildConfig.VERSION_NAME} (Android)")
+    val barcodes = com.forgequest.app.data.BarcodeLookup({ db.food().foodByBarcode(it) }, catalog::byBarcode, openFoodFacts::lookup)
     val health = com.forgequest.app.data.health.HealthRepository(context, settings, db)
     val coach = CoachRepository(db, settings, gemini, models, progress, workouts, groq, health)
     val backup = BackupRepository(context, db, settings, workouts)

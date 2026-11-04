@@ -237,6 +237,10 @@ interface FoodDao {
     @Upsert
     suspend fun upsertFood(food: FoodEntity): Long
 
+    /** The newest saved food scanned from any of these barcodes (the same product can be written with or without a leading 0). */
+    @Query("SELECT * FROM foods WHERE barcode != '' AND barcode IN (:codes) ORDER BY createdAt DESC LIMIT 1")
+    suspend fun foodByBarcode(codes: List<String>): FoodEntity?
+
     @Query("DELETE FROM foods WHERE id = :id")
     suspend fun deleteFood(id: Long)
 

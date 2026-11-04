@@ -61,6 +61,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -133,7 +134,10 @@ import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -147,7 +151,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class FoodViewModel(val app: AppContainer) : ViewModel() {
     val foods: StateFlow<List<FoodEntity>> = app.food.foods.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val recentOneOffs: StateFlow<List<MealEntity>> = app.db.food().observeRecentOneOffs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -162,6 +166,43 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     val usage: StateFlow<Map<Long, FoodUsage>> = app.food.usage.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
     /** What's typed in the search box; blank shows the open tab's foods. */
     val query = MutableStateFlow("")
+
+    /** Matches from the built-in food list for what's typed (nothing for a blank box). */
+    val catalogResults: StateFlow<List<com.forgequest.app.domain.CatalogFood>> =
+        query.debounce(150).mapLatest { app.catalog.search(it.trim(), 12) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Logs [amount] of a food-list item to the open day, and keeps it as the person's own food so it's theirs next time. */
+    fun logCatalog(item: com.forgequest.app.domain.CatalogFood, amount: com.forgequest.app.domain.CatalogAmount, unitLabel: String, barcode: String = "") = viewModelScope.launch {
+        val each = amount.gramsEach
+        val name = item.name(com.forgequest.app.ui.isArabic()).take(48)
+        val serving = if (each == 1f) "" else "$unitLabel (${com.forgequest.app.domain.Catalog.formatNumber(each)} g)"
+        val qty = if (each == 1f) 1f else amount.count
+        val grams = if (each == 1f) amount.count else each
+        val food = FoodEntity(
+            name = name, category = category.value, kcal = com.forgequest.app.domain.Catalog.kcalFor(item, grams),
+            protein = com.forgequest.app.domain.Catalog.proteinFor(item, grams), carbs = com.forgequest.app.domain.Catalog.carbsFor(item, grams),
+            serving = if (each == 1f) "${com.forgequest.app.domain.Catalog.formatNumber(grams)} g" else serving,
+            createdAt = System.currentTimeMillis(), place = item.brand(com.forgequest.app.ui.isArabic()), barcode = barcode,
+        )
+        val same = foods.value.firstOrNull { it.name == food.name && it.serving == food.serving && it.kcal == food.kcal }
+        // The same food saved before without its barcode picks it up now, so the next scan finds it.
+        val saved = if (same != null && barcode.isNotBlank() && same.barcode != barcode) same.copy(barcode = barcode).also { app.food.saveFood(it) } else same
+        val id = saved?.id ?: app.food.saveFood(food)
+        app.food.logFoods(listOf(FoodPick((saved ?: food).copy(id = id), qty, mealFor(food), food.name)), day.value)
+        app.haptics.setDone()
+        val badges = app.progress.evaluateBadges()
+        message.value = app.str(R.string.food_logged_name, food.name) +
+            if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
+    }
+
+    /** A scanned barcode that is already one of the person's foods: logs one of it to the open day. */
+    fun logOwn(food: FoodEntity) = viewModelScope.launch {
+        app.food.logFoods(listOf(FoodPick(food, 1f, mealFor(food), food.name)), day.value)
+        app.haptics.setDone()
+        val badges = app.progress.evaluateBadges()
+        message.value = app.str(R.string.food_logged_name, food.name) +
+            if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
+    }
 
     /** A ticked food: how much, and the meal it's logged under. */
     data class Pick(val qty: Float, val category: FoodCategory)
@@ -300,6 +341,9 @@ fun FoodScreen(nav: NavHostController) {
     val day by vm.day.collectAsState()
     var confirmDeleteFood by remember { mutableStateOf<FoodEntity?>(null) }
     var quickLog by remember { mutableStateOf(false) }
+    var catalogPick by remember { mutableStateOf<com.forgequest.app.domain.CatalogFood?>(null) }
+    var scanningBarcode by remember { mutableStateOf(false) }
+    val catalogResults by vm.catalogResults.collectAsState()
     val isToday = day == Dates.today()
     LaunchedEffect(Unit) { vm.onShown() }
 
@@ -344,6 +388,10 @@ fun FoodScreen(nav: NavHostController) {
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.food_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
                     PillButton(stringResource(R.string.food_scan_meal), onClick = { nav.navigate(Routes.SCAN) }, icon = Icons.Rounded.CameraAlt)
+                    Spacer(Modifier.width(8.dp))
+                    Box(Modifier.size(44.dp).clip(CircleShape).background(c.cardHigh).clickable { scanningBarcode = true }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.barcode_scan), tint = c.textPrimary)
+                    }
                     Spacer(Modifier.width(8.dp))
                     Box(Modifier.size(44.dp).clip(CircleShape).background(c.cardHigh).clickable {
                         editing = FoodEntity(name = "", category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
@@ -419,6 +467,12 @@ fun FoodScreen(nav: NavHostController) {
                     )
                 }
             }
+            if (searching && catalogResults.isNotEmpty()) {
+                item {
+                    Text(stringResource(R.string.food_from_list), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+                }
+                items(catalogResults, key = { "c${it.id}" }) { item -> CatalogRow(item, onClick = { focus.clearFocus(); catalogPick = item }) }
+            }
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -450,6 +504,12 @@ fun FoodScreen(nav: NavHostController) {
         }
     }
 
+    if (scanningBarcode) {
+        BarcodeScanScreen(onClose = { scanningBarcode = false }, onOwn = { vm.logOwn(it); scanningBarcode = false }, onLog = { food, amount, label, code -> vm.logCatalog(food, amount, label, code); scanningBarcode = false })
+    }
+    catalogPick?.let { item ->
+        CatalogAmountSheet(item, onLog = { amount, label -> vm.logCatalog(item, amount, label); catalogPick = null; vm.query.value = "" }, onDismiss = { catalogPick = null })
+    }
     if (quickLog) {
         val recentOneOffs by vm.recentOneOffs.collectAsState()
         QuickLogSheet(category, recent = recentOneOffs, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (apiKey.isNotBlank()) vm::estimate else null, onLog = { n, cat, k, p, cb -> vm.logOnce(n, cat, k, p, cb); quickLog = false }, onDismiss = { quickLog = false })

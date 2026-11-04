@@ -123,6 +123,9 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
 
+    // Barcode reader with the model bundled in the app (about 2.5 MB), so it works offline.
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")

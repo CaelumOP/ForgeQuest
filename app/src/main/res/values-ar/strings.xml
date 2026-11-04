@@ -1591,4 +1591,26 @@
     <string name="paste_gemini_reply">لصق رد Gemini</string>
     <string name="paste_gemini_none">لم يُعثر على رد ForgeQuest. انسخ رد Gemini كاملًا أولًا.</string>
     <string name="paste_gemini_done">أُضيف رد Gemini إلى المدرب.</string>
+    <string name="food_from_list">من قائمة الأطعمة</string>
+    <string name="food_per_100g">%1$s سعرة لكل ١٠٠ غ</string>
+    <string name="food_unit_grams">غرامات</string>
+    <string name="food_unit_serving">حصة</string>
+    <string name="food_amount_count">العدد (%1$s)</string>
+    <string name="food_amount_summary">%1$d سعرة · %2$s غ بروتين · %3$s غ كربوهيدرات (%4$s غ)</string>
+    <string name="barcode_scan">مسح الباركود</string>
+    <string name="barcode_hint">وجّه الكاميرا نحو الباركود على العبوة.</string>
+    <string name="barcode_label_hint">اجعل جدول القيم الغذائية داخل الإطار ثم التقط الصورة.</string>
+    <string name="barcode_looking">جارٍ البحث…</string>
+    <string name="barcode_reading">جارٍ قراءة الملصق…</string>
+    <string name="barcode_missing_title">غير موجود في قائمة الأطعمة بعد</string>
+    <string name="barcode_missing_body">التقط صورة لملصق القيم الغذائية وسيُقرأ لك ثم يُحفظ تحت هذا الباركود.</string>
+    <string name="barcode_offline_title">تعذّر الوصول إلى قائمة الأطعمة عبر الإنترنت</string>
+    <string name="barcode_offline_body">تحقق من اتصالك ثم امسح مرة أخرى، أو التقط صورة لملصق القيم الغذائية.</string>
+    <string name="barcode_label_photo">صورة الملصق</string>
+    <string name="barcode_scan_again">مسح مرة أخرى</string>
+    <string name="barcode_try_again">أعد المحاولة</string>
+    <string name="barcode_label_failed">تعذّرت قراءة الملصق</string>
+    <string name="barcode_err_label">لم تكن الأرقام على الملصق واضحة. أعد المحاولة مع ملء جدول القيم الغذائية للإطار.</string>
+    <string name="barcode_unnamed">منتج %1$s</string>
+    <string name="profile_credits_data">بيانات الأطعمة: Open Food Facts (ODbL)، والهيئة العامة للغذاء والدواء، وUSDA.</string>
 </resources>

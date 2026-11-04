@@ -57,7 +57,17 @@ class FoodRepository(
     private val models: ModelStore,
 ) {
     private val dao = db.food()
-    private companion object { const val MAX_EDGE = 1280 }
+    private companion object {
+        const val MAX_EDGE = 1280
+        val LABEL_INSTRUCTIONS = """
+            You read nutrition facts labels from photos for a fitness app. Copy the printed numbers exactly; never estimate or guess.
+            Prefer the "per 100 g" (or per 100 ml) column. If the label has only a per-serving column, use it and set basis to "serving" and servingGrams to the serving size in grams or ml printed on the label.
+            Calories are kcal (if only kJ is printed, divide by 4.184). Protein and carbohydrates are in grams.
+            If the photo is not a nutrition label or the numbers can't be read, return kcal 0.
+            Reply ONLY with JSON: {"name": string, "basis": "100g" or "serving", "servingGrams": number, "kcal": number, "protein": number, "carbs": number}
+            "name" is the product name if printed, else an empty string.
+        """.trimIndent()
+    }
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     val foods: Flow<List<FoodEntity>> = dao.observeFoods()
@@ -213,6 +223,25 @@ class FoodRepository(
             ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
         if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
         return scan
+    }
+
+    /** Reads calories, protein and carbs off a photo of a nutrition label (per 100 g, or per serving converted to 100 g). */
+    suspend fun readLabel(photoPath: String, barcode: String): com.forgequest.app.domain.CatalogFood {
+        val key = settings.apiKey.value
+        if (key.isBlank()) throw AiError.MissingKey
+        val image = withContext(Dispatchers.IO) { File(photoPath).readBytes() }
+        val m = models.current()
+        val raw = gemini.generate(
+            apiKey = key,
+            models = listOf(m.fast, GeminiClient.FALLBACK_STABLE_FLASH, m.lite),
+            system = LABEL_INSTRUCTIONS,
+            turns = listOf("user" to "Read the nutrition label in this photo."),
+            image = image,
+            jsonOutput = true,
+            lowThinking = true,
+        )
+        val read = runCatching { json.decodeFromString<LabelRead>(extractJson(raw)) }.getOrNull()
+        return read?.toFood(barcode) ?: throw AiError.Unreadable(R.string.barcode_err_label)
     }
 
     /** Calories and macros for a typed food ("chicken and rice"), for people who don't know the numbers. */

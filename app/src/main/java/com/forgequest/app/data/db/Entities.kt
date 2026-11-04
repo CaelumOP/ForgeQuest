@@ -129,6 +129,8 @@ data class FoodEntity(
     val place: String = "",
     /** What it's made of (from a Gemini or photo scan), each part on or off. When set, kcal/protein/carbs are the "on" parts' totals. */
     val parts: List<FoodPart> = emptyList(),
+    /** EAN/UPC digits when it came from a barcode scan, so the next scan finds it offline; empty otherwise. */
+    val barcode: String = "",
 )
 
 /** This food with [parts]; when there are parts, its calories, protein and carbs become the totals of the parts that are on. */
