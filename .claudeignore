@@ -1,0 +1,11 @@
+# Heavy or generated files kept out of AI context (enforced by the shield read guard).
+# apk/version.json stays readable: releases bump it.
+apk/*.apk
+app/schemas/
+app/src/main/res/font/
+app/src/main/assets/body_map.json
+.claude/skills/ui-ux-pro-max/data/
+**/__pycache__/
+**/*.pyc
+build/
+.gradle/
