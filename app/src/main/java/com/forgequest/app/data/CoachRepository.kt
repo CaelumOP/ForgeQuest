@@ -92,7 +92,7 @@ class CoachRepository(
         // Persist any equipment explicitly mentioned in the user's message.
         val newlyInferredEq = if (aboutWorkout) null else inferEquipmentFromText(trimmed)
         if (newlyInferredEq != null && settings.current().equipment.isBlank()) {
-            settings.update { it.copy(equipment = newlyInferredEq.joinToString(",") { e -> e.name }) }
+            settings.update { it.copy(equipment = equipmentWith(it.equipment, newlyInferredEq)) }
         }
 
         val currentSettings = settings.current()
@@ -107,7 +107,7 @@ class CoachRepository(
         _draft.value = ""
         try {
             val system = coachSystemPrompt(
-                replyLanguage = if (aboutWorkout && Locale.getDefault().language == "ar") "Arabic" else languageOf(trimmed),
+                replyLanguage = if (aboutWorkout && isArabicUi()) "Arabic" else languageOf(trimmed),
                 plan = shouldEmitPlanJson,
                 needsEquipmentIntake = needsEquipmentIntake,
                 availableEquipment = knownEquipment,
@@ -208,20 +208,20 @@ class CoachRepository(
     }
 
     /** Result of reading a reply's plan or change block against the library and the current plan. */
-    private class PlanCheck(val draft: PlanDraft?, val errors: List<String>, val unknownIds: Set<String>, val broken: Boolean)
+    private class PlanCheck(val draft: PlanDraft?, val errors: List<String>, val unknownIds: Set<String>)
 
     private fun checkPlan(reply: String, library: Map<String, ExerciseEntity>, current: PlanDraft?): PlanCheck? {
         val currentHash = current?.let(PlanHash::of)
         PlanJson.extractPatch(reply)?.let { patch ->
-            if (current == null) return PlanCheck(null, listOf("There is no current plan to change; send the full plan instead."), emptySet(), true)
+            if (current == null) return PlanCheck(null, listOf("There is no current plan to change; send the full plan instead."), emptySet())
             val out = PlanPatches.apply(current, patch, library)
-            return PlanCheck(out.draft, out.errors, emptySet(), out.draft == null)
+            return PlanCheck(out.draft, out.errors, emptySet())
         }
         PlanJson.extract(reply)?.let { draft ->
             val v = PlanValidator.validate(draft, library)
-            return PlanCheck(v.draft.copy(basedOnHash = currentHash), v.errors, v.unknownIds, false)
+            return PlanCheck(v.draft.copy(basedOnHash = currentHash), v.errors, v.unknownIds)
         }
-        return if (PlanJson.hasBrokenBlock(reply)) PlanCheck(null, listOf("The JSON block could not be parsed; check brackets, quotes and commas."), emptySet(), true) else null
+        return if (PlanJson.hasBrokenBlock(reply)) PlanCheck(null, listOf("The JSON block could not be parsed; check brackets, quotes and commas."), emptySet()) else null
     }
 
     private fun repairRequest(problems: List<String>) = buildString {
@@ -245,7 +245,7 @@ class CoachRepository(
         val check = if (retried != null && first != null && (retried.draft != null || first.draft == null) && retried.errors.size <= first.errors.size) retried else first
         val extraNotes = mutableListOf<String>()
         var checked = check?.draft
-        if (checked != null && check != null && check.unknownIds.isNotEmpty()) {
+        if (checked != null && check.unknownIds.isNotEmpty()) {
             val (replaced, swaps) = PlanValidator.replaceUnknown(checked, check.unknownIds, snap.exercises.values.toList(), availableEquipment)
             checked = replaced
             swaps.forEach { (old, new) ->
@@ -255,25 +255,15 @@ class CoachRepository(
         if (check != null && checked == null) extraNotes += AppText.get(R.string.coach_plan_unreadable)
         val patch = checked?.patch
         if (patch != null && current != null) extraNotes += describeChanges(current, patch, snap.exercises)
-        val rawPlan = checked
         val notes = CoachMemory.extract(reply)
         if (notes.isNotEmpty()) {
             val inferredEq = inferEquipmentFromText(*notes.toTypedArray())
-            settings.update { s ->
-                val mergedNotes = CoachMemory.merge(s.coachNotes, notes)
-                val updatedEq = if (s.equipment.isBlank() && inferredEq != null) {
-                    inferredEq.joinToString(",") { it.name }
-                } else {
-                    s.equipment
-                }
-                s.copy(coachNotes = mergedNotes, equipment = updatedEq)
-            }
+            settings.update { s -> s.copy(coachNotes = CoachMemory.merge(s.coachNotes, notes), equipment = equipmentWith(s.equipment, inferredEq)) }
         }
-        val adaptedPlan = if (rawPlan != null && availableEquipment.isNotEmpty()) {
-            val lib = progress.snapshot.first().exercises
-            ExerciseSwapEngine.adaptPlanToEquipment(rawPlan, lib, availableEquipment, dropUnfit = true).first
+        val adaptedPlan = if (checked != null && availableEquipment.isNotEmpty()) {
+            ExerciseSwapEngine.adaptPlanToEquipment(checked, snap.exercises, availableEquipment, dropUnfit = true).first
         } else {
-            rawPlan
+            checked
         }
         val prose = PlanJson.strip(reply).ifBlank { AppText.get(R.string.coach_plan_fallback) }
         chat.insert(
@@ -367,7 +357,7 @@ class CoachRepository(
                 }
             }
         }.orEmpty()
-        val language = if (Locale.getDefault().language == "ar") "formal Modern Standard Arabic (Western digits)" else "English"
+        val language = if (isArabicUi()) "formal Modern Standard Arabic (Western digits)" else "English"
         return buildString {
             append(facts)
             if (calculated.isNotBlank()) { appendLine(); append(calculated) }
@@ -416,7 +406,7 @@ class CoachRepository(
             if (snap.sessions.none { it.epochDay in lastWeek until thisWeek }) return@withLock false
             settings.update { it.copy(lastCheckinWeek = thisWeek) }
             try {
-                val system = coachSystemPrompt(replyLanguage = if (java.util.Locale.getDefault().language == "ar") "Arabic" else "English")
+                val system = coachSystemPrompt(replyLanguage = if (isArabicUi()) "Arabic" else "English")
                 val ask = listOf("user" to "Write my weekly check-in for last week: 3 short parts — what went well, what to push or deload this week, one nutrition/recovery tip. Under 180 words. No plan JSON, no MEMORY line.")
                 val viaGroq = settings.groqKey.value.isNotBlank() && settings.current().coachModel == "auto"
                 val reply = (if (viaGroq) suspendRunCatching { groq.streamChat(settings.groqKey.value, groqModel(), system, ask) {} }.getOrNull() else null)
@@ -432,12 +422,12 @@ class CoachRepository(
 
     suspend fun setNotes(notes: String) = settings.update {
         val cleaned = notes.lines().map(String::trim).filter { l -> l.isNotBlank() }.joinToString("\n")
-        val inferred = inferEquipmentFromText(cleaned)
-        it.copy(
-            coachNotes = cleaned,
-            equipment = if (it.equipment.isBlank() && inferred != null) inferred.joinToString(",") { e -> e.name } else it.equipment,
-        )
+        it.copy(coachNotes = cleaned, equipment = equipmentWith(it.equipment, inferEquipmentFromText(cleaned)))
     }
+
+    /** The saved equipment, or [inferred] when nothing is saved yet. */
+    private fun equipmentWith(current: String, inferred: Collection<Equipment>?): String =
+        if (current.isBlank() && inferred != null) inferred.joinToString(",") { it.name } else current
 
     private fun requireKey(): String = settings.apiKey.value.ifBlank { throw AiError.MissingKey }
 
@@ -471,6 +461,8 @@ class CoachRepository(
         return PlanIntent.matches(text, names)
     }
 
+    private fun isArabicUi() = Locale.getDefault().language == "ar"
+
     /** Script of the person's latest message, so the reply never drifts into another language. */
     internal fun languageOf(text: String): String = when {
         text.any { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' } -> "Arabic"
@@ -488,7 +480,7 @@ class CoachRepository(
     }
 
     private suspend fun coachSystemPrompt(
-        replyLanguage: String = "the language of the user's latest message",
+        replyLanguage: String,
         plan: Boolean = false,
         needsEquipmentIntake: Boolean = false,
         availableEquipment: Set<Equipment> = emptySet(),
@@ -563,6 +555,7 @@ class CoachRepository(
         val snap = progress.snapshot.first()
         val s = snap.settings
         val today = Dates.today()
+        val nameOf = { id: String -> snap.exercises[id]?.name ?: id }
         val sb = StringBuilder("User data (today is ${LocalDate.ofEpochDay(today).format(DateTimeFormatter.ofPattern("EEEE, MMM d yyyy", Locale.ENGLISH))}):\n")
         if (s.name.isNotBlank()) sb.append("- Name: ${s.name}\n")
 
@@ -599,11 +592,8 @@ class CoachRepository(
             NutritionGoal.GAIN -> "GAIN (build muscle with a small surplus: push progressive overload)"
         }
         sb.append("- Body goal: $goalText\n")
-        when (s.nutritionGoal) {
-            NutritionGoal.CUT -> sb.append("- Cut pace: ${s.cutPace.name.lowercase()} (${s.cutPace.weeklyPct}% of body weight a week)\n")
-            NutritionGoal.GAIN -> sb.append("- Gain pace: ${s.gainPace.name.lowercase()} (${s.gainPace.weeklyPct}% of body weight a week)\n")
-            NutritionGoal.MAINTAIN -> Unit
-        }
+        if (s.nutritionGoal == NutritionGoal.CUT) sb.append("- Cut pace: ${s.cutPace.name.lowercase()} (${s.cutPace.weeklyPct}% of body weight a week)\n")
+        else if (s.nutritionGoal == NutritionGoal.GAIN) sb.append("- Gain pace: ${s.gainPace.name.lowercase()} (${s.gainPace.weeklyPct}% of body weight a week)\n")
         when (Nutrition.weightTrendNote(s.nutritionGoal, s.goalSetDay, snap.weights.map { it.epochDay to it.kg }, today, s.cutPace, s.gainPace, s.bodyType.name == "FEMALE")) {
             WeightTrend.CUT_TOO_FAST -> sb.append("- Weight trend: losing faster than the chosen cut pace allows; suggest eating a little more\n")
             WeightTrend.GAIN_STALLED -> sb.append("- Weight trend: no gain for 3+ weeks on the gain goal; suggest a little more food\n")
@@ -655,7 +645,7 @@ class CoachRepository(
                             item.repsMin != null -> "${item.repsMin}"
                             else -> ""
                         }
-                        "${ex?.name ?: item.exerciseId}${if (per.isNotEmpty()) " ${item.sets}×$per" else ""}"
+                        "${nameOf(item.exerciseId)}${if (per.isNotEmpty()) " ${item.sets}×$per" else ""}"
                     }
                     sb.append("  ${Dates.dayAbbrev(d.day.dayOfWeek)}: ${d.day.title}: $names\n")
                 }
@@ -690,14 +680,13 @@ class CoachRepository(
                 val sets = snap.doneSets.filter { it.sessionId == session.id }
                 val minutes = session.finishedAt?.let { ((it - session.startedAt) / 60_000).toInt() }
                 val summary = sets.groupBy { it.exerciseId }.entries.take(7).joinToString("; ") { (id, list) ->
-                    val ex = snap.exercises[id]
-                    "${ex?.name ?: id} ${list.joinToString("/") { setLabel(ex?.kind, it) }}${if (list.any { it.isPr }) " PR" else ""}"
+                    "${nameOf(id)} ${list.joinToString("/") { setLabel(snap.exercises[id]?.kind, it) }}${if (list.any { it.isPr }) " PR" else ""}"
                 }
                 sb.append("  ${LocalDate.ofEpochDay(session.epochDay)} ${session.title}${minutes?.let { " ($it min)" } ?: ""}: $summary\n")
-                val notes = sets.filter { it.note.isNotBlank() }.take(4).joinToString("; ") { "${snap.exercises[it.exerciseId]?.name ?: it.exerciseId}: ${it.note}" }
+                val notes = sets.filter { it.note.isNotBlank() }.take(4).joinToString("; ") { "${nameOf(it.exerciseId)}: ${it.note}" }
                 if (notes.isNotEmpty()) sb.append("    notes: $notes\n")
                 val felt = sets.filter { it.effort == "HARD" || it.effort == "PAIN" }.take(4)
-                    .joinToString("; ") { "${snap.exercises[it.exerciseId]?.name ?: it.exerciseId} set ${it.setIndex + 1}: ${it.effort.lowercase()}" }
+                    .joinToString("; ") { "${nameOf(it.exerciseId)} set ${it.setIndex + 1}: ${it.effort.lowercase()}" }
                 if (felt.isNotEmpty()) sb.append("    felt: $felt\n")
             }
         }
@@ -705,13 +694,14 @@ class CoachRepository(
         // 4-week trends for the exercises done most
         val sessionDay = snap.sessions.associate { it.id to it.epochDay }
         val byExercise = snap.doneSets.groupBy { it.exerciseId }
+        fun score(ex: ExerciseEntity, set: SetEntity) = Records.score(ex.kind, set.reps, set.seconds, set.weightKg, ex.id)
         val trends = byExercise.entries.sortedByDescending { it.value.size }.take(8).mapNotNull { (id, sets) ->
             val ex = snap.exercises[id] ?: return@mapNotNull null
             val old = sets.filter { (sessionDay[it.sessionId] ?: 0) in (today - 56)..(today - 21) }
             val new = sets.filter { (sessionDay[it.sessionId] ?: 0) > today - 21 }
             if (old.isEmpty() || new.isEmpty()) return@mapNotNull null
-            val bestOld = old.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
-            val bestNew = new.maxBy { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
+            val bestOld = old.maxBy { score(ex, it) }
+            val bestNew = new.maxBy { score(ex, it) }
             "${ex.name} ${setLabel(ex.kind, bestOld)} → ${setLabel(ex.kind, bestNew)}"
         }
         if (trends.isNotEmpty()) sb.append("- Best set 3-8 weeks ago → best set in the last 3 weeks: ${trends.joinToString("; ")}\n")
@@ -719,7 +709,7 @@ class CoachRepository(
         // Personal bests
         val bests = byExercise.entries.mapNotNull { (id, sets) ->
             val ex = snap.exercises[id] ?: return@mapNotNull null
-            val best = sets.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) } ?: return@mapNotNull null
+            val best = sets.maxByOrNull { score(ex, it) } ?: return@mapNotNull null
             Triple(ex.name, setLabel(ex.kind, best), sets.size)
         }.sortedByDescending { it.third }.take(12)
         if (bests.isNotEmpty()) sb.append("- Personal bests: ${bests.joinToString(", ") { "${it.first} ${it.second}" }}\n")
@@ -752,10 +742,14 @@ class CoachRepository(
         return sb.toString()
     }
 
-    private fun setLabel(kind: ExerciseKind?, set: SetEntity): String = when (kind) {
-        ExerciseKind.HOLD -> "${set.seconds}s" + (set.weightKg?.takeIf { it > 0f }?.let { "+${"%.1f".format(Locale.US, it).removeSuffix(".0")}kg" } ?: "")
-        ExerciseKind.WEIGHTED -> "${set.reps}×${"%.1f".format(Locale.US, set.weightKg ?: 0f).removeSuffix(".0")}kg"
-        else -> "${set.reps}" + (set.weightKg?.takeIf { it > 0f }?.let { "+${"%.1f".format(Locale.US, it).removeSuffix(".0")}kg" } ?: "")
+    private fun setLabel(kind: ExerciseKind?, set: SetEntity): String {
+        fun kg(x: Float) = "%.1f".format(Locale.US, x).removeSuffix(".0") + "kg"
+        val extra = set.weightKg?.takeIf { it > 0f }?.let { "+${kg(it)}" }.orEmpty()
+        return when (kind) {
+            ExerciseKind.HOLD -> "${set.seconds}s$extra"
+            ExerciseKind.WEIGHTED -> "${set.reps}×${kg(set.weightKg ?: 0f)}"
+            else -> "${set.reps}$extra"
+        }
     }
 
     private companion object {

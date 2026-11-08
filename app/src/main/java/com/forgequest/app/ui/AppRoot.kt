@@ -222,15 +222,15 @@ private fun MainScaffold() {
                 }
             },
         ) { padding ->
+          val barSpace = if (showBar) PaddingValues(bottom = padding.calculateBottomPadding()) else PaddingValues(0.dp)
           Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             NavHost(
                 navController = nav,
                 startDestination = Routes.HOME,
                 // The bar's space counts as already used, so screens that pad for the keyboard
                 // (Coach input) sit right on top of it instead of a bar-height above.
-                modifier = (if (showBar) PaddingValues(bottom = padding.calculateBottomPadding()) else PaddingValues(0.dp)).let { barSpace ->
-                    Modifier.padding(barSpace).consumeWindowInsets(barSpace)
-                }.let { if (wide) it.widthIn(max = 640.dp).fillMaxHeight() else it },
+                modifier = Modifier.padding(barSpace).consumeWindowInsets(barSpace)
+                    .then(if (wide) Modifier.widthIn(max = 640.dp).fillMaxHeight() else Modifier),
                 // Pushed detail screens slide in from the end edge (RTL-aware) and slide back out; tabs just fade.
                 // With reduced motion on, nothing slides: every change is a short fade.
                 enterTransition = {
@@ -286,8 +286,7 @@ private fun <T> navFade(reduced: Boolean): androidx.compose.animation.core.Finit
 
 /** Pushed screens (everything except the five tabs and the live workout, which has no transition). */
 private fun isDetailRoute(route: String?): Boolean =
-    route != null && route != Routes.LIVE && route != Routes.HOME && route != Routes.WORKOUTS &&
-        route != Routes.FOOD && route != Routes.COACH && route != Routes.PROFILE
+    route != null && route != Routes.LIVE && tabs.none { it.route == route }
 
 fun NavHostController.goToTab(route: String) {
     // Home is the start destination: navigating to it with saveState/restoreState restored the tab you were

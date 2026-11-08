@@ -2,7 +2,7 @@
 
 Load this file before final delivery of native/mobile app UI (iOS/Android/React Native/Flutter), or when the user reports the UI "doesn't look professional" and the cause isn't obvious from the priority table in SKILL.md.
 
-**Scope notice:** everything below targets native/mobile app UI. For web/desktop interaction patterns, use `references/quick-reference.md` (stack-agnostic) instead — these tables assume touch targets, safe areas, and platform gesture conventions that don't apply 1:1 to desktop web.
+**Scope notice:** everything below targets native/mobile app UI. For web/desktop interaction patterns, use `references/quick-reference-a.md` and `quick-reference-b.md` (stack-agnostic) instead — these tables assume touch targets, safe areas, and platform gesture conventions that don't apply 1:1 to desktop web.
 
 These are frequently overlooked issues that make UI look unprofessional.
 
@@ -67,7 +67,7 @@ Before delivering app UI code, verify every item below. Start with the process s
 
 ### Process
 - [ ] Ran only searches relevant to the interface, such as `"keyboard focus modal" --domain ux` for modal keyboard behavior
-- [ ] Reviewed `quick-reference.md` §1–§3 (CRITICAL + HIGH) as a final pass
+- [ ] Reviewed `quick-reference-a.md` rules 1-3 (CRITICAL + HIGH) as a final pass
 - [ ] Tested on 375px (small phone) and in landscape orientation
 - [ ] Verified behavior with **reduced-motion** enabled and **Dynamic Type**/largest system text size
 - [ ] Checked dark mode contrast independently (never assume light-mode values carry over)
