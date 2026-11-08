@@ -47,7 +47,7 @@ object Catalog {
     fun carbsFor(food: CatalogFood, grams: Float): Float = round(food.carbs * grams / 10f) / 10f
 
     /** Best matches first (same matching as the person's own foods); among equals the more scanned/common one. */
-    fun search(foods: List<CatalogFood>, query: String, limit: Int): List<CatalogFood> {
+    fun search(foods: List<CatalogFood>, query: String, limit: Int, byProtein: Boolean = false): List<CatalogFood> {
         if (query.isBlank()) return emptyList()
         return foods.asSequence()
             .map { f ->
@@ -61,6 +61,11 @@ object Catalog {
             }
             .filter { it.second > 0f }
             .sortedWith(compareByDescending<Pair<CatalogFood, Float>> { it.second }.thenByDescending { it.first.scans })
-            .map { it.first }.take(limit).toList()
+            .map { it.first }
+            // Most protein per 100 g first, out of the 40 best matches; the sort is stable, so equals keep their relevance order.
+            .let { if (byProtein) it.take(PROTEIN_POOL).sortedByDescending { f -> f.protein } else it }
+            .take(limit).toList()
     }
+
+    private const val PROTEIN_POOL = 40
 }

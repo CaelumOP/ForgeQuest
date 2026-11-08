@@ -65,8 +65,8 @@ class CatalogRepository(private val context: Context) {
         list.also { all = it }
     }
 
-    suspend fun search(query: String, limit: Int = 20): List<CatalogFood> = withContext(Dispatchers.Default) {
+    suspend fun search(query: String, limit: Int = 20, byProtein: Boolean = false): List<CatalogFood> = withContext(Dispatchers.Default) {
         val list = lock.withLock { names() }
-        Catalog.search(list, query, limit)
+        Catalog.search(list, query, limit, byProtein)
     }
 }

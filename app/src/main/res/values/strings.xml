@@ -1420,6 +1420,8 @@
     <string name="paste_gemini_none">No ForgeQuest reply found. Copy Gemini\'s whole reply first.</string>
     <string name="paste_gemini_done">Gemini\'s reply is in your coach.</string>
     <string name="food_from_list">From the food list</string>
+    <string name="food_sort_protein">Most protein</string>
+    <string name="food_log_again">Log again</string>
     <string name="food_per_100g">%1$s kcal per 100 g</string>
     <string name="food_unit_grams">Grams</string>
     <string name="food_unit_ml">Milliliters</string>

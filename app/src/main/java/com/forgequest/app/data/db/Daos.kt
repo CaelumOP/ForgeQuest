@@ -271,7 +271,7 @@ interface FoodDao {
     suspend fun allFoods(): List<FoodEntity>
 
     @Insert
-    suspend fun insertMeals(meals: List<MealEntity>)
+    suspend fun insertMeals(meals: List<MealEntity>): List<Long>
 
     /** Puts a deleted meal back with its original id (undo). */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

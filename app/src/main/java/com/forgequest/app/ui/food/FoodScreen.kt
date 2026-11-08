@@ -61,6 +61,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Search
@@ -70,6 +71,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -136,6 +138,7 @@ import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.flatMapLatest
@@ -166,10 +169,13 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     val usage: StateFlow<Map<Long, FoodUsage>> = app.food.usage.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
     /** What's typed in the search box; blank shows the open tab's foods. */
     val query = MutableStateFlow("")
+    /** Show the food-list matches with the most protein first. */
+    val sortProtein = MutableStateFlow(false)
 
     /** Matches from the built-in food list for what's typed (nothing for a blank box). */
     val catalogResults: StateFlow<List<com.forgequest.app.domain.CatalogFood>> =
-        query.debounce(150).mapLatest { app.catalog.search(it.trim(), 12) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        combine(query.debounce(150), sortProtein) { q, byProtein -> q to byProtein }
+            .mapLatest { (q, byProtein) -> app.catalog.search(q.trim(), 12, byProtein) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Logs [amount] of a food-list item to the open day, and keeps it as the person's own food so it's theirs next time. */
     fun logCatalog(item: com.forgequest.app.domain.CatalogFood, amount: com.forgequest.app.domain.CatalogAmount, unitLabel: String, barcode: String = "") = viewModelScope.launch {
@@ -309,6 +315,14 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     fun deleteMeal(meal: MealEntity) = viewModelScope.launch {
         app.food.deleteMeal(meal.id)
         undo.offer(app.str(R.string.food_removed, meal.name)) { app.food.restoreMeal(meal) }
+    }
+
+    /** Copies a logged meal to the open day, with undo. */
+    fun logAgain(meal: MealEntity) = viewModelScope.launch {
+        val id = app.food.logAgain(meal, day.value)
+        app.haptics.setDone()
+        app.progress.evaluateBadges()
+        undo.offer(app.str(R.string.food_logged_name, meal.name)) { app.food.deleteMeal(id) }
     }
 
     fun setPhotoFromUri(food: FoodEntity, uri: Uri) = viewModelScope.launch {
@@ -469,7 +483,11 @@ fun FoodScreen(nav: NavHostController) {
             }
             if (searching && catalogResults.isNotEmpty()) {
                 item {
-                    Text(stringResource(R.string.food_from_list), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+                    val byProtein by vm.sortProtein.collectAsState()
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.food_from_list), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f).padding(start = 4.dp))
+                        FilterChip(selected = byProtein, onClick = { vm.sortProtein.value = !byProtein }, label = { Text(stringResource(R.string.food_sort_protein)) })
+                    }
                 }
                 items(catalogResults, key = { "c${it.id}" }) { item -> CatalogRow(item, onClick = { focus.clearFocus(); catalogPick = item }) }
             }
@@ -484,7 +502,7 @@ fun FoodScreen(nav: NavHostController) {
             }
             items(meals, key = { "m${it.id}" }) { meal ->
                 SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {
-                    MealRow(meal, onDelete = { vm.deleteMeal(meal) })
+                    MealRow(meal, onAgain = { vm.logAgain(meal) }, onDelete = { vm.deleteMeal(meal) })
                 }
             }
         }
@@ -841,7 +859,7 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
 }
 
 @Composable
-private fun MealRow(meal: MealEntity, onDelete: () -> Unit) {
+private fun MealRow(meal: MealEntity, onAgain: () -> Unit, onDelete: () -> Unit) {
     val c = Fit.colors
     val time = Instant.ofEpochMilli(meal.loggedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
     Row(
@@ -863,6 +881,7 @@ private fun MealRow(meal: MealEntity, onDelete: () -> Unit) {
             Text(stringResource(R.string.food_kcal, meal.kcal), style = MaterialTheme.typography.labelLarge, color = c.blue)
             Text(stringResource(R.string.food_g, meal.protein.roundToInt()), style = MaterialTheme.typography.labelMedium, color = c.teal)
         }
+        IconButton(onClick = onAgain) { Icon(Icons.Rounded.Replay, contentDescription = stringResource(R.string.food_log_again), tint = c.textSecondary, modifier = Modifier.size(18.dp)) }
         IconButton(onClick = onDelete) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(18.dp)) }
     }
 }

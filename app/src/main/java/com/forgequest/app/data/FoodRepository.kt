@@ -112,6 +112,10 @@ class FoodRepository(
         })
     }
 
+    /** Copies a logged meal to [epochDay] as a new entry; returns its id so the caller can offer undo. */
+    suspend fun logAgain(meal: MealEntity, epochDay: Long): Long =
+        dao.insertMeals(listOf(meal.copy(id = 0, epochDay = epochDay, loggedAt = System.currentTimeMillis()))).first()
+
     suspend fun logScannedMeal(name: String, category: FoodCategory, kcal: Int, protein: Float, photoPath: String?, carbs: Float = 0f) =
         logOnce(name, category, kcal, protein, photoPath, Dates.today(), carbs)
 

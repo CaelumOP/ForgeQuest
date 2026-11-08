@@ -1592,6 +1592,8 @@
     <string name="paste_gemini_none">لم يُعثر على رد ForgeQuest. انسخ رد Gemini كاملًا أولًا.</string>
     <string name="paste_gemini_done">أُضيف رد Gemini إلى المدرب.</string>
     <string name="food_from_list">من قائمة الأطعمة</string>
+    <string name="food_sort_protein">الأعلى بروتيناً</string>
+    <string name="food_log_again">سجّل مرة أخرى</string>
     <string name="food_per_100g">%1$s سعرة لكل ١٠٠ غ</string>
     <string name="food_unit_grams">غرامات</string>
     <string name="food_unit_ml">مليلترات</string>

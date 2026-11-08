@@ -5,8 +5,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogTest {
-    private fun food(id: Long, en: String, ar: String, kcal: Float = 100f, brand: String = "", scans: Int = 0, units: String = "") =
-        CatalogFood(id, "basic", "", en, ar, brand, kcal, 10f, 20f, null, Catalog.parseUnits(units), scans)
+    private fun food(id: Long, en: String, ar: String, kcal: Float = 100f, brand: String = "", scans: Int = 0, units: String = "", protein: Float = 10f) =
+        CatalogFood(id, "basic", "", en, ar, brand, kcal, protein, 20f, null, Catalog.parseUnits(units), scans)
 
     private val foods = listOf(
         food(1, "Chicken Kabsa", "كبسة دجاج", units = "plate|صحن|450;cup|كوب|160"),
@@ -15,6 +15,21 @@ class CatalogTest {
         food(4, "Banana", "موز"),
         food(5, "Dates (Medjool)", "تمر مجدول"),
     )
+
+    @Test fun byProteinPutsTheHighestProteinFirstAndKeepsTiesInRelevanceOrder() {
+        val chicken = listOf(
+            food(1, "Chicken Soup", "شوربة دجاج", protein = 3f),
+            food(2, "Chicken Breast", "صدر دجاج", protein = 31f),
+            food(3, "Chicken Wings", "أجنحة دجاج", protein = 18f),
+            food(4, "Chicken Roll", "رول دجاج", protein = 18f),
+        )
+        val byRelevance = Catalog.search(chicken, "chicken", 10).map { it.id }
+        val byProtein = Catalog.search(chicken, "chicken", 10, byProtein = true).map { it.id }
+        assertEquals(2L, byProtein.first())
+        assertEquals(1L, byProtein.last())
+        assertEquals(byRelevance.filter { it == 3L || it == 4L }, byProtein.filter { it == 3L || it == 4L })
+        assertEquals(2, Catalog.search(chicken, "chicken", 2, byProtein = true).size)
+    }
 
     private fun hits(q: String) = Catalog.search(foods, q, 10).map { it.id }
 
