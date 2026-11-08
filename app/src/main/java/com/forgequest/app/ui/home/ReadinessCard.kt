@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -112,7 +113,7 @@ private fun MessageCard(body: String, action: String, onAction: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         PillButton(action, onAction)
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(ForgeSpace.CardGap))
 }
 
 /** The card's title with a refresh button: after syncing the Fitbit app, one tap reads the new night. It spins while reading. */
@@ -168,7 +169,7 @@ private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () ->
         Text(stringResource(R.string.ready_no_data), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         OpenFitbitButton()
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(ForgeSpace.CardGap))
 }
 
 /** A Whoop-style ring: a dim full circle with the value arc on top, the number in the middle. */
@@ -239,6 +240,6 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
             Text(stringResource(if (d.feltGreat) R.string.ready_felt_great_on else R.string.ready_felt_great), color = if (d.feltGreat) c.gold else c.textSecondary)
         }
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(ForgeSpace.CardGap))
 
 }

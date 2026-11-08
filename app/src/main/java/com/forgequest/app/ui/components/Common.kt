@@ -600,14 +600,21 @@ fun ProgressLine(progress: Float, color: Color, track: Color, modifier: Modifier
 
 /** Big number with a small caption underneath, used in stat rows. */
 @Composable
-fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, dot: Color? = null) {
     Column(
         modifier.clip(ForgeShape.Md).let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(value, style = MaterialTheme.typography.titleLarge.tabular(), color = color, fontWeight = FontWeight.Medium, maxLines = 1)
         // From 1.35x text a long caption wraps (centred) instead of being cut off.
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = if (reflowText()) 2 else 1, textAlign = TextAlign.Center)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            // The dot names which ring the number belongs to (the old legend row did this).
+            if (dot != null) {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = if (reflowText()) 2 else 1, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
+        }
     }
 }
 

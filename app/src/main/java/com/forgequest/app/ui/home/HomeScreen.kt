@@ -18,6 +18,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -38,9 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material3.AlertDialog
@@ -229,7 +229,7 @@ fun HomeScreen(nav: NavHostController) {
 
         val unseen = s.badges.filter { !it.seen }.mapNotNull { Badges.byId[it.id] }
         if (unseen.isNotEmpty() && !justLog) {
-            FitCard(onClick = { nav.goToTab(Routes.PROFILE) }, padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+            FitCard(onClick = { nav.goToTab(Routes.PROFILE) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
                     Spacer(Modifier.width(12.dp))
@@ -239,7 +239,7 @@ fun HomeScreen(nav: NavHostController) {
                     }
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(ForgeSpace.CardGap))
         }
 
         if (!justLog) ReadinessCard(
@@ -253,11 +253,11 @@ fun HomeScreen(nav: NavHostController) {
             java.time.Instant.ofEpochMilli(s.settings.bridgeLastReadAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == java.time.LocalDate.now()
         if (s.settings.bridgeEnabled && s.settings.bridgeToday.isNotBlank() && bridgeIsToday) {
             FitCard {
-                Text(stringResource(R.string.bridge_home_title), style = MaterialTheme.typography.labelLarge, color = c.purple)
+                Text(stringResource(R.string.bridge_home_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                 Spacer(Modifier.height(4.dp))
                 Text(s.settings.bridgeToday, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(ForgeSpace.CardGap))
         }
         tagDay?.let { day ->
             DayTagDialog(day, s.dayTags[day], onPick = { vm.setDayTag(day, it); tagDay = null }, onDismiss = { tagDay = null })
@@ -269,7 +269,7 @@ fun HomeScreen(nav: NavHostController) {
                 Spacer(Modifier.height(4.dp))
                 Text(stringResource(R.string.food_setup_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(ForgeSpace.CardGap))
         }
         val weeklyTarget = StreakCalculator.fullTarget(s.plan?.trainingDays ?: emptySet(), s.settings.weeklyTargetOverride)
         val todayDay = Dates.today()
@@ -280,10 +280,10 @@ fun HomeScreen(nav: NavHostController) {
         }
         if (!justLog) {
             StreakCard(s.streak, onDayClick = { day -> tagDay = day }, nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(ForgeSpace.CardGap))
         }
         ProgressCard(s, onOpen = { nav.navigate(Routes.PROGRESS) })
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(ForgeSpace.CardGap))
 
         if (!startOnTop) todayCard()
         Spacer(Modifier.height(24.dp))
@@ -327,19 +327,20 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
     }
     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
+            // The date sits quietly above; the greeting is the one big line.
+            Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
             Text(
                 if (s.settings.name.isNotBlank()) stringResource(R.string.home_greeting_name, greeting, s.settings.name) else greeting,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineMedium,
                 color = c.textPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(LocalDate.now().format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern))), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
         // The rank letter alone meant nothing to new people; the level under it says what the ring is.
         if (showRank) Column(Modifier.clip(ForgeShape.Sm).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 44.dp, stroke = 3.dp) {
-                Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.blue, fontWeight = FontWeight.Bold)
+                Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, fontWeight = FontWeight.Bold)
             }
             Text(if (isArabic()) s.level.rank.localTitle() else stringResource(R.string.home_level, s.level.level), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
         }
@@ -351,9 +352,12 @@ private fun NutritionRings(s: ProgressSnapshot) {
     val c = Fit.colors
     val goalKcal = s.settings.kcalGoal.coerceAtLeast(1)
     val goalProtein = s.settings.proteinGoal.coerceAtLeast(1)
-    val over = s.today.kcal > goalKcal
-    val kcalColor = if (over) c.gold else c.blue
-    val kcalTrack = if (over) c.goldTrack else c.blueTrack
+    // Colour means one thing: blue is calories, gold is protein, purple is carbs. Going over is the ring's second lap, not a colour change.
+    val kcalColor = c.blue
+    val kcalTrack = c.blueTrack
+    // The centre numbers stop growing at 1.3x text so they stay inside the inner ring; TalkBack still reads the full sentence.
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    val capped = { sp: Float -> (sp * minOf(fontScale, 1.3f) / fontScale).sp }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         val carbsOn = s.settings.trackCarbs
         // TalkBack reads the rings and their centre as one sentence, in ring order.
@@ -364,7 +368,7 @@ private fun NutritionRings(s: ProgressSnapshot) {
         ).joinToString(stringResource(R.string.list_separator))
         ConcentricRings(
             rings = listOfNotNull(
-                RingSpec(s.today.protein / goalProtein, c.teal, c.tealTrack),
+                RingSpec(s.today.protein / goalProtein, c.gold, c.goldTrack),
                 if (carbsOn) RingSpec(s.today.carbs / s.settings.carbsGoal.coerceAtLeast(1), c.purple, c.purpleTrack) else null,
                 RingSpec(s.today.kcal.toFloat() / goalKcal, kcalColor, kcalTrack),
             ),
@@ -374,26 +378,11 @@ private fun NutritionRings(s: ProgressSnapshot) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Units under the numbers: without them "66 / 1,005" read like a score (Google Fit labels its ring centre too).
-                Text("${tweenedInt(s.today.protein.roundToInt())}", style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = Manrope, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = c.teal)
+                Text("${tweenedInt(s.today.protein.roundToInt())}", style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = Manrope, fontSize = capped(36f), fontWeight = FontWeight.SemiBold, color = c.textPrimary)
                 Text(stringResource(R.string.home_center_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Text(stringResource(R.string.home_center_kcal, "%,d".format(tweenedInt(s.today.kcal))), style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = NumberFont, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.home_center_kcal, "%,d".format(tweenedInt(s.today.kcal))), style = androidx.compose.material3.LocalTextStyle.current.tabular(), fontFamily = NumberFont, fontSize = capped(16f), fontWeight = FontWeight.Medium, color = kcalColor, modifier = Modifier.padding(top = 4.dp))
             }
         }
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            Legend(c.teal, stringResource(R.string.home_legend_protein))
-            if (s.settings.trackCarbs) Legend(c.purple, stringResource(R.string.label_carbs))
-            Legend(kcalColor, stringResource(R.string.home_legend_calories))
-        }
-    }
-}
-
-@Composable
-private fun Legend(color: Color, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.labelMedium, color = Fit.colors.textSecondary)
     }
 }
 
@@ -404,28 +393,40 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
     // The numbers glide to their new values after a meal is logged.
     val proteinLeft = tweenedInt(Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein))
     val kcalLeft = tweenedInt(s.settings.kcalGoal - s.today.kcal)
+    val reflow = com.forgequest.app.ui.components.reflowText()
+    // Thin dividers only in the single row; the wrapped two-per-row layout needs none.
+    val sep: @Composable RowScope.() -> Unit = {
+        if (!reflow) Box(Modifier.width(1.dp).fillMaxHeight().padding(vertical = 10.dp).background(c.divider))
+    }
+    // Numbers in the main text colour; the dot names the ring the number belongs to (it replaces the old legend row).
     val stats: @Composable RowScope.() -> Unit = {
         StatColumn(
             if (proteinLeft > 0) stringResource(R.string.home_protein_left_value, proteinLeft) else stringResource(R.string.home_done),
             if (proteinLeft > 0) stringResource(R.string.home_protein_left) else stringResource(R.string.home_protein_goal),
-            c.teal,
+            c.textPrimary,
             Modifier.weight(1f),
+            dot = c.gold,
         )
         if (s.settings.trackCarbs) {
+            sep()
             val carbsLeft = Nutrition.gramsLeft(s.settings.carbsGoal, s.today.carbs)
             StatColumn(
                 stringResource(R.string.home_protein_left_value, carbsLeft.coerceAtLeast(0)),
                 stringResource(R.string.home_carbs_left),
-                c.purple,
+                c.textPrimary,
                 Modifier.weight(1f),
+                dot = c.purple,
             )
         }
+        sep()
         StatColumn(
             "%,d".format(abs(kcalLeft)),
             if (kcalLeft >= 0) stringResource(R.string.home_cal_left) else stringResource(R.string.home_cal_surplus),
-            if (kcalLeft >= 0) c.blue else c.gold,
+            c.textPrimary,
             Modifier.weight(1f),
+            dot = c.blue,
         )
+        sep()
         StatColumn(
             s.latestWeight?.let { s.settings.weightUnit.number(it) } ?: "–",
             stringResource(R.string.home_weight_unit, s.settings.weightUnit.label),
@@ -435,9 +436,9 @@ private fun StatRow(s: ProgressSnapshot, onWeight: () -> Unit) {
         )
     }
     // From 1.35x text the stats wrap two to a row instead of squeezing four numbers into quarter widths.
-    if (com.forgequest.app.ui.components.reflowText()) {
+    if (reflow) {
         FlowRow(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) { stats() }
-    } else Row(Modifier.fillMaxWidth()) { stats() }
+    } else Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) { stats() }
 }
 
 /** The hook into the Progress screen: this month's workouts with a little trend, Whoop-style. */
@@ -450,7 +451,7 @@ private fun ProgressCard(s: ProgressSnapshot, onOpen: () -> Unit) {
     val monthWorkouts = s.sessions.count { it.epochDay > today - 30 }
     val sessionDays = s.sessions.associate { it.id to it.epochDay }
     val monthRecords = s.doneSets.count { it.isPr && (sessionDays[it.sessionId] ?: 0L) > today - 30 }
-    FitCard(onClick = onOpen, padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+    FitCard(onClick = onOpen) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.home_progress_card), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
@@ -458,7 +459,7 @@ private fun ProgressCard(s: ProgressSnapshot, onOpen: () -> Unit) {
                     pluralStringResource(R.plurals.home_month_workouts, monthWorkouts, monthWorkouts) + " · " + pluralStringResource(R.plurals.home_month_records, monthRecords, monthRecords),
                     style = MaterialTheme.typography.titleSmall, color = c.textPrimary,
                 )
-                Text(stringResource(R.string.home_progress_open), style = MaterialTheme.typography.labelMedium, color = c.chartGain)
+                Text(stringResource(R.string.home_progress_open), style = MaterialTheme.typography.labelMedium, color = c.teal)
             }
             Spacer(Modifier.width(12.dp))
             Box(Modifier.width(110.dp)) { Sparkline(weekly.map { it.toFloat() }, c.chartStrength) }
@@ -617,24 +618,21 @@ private fun TodayCard(
     val c = Fit.colors
     val isRest = day == null || day.day.isRest
     val noPlan = day == null
-    val big = com.forgequest.app.ui.components.reflowText()
+    // The one action sits on its own full-width line under the text, so it never squeezes the title at any text size.
+    val hasAction = hasOpenSession || (!doneToday && (noPlan || !isRest || excused == null))
     val action: @Composable () -> Unit = {
+        val full = Modifier.fillMaxWidth()
         when {
-            hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart)
-            doneToday -> Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
-            noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan)
-            !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart)
-            excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway)
+            hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart, modifier = full)
+            noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan, modifier = full)
+            !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart, modifier = full)
+            excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway, modifier = full)
         }
     }
     FitCard(onClick = onOpenPlan) {
         Text(stringResource(R.string.today_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (noPlan && !hasOpenSession) IconCircle(Icons.Rounded.Edit, c.teal, c.tealTrack)
-            else if (isRest && !hasOpenSession) IconCircle(Icons.Rounded.Bedtime, c.textSecondary, c.cardHigh)
-            else IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
-            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
@@ -644,9 +642,9 @@ private fun TodayCard(
                         isRest -> stringResource(R.string.today_rest_day)
                         else -> day!!.day.title
                     },
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     color = c.textPrimary,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
@@ -664,13 +662,15 @@ private fun TodayCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (!big) {
+            if (doneToday && !hasOpenSession) {
                 Spacer(Modifier.width(12.dp))
-                action()
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal)
             }
         }
-        // At large text sizes the button sits under the text instead of squeezing it into a sliver.
-        if (big) Box(Modifier.fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.CenterEnd) { action() }
+        if (hasAction) {
+            Spacer(Modifier.height(16.dp))
+            action()
+        }
         // Already trained today: another session is still one tap away.
         if (doneToday && !hasOpenSession) {
             TextButton(onClick = if (isRest) onTrainAnyway else onStart, modifier = Modifier.padding(top = 4.dp)) {
