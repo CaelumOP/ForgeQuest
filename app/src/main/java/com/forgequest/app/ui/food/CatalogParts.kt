@@ -54,7 +54,8 @@ fun CatalogRow(food: CatalogFood, onClick: () -> Unit) {
     ) {
         Column(Modifier.weight(1f)) {
             Text(food.name(ar), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val sub = listOf(food.brand(ar), stringResource(R.string.food_per_100g, Catalog.formatNumber(food.kcal))).filter { it.isNotBlank() }.joinToString(" · ")
+            val size = food.servingG?.takeIf { food.kind == "product" }?.let { Catalog.formatNumber(it) + " " + stringResource(if (food.liquid) R.string.food_unit_ml_short else R.string.food_unit_g_short) }.orEmpty()
+            val sub = listOf(food.brand(ar), size, stringResource(R.string.food_per_100g, Catalog.formatNumber(food.kcal))).filter { it.isNotBlank() }.joinToString(" · ")
             Text(sub, style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -68,7 +69,8 @@ private data class Choice(val label: String, val gramsEach: Float, val defaultCo
 fun CatalogAmountSheet(food: CatalogFood, onLog: (CatalogAmount, String) -> Unit, onDismiss: () -> Unit) {
     val c = Fit.colors
     val ar = isArabic()
-    val gramsLabel = stringResource(R.string.food_unit_grams)
+    val unitShort = stringResource(if (food.liquid) R.string.food_unit_ml_short else R.string.food_unit_g_short)
+    val gramsLabel = stringResource(if (food.liquid) R.string.food_unit_ml else R.string.food_unit_grams)
     val servingLabel = stringResource(R.string.food_unit_serving)
     val choices = remember(food, ar, gramsLabel, servingLabel) {
         buildList {
@@ -79,9 +81,14 @@ fun CatalogAmountSheet(food: CatalogFood, onLog: (CatalogAmount, String) -> Unit
     }
     var picked by remember { mutableStateOf(0) }
     val choice = choices[picked]
+    val byWeight = choice.gramsEach == 1f
+    var count by remember(picked) { mutableStateOf(choice.defaultCount) }
+    var custom by remember(picked) { mutableStateOf(false) }
     var text by remember(picked) { mutableStateOf(Catalog.formatNumber(choice.defaultCount)) }
-    val count = text.toFloatOrNull() ?: 0f
     val amount = CatalogAmount(count, choice.gramsEach)
+    val grams = amount.grams
+    val quick = if (byWeight) listOf(50f, 100f, 150f, 250f) else listOf(0.5f, 1f, 1.5f, 2f)
+    fun setCount(v: Float) { count = v; text = Catalog.formatNumber(count) }
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary,
         unfocusedTextColor = c.textPrimary, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary,
@@ -90,29 +97,43 @@ fun CatalogAmountSheet(food: CatalogFood, onLog: (CatalogAmount, String) -> Unit
         Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Text(food.name(ar), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             if (food.brand(ar).isNotBlank()) Text(food.brand(ar), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                choices.forEachIndexed { i, ch ->
-                    val g = Catalog.formatNumber(ch.gramsEach)
-                    ChoiceChip(if (ch.gramsEach == 1f) ch.label else "${ch.label} · $g g", i == picked, { picked = i })
+            Spacer(Modifier.height(12.dp))
+            // What matters first: calories and protein. Carbs and the amount are context.
+            Text(
+                stringResource(R.string.food_amount_hero, Catalog.kcalFor(food, grams), Catalog.formatNumber(Catalog.proteinFor(food, grams))),
+                style = MaterialTheme.typography.headlineSmall.tabular(), color = c.textPrimary,
+            )
+            Text(
+                stringResource(
+                    if (food.liquid) R.string.food_amount_context_ml else R.string.food_amount_context,
+                    Catalog.formatNumber(Catalog.carbsFor(food, grams)), Catalog.formatNumber(grams),
+                ),
+                style = MaterialTheme.typography.bodyMedium.tabular(), color = c.textSecondary,
+            )
+            // The unit choice only appears when there is a choice (a serving or a household unit besides weight).
+            if (choices.size > 1) {
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    choices.forEachIndexed { i, ch ->
+                        val g = Catalog.formatNumber(ch.gramsEach)
+                        ChoiceChip(if (ch.gramsEach == 1f) ch.label else "${ch.label} · $g $unitShort", i == picked, { picked = i })
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                text, { text = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6) },
-                label = { Text(if (choice.gramsEach == 1f) stringResource(R.string.food_unit_grams) else stringResource(R.string.food_amount_count, choice.label)) },
-                singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(12.dp))
-            val grams = amount.grams
-            Text(
-                stringResource(
-                    R.string.food_amount_summary, Catalog.kcalFor(food, grams), Catalog.formatNumber(Catalog.proteinFor(food, grams)),
-                    Catalog.formatNumber(Catalog.carbsFor(food, grams)), Catalog.formatNumber(grams),
-                ),
-                style = MaterialTheme.typography.titleMedium.tabular(), color = c.textPrimary,
-            )
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                quick.forEach { q -> ChoiceChip(Catalog.formatNumber(q), !custom && count == q, { custom = false; setCount(q) }) }
+                ChoiceChip(stringResource(R.string.food_amount_custom), custom, { custom = !custom })
+            }
+            if (custom) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    text, { text = it.filter { ch -> ch.isDigit() || ch == '.' }.take(6); count = text.toFloatOrNull() ?: 0f },
+                    label = { Text(if (byWeight) gramsLabel else stringResource(R.string.food_amount_count, choice.label)) },
+                    singleLine = true, shape = ForgeShape.Md, colors = fieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Spacer(Modifier.height(16.dp))
             PillButton(stringResource(R.string.food_log_it), onClick = { onLog(amount, choice.label) }, enabled = count > 0f, modifier = Modifier.fillMaxWidth())
         }

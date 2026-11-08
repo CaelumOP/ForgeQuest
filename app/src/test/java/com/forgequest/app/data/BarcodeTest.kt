@@ -84,6 +84,43 @@ class BarcodeTest {
         assertNull(f.servingG)
     }
 
+    @Test fun drinkGetsMillilitresAndPackSizeAsServing() {
+        val body = """{"status":1,"product":{"product_name":"Espresso","product_quantity":250,"product_quantity_unit":"ml",
+            "nutriments":{"energy-kcal_100g":60,"proteins_100g":3,"carbohydrates_100g":10}}}"""
+        val f = OpenFoodFacts.parse(body, "1")!!
+        assertEquals(true, f.liquid)
+        assertEquals(250f, f.servingG)
+    }
+
+    @Test fun packSizeIsReadFromTheQuantityText() {
+        val body = """{"status":1,"product":{"product_name":"Espresso","quantity":"250ml",
+            "nutriments":{"energy-kcal_100g":60,"proteins_100g":3,"carbohydrates_100g":10}}}"""
+        val f = OpenFoodFacts.parse(body, "1")!!
+        assertEquals(true, f.liquid)
+        assertEquals(250f, f.servingG)
+    }
+
+    @Test fun shortUpcEIsExpanded() {
+        // 04252614 is the classic UPC-E example for 042100005264
+        assertEquals("042100005264", Barcodes.expandUpcE("04252614"))
+        assertEquals(listOf("04252614", "042100005264", "0042100005264"), Barcodes.variants("04252614"))
+        assertEquals(listOf("96385074"), Barcodes.variants("96385074"))
+    }
+
+    @Test fun brandIsNotRepeatedInTheName() {
+        val f = CatalogFood(0, "product", "1", "Kdd double shot espresso", "", "KDD", 60f, 3f, 10f, 250f, emptyList(), 0)
+        assertEquals("Double shot espresso", f.name(false))
+    }
+
+    @Test fun impossibleValuesAreRepairedOrDropped() {
+        val body = """{"status":1,"product":{"product_name":"Typo","nutriments":{"energy-kcal_100g":60,"proteins_100g":3,"carbohydrates_100g":1001}}}"""
+        val f = OpenFoodFacts.parse(body, "1")!!
+        assertEquals(60f, f.kcal, 0.01f)
+        assertEquals(10.01f, f.carbs, 0.001f)
+        // 1001 g of protein in a 60 kcal drink can't be fixed by moving the point, so that record is dropped.
+        assertNull(OpenFoodFacts.parse("""{"status":1,"product":{"product_name":"T","nutriments":{"energy-kcal_100g":60,"proteins_100g":9000}}}""", "1"))
+    }
+
     @Test fun noCaloriesNoNameOrNoProductMeansNotFound() {
         assertNull(OpenFoodFacts.parse("""{"status":1,"product":{"product_name":"X","nutriments":{"proteins_100g":3}}}""", "1"))
         assertNull(OpenFoodFacts.parse("""{"status":1,"product":{"nutriments":{"energy-kcal_100g":50}}}""", "1"))

@@ -265,10 +265,7 @@ private fun BarcodeCamera(detecting: Boolean, labelMode: Boolean, onClose: () ->
                 },
                 modifier = Modifier.fillMaxSize(),
             )
-            if (!labelMode) {
-                // A wide frame, the shape of a barcode.
-                Box(Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = 40.dp).height(150.dp).border(2.dp, Color.White.copy(alpha = 0.85f), ForgeShape.Md))
-            }
+            // No aiming box: the reader looks at the whole picture, so the barcode can be anywhere in view.
         } else {
             Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.scan_camera_off), style = MaterialTheme.typography.titleLarge, color = Color.White)

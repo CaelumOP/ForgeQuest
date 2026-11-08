@@ -40,7 +40,7 @@ left join (select k, arg_max(kcal,coalesce(scans,0)) kcal, arg_max(protein,coale
                   arg_max(carbs,coalesce(scans,0)) carbs, arg_max(dcode,coalesce(scans,0)) dcode from donors group by k) t2
   on not g.ok and t2.k = g.k""")
 rows = C.execute("""select code, name, split_part(coalesce(brands,''),',',1), serving_quantity, coalesce(scans,0),
-  ok, kcal, protein, carbs, tk, tp, tc, tcode from g2 qualify row_number() over (partition by code order by scans desc nulls last) = 1""").fetchall()
+  ok, kcal, protein, carbs, tk, tp, tc, tcode, quantity from g2 qualify row_number() over (partition by code order by scans desc nulls last) = 1""").fetchall()
 
 ar_cache = {}
 for f in glob.glob(str(D / "cache" / "*.json")):
@@ -55,7 +55,31 @@ BRAND_AR = {r["brand"]: r["brand_ar"] for r in csv.DictReader(open(D / "sources"
 
 out, before, twins, arab = [], 0, 0, 0
 missing = []
-for code, name, brand, serving, scans, ok, kcal, protein, carbs, tk, tp, tc, tcode in rows:
+NAME_PACK = re.compile(r"(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(ml|cl|l|ltr|g|gr|gm|kg|مل|لتر|غ|جم|جرام|كجم)(?![a-zA-Z\u0600-\u06ff])", re.I)
+UNIT_F = {"ml": 1, "cl": 10, "l": 1000, "ltr": 1000, "g": 1, "gr": 1, "gm": 1, "kg": 1000, "مل": 1, "لتر": 1000, "غ": 1, "جم": 1, "جرام": 1, "كجم": 1000}
+LIQ_U = {"ml", "cl", "l", "ltr", "مل", "لتر"}
+
+
+def pack_in_name(text):
+    """'Almarai Full Fat Milk 250ml' -> (250.0, True); (None, False) when no size is written in the name."""
+    m = NAME_PACK.search(text or "")
+    if not m:
+        return None, False
+    u = m.group(2).lower()
+    return float(m.group(1).replace(",", ".")) * UNIT_F[u], u in LIQ_U
+
+
+def pack(q):
+    """'250ml' / '1.5 L' / '40 g' -> (amount in g or ml, is_drink); (None, False) when unreadable."""
+    m = re.match(r"^\s*(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l|ltr|g|gr|kg)(?![a-z])", (q or "").lower())
+    if not m:
+        return None, False
+    n = float(m.group(2).replace(",", ".")) * (float(m.group(1)) if m.group(1) else 1)
+    u = m.group(3)
+    f = {"ml": 1, "cl": 10, "dl": 100, "l": 1000, "ltr": 1000, "g": 1, "gr": 1, "kg": 1000}[u]
+    return n * f, u in ("ml", "cl", "dl", "l", "ltr")
+
+for code, name, brand, serving, scans, ok, kcal, protein, carbs, tk, tp, tc, tcode, quantity in rows:
     src = "off"
     if ok:
         before += 1
@@ -72,9 +96,15 @@ for code, name, brand, serving, scans, ok, kcal, protein, carbs, tk, tp, tc, tco
         sg = sg if sg and 0 < sg < 3000 else ""
     except ValueError:
         sg = ""
+    amount, liquid = pack(quantity)
+    if not amount:
+        amount, liquid = pack_in_name(name_en + " " + name_ar)
+    liquid = liquid or bool(re.search(r"\d\s*(ml|cl|ltr|l)(?![a-z])", name.lower()))
+    if not sg and amount and (amount <= 750 if liquid else amount <= 200):
+        sg = round(amount, 1)   # one small pack is the usual serving; a 1.5 L bottle or 1 kg bag is not
     out.append({"kind": "product", "barcode": re.sub(r"\D", "", code), "name_en": name_en, "name_ar": name_ar,
                 "brand": brand.strip(), "brand_ar": BRAND_AR.get(brand.strip().lower(), ""), "kcal": round(kcal, 1), "protein": round(protein, 1),
-                "carbs": "" if carbs is None else round(carbs, 1), "serving_g": sg, "units": "", "source": src,
+                "carbs": "" if carbs is None else round(carbs, 1), "serving_g": sg, "liquid": int(liquid), "units": "", "source": src,
                 "scans": scans})
 
 (D / "out").mkdir(exist_ok=True)

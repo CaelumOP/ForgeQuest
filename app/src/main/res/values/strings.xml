@@ -1422,7 +1422,15 @@
     <string name="food_from_list">From the food list</string>
     <string name="food_per_100g">%1$s kcal per 100 g</string>
     <string name="food_unit_grams">Grams</string>
+    <string name="food_unit_ml">Milliliters</string>
+    <string name="food_unit_g_short">g</string>
+    <string name="food_unit_ml_short">ml</string>
+    <string name="food_amount_summary_ml">%1$d kcal · %2$s g protein · %3$s g carbs (%4$s ml)</string>
     <string name="food_unit_serving">Serving</string>
+    <string name="food_amount_hero">%1$d kcal · %2$s g protein</string>
+    <string name="food_amount_context">%1$s g carbs · %2$s g</string>
+    <string name="food_amount_context_ml">%1$s g carbs · %2$s ml</string>
+    <string name="food_amount_custom">Custom</string>
     <string name="food_amount_count">How many (%1$s)</string>
     <string name="food_amount_summary">%1$d kcal · %2$s g protein · %3$s g carbs (%4$s g)</string>
     <string name="barcode_scan">Scan barcode</string>

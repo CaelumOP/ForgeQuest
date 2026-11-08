@@ -4,6 +4,7 @@ Rows without kcal are dropped; products are deduped by barcode (most scans wins)
 sample.csv (made-up rows for testing) is rewritten each run and merged only with --with-sample or when no real CSV exists.
 """
 import csv
+import re
 import glob
 import os
 import sqlite3
@@ -79,18 +80,25 @@ def main():
                         rows.remove(old)
                     by_barcode[code] = r
                 rows.append(r)
+    drink = re.compile(r"\b(milk|laban|ayran|kefir|juice|nectar|soda|cola|coffee|espresso|latte|cappuccino|tea|soup|broth|stock|water|drink|beverage|lassi|smoothie)\b|حليب|لبن|عصير|شراب|قهوة|شاي|شوربة|حساء|مرق|ماء", re.I)
+    notdrink = re.compile(r"in water|syrup|trout|tuna|grilled|fried|بالماء|مرقط|قيقب|chocolate|powder|dried|dry|condensed|cheese|butter|ice cream|bread|cake|yogurt|yoghurt|cream|pudding|مسحوق|جبن|زبدة|آيس|خبز|كعك|زبادي|قشطة", re.I)
+    for r in rows:
+        if r.get("kind") in ("dish", "basic") and not num(r.get("liquid")):
+            t = (r.get("name_en") or "") + " " + (r.get("name_ar") or "")
+            if drink.search(t) and not notdrink.search(t):
+                r["liquid"] = 1
     os.makedirs(os.path.dirname(DB), exist_ok=True)
     if os.path.exists(DB):
         os.remove(DB)
     con = sqlite3.connect(DB)
     con.execute("CREATE TABLE food(id INTEGER PRIMARY KEY, kind TEXT, barcode TEXT, name_en TEXT, name_ar TEXT, brand TEXT, brand_ar TEXT, "
-                "kcal REAL, protein REAL, carbs REAL, serving_g REAL, units TEXT, source TEXT, scans INTEGER)")
+                "kcal REAL, protein REAL, carbs REAL, serving_g REAL, units TEXT, source TEXT, scans INTEGER, liquid INTEGER DEFAULT 0)")
     con.execute("CREATE INDEX food_barcode ON food(barcode)")
     con.executemany(
-        "INSERT INTO food(kind,barcode,name_en,name_ar,brand,brand_ar,kcal,protein,carbs,serving_g,units,source,scans) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO food(kind,barcode,name_en,name_ar,brand,brand_ar,kcal,protein,carbs,serving_g,units,source,scans,liquid) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(r["kind"], r["barcode"], r.get("name_en", ""), r.get("name_ar", ""), r.get("brand", ""), r.get("brand_ar", ""), num(r["kcal"]),
           num(r.get("protein")) or 0.0, num(r.get("carbs")) or 0.0, num(r.get("serving_g")), r.get("units", ""),
-          r.get("source", ""), r["scans"]) for r in rows])
+          r.get("source", ""), r["scans"], int(num(r.get("liquid")) or 0)) for r in rows])
     con.commit()
     con.execute("VACUUM")
     con.close()

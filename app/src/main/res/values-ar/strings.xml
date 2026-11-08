@@ -1594,7 +1594,15 @@
     <string name="food_from_list">من قائمة الأطعمة</string>
     <string name="food_per_100g">%1$s سعرة لكل ١٠٠ غ</string>
     <string name="food_unit_grams">غرامات</string>
+    <string name="food_unit_ml">مليلترات</string>
+    <string name="food_unit_g_short">غ</string>
+    <string name="food_unit_ml_short">مل</string>
+    <string name="food_amount_summary_ml">%1$d سعرة · %2$s غ بروتين · %3$s غ كربوهيدرات (%4$s مل)</string>
     <string name="food_unit_serving">حصة</string>
+    <string name="food_amount_hero">%1$d سعرة · %2$s غ بروتين</string>
+    <string name="food_amount_context">%1$s غ كربوهيدرات · %2$s غ</string>
+    <string name="food_amount_context_ml">%1$s غ كربوهيدرات · %2$s مل</string>
+    <string name="food_amount_custom">مخصص</string>
     <string name="food_amount_count">العدد (%1$s)</string>
     <string name="food_amount_summary">%1$d سعرة · %2$s غ بروتين · %3$s غ كربوهيدرات (%4$s غ)</string>
     <string name="barcode_scan">مسح الباركود</string>

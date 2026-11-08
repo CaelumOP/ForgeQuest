@@ -12,8 +12,17 @@ data class CatalogFood(
     val id: Long, val kind: String, val barcode: String, val nameEn: String, val nameAr: String, val brand: String,
     val kcal: Float, val protein: Float, val carbs: Float, val servingG: Float?, val units: List<CatalogUnit>, val scans: Int,
     val brandAr: String = "",
+    /** A drink: amounts are shown in ml instead of g (1 ml is counted as 1 g). */
+    val liquid: Boolean = false,
 ) {
-    fun name(arabic: Boolean) = if (arabic && nameAr.isNotBlank()) nameAr else nameEn.ifBlank { nameAr }
+    fun name(arabic: Boolean) = if (arabic && nameAr.isNotBlank()) nameAr else tidy(nameEn.ifBlank { nameAr })
+
+    /** The brand is shown on its own line, so "KDD double shot..." under the brand "KDD" becomes "Double shot...". */
+    private fun tidy(n: String): String {
+        val b = brand.trim()
+        val rest = if (b.length >= 2 && n.startsWith(b, ignoreCase = true)) n.substring(b.length).trimStart(' ', '-', ':', ',') else n
+        return rest.ifBlank { n }.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    }
     fun brand(arabic: Boolean) = if (arabic && brandAr.isNotBlank()) brandAr else brand
 }
 

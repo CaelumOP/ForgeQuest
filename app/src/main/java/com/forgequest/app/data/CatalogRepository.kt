@@ -43,10 +43,10 @@ class CatalogRepository(private val context: Context) {
     private fun Cursor.food() = CatalogFood(
         id = getLong(0), kind = getString(1).orEmpty(), barcode = getString(2).orEmpty(), nameEn = getString(3).orEmpty(),
         nameAr = getString(4).orEmpty(), brand = getString(5).orEmpty(), brandAr = getString(6).orEmpty(), kcal = getFloat(7), protein = getFloat(8),
-        carbs = getFloat(9), servingG = if (isNull(10)) null else getFloat(10), units = Catalog.parseUnits(getString(11)), scans = getInt(12),
+        carbs = getFloat(9), servingG = if (isNull(10)) null else getFloat(10), units = Catalog.parseUnits(getString(11)), scans = getInt(12), liquid = getInt(13) == 1,
     )
 
-    private val columns = "id,kind,barcode,name_en,name_ar,brand,brand_ar,kcal,protein,carbs,serving_g,units,scans"
+    private val columns = "id,kind,barcode,name_en,name_ar,brand,brand_ar,kcal,protein,carbs,serving_g,units,scans,liquid"
 
     /** The product with this barcode, trying every written form of it (UPC-A with or without its leading 0). */
     suspend fun byBarcode(code: String): CatalogFood? = withContext(Dispatchers.IO) {

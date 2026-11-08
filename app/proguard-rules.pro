@@ -32,3 +32,7 @@
     public static int d(...);
     public static int i(...);
 }
+
+# ML Kit / Firebase components create their registrars by reflection (no-arg constructor).
+# R8 full mode drops the constructor under the libraries' own "-keep class" rule, so the barcode scanner crashed.
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }

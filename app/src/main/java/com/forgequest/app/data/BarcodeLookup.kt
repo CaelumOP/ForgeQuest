@@ -28,10 +28,14 @@ class BarcodeLookup(
         if (codes.isEmpty()) return BarcodeResult.NotFound
         own(codes)?.let { return BarcodeResult.Own(it) }
         catalog(codes.first())?.let { return BarcodeResult.Listed(it) }
-        return when (val r = online(codes.first())) {
-            is OffResult.Found -> BarcodeResult.Online(r.food)
-            OffResult.NotFound -> BarcodeResult.NotFound
-            OffResult.Unreachable -> BarcodeResult.Offline
+        // A short UPC-E has more than one written form; ask for each until the shared list knows it.
+        for (code in codes) {
+            when (val r = online(code)) {
+                is OffResult.Found -> return BarcodeResult.Online(r.food)
+                OffResult.NotFound -> Unit
+                OffResult.Unreachable -> return BarcodeResult.Offline
+            }
         }
+        return BarcodeResult.NotFound
     }
 }
