@@ -20,9 +20,6 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun byId(id: String): ExerciseEntity?
 
-    @Query("SELECT COUNT(*) FROM exercises")
-    suspend fun count(): Int
-
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<ExerciseEntity>)
 
@@ -323,9 +320,6 @@ interface BadgeDao {
     @Query("SELECT * FROM badges")
     fun observeAll(): Flow<List<BadgeEntity>>
 
-    @Query("SELECT * FROM badges")
-    suspend fun all(): List<BadgeEntity>
-
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(badges: List<BadgeEntity>)
 
@@ -395,14 +389,8 @@ interface BackupDao {
 
 @Dao
 interface DayNoteDao {
-    @Query("SELECT * FROM day_notes WHERE epochDay = :day")
-    suspend fun get(day: Long): DayNoteEntity?
-
     @Query("SELECT * FROM day_notes WHERE epochDay >= :from ORDER BY epochDay")
     fun observeSince(from: Long): Flow<List<DayNoteEntity>>
-
-    @Query("SELECT * FROM day_notes WHERE epochDay >= :from ORDER BY epochDay")
-    suspend fun since(from: Long): List<DayNoteEntity>
 
     @Upsert
     suspend fun upsert(note: DayNoteEntity)
