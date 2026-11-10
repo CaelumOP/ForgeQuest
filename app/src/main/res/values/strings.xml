@@ -714,7 +714,6 @@
     <string name="plan_days_swapped">%1$s and %2$s swapped</string>
     <string name="plan_your_plan">Your plan</string>
     <string name="plan_no_plan">No plan</string>
-    <string name="plan_ready_made">Switch to a ready-made plan</string>
     <string name="plan_previous">Previous plans</string>
     <string name="plan_paste">Paste a plan</string>
     <string name="cd_move_day">Move to another day</string>
@@ -725,6 +724,7 @@
     <string name="plan_rest_seconds">rest %1$ds</string>
     <string name="plan_add_to_day">Add to %1$s</string>
     <string name="plan_ready_made_title">Ready-made plans</string>
+    <string name="plan_ready_made_link">Or pick a ready-made plan</string>
     <string name="plan_previous_tap">Tap one to make it your plan again.</string>
     <string name="plan_src_coach">From the coach</string>
     <string name="plan_src_docs">From Google Docs</string>
@@ -992,13 +992,11 @@
         <item quantity="other">%1$d sets done</item>
     </plurals>
     <string name="plan_change">Change plan</string>
-    <string name="plan_gemini">Make a plan with Gemini (from YouTube too)</string>
-    <string name="plan_gemini_copy">Copy plan prompt</string>
-    <string name="plan_gemini_paste">Paste Gemini\'s reply</string>
-    <string name="plan_gemini_info">Copies a prompt for Gemini. Paste it there with YouTube links or a description, then tap Paste Gemini\'s reply here.</string>
-    <string name="plan_ready_made_info">Plans that come with the app, beginner to advanced. Picking one replaces your plan, which stays under Previous plans.</string>
-    <string name="plan_previous_info">Plans you used before. Switch back to one at any time; your workout history is kept.</string>
-    <string name="cd_what_is_this">What is %1$s?</string>
+    <string name="plan_gemini">Make a plan with Gemini</string>
+    <string name="plan_gemini_copy">Copy plan template</string>
+    <string name="plan_gemini_paste">Paste plan</string>
+    <string name="plan_gemini_info">Copy the template, ask Gemini, paste the plan back</string>
+    <string name="plan_previous_info">Switch back any time; history is kept</string>
     <string name="goal_title">Your goal</string>
     <string name="goal_cut">Lose fat</string>
     <string name="goal_maintain">Maintain</string>
@@ -1523,7 +1521,7 @@
     <string name="pb_saved">Plan saved</string>
     <string name="pb_plan_name">%1$s plan</string>
     <string name="pb_progression">Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.</string>
-    <string name="pb_entry_info">Answer a few questions and get a plan made for you</string>
+    <string name="pb_entry_info">Answer a few questions, get a plan</string>
     <string name="pb_rebuild">Rebuild my plan</string>
     <string name="pb_rebuild_hint">Answer a few questions again</string>
     <string name="lang_choose_en" translatable="false">Choose your language</string>

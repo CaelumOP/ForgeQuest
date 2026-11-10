@@ -811,7 +811,6 @@
     <string name="plan_days_swapped">تبادل %1$s و%2$s مكانيهما</string>
     <string name="plan_your_plan">خطتك</string>
     <string name="plan_no_plan">دون خطة</string>
-    <string name="plan_ready_made">التحوّل إلى خطة جاهزة</string>
     <string name="plan_previous">الخطط السابقة</string>
     <string name="plan_paste">لصق خطة</string>
     <string name="cd_move_day">النقل إلى يوم آخر</string>
@@ -826,6 +825,7 @@
     <string name="plan_rest_seconds">راحة %1$d ث</string>
     <string name="plan_add_to_day">إضافة إلى %1$s</string>
     <string name="plan_ready_made_title">خطط جاهزة</string>
+    <string name="plan_ready_made_link">أو اختر خطة جاهزة</string>
     <string name="plan_previous_tap">اضغط على إحداها لتعود خطتك.</string>
     <string name="plan_src_coach">من المدرب</string>
     <string name="plan_src_docs">من Google Docs</string>
@@ -1105,13 +1105,11 @@
         <item quantity="other">%1$d مجموعة مكتملة</item>
     </plurals>
     <string name="plan_change">تغيير الخطة</string>
-    <string name="plan_gemini">إنشاء خطة باستخدام Gemini (ومن يوتيوب أيضًا)</string>
-    <string name="plan_gemini_copy">نسخ طلب الخطة</string>
-    <string name="plan_gemini_paste">لصق ردّ Gemini</string>
-    <string name="plan_gemini_info">ينسخ طلبًا لتطبيق Gemini. الصقه هناك مع روابط يوتيوب أو وصف، فيسألك عن معدّاتك ثم يردّ بخطة. ثم اضغط «لصق ردّ Gemini».</string>
-    <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
-    <string name="plan_previous_info">خطط استخدمتها من قبل. يمكنك العودة إلى أيّ منها في أي وقت، ويبقى سجل تمارينك كما هو.</string>
-    <string name="cd_what_is_this">ما هو %1$s؟</string>
+    <string name="plan_gemini">إنشاء خطة باستخدام Gemini</string>
+    <string name="plan_gemini_copy">نسخ قالب الخطة</string>
+    <string name="plan_gemini_paste">لصق الخطة</string>
+    <string name="plan_gemini_info">انسخ القالب، واسأل Gemini، ثم الصق الخطة</string>
+    <string name="plan_previous_info">عُد إليها متى شئت؛ سجلّك محفوظ</string>
     <string name="goal_title">هدفك</string>
     <string name="goal_cut">خفض الوزن</string>
     <string name="goal_maintain">ثبات الوزن</string>
@@ -1699,7 +1697,7 @@
     <string name="pb_saved">تم حفظ الخطة</string>
     <string name="pb_plan_name">خطة %1$s</string>
     <string name="pb_progression">التدرّج: عند بلوغ الحد الأعلى من التكرارات في كل المجموعات، زد الحمل أو التكرارات. كل رابع أسبوع، خفّض المجموعات للنصف.</string>
-    <string name="pb_entry_info">أجب عن أسئلة قليلة لتحصل على خطة مصممة لك</string>
+    <string name="pb_entry_info">أجب عن بضعة أسئلة لتحصل على خطة</string>
     <string name="pb_rebuild">أعد بناء خطتي</string>
     <string name="pb_rebuild_hint">أجب عن أسئلة قليلة من جديد</string>
     <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/EnumLabels.kt -->
