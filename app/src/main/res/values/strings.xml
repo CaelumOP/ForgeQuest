@@ -1522,7 +1522,7 @@
     <string name="lang_choose_ar" translatable="false">اختر لغتك</string>
     <string name="lang_name_en" translatable="false">English</string>
     <string name="lang_name_ar" translatable="false">العربية</string>
-    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/Labels.kt -->
+    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/EnumLabels.kt -->
     <plurals name="insight_first_round_reps_1">
         <item quantity="one">%1$s: your first set of %2$d rep.</item>
         <item quantity="other">%1$s: your first set of %2$d reps.</item>

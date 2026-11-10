@@ -18,7 +18,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class PlanSafetyTest {
+class PlanValidatorTest {
     private val lib = listOf(
         ExerciseEntity("push_up", "Push-up", ExerciseKind.REPS, listOf(Muscle.CHEST), listOf(Muscle.TRICEPS)),
         ExerciseEntity("dips", "Dips", ExerciseKind.REPS, listOf(Muscle.CHEST), listOf(Muscle.TRICEPS)),

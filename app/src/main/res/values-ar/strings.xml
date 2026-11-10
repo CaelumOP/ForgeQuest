@@ -1694,7 +1694,7 @@
     <string name="pb_entry_info">أجب عن أسئلة قليلة لتحصل على خطة مصممة لك</string>
     <string name="pb_rebuild">أعد بناء خطتي</string>
     <string name="pb_rebuild_hint">أجب عن أسئلة قليلة من جديد</string>
-    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/Labels.kt -->
+    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/EnumLabels.kt -->
     <plurals name="insight_first_round_reps_1">
         <item quantity="zero">أول مجموعة لك في %1$s بعدد %2$d تكرارات.</item>
         <item quantity="one">أول مجموعة لك في %1$s بعدد تكرار واحد.</item>

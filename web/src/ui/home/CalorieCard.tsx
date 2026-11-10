@@ -1,5 +1,5 @@
 // The one calorie card on Home (calorie plan v2): the one-time "more accurate target", the learned real burn, or a
-// signal from the logs. Each has one main action and a quiet "Not now". Android: CalorieCards.kt.
+// signal from the logs. Each has one main action and a quiet "Not now". Android: CalorieUi.kt.
 import { useState } from 'preact/hooks'
 import { t, intlLocale } from '../../i18n'
 import { acceptCalorieCard, calorieCard, snoozeCalorieCards, suggestionFor, calorieInputs } from '../../data/calories'

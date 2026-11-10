@@ -15,7 +15,7 @@ import kotlin.math.roundToInt
  * a trigger over the data, a rank (higher is more interesting), a cooldown in days and a few phrasings. [pick] gathers the
  * kinds whose trigger is true, drops the ones still inside their cooldown, sorts by rank and takes the top few; for each it
  * chooses the phrasing shown least recently, from a short history string. The text is resolved from `kind` and `variant`
- * in the UI layer (ui/Labels.kt); the slots carry the numbers and names the sentence needs. Pure and unit-tested
+ * in the UI layer (ui/EnumLabels.kt); the slots carry the numbers and names the sentence needs. Pure and unit-tested
  * (docs/plans/app-critique-2026-11-09.md, section 4).
  */
 
