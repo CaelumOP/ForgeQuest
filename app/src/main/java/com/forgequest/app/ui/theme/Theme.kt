@@ -54,7 +54,6 @@ data class FitColors(
     val chartWeight: Color,
     val chartCalories: Color,
     val chartProtein: Color,
-    val chartOther: Color,
     val chartGain: Color,
     val chartGainTrack: Color,
 )
@@ -84,7 +83,6 @@ val DarkFitColors = FitColors(
     chartWeight = Color(0xFF4C8FE6),
     chartCalories = Color(0xFFB07F00),
     chartProtein = Color(0xFFC85A72),
-    chartOther = Color(0xFFA572E0),
     chartGain = Color(0xFF21A693),
     chartGainTrack = Color(0xFF1C2E2B),
 )
@@ -118,7 +116,6 @@ val LightFitColors = FitColors(
     chartWeight = Color(0xFF0B57D0),
     chartCalories = Color(0xFF8A6100),
     chartProtein = Color(0xFFC62A6E),
-    chartOther = Color(0xFF6F2DBD),
     chartGain = Color(0xFF008F78),
     chartGainTrack = Color(0xFFD5F0EB),
 )

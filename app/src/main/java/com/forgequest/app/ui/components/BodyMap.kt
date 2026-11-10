@@ -78,7 +78,7 @@ private data class ViewJson(val viewBox: List<Float>, val outline: String? = nul
 @Serializable
 private data class PartJson(val slug: String, val side: String, val d: String)
 
-class BodyPart(val slug: String, val muscle: Muscle?, val path: Path, val region: Region)
+class BodyPart(val muscle: Muscle?, val path: Path, val region: Region)
 
 class BodyView(val minX: Float, val minY: Float, val width: Float, val height: Float, val outline: Path?, val parts: List<BodyPart>)
 
@@ -101,7 +101,7 @@ object BodyArtLoader {
             val android = path.asAndroidPath()
             val bounds = android.computeBoundsCompat()
             val region = Region().apply { setPath(android, Region(bounds)) }
-            BodyPart(p.slug, Muscle.fromSlug(p.slug), path, region)
+            BodyPart(Muscle.fromSlug(p.slug), path, region)
         }
         val outlinePath = outline?.let { PathParser().parsePathString(it).toPath() }
         return BodyView(viewBox[0], viewBox[1], viewBox[2], viewBox[3], outlinePath, parts)

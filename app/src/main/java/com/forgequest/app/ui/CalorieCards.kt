@@ -16,10 +16,10 @@ import com.forgequest.app.domain.Trends
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** Everything a calorie suggestion depends on. [stepsAvg] is set when watch steps decided [base]. */
+/** Everything a calorie suggestion depends on. */
 data class CalorieInputs(
     val kg: Float, val heightCm: Float, val age: Int, val male: Boolean, val trainingDays: Int, val bodyFatPct: Float,
-    val base: Float, val stepsAvg: Int? = null,
+    val base: Float,
 )
 
 /** The day base from the last 7 full days of watch steps, and the average steps behind it. */
@@ -57,7 +57,7 @@ object CalorieUi {
         return CalorieInputs(
             kg = latestKg, heightCm = s.heightCm, age = Nutrition.ageFromBirthYear(s.birthYear, thisYear), male = s.bodyType == BodyType.MALE,
             trainingDays = trainingDays(s, planDays), bodyFatPct = s.bodyFatPct,
-            base = steps?.base ?: s.dayActivity.base, stepsAvg = steps?.avgSteps,
+            base = steps?.base ?: s.dayActivity.base,
         )
     }
 
