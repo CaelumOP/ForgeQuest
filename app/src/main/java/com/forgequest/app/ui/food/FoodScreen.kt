@@ -388,7 +388,7 @@ fun FoodScreen(nav: NavHostController) {
         PartsSheet(food.name, food.parts, carbsOn = snap?.settings?.trackCarbs == true, onSave = { vm.saveParts(food, it); partsFor = null }, onDismiss = { partsFor = null })
     }
     editing?.let { food ->
-        FoodEditorSheet(food, places, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (aiOn && apiKey.isNotBlank()) vm::estimate else null, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
+        FoodEditorSheet(food, places, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (aiOn && apiKey.isNotBlank()) vm::estimate else null, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onPhoto = if (food.id != 0L) ({ photoFor = food; editing = null }) else null, onDismiss = { editing = null })
     }
     confirmDeleteFood?.let { food ->
         AlertDialog(
@@ -672,21 +672,20 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
             if (selected) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_selected), tint = c.onTeal, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.size(48.dp).clip(ForgeShape.Sm).background(c.cardHigh).clickable(onClick = onPhoto), contentAlignment = Alignment.Center) {
-            if (food.photoPath != null) {
+        // Only foods that have a photo show one; adding a photo lives in the editor (long-press the row).
+        if (food.photoPath != null) {
+            Box(Modifier.size(48.dp).clip(ForgeShape.Sm).background(c.cardHigh).clickable(onClick = onPhoto), contentAlignment = Alignment.Center) {
                 AsyncImage(model = File(food.photoPath), contentDescription = food.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            } else {
-                Icon(Icons.Rounded.PhotoCamera, contentDescription = stringResource(R.string.cd_add_photo), tint = c.textSecondary, modifier = Modifier.size(20.dp))
             }
+            Spacer(Modifier.width(12.dp))
         }
-        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f).padding(end = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (food.pinned) {
                     Icon(Icons.Rounded.PushPin, contentDescription = stringResource(R.string.cd_pinned), tint = c.gold, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
                 }
-                Text(food.name, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(food.name, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (food.place.isNotBlank()) {
                 Text(food.place, style = MaterialTheme.typography.bodySmall, color = c.textPrimary.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -780,7 +779,7 @@ private fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boolean, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit) {
+private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boolean, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onPhoto: (() -> Unit)?, onDismiss: () -> Unit) {
     var carbs by remember { mutableStateOf(if (food.carbs == 0f) "" else food.carbs.toString().removeSuffix(".0")) }
     val c = Fit.colors
     var name by remember { mutableStateOf(food.name) }
@@ -833,6 +832,10 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                 FitSwitch(pinned, { pinned = it })
+            }
+            if (onPhoto != null) {
+                Spacer(Modifier.height(12.dp))
+                TonalPill(stringResource(if (food.photoPath != null) R.string.food_photo_change else R.string.cd_add_photo), onClick = onPhoto, icon = Icons.Rounded.PhotoCamera)
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {

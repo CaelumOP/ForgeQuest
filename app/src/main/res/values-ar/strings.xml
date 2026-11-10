@@ -372,6 +372,7 @@
     <string name="food_g">%1$d غ</string>
     <string name="cd_remove">إزالة</string>
     <string name="food_photo">صورة الطعام</string>
+    <string name="food_photo_change">تغيير الصورة</string>
     <string name="photo_choose_gallery">اختر من المعرض</string>
     <string name="photo_take">التقط صورة</string>
     <string name="photo_remove">حذف الصورة</string>

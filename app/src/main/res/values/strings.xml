@@ -323,6 +323,7 @@
     <string name="food_g">%1$d g</string>
     <string name="cd_remove">Remove</string>
     <string name="food_photo">Food photo</string>
+    <string name="food_photo_change">Change photo</string>
     <string name="photo_choose_gallery">Choose from gallery</string>
     <string name="photo_take">Take a photo</string>
     <string name="photo_remove">Remove photo</string>
