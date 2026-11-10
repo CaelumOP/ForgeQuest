@@ -58,10 +58,6 @@ data class Settings(
     val liteModel: String = "",
     /** When the model list was last read from Google; new models ship often, so it's refreshed weekly. */
     val modelsCheckedAt: Long = 0,
-    /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
-    val coachModel: String = "auto",
-    /** Unused since the fast-chat provider was removed; kept so old settings still load. */
-    val groqModel: String = "",
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
@@ -111,8 +107,6 @@ data class Settings(
     val nutritionGoal: NutritionGoal = NutritionGoal.MAINTAIN,
     /** Epoch day the goal was last changed, so the weight-trend note waits for real data under the new goal. */
     val goalSetDay: Long = 0,
-    /** No longer read: the workout debrief is calculated, with no switch. Kept so old backups and saved settings still load. */
-    val debriefEnabled: Boolean = true,
     /** How active a normal day is outside workouts (calorie plan v2); watch steps override it on Android. */
     val dayActivity: DayActivity = DayActivity.SITTING,
     val cutPace: CutPace = CutPace.STANDARD,
@@ -160,8 +154,6 @@ class SettingsRepository(private val context: Context) {
         val smartModel = stringPreferencesKey("smart_model")
         val liteModel = stringPreferencesKey("lite_model")
         val modelsCheckedAt = longPreferencesKey("models_checked_at")
-        val coachModel = stringPreferencesKey("coach_model")
-        val groqModel = stringPreferencesKey("groq_model")
         val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
@@ -195,7 +187,6 @@ class SettingsRepository(private val context: Context) {
         val bodyFatPct = floatPreferencesKey("body_fat_pct")
         val nutritionGoal = stringPreferencesKey("nutrition_goal")
         val goalSetDay = longPreferencesKey("goal_set_day")
-        val debrief = booleanPreferencesKey("debrief_enabled")
         val dayActivity = stringPreferencesKey("day_activity")
         val cutPace = stringPreferencesKey("cut_pace")
         val gainPace = stringPreferencesKey("gain_pace")
@@ -233,8 +224,6 @@ class SettingsRepository(private val context: Context) {
             smartModel = this[K.smartModel] ?: "",
             liteModel = this[K.liteModel] ?: "",
             modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
-            coachModel = this[K.coachModel] ?: "auto",
-            groqModel = this[K.groqModel] ?: "",
             lastCheckinWeek = this[K.lastCheckin] ?: -1,
             driveEmail = this[K.driveEmail] ?: "",
             lastBackupAt = this[K.lastBackup] ?: 0,
@@ -268,7 +257,6 @@ class SettingsRepository(private val context: Context) {
             bodyFatPct = this[K.bodyFatPct] ?: 0f,
             nutritionGoal = runCatching { NutritionGoal.valueOf(this[K.nutritionGoal] ?: "MAINTAIN") }.getOrDefault(NutritionGoal.MAINTAIN),
             goalSetDay = this[K.goalSetDay] ?: 0,
-            debriefEnabled = this[K.debrief] ?: true,
             dayActivity = DayActivity.parse(this[K.dayActivity]),
             cutPace = CutPace.parse(this[K.cutPace]),
             gainPace = GainPace.parse(this[K.gainPace]),
@@ -298,8 +286,6 @@ class SettingsRepository(private val context: Context) {
             p[K.smartModel] = s.smartModel
             p[K.liteModel] = s.liteModel
             p[K.modelsCheckedAt] = s.modelsCheckedAt
-            p[K.coachModel] = s.coachModel
-            p[K.groqModel] = s.groqModel
             p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
@@ -333,7 +319,6 @@ class SettingsRepository(private val context: Context) {
             p[K.bodyFatPct] = s.bodyFatPct
             p[K.nutritionGoal] = s.nutritionGoal.name
             p[K.goalSetDay] = s.goalSetDay
-            p[K.debrief] = s.debriefEnabled
             p[K.dayActivity] = s.dayActivity.name
             p[K.cutPace] = s.cutPace.name
             p[K.gainPace] = s.gainPace.name

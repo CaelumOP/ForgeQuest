@@ -116,17 +116,14 @@ class CoachRepository(
                 if (firstText < 0) firstText = SystemClock.elapsedRealtime() - tapped
                 _draft.value = (_draft.value ?: "") + delta
             }
-            // One fixed model chain since the picker went: an old stored "lite" choice no longer applies.
-            val useZeroThinking = false
             val reply = gemini.generateStreaming(
                 apiKey = requireKey(),
                 models = models(),
                 system = system,
                 turns = turns,
                 // Full thinking for weekly plans; lowThinking (~1,024 budget) for normal coaching so the coach
-                // actually reasons over Readiness, HRV, recovery and set history; zero thinking only if user pinned "lite".
-                fast = useZeroThinking,
-                lowThinking = !shouldEmitPlanJson && !useZeroThinking,
+                // actually reasons over Readiness, HRV, recovery and set history.
+                lowThinking = !shouldEmitPlanJson,
                 onDelta = onDelta,
             )
             _lastAnswer.value = "Gemini" to firstText
@@ -389,7 +386,7 @@ class CoachRepository(
 
     private suspend fun models(): List<String> {
         val m = models.current()
-        // One fixed chain (the model picker was removed); a stored "lite"/"pro" choice is ignored.
+        // One fixed chain: the model picker was removed.
         return listOf(m.fast, GeminiClient.FALLBACK_STABLE_FLASH, m.lite)
     }
 
