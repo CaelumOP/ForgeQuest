@@ -16,7 +16,6 @@
     </plurals>
     <string name="weight_log_title">Log body weight</string>
     <string name="weight_saved">Weight saved</string>
-    <string name="food_tick_hint">Tick what you ate, then tap Log.</string>
     <string name="food_search_hint">Search your foods or restaurants</string>
     <string name="food_search_logs_as">From all your foods. Ticked ones log under %1$s.</string>
     <string name="food_search_none">No saved food matches “%1$s”.</string>
@@ -278,6 +277,7 @@
     <string name="food_logged_that_day">Logged that day</string>
     <string name="food_show_all">Show all (%1$d)</string>
     <string name="food_show_less">Show less</string>
+    <string name="food_browse_all">Browse all (%1$d)</string>
     <string name="food_quick_log">Quick log</string>
     <string name="food_estimate">Estimate calories from the name</string>
     <string name="food_estimating">Estimating…</string>

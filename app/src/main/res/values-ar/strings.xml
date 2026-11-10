@@ -25,7 +25,6 @@
     </plurals>
     <string name="weight_log_title">تسجيل الوزن</string>
     <string name="weight_saved">حُفظ الوزن</string>
-    <string name="food_tick_hint">حدّد ما أكلته، ثم اضغط «تسجيل».</string>
     <string name="food_search_hint">ابحث في أطعمتك أو مطاعمك</string>
     <string name="food_search_logs_as">من جميع أطعمتك. ما تحدّده يُسجَّل ضمن %1$s.</string>
     <string name="food_search_none">لا يوجد طعام محفوظ يطابق «%1$s».</string>
@@ -319,6 +318,7 @@
     <string name="food_logged_that_day">سُجّل في ذلك اليوم</string>
     <string name="food_show_all">عرض الكل (%1$d)</string>
     <string name="food_show_less">عرض أقل</string>
+    <string name="food_browse_all">تصفّح الكل (%1$d)</string>
     <string name="food_quick_log">تسجيل سريع</string>
     <string name="food_estimate">قدِّر السعرات من الاسم</string>
     <string name="food_estimating">جارٍ التقدير…</string>

@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -200,9 +201,14 @@ fun FoodScreen(nav: NavHostController) {
             .map { (p, fs) -> p to fs.maxOf { usage[it.id]?.lastAt ?: it.createdAt } }
             .sortedByDescending { it.second }.map { it.first }.take(6)
     }
-    val shown = if (searching) results else inCategory
     val recent = remember(foods, usage, category) { FoodLists.recent(foods, usage, category) }
     val selectedFoods = foods.filter { it.id in selection }
+    // The chip tray: this meal's pinned and most-logged foods, then what was logged lately under other meals.
+    val quickPicks = remember(foods, usage, category, recent) {
+        (inCategory.sortedWith(compareByDescending<FoodEntity> { it.pinned }.thenByDescending { usage[it.id]?.times ?: 0 }.thenByDescending { usage[it.id]?.lastAt ?: 0L }).take(8) + recent)
+            .distinctBy { it.id }.take(12)
+    }
+    var browseAll by rememberSaveable(category) { mutableStateOf(false) }
     // Each food rounded on its own, as logFoods stores it, so this is what the day's total gains.
     val selKcal = selectedFoods.sumOf { Nutrition.scaledKcal(it.kcal, selection[it.id]?.qty ?: 1f) }
     val selProtein = selectedFoods.sumOf { (it.protein * (selection[it.id]?.qty ?: 1f)).toDouble() }.roundToInt()
@@ -319,21 +325,47 @@ fun FoodScreen(nav: NavHostController) {
                     }
                 }
             }
-            // Saved foods are logged by ticking them; say so while nothing is ticked.
-            if (!searching && inCategory.isNotEmpty() && selection.isEmpty()) {
-                item { Text(stringResource(R.string.food_tick_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp)) }
-            }
-            items(shown, key = { it.id }) { food ->
-                Box(itemMotion()) {
-                    FoodRow(
-                        food = food,
-                        qty = selection[food.id]?.qty,
-                        onToggle = { vm.toggle(food) },
-                        onQty = { vm.setQty(food, it) },
-                        onPhoto = { photoFor = food },
-                        onEdit = { editing = food },
-                        onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
-                    )
+            if (searching) {
+                items(results, key = { it.id }) { food ->
+                    Box(itemMotion()) {
+                        FoodRow(
+                            food = food,
+                            qty = selection[food.id]?.qty,
+                            onToggle = { vm.toggle(food) },
+                            onQty = { vm.setQty(food, it) },
+                            onPhoto = { photoFor = food },
+                            onEdit = { editing = food },
+                            onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
+                        )
+                    }
+                }
+            } else {
+                // The usual foods as one row of chips: a tap ticks one. The long lists stay folded until asked for.
+                if (quickPicks.isNotEmpty()) {
+                    item { QuickPickChips(quickPicks, selection.keys, onToggle = { vm.toggle(it) }) }
+                }
+                // Ticked foods get their full row, which is where the amount is changed.
+                items(selectedFoods, key = { it.id }) { food ->
+                    Box(itemMotion()) {
+                        FoodRow(
+                            food = food,
+                            qty = selection[food.id]?.qty,
+                            onToggle = { vm.toggle(food) },
+                            onQty = { vm.setQty(food, it) },
+                            onPhoto = { photoFor = food },
+                            onEdit = { editing = food },
+                            onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
+                        )
+                    }
+                }
+                if (inCategory.isNotEmpty()) {
+                    if (browseAll || searchFocused) {
+                        items(inCategory.filter { it.id !in selection }, key = { "b${it.id}" }) { food ->
+                            CompactFoodRow(food, onToggle = { vm.toggle(food) }, onEdit = { editing = food })
+                        }
+                    } else {
+                        item { TonalPill(stringResource(R.string.food_browse_all, inCategory.size), onClick = { browseAll = true }, icon = Icons.Rounded.ArrowDropDown) }
+                    }
                 }
             }
             if (searching && catalogResults.isNotEmpty()) {
@@ -351,22 +383,6 @@ fun FoodScreen(nav: NavHostController) {
                     TonalPill(stringResource(R.string.food_search_add, query.trim()), onClick = {
                         editing = FoodEntity(name = query.trim().take(48), category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
                     }, icon = Icons.Rounded.Add)
-                }
-            }
-            if (!searching && recent.isNotEmpty()) {
-                item { Text(stringResource(R.string.food_recent), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.padding(start = 4.dp, top = 8.dp)) }
-                items(recent, key = { "r${it.id}" }) { food ->
-                    Box(itemMotion()) {
-                        FoodRow(
-                            food = food,
-                            qty = selection[food.id]?.qty,
-                            onToggle = { vm.toggle(food) },
-                            onQty = { vm.setQty(food, it) },
-                            onPhoto = { photoFor = food },
-                            onEdit = { editing = food },
-                            onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
-                        )
-                    }
                 }
             }
         }
@@ -661,6 +677,34 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbs
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+/** The usual foods as chips in one scrolling row; a tap ticks or unticks one. */
+@Composable
+private fun QuickPickChips(foods: List<FoodEntity>, selected: Set<Long>, onToggle: (FoodEntity) -> Unit) {
+    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(foods, key = { it.id }) { food -> ChoiceChip(food.name, selected = food.id in selected, onClick = { onToggle(food) }) }
+    }
+}
+
+/** One line per food in "Browse all": a tap ticks it, a long press edits it. Grows with large text, never clips. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CompactFoodRow(food: FoodEntity, onToggle: () -> Unit, onEdit: () -> Unit) {
+    val c = Fit.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(ForgeShape.Md).background(c.card)
+            .combinedClickable(onClick = onToggle, onLongClick = onEdit, onClickLabel = stringResource(R.string.cd_select), onLongClickLabel = stringResource(R.string.cd_edit))
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(food.name, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.food_kcal, food.kcal) + " · " + stringResource(R.string.food_g_protein, food.protein.roundToInt()),
+            style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1,
+        )
     }
 }
 
