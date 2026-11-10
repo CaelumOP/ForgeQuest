@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ForgeQuest · Premium Home mock-up</title>
+<!-- Mock-up only: fonts from Google Fonts here. The real app ships fonts inside the app. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600&family=Readex+Pro:wght@300;400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Manrope:wght@500;600;700&family=Instrument+Serif&family=Noto+Naskh+Arabic:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#131314;--card:#1E1F20;--card-high:#282A2C;--text:#E3E3E3;--muted:#9AA0A6;
+  --accent:#5CD6C0;--on-accent:#00382E;--blue:#8AB4F8;--gold:#FDD663;--purple:#C58AF9;
+  --rec:#7FD99A;
+  --ease-enter:cubic-bezier(.05,.7,.1,1);--ease-std:cubic-bezier(.2,0,0,1);
+  --f-display:'Alexandria';--f-body:'Alexandria';
+  /* sky stops, set by theme */
+  --s1:#1B3B4F;--s2:#3E6E7A;--s3:#C9927A;--s4:#131314;
+}
+*{box-sizing:border-box;margin:0}
+body{background:#0B0B0C;color:var(--text);font-family:system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding:24px}
+.panel{width:300px;display:flex;flex-direction:column;gap:18px;font-size:14px}
+.panel h1{font:600 20px/1.3 Manrope,sans-serif}
+.panel p{color:var(--muted);line-height:1.5}
+.grp{display:flex;flex-direction:column;gap:8px}
+.grp b{font-weight:500}
+.seg{display:flex;background:#1E1F20;border-radius:999px;padding:4px;gap:4px;flex-wrap:wrap}
+.seg button{flex:1;border:0;background:none;color:var(--muted);padding:9px 10px;border-radius:999px;font:500 13px system-ui;cursor:pointer;transition:background .2s,color .2s}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+.replay{border:0;border-radius:999px;padding:12px;background:#282A2C;color:var(--text);font:500 14px system-ui;cursor:pointer}
+
+/* ---------- phone ---------- */
+.phone{width:390px;height:844px;border-radius:48px;background:var(--bg);overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #000,0 0 0 11px #333;font-family:var(--f-body),system-ui,sans-serif}
+.scroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* the sky: soft blended gradient behind the header + rings, slowly drifting */
+.sky{position:absolute;top:0;left:0;right:0;height:560px;overflow:hidden;pointer-events:none}
+.sky .layer{position:absolute;inset:-30%;filter:blur(40px);opacity:.95;will-change:transform}
+.sky{background:linear-gradient(180deg,var(--s1),var(--bg) 85%)}
+.sky .a{background:radial-gradient(55% 45% at 25% 30%,var(--s2),transparent 72%),radial-gradient(55% 45% at 85% 18%,var(--s1),transparent 72%)}
+.sky .b{background:radial-gradient(50% 40% at 72% 50%,var(--s3),transparent 72%),radial-gradient(45% 35% at 18% 62%,var(--s2),transparent 72%)}
+.sky .fade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,var(--bg) 96%)}
+.grain{position:absolute;inset:0;opacity:.06;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+.motion .sky .a{animation:driftA 14s ease-in-out infinite alternate}
+.motion .sky .b{animation:driftB 11s ease-in-out infinite alternate}
+@keyframes driftA{to{transform:translate3d(6%,4%,0) scale(1.08)}}
+@keyframes driftB{to{transform:translate3d(-7%,-3%,0) scale(1.05)}}
+
+.content{position:relative;padding:58px 20px 40px;display:flex;flex-direction:column;gap:16px}
+.status{position:absolute;top:16px;left:30px;right:30px;display:flex;justify-content:space-between;font:600 15px var(--f-display)}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-top:8px}
+.hdr small{color:rgba(255,255,255,.72);font-size:14px}
+.hdr h2{font:600 28px/1.25 var(--f-display);letter-spacing:-.4px;margin-top:4px}
+.avatar{width:44px;height:44px;border-radius:999px;background:rgba(255,255,255,.14);backdrop-filter:blur(10px);display:grid;place-items:center;font:600 16px var(--f-display)}
+
+/* rings */
+.rings{display:flex;flex-direction:column;align-items:center;gap:18px;padding:12px 0 6px}
+.big{position:relative;width:236px;height:236px}
+.big svg{width:100%;height:100%;transform:rotate(-90deg)}
+[dir=rtl] .big svg{transform:rotate(-90deg) scaleY(-1)}
+.track{fill:none;stroke:rgba(255,255,255,.10)}
+.arc{fill:none;stroke-linecap:round}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.center .n{font:600 46px/1 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.center .u{color:rgba(255,255,255,.7);font-size:14px}
+.center .left{font-size:13px;color:var(--accent);margin-top:6px}
+.stats{display:flex;width:100%;justify-content:space-around}
+.stat{display:flex;flex-direction:column;align-items:center;gap:4px}
+.stat .v{font:600 20px var(--f-display);font-variant-numeric:tabular-nums}
+.stat .l{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:9px}
+
+/* cards */
+.card{background:color-mix(in srgb,var(--card) 92%,transparent);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:16px;
+  opacity:0;transform:translateY(14px)}
+.in .card{animation:rise .5s var(--ease-enter) forwards}
+.in .card:nth-of-type(2){animation-delay:.08s}.in .card:nth-of-type(3){animation-delay:.16s}
+@keyframes rise{to{opacity:1;transform:none}}
+.no-motion .card{opacity:1;transform:none;animation:none!important}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.kicker{font-size:13px;color:var(--muted)}
+.card h3{font:600 20px/1.3 var(--f-display);margin-top:4px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--card-high);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--muted)}
+.btn{border:0;border-radius:999px;padding:14px;background:var(--accent);color:var(--on-accent);font:600 15px var(--f-body);width:100%;cursor:pointer;transition:transform .2s var(--ease-std)}
+.btn:active{transform:scale(.97)}
+
+/* workout card: photo header */
+.workout{padding:0;overflow:hidden}
+.workout .ph{height:150px;background:url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=70') center/cover;position:relative}
+.workout .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,var(--card) 100%)}
+.workout .body{padding:0 24px 24px;display:flex;flex-direction:column;gap:16px;margin-top:-20px;position:relative}
+
+/* readiness: tinted by recovery, breathing ring */
+.ready{background:
+  radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--rec) 22%,transparent),transparent 60%),
+  color-mix(in srgb,var(--card) 92%,transparent)}
+[dir=rtl] .ready{background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--rec) 22%,transparent),transparent 60%),color-mix(in srgb,var(--card) 92%,transparent)}
+.breath{width:76px;height:76px;border-radius:999px;position:relative;flex:none;display:grid;place-items:center}
+.breath::before{content:"";position:absolute;inset:-6px;border-radius:999px;background:radial-gradient(circle,color-mix(in srgb,var(--rec) 40%,transparent),transparent 70%)}
+.motion .breath::before{animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.94);opacity:.55}50%{transform:scale(1.06);opacity:1}}
+.breath svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.breath .n{position:relative;font:600 24px var(--f-display);font-variant-numeric:tabular-nums}
+.verdict{color:var(--rec);font-weight:500}
+.nav{position:sticky;bottom:0;margin-top:8px;display:flex;justify-content:space-around;padding:12px 8px 22px;background:linear-gradient(180deg,transparent,var(--bg) 40%)}
+.nav span{font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px}
+.nav span.on{color:var(--accent)}
+.nav i{width:22px;height:22px;border-radius:7px;border:2px solid currentColor;display:block}
+
+/* ---------- v2: Oura-inspired ---------- */
+:root{--f-serif:'Instrument Serif',serif}
+.verdictH{display:none}
+.oura .sky{height:620px;background:#0d1214}
+.oura .sky .layer.a{inset:-6%;filter:none;opacity:1;background:url('https://images.unsplash.com/photo-1501854140801-50d01698950b?w=900&q=70') center 30%/cover;filter:saturate(.7)}
+.oura .sky .layer.b{filter:blur(60px);opacity:.55;background:radial-gradient(60% 45% at 30% 20%,var(--s2),transparent 70%),radial-gradient(50% 40% at 80% 40%,var(--s3),transparent 70%);mix-blend-mode:soft-light}
+.oura .sky .fade{background:linear-gradient(180deg,rgba(10,14,16,.6) 0%,rgba(10,14,16,.4) 30%,rgba(10,14,16,.72) 58%,var(--bg) 97%)}
+.motion.oura .sky .layer.a{animation:kenburns 24s ease-in-out infinite alternate}
+@keyframes kenburns{to{transform:scale(1.08) translate3d(-2%,1%,0)}}
+.oura{--bg:#101315;--card:#171B1E;--card-high:#22272B;--blue:#A9C4E8;--gold:#E8D3A0;--purple:#C9B3E6;--accent:#8FD8C8;--on-accent:#0B2B25}
+.oura .hdr small{font-size:13px}
+.oura .hdr h2{font:500 15px var(--f-body);letter-spacing:0;color:rgba(255,255,255,.75)}
+.oura .verdictH{display:block;font:400 40px/1.1 var(--f-serif);letter-spacing:-.3px;margin-top:6px}
+.oura[dir=rtl] .verdictH{font-size:34px;line-height:1.35}
+.oura .center .n{font:400 58px/1 var(--f-serif);letter-spacing:0}
+.oura .arc{stroke-width:5}.oura .track{stroke-width:5;stroke:rgba(255,255,255,.12)}
+.oura .stat .v{font-weight:500}
+.oura .stat .l,.oura .kicker{text-transform:uppercase;letter-spacing:.08em;font-size:11px}
+.oura[dir=rtl] .stat .l,.oura[dir=rtl] .kicker{text-transform:none;letter-spacing:0;font-size:13px}
+.oura .card{background:rgba(23,27,30,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.06)}
+.oura .card h3{font:400 26px/1.2 var(--f-serif)}
+.oura[dir=rtl] .card h3{font-size:22px;line-height:1.5}
+.oura .workout .ph{filter:saturate(.55) brightness(.75)}
+.oura .chip{background:transparent;border:1px solid rgba(255,255,255,.12)}
+.oura .btn{background:rgba(255,255,255,.12);color:var(--text);font-weight:500;border:1px solid rgba(255,255,255,.08)}
+.spark{display:none}.oura .spark{display:block;width:100%;height:64px}
+.oura .nav{position:sticky;bottom:14px;margin:8px 0 0;padding:10px 14px;border-radius:999px;background:rgba(30,34,38,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.06);align-items:center}
+.oura .nav i{border-radius:999px;border-width:1.5px}
+.fab{display:none}.oura .fab{display:grid;width:44px;height:44px;border-radius:999px;background:rgba(255,255,255,.14);place-items:center;font-size:24px;color:var(--text)}
+@media (prefers-reduced-motion:reduce){.sky .layer,.breath::before{animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h1>Premium Home · mock-up</h1>
+  <p>Drawn in a browser, not the app. Pick a combination, then tell me the letters (for example A2, Dusk, Motion on).</p>
+
+  <div class="grp"><b>Style</b>
+    <div class="seg" data-k="style"><button data-v="v1">V1 first try</button><button data-v="oura" class="on">V2 Oura-inspired</button></div>
+    <p style="font-size:12px">V2: photo sky, serif headline and numbers, thin quiet rings, glass cards and buttons, floating nav.</p></div>
+
+  <div class="grp"><b>Language</b>
+    <div class="seg" data-k="lang"><button data-v="en" class="on">English</button><button data-v="ar">العربية</button></div></div>
+
+  <div class="grp"><b>Font</b>
+    <div class="seg" data-k="font">
+      <button data-v="alex" class="on">A1 Alexandria</button>
+      <button data-v="readex">A2 Readex Pro</button>
+      <button data-v="plex">A3 Today (Manrope + Plex)</button>
+      <button data-v="thm">A4 Thmanyah*</button></div>
+    <p style="font-size:12px">* Thmanyah needs a sign-up download at font.thmanyah.com, so it only shows here if it's installed on this PC. Otherwise this falls back to Plex.</p></div>
+
+  <div class="grp"><b>Sky (header gradient)</b>
+    <div class="seg" data-k="sky">
+      <button data-v="dawn">Dawn</button><button data-v="day">Day</button>
+      <button data-v="dusk" class="on">Dusk</button><button data-v="night">Night</button>
+      <button data-v="rec">Recovery</button><button data-v="none">None</button></div>
+    <p style="font-size:12px">"Recovery" tints the sky by today's score, like Oura. The others follow the time of day.</p></div>
+
+  <div class="grp"><b>Motion</b>
+    <div class="seg" data-k="motion"><button data-v="on" class="on">On</button><button data-v="off">Off</button></div>
+    <p style="font-size:12px">On: the sky drifts (11–14 s), the readiness ring breathes (4 s), the rings fill with counting numbers, cards rise in. Off is what reduced motion gets.</p></div>
+
+  <button class="replay" id="replay">Replay opening</button>
+</div>
+
+<div class="phone motion" id="phone">
+  <div class="scroll">
+    <div class="sky" id="sky"><div class="layer a"></div><div class="layer b"></div><div class="grain"></div><div class="fade"></div></div>
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="content" id="content">
+      <div class="hdr">
+        <div><small data-t="date"></small><h2 data-t="hello"></h2><div class="verdictH" data-t="vh"></div></div>
+        <div class="avatar">A</div>
+      </div>
+
+      <div class="rings">
+        <div class="big">
+          <svg viewBox="0 0 236 236">
+            <circle class="track" cx="118" cy="118" r="106" stroke-width="14"/>
+            <circle class="arc" id="r1" cx="118" cy="118" r="106" stroke-width="14" stroke="var(--blue)"/>
+            <circle class="track" cx="118" cy="118" r="86" stroke-width="12"/>
+            <circle class="arc" id="r2" cx="118" cy="118" r="86" stroke-width="12" stroke="var(--gold)"/>
+            <circle class="track" cx="118" cy="118" r="68" stroke-width="10"/>
+            <circle class="arc" id="r3" cx="118" cy="118" r="68" stroke-width="10" stroke="var(--purple)"/>
+          </svg>
+          <div class="center"><span class="n" id="kcal">0</span><span class="u" data-t="kcal"></span><span class="left" data-t="left"></span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="v" id="sp">0</span><span class="l"><i class="dot" style="background:var(--gold)"></i><span data-t="protein"></span></span></div>
+          <div class="stat"><span class="v" id="sc">0</span><span class="l"><i class="dot" style="background:var(--purple)"></i><span data-t="carbs"></span></span></div>
+          <div class="stat"><span class="v" id="ss">0</span><span class="l"><i class="dot" style="background:var(--accent)"></i><span data-t="steps"></span></span></div>
+        </div>
+      </div>
+
+      <div class="card workout">
+        <div class="ph"></div>
+        <div class="body">
+          <div><div class="kicker" data-t="wk"></div><h3 data-t="wtitle"></h3></div>
+          <div class="chips"><span class="chip" data-t="c1"></span><span class="chip" data-t="c2"></span><span class="chip" data-t="c3"></span></div>
+          <button class="btn" data-t="start"></button>
+        </div>
+      </div>
+
+      <div class="card ready">
+        <div class="row">
+          <div><div class="kicker" data-t="rk"></div><h3 class="verdict" data-t="steady"></h3>
+            <div class="kicker" style="margin-top:6px" data-t="rsub"></div></div>
+          <div class="breath">
+            <svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="6"/>
+              <circle id="rr" cx="38" cy="38" r="32" fill="none" stroke="var(--rec)" stroke-width="6" stroke-linecap="round"/></svg>
+            <span class="n" id="rn">0</span>
+          </div>
+        </div>
+        <svg class="spark" viewBox="0 0 300 64" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--rec)" stop-opacity=".35"/><stop offset="1" stop-color="var(--rec)" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,40 C30,36 45,22 75,26 S120,44 150,34 S200,14 225,20 S270,30 300,16 L300,64 L0,64Z" fill="url(#sg)"/>
+          <path d="M0,40 C30,36 45,22 75,26 S120,44 150,34 S200,14 225,20 S270,30 300,16" fill="none" stroke="var(--rec)" stroke-width="1.5"/></svg>
+      </div>
+
+      <div class="nav"><span class="on"><i></i><span data-t="n1"></span></span><span><i></i><span data-t="n2"></span></span><span><i></i><span data-t="n3"></span></span><span><i></i><span data-t="n4"></span></span><span class="fab">+</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const T={
+ en:{date:"Wednesday, 4 November",hello:"Good evening, Abdulrahman",vh:"On track today",kcal:"kcal eaten",left:"620 left today",protein:"Protein g",carbs:"Carbs g",steps:"Steps",
+     wk:"Today's workout",wtitle:"Upper body · Push",c1:"45 min",c2:"6 exercises",c3:"Week 3",start:"Start workout",
+     rk:"Readiness",steady:"Steady, train as planned",rsub:"Slept 7 h 20 · resting HR 61",n1:"Home",n2:"Food",n3:"Train",n4:"Coach"},
+ ar:{date:"الأربعاء، ٤ نوفمبر",hello:"مساء الخير يا عبدالرحمن",vh:"تسير على الخطة اليوم",kcal:"سعرة مأكولة",left:"متبقٍّ ٦٢٠ اليوم",protein:"البروتين غ",carbs:"الكربوهيدرات غ",steps:"الخطوات",
+     wk:"تمرين اليوم",wtitle:"الجزء العلوي · دفع",c1:"٤٥ دقيقة",c2:"٦ تمارين",c3:"الأسبوع ٣",start:"ابدأ التمرين",
+     rk:"الجاهزية",steady:"مستقر، تمرّن كما خطّطت",rsub:"نمت ٧ س ٢٠ د · نبض الراحة ٦١",n1:"الرئيسية",n2:"الطعام",n3:"التمرين",n4:"المدرب"}};
+const FONTS={alex:["Alexandria","Alexandria"],readex:["Readex Pro","Readex Pro"],plex:["Manrope","IBM Plex Sans Arabic"],thm:["Thmanyah Sans","Thmanyah Sans"]};
+const SKY={dawn:["#2A3A6B","#8E7BB5","#F2A88A"],day:["#1F5F8B","#4FA3C7","#BFE3E8"],dusk:["#1B3B4F","#3E6E7A","#C9927A"],
+           night:["#0E1A33","#24335E","#4B3F72"],rec:["#1C4A3A","#2F7A62","#7FD99A"],none:["#131314","#131314","#131314"]};
+const S={style:"oura",lang:"en",font:"alex",sky:"dusk",motion:"on"};
+const $=id=>document.getElementById(id), phone=$("phone"), root=document.documentElement;
+
+function apply(){
+  const ar=S.lang==="ar", f=FONTS[S.font];
+  phone.dir=ar?"rtl":"ltr"; phone.classList.toggle("oura",S.style==="oura");
+  root.style.setProperty("--f-serif",ar?"'Noto Naskh Arabic',serif":"'Instrument Serif',serif"); phone.lang=S.lang;
+  const fam=ar?f[1]:f[0], fallback=ar?"'IBM Plex Sans Arabic'":"Manrope";
+  root.style.setProperty("--f-display",`'${fam}',${fallback}`);
+  root.style.setProperty("--f-body",S.font==="plex"?(ar?"'IBM Plex Sans Arabic'":"system-ui"):`'${fam}',${fallback}`);
+  const s=SKY[S.sky]; ["--s1","--s2","--s3"].forEach((k,i)=>root.style.setProperty(k,s[i]));
+  phone.classList.toggle("motion",S.motion==="on"); phone.classList.toggle("no-motion",S.motion!=="on");
+  document.querySelectorAll("[data-t]").forEach(e=>e.textContent=T[S.lang][e.dataset.t]);
+}
+const nf=()=>new Intl.NumberFormat(S.lang==="ar"?"ar-SA":"en-US");
+function ring(el,r,frac){const c=2*Math.PI*r;el.style.strokeDasharray=c;el.style.strokeDashoffset=c*(1-frac);}
+function play(){
+  const anim=S.motion==="on", c=$("content");
+  c.classList.remove("in"); void c.offsetWidth; c.classList.add("in");
+  const goals=[[ $("r1"),106,1580/2200],[ $("r2"),86,118/150],[ $("r3"),68,160/230],[ $("rr"),32,.78]];
+  goals.forEach(([el,r])=>{el.style.transition="none";ring(el,r,0)});
+  void c.offsetWidth;
+  goals.forEach(([el,r,f])=>{el.style.transition=anim?"stroke-dashoffset 900ms var(--ease-enter)":"none";ring(el,r,f)});
+  const nums=[["kcal",1580],["sp",118],["sc",160],["ss",8240],["rn",78]], t0=performance.now(), D=anim?900:0;
+  (function tick(t){const p=D?Math.min(1,(t-t0)/D):1, e=1-Math.pow(1-p,4), fmt=nf();
+    nums.forEach(([id,v])=>$(id).textContent=fmt.format(Math.round(v*e)));
+    if(p<1)requestAnimationFrame(tick)})(t0);
+}
+document.querySelectorAll(".seg").forEach(seg=>seg.addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  S[seg.dataset.k]=b.dataset.v; apply(); if(seg.dataset.k!=="sky")play();
+}));
+$("replay").onclick=play;
+apply(); play();
+</script>
+</body>
+</html>

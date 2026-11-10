@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ForgeQuest · Simple Home mock-up</title>
+<!-- Mock-up only: fonts load from the web here. The real app ships them inside the app. -->
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Soft Coach tokens from DESIGN.md. Nothing new: no gradients, no blur, no grain, no extra fonts. */
+:root{
+  --bg:#131314;--card:#1E1F20;--card-high:#282A2C;--line:#333537;--text:#E3E3E3;--muted:#9AA0A6;
+  --accent:#5CD6C0;--accent-track:#1C2E2B;--on-accent:#00382E;
+  --blue:#8AB4F8;--gold:#FDD663;--purple:#C58AF9;--rec:#6FD18E;
+  --ease:cubic-bezier(.2,0,0,1);
+  --ts:1;
+}
+:root[data-theme=light]{
+  --bg:#F6F8FC;--card:#FFFFFF;--card-high:#EDF1F7;--line:#E1E5EA;--text:#1F1F1F;--muted:#5F6368;
+  --accent:#00705F;--accent-track:#D5F0EB;--on-accent:#FFFFFF;
+  --blue:#0B57D0;--gold:#8A6100;--purple:#7B2CBF;--rec:#1E7B43;
+}
+*{box-sizing:border-box;margin:0}
+body{background:#0A0B0C;color:#E3E3E3;font-family:system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start;padding:24px}
+.panel{width:300px;display:flex;flex-direction:column;gap:18px;font-size:14px;line-height:1.5}
+.panel h1{font:600 20px/1.3 Manrope,sans-serif}
+.panel p,.panel li{color:#9AA0A6}
+.panel ul{padding-inline-start:18px;display:flex;flex-direction:column;gap:4px}
+.panel b{color:#E3E3E3;font-weight:500}
+.grp{display:flex;flex-direction:column;gap:8px}
+.seg{display:flex;background:#1A1B1C;border-radius:999px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:none;color:#9AA0A6;padding:10px;border-radius:999px;font:500 13px system-ui;cursor:pointer;min-height:44px}
+.seg button.on{background:#5CD6C0;color:#00382E}
+
+/* ---------- phone ---------- */
+.phone{width:390px;height:844px;border-radius:48px;background:var(--bg);color:var(--text);overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #000,0 0 0 11px #333;display:flex;flex-direction:column;
+  font-size:calc(16px*var(--ts));font-family:system-ui,sans-serif}
+.phone[dir=rtl]{font-family:'IBM Plex Sans Arabic',system-ui,sans-serif}
+.phone .d{font-family:Manrope,system-ui,sans-serif;font-feature-settings:"tnum"}
+.phone[dir=rtl] .d{font-family:'IBM Plex Sans Arabic',system-ui,sans-serif}
+.status{display:flex;justify-content:space-between;padding:16px 30px 0;font:600 15px system-ui;flex:none}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none;padding:12px 20px 20px;display:flex;flex-direction:column;gap:16px}
+.scroll::-webkit-scrollbar{display:none}
+
+/* type: size and weight carry the hierarchy */
+.cap{font-size:.875em;line-height:1.43;color:var(--muted)}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-top:8px}
+.hdr h2{font-size:1.75em;line-height:1.25;font-weight:600;letter-spacing:-.3px;margin-top:4px}
+.phone[dir=rtl] .hdr h2{letter-spacing:0;line-height:1.5}
+.hdr .sub{font-size:.9375em;line-height:1.5;color:var(--muted);margin-top:6px}
+.avatar{width:44px;height:44px;border-radius:999px;background:var(--card-high);display:grid;place-items:center;font-weight:600;flex:none}
+
+/* rings: solid tinted tracks, round caps, number in the middle. Nothing else. */
+.rings{display:flex;flex-direction:column;align-items:center;gap:20px;padding:8px 0 0}
+.big{position:relative;width:240px;height:240px}
+.big svg{width:100%;height:100%}
+.phone[dir=rtl] .big svg{transform:scaleX(-1)}
+.trk{fill:none;stroke-width:14;opacity:.2}
+.arc{fill:none;stroke-width:14;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset .9s var(--ease)}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.center .n{font-size:min(2.75em,46px);line-height:1;font-weight:600;letter-spacing:-.5px}
+.center .cap{font-size:min(.875em,15px);max-width:130px;text-align:center}
+.stats{display:flex;width:100%}
+.stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 4px;text-align:center}
+.stat+.stat{border-inline-start:1px solid var(--line)}
+.stat .v{font-size:min(1.5em,30px);line-height:1.2;font-weight:600}
+.stat .v small{font-size:.55em;color:var(--muted);font-weight:500;margin-inline-start:2px}
+.stat .l{display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:9px;flex:none}
+
+/* cards: flat, one tone step above the background */
+.card{background:var(--card);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:16px}
+.card h3{font-size:1.375em;line-height:1.3;font-weight:600;margin-top:2px}
+.meta{font-size:.9375em;color:var(--muted);line-height:1.5}
+.btn{border:0;background:var(--accent);color:var(--on-accent);border-radius:999px;min-height:52px;font:600 1em inherit;font-family:inherit;cursor:pointer;width:100%}
+.row{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.score{position:relative;width:64px;height:64px;flex:none}
+.score svg{width:100%;height:100%;transform:rotate(-90deg)}
+.phone[dir=rtl] .score svg{transform:rotate(-90deg) scaleY(-1)}
+.score span{position:absolute;inset:0;display:grid;place-items:center;font-weight:600;font-size:1.125em}
+.facts{display:flex;border-top:1px solid var(--line);padding-top:16px}
+.facts>div{flex:1;display:flex;flex-direction:column;gap:2px;padding:0 4px}
+.facts>div+div{border-inline-start:1px solid var(--line);padding-inline-start:16px}
+.facts b{font-weight:600;font-size:1.0625em}
+
+/* nav: flat standard bar, four tabs, labels always shown */
+.nav{display:flex;background:var(--card);border-top:1px solid var(--line);padding:8px 8px 20px;flex:none}
+.nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:56px;justify-content:center;color:var(--muted);font-size:.75em;font-weight:500}
+.nav a i{width:56px;height:30px;border-radius:999px;display:grid;place-items:center}
+.nav a.on{color:var(--text)}
+.nav a.on i{background:var(--accent-track);color:var(--accent)}
+.nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+@media (prefers-reduced-motion:reduce){.arc{transition:none}}
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>Simple Home</h1>
+  <p>Soft Coach, quieter. Same order as today: header, rings, stats, workout, readiness. The premium draft's good parts stay; its decoration goes.</p>
+  <div class="grp"><b>Language</b><div class="seg" id="sLang"><button data-v="en" class="on">English</button><button data-v="ar">العربية</button></div></div>
+  <div class="grp"><b>Theme</b><div class="seg" id="sTheme"><button data-v="dark" class="on">Dark</button><button data-v="light">Light</button></div></div>
+  <div class="grp"><b>Text size</b><div class="seg" id="sSize"><button data-v="1" class="on">100%</button><button data-v="2">200%</button></div></div>
+  <div class="grp"><b>Kept from the premium draft</b>
+    <ul><li>Big centred rings with the number inside</li><li>Greeting plus one calm status line</li><li>Stats row with thin dividers</li><li>Readiness as one sentence and three facts</li></ul></div>
+  <div class="grp"><b>Removed</b>
+    <ul><li>Drifting gradient, grain, frosted card, photo</li><li>Serif display font and extra fonts</li><li>Dashed guides, ring knobs, pop-in badge</li><li>Floating nav and round plus button</li><li>Uppercase spaced labels</li></ul></div>
+  <div class="grp"><b>Apple rules applied</b>
+    <ul><li>Hierarchy from size and weight only</li><li>One colour, one meaning (teal = tappable, blue / gold / purple = data)</li><li>Body 17 pt, 48 dp targets, labelled tabs</li><li>One short motion: rings fill once</li></ul></div>
+</div>
+
+<div class="phone" id="phone" dir="ltr">
+  <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="scroll">
+    <div class="hdr">
+      <div><div class="cap" data-t="date"></div><h2 class="d" data-t="vh"></h2><div class="sub" data-t="vsub"></div></div>
+      <div class="avatar d">A</div>
+    </div>
+
+    <div class="rings">
+      <div class="big">
+        <svg viewBox="0 0 250 250"><g transform="rotate(-90 125 125)">
+          <circle class="trk" cx="125" cy="125" r="112" stroke="var(--blue)"/><circle class="arc" id="r1" pathLength="100" cx="125" cy="125" r="112" stroke="var(--blue)"/>
+          <circle class="trk" cx="125" cy="125" r="90" stroke="var(--gold)"/><circle class="arc" id="r2" pathLength="100" cx="125" cy="125" r="90" stroke="var(--gold)"/>
+          <circle class="trk" cx="125" cy="125" r="68" stroke="var(--purple)"/><circle class="arc" id="r3" pathLength="100" cx="125" cy="125" r="68" stroke="var(--purple)"/>
+        </g></svg>
+        <div class="center"><span class="n d" data-t="kcalN"></span><span class="cap" data-t="kcalOf"></span></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="v d"><span data-t="pN"></span><small data-t="g"></small></span><span class="l"><i class="dot" style="background:var(--gold)"></i><span class="cap" data-t="protein"></span></span></div>
+        <div class="stat"><span class="v d"><span data-t="cN"></span><small data-t="g"></small></span><span class="l"><i class="dot" style="background:var(--purple)"></i><span class="cap" data-t="carbs"></span></span></div>
+        <div class="stat"><span class="v d" data-t="sN"></span><span class="l"><span class="cap" data-t="steps"></span></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div><div class="cap" data-t="wk"></div><h3 class="d" data-t="wtitle"></h3><div class="meta" data-t="wmeta"></div></div>
+      <button class="btn" data-t="start"></button>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div><div class="cap" data-t="rk"></div><h3 class="d" data-t="steady"></h3><div class="meta" data-t="rpill"></div></div>
+        <div class="score">
+          <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="none" stroke="var(--rec)" stroke-width="8" opacity=".2"/>
+            <circle id="rr" class="arc" pathLength="100" cx="40" cy="40" r="34" stroke="var(--rec)" style="stroke-width:8"/></svg>
+          <span class="d" data-t="rN"></span>
+        </div>
+      </div>
+      <div class="facts">
+        <div><span class="cap" data-t="f1"></span><b class="d" data-t="f1v"></b></div>
+        <div><span class="cap" data-t="f2"></span><b class="d" data-t="f2v"></b></div>
+        <div><span class="cap" data-t="f3"></span><b class="d" data-t="f3v"></b></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a class="on"><i><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg></i><span data-t="n1"></span></a>
+    <a><i><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-3 5-3 8h3v10"/></svg></i><span data-t="n2"></span></a>
+    <a><i><svg viewBox="0 0 24 24"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/></svg></i><span data-t="n3"></span></a>
+    <a><i><svg viewBox="0 0 24 24"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-5 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg></i><span data-t="n4"></span></a>
+  </nav>
+</div>
+
+<script>
+const T={
+ en:{date:"Wednesday, 4 November",vh:"On track today",vsub:"Good evening, Abdulrahman. Protein goal reached; a light dinner keeps you on target.",
+     kcalN:"1,730",kcalOf:"of 2,400 kcal",pN:"142",cN:"138",sN:"6,420",g:"g",protein:"Protein",carbs:"Carbs",steps:"Steps",
+     wk:"Today's workout",wtitle:"Upper body · Push",wmeta:"45 min · 6 exercises · Week 3",start:"Start workout",
+     rk:"Readiness",steady:"Steady, train as planned",rpill:"Within your normal range",rN:"78",f1:"Sleep",f1v:"7 h 20",f2:"Resting HR",f2v:"61",f3:"HRV",f3v:"48 ms",
+     n1:"Home",n2:"Food",n3:"Train",n4:"Coach"},
+ ar:{date:"الأربعاء، ٤ نوفمبر",vh:"تسير على الخطة اليوم",vsub:"مساء الخير يا عبدالرحمن. بلغت هدف البروتين، وعشاء خفيف يبقيك على الهدف.",
+     kcalN:"١٬٧٣٠",kcalOf:"من ٢٬٤٠٠ سعرة",pN:"١٤٢",cN:"١٣٨",sN:"٦٬٤٢٠",g:"غ",protein:"البروتين",carbs:"الكربوهيدرات",steps:"الخطوات",
+     wk:"تمرين اليوم",wtitle:"الجزء العلوي · دفع",wmeta:"٤٥ دقيقة · ٦ تمارين · الأسبوع ٣",start:"ابدأ التمرين",
+     rk:"الجاهزية",steady:"مستقر، تمرّن كما خطّطت",rpill:"ضمن معدّلك المعتاد",rN:"٧٨",f1:"النوم",f1v:"٧ س ٢٠ د",f2:"نبض الراحة",f2v:"٦١",f3:"تباين النبض",f3v:"٤٨ م.ث",
+     n1:"الرئيسية",n2:"الطعام",n3:"التمرين",n4:"المدرب"}};
+const $=id=>document.getElementById(id),phone=$("phone"),root=document.documentElement;
+function fill(){ // rings fill once from empty
+  [["r1",72],["r2",100],["r3",58],["rr",78]].forEach(([id,p])=>{const e=$(id);e.style.strokeDashoffset=100;requestAnimationFrame(()=>requestAnimationFrame(()=>e.style.strokeDashoffset=100-p))});
+}
+function render(lang){
+  phone.dir=lang==="ar"?"rtl":"ltr";phone.lang=lang;
+  phone.querySelectorAll("[data-t]").forEach(el=>el.textContent=T[lang][el.dataset.t]);
+}
+function bind(id,fn){$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  $(id).querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));fn(b.dataset.v)})}
+bind("sLang",v=>{render(v);fill()});
+bind("sTheme",v=>root.dataset.theme=v);
+bind("sSize",v=>root.style.setProperty("--ts",v));
+render("en");fill();
+</script>
+</body>
+</html>
