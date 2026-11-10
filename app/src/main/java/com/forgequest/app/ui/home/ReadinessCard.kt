@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
@@ -75,14 +74,9 @@ fun ReadinessCard(
     when {
         // Not connected: nothing on Home; Profile › Your body › Fitbit readiness connects it.
         !enabled || state == HealthState.Unavailable -> Unit
-        // Same height as the full card, so Home doesn't jump when the numbers arrive.
-        state == HealthState.Loading -> {
-            FitCard(padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
-                Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = Fit.colors.textSecondary)
-                Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Fit.colors.textSecondary) }
-            }
-            Spacer(Modifier.height(ForgeSpace.Sm))
-        }
+        // Still reading: no card of its own. The workout card already holds the row's place ([ReadinessRowPlaceholder]),
+        // so nothing on Home moves when the numbers arrive.
+        state == HealthState.Loading -> Unit
         state == HealthState.NeedsAccess -> MessageCard(stringResource(R.string.ready_reconnect_body), stringResource(R.string.ready_reconnect), onReconnect)
         state == HealthState.Failed -> MessageCard(stringResource(R.string.ready_failed_body), stringResource(R.string.ready_try_again), onRefresh)
         state is HealthState.Ready -> if (!state.day.hasData) NoDataCard(refreshing, note, onRefresh)
@@ -157,6 +151,25 @@ private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () ->
         OpenFitbitButton()
     }
     Spacer(Modifier.height(ForgeSpace.Sm))
+}
+
+/**
+ * Holds [ReadinessRow]'s place in the workout card while Health Connect is still being read: the same height, an empty
+ * ring and the title. Home decides to show it from the saved "connected" setting, which is known on the first frame.
+ */
+@Composable
+fun ReadinessRowPlaceholder() {
+    val c = Fit.colors
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val w = 5.dp.toPx()
+                drawArc(c.textSecondary.copy(alpha = 0.18f), 0f, 360f, false, androidx.compose.ui.geometry.Offset(w / 2, w / 2), androidx.compose.ui.geometry.Size(size.width - w, size.height - w), style = Stroke(w))
+            }
+        }
+        Spacer(Modifier.width(ForgeSpace.Sm))
+        Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
+    }
 }
 
 /** One slim row at the top of Today's workout card: recovery ring and verdict with the day's advice, and the "I feel great" bolt. */

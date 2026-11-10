@@ -168,6 +168,12 @@ fun HomeScreen(nav: NavHostController) {
     )
     // Good readiness news rides as the first row of Today's workout card; every other state keeps its own card above the calorie card.
     val readyDay = (health as? HealthState.Ready)?.day?.takeIf { it.hasData && !justLog && s.settings.healthEnabled }
+    // The card's shape comes from the saved settings, which are there on the first frame, not from whether the health
+    // data has arrived: with a watch connected the row's place is held while it loads, so the first frames already have
+    // the final layout. With no watch there is no row and no gap.
+    val healthOn = !justLog && s.settings.healthEnabled && s.settings.healthConnected
+    val readinessLoading = healthOn && health == HealthState.Loading
+    val readinessInCard = readyDay != null || readinessLoading
     val todayCard: @Composable () -> Unit = {
         TodayCard(
             day = today,
@@ -178,7 +184,11 @@ fun HomeScreen(nav: NavHostController) {
             excused = s.excusedToday,
             onCantTrain = { tagDay = Dates.today() },
             showCantTrain = !justLog,
-            readiness = readyDay?.let { d -> { ReadinessRow(d, todayFocus, note = refreshNote, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") }) } },
+            readiness = when {
+                readyDay != null -> ({ ReadinessRow(readyDay, todayFocus, note = refreshNote, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") }) })
+                readinessLoading -> ({ ReadinessRowPlaceholder() })
+                else -> null
+            },
             onStart = {
                 scope.launch {
                     vm.startToday(today?.takeIf { !it.day.isRest })
@@ -212,7 +222,7 @@ fun HomeScreen(nav: NavHostController) {
     }.takeIf { !justLog }
     val hasCalorieCard = remember(s, health) { com.forgequest.app.ui.CalorieUi.card(s, health) } != null
     // Readiness only shows once a Fitbit is connected, so it counts as an extra too.
-    val readinessShown = !justLog && s.settings.healthEnabled && health != HealthState.Unavailable
+    val readinessShown = healthOn || (!justLog && s.settings.healthEnabled && health != HealthState.Unavailable && health != HealthState.Loading)
     val extras = listOf(readinessShown, unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs).count { it }
 
     // One screen, no scrolling, at normal text on a common phone (about 412 x 919 dp: 780 dp between the status bar and
@@ -248,7 +258,7 @@ fun HomeScreen(nav: NavHostController) {
             }
             if (!justLog) {
                 StreakCard(
-                    s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY && readyDay == null,
+                    s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY && !readinessInCard,
                     nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge, footer = monthRow,
                 )
                 Spacer(Modifier.height(ForgeSpace.Sm))
