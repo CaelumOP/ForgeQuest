@@ -126,6 +126,7 @@ import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.SectionTitle
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.theme.Fit
@@ -136,6 +137,9 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+
+/** How many logged meals show before "Show all". */
+private const val MEALS_SHOWN = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,6 +168,8 @@ fun FoodScreen(nav: NavHostController) {
     var mealMenu by remember { mutableStateOf(false) }
     var searchFocused by remember { mutableStateOf(false) }
     var showWeek by rememberSaveable { mutableStateOf(false) }
+    var showAllMeals by rememberSaveable(day) { mutableStateOf(false) }
+    val newestMeals = remember(meals) { meals.asReversed() }
     val catalogResults by vm.catalogResults.collectAsState()
     val isToday = day == Dates.today()
     LaunchedEffect(Unit) { vm.onShown() }
@@ -242,6 +248,25 @@ fun FoodScreen(nav: NavHostController) {
             if (geminiMeals.isNotEmpty()) item { GeminiInbox(geminiMeals, onOpen = vm::reviewMeal, onDismiss = { vm.dismissMeal(it) }) }
             snap?.let { s -> item { DayTotals(s, meals) } }
             if (isToday && showWeek) snap?.let { s -> item { WeekCard(s) } }
+            // What is already logged sits right under the totals it adds up to: the latest three, the rest one tap away.
+            item {
+                SectionTitle(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day))
+            }
+            if (meals.isEmpty()) {
+                item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
+            }
+            items(if (showAllMeals) newestMeals else newestMeals.take(MEALS_SHOWN), key = { "m${it.id}" }) { meal ->
+                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {
+                    MealRow(meal, onAgain = { vm.logAgain(meal) }, onDelete = { vm.deleteMeal(meal) })
+                }
+            }
+            if (meals.size > MEALS_SHOWN) {
+                item {
+                    TextButton(onClick = { showAllMeals = !showAllMeals }) {
+                        Text(if (showAllMeals) stringResource(R.string.food_show_less) else stringResource(R.string.food_show_all, meals.size), color = c.teal)
+                    }
+                }
+            }
             item {
                 com.forgequest.app.ui.components.CoachMarkBox("coach_food", R.string.coach_food_t, if (aiOn) R.string.coach_food_b else R.string.coach_food_b_noai, below = true) {
                     SearchField(
@@ -342,19 +367,6 @@ fun FoodScreen(nav: NavHostController) {
                             onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
                         )
                     }
-                }
-            }
-            item {
-                Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                }
-            }
-            if (meals.isEmpty()) {
-                item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
-            }
-            items(meals, key = { "m${it.id}" }) { meal ->
-                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {
-                    MealRow(meal, onAgain = { vm.logAgain(meal) }, onDelete = { vm.deleteMeal(meal) })
                 }
             }
         }

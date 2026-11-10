@@ -317,6 +317,8 @@
     <string name="food_meal_chip">الوجبة: %1$s</string>
     <string name="food_logged_today">سُجّل اليوم</string>
     <string name="food_logged_that_day">سُجّل في ذلك اليوم</string>
+    <string name="food_show_all">عرض الكل (%1$d)</string>
+    <string name="food_show_less">عرض أقل</string>
     <string name="food_quick_log">تسجيل سريع</string>
     <string name="food_estimate">قدِّر السعرات من الاسم</string>
     <string name="food_estimating">جارٍ التقدير…</string>

@@ -276,6 +276,8 @@
     <string name="food_meal_chip">Meal: %1$s</string>
     <string name="food_logged_today">Logged today</string>
     <string name="food_logged_that_day">Logged that day</string>
+    <string name="food_show_all">Show all (%1$d)</string>
+    <string name="food_show_less">Show less</string>
     <string name="food_quick_log">Quick log</string>
     <string name="food_estimate">Estimate calories from the name</string>
     <string name="food_estimating">Estimating…</string>
