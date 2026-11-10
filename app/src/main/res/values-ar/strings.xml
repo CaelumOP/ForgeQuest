@@ -848,6 +848,8 @@
     <string name="plan_use_this">استخدام هذه الخطة</string>
     <string name="notif_rest_channel">مؤقت الراحة</string>
     <string name="notif_rest_channel_desc">عدّ تنازلي بين المجموعات في أثناء التمرين</string>
+    <string name="notif_rest_done_channel">تنبيه انتهاء الراحة</string>
+    <string name="notif_rest_done_channel_desc">صوت واهتزاز عند انتهاء الراحة بين المجموعات</string>
     <string name="notif_reminder_channel">تذكيرات التمرين</string>
     <string name="notif_reminder_channel_desc">تنبيه في أيام التمرين المخطط لها</string>
     <string name="notif_next">التالي: %1$s</string>
