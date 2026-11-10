@@ -62,6 +62,18 @@ class ExerciseTiersTest {
         assertTrue(obliques.others.any { it.exercise.id == "crunch" })
     }
 
+    @Test fun smallMusclesShowWithTheirBiggerNeighbour() {
+        assertEquals(listOf(Muscle.CALVES), MuscleExercises.COMPANIONS[Muscle.TIBIALIS])
+        assertEquals(listOf(Muscle.BICEPS), MuscleExercises.COMPANIONS[Muscle.FOREARMS])
+        assertEquals(listOf(Muscle.UPPER_BACK), MuscleExercises.COMPANIONS[Muscle.TRAPS])
+        // The shin list now carries calf work too, and still leads with the muscle that was tapped.
+        val shins = MuscleExercises.list(Muscle.TIBIALIS, all, emptySet(), gym)
+        assertTrue(shins.others.any { it.exercise.id == "calf_raise" })
+        assertTrue(shins.others.any { it.exercise.id == "tibialis_raise" })
+        // A muscle with no companion is unchanged.
+        assertNull(MuscleExercises.COMPANIONS[Muscle.CHEST])
+    }
+
     @Test fun replaceOrderPutsTheSameMovementFirst() {
         val order = MuscleExercises.replaceOrder(ex("push_up"), listOf(ex("squat"), ex("knee_push_up"), ex("push_up")))
         assertEquals(listOf("knee_push_up", "squat"), order.map { it.first.id })
