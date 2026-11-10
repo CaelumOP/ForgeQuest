@@ -1,6 +1,6 @@
 {
-  "versionCode": 34,
-  "versionName": "3.0.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.0.0/ForgeQuest-v3.0.0.apk",
-  "notes": "• ForgeQuest now coaches without AI: the finish screen, reminders, Home and the new Progress tab point out what is worth noticing from your own training.\n• One record per exercise, and a finish screen shaped by the kind of day you had.\n• 135 exercises and 19 stretches, each with form cues; 6 more starter plans and a lighter week every 4th week.\n• 15 new badges, a calmer Home with today's workout up top, and barcode scanning in Food.\n• AI is optional: use the Gemini app (recommended) or your own key in Settings. Groq and the weekly check-in are gone."
+  "versionCode": 35,
+  "versionName": "3.1.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.1.0/ForgeQuest-v3.1.0.apk",
+  "notes": "• Home now fits on one screen: no scrolling to see your day.\n• Today's workout sits at the bottom, right by your thumb.\n• Your readiness verdict now leads the workout card; sleep and strain are one tap away.\n• Your streak and this month's progress share one card."
 }
