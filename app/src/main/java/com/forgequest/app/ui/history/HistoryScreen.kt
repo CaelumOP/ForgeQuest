@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
@@ -79,7 +78,6 @@ import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarResult
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.components.CardShape
 import com.forgequest.app.ui.components.SwipeToDelete
@@ -104,7 +102,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt

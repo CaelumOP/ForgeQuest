@@ -9,7 +9,6 @@ import com.forgequest.app.domain.BadgeCategory
 import com.forgequest.app.domain.BadgeDef
 import com.forgequest.app.domain.DayAdvice
 import com.forgequest.app.domain.DayTag
-import com.forgequest.app.domain.HEADLINE_VARIANTS
 import com.forgequest.app.domain.InsightKind
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.NutritionGoal

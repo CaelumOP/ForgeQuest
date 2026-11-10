@@ -1,7 +1,6 @@
 package com.forgequest.app.ui.coach
 
 import com.forgequest.app.ui.theme.ForgeShape
-import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.pluralStringResource
@@ -16,9 +15,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.forgequest.app.ui.components.FitCard
-import com.forgequest.app.ui.localLabel
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,13 +48,11 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -98,13 +92,11 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MarkdownText
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.TonalPill
-import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.PlanPreviewSheet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch

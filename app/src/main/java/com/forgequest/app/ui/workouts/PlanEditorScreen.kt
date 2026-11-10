@@ -30,8 +30,6 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Description
@@ -107,7 +105,6 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
-import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.UndoSnackbarEffect
@@ -122,7 +119,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)

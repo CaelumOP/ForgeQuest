@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -115,7 +114,6 @@ import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.SerifFont
 import androidx.compose.foundation.layout.widthIn
-import com.forgequest.app.ui.theme.NumberFont
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import com.forgequest.app.data.health.HealthState
