@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The rest timer's "rest is over" alarm. Refused by default on Android 14+; the app then uses an inexact alarm. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Check for updates: install the newer APK downloaded from GitHub -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Health Connect (Fitbit / Google Health data), read only -->
@@ -72,6 +74,9 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- Fires when a rest between sets ends, so the alert arrives with the screen off or the app closed -->
+        <receiver android:name=".data.notify.RestAlarmReceiver" android:exported="false" />
 
         <activity-alias
             android:name="ViewPermissionUsageActivity"

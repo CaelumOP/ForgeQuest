@@ -749,6 +749,9 @@
     <string name="notif_rest_channel_desc">Countdown between sets while a workout is open</string>
     <string name="notif_rest_done_channel">Rest over alert</string>
     <string name="notif_rest_done_channel_desc">Sound and vibration when the rest between sets ends</string>
+    <string name="rest_exact_title">Get the rest alert on time</string>
+    <string name="rest_exact_body">Allow alarms for ForgeQuest so the rest-over alert arrives on time when the screen is off. Without it, the alert can be a little late.</string>
+    <string name="rest_exact_open">Open settings</string>
     <string name="notif_reminder_channel">Workout reminders</string>
     <string name="notif_reminder_channel_desc">A nudge on planned training days</string>
     <string name="notif_next">Next: %1$s</string>

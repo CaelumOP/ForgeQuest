@@ -12,6 +12,7 @@ import com.forgequest.app.data.backup.BackupRepository
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.notify.Notifier
+import com.forgequest.app.data.notify.RestAlarms
 import com.forgequest.app.data.notify.RestAlert
 import com.forgequest.app.data.notify.RestChime
 import com.forgequest.app.data.prefs.SettingsRepository
@@ -47,7 +48,9 @@ class AppContainer(context: Context) {
     val haptics = Haptics(context)
     val notifier = Notifier(context)
     private val restChime = RestChime(appContext)
-    val restAlert = RestAlert { next, onScreen ->
+    private val restStore = appContext.getSharedPreferences(RestAlert.PREFS, Context.MODE_PRIVATE)
+    val restAlarms = RestAlarms(appContext, restStore)
+    val restAlert = RestAlert(restStore, restAlarms) { next, onScreen ->
         // With notifications refused there is nothing to post, so the app makes the noise itself wherever it is.
         if (onScreen || !notifier.canPost()) {
             notifier.cancelRest()

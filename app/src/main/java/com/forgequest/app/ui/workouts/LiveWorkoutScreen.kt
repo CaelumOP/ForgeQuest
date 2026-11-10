@@ -343,6 +343,23 @@ fun LiveWorkoutScreen(nav: NavHostController) {
         hold?.let { HoldOverlay(it, now, onStop = vm::stopHold, onCancel = vm::cancelHold) }
     }
 
+    val offerExactAlarm by vm.offerExactAlarm.collectAsState()
+    if (offerExactAlarm) {
+        AlertDialog(
+            onDismissRequest = { vm.answerExactAlarm() },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.rest_exact_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.rest_exact_body), color = c.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.answerExactAlarm()
+                    context.container.restAlarms.exactSettingsIntent()?.let { runCatching { context.startActivity(it) } }
+                }) { Text(stringResource(R.string.rest_exact_open), color = c.teal) }
+            },
+            dismissButton = { TextButton(onClick = { vm.answerExactAlarm() }) { Text(stringResource(R.string.cal_not_now), color = c.textSecondary) } },
+        )
+    }
+
     if (confirmFinish) {
         val left = sets.count { !it.done }
         AlertDialog(

@@ -850,6 +850,9 @@
     <string name="notif_rest_channel_desc">عدّ تنازلي بين المجموعات في أثناء التمرين</string>
     <string name="notif_rest_done_channel">تنبيه انتهاء الراحة</string>
     <string name="notif_rest_done_channel_desc">صوت واهتزاز عند انتهاء الراحة بين المجموعات</string>
+    <string name="rest_exact_title">ليصلك تنبيه الراحة في وقته</string>
+    <string name="rest_exact_body">اسمح لتطبيق ForgeQuest بضبط المنبّهات ليصلك تنبيه انتهاء الراحة في وقته والشاشة مطفأة. من دون ذلك قد يتأخر التنبيه قليلًا.</string>
+    <string name="rest_exact_open">فتح الإعدادات</string>
     <string name="notif_reminder_channel">تذكيرات التمرين</string>
     <string name="notif_reminder_channel_desc">تنبيه في أيام التمرين المخطط لها</string>
     <string name="notif_next">التالي: %1$s</string>

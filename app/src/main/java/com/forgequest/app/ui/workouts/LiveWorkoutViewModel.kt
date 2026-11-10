@@ -250,17 +250,28 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val endsAt = System.currentTimeMillis() + seconds * 1000L
         rest.value = RestTimer(seconds, endsAt, nextExercise)
         app.notifier.showRest(endsAt, nextExercise)
+        app.restAlert.start(endsAt, nextExercise)
+        if (app.restAlarms.shouldOfferExact()) offerExactAlarm.value = true
+    }
+
+    /** Asked once: the system refuses exact alarms until the person allows them, and without them the alert can be late. */
+    val offerExactAlarm = MutableStateFlow(false)
+
+    fun answerExactAlarm() {
+        offerExactAlarm.value = false
+        app.restAlarms.offerAnswered()
     }
 
     fun addRest(seconds: Int) {
         rest.value = rest.value?.let { it.copy(totalSeconds = (it.totalSeconds + seconds).coerceAtLeast(15), endsAt = it.endsAt + seconds * 1000L) }
-        rest.value?.let { app.notifier.showRest(it.endsAt, it.nextExercise) }
+        rest.value?.let { app.notifier.showRest(it.endsAt, it.nextExercise); app.restAlert.start(it.endsAt, it.nextExercise) }
         app.haptics.tick()
     }
 
     fun skipRest() {
         rest.value = null
         app.notifier.cancelRest()
+        app.restAlert.cancel()
     }
 
     // ------------------------------------------------------------ Hold timer
@@ -428,6 +439,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val s = currentSession ?: return onDone()
         rest.value = null
         app.notifier.cancelRest()
+        app.restAlert.cancel()
         viewModelScope.launch {
             repo.discardSession(s.id)
             onDone()
@@ -443,6 +455,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         finishing.value = true
         rest.value = null
         app.notifier.cancelRest()
+        app.restAlert.cancel()
         viewModelScope.launch {
             try {
                 val beforeSnap = app.progress.freshSnapshot()
