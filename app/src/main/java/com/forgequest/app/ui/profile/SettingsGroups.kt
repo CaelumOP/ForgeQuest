@@ -563,11 +563,7 @@ internal fun CoachSettingsGroup(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncMeals)
                     TonalPill(stringResource(R.string.meals_copy_gem), onClick = {
-                        // The person's own hand size goes in as the ruler, or the line goes when it isn't set.
-                        val hand = if (settings.handLengthCm > 0f) "MY HAND: length ${settings.handLengthCm} cm, palm width ${settings.palmWidthCm} cm." else ""
-                        val prompt = context.resources.openRawResource(R.raw.food_gem_prompt).bufferedReader().use { it.readText() }
-                            .replace(Regex("MY HAND:[^\n]*\n"), if (hand.isBlank()) "" else hand + " When my hand is in the photo, use it as an exact ruler.\n")
-                        clipboard.copy(prompt)
+                        clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context, settings.handLengthCm, settings.palmWidthCm))
                         context.toast(context.getString(R.string.bridge_prompt_copied))
                     })
                 }

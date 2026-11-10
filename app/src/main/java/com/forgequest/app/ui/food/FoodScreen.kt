@@ -51,6 +51,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
@@ -154,6 +156,8 @@ fun FoodScreen(nav: NavHostController) {
     val message by vm.message.collectAsState()
     val snackbar = LocalSnackbar.current
     val c = Fit.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
     var editing by remember { mutableStateOf<FoodEntity?>(null) }
     var photoFor by remember { mutableStateOf<FoodEntity?>(null) }
 
@@ -238,6 +242,21 @@ fun FoodScreen(nav: NavHostController) {
                                 text = { Text(stringResource(R.string.food_quick_log), color = c.textPrimary) },
                                 leadingIcon = { Icon(Icons.Rounded.Restaurant, contentDescription = null, tint = c.textSecondary) },
                                 onClick = { moreMenu = false; quickLog = true },
+                            )
+                            // The Gemini app round trip, open with the coach off: copy the skill once, then paste each meal answer.
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.food_paste_meal), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.ContentPaste, contentDescription = null, tint = c.textSecondary) },
+                                onClick = { moreMenu = false; clipboard.readThen { vm.pasteMeal(it) } },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.food_copy_skill), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = c.textSecondary) },
+                                onClick = {
+                                    moreMenu = false
+                                    clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context, snap?.settings?.handLengthCm ?: 0f, snap?.settings?.palmWidthCm ?: 0f))
+                                    vm.message.value = context.getString(R.string.skill_copied)
+                                },
                             )
                             if (isToday) DropdownMenuItem(
                                 text = { Text(stringResource(R.string.food_last_7_days), color = c.textPrimary) },

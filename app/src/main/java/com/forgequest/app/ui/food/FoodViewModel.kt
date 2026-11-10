@@ -124,6 +124,15 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
 
     fun reviewMeal(meal: GeminiMeal) { app.meals.review.value = meal }
 
+    /** "Paste meal reply" in the Food menu: Gemini's meal answer from the clipboard, opened for review. Needs no API key. */
+    fun pasteMeal(text: String?) = viewModelScope.launch {
+        val meal = text?.let { com.forgequest.app.data.bridge.MealFormat.parseOne(it) }
+        if (meal == null) { message.value = app.str(R.string.meals_paste_wrong); return@launch }
+        if (app.meals.offer(meal) == com.forgequest.app.data.bridge.MealInbox.Offer.ALREADY_LOGGED) { message.value = app.str(R.string.meals_already_logged); return@launch }
+        // offer() gives id-less meals an id; review the stored copy so logging clears it from the inbox.
+        app.meals.review.value = app.meals.stored(meal)
+    }
+
     fun dismissMeal(meal: GeminiMeal) = viewModelScope.launch { app.meals.markHandled(meal.mealId) }
 
     private companion object {

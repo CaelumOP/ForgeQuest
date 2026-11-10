@@ -1245,6 +1245,10 @@
     <string name="meals_paste_wrong">Copy the Gem\'s whole answer first, then tap Paste.</string>
     <string name="meals_share_wrong">That doesn\'t look like a ForgeQuest meal.</string>
     <string name="meals_already_logged">This meal is already logged.</string>
+    <string name="food_paste_meal">Paste meal reply</string>
+    <string name="food_copy_skill">Copy Food AI Skill</string>
+    <string name="coach_copy_skill">Copy Coach Skill</string>
+    <string name="skill_copied">Skill copied. Paste it into the instructions of a Gem in the Gemini app.</string>
     <string name="meals_share_label">Log meal in ForgeQuest</string>
     <string name="meals_inbox_title">From Gemini (%d)</string>
     <string name="meals_inbox_hint">Tap a meal to check it and log it.</string>

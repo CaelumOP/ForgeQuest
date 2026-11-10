@@ -198,11 +198,6 @@ fun CoachScreen(nav: NavHostController) {
                 }
             }
         }
-        if (!aiOn) {
-            // The digest moved to Progress; the chat only keeps the way to the switch.
-            TextButton(onClick = { nav.navigate(Routes.settingsGroup("coach")) }, modifier = Modifier.padding(16.dp)) { Text(stringResource(R.string.coach_turn_on_ai), color = c.teal) }
-            return@Column
-        }
         // The Gemini app round trip, one tap each: send the data with a question, paste the reply back.
         val ctx = androidx.compose.ui.platform.LocalContext.current
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -227,6 +222,20 @@ fun CoachScreen(nav: NavHostController) {
                     ctx.toast(ctx.getString(R.string.paste_gemini_none))
                 }
             }, icon = Icons.Rounded.ContentPaste, modifier = Modifier.weight(1f))
+        }
+        // Once per Gem: the instructions that make Gemini answer in the format "Paste reply" reads.
+        val skillClipboard = com.forgequest.app.ui.components.rememberTextClipboard()
+        TextButton(
+            onClick = {
+                skillClipboard.copy(com.forgequest.app.ui.components.SkillPrompts.coach(ctx))
+                ctx.toast(ctx.getString(R.string.skill_copied))
+            },
+            modifier = Modifier.padding(horizontal = 8.dp),
+        ) { Text(stringResource(R.string.coach_copy_skill), color = c.teal) }
+        // Everything above works through the Gemini app, with no API key; only the chat below needs the coach on.
+        if (!aiOn) {
+            TextButton(onClick = { nav.navigate(Routes.settingsGroup("coach")) }, modifier = Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.coach_turn_on_ai), color = c.teal) }
+            return@Column
         }
         // Out of the way while typing, so a tap near Send never sends a suggestion instead.
         val showChips = messages.isNotEmpty() && hasKey && !sending && input.isBlank()

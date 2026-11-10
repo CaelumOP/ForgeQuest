@@ -1397,6 +1397,10 @@
     <string name="meals_paste_wrong">انسخ إجابة الـ Gem كاملة أولًا، ثم اضغط على «لصق».</string>
     <string name="meals_share_wrong">لا يبدو هذا وجبة بتنسيق ForgeQuest.</string>
     <string name="meals_already_logged">هذه الوجبة مسجَّلة من قبل.</string>
+    <string name="food_paste_meal">لصق ردّ الوجبة</string>
+    <string name="food_copy_skill">نسخ مهارة الطعام للذكاء الاصطناعي</string>
+    <string name="coach_copy_skill">نسخ مهارة المدرب</string>
+    <string name="skill_copied">نُسخت المهارة. الصقها في تعليمات Gem داخل تطبيق Gemini.</string>
     <string name="meals_share_label">تسجيل الوجبة في ForgeQuest</string>
     <string name="meals_inbox_title">من Gemini (%d)</string>
     <string name="meals_inbox_hint">اضغط على وجبة لمراجعتها وتسجيلها.</string>
