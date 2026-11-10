@@ -84,7 +84,6 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     val message by vm.message.collectAsState()
     val busy by vm.busy.collectAsState()
     val consent by vm.consent.collectAsState()
-    val docPreview by vm.docPreview.collectAsState()
     val restorePreview by vm.restorePreview.collectAsState()
     val shareUri by vm.shareUri.collectAsState()
     val snackbar = LocalSnackbar.current
@@ -279,16 +278,5 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     busy?.let {
         AlertDialog(onDismissRequest = {}, containerColor = c.card, confirmButton = {}, title = { Text(it, color = c.textPrimary) },
             text = { androidx.compose.material3.LinearProgressIndicator(color = c.teal, trackColor = c.tealTrack, modifier = Modifier.fillMaxWidth()) })
-    }
-
-    docPreview?.let { doc ->
-        PlanPreviewSheet(
-            draft = doc.plan,
-            exercises = s.exercises,
-            userEquipment = configuredEq,
-            onAdapt = { vm.adaptDocPlan(s.exercises, configuredEq) },
-            onApply = vm::applyDoc,
-            onDismiss = { vm.docPreview.value = null },
-        )
     }
 }

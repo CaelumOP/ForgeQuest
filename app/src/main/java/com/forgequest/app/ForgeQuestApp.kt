@@ -41,7 +41,7 @@ class AppContainer(context: Context) {
     val health = com.forgequest.app.data.health.HealthRepository(context, settings, db)
     val coach = CoachRepository(db, settings, gemini, models, progress, workouts, health)
     val backup = BackupRepository(context, db, settings, workouts)
-    val drive = DriveSync(context, settings, workouts, coach, backup, http)
+    val drive = DriveSync(context, settings, backup, http)
     val updates = com.forgequest.app.data.update.UpdateChecker(context, http)
     val updateNotice = com.forgequest.app.data.update.UpdateNotice(context, updates, appScope)
     val bridge = com.forgequest.app.data.bridge.GeminiBridge(context, db, coach, health)

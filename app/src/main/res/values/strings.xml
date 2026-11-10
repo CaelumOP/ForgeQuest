@@ -352,7 +352,6 @@
     <string name="drive_err_not_configured">Google Drive isn\'t set up for this copy of the app yet.</string>
     <string name="drive_err_needs_consent">Connect Google Drive in Profile first.</string>
     <string name="drive_err_offline">No internet connection.</string>
-    <string name="drive_err_no_doc">Created \"ForgeQuest plan\" in your Drive. Write or paste your weekly plan there, then import again.</string>
     <string name="drive_err_no_backup">No backup found in your Google Drive yet.</string>
     <string name="drive_err_http">Google Drive returned an error (%1$d). Try again later.</string>
     <string name="scan_portion_small">Small</string>
@@ -471,8 +470,6 @@
     <string name="backup_restoring">Restoring…</string>
     <string name="backup_restored_from">Restored from %1$s</string>
     <string name="backup_restore_failed">Couldn\'t restore that backup.</string>
-    <string name="drive_reading_doc">Reading your ForgeQuest plan doc…</string>
-    <string name="drive_imported">Imported %1$s</string>
     <string name="backup_share_subject">ForgeQuest backup</string>
     <string name="backup_share_title">Save your backup</string>
     <string name="profile_setup_title">Turn on the coach and meal scanning</string>
@@ -536,12 +533,8 @@
     <string name="drive_backed_up_at">%1$s · backed up %2$s</string>
     <string name="drive_connect">Connect Google Drive</string>
     <string name="drive_back_up_now">Back up now</string>
-    <string name="drive_import_doc">Import plan from Docs</string>
-    <string name="drive_import_doc_first">Import plan from Docs…</string>
-    <string name="drive_stop_docs">Stop reading Docs</string>
     <string name="action_restore">Restore</string>
     <string name="drive_disconnect">Disconnect</string>
-    <string name="drive_docs_on_hint">Backs up daily. The \"ForgeQuest plan\" Doc is checked daily too; changes show in the Coach tab.</string>
     <string name="drive_docs_off_hint">Backs up daily on its own. The app only sees its own backup and the Docs it creates, never your other files.</string>
     <string name="profile_credits">Credits</string>
     <string name="profile_credits_body">Foundation plan by Hemo Calisthenics. Anatomy art from react-native-body-highlighter (MIT).</string>
@@ -721,7 +714,6 @@
     <string name="plan_ready_made">Switch to a ready-made plan</string>
     <string name="plan_previous">Previous plans</string>
     <string name="plan_paste">Paste a plan</string>
-    <string name="plan_import_docs">Import from Google Docs</string>
     <string name="cd_move_day">Move to another day</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="one">circuit, %1$d round</item>
@@ -768,7 +760,6 @@
         <item quantity="one">%1$d exercise on the plan. Tap to start.</item>
         <item quantity="other">%1$d exercises on the plan. Tap to start.</item>
     </plurals>
-    <string name="drive_doc_changed">Your Google Doc **%1$s** changed. Here\'s the new week it describes. Preview it, and apply it when you\'re ready.</string>
     <string name="quick_workout_title">Quick workout</string>
     <string name="rx_reps_n">%1$d reps</string>
     <string name="unit_g">g</string>
@@ -924,7 +915,6 @@
     <string name="drive_signin_cancelled">Google sign-in didn\'t finish, so nothing was connected. Try again when you\'re ready.</string>
     <string name="hc_check_ok">Health Connect works: %1$d of %2$d data types have readings (%3$s).</string>
     <string name="hc_check_empty">Health Connect works, but nothing was recorded in the last 14 days. Check that Google Health shares with Health Connect.</string>
-    <string name="drive_plan_doc_template">Write or paste your weekly plan below this line: days and exercises, or plan JSON. Then tap Import plan from Docs.\n\n</string>
     <string name="ready_tab_day">Day</string>
     <string name="ready_tab_week">Week</string>
     <string name="ready_about">About %1$s</string>
@@ -1000,7 +990,6 @@
     <string name="plan_gemini_info">Copies a prompt for Gemini. Paste it there with YouTube links or a description, then tap Paste Gemini\'s reply here.</string>
     <string name="plan_ready_made_info">Plans that come with the app, beginner to advanced. Picking one replaces your plan, which stays under Previous plans.</string>
     <string name="plan_previous_info">Plans you used before. Switch back to one at any time; your workout history is kept.</string>
-    <string name="plan_docs_info">Loads a plan from the \"ForgeQuest plan\" Google Doc in your Drive. Opens Profile, where Google Drive is connected.</string>
     <string name="cd_what_is_this">What is %1$s?</string>
     <string name="goal_title">Your goal</string>
     <string name="goal_cut">Lose fat</string>

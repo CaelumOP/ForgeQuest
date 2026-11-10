@@ -401,7 +401,6 @@
     <string name="drive_err_not_configured">لم يُهيَّأ Google Drive لهذه النسخة من التطبيق بعد.</string>
     <string name="drive_err_needs_consent">اربط Google Drive من الملف الشخصي أولًا.</string>
     <string name="drive_err_offline">لا يوجد اتصال بالإنترنت.</string>
-    <string name="drive_err_no_doc">أُنشئ المستند «ForgeQuest plan» في Google Drive. افتحه في Google Docs، واكتب خطتك الأسبوعية أو الصقها، ثم أعد الاستيراد.</string>
     <string name="drive_err_no_backup">لا توجد نسخة احتياطية في Google Drive بعد.</string>
     <string name="drive_err_http">أعاد Google Drive خطأً (%1$d). أعد المحاولة لاحقًا.</string>
     <string name="scan_portion_small">صغيرة</string>
@@ -540,8 +539,6 @@
     <string name="backup_restoring">جارٍ الاسترجاع…</string>
     <string name="backup_restored_from">استُرجعت البيانات من %1$s</string>
     <string name="backup_restore_failed">تعذّر استرجاع هذه النسخة.</string>
-    <string name="drive_reading_doc">جارٍ قراءة مستند «ForgeQuest plan»…</string>
-    <string name="drive_imported">استُورد %1$s</string>
     <string name="backup_share_subject">نسخة احتياطية من ForgeQuest</string>
     <string name="backup_share_title">حفظ نسختك الاحتياطية</string>
     <string name="profile_setup_title">تفعيل المدرب وتصوير الوجبات</string>
@@ -605,12 +602,8 @@
     <string name="drive_backed_up_at">%1$s · آخر نسخة %2$s</string>
     <string name="drive_connect">ربط Google Drive</string>
     <string name="drive_back_up_now">النسخ الاحتياطي الآن</string>
-    <string name="drive_import_doc">استيراد خطة من Docs</string>
-    <string name="drive_import_doc_first">استيراد خطة من Docs…</string>
-    <string name="drive_stop_docs">إيقاف قراءة Docs</string>
     <string name="action_restore">استرجاع</string>
     <string name="drive_disconnect">قطع الاتصال</string>
-    <string name="drive_docs_on_hint">يأخذ نسخة احتياطية يوميًا تلقائيًا، ويفحص مستند «ForgeQuest plan» يوميًا أيضًا؛ فتظهر التغييرات في المدرب لتطبّقها.</string>
     <string name="drive_docs_off_hint">يأخذ نسخة احتياطية يوميًا. لا يرى التطبيق إلا نسخته والمستندات التي ينشئها.</string>
     <string name="profile_credits">شكر وتقدير</string>
     <string name="profile_credits_body">الخطة الأساسي من Hemo Calisthenics، ورسوم التشريح من react-native-body-highlighter (MIT).</string>
@@ -818,7 +811,6 @@
     <string name="plan_ready_made">التحوّل إلى خطة جاهزة</string>
     <string name="plan_previous">الخطط السابقة</string>
     <string name="plan_paste">لصق خطة</string>
-    <string name="plan_import_docs">الاستيراد من Google Docs</string>
     <string name="cd_move_day">النقل إلى يوم آخر</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="zero">تمرين دائري، 0 جولات</item>
@@ -873,7 +865,6 @@
         <item quantity="many">%1$d تمرينًا في الخطة. اضغط للبدء.</item>
         <item quantity="other">%1$d تمرين في الخطة. اضغط للبدء.</item>
     </plurals>
-    <string name="drive_doc_changed">تغيّر مستندك ‏**%1$s** في Google Docs. هذا هو الأسبوع الجديد الوارد فيه؛ استعرضه وطبّقه متى كنت مستعدًا.</string>
     <string name="quick_workout_title">تمرين سريع</string>
     <string name="rx_reps_n">%1$d تكرار</string>
     <string name="unit_g">غ</string>
@@ -1033,9 +1024,6 @@
     <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول بحساب Google، فلم يُربط شيء. حاول مجددًا متى شئت.</string>
     <string name="hc_check_ok">يعمل Health Connect: %1$d من %2$d أنواع بيانات فيها قراءات (%3$s).</string>
     <string name="hc_check_empty">يعمل Health Connect، لكن لم يُسجَّل شيء في آخر 14 يومًا. تأكّد أن Google Health يشارك البيانات مع Health Connect.</string>
-    <string name="drive_plan_doc_template">اكتب خطتك الأسبوعية أو الصقها تحت هذا السطر: قائمة بالأيام والتمارين، أو JSON للخطة. ثم اضغط «استيراد خطة من Docs».
-
-</string>
     <string name="ready_tab_day">اليوم</string>
     <string name="ready_tab_week">الأسبوع</string>
     <string name="ready_about">عن %1$s</string>
@@ -1115,7 +1103,6 @@
     <string name="plan_gemini_info">ينسخ طلبًا لتطبيق Gemini. الصقه هناك مع روابط يوتيوب أو وصف، فيسألك عن معدّاتك ثم يردّ بخطة. ثم اضغط «لصق ردّ Gemini».</string>
     <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
     <string name="plan_previous_info">خطط استخدمتها من قبل. يمكنك العودة إلى أيّ منها في أي وقت، ويبقى سجل تمارينك كما هو.</string>
-    <string name="plan_docs_info">يحمّل خطة من مستند Google «ForgeQuest plan» في Drive. يفتح الملف الشخصي حيث يُربط Google Drive.</string>
     <string name="cd_what_is_this">ما هو %1$s؟</string>
     <string name="goal_title">هدفك</string>
     <string name="goal_cut">خفض الوزن</string>

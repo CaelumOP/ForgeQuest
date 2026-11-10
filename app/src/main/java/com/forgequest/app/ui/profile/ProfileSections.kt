@@ -752,15 +752,12 @@ internal fun BackupSettingsGroup(
             } else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(stringResource(R.string.drive_back_up_now), onClick = vm::backupNow)
-                    TonalPill(if (settings.driveDocsEnabled) stringResource(R.string.drive_import_doc) else stringResource(R.string.drive_import_doc_first), onClick = vm::importDoc)
-                    if (settings.driveDocsEnabled) TonalPill(stringResource(R.string.drive_stop_docs), onClick = vm::disableDocs, tint = c.textSecondary)
                     TonalPill(stringResource(R.string.action_restore), onClick = vm::restore)
                     TonalPill(stringResource(R.string.drive_disconnect), onClick = vm::disconnectDrive, tint = c.textSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (settings.driveDocsEnabled) stringResource(R.string.drive_docs_on_hint)
-                    else stringResource(R.string.drive_docs_off_hint),
+                    stringResource(R.string.drive_docs_off_hint),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
             }

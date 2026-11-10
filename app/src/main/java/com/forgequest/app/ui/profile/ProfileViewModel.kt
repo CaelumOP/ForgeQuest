@@ -37,7 +37,6 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val message = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow<String?>(null)
     val consent = MutableStateFlow<android.app.PendingIntent?>(null)
-    val docPreview = MutableStateFlow<DriveSync.DocPlan?>(null)
 
     /** A backup waiting for the person to confirm: where it came from, and its contents. */
     data class RestorePreview(@androidx.annotation.StringRes val source: Int, val file: BackupFile)
@@ -344,28 +343,5 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun importDoc() = withDrive(app.str(R.string.drive_reading_doc)) { token ->
-        if (app.settings.apiKey.value.isBlank()) throw AiError.MissingKey
-        app.settings.update { it.copy(driveDocsEnabled = true) }
-        docPreview.value = app.drive.fetchPlanDoc(token, 0)
-    }
-
-    fun disableDocs() = viewModelScope.launch { app.settings.update { it.copy(driveDocsEnabled = false) } }
-
-    fun adaptDocPlan(exercises: Map<String, ExerciseEntity>, userEquipment: Set<Equipment>) {
-        val doc = docPreview.value ?: return
-        val (adapted, _) = ExerciseSwapEngine.adaptPlanToEquipment(doc.plan, exercises, userEquipment)
-        docPreview.value = doc.copy(plan = adapted)
-    }
-
-    fun applyDoc() {
-        val doc = docPreview.value ?: return
-        docPreview.value = null
-        viewModelScope.launch {
-            app.drive.applyDocPlan(doc)
-            message.value = app.str(R.string.drive_imported, doc.docName)
-        }
-    }
-
-    fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "", driveDocsEnabled = false) } }
+    fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "") } }
 }

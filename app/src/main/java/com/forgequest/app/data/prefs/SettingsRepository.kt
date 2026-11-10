@@ -71,9 +71,6 @@ data class Settings(
     val bridgeIssues: String = "",
     /** Meals from the owner's "ForgeQuest Food" Gem, read from a Drive Doc into the Food tab inbox. */
     val geminiMealsEnabled: Boolean = false,
-    val lastDocImportModified: Long = 0,
-    /** The person separately allowed reading their Drive to import a "Workout Plan" doc. */
-    val driveDocsEnabled: Boolean = false,
     /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
     val coachNotes: String = "",
     val theme: String = "system",
@@ -157,7 +154,6 @@ class SettingsRepository(private val context: Context) {
         val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
-        val lastDocImport = longPreferencesKey("last_doc_import_modified")
         val bridgeEnabled = booleanPreferencesKey("bridge_enabled")
         val bridgeDataId = stringPreferencesKey("bridge_data_id")
         val bridgeLastWrite = longPreferencesKey("bridge_last_write")
@@ -167,7 +163,6 @@ class SettingsRepository(private val context: Context) {
         val bridgeIssues = stringPreferencesKey("bridge_issues")
         val geminiMeals = booleanPreferencesKey("gemini_meals_enabled")
         val coachNotes = stringPreferencesKey("coach_notes")
-        val driveDocs = booleanPreferencesKey("drive_docs_enabled")
         val theme = stringPreferencesKey("theme")
         val insightHistory = stringPreferencesKey("insight_history")
         val badgesV2Backfill = booleanPreferencesKey("badges_v2_backfill")
@@ -235,9 +230,7 @@ class SettingsRepository(private val context: Context) {
             bridgeToday = this[K.bridgeToday] ?: "",
             bridgeIssues = this[K.bridgeIssues] ?: "",
             geminiMealsEnabled = this[K.geminiMeals] ?: false,
-            lastDocImportModified = this[K.lastDocImport] ?: 0,
             coachNotes = this[K.coachNotes] ?: "",
-            driveDocsEnabled = this[K.driveDocs] ?: false,
             theme = this[K.theme] ?: "system",
             insightHistory = this[K.insightHistory] ?: "",
             badgesV2Backfill = this[K.badgesV2Backfill] ?: false,
@@ -297,9 +290,7 @@ class SettingsRepository(private val context: Context) {
             p[K.bridgeToday] = s.bridgeToday
             p[K.bridgeIssues] = s.bridgeIssues
             p[K.geminiMeals] = s.geminiMealsEnabled
-            p[K.lastDocImport] = s.lastDocImportModified
             p[K.coachNotes] = s.coachNotes
-            p[K.driveDocs] = s.driveDocsEnabled
             p[K.theme] = s.theme
             p[K.insightHistory] = s.insightHistory
             p[K.badgesV2Backfill] = s.badgesV2Backfill

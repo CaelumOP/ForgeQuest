@@ -36,7 +36,6 @@ sealed class DriveError(res: Int, vararg args: Any) : com.forgequest.app.Localiz
     object NotConfigured : DriveError(R.string.drive_err_not_configured)
     object NeedsConsent : DriveError(R.string.drive_err_needs_consent)
     object Offline : DriveError(R.string.drive_err_offline)
-    object NoDoc : DriveError(R.string.drive_err_no_doc)
     object NoBackup : DriveError(R.string.drive_err_no_backup)
     class Http(code: Int) : DriveError(R.string.drive_err_http, code)
 }
@@ -54,8 +53,6 @@ sealed interface DriveAuth {
 class DriveSync(
     private val context: Context,
     private val settings: SettingsRepository,
-    private val workouts: WorkoutRepository,
-    private val coach: CoachRepository,
     private val backups: BackupRepository,
     private val http: OkHttpClient = OkHttpClient(),
 ) {
@@ -63,8 +60,8 @@ class DriveSync(
 
     /**
      * One sign-in covers everything, and both scopes are Google's low-risk ones (no security review, so the OAuth
-     * app can be published for anyone): the hidden backup folder, and Docs the app creates itself ("ForgeQuest data",
-     * "ForgeQuest from Gemini", "ForgeQuest plan"). The app never sees the person's other files.
+     * app can be published for anyone): the hidden backup folder, and Docs the app creates itself (the meals Doc).
+     * The app never sees the person's other files.
      */
     private val backupScope = Scope("https://www.googleapis.com/auth/drive.appdata")
     private val fileScope = Scope("https://www.googleapis.com/auth/drive.file")
@@ -140,26 +137,7 @@ class DriveSync(
         return json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull
     }
 
-    // ------------------------------------------------------------ Docs import
-
-    data class DocPlan(val docName: String, val modifiedAt: Long, val plan: PlanDraft)
-
-    /**
-     * Reads the app's "ForgeQuest plan" Google Doc. The first time, the app creates it with a short how-to and
-     * reports [DriveError.NoDoc] so the person knows where to write the plan. Null when unchanged since [sinceMillis].
-     */
-    suspend fun fetchPlanDoc(token: String, sinceMillis: Long = 0): DocPlan? = withContext(Dispatchers.IO) {
-        val found = findNewestDoc(token, PLAN_DOC, sinceMillis, context.getString(R.string.drive_plan_doc_template)) { throw DriveError.NoDoc }
-            ?: return@withContext null
-        DocPlan(found.name ?: "Workout Plan", found.modifiedAt, coach.parsePlanText(found.text))
-    }
-
-    suspend fun applyDocPlan(doc: DocPlan) {
-        workouts.applyPlan(doc.plan, "docs")
-        settings.update { it.copy(lastDocImportModified = doc.modifiedAt) }
-    }
-
-    // ------------------------------------------------------------ Gemini bridge
+    // ------------------------------------------------------------ App-created Docs
 
     /** Creates the named Google Doc from plain text, or replaces the text of [fileId]. Returns the doc's id. */
     suspend fun upsertTextDoc(token: String, name: String, text: String, fileId: String?): String = withContext(Dispatchers.IO) {
@@ -230,6 +208,5 @@ class DriveSync(
         const val API = "https://www.googleapis.com/drive/v3"
         const val UPLOAD = "https://www.googleapis.com/upload/drive/v3"
         const val BACKUP_NAME = "forgequest_backup.json"
-        const val PLAN_DOC = "ForgeQuest plan"
     }
 }
