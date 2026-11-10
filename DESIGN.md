@@ -82,8 +82,10 @@ slower motion with no bounce.
 
 **Dials** (idea from Taste Skill): variety 2/10 (every screen looks like the same app), motion 3/10, density 4/10.
 
-**Fixed:** Home keeps its order and the big nutrition rings: header, rings, stats row, today's workout card,
-readiness. Soft Coach changes spacing, corners and colour use there, never the layout.
+Home is one screen with no scrolling at normal text on a common phone (about 780 dp of height). Order: header,
+big rings, the stats row, streak with this month's line, then today's workout last, by the thumb, with the
+readiness verdict as its first row. Spare height goes to the gaps; large text, small phones and extra
+cards scroll instead of clipping.
 
 ## Colors
 - **Teal is the only interactive colour.** Primary buttons, selected chips and tabs, switches, links, focus rings,
@@ -104,6 +106,7 @@ numbers (ring centre, readiness score). Manrope for titles and stat numbers; the
 and labels. In Arabic, Noto Naskh Arabic 500/600 covers display, headline and hero numbers, and IBM Plex Sans Arabic
 the rest, untracked, line height about 1.5x, with direction taken from the text. Numbers that change in place use
 tabular figures (Instrument Serif has no tnum, so serif hero numbers sit centred in a fixed-width box).
+The readiness number on Home (inside its small ring in the workout card) is a Manrope label, not serif.
 Body small gets a taller line (22) for an airier read. Everything must still work at 200% font scale: text
 wraps to two lines instead of being cut, rows grow taller, nothing overlaps.
 Fonts ship with the app (Android `res/font`, web `/fonts`, precached by the service worker), never from a font
@@ -111,6 +114,7 @@ CDN, and only in the weights the styles use: Instrument Serif 400, Manrope 500�
 
 ## Layout
 - Screen gutter 20, card padding 24, gap between cards 16. Inside a card: 16 between groups, 8 within a group.
+- Home is tighter: card padding 16 (`CardPaddingCompact`), gap between cards 12.
 - Settings and option cards: icon + title + subtitle on top, a full-width segmented control below. No chips
   squeezed beside a title, no horizontally scrolling chip rows for 5 options or fewer.
 - Logical directions only (start/end), so Arabic mirrors for free. Directional icons flip in RTL.
@@ -185,3 +189,6 @@ Before and after:
 - 2026-11-01: Springs lose their bounce (damping 0.6–0.8 → 0.9–1.0).
 - 2026-11-01: Input reviewed: Instagram "app-performance toolkit" (31 speed tips). Kept the client-side ones as
   Loading & Waiting rules, the font rule and a slow-device check; skipped the server-side ones (no backend).
+- 2026-11-10: One-screen Home replaces the fixed big-rings layout (user decision). The workout card moves to the
+  bottom for thumb reach. The web port of this layout is still to do.
+- 2026-11-10: Big rings stay; readiness became a row in the workout card; sleep and strain moved to the detail pages.

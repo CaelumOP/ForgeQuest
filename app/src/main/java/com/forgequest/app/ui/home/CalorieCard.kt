@@ -86,7 +86,7 @@ fun CalorieCardView(s: ProgressSnapshot, health: HealthState?, settings: Setting
         }
     }
 
-    FitCard {
+    FitCard(padding = androidx.compose.foundation.layout.PaddingValues(ForgeSpace.CardPaddingCompact)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconCircle(Icons.Rounded.LocalFireDepartment, c.gold, c.goldTrack, size = 40.dp)
             Spacer(Modifier.width(12.dp))
@@ -105,5 +105,5 @@ fun CalorieCardView(s: ProgressSnapshot, health: HealthState?, settings: Setting
             TonalPill(main, onClick = { run { CalorieUi.accept(card, s, health, settings) } })
         }
     }
-    Spacer(Modifier.height(ForgeSpace.CardGap))
+    Spacer(Modifier.height(ForgeSpace.Sm))
 }

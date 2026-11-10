@@ -10,14 +10,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +35,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -56,8 +58,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.data.health.DayReadiness
@@ -72,20 +73,16 @@ import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.theme.Fit
-import java.time.format.TextStyle
-import java.util.Locale
+import com.forgequest.app.ui.theme.tabular
 
 
-/** Whoop-style card: sleep, recovery and strain dials from the Fitbit, and what that means for today. */
+/** Everything Home says about readiness except the good case, which is [ReadinessRow] inside the workout card. */
 @Composable
 fun ReadinessCard(
     state: HealthState,
     enabled: Boolean,
-    focus: TodayFocus?,
     refreshing: Boolean,
     note: RefreshNote?,
-    onFeltGreat: (Boolean) -> Unit,
-    onOpen: (ReadinessKind) -> Unit,
     onRefresh: () -> Unit,
     onReconnect: () -> Unit,
 ) {
@@ -94,29 +91,29 @@ fun ReadinessCard(
         !enabled || state == HealthState.Unavailable -> Unit
         // Same height as the full card, so Home doesn't jump when the numbers arrive.
         state == HealthState.Loading -> {
-            FitCard {
+            FitCard(padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
                 Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = Fit.colors.textSecondary)
-                Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Fit.colors.textSecondary) }
+                Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Fit.colors.textSecondary) }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(ForgeSpace.Sm))
         }
         state == HealthState.NeedsAccess -> MessageCard(stringResource(R.string.ready_reconnect_body), stringResource(R.string.ready_reconnect), onReconnect)
         state == HealthState.Failed -> MessageCard(stringResource(R.string.ready_failed_body), stringResource(R.string.ready_try_again), onRefresh)
-        state is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, focus, refreshing, note, onFeltGreat, onOpen, onRefresh) else NoDataCard(refreshing, note, onRefresh)
+        state is HealthState.Ready -> if (!state.day.hasData) NoDataCard(refreshing, note, onRefresh)
     }
 }
 
 @Composable
 private fun MessageCard(body: String, action: String, onAction: () -> Unit) {
     val c = Fit.colors
-    FitCard {
+    FitCard(padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
         Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
         Spacer(Modifier.height(4.dp))
         Text(body, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         Spacer(Modifier.height(12.dp))
         PillButton(action, onAction)
     }
-    Spacer(Modifier.height(ForgeSpace.CardGap))
+    Spacer(Modifier.height(ForgeSpace.Sm))
 }
 
 /** The card's title with a refresh button: after syncing the Fitbit app, one tap reads the new night. It spins while reading. */
@@ -125,15 +122,21 @@ private fun TitleRow(refreshing: Boolean, onRefresh: () -> Unit) {
     val c = Fit.colors
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.weight(1f))
-        val angle = if (refreshing) {
-            rememberInfiniteTransition(label = "refresh").animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "angle").value
-        } else 0f
-        IconButton(onClick = onRefresh, enabled = !refreshing, modifier = Modifier.size(32.dp)) {
-            Icon(
-                Icons.Rounded.Refresh, contentDescription = stringResource(if (refreshing) R.string.ready_refreshing else R.string.ready_refresh),
-                tint = if (refreshing) c.gold else c.textSecondary, modifier = Modifier.size(20.dp).rotate(angle),
-            )
-        }
+        RefreshButton(refreshing, onRefresh, Modifier.size(32.dp))
+    }
+}
+
+@Composable
+private fun RefreshButton(refreshing: Boolean, onRefresh: () -> Unit, modifier: Modifier = Modifier) {
+    val c = Fit.colors
+    val angle = if (refreshing) {
+        rememberInfiniteTransition(label = "refresh").animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "angle").value
+    } else 0f
+    IconButton(onClick = onRefresh, enabled = !refreshing, modifier = modifier) {
+        Icon(
+            Icons.Rounded.Refresh, contentDescription = stringResource(if (refreshing) R.string.ready_refreshing else R.string.ready_refresh),
+            tint = if (refreshing) c.gold else c.textSecondary, modifier = Modifier.size(20.dp).rotate(angle),
+        )
     }
 }
 
@@ -160,44 +163,21 @@ private fun OpenFitbitButton() {
 
 private fun recoveryColor(recovery: Int): Color = recoveryTint(recovery)
 
-private val SleepColor = SleepTint
-private val StrainColor = StrainTint
-
 @Composable
 private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () -> Unit) {
     val c = Fit.colors
-    FitCard {
+    FitCard(padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
         TitleRow(refreshing, onRefresh)
         NoteLine(note)
         Text(stringResource(R.string.ready_no_data), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         OpenFitbitButton()
     }
-    Spacer(Modifier.height(ForgeSpace.CardGap))
+    Spacer(Modifier.height(ForgeSpace.Sm))
 }
 
-/** A Whoop-style ring: a dim full circle with the value arc on top, the number in the middle. */
+/** One slim row at the top of Today's workout card: recovery ring and verdict with the day's advice, and the "I feel great" bolt. */
 @Composable
-private fun Dial(fraction: Float, color: Color, value: String, label: String, size: Dp, stroke: Dp, big: Boolean, onClick: () -> Unit) {
-    val c = Fit.colors
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(ForgeShape.Md).clickable(onClick = onClick).padding(6.dp)
-        .semantics(mergeDescendants = true) { contentDescription = "$label $value" }) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
-            Canvas(Modifier.size(size)) {
-                val w = stroke.toPx()
-                val arcSize = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w)
-                val topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2)
-                drawArc(color.copy(alpha = 0.18f), 0f, 360f, false, topLeft, arcSize, style = Stroke(w))
-                drawArc(color, -90f, 360f * fraction.coerceIn(0f, 1f), false, topLeft, arcSize, style = Stroke(w, cap = StrokeCap.Round))
-            }
-            Text(value, style = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge, fontWeight = if (big) FontWeight.Normal else FontWeight.SemiBold, color = c.textPrimary)
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-    }
-}
-
-@Composable
-private fun DayCard(d: DayReadiness, focus: TodayFocus?, refreshing: Boolean, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit, onRefresh: () -> Unit) {
+fun ReadinessRow(d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit) {
     val c = Fit.colors
     val recColor = recoveryColor(d.recovery)
     val (title, body) = when (d.call) {
@@ -207,42 +187,42 @@ private fun DayCard(d: DayReadiness, focus: TodayFocus?, refreshing: Boolean, no
         DayCall.EASE_OFF -> R.string.call_ease_t to R.string.call_ease_b
         DayCall.RECOVER -> R.string.call_recover_t to R.string.call_recover_b
     }.let { (t, b) -> t to (Readiness.adviceFor(d.call, focus)?.bodyRes ?: b) }
-    FitCard {
-        TitleRow(refreshing, onRefresh)
-        NoteLine(note)
-        // Before Fitbit has synced last night, these are yesterday's numbers: say so instead of passing them off as today's.
-        if (d.showsYesterday()) {
-            val line = when (note) {
-                RefreshNote.WAITING -> R.string.ready_waiting
-                RefreshNote.GAVE_UP -> R.string.ready_gave_up
-                else -> R.string.ready_yesterday
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.weight(1f).clip(ForgeShape.Sm)
+                .clickable(onClickLabel = stringResource(R.string.ready_title)) { onOpen(ReadinessKind.RECOVERY) }
+                .semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val w = 5.dp.toPx()
+                    val arcSize = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+                    val topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2)
+                    drawArc(recColor.copy(alpha = 0.18f), 0f, 360f, false, topLeft, arcSize, style = Stroke(w))
+                    drawArc(recColor, -90f, 360f * (d.recovery / 100f).coerceIn(0f, 1f), false, topLeft, arcSize, style = Stroke(w, cap = StrokeCap.Round))
+                }
+                Text("${d.recovery}", style = MaterialTheme.typography.labelMedium.tabular(), color = c.textPrimary, maxLines = 1)
             }
-            Text(stringResource(line), style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-            OpenFitbitButton()
+            Spacer(Modifier.width(ForgeSpace.Sm))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(title), style = MaterialTheme.typography.titleSmall, color = recColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Before Fitbit has synced last night, these are yesterday's numbers: say so instead of passing them off as today's.
+                if (d.showsYesterday()) {
+                    val line = when (note) {
+                        RefreshNote.WAITING -> R.string.ready_waiting
+                        RefreshNote.GAVE_UP -> R.string.ready_gave_up
+                        else -> R.string.ready_yesterday
+                    }
+                    Text(stringResource(line), style = MaterialTheme.typography.bodySmall, color = c.gold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                } else {
+                    Text(stringResource(body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
         }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
-            Dial((d.sleepPerf ?: 0) / 100f, SleepColor, d.sleepPerf?.let { "$it%" } ?: "—", stringResource(R.string.ready_sleep), 84.dp, 8.dp, false) { onOpen(ReadinessKind.SLEEP) }
-            Dial(d.recovery / 100f, recColor, "${d.recovery}%", stringResource(R.string.ready_recovery), 116.dp, 11.dp, true) { onOpen(ReadinessKind.RECOVERY) }
-            Dial((d.strain / 21).toFloat(), StrainColor, "%.1f".format(Locale.US, d.strain), stringResource(R.string.ready_strain), 84.dp, 8.dp, false) { onOpen(ReadinessKind.STRAIN) }
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(stringResource(title), style = MaterialTheme.typography.headlineSmall, color = recColor)
-        Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        // The dials and the call are the whole card; HRV, resting HR, the strain target and tonight's sleep need all
-        // live on the detail pages a tap away, so Home stays one glance.
-        if (d.baselineNights < Readiness.MIN_BASELINE_DAYS) {
-            Spacer(Modifier.height(4.dp))
-            Text(stringResource(R.string.ready_learning, d.baselineNights, Readiness.MIN_BASELINE_DAYS), style = MaterialTheme.typography.bodySmall, color = c.gold)
-        }
-        Spacer(Modifier.height(2.dp))
         // Only the good mornings get a tap: people often miss feeling groggy but always notice feeling great.
-        TextButton(onClick = { onFeltGreat(!d.feltGreat) }) {
-            Icon(Icons.Rounded.Bolt, contentDescription = null, tint = if (d.feltGreat) c.gold else c.textSecondary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(if (d.feltGreat) R.string.ready_felt_great_on else R.string.ready_felt_great), color = if (d.feltGreat) c.gold else c.textSecondary)
+        IconToggleButton(checked = d.feltGreat, onCheckedChange = onFeltGreat) {
+            Icon(Icons.Rounded.Bolt, contentDescription = stringResource(R.string.ready_felt_great), tint = if (d.feltGreat) c.teal else c.textSecondary)
         }
     }
-    Spacer(Modifier.height(ForgeSpace.CardGap))
-
 }

@@ -894,7 +894,6 @@
     <string name="call_upper_recover_b">Upper body today, and your body is asking for rest. Do a short, light workout or walk instead.</string>
     <string name="ready_no_data">No Fitbit data for last night yet. Wear it to bed and your recovery shows up here in the morning.</string>
     <string name="ready_felt_great">I feel great today</string>
-    <string name="ready_felt_great_on">Feeling great, noted</string>
     <string name="ready_usual">usual %1$s</string>
     <string name="ready_sleep_mark">full score at %1$s</string>
     <string name="ready_c_hrv">Heart rate variability</string>
