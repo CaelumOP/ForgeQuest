@@ -5,11 +5,8 @@ import com.forgequest.app.R
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.forgequest.app.data.CoachRepository
-import com.forgequest.app.data.WorkoutRepository
 import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.backup.BackupRepository
-import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult

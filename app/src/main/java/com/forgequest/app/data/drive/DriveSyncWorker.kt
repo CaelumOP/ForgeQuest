@@ -1,7 +1,5 @@
 package com.forgequest.app.data.drive
 
-import com.forgequest.app.R
-
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -11,8 +9,6 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.forgequest.app.container
-import com.forgequest.app.data.db.ChatEntity
-import com.forgequest.app.data.plan.PlanJson
 import java.util.concurrent.TimeUnit
 
 /** Daily backup to Drive. Silent; skips if Drive isn't connected. */

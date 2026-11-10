@@ -13,15 +13,12 @@ import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.backup.BackupError
 import com.forgequest.app.data.backup.BackupFile
-import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.drive.DriveAuth
 import com.forgequest.app.data.drive.DriveError
-import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Equipment
-import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.CalorieUi

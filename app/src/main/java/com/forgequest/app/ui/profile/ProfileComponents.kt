@@ -56,7 +56,6 @@ import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.theme.Fit
-import java.util.Locale
 
 internal fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector = when (cat) {
     com.forgequest.app.domain.BadgeCategory.CONSISTENCY -> Icons.Rounded.LocalFireDepartment
