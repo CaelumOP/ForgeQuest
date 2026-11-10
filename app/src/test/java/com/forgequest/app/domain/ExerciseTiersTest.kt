@@ -15,11 +15,11 @@ class ExerciseTiersTest {
     private val gym = Equipment.entries.toSet()
 
     @Test fun tierCounts() {
-        assertEquals(154, all.size)
+        assertEquals(186, all.size)
         val counts = all.groupingBy { ExerciseTiers.of(it) }.eachCount()
-        assertEquals(110, counts[Tier.FOUNDATION])
-        assertEquals(27, counts[Tier.INTERMEDIATE])
-        assertEquals(17, counts[Tier.ADVANCED])
+        assertEquals(133, counts[Tier.FOUNDATION])
+        assertEquals(33, counts[Tier.INTERMEDIATE])
+        assertEquals(20, counts[Tier.ADVANCED])
         assertNull(ExerciseTiers.of(ex("push_up").copy(id = "my_push_up", custom = true)))
     }
 
