@@ -27,5 +27,7 @@ object ForgeSpace {
     val Xxl = 48.dp
     val Gutter = 20.dp
     val CardPadding = 24.dp
+    /** Home only: its cards are tighter so the whole day fits on one screen. */
+    val CardPaddingCompact = 16.dp
     val CardGap = 16.dp
 }

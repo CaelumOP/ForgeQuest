@@ -17,7 +17,7 @@ Read `DESIGN.md` at the repo root first. It is the source of truth; this skill i
 2. Teal is the only interactive colour. Blue, gold, purple only for data. Coral only for danger.
 3. Use the shared components; don't restyle them in a screen.
 4. Motion: no overshoot, ForgeMotion / CSS motion vars only, reduced motion respected. Nothing celebrates except the ring fill.
-5. Home layout stays: header, big rings, stats row, workout card, readiness.
+5. Home is one screen, no scroll at normal text: header, big rings, stats row, streak with this month's line, today's workout last with the readiness verdict as its first row.
 6. Arabic: logical start/end only, directional icons flip, Plex Arabic, no tracking. Strings stay in sync EN + formal AR.
 7. 200% text: wraps, never clips or overlaps. Tap targets 48 dp / 44 px.
 8. Loading: local actions show at once (Undo, not confirm); network buttons go busy and ignore repeat taps; waiting cards keep their size, no shimmer.
