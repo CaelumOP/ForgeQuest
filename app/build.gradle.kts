@@ -22,8 +22,8 @@ android {
         applicationId = "com.forgequest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 33
-        versionName = "2.18.2"
+        versionCode = 34
+        versionName = "3.0.0"
 
         // QA only: `-PgeminiBase=http://10.0.2.2:8765/v1beta` points a build at a local test server.
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"
@@ -122,6 +122,9 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$camerax")
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
+
+    // Barcode reader with the model bundled in the app (about 2.5 MB), so it works offline.
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")

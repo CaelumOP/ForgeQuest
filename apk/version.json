@@ -1,6 +1,6 @@
 {
-  "versionCode": 33,
-  "versionName": "2.18.2",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v2.18.2/ForgeQuest-v2.18.2.apk",
-  "notes": "• Recovery now reads on a scale where a normal day is green; the session it recommends is unchanged.\n• A reading inside your normal range no longer shows as red.\n• Home's readiness card is tidier, and yesterday's Gemini note no longer lingers."
+  "versionCode": 34,
+  "versionName": "3.0.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.0.0/ForgeQuest-v3.0.0.apk",
+  "notes": "• ForgeQuest now coaches without AI: the finish screen, reminders, Home and the new Progress tab point out what is worth noticing from your own training.\n• One record per exercise, and a finish screen shaped by the kind of day you had.\n• 135 exercises and 19 stretches, each with form cues; 6 more starter plans and a lighter week every 4th week.\n• 15 new badges, a calmer Home with today's workout up top, and barcode scanning in Food.\n• AI is optional: use the Gemini app (recommended) or your own key in Settings. Groq and the weekly check-in are gone."
 }

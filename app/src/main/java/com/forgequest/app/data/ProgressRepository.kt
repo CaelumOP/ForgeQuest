@@ -2,6 +2,7 @@
 
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.BadgeEntity
+import com.forgequest.app.data.db.DayKcal
 import com.forgequest.app.data.db.DayNoteEntity
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.MealEntity
@@ -15,12 +16,14 @@ import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.DayTag
 import com.forgequest.app.domain.LevelInfo
+import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.MuscleRecovery
 import com.forgequest.app.domain.Recovery
 import com.forgequest.app.domain.StreakCalculator
 import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.domain.Xp
+import com.forgequest.app.domain.lifetimeTotals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +31,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.max
 
 data class DayNutrition(val epochDay: Long, val kcal: Int, val protein: Float, val carbs: Float = 0f)
@@ -69,6 +74,7 @@ class ProgressRepository(
         val mealCount: Int,
         val scannedCount: Int,
         val dayNotes: List<DayNoteEntity>,
+        val dayKcal: List<DayKcal>,
     )
 
     private data class Training(
@@ -76,18 +82,19 @@ class ProgressRepository(
         val sets: List<SetEntity>,
         val exercises: List<ExerciseEntity>,
         val dayNotes: List<DayNoteEntity>,
+        val dayKcal: List<DayKcal>,
     )
 
     /** Only the last [NUTRITION_DAYS] days of meals are loaded; totals come from COUNT queries so badges still see everything. */
     private val raw: Flow<Raw> = combine(
-        combine(db.sessions().observeFinished(), db.sessions().observeAllDoneSets(), db.exercises().observeAll(), db.dayNotes().observeSince(0)) { s, sets, ex, notes ->
-            Training(s, sets, ex, notes)
+        combine(db.sessions().observeFinished(), db.sessions().observeAllDoneSets(), db.exercises().observeAll(), db.dayNotes().observeSince(0), db.food().observeDayKcal()) { s, sets, ex, notes, kcal ->
+            Training(s, sets, ex, notes, kcal)
         },
         db.badges().observeAll(),
         db.food().observeMealsSince(Dates.today() - NUTRITION_DAYS),
         db.food().observeMealCount(),
         db.food().observeScannedCount(),
-    ) { t, b, m, count, scanned -> Raw(t.sessions, t.sets, t.exercises, b, m, count, scanned, t.dayNotes) }
+    ) { t, b, m, count, scanned -> Raw(t.sessions, t.sets, t.exercises, b, m, count, scanned, t.dayNotes, t.dayKcal) }
 
     /**
      * Rebuilt on every change and off the main thread: with years of data this is real work. Shared, so the
@@ -142,7 +149,7 @@ class ProgressRepository(
         }.sortedBy { it.epochDay }
         val todayNutrition = byDay.firstOrNull { it.epochDay == today } ?: DayNutrition(today, 0, 0f)
 
-        val stats = statsFor(r, streak.best, byDay, settings.proteinGoal)
+        val stats = statsFor(r, streak.best, byDay, settings.proteinGoal, settings.kcalGoal, weights)
         val level = Xp.levelFor(
             Xp.total(
                 r.sessions.size,
@@ -162,11 +169,14 @@ class ProgressRepository(
         bestStreak: Int,
         byDay: List<DayNutrition>,
         proteinGoal: Int,
+        kcalGoal: Int,
+        weights: List<WeightEntity>,
     ): BadgeStats {
         val bestReps = mutableMapOf<String, Int>()
         val bestSeconds = mutableMapOf<String, Int>()
         val bestWeight = mutableMapOf<String, Float>()
         for (s in r.sets) {
+            if (s.exerciseId in ExerciseCatalog.STRETCH_IDS) continue
             s.reps?.let { bestReps.merge(s.exerciseId, it, ::maxOf) }
             s.seconds?.let { bestSeconds.merge(s.exerciseId, it, ::maxOf) }
             s.weightKg?.takeIf { it > 0f }?.let { bestWeight.merge(s.exerciseId, it, ::maxOf) }
@@ -184,6 +194,7 @@ class ProgressRepository(
             bestProteinRun = max(bestProteinRun, currentRun)
             prevDay = d
         }
+        val life = lifetimeTotals(r.sessions, r.sets.filter { it.exerciseId !in ExerciseCatalog.STRETCH_IDS })
         return BadgeStats(
             workouts = r.sessions.size,
             bestStreakWeeks = bestStreak,
@@ -193,20 +204,34 @@ class ProgressRepository(
             mealsLogged = r.mealCount,
             mealsScanned = r.scannedCount,
             proteinGoalDaysInARow = bestProteinRun,
+            bodyKg = weights.lastOrNull()?.kg ?: 0f,
+            lifetimeSets = life.sets,
+            lifetimeHours = life.hours,
+            lifetimeKg = life.kgLifted,
+            weighInRun = Badges.longestRun(weights.map { it.epochDay }),
+            mealDays = r.dayKcal.size,
+            kcalGoalDays = Badges.kcalGoalDays(r.dayKcal.associate { it.epochDay to it.kcal }, kcalGoal),
         )
     }
 
     /** Unlocks any badges whose rule now passes. Returns the newly unlocked ones. */
     suspend fun evaluateBadges(): List<com.forgequest.app.domain.BadgeDef> {
-        val snap = freshSnapshot()
-        val owned = snap.badges.map { it.id }.toSet()
-        val fresh = Badges.all.filter { it.id !in owned && it.unlocked(snap.stats) }
-        if (fresh.isNotEmpty()) {
+        return badgeLock.withLock {
+            val snap = freshSnapshot()
+            val owned = snap.badges.map { it.id }.toSet()
+            val fresh = Badges.all.filter { it.id !in owned && it.unlocked(snap.stats) }
+            // The first run after the update stores the new set's earned badges as seen: no popups, no flood.
+            val backfill = !snap.settings.badgesV2Backfill
+            val (silent, loud) = Badges.splitBackfill(fresh, backfill)
             val now = System.currentTimeMillis()
-            db.badges().insertAll(fresh.map { BadgeEntity(it.id, now) })
+            if (silent.isNotEmpty()) db.badges().insertAll(silent.map { BadgeEntity(it.id, now, seen = true) })
+            if (loud.isNotEmpty()) db.badges().insertAll(loud.map { BadgeEntity(it.id, now) })
+            if (backfill) settingsRepo.setBadgesV2Backfill(true)
+            loud
         }
-        return fresh
     }
+
+    private val badgeLock = Mutex()
 
     suspend fun markBadgesSeen() = db.badges().markAllSeen()
 

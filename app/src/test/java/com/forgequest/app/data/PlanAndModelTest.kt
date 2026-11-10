@@ -54,9 +54,29 @@ class StarterPlanTest {
     @Test
     fun everyStarterExerciseExistsInTheLibrary() {
         val ids = ExerciseCatalog.all.map { it.id }.toSet()
-        StarterPlans.all.flatMap { p -> p.days.flatMap { d -> d.items.map { it.exerciseId } } }.forEach { id ->
+        (StarterPlans.all + StarterPlans.more).flatMap { p -> p.days.flatMap { d -> d.items.map { it.exerciseId } } }.forEach { id ->
             assertTrue("Missing exercise $id", id in ids)
         }
+    }
+
+    @Test
+    fun everyPlanTextHasAnArabicPair() {
+        val plans = listOf(
+            StarterPlans.hemoFoundation, StarterPlans.fullBodyBeginner, StarterPlans.fullBodyDumbbells, StarterPlans.pushPullLegs,
+            StarterPlans.fullBodyGym, StarterPlans.upperLowerGym, StarterPlans.upperLowerDumbbells,
+            StarterPlans.calisthenicsLevel2, StarterPlans.minimalTwoDay, StarterPlans.zeroEquipment,
+        )
+        val texts = plans.flatMap { p -> listOf(p.name, p.description) + p.days.flatMap { listOf(it.title, it.note) } }.filter { it.isNotBlank() }
+        val missing = texts.filter { it !in StarterPlans.arabic }
+        assertTrue("no Arabic for $missing", missing.isEmpty())
+        assertEquals(StarterPlans.arabic.size, StarterPlans.arabic.values.toSet().size)
+    }
+
+    @Test
+    fun morePlansStaySeparateFromOnboarding() {
+        assertEquals(4, StarterPlans.all.size)
+        assertEquals(6, StarterPlans.more.size)
+        assertTrue(StarterPlans.more.all { p -> p.days.any { !it.isRest && it.items.isNotEmpty() } })
     }
 
     @Test

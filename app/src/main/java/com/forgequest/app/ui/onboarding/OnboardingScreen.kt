@@ -80,6 +80,12 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.NutritionGoal
+import com.forgequest.app.domain.Experience
+import com.forgequest.app.domain.PlanBuilder
+import com.forgequest.app.domain.PlanInput
+import com.forgequest.app.domain.TrainGoal
+import com.forgequest.app.ui.plan.localizeBuiltPlan
+import kotlinx.coroutines.flow.first
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.labelRes
@@ -125,12 +131,10 @@ data class OnboardingState(
     val daysPerWeek: Int = 3,
     /** "Just log my training" picked on the plan step: no streaks, levels, badges or readiness. */
     val justLog: Boolean = false,
+    /** "Built for me" card picked (the default): the plan comes from PlanBuilder instead of a starter plan. */
+    val builtForMe: Boolean = true,
     val planIndex: Int = StarterPlans.BODYWEIGHT_INDEX,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
-    val apiKey: String = "",
-    val checkingKey: Boolean = false,
-    val keyMessage: String? = null,
-    val keyOk: Boolean = false,
 ) {
     val male get() = bodyType == BodyType.MALE
     val bodyReady get() = heightCm in 120f..230f && age in 10..100
@@ -161,23 +165,6 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     fun next() = state.update { it.copy(step = (it.step + 1).coerceAtMost(LAST_STEP)) }
     fun back() = state.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }
 
-    /** [then] runs once the key checks out, e.g. finishing setup from the main button. */
-    fun checkKey(then: () -> Unit = {}) {
-        val key = state.value.apiKey.trim()
-        if (key.isEmpty()) return
-        state.update { it.copy(checkingKey = true, keyMessage = null) }
-        viewModelScope.launch {
-            val result = app.gemini.discoverModels(key)
-            state.update { s ->
-                result.fold(
-                    onSuccess = { s.copy(checkingKey = false, keyOk = true, keyMessage = app.str(R.string.onb_key_works)) },
-                    onFailure = { e -> s.copy(checkingKey = false, keyOk = false, keyMessage = (e as? AiError)?.userMessage ?: app.str(R.string.onb_key_check_failed)) },
-                )
-            }
-            result.getOrNull()?.let { models -> app.models.save(models); then() }
-        }
-    }
-
     private val emptyPlan by lazy {
         PlanDraft(
             app.str(R.string.onb_my_plan),
@@ -189,16 +176,25 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     fun finish() {
         val s = state.value
         viewModelScope.launch {
-            if (s.keyOk) app.settings.setApiKey(s.apiKey)
             app.workouts.seedLibrary()
-            val selectedPlan = StarterPlans.all.getOrNull(s.planIndex) ?: emptyPlan
-            val catalogById = ExerciseCatalog.all.associateBy { it.id }
-            val adaptedPlan = if (selectedPlan === emptyPlan) {
-                emptyPlan
+            if (s.builtForMe) {
+                val library = app.workouts.library.first()
+                val input = PlanInput(
+                    goal = TrainGoal.GENERAL, days = PlanBuilder.spreadDays(s.daysPerWeek), minutes = 45,
+                    equipment = s.equipmentPreset.equipment, experience = Experience.SOME,
+                )
+                val built = PlanBuilder.build(input, library)
+                app.workouts.applyPlan(localizeBuiltPlan(app, built, TrainGoal.GENERAL), "builder")
             } else {
-                ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment, dropUnfit = true).first
+                val selectedPlan = StarterPlans.all.getOrNull(s.planIndex) ?: emptyPlan
+                val catalogById = ExerciseCatalog.all.associateBy { it.id }
+                val adaptedPlan = if (selectedPlan === emptyPlan) {
+                    emptyPlan
+                } else {
+                    ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment, dropUnfit = true).first
+                }
+                app.workouts.applyPlan(adaptedPlan, if (selectedPlan === emptyPlan) "manual" else "starter")
             }
-            app.workouts.applyPlan(adaptedPlan, if (selectedPlan === emptyPlan) "manual" else "starter")
             app.settings.update {
                 it.copy(
                     onboarded = true,
@@ -251,8 +247,8 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     companion object {
-        /** Name, plan (days a week + equipment), AI key. */
-        const val LAST_STEP = 2
+        /** Name, then plan (days a week + equipment). */
+        const val LAST_STEP = 1
     }
 }
 
@@ -281,8 +277,7 @@ fun OnboardingScreen() {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 when (step) {
                     0 -> StepWelcome(s, vm)
-                    1 -> StepPlan(s, vm)
-                    else -> StepKey(s, vm)
+                    else -> StepPlan(s, vm)
                 }
             }
         }
@@ -292,9 +287,7 @@ fun OnboardingScreen() {
             val canGo = s.step != 0 || s.name.isNotBlank()
             when {
                 s.step < OnboardingViewModel.LAST_STEP -> PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = canGo)
-                // A typed key is checked and kept by the main button too, not thrown away by "Skip".
-                s.keyOk || s.apiKey.isBlank() -> PillButton(if (s.keyOk) stringResource(R.string.onb_lets_go) else stringResource(R.string.onb_finish), onClick = vm::finish)
-                else -> PillButton(stringResource(if (s.checkingKey) R.string.onb_checking else R.string.onb_save_key), onClick = { vm.checkKey(then = vm::finish) }, enabled = !s.checkingKey)
+                else -> PillButton(stringResource(R.string.onb_finish), onClick = vm::finish)
             }
         }
     }
@@ -565,9 +558,15 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
     Text(stringResource(R.string.onb_equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     Spacer(Modifier.height(20.dp))
 
+    ChoiceCard(
+        stringResource(R.string.onb_built_title),
+        stringResource(R.string.onb_built_body, s.daysPerWeek),
+        s.builtForMe,
+    ) { vm.update { it.copy(builtForMe = true) } }
+
     val options = StarterPlans.all.map { it.name to it.description } + (stringResource(R.string.onb_start_empty) to stringResource(R.string.onb_start_empty_desc))
     options.forEachIndexed { index, (name, desc) ->
-        val selected = s.planIndex == index
+        val selected = !s.builtForMe && s.planIndex == index
         Row(
             Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card)
                 .then(if (selected) Modifier.border(2.dp, c.teal, ForgeShape.Md) else Modifier)
@@ -577,7 +576,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
                         index == StarterPlans.DUMBBELLS_INDEX && Equipment.DUMBBELLS !in s.equipmentPreset.equipment -> EquipmentPreset.DUMBBELLS_AND_BAR
                         else -> s.equipmentPreset
                     }
-                    vm.update { it.copy(planIndex = index, equipmentPreset = autoPreset) }
+                    vm.update { it.copy(builtForMe = false, planIndex = index, equipmentPreset = autoPreset) }
                 }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -638,71 +637,4 @@ fun FoodTargetsSetup(settings: com.forgequest.app.data.prefs.Settings, latestWei
             else PillButton(stringResource(R.string.action_save), onClick = { vm.saveFoodTargets(onClose) })
         }
     }
-}
-
-@Composable
-private fun StepKey(s: OnboardingState, vm: OnboardingViewModel) {
-    val c = Fit.colors
-    val context = LocalContext.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconCircle(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack)
-        Spacer(Modifier.width(12.dp))
-        Text(stringResource(R.string.onb_optional), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-    }
-    Spacer(Modifier.height(16.dp))
-    Title(
-        stringResource(R.string.onb_ai_title),
-        stringResource(R.string.onb_ai_body),
-    )
-    listOf(
-        stringResource(R.string.onb_ai_step1),
-        stringResource(R.string.onb_ai_step2),
-        stringResource(R.string.onb_ai_step3),
-    ).forEachIndexed { i, step ->
-        Row(Modifier.padding(bottom = 10.dp), verticalAlignment = Alignment.Top) {
-            Box(Modifier.size(24.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {
-                Text("${i + 1}", style = MaterialTheme.typography.labelMedium, color = c.teal, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(12.dp))
-            Text(step, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-        }
-    }
-    Spacer(Modifier.height(8.dp))
-    PillButton(
-        stringResource(R.string.onb_get_key),
-        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) },
-        icon = Icons.Rounded.OpenInNew,
-        container = c.tealTrack,
-        content = c.teal,
-    )
-    Spacer(Modifier.height(20.dp))
-    OutlinedTextField(
-        value = s.apiKey,
-        onValueChange = { v -> vm.update { it.copy(apiKey = v.trim(), keyOk = false, keyMessage = null) } },
-        label = { Text(stringResource(R.string.onb_key_label)) },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        shape = ForgeShape.Md,
-        colors = fieldColors(),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(12.dp))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        PillButton(
-            if (s.checkingKey) stringResource(R.string.onb_checking) else stringResource(R.string.onb_check_key),
-            onClick = vm::checkKey,
-            enabled = s.apiKey.isNotBlank() && !s.checkingKey,
-        )
-        Spacer(Modifier.width(12.dp))
-        s.keyMessage?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = if (s.keyOk) c.teal else c.coral, modifier = Modifier.weight(1f))
-        }
-    }
-    Spacer(Modifier.height(12.dp))
-    Text(
-        stringResource(R.string.onb_privacy),
-        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-    )
-    Spacer(Modifier.height(8.dp))
-    Text(stringResource(R.string.onb_groq_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
 }

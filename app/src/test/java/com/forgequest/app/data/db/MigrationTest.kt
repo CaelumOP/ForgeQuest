@@ -19,7 +19,7 @@ import java.io.File
 // A plain Application: the real one schedules WorkManager jobs, which Robolectric has no setup for.
 @Config(sdk = [34], application = android.app.Application::class)
 class MigrationTest {
-    private val latest = 9
+    private val latest = 10
     private val dbName = "migration-test"
 
     @get:Rule
@@ -47,5 +47,20 @@ class MigrationTest {
                 helper.runMigrationsAndValidate(name, to, true, *AppDatabase.MIGRATIONS).close()
             }
         }
+    }
+
+    @Test fun savedFoodsKeepTheirDataAndGetAnEmptyBarcode() {
+        helper.createDatabase("$dbName-barcode", 9).apply {
+            execSQL("INSERT INTO foods (name, category, kcal, protein, serving, carbs, pinned, createdAt, place, parts) VALUES ('Kabsa', 'LUNCH', 600, 30.0, '1 plate', 70.0, 0, 1, '', '[]')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("$dbName-barcode", 10, true, *AppDatabase.MIGRATIONS)
+        db.query("SELECT name, kcal, barcode FROM foods").use { c ->
+            assertEquals(true, c.moveToFirst())
+            assertEquals("Kabsa", c.getString(0))
+            assertEquals(600, c.getInt(1))
+            assertEquals("", c.getString(2))
+        }
+        db.close()
     }
 }

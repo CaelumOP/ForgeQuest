@@ -41,12 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
-import com.forgequest.app.container
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
@@ -101,26 +99,24 @@ fun ExercisePickerSheet(
     initialMuscle: Muscle? = null,
     sourceExercise: ExerciseEntity? = null,
     userEquipment: Set<Equipment> = emptySet(),
+    /** False hides "create custom", for pickers that only choose from the library. */
+    allowCreate: Boolean = true,
 ) {
     val c = Fit.colors
-    val context = LocalContext.current
-    val isArabic = Locale.getDefault().language == "ar"
-    val configuredEq = remember(userEquipment) {
-        userEquipment.ifEmpty {
-            runCatching { context.container.settings }.getOrNull()?.let { _ -> emptySet() } ?: emptySet()
-        }
-    }
+    // "My equipment" is only offered when the person owns some, but not all, of it.
+    val partialEquipment = userEquipment.isNotEmpty() && userEquipment.size < Equipment.entries.size
     var query by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf(if (sourceExercise != null) null else initialMuscle) }
-    var onlyMyEquipment by remember { mutableStateOf(configuredEq.isNotEmpty() && configuredEq.size < Equipment.entries.size) }
+    var onlyMyEquipment by remember { mutableStateOf(partialEquipment) }
     var selectedEquipment by remember { mutableStateOf<Equipment?>(null) }
     var creating by remember { mutableStateOf(false) }
     val sheetState = rememberFullSheetState()
 
-    val effectiveEquipment = remember(configuredEq, onlyMyEquipment, selectedEquipment) {
+    val effectiveEquipment = remember(userEquipment, onlyMyEquipment, selectedEquipment) {
+        val picked = selectedEquipment
         when {
-            selectedEquipment != null -> setOf(selectedEquipment!!)
-            onlyMyEquipment && configuredEq.isNotEmpty() -> configuredEq + Equipment.BODYWEIGHT
+            picked != null -> setOf(picked)
+            onlyMyEquipment -> userEquipment + Equipment.BODYWEIGHT
             else -> Equipment.entries.toSet()
         }
     }
@@ -164,7 +160,7 @@ fun ExercisePickerSheet(
             Spacer(Modifier.height(12.dp))
             // Equipment filter row
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (configuredEq.isNotEmpty() && configuredEq.size < Equipment.entries.size) {
+                if (partialEquipment) {
                     ChoiceChip(
                         text = stringResource(R.string.picker_my_equipment),
                         selected = onlyMyEquipment && selectedEquipment == null,
@@ -193,12 +189,12 @@ fun ExercisePickerSheet(
                 CreateExerciseForm(
                     initialName = query,
                     initialMuscle = muscle ?: sourceExercise?.primary?.firstOrNull(),
-                    onCreate = { n, k, m -> onCreate(n, k, m) },
+                    onCreate = onCreate,
                     onCancel = { creating = false },
                 )
             } else {
-                val topSwapIds = remember(topSwaps) { topSwaps.map { it.exercise.id }.toSet() }
-                val filtered = remember(library, query, muscle, effectiveEquipment, sourceExercise, topSwapIds) {
+                val filtered = remember(library, query, muscle, effectiveEquipment, sourceExercise, topSwaps) {
+                    val topSwapIds = topSwaps.map { it.exercise.id }.toSet()
                     library.filter { ex ->
                         val prof = ExerciseSwapEngine.profileFor(ex)
                         val eqOk = prof.equipment in effectiveEquipment
@@ -281,7 +277,7 @@ fun ExercisePickerSheet(
                             }
                         }
                     }
-                    item {
+                    if (allowCreate) item {
                         Row(
                             Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable { creating = true }.padding(horizontal = 8.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,

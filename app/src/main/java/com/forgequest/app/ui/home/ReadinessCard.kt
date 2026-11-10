@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -64,7 +65,9 @@ import com.forgequest.app.data.health.HealthState
 import com.forgequest.app.data.health.RefreshNote
 import com.forgequest.app.data.health.showsYesterday
 import com.forgequest.app.domain.DayCall
+import com.forgequest.app.domain.TodayFocus
 import com.forgequest.app.domain.Readiness
+import com.forgequest.app.ui.bodyRes
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
@@ -78,6 +81,7 @@ import java.util.Locale
 fun ReadinessCard(
     state: HealthState,
     enabled: Boolean,
+    focus: TodayFocus?,
     refreshing: Boolean,
     note: RefreshNote?,
     onFeltGreat: (Boolean) -> Unit,
@@ -98,7 +102,7 @@ fun ReadinessCard(
         }
         state == HealthState.NeedsAccess -> MessageCard(stringResource(R.string.ready_reconnect_body), stringResource(R.string.ready_reconnect), onReconnect)
         state == HealthState.Failed -> MessageCard(stringResource(R.string.ready_failed_body), stringResource(R.string.ready_try_again), onRefresh)
-        state is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, refreshing, note, onFeltGreat, onOpen, onRefresh) else NoDataCard(refreshing, note, onRefresh)
+        state is HealthState.Ready -> if (state.day.hasData) DayCard(state.day, focus, refreshing, note, onFeltGreat, onOpen, onRefresh) else NoDataCard(refreshing, note, onRefresh)
     }
 }
 
@@ -112,7 +116,7 @@ private fun MessageCard(body: String, action: String, onAction: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         PillButton(action, onAction)
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(ForgeSpace.CardGap))
 }
 
 /** The card's title with a refresh button: after syncing the Fitbit app, one tap reads the new night. It spins while reading. */
@@ -168,7 +172,7 @@ private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () ->
         Text(stringResource(R.string.ready_no_data), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
         OpenFitbitButton()
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(ForgeSpace.CardGap))
 }
 
 /** A Whoop-style ring: a dim full circle with the value arc on top, the number in the middle. */
@@ -185,7 +189,7 @@ private fun Dial(fraction: Float, color: Color, value: String, label: String, si
                 drawArc(color.copy(alpha = 0.18f), 0f, 360f, false, topLeft, arcSize, style = Stroke(w))
                 drawArc(color, -90f, 360f * fraction.coerceIn(0f, 1f), false, topLeft, arcSize, style = Stroke(w, cap = StrokeCap.Round))
             }
-            Text(value, style = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = c.textPrimary)
+            Text(value, style = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge, fontWeight = if (big) FontWeight.Normal else FontWeight.SemiBold, color = c.textPrimary)
         }
         Spacer(Modifier.height(8.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
@@ -193,7 +197,7 @@ private fun Dial(fraction: Float, color: Color, value: String, label: String, si
 }
 
 @Composable
-private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit, onRefresh: () -> Unit) {
+private fun DayCard(d: DayReadiness, focus: TodayFocus?, refreshing: Boolean, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit, onRefresh: () -> Unit) {
     val c = Fit.colors
     val recColor = recoveryColor(d.recovery)
     val (title, body) = when (d.call) {
@@ -202,7 +206,7 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
         DayCall.STEADY -> R.string.call_steady_t to R.string.call_steady_b
         DayCall.EASE_OFF -> R.string.call_ease_t to R.string.call_ease_b
         DayCall.RECOVER -> R.string.call_recover_t to R.string.call_recover_b
-    }
+    }.let { (t, b) -> t to (Readiness.adviceFor(d.call, focus)?.bodyRes ?: b) }
     FitCard {
         TitleRow(refreshing, onRefresh)
         NoteLine(note)
@@ -239,6 +243,6 @@ private fun DayCard(d: DayReadiness, refreshing: Boolean, note: RefreshNote?, on
             Text(stringResource(if (d.feltGreat) R.string.ready_felt_great_on else R.string.ready_felt_great), color = if (d.feltGreat) c.gold else c.textSecondary)
         }
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(ForgeSpace.CardGap))
 
 }

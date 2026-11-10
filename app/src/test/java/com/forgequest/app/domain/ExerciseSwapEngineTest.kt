@@ -63,4 +63,28 @@ class ExerciseSwapEngineTest {
         val replacement = ExerciseCatalog.all.first { it.id == newId }
         assertEquals(Equipment.BODYWEIGHT, ExerciseSwapEngine.profileFor(replacement).equipment)
     }
+
+    @Test
+    fun everyCatalogExerciseHasAnArabicNameAndASwapProfile() {
+        val ids = ExerciseCatalog.all.map { it.id }
+        assertEquals("duplicate ids", ids.size, ids.toSet().size)
+        ids.forEach {
+            assertTrue("no Arabic name: $it", it in com.forgequest.app.data.seed.ExerciseNamesAr.byId)
+            assertTrue("no swap profile: $it", it in ExerciseSwapEngine.catalogProfiles)
+            assertTrue("custom_ prefix: $it", !it.startsWith("custom_"))
+        }
+        ExerciseSwapEngine.catalogProfiles.forEach { (id, profile) ->
+            profile.preferredSwaps.forEach { assertTrue("$id swaps to unknown $it", it in ids) }
+        }
+    }
+
+    @Test
+    fun stretchesAreOnlySwappedForStretches() {
+        val stretch = ExerciseCatalog.all.first { it.id == "hamstring_stretch" }
+        val lift = ExerciseCatalog.all.first { it.id == "romanian_deadlift" }
+        assertTrue(ExerciseSwapEngine.rankSubstitutes(stretch, ExerciseCatalog.all).all { it.exercise.id in ExerciseCatalog.STRETCH_IDS })
+        assertTrue(ExerciseSwapEngine.rankSubstitutes(lift, ExerciseCatalog.all).none { it.exercise.id in ExerciseCatalog.STRETCH_IDS })
+        assertTrue(ExerciseCatalog.STRETCH_IDS.all { ExerciseSwapEngine.catalogProfiles.getValue(it).pattern == MovementPattern.MOBILITY })
+        assertEquals(19, ExerciseCatalog.STRETCH_IDS.size)
+    }
 }

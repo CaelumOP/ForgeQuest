@@ -123,6 +123,13 @@ import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.DebriefText
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.DayType
+import com.forgequest.app.domain.Insight
+import com.forgequest.app.domain.InsightKind
+import com.forgequest.app.domain.MILESTONE_KINDS
+import com.forgequest.app.domain.Slot
+import com.forgequest.app.ui.headlineRes
+import com.forgequest.app.ui.insightRes
 import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.ui.goToTab
 import kotlinx.coroutines.launch
@@ -150,114 +157,188 @@ import java.util.Locale
 @Composable
 internal fun WorkoutCompleteScreen(
     sum: WorkoutSummary,
-    onAskCoach: (() -> Unit)?,
     onRemind: () -> Unit,
+    reminded: Boolean = false,
     onDone: () -> Unit,
 ) {
     val c = Fit.colors
     var filled by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { filled = true }
     val leveledUp = sum.after.level > sum.before.level
+    val context = LocalContext.current
+    val res = context.resources
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current
+    val names = sum.exerciseNames
+    val lines = remember(sum, locale) { sum.debrief?.let { d -> DebriefText.render(d, res, { id -> names[id] ?: id }) { kg -> sum.unit.format(kg) } } }
+    val headline = if (sum.justLog) null else sum.headline?.let { h -> headlineRes(h.type, h.variant)?.let { res.getString(it, h.up, h.compared) } } ?: lines?.headline
+    val type = sum.dayType
+    // The animation is for a record or a milestone only.
+    val big = type == DayType.PR || type == DayType.MILESTONE
+    val milestone = if (type == DayType.MILESTONE) sum.insights.firstOrNull { it.kind in MILESTONE_KINDS } else null
+    val insights = sum.insights.filter { it !== milestone }.take(2)
     BackHandler(onBack = onDone)
+    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
     Column(
-        Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 24.dp),
     ) {
-        Spacer(Modifier.height(32.dp))
-        IconCircle(Icons.Rounded.Check, c.onTeal, c.teal, 88.dp)
-        Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.live_complete), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
-        Text(sum.title, style = MaterialTheme.typography.bodyLarge, color = c.textSecondary, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(28.dp))
-        Row(Modifier.fillMaxWidth()) {
-            com.forgequest.app.ui.components.StatColumn("${sum.doneSets}", stringResource(R.string.live_sets), c.teal, Modifier.weight(1f))
-            com.forgequest.app.ui.components.StatColumn(stringResource(R.string.hist_minutes, sum.minutes), stringResource(R.string.profile_time), c.blue, Modifier.weight(1f))
-            if (!sum.justLog) com.forgequest.app.ui.components.StatColumn("⁦+${sum.xpGained}⁩", stringResource(R.string.live_xp), c.gold, Modifier.weight(1f))
-        }
-        sum.clippedEndAt?.let { end ->
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.live_ended_at_last_set, java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(end - com.forgequest.app.domain.WorkoutEnd.GRACE_MS))),
-                style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center,
-            )
-        }
-        // "Just log" mode: XP still accrues, but the level card stays out of sight.
-        if (!sum.justLog) {
         Spacer(Modifier.height(24.dp))
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (leveledUp) stringResource(R.string.live_level_up, sum.after.level) else stringResource(R.string.live_level, sum.after.level),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (leveledUp) c.gold else c.textPrimary,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(stringResource(R.string.live_rank, sum.after.rank.letter, sum.after.rank.localTitle()), style = MaterialTheme.typography.labelLarge, color = c.blue)
+        Text(stringResource(R.string.live_complete), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+        Text(sum.title, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        Spacer(Modifier.height(20.dp))
+        // The top of the screen is whatever is most notable about this workout.
+        val hero = sum.prHero
+        if (type == DayType.PR && hero != null) {
+            Text(names[hero.win.exerciseId] ?: hero.win.exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.riseIn(big, filled, 0))
+            prValue(res, sum.unit, hero.win.kind, hero.win.weightKg, hero.win.reps, hero.win.seconds)?.let {
+                Text(it, style = MaterialTheme.typography.headlineMedium, color = c.gold, modifier = Modifier.riseIn(big, filled, 1))
             }
-            Spacer(Modifier.height(12.dp))
-            val from = if (leveledUp) 0f else sum.before.progress
-            ProgressLine(if (filled) sum.after.progress else from, c.blue, c.blueTrack, height = 8.dp)
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.profile_xp_line, sum.after.xpIntoLevel, sum.after.xpForNextLevel, sum.after.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            prValue(res, sum.unit, hero.win.kind, hero.oldKg, hero.oldReps, hero.oldSeconds)?.let {
+                Text(stringResource(R.string.finish_pr_was, it), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.riseIn(big, filled, 2))
+            }
+            headline?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 12.dp)) }
+        } else if (milestone != null) {
+            Text(insightText(milestone, res, names, sum.unit), style = MaterialTheme.typography.headlineSmall, color = c.textPrimary, modifier = Modifier.riseIn(big, filled, 0))
+            headline?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp)) }
+        } else if (type == DayType.ROUGH) {
+            headline?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary) }
+        } else {
+            headline?.let { Text(it, style = MaterialTheme.typography.headlineSmall, color = c.textPrimary) }
+            if (type == DayType.ORDINARY) {
+                val comparison = sum.debrief?.volumeChange?.let { volumeText(it) }
+                    ?: sum.score?.takeIf { it.compared > 0 }?.let { stringResource(R.string.score_up, it.up, it.compared) }
+                comparison?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp)) }
+            }
         }
+        // The word for the day, with the number small beside it; a welcome or a rough day gets no score.
+        val score = sum.score
+        if (sum.tier != null && score != null && score.showNumber && type != DayType.FIRST_OR_BACK && type != DayType.ROUGH) {
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(stringResource(sum.tier.labelRes), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.debrief_score, score.score), style = MaterialTheme.typography.labelMedium.tabular(), color = c.textSecondary,
+                    modifier = Modifier.padding(bottom = 2.dp).semantics { contentDescription = res.getString(R.string.debrief_score, score.score) },
+                )
+            }
+        }
+        if (lines != null) {
+            Spacer(Modifier.height(8.dp))
+            // Green for what went well, gold for what to watch, blue for next time.
+            lines.wins.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.riseIn(big, filled, 3 + i).padding(top = 4.dp)) }
+            lines.watch.forEachIndexed { i, it -> Text("• $it", style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.riseIn(big, filled, 3 + lines.wins.size + i).padding(top = 4.dp)) }
+            lines.next.forEachIndexed { i, it -> Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.riseIn(big, filled, 3 + lines.wins.size + lines.watch.size + i).padding(top = 4.dp)) }
+            lines.sameRest?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
         }
         val badges = if (sum.justLog) emptyList() else sum.newBadges
-        if (sum.prs.isNotEmpty() || badges.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            FitCard {
-                sum.prs.forEach { name ->
-                    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        PrTag()
-                        Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.live_new_record, name), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-                    }
-                }
-                badges.forEach { badge ->
-                    val title = badge.localTitle()
-                    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.live_badge_unlocked, title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-                    }
-                }
+        badges.forEach { badge ->
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = c.gold, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(R.string.live_badge_unlocked, badge.localTitle()), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
             }
         }
+        if (insights.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            insights.forEach { Text(insightText(it, res, names, sum.unit), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 6.dp)) }
+        }
+        lines?.footnote?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp)) }
         if (sum.offerReminder) {
-            var reminded by remember { mutableStateOf(false) }
-            Spacer(Modifier.height(12.dp))
-            FitCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Notifications, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(if (reminded) R.string.live_reminder_on else R.string.live_reminder_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                        Text(stringResource(R.string.live_reminder_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    }
-                    if (!reminded) {
-                        Spacer(Modifier.width(8.dp))
-                        PillButton(stringResource(R.string.live_reminder_button), onClick = { onRemind(); reminded = true })
-                    }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Notifications, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    stringResource(if (reminded) R.string.live_reminder_on else R.string.live_reminder_title),
+                    style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f),
+                )
+                if (!reminded) TextButton(onClick = onRemind) {
+                    Text(stringResource(R.string.live_reminder_button), color = c.teal)
                 }
             }
         }
         // What comes next, so finishing points forward (Fitbod ends every workout with the next one).
         sum.nextUp?.let { (dow, title) ->
-            Spacer(Modifier.height(12.dp))
-            FitCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Text(stringResource(R.string.live_next_up, com.forgequest.app.domain.Dates.dayName(dow), title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-                }
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(R.string.live_next_up, com.forgequest.app.domain.Dates.dayName(dow), title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
             }
         }
-        if (sum.score != null || sum.debrief != null) {
-            Spacer(Modifier.height(12.dp))
-            DebriefCard(sum.debrief, sum.score, sum.exerciseNames, sum.unit, onAskCoach, celebrate = true)
+        // Sets and time, one small line.
+        Spacer(Modifier.height(20.dp))
+        Text(
+            listOf(pluralStringResource(R.plurals.hist_sets, sum.doneSets, sum.doneSets), stringResource(R.string.hist_minutes, sum.minutes)).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+        )
+        sum.clippedEndAt?.let { end ->
+            Text(
+                stringResource(R.string.live_ended_at_last_set, java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(end - com.forgequest.app.domain.WorkoutEnd.GRACE_MS))),
+                style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+            )
         }
-        Spacer(Modifier.height(24.dp))
+    }
+    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp)) {
+        // "Just log" mode: XP still accrues, but the level strip stays out of sight.
+        if (!sum.justLog) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (leveledUp) stringResource(R.string.live_level_up, sum.after.level) else stringResource(R.string.live_level, sum.after.level),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (leveledUp) c.gold else c.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("⁦+${sum.xpGained}⁩ ${stringResource(R.string.live_xp)}", style = MaterialTheme.typography.labelMedium.tabular(), color = c.textSecondary)
+            }
+            Spacer(Modifier.height(6.dp))
+            val from = if (leveledUp) 0f else sum.before.progress
+            ProgressLine(if (filled) sum.after.progress else from, c.blue, c.blueTrack, height = 4.dp)
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.profile_xp_line, sum.after.xpIntoLevel, sum.after.xpForNextLevel, sum.after.level + 1), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+            Spacer(Modifier.height(12.dp))
+        }
         PillButton(stringResource(R.string.home_done), onClick = onDone, modifier = Modifier.fillMaxWidth())
     }
+    }
+}
+
+/** A record's value the way the person reads it: "62.5 kg × 5", "12 reps" or "45 seconds"; null with nothing to show. */
+private fun prValue(res: android.content.res.Resources, unit: WeightUnit, kind: WorkoutScore.PrKind, kg: Float?, reps: Int?, seconds: Int?): String? = when {
+    kind == WorkoutScore.PrKind.HOLD && seconds != null -> res.getQuantityString(R.plurals.debrief_n_seconds, seconds, seconds)
+    kg != null && reps != null -> res.getString(R.string.finish_value_weight_reps, unit.format(kg), reps)
+    reps != null -> res.getQuantityString(R.plurals.debrief_n_reps, reps, reps)
+    seconds != null -> res.getQuantityString(R.plurals.debrief_n_seconds, seconds, seconds)
+    else -> null
+}
+
+/** One insight as a sentence: its slots become the sentence's arguments in order (a plural's quantity is the first count). */
+internal fun insightText(i: Insight, res: android.content.res.Resources, names: Map<String, String>, unit: WeightUnit): String {
+    val pounds = unit == WeightUnit.LB
+    val r = insightRes(i.kind, i.variant, pounds)
+    val args = i.slots.map { slot ->
+        when (slot) {
+            // Lifetime kilograms are round kg marks; for pounds the same mark is shown converted.
+            is Slot.Count -> if (pounds && i.kind == InsightKind.CROSS_KG) kotlin.math.floor(slot.n * 2.2046225).toInt() else slot.n
+            is Slot.Kg -> unit.format(slot.kg)
+            is Slot.Seconds -> res.getQuantityString(R.plurals.debrief_n_seconds, slot.s, slot.s)
+            is Slot.Exercise -> names[slot.id] ?: slot.id
+            is Slot.Cue -> com.forgequest.app.ui.exerciseCues(slot.id)?.toList()?.getOrNull(slot.line)?.let { res.getString(it) }.orEmpty()
+            is Slot.Group -> res.getString(slot.muscle.labelRes)
+            is Slot.Weekday -> com.forgequest.app.domain.Dates.dayName(slot.day)
+        }
+    }.toTypedArray()
+    // The plural form follows the number actually shown (the lb figure for CROSS_KG in pounds).
+    val quantity = i.slots.indexOfFirst { it is Slot.Count }.takeIf { it >= 0 }?.let { args[it] as Int }
+    return if (r.plural && quantity != null) res.getQuantityString(r.id, quantity, *args) else res.getString(r.id, *args)
+}
+
+/** "Volume up 8%": total volume against the last workout of this plan day. Words, not a +/- sign, so RTL never flips it. */
+@Composable
+private fun volumeText(p: Int): String = when {
+    p > 0 -> stringResource(R.string.score_volume_up, p)
+    p < 0 -> stringResource(R.string.score_volume_down, -p)
+    else -> stringResource(R.string.score_volume_same)
 }
 
 /** "All 12 sets · Up on 3 of 4 · 1 PR": why the workout got its score. A rough day from pain alone says so. */
@@ -364,7 +445,7 @@ fun DebriefCard(
         if (score != null && !score.showNumber && !sameAsHeadline) {
             Text(stringResource(if (score.firstEver) R.string.score_first_ever else R.string.score_after_break), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.padding(top = 2.dp))
         }
-        if (score != null) Text(scoreReasons(score), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
+        if (score != null) Text(listOfNotNull(scoreReasons(score), debrief?.volumeChange?.let { volumeText(it) }).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp))
         if (lines != null) {
             Spacer(Modifier.height(8.dp))
             if (showHeadline) Text(lines.headline, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.riseIn(celebrate, linesGo, 0))

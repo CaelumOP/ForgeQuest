@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import com.forgequest.app.ui.theme.ForgeSpace
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -104,5 +105,5 @@ fun CalorieCardView(s: ProgressSnapshot, health: HealthState?, settings: Setting
             TonalPill(main, onClick = { run { CalorieUi.accept(card, s, health, settings) } })
         }
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(ForgeSpace.CardGap))
 }

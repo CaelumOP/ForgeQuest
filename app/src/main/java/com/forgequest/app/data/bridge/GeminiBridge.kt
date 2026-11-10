@@ -5,10 +5,8 @@ import com.forgequest.app.R
 import com.forgequest.app.data.CoachRepository
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.ChatEntity
-import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.health.HealthRepository
 import com.forgequest.app.data.plan.PlanJson
-import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.suspendRunCatching
 import java.time.Instant
 import java.time.LocalDate
@@ -17,17 +15,14 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * The owner-only link with a Gemini app automation: twice a day the app writes everything it knows into the
- * "ForgeQuest data" Doc, the automation analyses it with a big model and writes "ForgeQuest from Gemini", and the app
- * reads that back. The same text can be copied and pasted by hand when Drive isn't set up.
+ * The hand-off with the Gemini app: [dataText] is what the person sends along with a question, and a pasted reply
+ * (plan or weekly analysis) is applied by [applyText].
  */
 class GeminiBridge(
     private val context: Context,
-    private val settings: SettingsRepository,
     private val db: AppDatabase,
     private val coach: CoachRepository,
     private val health: HealthRepository,
-    private val drive: DriveSync,
 ) {
     /** Everything Gemini needs, as one readable document. */
     suspend fun dataText(): String {
@@ -35,7 +30,7 @@ class GeminiBridge(
         val now = Instant.now().atZone(zone)
         val sb = StringBuilder()
         sb.appendLine("ForgeQuest data, updated ${now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.US))} (${zone.id})")
-        sb.appendLine("Written by the ForgeQuest app for the owner's Gemini automation. Reply in the \"${BridgeFormat.REPLY_DOC}\" document using the exact format from your instructions.")
+        sb.appendLine("Copied from the ForgeQuest app. Reply using the exact format from your instructions; the person will paste your reply back into the app.")
         sb.appendLine()
         sb.appendLine("## ATHLETE")
         sb.appendLine(coach.progressSummary().trim())
@@ -61,28 +56,9 @@ class GeminiBridge(
         return sb.toString()
     }
 
-    /** Writes the data Doc and reads a newer reply if there is one. Returns null when there was nothing new to read. */
-    suspend fun sync(token: String): BridgeReply? {
-        val s = settings.current()
-        val id = drive.upsertTextDoc(token, BridgeFormat.DATA_DOC, dataText(), s.bridgeDataId.ifBlank { null })
-        settings.update { it.copy(bridgeDataId = id, bridgeLastWrite = System.currentTimeMillis()) }
-        val doc = drive.newestDoc(token, BridgeFormat.REPLY_DOC, s.bridgeLastReplyModified, context.getString(R.string.bridge_reply_placeholder)) ?: return null
-        // The placeholder the app wrote itself isn't a reply.
-        if (!doc.first.contains(BridgeFormat.HEADER)) { settings.update { it.copy(bridgeLastReplyModified = doc.second) }; return null }
-        val reply = BridgeFormat.parse(doc.first)
-        apply(reply)
-        settings.update { it.copy(bridgeLastReplyModified = doc.second) }
-        return reply
-    }
-
-    /** Applies a reply: today's line for Home, the analysis as a coach message, notes into memory, a plan as a card to review. */
+    /** Applies a reply: the analysis as a coach message, a plan as a card to review. Coach notes are only edited by the person. */
     suspend fun apply(reply: BridgeReply) {
         val now = System.currentTimeMillis()
-        settings.update {
-            val merged = (it.coachNotes.lines().map(String::trim).filter(String::isNotBlank) + reply.notes)
-                .distinctBy { n -> n.lowercase() }.takeLast(25).joinToString("\n")
-            it.copy(bridgeToday = reply.today, bridgeIssues = reply.issues.joinToString(", "), bridgeLastReadAt = now, coachNotes = merged)
-        }
         val chat = db.chat()
         if (reply.week.isNotBlank()) {
             chat.insert(ChatEntity(role = "coach", text = context.getString(R.string.bridge_week_title) + "\n\n" + reply.week, kind = "gemini", createdAt = now))
@@ -93,7 +69,7 @@ class GeminiBridge(
                 chat.insert(
                     ChatEntity(role = "coach", text = context.getString(R.string.bridge_plan_card), planJson = PlanJson.encode(plan), createdAt = now + 1)
                 )
-            } ?: settings.update { it.copy(bridgeIssues = (reply.issues + "PLAN JSON").distinct().joinToString(", ")) }
+            }
         }
     }
 

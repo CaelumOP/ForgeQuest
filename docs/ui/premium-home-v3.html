@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ForgeQuest · Home V3 mock-up</title>
+<!-- Mock-up only: fonts and photo load from the web here. The real app ships them inside the app. -->
+<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600&family=Readex+Pro:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Manrope:wght@500;600;700&family=Instrument+Serif&family=Noto+Naskh+Arabic:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#111416;--card:#1A1E21;--card-high:#252A2E;--line:rgba(255,255,255,.09);--text:#E8E8E6;--muted:#9AA0A6;
+  --accent:#6FD3C0;--on-accent:#06302A;--blue:#8AB4F8;--gold:#F0CF7A;--purple:#C3A2F2;--rec:#7FD99A;--ok:#7FD99A;
+  --ease-enter:cubic-bezier(.05,.7,.1,1);--ease-std:cubic-bezier(.2,0,0,1);
+  --f-sans:'Alexandria';--f-serif:'Instrument Serif',serif;
+  --g1:#1E4A52;--g2:#5A4A63;--g3:#6B4E3D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:#0A0B0C;color:var(--text);font-family:system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding:24px}
+.panel{width:300px;display:flex;flex-direction:column;gap:18px;font-size:14px}
+.panel h1{font:600 20px/1.3 Manrope,sans-serif}
+.panel p{color:var(--muted);line-height:1.5}
+.grp{display:flex;flex-direction:column;gap:8px}.grp b{font-weight:500}
+.seg{display:flex;background:#1A1E21;border-radius:999px;padding:4px;gap:4px;flex-wrap:wrap}
+.seg button{flex:1;border:0;background:none;color:var(--muted);padding:9px 10px;border-radius:999px;font:500 13px system-ui;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+.replay{border:0;border-radius:999px;padding:12px;background:#252A2E;color:var(--text);font:500 14px system-ui;cursor:pointer}
+.note{font-size:12px}
+
+/* ---------- phone ---------- */
+.phone{width:390px;height:844px;border-radius:48px;background:var(--bg);overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #000,0 0 0 11px #333;font-family:var(--f-sans),system-ui,sans-serif}
+/* whole-screen gradient: very soft, low contrast, slowly drifting */
+.sky{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.sky .blob{position:absolute;width:140%;height:70%;filter:blur(70px);opacity:.5;will-change:transform}
+.sky .b1{top:-22%;left:-30%;background:radial-gradient(closest-side,var(--g1),transparent)}
+.sky .b2{top:18%;left:20%;background:radial-gradient(closest-side,var(--g2),transparent);opacity:.30}
+.sky .b3{top:58%;left:-35%;background:radial-gradient(closest-side,var(--g3),transparent);opacity:.24}
+.motion .sky .b1{animation:d1 18s ease-in-out infinite alternate}
+.motion .sky .b2{animation:d2 22s ease-in-out infinite alternate}
+.motion .sky .b3{animation:d3 20s ease-in-out infinite alternate}
+@keyframes d1{to{transform:translate3d(10%,6%,0) scale(1.1)}}
+@keyframes d2{to{transform:translate3d(-12%,-5%,0) scale(1.08)}}
+@keyframes d3{to{transform:translate3d(14%,-8%,0) scale(1.06)}}
+.grain{position:absolute;inset:0;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+.scroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+.content{position:relative;padding:58px 20px 0;display:flex;flex-direction:column;gap:16px}
+.status{position:absolute;top:16px;left:30px;right:30px;display:flex;justify-content:space-between;font:600 15px var(--f-sans);z-index:2}
+
+/* type */
+.lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.045em;color:var(--muted)}
+[dir=rtl] .lbl{text-transform:none;letter-spacing:0;font-size:13px}
+.serif{font-family:var(--f-serif);font-weight:400}
+[dir=rtl] .serif{font-weight:600}
+
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-top:8px}
+.hdr .hi{font-size:15px;color:rgba(255,255,255,.72);margin-top:6px}
+.hdr h2{font-size:42px;line-height:1.08;letter-spacing:-.3px;margin-top:4px}
+[dir=rtl] .hdr h2{font-size:32px;line-height:1.45;letter-spacing:0}
+.hdr .sub{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.5;max-width:290px}
+.avatar{width:44px;height:44px;border-radius:999px;background:var(--card-high);display:grid;place-items:center;font:600 16px var(--f-sans);flex:none}
+
+/* rings: middle thickness, dashed guide track, end-cap knobs */
+.rings{display:flex;flex-direction:column;align-items:center;gap:22px;padding:14px 0 4px}
+.big{position:relative;width:250px;height:250px}
+.big svg{width:100%;height:100%}
+[dir=rtl] .big svg{transform:scaleX(-1)}
+.guide{fill:none;stroke:rgba(255,255,255,.16);stroke-width:1.2;stroke-dasharray:3 5}
+.arc{fill:none;stroke-linecap:round}
+.knob{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:999px;display:grid;place-items:center;color:#0C1012;font:700 12px system-ui;box-shadow:0 0 0 3px var(--bg)}
+[dir=rtl] .knob .ic{transform:scaleX(-1)}
+.cookie{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;transform:scale(0) rotate(-60deg);transition:transform .5s var(--ease-enter)}
+.cookie.show{transform:scale(1) rotate(0)}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.center .n{font-size:50px;line-height:1;font-variant-numeric:tabular-nums}
+.center .of{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.center .u{margin-top:6px}
+/* Google-Fit stats: big numbers, thin dividers */
+.stats{display:flex;width:100%}
+.stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0}
+.stat+.stat{border-inline-start:1px solid var(--line)}
+.stat .v{font:600 26px/1 var(--f-sans);font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+.stat .v small{font-size:13px;color:var(--muted);font-weight:500}
+.stat .l{display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:9px}
+
+/* cards: solid; only the workout card is frosted */
+.card{background:var(--card);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:16px;opacity:0;transform:translateY(14px)}
+.in .card{animation:rise .5s var(--ease-enter) forwards}
+.in .card:nth-of-type(2){animation-delay:.07s}.in .card:nth-of-type(3){animation-delay:.14s}
+@keyframes rise{to{opacity:1;transform:none}}
+.no-motion .card{opacity:1;transform:none;animation:none!important}
+.card h3{font-size:27px;line-height:1.2;margin-top:6px}
+[dir=rtl] .card h3{font-size:22px;line-height:1.5}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.workout{padding:0;overflow:hidden;background:rgba(26,30,33,.62);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.07)}
+.workout .ph{height:150px;background:url('https://images.unsplash.com/photo-1734630341082-0fec0e10126c?w=900&q=70') center 55%/cover;position:relative}
+.workout .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,20,22,.1) 20%,rgba(26,30,33,.95) 100%)}
+.workout .body{padding:4px 24px 24px;display:flex;flex-direction:column;gap:16px;margin-top:-26px;position:relative}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--card-high);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--text)}
+/* solid buttons, no glass */
+.btn{border:0;border-radius:999px;padding:15px;background:var(--accent);color:var(--on-accent);font:600 15px var(--f-sans);width:100%;cursor:pointer;transition:transform .2s var(--ease-std),border-radius .3s var(--ease-std)}
+.btn:active{transform:scale(.97);border-radius:16px}
+/* readiness, no chart */
+.breath{width:80px;height:80px;position:relative;flex:none;display:grid;place-items:center}
+.breath::before{content:"";position:absolute;inset:-8px;border-radius:999px;background:radial-gradient(circle,color-mix(in srgb,var(--rec) 34%,transparent),transparent 70%)}
+.motion .breath::before{animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.93);opacity:.5}50%{transform:scale(1.06);opacity:1}}
+.breath svg{position:absolute;inset:0;transform:rotate(-90deg)}
+[dir=rtl] .breath svg{transform:rotate(-90deg) scaleY(-1)}
+.breath .n{position:relative;font-size:30px;font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--rec) 16%,transparent);color:var(--rec);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:500;margin-top:10px}
+.facts{display:flex;border-top:1px solid var(--line);padding-top:16px}
+.facts div{flex:1;display:flex;flex-direction:column;gap:4px}
+.facts div+div{border-inline-start:1px solid var(--line);padding-inline-start:16px}
+.facts b{font:600 18px var(--f-sans);font-variant-numeric:tabular-nums}
+/* expressive week card */
+.bars{display:flex;align-items:flex-end;justify-content:space-between;height:132px;position:relative;padding-top:18px}
+.goal{position:absolute;left:0;right:0;border-top:1px dashed rgba(255,255,255,.22)}
+.bar{width:34px;border-radius:999px;position:relative;transform-origin:bottom;transform:scaleY(0)}
+.in .bar{animation:grow .7s var(--ease-enter) forwards}
+.no-motion .bar{transform:none;animation:none!important}
+@keyframes grow{to{transform:scaleY(1)}}
+.bar.hit{background:var(--accent)}.bar.miss{background:color-mix(in srgb,var(--blue) 55%,var(--card-high))}
+.bar svg{position:absolute;top:-4px;left:50%;width:30px;height:30px;margin-left:-15px}
+.days{display:flex;justify-content:space-between}.days span{width:34px;text-align:center}
+/* floating nav + FAB (M3 expressive) */
+.navwrap{position:sticky;bottom:0;display:flex;gap:10px;align-items:center;padding:14px 4px 22px;margin-top:4px;background:linear-gradient(180deg,transparent,var(--bg) 45%)}
+.nav{flex:1;display:flex;justify-content:space-between;background:var(--card-high);border-radius:999px;padding:6px}
+.nav span{display:flex;align-items:center;gap:6px;padding:10px 12px;border-radius:999px;font-size:13px;color:var(--muted)}
+.nav span.on{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent);font-weight:500}
+.nav span:not(.on) .t{display:none}
+.nav svg{width:20px;height:20px}
+.fab{width:56px;height:56px;border-radius:18px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:28px;flex:none}
+@media (prefers-reduced-motion:reduce){.sky .blob,.breath::before{animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h1>Home V3 · mock-up</h1>
+  <p>Built from your notes on V2, plus ideas from the Google Fit and M3 Expressive references. It's drawn in a browser, not the app.</p>
+  <div class="grp"><b>Language</b>
+    <div class="seg" data-k="lang"><button data-v="en" class="on">English</button><button data-v="ar">العربية</button></div></div>
+  <div class="grp"><b>Body font</b> <span class="note" style="color:var(--muted)">(headlines and big numbers stay serif)</span>
+    <div class="seg" data-k="font">
+      <button data-v="alex" class="on">A1 Alexandria</button><button data-v="readex">A2 Readex Pro</button><button data-v="plex">A3 Manrope + Plex</button></div>
+    <p class="note">Serif: Instrument Serif in English. In Arabic, Noto Naskh Arabic stands in for Thmanyah Serif Display.</p></div>
+  <div class="grp"><b>Gradient tint</b>
+    <div class="seg" data-k="sky">
+      <button data-v="dusk" class="on">Dusk</button><button data-v="dawn">Dawn</button><button data-v="night">Night</button>
+      <button data-v="rec">Recovery</button><button data-v="none">None</button></div></div>
+  <div class="grp"><b>Motion</b>
+    <div class="seg" data-k="motion"><button data-v="on" class="on">On</button><button data-v="off">Off</button></div>
+    <p class="note">On: the gradient drifts very slowly (18–22 s), the readiness glow breathes (4 s), the rings and their end knobs fill while the numbers count, a scalloped check badge pops in when protein hits its goal, cards rise in, bars grow.</p></div>
+  <button class="replay" id="replay">Replay opening</button>
+</div>
+
+<div class="phone motion" id="phone">
+  <div class="sky"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grain"></div></div>
+  <div class="scroll">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="content" id="content">
+      <div class="hdr">
+        <div><div class="lbl" data-t="date"></div><div class="hi" data-t="hello"></div>
+          <h2 class="serif" data-t="vh"></h2><div class="sub" data-t="vsub"></div></div>
+        <div class="avatar">A</div>
+      </div>
+
+      <div class="rings">
+        <div class="big" id="big">
+          <svg viewBox="0 0 250 250"><g transform="rotate(-90 125 125)">
+            <circle class="guide" cx="125" cy="125" r="112"/><circle class="arc" id="r1" cx="125" cy="125" r="112" stroke-width="10" stroke="var(--blue)"/>
+            <circle class="guide" cx="125" cy="125" r="90"/><circle class="arc" id="r2" cx="125" cy="125" r="90" stroke-width="10" stroke="var(--gold)"/>
+            <circle class="guide" cx="125" cy="125" r="68"/><circle class="arc" id="r3" cx="125" cy="125" r="68" stroke-width="10" stroke="var(--purple)"/>
+          </g></svg>
+          <div class="knob" id="k1" style="background:var(--blue)"><span class="ic">›</span></div>
+          <div class="cookie" id="k2"><svg viewBox="0 0 34 34"><path id="ck" fill="var(--gold)"/><path d="M11 17.5l4 4 8-8.5" fill="none" stroke="#2A2108" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="knob" id="k3" style="background:var(--purple)"><span class="ic">»</span></div>
+          <div class="center"><span class="n serif" id="kcal">0</span><span class="lbl u" data-t="kcal"></span><span class="of" id="kgoal"></span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="v"><span id="sp">0</span><small data-t="g"></small></span><span class="l"><i class="dot" style="background:var(--gold)"></i><span class="lbl" data-t="protein"></span></span></div>
+          <div class="stat"><span class="v"><span id="sc">0</span><small data-t="g"></small></span><span class="l"><i class="dot" style="background:var(--purple)"></i><span class="lbl" data-t="carbs"></span></span></div>
+          <div class="stat"><span class="v" id="ss">0</span><span class="l"><i class="dot" style="background:var(--accent)"></i><span class="lbl" data-t="steps"></span></span></div>
+        </div>
+      </div>
+
+      <div class="card workout">
+        <div class="ph"></div>
+        <div class="body">
+          <div><div class="lbl" data-t="wk"></div><h3 class="serif" data-t="wtitle"></h3></div>
+          <div class="chips"><span class="chip" data-t="c1"></span><span class="chip" data-t="c2"></span><span class="chip" data-t="c3"></span></div>
+          <button class="btn" data-t="start"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div><div class="lbl" data-t="rk"></div><h3 class="serif" data-t="steady"></h3><span class="pill">● <span data-t="rpill"></span></span></div>
+          <div class="breath">
+            <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="8"/>
+              <circle id="rr" cx="40" cy="40" r="34" fill="none" stroke="var(--rec)" stroke-width="8" stroke-linecap="round"/></svg>
+            <span class="n serif" id="rn">0</span>
+          </div>
+        </div>
+        <div class="facts">
+          <div><span class="lbl" data-t="f1"></span><b data-t="f1v"></b></div>
+          <div><span class="lbl" data-t="f2"></span><b data-t="f2v"></b></div>
+          <div><span class="lbl" data-t="f3"></span><b data-t="f3v"></b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row"><div><div class="lbl" data-t="wkk"></div><h3 class="serif" data-t="wkh"></h3></div></div>
+        <div class="bars" id="bars"></div>
+        <div class="days lbl" id="days"></div>
+      </div>
+
+      <div class="navwrap">
+        <div class="nav">
+          <span class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg><span class="t" data-t="n1"></span></span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3v8a3 3 0 0 0 3 3v7M7 3v5M10 3v5M17 3c-2 2-2 6 0 8v10"/></svg><span class="t" data-t="n2"></span></span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9v6M6 6v12M18 6v12M21 9v6M6 12h12"/></svg><span class="t" data-t="n3"></span></span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="t" data-t="n4"></span></span>
+        </div>
+        <div class="fab">+</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const T={
+ en:{date:"Wednesday · 4 November",hello:"Good evening, Abdulrahman",vh:"On track today",vsub:"Protein goal reached. A light dinner keeps you right on target.",
+     kcal:"kcal eaten",g:"g",protein:"Protein",carbs:"Carbs",steps:"Steps",
+     wk:"Today's workout",wtitle:"Upper body · Push",c1:"45 min",c2:"6 exercises",c3:"Week 3",start:"Start workout",
+     rk:"Readiness",steady:"Steady, train as planned",rpill:"Within your normal",f1:"Sleep",f1v:"7 h 20",f2:"Resting HR",f2v:"61",f3:"HRV",f3v:"48 ms",
+     wkk:"This week",wkh:"Protein goal hit 4 of 7 days",days:["S","M","T","W","T","F","S"],n1:"Home",n2:"Food",n3:"Train",n4:"Coach"},
+ ar:{date:"الأربعاء · ٤ نوفمبر",hello:"مساء الخير يا عبدالرحمن",vh:"تسير على الخطة اليوم",vsub:"بلغت هدف البروتين. عشاء خفيف يبقيك على الهدف تمامًا.",
+     kcal:"سعرة مأكولة",g:"غ",protein:"البروتين",carbs:"الكربوهيدرات",steps:"الخطوات",
+     wk:"تمرين اليوم",wtitle:"الجزء العلوي · دفع",c1:"٤٥ دقيقة",c2:"٦ تمارين",c3:"الأسبوع ٣",start:"ابدأ التمرين",
+     rk:"الجاهزية",steady:"مستقر، تمرّن كما خطّطت",rpill:"ضمن معدّلك المعتاد",f1:"النوم",f1v:"٧ س ٢٠ د",f2:"نبض الراحة",f2v:"٦١",f3:"تباين النبض",f3v:"٤٨ م.ث",
+     wkk:"هذا الأسبوع",wkh:"بلغت هدف البروتين ٤ من ٧ أيام",days:["ح","ن","ث","ر","خ","ج","س"],n1:"الرئيسية",n2:"الطعام",n3:"التمرين",n4:"المدرب"}};
+const FONTS={alex:["Alexandria","Alexandria"],readex:["Readex Pro","Readex Pro"],plex:["Manrope","IBM Plex Sans Arabic"]};
+const SKY={dusk:["#1E4A52","#5A4A63","#6B4E3D"],dawn:["#3A3F72","#7A5C86","#8A5A4A"],night:["#14233F","#2B2F5A","#3A2F55"],
+           rec:["#1F4D3C","#2C5B55","#3D5A3A"],none:["#111416","#111416","#111416"]};
+const WEEK=[[.72,0],[1.05,1],[.55,0],[1.1,1],[.8,0],[1.15,1],[1.02,1]];
+const S={lang:"en",font:"alex",sky:"dusk",motion:"on"};
+const $=id=>document.getElementById(id), phone=$("phone"), root=document.documentElement;
+
+// M3-expressive scalloped "cookie" shape
+function cookie(cx,cy,R,k,n){let d="";for(let i=0;i<=360;i+=3){const a=i*Math.PI/180,r=R*(1+k*Math.cos(n*a));d+=(i?"L":"M")+(cx+r*Math.cos(a)).toFixed(2)+","+(cy+r*Math.sin(a)).toFixed(2)}return d+"Z"}
+$("ck").setAttribute("d",cookie(17,17,14.5,.07,9));
+
+function buildBars(){
+  const b=$("bars"); b.innerHTML='<div class="goal" style="bottom:'+(100/1.2)+'%"></div>';
+  WEEK.forEach(([v,hit],i)=>{const el=document.createElement("div");el.className="bar "+(hit?"hit":"miss");
+    el.style.height=(v/1.2*100)+"%";el.style.animationDelay=(.25+i*.05)+"s";
+    if(hit)el.innerHTML='<svg viewBox="0 0 34 34"><path fill="#DDF7F1" d="'+cookie(17,17,13,.08,9)+'"/><path d="M11.5 17.5l3.8 3.8 7.4-7.8" fill="none" stroke="#06302A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    b.appendChild(el)});
+  $("days").innerHTML=T[S.lang].days.map(d=>"<span>"+d+"</span>").join("");
+}
+function apply(){
+  const ar=S.lang==="ar", f=FONTS[S.font];
+  phone.dir=ar?"rtl":"ltr";
+  root.style.setProperty("--f-sans",`'${ar?f[1]:f[0]}',${ar?"'IBM Plex Sans Arabic'":"Manrope"}`);
+  root.style.setProperty("--f-serif",ar?"'Noto Naskh Arabic',serif":"'Instrument Serif',serif");
+  SKY[S.sky].forEach((c,i)=>root.style.setProperty("--g"+(i+1),c));
+  phone.classList.toggle("motion",S.motion==="on"); phone.classList.toggle("no-motion",S.motion!=="on");
+  document.querySelectorAll("[data-t]").forEach(e=>e.textContent=T[S.lang][e.dataset.t]);
+  buildBars();
+}
+const fmt=v=>new Intl.NumberFormat(S.lang==="ar"?"ar-SA":"en-US").format(v);
+function setArc(el,r,f){const c=2*Math.PI*r;el.style.strokeDasharray=c;el.style.strokeDashoffset=c*(1-f)}
+function place(el,r,f){const a=(-90+f*360)*Math.PI/180, s=S.lang==="ar"?-1:1;
+  el.style.left=((125+s*r*Math.cos(a))/250*100)+"%"; el.style.top=((125+r*Math.sin(a))/250*100)+"%"}
+function play(){
+  const anim=S.motion==="on", c=$("content");
+  c.classList.remove("in"); void c.offsetWidth; c.classList.add("in");
+  $("k2").classList.remove("show");
+  $("kgoal").textContent=(S.lang==="ar"?"من ":"of ")+fmt(2200);
+  const R=[[$("r1"),$("k1"),112,1580/2200],[$("r2"),$("k2"),90,1],[$("r3"),$("k3"),68,160/230]];
+  const nums=[["kcal",1580],["sp",150],["sc",160],["ss",8240],["rn",78]], t0=performance.now(), D=anim?900:0;
+  (function tick(t){const p=D?Math.min(1,(t-t0)/D):1, e=1-Math.pow(1-p,4);
+    R.forEach(([arc,k,r,f])=>{setArc(arc,r,f*e);place(k,r,Math.max(f*e,.001))});
+    setArc($("rr"),34,.78*e);
+    nums.forEach(([id,v])=>$(id).textContent=fmt(Math.round(v*e)));
+    if(p<1)requestAnimationFrame(tick); else $("k2").classList.add("show");
+  })(t0);
+}
+document.querySelectorAll(".seg").forEach(seg=>seg.addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  S[seg.dataset.k]=b.dataset.v; apply(); if(seg.dataset.k!=="sky")play();
+}));
+$("replay").onclick=play;
+apply(); play();
+</script>
+</body>
+</html>

@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
         WeightEntity::class, ChatEntity::class, BadgeEntity::class, ReadinessDayEntity::class, DayNoteEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -101,8 +101,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v9 → v10: a saved food can remember the barcode it was scanned from. */
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE foods ADD COLUMN barcode TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         /** Every upgrade step in order, 1 to the current version; the migration test walks the same list. */
-        internal val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+        internal val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
 
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)

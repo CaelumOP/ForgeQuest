@@ -3,9 +3,7 @@ package com.forgequest.app.ui.workouts
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
-
 import androidx.compose.ui.res.stringResource
-
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,9 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -70,6 +66,7 @@ import com.forgequest.app.domain.Records
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.exerciseCues
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.PillButton
@@ -107,7 +104,7 @@ class ExerciseDetailViewModel(val app: AppContainer) : ViewModel() {
 private data class Metric(val label: String, val unit: String, val value: (List<SetEntity>, ExerciseKind) -> Float)
 
 @Composable
-private fun metricsFor(kind: ExerciseKind, wu: WeightUnit = WeightUnit.KG): List<Metric> = when (kind) {
+private fun metricsFor(kind: ExerciseKind, wu: WeightUnit): List<Metric> = when (kind) {
     ExerciseKind.REPS -> listOf(
         Metric(stringResource(R.string.metric_max_reps), stringResource(R.string.unit_reps)) { s, _ -> (s.maxOfOrNull { it.reps ?: 0 } ?: 0).toFloat() },
         Metric(stringResource(R.string.metric_total_reps), stringResource(R.string.unit_reps)) { s, _ -> s.sumOf { it.reps ?: 0 }.toFloat() },
@@ -142,12 +139,15 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
     val kind = ex?.kind ?: ExerciseKind.REPS
     val unit = s.settings.weightUnit
     val metrics = metricsFor(kind, unit)
-    val metric = metrics[metricIndex.coerceIn(0, metrics.lastIndex)]
-    val sessionsById = s.sessions.associateBy { it.id }
-    val history = s.doneSets.filter { it.exerciseId == exerciseId }.groupBy { it.sessionId }
-        .mapNotNull { (sid, sets) -> sessionsById[sid]?.let { it to sets.sortedBy { set -> set.setIndex } } }
-        .sortedBy { it.first.finishedAt }
-    val points = history.map { (_, sets) -> metric.value(sets, kind) }
+    val mi = metricIndex.coerceIn(0, metrics.lastIndex)
+    val metric = metrics[mi]
+    val history = remember(s, exerciseId) {
+        val sessionsById = s.sessions.associateBy { it.id }
+        s.doneSets.filter { it.exerciseId == exerciseId }.groupBy { it.sessionId }
+            .mapNotNull { (sid, sets) -> sessionsById[sid]?.let { it to sets.sortedBy { set -> set.setIndex } } }
+            .sortedBy { it.first.finishedAt }
+    }
+    val points = remember(history, mi, kind, unit) { history.map { (_, sets) -> metric.value(sets, kind) } }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -165,6 +165,10 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                 PillButton(stringResource(R.string.cd_watch_form), onClick = { openFormVideo(context, ex) }, icon = Icons.Rounded.PlayArrow, container = c.blueTrack, content = c.blue)
                 TonalPill(if (ex?.videoUrl.isNullOrBlank()) stringResource(R.string.detail_add_link) else stringResource(R.string.detail_change_link), onClick = { editLink = true }, icon = Icons.Rounded.Link)
             }
+            exerciseCues(exerciseId)?.let {
+                Spacer(Modifier.height(12.dp))
+                FormCues(it)
+            }
             ex?.let { ExerciseTiers.of(it) }?.let {
                 Spacer(Modifier.height(12.dp))
                 TierBadge(it)
@@ -177,7 +181,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             FitCard {
                 Text(stringResource(R.string.detail_progress), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
-                SegmentedTabs(metrics.map { it.label }, metricIndex.coerceIn(0, metrics.lastIndex), { metricIndex = it })
+                SegmentedTabs(metrics.map { it.label }, mi, { metricIndex = it })
                 Spacer(Modifier.height(16.dp))
                 if (points.size < 2) {
                     Text(
@@ -228,10 +232,9 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
         }
     }
 
-    val plan = s.plan
-    if (putInPlan && ex != null && plan != null) {
+    if (putInPlan && ex != null && s.plan != null) {
         PutInPlanSheet(
-            ex, plan, s.exercises,
+            ex, s.plan, s.exercises,
             onReplace = { day, item -> vm.replaceInPlan(day, item, ex); putInPlan = false },
             onAdd = { day -> vm.addToPlan(day, ex); putInPlan = false },
             onDismiss = { putInPlan = false },
@@ -257,6 +260,22 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             confirmButton = { TextButton(onClick = { vm.setVideo(exerciseId, url); editLink = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
             dismissButton = { TextButton(onClick = { editLink = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
+    }
+}
+
+/** "How to do it": two form cues and the common mistake. The form video button sits just above. */
+@Composable
+private fun FormCues(cues: Triple<Int, Int, Int>) {
+    val c = Fit.colors
+    FitCard {
+        Text(stringResource(R.string.cues_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(cues.first), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(cues.second), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        Spacer(Modifier.height(10.dp))
+        Text(stringResource(R.string.cues_mistake), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+        Text(stringResource(cues.third), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
     }
 }
 

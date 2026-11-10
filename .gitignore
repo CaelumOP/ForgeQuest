@@ -9,3 +9,9 @@ keystore.properties
 *.keystore
 
 .env*
+
+tools/fooddb/cache/
+tools/fooddb/__pycache__/
+tools/fooddb/run.log
+tools/fooddb/sources/*.pdf
+tools/fooddb/out/sample.csv

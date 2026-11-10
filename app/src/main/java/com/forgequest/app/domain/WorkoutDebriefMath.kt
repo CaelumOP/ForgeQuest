@@ -5,6 +5,7 @@ import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * The workout debrief, worked out from the person's own numbers (docs/plans/math-debrief-plan.md, section C). Pure: it
@@ -85,6 +86,8 @@ object WorkoutDebriefMath {
         val sameRest: Boolean,
         /** "The app eases off by itself on a low-recovery day." */
         val footnote: Boolean,
+        /** Whole-percent total volume change vs the previous workout of the same plan day; null when not comparable. */
+        val volumeChange: Int? = null,
     )
 
     /** One exercise of the workout. */
@@ -146,9 +149,9 @@ object WorkoutDebriefMath {
     fun compute(input: Input): Result {
         val score = input.score
         val exs = input.exercises.mapNotNull { e ->
-            val working = e.done.filterNot { WorkoutScore.isWarmUp(it.block) }
+            val working = e.done.filterNot { WorkoutScore.isExtra(it.block) }
             if (working.isEmpty()) return@mapNotNull null
-            val lastWorking = e.last.filterNot { WorkoutScore.isWarmUp(it.block) }
+            val lastWorking = e.last.filterNot { WorkoutScore.isExtra(it.block) }
             val fromScore = score.exercises.firstOrNull { it.exerciseId == e.exerciseId }
             val pain = working.any { effort(it) == SetEffort.PAIN }
             Ex(
@@ -179,7 +182,7 @@ object WorkoutDebriefMath {
             watch = watch(input, exs, headline, rough),
             next = next,
             sameRest = sameRest,
-            footnote = input.healthOn || lowRecovery,
+            footnote = lowRecovery,
         )
     }
 
@@ -400,7 +403,7 @@ object WorkoutDebriefMath {
                 sessionId = session.id,
                 score = score,
                 exercises = list,
-                plannedExerciseIds = planItems.filterNot { WorkoutScore.isWarmUp(it.block) }.map { it.exerciseId }.toSet(),
+                plannedExerciseIds = planItems.filterNot { WorkoutScore.isExtra(it.block) }.map { it.exerciseId }.toSet(),
                 weeklyTarget = weeklyTarget,
                 weekCount = (before + session.epochDay).size,
                 weekCountBefore = before.size,
@@ -408,6 +411,26 @@ object WorkoutDebriefMath {
                 unit = unit,
                 healthOn = healthOn,
             ),
-        )
+        ).copy(volumeChange = volumeChangeVsLastTime(session, sessions, doneSets, mine))
+    }
+
+    /** Total weight x reps over working sets; bodyweight sets and holds count 0, as everywhere else. */
+    fun volume(sets: List<SetEntity>): Double =
+        sets.filterNot { WorkoutScore.isExtra(it.block) }.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }
+
+    /** Whole-percent change of [now] against [was]; null when either has no volume to compare. */
+    fun volumeChangePercent(now: List<SetEntity>, was: List<SetEntity>): Int? {
+        val before = volume(was)
+        val after = volume(now)
+        if (before <= 0.0 || after <= 0.0) return null
+        return ((after - before) / before * 100).roundToInt()
+    }
+
+    private fun volumeChangeVsLastTime(session: SessionEntity, sessions: List<SessionEntity>, doneSets: List<SetEntity>, mine: List<SetEntity>): Int? {
+        val day = session.planDayId ?: return null
+        val prev = sessions
+            .filter { it.planDayId == day && it.id != session.id && (it.epochDay < session.epochDay || (it.epochDay == session.epochDay && it.startedAt < session.startedAt)) }
+            .maxWithOrNull(compareBy({ it.epochDay }, { it.startedAt })) ?: return null
+        return volumeChangePercent(mine, doneSets.filter { it.sessionId == prev.id })
     }
 }

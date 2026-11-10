@@ -9,6 +9,23 @@ import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.LocalReducedMotion
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Surface
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +37,8 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.FitnessCenter
@@ -32,9 +51,6 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
@@ -89,13 +105,12 @@ import com.forgequest.app.ui.workouts.WorkoutsScreen
 
 object Routes {
     const val HOME = "home"
-    const val TOUR = "tour"
     const val WORKOUTS = "workouts"
     const val FOOD = "food"
     const val COACH = "coach"
     const val PROFILE = "profile"
     const val LIVE = "live"
-    const val PLAN = "plan?day={day}"
+    const val PLAN = "plan?day={day}&paste={paste}"
     const val SCAN = "scan"
     const val EXERCISE = "exercise/{id}"
     const val HISTORY = "history"
@@ -103,19 +118,25 @@ object Routes {
     const val BADGES = "badges"
     const val LIBRARY = "library"
     const val PROGRESS = "progress"
+    const val PLAN_BUILDER = "plan_builder"
+    const val SETTINGS = "settings"
+    const val SETTINGS_GROUP = "settings/{id}"
+    fun settingsGroup(id: String) = "settings/$id"
     fun exercise(id: String) = "exercise/$id"
     fun session(id: Long) = "session/$id"
     /** The plan editor, opened on [day] (1 = Monday) or on today. */
-    fun plan(day: Int = 0) = "plan?day=$day"
+    fun plan(day: Int = 0, paste: Boolean = false) = "plan?day=$day&paste=$paste"
 }
 
 private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector)
 
-private val tabs = listOf(
+/** The fourth tab is the coach chat only when [chat] (see chatIsTab); otherwise Progress, which needs no key. */
+private fun tabsFor(chat: Boolean) = listOf(
     Tab(Routes.HOME, R.string.tab_home, Icons.Outlined.Home, Icons.Rounded.Home),
     Tab(Routes.WORKOUTS, R.string.tab_workouts, Icons.Outlined.FitnessCenter, Icons.Rounded.FitnessCenter),
     Tab(Routes.FOOD, R.string.tab_food, Icons.Outlined.Restaurant, Icons.Rounded.Restaurant),
-    Tab(Routes.COACH, R.string.tab_coach, Icons.Outlined.AutoAwesome, Icons.Rounded.AutoAwesome),
+    if (chat) Tab(Routes.COACH, R.string.tab_coach, Icons.Outlined.AutoAwesome, Icons.Rounded.AutoAwesome)
+    else Tab(Routes.PROGRESS, R.string.tab_progress, Icons.AutoMirrored.Outlined.ShowChart, Icons.AutoMirrored.Rounded.ShowChart),
     Tab(Routes.PROFILE, R.string.tab_profile, Icons.Outlined.AccountCircle, Icons.Rounded.AccountCircle),
 )
 
@@ -140,12 +161,9 @@ fun AppRoot() {
         // First run: language (both scripts shown), then the feature slides, then setup. Read from prefs so the
         // activity restart after picking a language re-reads it (saved state would bring the language screen back).
         var langDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.languageChosen(context)) }
-        var tourDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.tourSeen(context)) }
+        // No slide tour any more: small tips point at the real buttons later (CoachMarkBox). The tour stays as a replay.
         when {
             !langDone -> com.forgequest.app.ui.onboarding.LanguageChoice { langDone = true }
-            !tourDone -> com.forgequest.app.ui.onboarding.AppTour(androidx.compose.ui.res.stringResource(R.string.tour_start)) {
-                com.forgequest.app.ui.onboarding.TourPrefs.setTourSeen(context); tourDone = true
-            }
             else -> OnboardingScreen()
         }
         return
@@ -159,7 +177,13 @@ private fun MainScaffold() {
     val snackbar = remember { SnackbarHostState() }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
+    val chat by LocalContext.current.container.settings.chatTab.collectAsState()
+    val tabs = tabsFor(chat)
     val showBar = tabs.any { it.route == route }
+    // Chat stops being a tab while it is open (key removed or AI turned off): go to Progress so the bar comes back.
+    LaunchedEffect(chat, route) {
+        if (!chat && route == Routes.COACH) nav.navigate(Routes.PROGRESS) { popUpTo(Routes.COACH) { inclusive = true }; launchSingleTop = true }
+    }
     val c = Fit.colors
     val reduced = LocalReducedMotion.current
     // A Gemini meal shared into the app or picked in the Food tab inbox opens on the scan screen's review sheet.
@@ -170,13 +194,6 @@ private fun MainScaffold() {
     // 600 dp and wider (tablets, unfolded foldables): the bar becomes a rail on the start edge and the content stays one
     // 640 dp column in the middle. Phones are unchanged.
     val wide = LocalConfiguration.current.screenWidthDp >= 600
-    val itemColors = NavigationBarItemDefaults.colors(
-        selectedIconColor = c.teal,
-        selectedTextColor = c.textPrimary,
-        indicatorColor = c.tealTrack,
-        unselectedIconColor = c.textSecondary,
-        unselectedTextColor = c.textSecondary,
-    )
 
     CompositionLocalProvider(LocalSnackbar provides snackbar) {
         Row(Modifier.fillMaxSize()) {
@@ -206,42 +223,30 @@ private fun MainScaffold() {
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
                 if (showBar && !wide) {
-                    // Container is the theme's surfaceContainer, which is our card.
-                    NavigationBar(tonalElevation = 0.dp) {
-                        tabs.forEach { tab ->
-                            val selected = route == tab.route
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = { nav.goToTab(tab.route) },
-                                icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                                label = { NavLabel(stringResource(tab.label)) },
-                                colors = itemColors,
-                            )
-                        }
-                    }
+                    PillNavBar(route, nav, tabs)
                 }
             },
         ) { padding ->
+          val barSpace = if (showBar) PaddingValues(bottom = padding.calculateBottomPadding()) else PaddingValues(0.dp)
           Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             NavHost(
                 navController = nav,
                 startDestination = Routes.HOME,
                 // The bar's space counts as already used, so screens that pad for the keyboard
                 // (Coach input) sit right on top of it instead of a bar-height above.
-                modifier = (if (showBar) PaddingValues(bottom = padding.calculateBottomPadding()) else PaddingValues(0.dp)).let { barSpace ->
-                    Modifier.padding(barSpace).consumeWindowInsets(barSpace)
-                }.let { if (wide) it.widthIn(max = 640.dp).fillMaxHeight() else it },
+                modifier = Modifier.padding(barSpace).consumeWindowInsets(barSpace)
+                    .then(if (wide) Modifier.widthIn(max = 640.dp).fillMaxHeight() else Modifier),
                 // Pushed detail screens slide in from the end edge (RTL-aware) and slide back out; tabs just fade.
                 // With reduced motion on, nothing slides: every change is a short fade.
                 enterTransition = {
-                    if (isDetailRoute(targetState.destination.route) && !reduced) {
+                    if (isDetailRoute(targetState.destination.route, tabs) && !reduced) {
                         slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, navSlide()) + fadeIn(navSlide())
                     } else fadeIn(navFade(reduced))
                 },
                 exitTransition = { fadeOut(navFade(reduced)) },
                 popEnterTransition = { fadeIn(navFade(reduced)) },
                 popExitTransition = {
-                    if (isDetailRoute(initialState.destination.route) && !reduced) {
+                    if (isDetailRoute(initialState.destination.route, tabs) && !reduced) {
                         slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, navSlide()) + fadeOut(navSlide())
                     } else fadeOut(navFade(reduced))
                 },
@@ -252,9 +257,10 @@ private fun MainScaffold() {
                 composable(Routes.COACH) { CoachScreen(nav) }
                 composable(Routes.PROFILE) { ProfileScreen(nav) }
                 composable(Routes.LIVE, enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None }) { LiveWorkoutScreen(nav) }
-                composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 })) { entry ->
-                    PlanEditorScreen(nav, entry.arguments?.getInt("day") ?: 0)
+                composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 }, navArgument("paste") { type = NavType.BoolType; defaultValue = false })) { entry ->
+                    PlanEditorScreen(nav, entry.arguments?.getInt("day") ?: 0, entry.arguments?.getBoolean("paste") ?: false)
                 }
+                composable(Routes.PLAN_BUILDER) { com.forgequest.app.ui.plan.PlanBuilderScreen(nav) }
                 composable(Routes.SCAN) { ScanScreen(nav) }
                 composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty())
@@ -264,7 +270,10 @@ private fun MainScaffold() {
                 composable("readiness/{kind}") { entry ->
                     com.forgequest.app.ui.home.ReadinessDetailScreen(nav, com.forgequest.app.ui.home.ReadinessKind.valueOf(entry.arguments?.getString("kind") ?: "RECOVERY"))
                 }
-                composable(Routes.TOUR) { com.forgequest.app.ui.onboarding.AppTour(androidx.compose.ui.res.stringResource(R.string.tour_done)) { nav.popBackStack() } }
+                composable(Routes.SETTINGS) { com.forgequest.app.ui.profile.SettingsScreen(nav, null) }
+                composable(Routes.SETTINGS_GROUP, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                    com.forgequest.app.ui.profile.SettingsScreen(nav, entry.arguments?.getString("id"))
+                }
                 composable(Routes.LIBRARY) { ExerciseLibraryScreen(nav) }
                 composable(Routes.PROGRESS) { ProgressScreen(nav) }
                 composable(Routes.SESSION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
@@ -285,9 +294,8 @@ private fun <T> navFade(reduced: Boolean): androidx.compose.animation.core.Finit
     if (reduced) ForgeMotion.timed(true, 0, ForgeMotion.Easing.Standard) else androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
 
 /** Pushed screens (everything except the five tabs and the live workout, which has no transition). */
-private fun isDetailRoute(route: String?): Boolean =
-    route != null && route != Routes.LIVE && route != Routes.HOME && route != Routes.WORKOUTS &&
-        route != Routes.FOOD && route != Routes.COACH && route != Routes.PROFILE
+private fun isDetailRoute(route: String?, tabs: List<Tab>): Boolean =
+    route != null && route != Routes.LIVE && tabs.none { it.route == route }
 
 fun NavHostController.goToTab(route: String) {
     // Home is the start destination: navigating to it with saveState/restoreState restored the tab you were
@@ -303,12 +311,56 @@ fun NavHostController.goToTab(route: String) {
     }
 }
 
+/** The floating bottom bar: a card-high pill, the active tab shows icon + label on a tealTrack pill, the rest icon only. */
+@Composable
+private fun PillNavBar(route: String?, nav: NavHostController, tabs: List<Tab>) {
+    val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Surface(modifier = Modifier.fillMaxWidth(), shape = CircleShape, color = c.cardHigh, tonalElevation = 0.dp) {
+            Row(Modifier.fillMaxWidth().padding(6.dp).selectableGroup(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                tabs.forEach { tab ->
+                    val selected = route == tab.route
+                    val label = stringResource(tab.label)
+                    Row(
+                        Modifier
+                            .then(if (selected) Modifier.weight(1f, fill = false) else Modifier)
+                            .heightIn(min = 48.dp).widthIn(min = 48.dp)
+                            .clip(CircleShape)
+                            .background(if (selected) c.tealTrack else Color.Transparent)
+                            .selectable(selected = selected, role = Role.Tab) { nav.goToTab(tab.route) }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            if (selected) tab.selectedIcon else tab.icon,
+                            contentDescription = if (selected) null else label,
+                            tint = if (selected) c.teal else c.textSecondary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        AnimatedVisibility(
+                            selected,
+                            enter = if (reduced) EnterTransition.None else expandHorizontally() + fadeIn(),
+                            exit = if (reduced) ExitTransition.None else shrinkHorizontally() + fadeOut(),
+                        ) {
+                            Row {
+                                Spacer(Modifier.width(6.dp))
+                                NavLabel(label, c.teal)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /**
  * A bar or rail label: one line, never split mid-word. This is the one kept text-size cap in the app (1.3x): a bar can't
  * reflow, so its labels stop growing there while everything else follows the person's text size.
  */
 @Composable
-private fun NavLabel(text: String) {
+private fun NavLabel(text: String, color: Color = Color.Unspecified) {
     val d = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, minOf(d.fontScale, 1.3f)),
@@ -317,7 +369,7 @@ private fun NavLabel(text: String) {
         var shrink by androidx.compose.runtime.remember(text, d.fontScale) { androidx.compose.runtime.mutableFloatStateOf(1f) }
         val style = MaterialTheme.typography.labelMedium
         Text(
-            text, maxLines = 1, softWrap = false, textAlign = TextAlign.Center,
+            text, color = color, maxLines = 1, softWrap = false, textAlign = TextAlign.Center,
             style = style.copy(fontSize = style.fontSize * shrink),
             onTextLayout = { if (it.didOverflowWidth && shrink > 0.6f) shrink *= 0.92f },
             modifier = Modifier.padding(horizontal = 8.dp),

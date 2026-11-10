@@ -119,4 +119,78 @@ class ProgressionTest {
         assertEquals(true, Progression.inputs(null, "jumping_jacks", emptyList()).warmup)
         assertEquals(null, Progression.inputs(null, "squat", emptyList()).target)
     }
+
+    private fun reason(
+        kind: ExerciseKind, t: Progression.Target, last: List<Progression.PastSet>,
+        previous: List<Progression.PastSet> = emptyList(), low: Boolean = false, warmup: Boolean = false,
+    ) = Progression.next(kind, t, last, previous, WeightUnit.KG, low, warmup).reason
+
+    @Test
+    fun reasonLoadUpMoreRepsMoreTime() {
+        val range = Progression.Target(3, 8, 12, null, 40f)
+        assertEquals(Progression.Reason.LOAD_UP, reason(ExerciseKind.WEIGHTED, range, sets(3, 12, 40f)))
+        assertEquals(Progression.Reason.MORE_REPS, reason(ExerciseKind.WEIGHTED, range, sets(3, 10, 40f)))
+        assertEquals(Progression.Reason.MORE_TIME, reason(ExerciseKind.HOLD, Progression.Target(3, null, null, 30, null), sets(3, null, null, sec = 30)))
+    }
+
+    @Test
+    fun reasonOnceMoreAndSame() {
+        val single = Progression.Target(3, 8, null, null, 60f)
+        assertEquals(Progression.Reason.ONCE_MORE, reason(ExerciseKind.WEIGHTED, single, sets(3, 8, 60f)))
+        // bodyweight reps already past the range ceiling: nothing goes up
+        assertEquals(Progression.Reason.SAME, reason(ExerciseKind.REPS, Progression.Target(3, 8, 12, null, null), sets(3, 14, null)))
+    }
+
+    @Test
+    fun reasonHardPainMissedLowReadiness() {
+        val t = Progression.Target(3, 8, 12, null, 40f)
+        assertEquals(Progression.Reason.HARD, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.HARD)))
+        assertEquals(Progression.Reason.PAIN, reason(ExerciseKind.WEIGHTED, t, sets(3, 10, 40f, effort = SetEffort.PAIN)))
+        // pain on a bodyweight move: no weight drop, so it reads as hard
+        assertEquals(Progression.Reason.HARD, reason(ExerciseKind.REPS, Progression.Target(3, 8, 12, null, null), sets(3, 10, null, effort = SetEffort.PAIN)))
+        assertEquals(Progression.Reason.MISSED, reason(ExerciseKind.WEIGHTED, t, sets(2, 12, 40f)))
+        assertEquals(Progression.Reason.LOW_READINESS, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f), low = true))
+    }
+
+    @Test
+    fun reasonIsNullForWarmupNoHistoryAndHoldCeiling() {
+        val t = Progression.Target(3, 8, 12, null, 40f)
+        assertEquals(null, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f), warmup = true))
+        assertEquals(null, reason(ExerciseKind.WEIGHTED, t, emptyList()))
+        assertEquals(null, reason(ExerciseKind.HOLD, Progression.Target(3, null, null, 30, null), sets(3, null, null, sec = 45)))
+    }
+
+    private fun madeOn(day: Long) = java.time.LocalDate.ofEpochDay(day).atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    @Test
+    fun deloadWeekIsEveryFourthWeek() {
+        val made = madeOn(1000)
+        assertEquals(false, Progression.isDeloadWeek(made, 1000))
+        assertEquals(false, Progression.isDeloadWeek(made, 1020))
+        assertEquals(true, Progression.isDeloadWeek(made, 1021))
+        assertEquals(true, Progression.isDeloadWeek(made, 1027))
+        assertEquals(false, Progression.isDeloadWeek(made, 1028))
+        assertEquals(true, Progression.isDeloadWeek(made, 1021 + 28))
+        assertEquals(false, Progression.isDeloadWeek(made, 900))
+    }
+
+    @Test
+    fun deloadHalvesSetsRoundedUpAndHoldsTheWeight() {
+        val target = Progression.Target(3, 8, 12, null, 40f)
+        val r = Progression.next(ExerciseKind.WEIGHTED, target, sets(3, 12, 40f), emptyList(), WeightUnit.KG, lowReadiness = false, warmup = false, deload = true)
+        assertEquals(2, r.sets.size)
+        assertTrue(r.sets.all { it.weightKg == 40f })
+        assertEquals(2, Progression.deloadSets(4))
+        assertEquals(1, Progression.deloadSets(1))
+    }
+
+    @Test
+    fun afterADeloadSessionProgressIsNotStalled() {
+        val target = Progression.Target(3, 8, 12, null, 40f)
+        // A normal week with all 3 sets at the top steps up; the 2-set deload session would not.
+        val normal = Progression.next(ExerciseKind.WEIGHTED, target, sets(3, 12, 40f), emptyList(), WeightUnit.KG, false, false)
+        assertEquals(42.5f, normal.sets[0].weightKg!!, 0.01f)
+        val afterDeload = Progression.next(ExerciseKind.WEIGHTED, target, sets(2, 12, 40f), emptyList(), WeightUnit.KG, false, false)
+        assertEquals(40f, afterDeload.sets[0].weightKg!!, 0.01f)
+    }
 }

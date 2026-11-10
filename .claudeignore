@@ -9,3 +9,11 @@ app/src/main/assets/body_map.json
 **/*.pyc
 build/
 .gradle/
+# Generated outputs, indexes and other checkouts
+tools/fooddb/out/
+tools/fooddb/cache/
+.repowise/
+.claude/worktrees/
+brag-output/
+node_modules/
+web/dist/

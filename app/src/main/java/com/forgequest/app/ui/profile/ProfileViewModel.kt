@@ -186,6 +186,8 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
     private var afterConsent: (suspend (String) -> Unit)? = null
 
+    fun setName(name: String) = viewModelScope.launch { app.settings.update { it.copy(name = name.take(24)) } }
+
     fun setBodyMeasures(heightCm: Float? = null, birthYear: Int? = null, bodyFatPct: Float? = null) = viewModelScope.launch {
         app.settings.update {
             it.copy(
@@ -296,21 +298,8 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
     fun logWeight(kg: Float) = viewModelScope.launch { app.progress.logWeight(kg) }
     fun markBadgesSeen() = viewModelScope.launch { app.progress.markBadgesSeen() }
 
-    val groqKey = app.settings.groqKey
-
-    fun saveGroqKey(key: String) {
-        busy.value = app.str(R.string.profile_checking_key)
-        viewModelScope.launch {
-            try {
-                app.coach.saveGroqKey(key)
-                message.value = app.str(if (key.isBlank()) R.string.groq_key_removed else R.string.groq_key_saved)
-            } catch (e: com.forgequest.app.data.ai.AiError) {
-                message.value = e.userMessage
-            } finally {
-                busy.value = null
-            }
-        }
-    }
+    val aiOn: StateFlow<Boolean> = app.settings.aiOn
+    fun setAiEnabled(on: Boolean) = viewModelScope.launch { app.settings.setAiEnabled(on) }
 
     fun saveKey(key: String) {
         val trimmed = key.trim()
@@ -391,44 +380,10 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    // ------------------------------------------------------------ Gemini bridge
-
-    fun setBridge(on: Boolean) = viewModelScope.launch {
-        app.settings.update { it.copy(bridgeEnabled = on) }
-        if (on) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(app.appContext) else com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
-        if (on) syncBridge(undoOnCancel = true)
-    }
-
-    /** [undoOnCancel]: turning the bridge on, so a cancelled sign-in switches it back off instead of leaving it half set up. */
-    fun syncBridge(undoOnCancel: Boolean = false) = withDrive(
-        app.str(R.string.bridge_syncing),
-        onCancel = if (undoOnCancel) ({
-            app.settings.update { it.copy(bridgeEnabled = false) }
-            com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
-        }) else null,
-    ) { token ->
-        // The same sign-in connects Drive backup too, so one tap sets up both.
-        if (app.settings.current().driveEmail.isBlank()) {
-            val email = app.drive.accountEmail(token)
-            app.settings.update { it.copy(driveEmail = email.ifBlank { app.str(R.string.drive_connected) }) }
-        }
-        val reply = app.bridge.sync(token)
-        message.value = when {
-            reply == null -> app.str(R.string.bridge_no_reply)
-            reply.ok -> app.str(R.string.bridge_read_ok)
-            else -> app.str(R.string.bridge_read_issues, reply.issues.joinToString(", "))
-        }
-    }
-
-    suspend fun bridgeData(): String = app.bridge.dataText()
-
     // ------------------------------------------------------------ Meals from the Gemini Gem
 
     fun setGeminiMeals(on: Boolean) = viewModelScope.launch {
         app.settings.update { it.copy(geminiMealsEnabled = on) }
-        val s = app.settings.current()
-        if (s.bridgeEnabled || s.geminiMealsEnabled) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(app.appContext)
-        else com.forgequest.app.data.bridge.GeminiBridgeWorker.cancel(app.appContext)
         if (on) syncMeals()
     }
 
@@ -439,11 +394,6 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
         }
         val added = app.meals.sync(token)
         message.value = if (added > 0) app.str(R.string.meals_synced, added) else app.str(R.string.meals_none_new)
-    }
-
-    fun pasteBridgeReply(text: String) = viewModelScope.launch {
-        val reply = app.bridge.applyText(text)
-        message.value = if (reply.ok) app.str(R.string.bridge_read_ok) else app.str(R.string.bridge_read_issues, reply.issues.joinToString(", "))
     }
 
     fun connectDrive() = withDrive(app.str(R.string.drive_connecting)) { token ->

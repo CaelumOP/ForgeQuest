@@ -1,6 +1,7 @@
 package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
+import com.forgequest.app.data.seed.ExerciseCatalog
 
 /** One row of a muscle's exercise list: [main] when the muscle is a primary one, [tier] null for custom exercises. */
 data class MuscleExercise(val exercise: ExerciseEntity, val main: Boolean, val tier: Tier?)
@@ -36,7 +37,7 @@ object MuscleExercises {
         val targets = setOf(muscle) + COMPANIONS[muscle].orEmpty()
         val allowed = equipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
         val rows = library
-            .filter { ex -> ex.primary.any { it in targets } || ex.secondary.any { it in targets } }
+            .filter { ex -> ex.id !in ExerciseCatalog.STRETCH_IDS && (ex.primary.any { it in targets } || ex.secondary.any { it in targets }) }
             .map { MuscleExercise(it, it.primary.any { m -> m in targets }, ExerciseTiers.of(it)) }
             .sortedWith(compareBy<MuscleExercise> { !it.main }.thenBy { it.tier?.ordinal ?: Tier.entries.size }.thenBy { it.exercise.name })
         val (inPlan, rest) = rows.partition { it.exercise.id in planExerciseIds }

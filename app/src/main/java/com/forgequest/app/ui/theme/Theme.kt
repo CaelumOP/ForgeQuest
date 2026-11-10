@@ -164,9 +164,27 @@ val NumberFont: FontFamily
     @Composable @ReadOnlyComposable get() =
         if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar") PlexArabic else Manrope
 
+/**
+ * Instrument Serif (SIL OFL), display role only: screen titles, the Home greeting and hero numbers. One weight, so it is
+ * always FontWeight.Normal (a bold request would be faked).
+ */
+val InstrumentSerif = FontFamily(Font(R.font.instrument_serif_regular, FontWeight.Normal))
+
+/** Noto Naskh Arabic (SIL OFL, variable weight): the Arabic serif counterpart for the same display role. */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+val NaskhArabic = FontFamily(
+    Font(R.font.noto_naskh_arabic, FontWeight.W500, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.noto_naskh_arabic, FontWeight.W600, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+)
+
+/** The display serif for hero numbers: Naskh in Arabic, Instrument Serif otherwise. */
+val SerifFont: FontFamily
+    @Composable @ReadOnlyComposable get() =
+        if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "ar") NaskhArabic else InstrumentSerif
+
 private val FitTypography = Typography(
-    displaySmall = TextStyle(fontFamily = Manrope, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
-    headlineMedium = TextStyle(fontFamily = Manrope, fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp),
+    displaySmall = TextStyle(fontFamily = InstrumentSerif, fontSize = 40.sp, lineHeight = 46.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp),
+    headlineMedium = TextStyle(fontFamily = InstrumentSerif, fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp),
     headlineSmall = TextStyle(fontFamily = Manrope, fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
     titleLarge = TextStyle(fontFamily = Manrope, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold),
     titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium),
@@ -180,14 +198,15 @@ private val FitTypography = Typography(
 )
 
 /**
- * Arabic: IBM Plex Sans Arabic on every style (same sizes, weights and line heights as English), no tracking on the
+ * Arabic: IBM Plex Sans Arabic on every style except the two display sizes, which use Noto Naskh Arabic (same sizes, weights and line heights as English), no tracking on the
  * display sizes, and every style picks its direction from the text itself, so English data (plan notes, food names) still reads left to right with its full stop at the end.
  */
 private val ArabicTypography = FitTypography.run {
     fun TextStyle.content() = copy(fontFamily = PlexArabic, textDirection = androidx.compose.ui.text.style.TextDirection.Content)
     fun TextStyle.plain() = copy(letterSpacing = 0.sp).content()
+    fun TextStyle.naskh(size: Int, line: Int) = plain().copy(fontFamily = NaskhArabic, fontSize = size.sp, lineHeight = line.sp, fontWeight = FontWeight.W500)
     copy(
-        displaySmall = displaySmall.plain(), headlineMedium = headlineMedium.plain(), headlineSmall = headlineSmall.plain(), titleLarge = titleLarge.plain(),
+        displaySmall = displaySmall.naskh(32, 48), headlineMedium = headlineMedium.naskh(26, 40), headlineSmall = headlineSmall.plain(), titleLarge = titleLarge.plain(),
         titleMedium = titleMedium.content(), titleSmall = titleSmall.content(), bodyLarge = bodyLarge.content(), bodyMedium = bodyMedium.content(),
         bodySmall = bodySmall.content(), labelLarge = labelLarge.content(), labelMedium = labelMedium.content(), labelSmall = labelSmall.content(),
     )

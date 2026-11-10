@@ -16,6 +16,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.localLabel
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,6 +58,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -100,6 +104,7 @@ import com.forgequest.app.ui.workouts.PlanPreviewSheet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -109,20 +114,14 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
     val exercises: StateFlow<Map<String, ExerciseEntity>> = app.workouts.library.map { l -> l.associateBy { it.id } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
     val hasKey: StateFlow<Boolean> = app.settings.apiKey.map { it.isNotBlank() }.stateIn(viewModelScope, SharingStarted.Eagerly, app.settings.apiKey.value.isNotBlank())
+    val aiOn: StateFlow<Boolean> = app.settings.aiOn
     val sending = MutableStateFlow(false)
-    /** The weekly check-in being written in the background. It never blocks sending a message. */
-    val checkingIn = MutableStateFlow(false)
     val applied = MutableStateFlow<String?>(null)
     /** Text of the reply still arriving, shown live. */
     val draft: StateFlow<String?> = app.coach.draft
 
     init {
         viewModelScope.launch { app.coach.warmUp() }
-        viewModelScope.launch {
-            checkingIn.value = true
-            runCatching { app.coach.weeklyCheckinIfDue() }
-            checkingIn.value = false
-        }
     }
 
     /** [aboutWorkout]: the debrief button's message (see CoachRepository.debriefChatMessage). */
@@ -152,8 +151,6 @@ class CoachViewModel(val app: AppContainer) : ViewModel() {
 
     fun clear() = viewModelScope.launch { app.coach.clear() }
 
-    val settings = app.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    fun setModel(choice: String) = viewModelScope.launch { app.coach.setCoachModel(choice) }
     val lastAnswer = app.coach.lastAnswer
 
     fun planOf(message: ChatEntity): PlanDraft? = message.planJson?.let(PlanJson::decode)
@@ -173,8 +170,8 @@ fun CoachScreen(nav: NavHostController) {
     val messages by vm.messages.collectAsState()
     val exercises by vm.exercises.collectAsState()
     val sending by vm.sending.collectAsState()
-    val checkingIn by vm.checkingIn.collectAsState()
     val hasKey by vm.hasKey.collectAsState()
+    val aiOn by vm.aiOn.collectAsState()
     val applied by vm.applied.collectAsState()
     val draft by vm.draft.collectAsState()
     val snackbar = LocalSnackbar.current
@@ -197,37 +194,22 @@ fun CoachScreen(nav: NavHostController) {
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.tab_coach), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-            Box {
+            if (aiOn) Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textSecondary) }
                 DropdownMenu(menu, { menu = false }, containerColor = c.cardHigh) {
-                    val s by vm.settings.collectAsState()
-                    val current = s?.coachModel ?: "auto"
-                    Text(stringResource(R.string.coach_model_header), style = MaterialTheme.typography.labelMedium, color = c.textSecondary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                     val last by vm.lastAnswer.collectAsState()
                     last?.let { (who, ms) ->
                         if (ms >= 0) Text(stringResource(R.string.coach_answered_by, who, "%.1f".format(ms / 1000f)), style = MaterialTheme.typography.bodySmall, color = c.teal, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
-                    }
-                    listOf(
-                        Triple("auto", R.string.coach_model_auto, stringResource(R.string.coach_model_auto_hint)),
-                        Triple("lite", R.string.coach_model_lite, listOfNotNull(s?.liteModel?.ifBlank { null }, stringResource(R.string.coach_model_lite_hint)).joinToString(" · ")),
-                        Triple("flash", R.string.coach_model_flash, listOfNotNull(s?.fastModel?.ifBlank { null }, stringResource(R.string.coach_model_flash_hint)).joinToString(" · ")),
-                        Triple("pro", R.string.coach_model_pro, listOfNotNull(s?.smartModel?.ifBlank { null }, stringResource(R.string.coach_model_pro_hint)).joinToString(" · ")),
-                    ).forEach { (id, label, hint) ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(stringResource(label), color = c.textPrimary)
-                                    Text(hint, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                                }
-                            },
-                            leadingIcon = { Icon(Icons.Rounded.Check, contentDescription = null, tint = if (id == current) c.teal else androidx.compose.ui.graphics.Color.Transparent) },
-                            onClick = { menu = false; vm.setModel(id) },
-                        )
                     }
                     androidx.compose.material3.HorizontalDivider(color = c.divider)
                     DropdownMenuItem(text = { Text(stringResource(R.string.coach_clear)) }, onClick = { menu = false; confirmClear = true })
                 }
             }
+        }
+        if (!aiOn) {
+            // The digest moved to Progress; the chat only keeps the way to the switch.
+            TextButton(onClick = { nav.navigate(Routes.settingsGroup("coach")) }, modifier = Modifier.padding(16.dp)) { Text(stringResource(R.string.coach_turn_on_ai), color = c.teal) }
+            return@Column
         }
         // Personal tools (owner only): the Gemini app round trip, one tap each, in plain sight.
         val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -275,7 +257,7 @@ fun CoachScreen(nav: NavHostController) {
                                 Text(stringResource(R.string.ai_key_needed_coach), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
                             }
                             Spacer(Modifier.height(12.dp))
-                            PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.goToTab(Routes.PROFILE) })
+                            PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.navigate(Routes.settingsGroup("coach")) })
                         }
                     }
                 }
@@ -297,7 +279,6 @@ fun CoachScreen(nav: NavHostController) {
                 val writingPlan = draft?.let { Regex("```").findAll(it).count() % 2 == 1 } == true
                 if (sending && (!live.isNullOrBlank() || writingPlan)) item(key = "draft") { StreamingBubble(live.orEmpty(), writingPlan) }
                 else if (sending) item(key = "typing") { TypingDots() }
-                if (checkingIn && !sending) item(key = "checkin") { CheckinNote() }
                 item { Spacer(Modifier.height(4.dp)) }
             }
             // Suggestions float over the conversation. Text scrolling underneath fades out behind a short scrim
@@ -508,16 +489,6 @@ private fun StreamingBubble(text: String, writingPlan: Boolean) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun CheckinNote() {
-    val c = Fit.colors
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
-        Icon(Icons.Rounded.Insights, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(R.string.coach_checkin_background), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
     }
 }
 

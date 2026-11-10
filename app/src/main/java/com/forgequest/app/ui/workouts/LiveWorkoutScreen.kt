@@ -122,6 +122,7 @@ import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.DebriefText
+import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.ui.goToTab
@@ -133,6 +134,7 @@ import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.blockLabel
+import com.forgequest.app.ui.exerciseCues
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.toast
@@ -156,6 +158,20 @@ internal sealed interface Group {
 internal val Group.allSets: List<SetEntity> get() = when (this) { is Group.Straight -> sets; is Group.Circuit -> rounds.flatten() }
 
 internal val Group.key: String get() = if (this is Group.Straight) "s$position" else "c${(this as Group.Circuit).positions.first()}"
+
+/**
+ * The set to do next: the first undone set of the group ticked most recently; if that group is finished, the first undone set in a
+ * later group (so it never jumps back to a skipped warm-up); otherwise the first undone set overall.
+ */
+internal fun pickNextSet(groups: List<Group>): SetEntity? {
+    val last = groups.indices.filter { i -> groups[i].allSets.any { it.doneAt != null } }
+        .maxByOrNull { i -> groups[i].allSets.maxOf { it.doneAt ?: -1L } } ?: -1
+    if (last >= 0) {
+        groups[last].allSets.firstOrNull { !it.done }?.let { return it }
+        groups.drop(last + 1).flatMap { it.allSets }.firstOrNull { !it.done }?.let { return it }
+    }
+    return groups.flatMap { it.allSets }.firstOrNull { !it.done }
+}
 
 internal fun group(sets: List<SetEntity>): List<Group> {
     val byPosition = sets.groupBy { it.itemPosition }.toSortedMap()
@@ -203,23 +219,22 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val finishing by vm.finishing.collectAsState()
     val context = LocalContext.current
     val c = Fit.colors
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
 
     var confirmExit by remember { mutableStateOf(false) }
     var confirmFinish by remember { mutableStateOf(false) }
-    // The rest countdown lives in the notification shade too, so the phone can be locked between sets.
-    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
+    // Asked only when the user taps "remind me" on the finish screen; the rest countdown in the shade uses it too.
+    // "Reminder is on" shows only once it really is: after a grant, or at once when permission is already there.
+    var reminded by remember { mutableStateOf(false) }
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) { vm.remindMe(); reminded = true } }
     var picker by remember { mutableStateOf<PickerMode?>(null) }
 
     summary?.let { sum ->
-        val scope = androidx.compose.runtime.rememberCoroutineScope()
-        // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
-        val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
-            scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sum.sessionId); nav.goToTab(Routes.COACH) }
-        } else null
-        WorkoutCompleteScreen(sum, onAskCoach = askCoach, onRemind = vm::remindMe, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        WorkoutCompleteScreen(sum, reminded = reminded, onRemind = { if (Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else { vm.remindMe(); reminded = true } }, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -231,10 +246,13 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     BackHandler { nav.popBackStack() }
 
     val doneCount = sets.count { it.done }
+    // Text counts leave out warm-up and cool-down sets; the progress bar counts them all.
+    val workSets = sets.filterNot { WorkoutScore.isExtra(it.block) }
+    val workDone = workSets.count { it.done }
     val elapsed = ((now - s.startedAt) / 1000).coerceAtLeast(0)
     val groups = remember(sets) { group(sets) }
     // In display order, so circuits go exercise by exercise within a round.
-    val nextSet = remember(groups) { groups.flatMap { it.allSets }.firstOrNull { !it.done } }
+    val nextSet = remember(groups) { pickNextSet(groups) }
     val current = groups.indexOfFirst { g -> g.allSets.any { it.id == nextSet?.id } }
     val unit by vm.unit.collectAsState()
     val nextLabel = nextSet?.let { n -> exercises[n.exerciseId]?.let { ex -> "${ex.name} · ${setSummary(n, ex.kind, unit)}" } }
@@ -248,7 +266,12 @@ fun LiveWorkoutScreen(nav: NavHostController) {
         if (doneCount > lastDone && current >= 0 && !focus) listState.animateScrollToItem(current)
         lastDone = doneCount
     }
-    val bottomPad = if (rest != null) 260.dp else 160.dp
+    // How did that set feel? One strip above the rest bar, so a tick never pushes the next set down.
+    val effortSetId by vm.effortSetId.collectAsState()
+    val effortSet = sets.firstOrNull { it.id == effortSetId && it.done }
+    var noteSet by remember { mutableStateOf<com.forgequest.app.data.db.SetEntity?>(null) }
+    var menu by remember { mutableStateOf(false) }
+    val bottomPad = (if (rest != null) 260.dp else 160.dp) + (if (effortSet != null) 64.dp else 0.dp)
     val cardFor: @Composable (Group, Boolean) -> Unit = { g, forceOpen ->
         GroupCard(g, exercises, vm, forceOpen,
             onVideo = { openFormVideo(context, it) },
@@ -264,17 +287,25 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(pluralStringResource(R.plurals.live_header, sets.size, elapsed / 60, elapsed % 60, doneCount, sets.size), style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary)
+                        Text(pluralStringResource(R.plurals.live_header, workSets.size, elapsed / 60, elapsed % 60, workDone, workSets.size), style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary)
                         nextSet?.let { n -> exercises[n.exerciseId]?.let { Text(stringResource(R.string.live_now, it.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
                     }
-                    IconButton(onClick = { focus = !focus; prefs.edit().putBoolean("focus", focus).apply() }) {
-                        Icon(
-                            if (focus) Icons.Rounded.ViewAgenda else Icons.Rounded.CenterFocusStrong,
-                            contentDescription = stringResource(if (focus) R.string.cd_list_mode else R.string.cd_focus_mode), tint = c.textPrimary,
-                        )
+                    Box {
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textPrimary) }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (focus) R.string.cd_list_mode else R.string.cd_focus_mode), color = c.textPrimary) },
+                                leadingIcon = { Icon(if (focus) Icons.Rounded.ViewAgenda else Icons.Rounded.CenterFocusStrong, contentDescription = null, tint = c.textPrimary) },
+                                onClick = { menu = false; focus = !focus; prefs.edit().putBoolean("focus", focus).apply() },
+                            )
+                            DropdownMenuItem(text = { Text(stringResource(R.string.live_discard), color = c.textPrimary) }, onClick = { menu = false; confirmExit = true })
+                        }
                     }
-                    TextButton(onClick = { confirmExit = true }) { Text(stringResource(R.string.live_discard), color = c.textSecondary) }
                 }
+            }
+            val deloadWeek by vm.deloadWeek.collectAsState()
+            if (deloadWeek && s.planDayId != null) {
+                Text(stringResource(R.string.deload_week_note), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             }
             val welcomeBack by vm.welcomeBack.collectAsState()
             AnimatedVisibility(welcomeBack && doneCount == 0) {
@@ -319,6 +350,19 @@ fun LiveWorkoutScreen(nav: NavHostController) {
         }
 
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            AnimatedVisibility(effortSet != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+                // Keep the last set while it animates out, so the strip does not blank mid-exit.
+                val shown = remember { mutableStateOf(effortSet) }
+                if (effortSet != null) shown.value = effortSet
+                shown.value?.let { es ->
+                    Row(Modifier.fillMaxWidth().background(c.background).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        EffortGroup(selected = es.effort, onSelect = { vm.setEffort(es, it) })
+                        if (es.effort == SetEffort.PAIN.name) {
+                            TextButton(onClick = { noteSet = es }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
+                        }
+                    }
+                }
+            }
             AnimatedVisibility(rest != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
                 rest?.let { r ->
                     val left = ((r.endsAt - now) / 1000).coerceAtLeast(0)
@@ -331,6 +375,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     onClick = { if (sets.any { !it.done }) confirmFinish = true else vm.finish() },
                     enabled = doneCount > 0 && !finishing,
                     modifier = Modifier.fillMaxWidth(),
+                    // Quiet until every set is ticked, so it does not compete with the tick or invite an early tap.
+                    container = if (sets.all { it.done }) c.teal else c.cardHigh,
+                    content = if (sets.all { it.done }) c.onTeal else c.textPrimary,
                 )
             }
         }
@@ -353,11 +400,19 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                         onClick = { confirmFinish = false; vm.finish() },
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = c.teal, contentColor = c.onTeal),
                     ) { Text(stringResource(R.string.live_finish)) }
-                    TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
+                    // Only offered once at least half the sets are ticked, so it can't turn an empty workout into a full one.
+                    if (sets.count { it.done } * 2 >= sets.size) {
+                        TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
+                    }
                     TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
                 }
             },
         )
+    }
+
+    noteSet?.let { ns ->
+        val live = sets.firstOrNull { it.id == ns.id } ?: ns
+        SetNoteDialog(live.note, onDismiss = { noteSet = null }, onSave = { vm.setNote(live, it); noteSet = null })
     }
 
     if (confirmExit) {
@@ -482,6 +537,18 @@ internal fun setSummary(set: SetEntity, kind: ExerciseKind, unit: com.forgequest
     return if (kg != null && (kg > 0f || kind == ExerciseKind.WEIGHTED)) "$main · ${unit.format(kg)}" else main
 }
 
+private fun whyRes(r: Progression.Reason) = when (r) {
+    Progression.Reason.LOAD_UP -> R.string.rx_why_load_up
+    Progression.Reason.MORE_REPS -> R.string.rx_why_more_reps
+    Progression.Reason.MORE_TIME -> R.string.rx_why_more_time
+    Progression.Reason.ONCE_MORE -> R.string.rx_why_once_more
+    Progression.Reason.SAME -> R.string.rx_why_same
+    Progression.Reason.HARD -> R.string.rx_why_hard
+    Progression.Reason.PAIN -> R.string.rx_why_pain
+    Progression.Reason.MISSED -> R.string.rx_why_missed
+    Progression.Reason.LOW_READINESS -> R.string.rx_why_low_readiness
+}
+
 @Composable
 internal fun StraightCard(
     g: Group.Straight,
@@ -493,6 +560,7 @@ internal fun StraightCard(
 ) {
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
+    val reasons by vm.reasons.collectAsState()
     var menu by remember { mutableStateOf(false) }
     // A set added or removed grows or shrinks the card smoothly instead of jumping.
     FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
@@ -501,6 +569,8 @@ internal fun StraightCard(
                 Text(ex?.name ?: g.sets.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 val target = g.sets.first().targetLabel
                 Text(if (target.isNotBlank()) stringResource(R.string.live_target, g.sets.size, target) else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                reasons[g.sets.first().exerciseId]?.let { Text(stringResource(whyRes(it)), style = MaterialTheme.typography.labelSmall, color = c.textSecondary) }
+                exerciseCues(g.sets.first().exerciseId)?.let { Text(stringResource(it.first), style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis) }
             }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary) }

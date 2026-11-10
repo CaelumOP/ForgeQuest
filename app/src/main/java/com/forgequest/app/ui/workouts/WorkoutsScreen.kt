@@ -34,12 +34,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -79,6 +82,7 @@ import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.MuscleRecoveryMap
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.Sparkline
+import com.forgequest.app.domain.Progression
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.SharingStarted
@@ -127,13 +131,24 @@ fun WorkoutsScreen(nav: NavHostController) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
+    val dayNow = plan?.day(selectedDay)
+    val pinStart = plan != null && open == null && dayNow != null && !dayNow.day.isRest
+    val startToday = {
+        scope.launch {
+            vm.start(dayNow?.takeIf { !it.day.isRest })
+            nav.navigate(Routes.LIVE)
+        }
+        Unit
+    }
+    Box(Modifier.fillMaxSize().background(c.background)) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.workouts_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
                 Text(plan?.plan?.name ?: stringResource(R.string.today_no_plan), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             // Labelled, so past workouts and the editor are found without guessing what an icon means.
+            HeaderAction(Icons.AutoMirrored.Rounded.MenuBook, stringResource(R.string.workouts_library)) { nav.navigate(Routes.LIBRARY) }
             HeaderAction(Icons.Rounded.History, stringResource(R.string.cd_workout_history)) { nav.navigate(Routes.HISTORY) }
             HeaderAction(Icons.Rounded.Edit, stringResource(R.string.cd_edit_plan)) { nav.navigate(Routes.plan(selectedDay)) }
         }
@@ -154,10 +169,13 @@ fun WorkoutsScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        DayStrip(plan?.days.orEmpty(), selectedDay) { selectedDay = it }
+        DayStrip(plan?.days.orEmpty(), selectedDay, s.workoutDoneToday) { selectedDay = it }
         Spacer(Modifier.height(12.dp))
 
         val day = plan?.day(selectedDay)
+        if (plan != null && day != null && !day.day.isRest && Progression.isDeloadWeek(plan.plan.createdAt, Dates.today())) {
+            Text(stringResource(R.string.deload_week_note), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 8.dp))
+        }
         if (plan == null) {
             FitCard {
                 EmptyState(Icons.Rounded.Edit, stringResource(R.string.today_no_plan), stringResource(R.string.today_no_plan_hint)) {
@@ -170,12 +188,8 @@ fun WorkoutsScreen(nav: NavHostController) {
                 exercises = s.exercises,
                 isToday = selectedDay == Dates.todayDayOfWeek(),
                 canStart = open == null,
-                onStart = {
-                    scope.launch {
-                        vm.start(day?.takeIf { !it.day.isRest })
-                        nav.navigate(Routes.LIVE)
-                    }
-                },
+                pinnedStart = pinStart,
+                onStart = { startToday() },
                 onExercise = { nav.navigate(Routes.exercise(it)) },
                 onVideo = { openFormVideo(context, s.exercises[it]) },
                 onEdit = { nav.navigate(Routes.plan(selectedDay)) },
@@ -209,13 +223,26 @@ fun WorkoutsScreen(nav: NavHostController) {
         TonalPill(stringResource(R.string.workouts_quick), onClick = {
             scope.launch { vm.start(null); nav.navigate(Routes.LIVE) }
         }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(if (pinStart) 96.dp else 24.dp))
+    }
+    if (pinStart) {
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(c.background).padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp)) {
+            if (s.workoutDoneToday && selectedDay == Dates.todayDayOfWeek()) {
+                // Already trained today: another session stays one quiet tap away.
+                TextButton(onClick = { startToday() }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.today_train_again), color = c.teal, style = MaterialTheme.typography.labelLarge)
+                }
+            } else {
+                PillButton(if (selectedDay == Dates.todayDayOfWeek()) stringResource(R.string.workouts_start) else stringResource(R.string.workouts_start_this), onClick = { startToday() }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
+            }
+        }
+    }
     }
 }
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int) -> Unit) {
+private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, doneToday: Boolean, onSelect: (Int) -> Unit) {
     val c = Fit.colors
     val today = Dates.todayDayOfWeek()
     val dayRestCd = stringResource(R.string.day_cd_rest)
@@ -241,7 +268,9 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, onSelect: (Int
                     softWrap = false,
                 )
                 Spacer(Modifier.height(8.dp))
-                Box(
+                if (doneToday && dow == today && !rest) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, tint = if (isSel) c.onTeal else c.teal, modifier = Modifier.size(10.dp))
+                } else Box(
                     Modifier.size(6.dp).clip(CircleShape).background(
                         when {
                             rest -> androidx.compose.ui.graphics.Color.Transparent
@@ -269,6 +298,7 @@ private fun DayCard(
     exercises: Map<String, ExerciseEntity>,
     isToday: Boolean,
     canStart: Boolean,
+    pinnedStart: Boolean = false,
     onStart: () -> Unit,
     onExercise: (String) -> Unit,
     onVideo: (String) -> Unit,
@@ -320,13 +350,13 @@ private fun DayCard(
                         Box(Modifier.width(56.dp).padding(horizontal = 4.dp)) { Sparkline(pts, c.chartStrength) }
                     }
                     IconButton(onClick = { onVideo(item.exerciseId) }) {
-                        Icon(Icons.Rounded.PlayCircleOutline, contentDescription = stringResource(R.string.cd_watch_form), tint = c.blue)
+                        Icon(Icons.Rounded.PlayCircleOutline, contentDescription = stringResource(R.string.cd_watch_form), tint = c.textSecondary)
                     }
                 }
             }
         }
         Spacer(Modifier.height(16.dp))
-        if (canStart) {
+        if (canStart && !pinnedStart) {
             PillButton(if (isToday) stringResource(R.string.workouts_start) else stringResource(R.string.workouts_start_this), onClick = onStart, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
         }
     }

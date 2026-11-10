@@ -1,0 +1,330 @@
+kind,barcode,name_en,name_ar,brand,kcal,protein,carbs,serving_g,units,source,scans
+basic,,"White rice, cooked",أرز أبيض مطبوخ,,130,2.69,28.17,158,cup|كوب|158,usda:168878,0
+basic,,"White rice, raw",أرز أبيض نيئ,,365,7.13,79.95,185,cup|كوب|185,usda:168877,0
+basic,,"Brown rice, cooked",أرز بني مطبوخ,,123,2.74,25.58,202,cup|كوب|202,usda:169704,0
+basic,,"Basmati rice, cooked",أرز بسمتي مطبوخ,,130,2.69,28.17,158,cup|كوب|158,usda:168878,0
+basic,,Pita bread,خبز عربي,,275,9.1,55.7,60,piece|حبة|60,usda:174915,0
+basic,,Whole-wheat pita bread,خبز عربي أسمر,,262,9.8,55.89,64,piece|حبة|64,usda:174916,0
+basic,,White bread,خبز أبيض,,266,8.85,49.42,30,cup|كوب|45;slice|شريحة|29;piece|حبة|30,usda:174924,0
+basic,,Whole-wheat bread,خبز قمح كامل,,252,12.45,42.71,32,slice|شريحة|32,usda:172688,0
+basic,,French bread,خبز فرنسي,,272,10.75,51.88,139,slice|شريحة|139,usda:172675,0
+basic,,Naan bread,خبز نان,,291,9.62,50.43,90,piece|حبة|90,usda:171845,0
+basic,,Burger bun,خبز برغر,,279,9.77,50.12,44,piece|حبة|44,usda:172796,0
+basic,,Bagel,خبز بيجل,,264,10.56,52.38,69,piece|حبة|69,usda:174899,0
+basic,,Flour tortilla,خبز التورتيلا,,297,8.01,49.27,,,usda:167535,0
+basic,,Saltine crackers,بسكويت مملح,,418,9.46,74.05,10,cup|كوب|70;piece|حبة|10,usda:172746,0
+basic,,"Pasta, cooked",معكرونة مطبوخة,,158,5.8,30.86,124,cup|كوب|124,usda:169737,0
+basic,,"Spaghetti, cooked",سباغيتي مطبوخة,,158,5.8,30.86,124,cup|كوب|124,usda:169737,0
+basic,,"Egg noodles, cooked",شعيرية بيض مطبوخة,,138,4.54,25.16,160,cup|كوب|160,usda:168919,0
+basic,,"Couscous, cooked",كسكس مطبوخ,,112,3.79,23.22,157,cup|كوب|157,usda:169700,0
+basic,,"Bulgur, cooked",برغل مطبوخ,,83,3.08,18.58,182,cup|كوب|182;tablespoon|ملعقة كبيرة|8.4,usda:170287,0
+basic,,Oats,شوفان,,389,16.89,66.27,156,cup|كوب|156,usda:169705,0
+basic,,"Instant oats, dry",شوفان سريع,,362,11.92,69.52,,,usda:171661,0
+basic,,Corn flakes,رقائق الذرة,,384,5.9,88.01,28,cup|كوب|28,usda:174648,0
+basic,,White flour,دقيق قمح أبيض,,364,10.33,76.31,125,cup|كوب|125,usda:168894,0
+basic,,Whole-wheat flour,دقيق قمح كامل,,332,9.61,74.48,,,usda:168944,0
+basic,,Corn flour,دقيق الذرة,,361,6.93,76.85,117,cup|كوب|117,usda:170290,0
+basic,,"Sweet corn, cooked",ذرة حلوة مطبوخة,,96,3.41,20.98,89,cup|كوب|149;piece|حبة|89,usda:169999,0
+basic,,"Popcorn, air-popped",فشار,,387,12.94,77.78,8,cup|كوب|8,usda:167959,0
+basic,,"Barley, cooked",شعير مطبوخ,,123,2.26,28.22,157,cup|كوب|157,usda:170285,0
+basic,,"Quinoa, cooked",كينوا مطبوخة,,120,4.4,21.3,185,cup|كوب|185,usda:168917,0
+basic,,Semolina,سميد,,360,12.68,72.83,167,cup|كوب|167,usda:169715,0
+basic,,"Chickpeas, cooked",حمص مطبوخ,,164,8.86,27.42,164,cup|كوب|164,usda:173757,0
+basic,,"Chickpeas, dry",حمص نيئ,,378,20.47,62.95,200,cup|كوب|200;tablespoon|ملعقة كبيرة|12.5,usda:173756,0
+basic,,Hummus,حمص بالطحينة,,237,7.78,15,246,cup|كوب|246;tablespoon|ملعقة كبيرة|15,usda:174289,0
+basic,,"Fava beans, cooked",فول مدمس,,110,7.6,19.65,170,cup|كوب|170,usda:173753,0
+basic,,"Fava beans, dry",فول جاف,,341,26.12,58.29,150,cup|كوب|150;tablespoon|ملعقة كبيرة|9.4,usda:175205,0
+basic,,"Lentils, cooked",عدس مطبوخ,,116,9.02,20.13,198,cup|كوب|198;tablespoon|ملعقة كبيرة|12.3,usda:172421,0
+basic,,"Lentils, dry",عدس نيئ,,352,24.63,63.35,192,cup|كوب|192;tablespoon|ملعقة كبيرة|12,usda:172420,0
+basic,,"Kidney beans, cooked",فاصوليا حمراء مطبوخة,,127,8.67,22.8,177,cup|كوب|177;tablespoon|ملعقة كبيرة|11,usda:173740,0
+basic,,"White beans, cooked",فاصوليا بيضاء مطبوخة,,139,9.73,25.09,179,cup|كوب|179;tablespoon|ملعقة كبيرة|11.2,usda:175203,0
+basic,,"Green beans, cooked",فاصوليا خضراء مطبوخة,,35,1.89,7.88,125,cup|كوب|125,usda:169141,0
+basic,,"Black beans, cooked",فاصوليا سوداء مطبوخة,,132,8.86,23.71,172,cup|كوب|172,usda:173735,0
+basic,,"Split peas, cooked",بازلاء مجففة مطبوخة,,118,8.34,21.1,196,cup|كوب|196;tablespoon|ملعقة كبيرة|12.2,usda:172429,0
+basic,,"Green peas, cooked",بازلاء خضراء مطبوخة,,84,5.36,15.63,160,cup|كوب|160,usda:170420,0
+basic,,"Black-eyed peas, cooked",لوبيا مطبوخة,,116,7.73,20.76,171,cup|كوب|171,usda:173759,0
+basic,,"Soybeans, cooked",فول الصويا مطبوخ,,172,18.21,8.36,172,cup|كوب|172;tablespoon|ملعقة كبيرة|10.7,usda:174271,0
+basic,,Tofu,توفو,,76,8.08,1.87,248,cup|كوب|248,usda:172476,0
+basic,,Boiled egg,بيض مسلوق,,155,12.58,1.12,50,cup|كوب|136;tablespoon|ملعقة كبيرة|8.5;piece|حبة|50,usda:173424,0
+basic,,Fried egg,بيض مقلي,,196,13.61,0.83,46,piece|حبة|46,usda:173423,0
+basic,,Scrambled eggs,بيض مخفوق مطبوخ,,149,9.99,1.61,61,cup|كوب|220;tablespoon|ملعقة كبيرة|13.7;piece|حبة|61,usda:172187,0
+basic,,"Egg, raw",بيض نيئ,,143,12.56,0.72,50,cup|كوب|243;piece|حبة|50,usda:171287,0
+basic,,Egg white,بياض البيض,,52,10.9,0.73,33,cup|كوب|243;piece|حبة|33,usda:172183,0
+basic,,Egg yolk,صفار البيض,,322,15.86,3.59,17,cup|كوب|243;piece|حبة|17,usda:172184,0
+basic,,Omelet,عجة بيض,,154,10.57,0.64,61,tablespoon|ملعقة كبيرة|15;piece|حبة|61,usda:172185,0
+basic,,"Chicken breast, grilled",صدر دجاج مشوي,,165,31.02,0,52,cup|كوب|140;piece|حبة|52,usda:171477,0
+basic,,"Chicken breast, fried",صدر دجاج مقلي,,187,33.44,0.51,52,piece|حبة|52,usda:171078,0
+basic,,"Chicken breast, raw",صدر دجاج نيئ,,120,22.5,0,272,piece|حبة|272,usda:171077,0
+basic,,"Chicken thigh, roasted",فخذ دجاج مشوي,,179,24.76,0,116,piece|حبة|116,usda:172388,0
+basic,,"Chicken drumstick, roasted",دبوس دجاج مشوي,,155,24.24,0,96,piece|حبة|96,usda:172376,0
+basic,,"Chicken wings, roasted",أجنحة دجاج مشوية,,254,23.79,0,85,piece|حبة|85,usda:173630,0
+basic,,Roast chicken with skin,دجاج مشوي بالجلد,,239,27.3,0,356,cup|كوب|140;piece|حبة|356,usda:171450,0
+basic,,Boiled chicken,دجاج مسلوق,,177,27.29,0,157,cup|كوب|140;tablespoon|ملعقة كبيرة|8.7;piece|حبة|157,usda:171451,0
+basic,,"Chicken liver, cooked",كبدة دجاج مطبوخة,,167,24.46,0.87,,,usda:171061,0
+basic,,"Turkey, roasted",ديك رومي مشوي,,159,29.06,0,,,usda:171481,0
+basic,,"Ground beef, grilled",لحم بقري مفروم مشوي,,250,25.93,0,77,piece|حبة|77,usda:174032,0
+basic,,"Lean ground beef, raw",لحم بقري مفروم قليل الدسم نيئ,,152,20.85,0,,,usda:173110,0
+basic,,"Ground beef, raw",لحم بقري مفروم نيئ,,254,17.17,0,,,usda:174036,0
+basic,,"Beef steak, grilled",ستيك لحم بقري مشوي,,212,29.33,0,,,usda:169457,0
+basic,,"Ribeye steak, grilled",ستيك ريب آي مشوي,,291,23.69,0,,,usda:173392,0
+basic,,Braised beef,لحم بقري مطبوخ بالتحمير,,297,28.94,0,,,usda:170213,0
+basic,,"Beef liver, raw",كبدة بقر,,135,20.36,3.89,,,usda:169451,0
+basic,,"Beef tongue, cooked",لسان بقر مطبوخ,,284,19.29,0,,,usda:170598,0
+basic,,Dried beef,لحم بقري مجفف,,153,31.1,2.76,2.8,slice|شريحة|2.8,usda:170604,0
+basic,,"Lamb leg, roasted",لحم ضأن مشوي,,242,26.2,0,260,piece|حبة|260,usda:174373,0
+basic,,"Lamb shoulder, braised",كتف ضأن مطبوخ,,338,29.46,0,213,piece|حبة|213,usda:172554,0
+basic,,"Lamb chops, grilled",ريش ضأن مشوية,,297,26.06,0,,,usda:174375,0
+basic,,"Ground lamb, raw",لحم ضأن مفروم,,282,16.56,0,,,usda:174370,0
+basic,,"Lean lamb, cooked",لحم ضأن قليل الدسم مطبوخ,,206,28.22,0,187,piece|حبة|187,usda:174308,0
+basic,,"Ground veal, raw",لحم عجل مفروم,,197,18.58,0,,,usda:175290,0
+basic,,"Goat meat, roasted",لحم ماعز مطبوخ,,143,27.1,0,340,piece|حبة|340,usda:175304,0
+basic,,Tuna in water,تونة معلبة بالماء,,86,19.44,0,154,cup|كوب|154,usda:173709,0
+basic,,Tuna in oil,تونة معلبة بالزيت,,198,29.13,0,146,cup|كوب|146,usda:173708,0
+basic,,"Tuna, cooked",تونة طازجة مطبوخة,,130,29.15,0,,,usda:172006,0
+basic,,"Salmon, grilled",سلمون مشوي,,206,22.1,0,356,piece|حبة|356,usda:175168,0
+basic,,"Salmon, raw",سلمون نيئ,,208,20.42,0,396,piece|حبة|396,usda:175167,0
+basic,,Canned salmon,سلمون معلب,,138,23.1,0,,,usda:175175,0
+basic,,Canned sardines,سردين معلب,,208,24.62,0,12,cup|كوب|149;piece|حبة|12,usda:175139,0
+basic,,"Tilapia, grilled",بلطي مشوي,,128,26.15,0,87,piece|حبة|87,usda:175177,0
+basic,,"Cod, cooked",سمك القد مطبوخ,,105,22.83,0,180,piece|حبة|180,usda:171956,0
+basic,,"Haddock, cooked",سمك الحدوق مطبوخ,,90,19.99,0,150,piece|حبة|150,usda:174198,0
+basic,,"Mackerel, cooked",سمك الماكريل مطبوخ,,262,23.85,0,88,piece|حبة|88,usda:175120,0
+basic,,"Hamour (grouper), grilled",هامور مشوي,,118,24.84,0,202,piece|حبة|202,usda:171963,0
+basic,,"Snapper, grilled",سمك الشعور مشوي,,128,26.3,0,170,piece|حبة|170,usda:173699,0
+basic,,"Catfish, cooked",سمك السلور مطبوخ,,105,18.47,0,143,piece|حبة|143,usda:173714,0
+basic,,"Trout, grilled",سمك سلمون مرقط مشوي,,168,23.8,0,71,piece|حبة|71,usda:173718,0
+basic,,"Herring, cooked",رنجة مطبوخة,,203,23.03,0,143,piece|حبة|143,usda:175117,0
+basic,,Canned anchovies,أنشوجة معلبة,,210,28.89,0,,,usda:174183,0
+basic,,"Sea bass, grilled",قاروس مشوي,,124,23.63,0,101,piece|حبة|101,usda:173694,0
+basic,,"Swordfish, cooked",سمك أبو سيف مطبوخ,,172,23.45,0,106,piece|حبة|106,usda:173704,0
+basic,,"Shrimp, boiled",روبيان مسلوق,,119,22.78,1.52,5.5,piece|حبة|5.5,usda:171971,0
+basic,,"Shrimp, raw",روبيان نيئ,,71,13.61,0.91,6,piece|حبة|6,usda:174210,0
+basic,,"Crab, cooked",سلطعون مطبوخ,,83,17.88,0,118,cup|كوب|118,usda:174205,0
+basic,,"Lobster, cooked",كركند مطبوخ,,89,19,0,145,cup|كوب|145,usda:174209,0
+basic,,"Squid, fried",حبار مقلي,,175,17.94,7.79,,,usda:171982,0
+basic,,"Clams, cooked",محار مطبوخ,,148,25.55,5.13,9.5,piece|حبة|9.5,usda:171975,0
+basic,,Whole milk,حليب كامل الدسم,,61,3.15,4.8,244,cup|كوب|244;tablespoon|ملعقة كبيرة|15,usda:171265,0
+basic,,2% milk,حليب قليل الدسم,,50,3.3,4.8,244,cup|كوب|244,usda:171267,0
+basic,,Skim milk,حليب خالي الدسم,,34,3.37,4.96,245,cup|كوب|245,usda:171269,0
+basic,,Whole milk powder,حليب مجفف كامل الدسم,,496,26.32,38.42,128,cup|كوب|128,usda:170876,0
+basic,,Skim milk powder,حليب مجفف خالي الدسم,,362,36.16,51.98,120,cup|كوب|120;tablespoon|ملعقة كبيرة|4.6,usda:170877,0
+basic,,Evaporated milk,حليب مبخر,,134,6.81,10.04,252,cup|كوب|252,usda:171276,0
+basic,,Condensed milk,حليب مكثف محلى,,321,7.91,54.4,306,cup|كوب|306,usda:171275,0
+basic,,Goat milk,حليب الماعز,,69,3.56,4.45,244,cup|كوب|244,usda:171278,0
+basic,,Buttermilk,لبن رائب,,40,3.31,4.79,245,cup|كوب|245,usda:170874,0
+basic,,Plain yogurt,زبادي كامل الدسم,,61,3.47,4.66,245,cup|كوب|245,usda:171284,0
+basic,,Low-fat yogurt,زبادي قليل الدسم,,63,5.25,7.04,245,cup|كوب|245,usda:170886,0
+basic,,Skim yogurt,زبادي خالي الدسم,,56,5.73,7.68,245,cup|كوب|245,usda:170887,0
+basic,,"Greek yogurt, nonfat",زبادي يوناني,,59,10.19,3.6,,,usda:170894,0
+basic,,Fruit yogurt,زبادي بالفواكه,,99,3.98,18.64,245,cup|كوب|245,usda:170889,0
+basic,,Feta cheese,جبنة فيتا,,265,14.21,3.88,150,cup|كوب|150,usda:173420,0
+basic,,Cheddar cheese,جبنة شيدر,,403,22.87,3.37,28,cup|كوب|132;slice|شريحة|28,usda:173414,0
+basic,,Mozzarella,جبنة موزاريلا,,299,22.17,2.4,28.33,cup|كوب|112;slice|شريحة|28.33,usda:170845,0
+basic,,Light mozzarella,جبنة موزاريلا قليلة الدسم,,254,24.26,2.77,,,usda:170847,0
+basic,,Cottage cheese,جبنة قريش,,98,11.12,3.38,210,cup|كوب|210,usda:172179,0
+basic,,Cream cheese,جبنة كريمية,,350,6.15,5.52,85,cup|كوب|232;tablespoon|ملعقة كبيرة|14.5;piece|حبة|85,usda:173418,0
+basic,,Parmesan,جبنة بارميزان,,392,35.75,3.22,,,usda:170848,0
+basic,,Swiss cheese,جبنة سويسرية,,393,26.96,1.44,28,cup|كوب|132;slice|شريحة|28,usda:171251,0
+basic,,Brie,جبنة بري,,334,20.75,0.45,144,cup|كوب|144,usda:172177,0
+basic,,Ricotta,جبنة ريكوتا,,150,7.54,7.27,248,cup|كوب|248,usda:170851,0
+basic,,Halloumi cheese,جبنة حلوم,,318,21.6,2.47,,,usda:170846,0
+basic,,Cheese spread,جبنة قابلة للدهن,,295,7.1,3.5,240,cup|كوب|240,usda:169081,0
+basic,,Heavy cream,قشطة سائلة,,340,2.84,2.84,120,cup|كوب|120;tablespoon|ملعقة كبيرة|15,usda:170859,0
+basic,,Coffee cream,كريمة القهوة,,195,2.96,3.66,240,cup|كوب|240;tablespoon|ملعقة كبيرة|15,usda:170857,0
+basic,,Sour cream,كريمة حامضة,,198,2.44,4.63,230,cup|كوب|230;tablespoon|ملعقة كبيرة|12,usda:171257,0
+basic,,Butter,زبدة,,717,0.85,0.06,227,cup|كوب|227;tablespoon|ملعقة كبيرة|14.2,usda:173410,0
+basic,,Unsalted butter,زبدة غير مملحة,,717,0.85,0.06,227,cup|كوب|227;tablespoon|ملعقة كبيرة|14.2,usda:173430,0
+basic,,Ghee,سمن,,876,0.28,0,205,cup|كوب|205;tablespoon|ملعقة كبيرة|12.8,usda:173412,0
+basic,,Margarine,مارجرين,,717,0.16,0.7,227,cup|كوب|227;tablespoon|ملعقة كبيرة|14;teaspoon|ملعقة صغيرة|4.7,usda:172346,0
+basic,,Olive oil,زيت زيتون,,884,0,0,216,cup|كوب|216;tablespoon|ملعقة كبيرة|13.5;teaspoon|ملعقة صغيرة|4.5,usda:171413,0
+basic,,Vegetable oil,زيت نباتي,,884,0,0,218,cup|كوب|218;tablespoon|ملعقة كبيرة|13.6;teaspoon|ملعقة صغيرة|4.5,usda:172370,0
+basic,,Sunflower oil,زيت دوار الشمس,,884,0,0,218,cup|كوب|218;tablespoon|ملعقة كبيرة|13.6;teaspoon|ملعقة صغيرة|4.5,usda:171025,0
+basic,,Corn oil,زيت الذرة,,900,0,0,218,cup|كوب|218;tablespoon|ملعقة كبيرة|13.6;teaspoon|ملعقة صغيرة|4.5,usda:171029,0
+basic,,Canola oil,زيت الكانولا,,884,0,0,218,cup|كوب|218;tablespoon|ملعقة كبيرة|14;teaspoon|ملعقة صغيرة|4.5,usda:172336,0
+basic,,Coconut oil,زيت جوز الهند,,892,0,0,218,cup|كوب|218;tablespoon|ملعقة كبيرة|13.6;teaspoon|ملعقة صغيرة|4.5,usda:171412,0
+basic,,Sesame oil,زيت السمسم,,884,0,0,218,cup|كوب|218;tablespoon|ملعقة كبيرة|13.6;teaspoon|ملعقة صغيرة|4.5,usda:171016,0
+basic,,Peanut oil,زيت الفول السوداني,,884,0,0,216,cup|كوب|216;tablespoon|ملعقة كبيرة|13.5;teaspoon|ملعقة صغيرة|4.5,usda:171410,0
+basic,,Palm oil,زيت النخيل,,884,0,0,216,cup|كوب|216;tablespoon|ملعقة كبيرة|13.6;teaspoon|ملعقة صغيرة|4.5,usda:171015,0
+basic,,Mayonnaise,مايونيز,,680,0.96,0.57,220,cup|كوب|220;tablespoon|ملعقة كبيرة|13.8,usda:171009,0
+basic,,Ranch dressing,صلصة رانش,,430,1.32,5.9,,tablespoon|ملعقة كبيرة|15,usda:173592,0
+basic,,"Dates, Medjool",تمر مجدول,,277,1.81,74.97,24,piece|حبة|24,usda:168191,0
+basic,,Dates,تمر,,282,2.45,75.03,7.1,cup|كوب|147;piece|حبة|7.1,usda:171726,0
+basic,,Apple,تفاح,,52,0.26,13.81,223,cup|كوب|125;piece|حبة|223,usda:171688,0
+basic,,Banana,موز,,89,1.09,22.84,81,cup|كوب|225;piece|حبة|81,usda:173944,0
+basic,,Orange,برتقال,,47,0.94,11.75,184,cup|كوب|180;piece|حبة|184,usda:169097,0
+basic,,Mandarin,يوسفي,,53,0.81,13.34,76,cup|كوب|195;piece|حبة|76,usda:169105,0
+basic,,Grapefruit,جريب فروت,,32,0.63,8.08,332,cup|كوب|230;piece|حبة|332,usda:173033,0
+basic,,Lemon,ليمون,,29,1.1,9.32,58,cup|كوب|212;slice|شريحة|7;piece|حبة|58,usda:167746,0
+basic,,Lime,ليمون أخضر,,30,0.7,10.54,67,piece|حبة|67,usda:168155,0
+basic,,Grapes,عنب,,69,0.72,18.1,151,cup|كوب|151,usda:174683,0
+basic,,Watermelon,بطيخ أحمر,,30,0.61,7.55,154,cup|كوب|154,usda:167765,0
+basic,,Cantaloupe,شمام,,34,0.84,8.16,814,cup|كوب|177;piece|حبة|814,usda:169092,0
+basic,,Honeydew melon,شمام أخضر,,36,0.54,9.09,170,cup|كوب|170,usda:169911,0
+basic,,Mango,مانجو,,60,0.82,14.98,336,cup|كوب|165;piece|حبة|336,usda:169910,0
+basic,,Pineapple,أناناس,,50,0.54,13.12,905,cup|كوب|165;slice|شريحة|166;piece|حبة|905,usda:169124,0
+basic,,Papaya,بابايا,,43,0.47,10.82,157,cup|كوب|145;piece|حبة|157,usda:169926,0
+basic,,Peach,خوخ,,39,0.91,9.54,130,cup|كوب|154;piece|حبة|130,usda:169928,0
+basic,,Pear,كمثرى,,57,0.36,15.23,148,cup|كوب|140;piece|حبة|148,usda:169118,0
+basic,,Plum,برقوق,,46,0.7,11.42,66,cup|كوب|165;piece|حبة|66,usda:169949,0
+basic,,Apricot,مشمش,,48,1.4,11.12,155,cup|كوب|155,usda:171697,0
+basic,,Dried apricots,مشمش مجفف,,241,3.39,62.64,130,cup|كوب|130,usda:173941,0
+basic,,Cherries,كرز,,63,1.06,16.01,138,cup|كوب|138,usda:171719,0
+basic,,Strawberries,فراولة,,32,0.67,7.68,27,cup|كوب|152;piece|حبة|27,usda:167762,0
+basic,,Blueberries,توت أزرق,,57,0.74,14.49,148,cup|كوب|148,usda:171711,0
+basic,,Raspberries,توت العليق,,52,1.2,11.94,123,cup|كوب|123,usda:167755,0
+basic,,Blackberries,توت أسود,,43,1.39,9.61,144,cup|كوب|144,usda:173946,0
+basic,,Fig,تين,,74,0.75,19.18,64,piece|حبة|64,usda:173021,0
+basic,,Dried figs,تين مجفف,,249,3.3,63.87,149,cup|كوب|149,usda:174665,0
+basic,,Pomegranate,رمان,,83,1.67,18.7,174,cup|كوب|174,usda:169134,0
+basic,,Guava,جوافة,,68,2.55,14.32,55,cup|كوب|165;piece|حبة|55,usda:173044,0
+basic,,Kiwi,كيوي,,61,1.14,14.66,69,cup|كوب|180;piece|حبة|69,usda:168153,0
+basic,,Avocado,أفوكادو,,160,2,8.53,150,cup|كوب|150,usda:171705,0
+basic,,"Coconut, fresh",جوز الهند,,354,3.33,15.23,397,cup|كوب|80;piece|حبة|397,usda:170169,0
+basic,,Raisins,زبيب,,299,3.3,79.32,43,cup|كوب|165;piece|حبة|43,usda:168165,0
+basic,,Prunes,برقوق مجفف,,240,2.18,63.88,174,cup|كوب|174,usda:168162,0
+basic,,Persimmon,كاكا,,127,0.8,33.5,25,piece|حبة|25,usda:169943,0
+basic,,Black olives,زيتون أسود,,116,0.84,6.04,4.4,tablespoon|ملعقة كبيرة|8.4;piece|حبة|4.4,usda:169094,0
+basic,,Green olives,زيتون أخضر,,145,1.03,3.84,2.7,piece|حبة|2.7,usda:169096,0
+basic,,Tomato,طماطم,,18,0.88,3.89,182,cup|كوب|149;slice|شريحة|20;piece|حبة|182,usda:170457,0
+basic,,Tomato paste,معجون الطماطم,,82,4.32,18.91,264,cup|كوب|264;tablespoon|ملعقة كبيرة|16,usda:170459,0
+basic,,Tomato sauce,صلصة الطماطم,,24,1.2,5.31,245,cup|كوب|245,usda:169074,0
+basic,,Cucumber,خيار,,15,0.65,3.63,104,cup|كوب|104,usda:168409,0
+basic,,Romaine lettuce,خس روماني,,17,1.23,3.29,47,cup|كوب|47,usda:169247,0
+basic,,Iceberg lettuce,خس,,14,0.9,2.97,755,cup|كوب|72;piece|حبة|755,usda:169248,0
+basic,,Onion,بصل,,40,1.1,9.34,150,cup|كوب|160;tablespoon|ملعقة كبيرة|10;slice|شريحة|38;piece|حبة|150,usda:170000,0
+basic,,Spring onion,بصل أخضر,,32,1.83,7.34,25,cup|كوب|100;tablespoon|ملعقة كبيرة|6;piece|حبة|25,usda:170005,0
+basic,,Garlic,ثوم,,149,6.36,33.06,3,cup|كوب|136;teaspoon|ملعقة صغيرة|2.8;piece|حبة|3,usda:169230,0
+basic,,Green bell pepper,فلفل أخضر,,20,0.86,4.64,164,cup|كوب|149;tablespoon|ملعقة كبيرة|9.3;piece|حبة|164,usda:170427,0
+basic,,Red bell pepper,فلفل أحمر حلو,,26,0.99,6.03,164,cup|كوب|149;tablespoon|ملعقة كبيرة|9.3;piece|حبة|164,usda:170108,0
+basic,,Green chili pepper,فلفل حار أخضر,,40,2,9.46,150,cup|كوب|150,usda:170497,0
+basic,,Carrot,جزر,,41,0.93,9.58,72,cup|كوب|128;slice|شريحة|3;piece|حبة|72,usda:170393,0
+basic,,"Carrot, cooked",جزر مطبوخ,,35,0.76,8.22,156,cup|كوب|156;tablespoon|ملعقة كبيرة|9.7,usda:170394,0
+basic,,Baked potato,بطاطس مشوية,,93,2.5,21.15,299,piece|حبة|299,usda:170093,0
+basic,,Boiled potato,بطاطس مسلوقة,,87,1.87,20.13,156,cup|كوب|156,usda:170438,0
+basic,,"Potato, raw",بطاطس نيئة,,58,2.57,12.44,,,usda:170032,0
+basic,,French fries,بطاطس مقلية,,158,2.75,25.55,,,usda:169264,0
+basic,,"Sweet potato, baked",بطاطا حلوة مشوية,,90,2.01,20.71,180,cup|كوب|200;piece|حبة|180,usda:168483,0
+basic,,Eggplant,باذنجان,,25,0.98,5.88,82,cup|كوب|82,usda:169228,0
+basic,,"Eggplant, cooked",باذنجان مطبوخ,,35,0.83,8.73,99,cup|كوب|99,usda:169229,0
+basic,,Zucchini,كوسة,,17,1.21,3.11,323,cup|كوب|124;slice|شريحة|9.9;piece|حبة|323,usda:169291,0
+basic,,"Zucchini, cooked",كوسة مطبوخة,,15,1.14,2.69,180,cup|كوب|180,usda:169292,0
+basic,,Butternut squash,قرع,,45,1,11.69,140,cup|كوب|140,usda:169295,0
+basic,,"Pumpkin, cooked",يقطين مطبوخ,,20,0.72,4.9,245,cup|كوب|245,usda:168449,0
+basic,,"Okra, cooked",بامية مطبوخة,,22,1.87,4.51,160,cup|كوب|160,usda:169261,0
+basic,,Okra,بامية,,33,1.93,7.45,100,cup|كوب|100,usda:169260,0
+basic,,Cabbage,ملفوف,,25,1.28,5.8,1248,cup|كوب|89;piece|حبة|1248,usda:169975,0
+basic,,Red cabbage,ملفوف أحمر,,31,1.43,7.37,1134,cup|كوب|89;piece|حبة|1134,usda:169977,0
+basic,,Cauliflower,قرنبيط,,25,1.92,4.97,840,cup|كوب|107;piece|حبة|840,usda:169986,0
+basic,,"Cauliflower, cooked",قرنبيط مطبوخ,,23,1.84,4.11,124,cup|كوب|124,usda:170397,0
+basic,,Broccoli,بروكلي,,34,2.82,6.64,151,cup|كوب|91;piece|حبة|151,usda:170379,0
+basic,,"Broccoli, cooked",بروكلي مطبوخ,,35,2.38,7.18,280,cup|كوب|156;piece|حبة|280,usda:169967,0
+basic,,Spinach,سبانخ,,23,2.86,3.63,30,cup|كوب|30,usda:168462,0
+basic,,"Spinach, cooked",سبانخ مطبوخة,,23,2.97,3.75,180,cup|كوب|180,usda:168463,0
+basic,,Parsley,بقدونس,,36,2.97,6.33,60,cup|كوب|60;tablespoon|ملعقة كبيرة|3.8,usda:170416,0
+basic,,Coriander leaves,كزبرة خضراء,,23,2.13,3.67,16,cup|كوب|16,usda:169997,0
+basic,,Mint,نعناع,,44,3.29,8.41,,tablespoon|ملعقة كبيرة|5.7,usda:173475,0
+basic,,Arugula,جرجير,,25,2.58,3.65,20,cup|كوب|20,usda:169387,0
+basic,,Radish,فجل,,16,0.68,3.4,9,cup|كوب|116;slice|شريحة|1;piece|حبة|9,usda:169276,0
+basic,,Turnip,لفت,,28,0.9,6.43,183,cup|كوب|130;slice|شريحة|15;piece|حبة|183,usda:170465,0
+basic,,Beetroot,شمندر,,43,1.61,9.56,136,cup|كوب|136,usda:169145,0
+basic,,Celery,كرفس,,14,0.69,2.97,64,cup|كوب|101;tablespoon|ملعقة كبيرة|7.5;piece|حبة|64,usda:169988,0
+basic,,Mushrooms,فطر,,22,3.09,3.26,23,cup|كوب|70;slice|شريحة|6;piece|حبة|23,usda:169251,0
+basic,,"Mushrooms, cooked",فطر مطبوخ,,28,2.17,5.29,156,cup|كوب|156;tablespoon|ملعقة كبيرة|9.8,usda:169252,0
+basic,,Asparagus,هليون,,20,2.2,3.88,12,cup|كوب|134;piece|حبة|12,usda:168389,0
+basic,,"Artichoke, cooked",خرشوف مطبوخ,,53,2.89,11.95,120,cup|كوب|168;piece|حبة|120,usda:168386,0
+basic,,Leek,كراث,,61,1.5,14.15,6,cup|كوب|89;slice|شريحة|6,usda:169246,0
+basic,,Ginger,زنجبيل,,80,1.82,17.77,2.2,cup|كوب|96;teaspoon|ملعقة صغيرة|2;slice|شريحة|2.2,usda:169231,0
+basic,,Grape leaves,ورق عنب,,93,5.6,17.31,14,cup|كوب|14,usda:168575,0
+basic,,Pickled cucumber,مخلل خيار,,12,0.5,2.41,35,cup|كوب|143;slice|شريحة|7;piece|حبة|35,usda:168558,0
+basic,,Cassava,كسافا,,160,1.36,38.06,206,cup|كوب|206,usda:169985,0
+basic,,"Sweet corn, raw",ذرة حلوة,,86,3.27,18.7,143,cup|كوب|145;piece|حبة|143,usda:169998,0
+basic,,Almonds,لوز,,579,21.15,21.55,28.35,cup|كوب|143;piece|حبة|28.35,usda:170567,0
+basic,,Blanched almonds,لوز مقشر,,590,21.4,18.67,145,cup|كوب|145;tablespoon|ملعقة كبيرة|9.1,usda:170568,0
+basic,,Cashews,كاجو,,553,18.22,30.19,,handful|حفنة|28,usda:170162,0
+basic,,Roasted cashews,كاجو محمص,,574,15.31,32.69,137,cup|كوب|137;tablespoon|ملعقة كبيرة|8.6,usda:170571,0
+basic,,Pistachios,فستق حلبي,,560,20.16,27.17,123,cup|كوب|123,usda:170184,0
+basic,,Roasted pistachios,فستق حلبي محمص,,572,21.05,28.28,123,cup|كوب|123,usda:170185,0
+basic,,Walnuts,جوز,,654,15.23,13.71,117,cup|كوب|117,usda:170187,0
+basic,,Hazelnuts,بندق,,628,14.95,16.7,28.35,cup|كوب|115;piece|حبة|28.35,usda:170581,0
+basic,,Peanuts,فول سوداني,,567,25.8,16.13,146,cup|كوب|146,usda:172430,0
+basic,,Roasted peanuts,فول سوداني محمص,,587,24.35,21.26,146,cup|كوب|146,usda:173806,0
+basic,,Peanut butter,زبدة الفول السوداني,,598,22.21,22.31,258,cup|كوب|258;tablespoon|ملعقة كبيرة|16,usda:174266,0
+basic,,Pecans,بيكان,,691,9.17,13.86,109,cup|كوب|109,usda:170182,0
+basic,,Macadamia nuts,مكاديميا,,718,7.91,13.82,134,cup|كوب|134,usda:170178,0
+basic,,Pine nuts,صنوبر,,673,13.69,13.08,135,cup|كوب|135,usda:170591,0
+basic,,Sunflower seeds,بذور دوار الشمس,,584,20.78,20,46,cup|كوب|46,usda:170562,0
+basic,,Pumpkin seeds,بذور اليقطين,,559,30.23,10.71,129,cup|كوب|129,usda:170556,0
+basic,,Sesame seeds,سمسم,,573,17.73,23.45,144,cup|كوب|144;tablespoon|ملعقة كبيرة|9,usda:170150,0
+basic,,Flaxseed,بذور الكتان,,534,18.29,28.88,10.3,cup|كوب|168;tablespoon|ملعقة كبيرة|10.3;teaspoon|ملعقة صغيرة|3.4;piece|حبة|10.3,usda:169414,0
+basic,,Chia seeds,بذور الشيا,,486,16.54,42.12,,,usda:170554,0
+basic,,Tahini,طحينة,,570,17.81,26.19,,tablespoon|ملعقة كبيرة|15,usda:169410,0
+basic,,Watermelon seeds,بذور البطيخ,,557,28.33,15.31,108,cup|كوب|108,usda:169407,0
+basic,,"Coconut milk, canned",حليب جوز الهند,,197,2.02,2.81,226,cup|كوب|226;tablespoon|ملعقة كبيرة|15,usda:170173,0
+basic,,"Mixed nuts, roasted",مكسرات مشكلة,,607,19.5,22.42,131,cup|كوب|131,usda:170585,0
+basic,,Sugar,سكر,,387,0,99.98,200,cup|كوب|200;teaspoon|ملعقة صغيرة|4.2,usda:169655,0
+basic,,Brown sugar,سكر بني,,380,0.12,98.09,220,cup|كوب|220;teaspoon|ملعقة صغيرة|3,usda:168833,0
+basic,,Powdered sugar,سكر ناعم,,389,0,99.77,120,cup|كوب|120;tablespoon|ملعقة كبيرة|8;teaspoon|ملعقة صغيرة|2.5,usda:169656,0
+basic,,Honey,عسل,,304,0.3,82.4,339,cup|كوب|339;tablespoon|ملعقة كبيرة|21,usda:169640,0
+basic,,Maple syrup,شراب القيقب,,260,0.04,67.04,83,cup|كوب|83;tablespoon|ملعقة كبيرة|20,usda:169661,0
+basic,,Molasses,دبس السكر,,290,0,74.73,337,cup|كوب|337;tablespoon|ملعقة كبيرة|20,usda:168820,0
+basic,,Jam,مربى,,278,0.37,68.86,,tablespoon|ملعقة كبيرة|20,usda:169641,0
+basic,,Milk chocolate,شوكولاتة بالحليب,,535,7.65,59.4,168,cup|كوب|168,usda:167587,0
+basic,,Dark chocolate,شوكولاتة داكنة,,480,4.2,63.9,182,cup|كوب|182,usda:167976,0
+basic,,Cocoa powder,كاكاو,,228,19.6,57.9,86,cup|كوب|86;tablespoon|ملعقة كبيرة|5.4,usda:169593,0
+basic,,Salt,ملح,,0,0,0,292,cup|كوب|292;tablespoon|ملعقة كبيرة|18;teaspoon|ملعقة صغيرة|6,usda:173468,0
+basic,,Black pepper,فلفل أسود,,251,10.39,63.95,2.9,tablespoon|ملعقة كبيرة|6.9;teaspoon|ملعقة صغيرة|2.3;piece|حبة|2.9,usda:170931,0
+basic,,Cumin,كمون,,375,17.81,44.24,2.1,tablespoon|ملعقة كبيرة|6;teaspoon|ملعقة صغيرة|2.1;piece|حبة|2.1,usda:170923,0
+basic,,Turmeric,كركم,,312,9.68,67.14,,tablespoon|ملعقة كبيرة|9.4;teaspoon|ملعقة صغيرة|3,usda:172231,0
+basic,,Cinnamon,قرفة,,247,3.99,80.59,,tablespoon|ملعقة كبيرة|7.8;teaspoon|ملعقة صغيرة|2.6,usda:171320,0
+basic,,Cardamom,هيل,,311,10.76,68.47,,tablespoon|ملعقة كبيرة|5.8;teaspoon|ملعقة صغيرة|2,usda:170919,0
+basic,,Paprika,بابريكا,,282,14.14,53.99,,tablespoon|ملعقة كبيرة|6.8;teaspoon|ملعقة صغيرة|2.3,usda:171329,0
+basic,,Apple cider vinegar,خل التفاح,,21,0,0.93,239,cup|كوب|239;tablespoon|ملعقة كبيرة|14.9;teaspoon|ملعقة صغيرة|5,usda:173469,0
+basic,,Soy sauce,صلصة الصويا,,53,8.14,4.93,255,cup|كوب|255;tablespoon|ملعقة كبيرة|16;teaspoon|ملعقة صغيرة|5.3,usda:174277,0
+basic,,Ketchup,كاتشب,,101,1.04,27.4,240,cup|كوب|240;tablespoon|ملعقة كبيرة|17,usda:168556,0
+basic,,Mustard,خردل,,60,3.74,5.83,249,cup|كوب|249;teaspoon|ملعقة صغيرة|5,usda:172234,0
+basic,,"Coffee, black",قهوة,,1,0.12,0,237,cup|كوب|237,usda:171890,0
+basic,,"Instant coffee, powder",قهوة سريعة التحضير,,353,12.2,75.4,,teaspoon|ملعقة صغيرة|1,usda:171893,0
+basic,,Black tea,شاي أسود,,1,0,0.3,237,cup|كوب|237,usda:173227,0
+basic,,Green tea,شاي أخضر,,1,0.22,0,245,cup|كوب|245,usda:171917,0
+basic,,Cola,مشروب غازي كولا,,42,0,10.36,492,piece|حبة|492,usda:174852,0
+basic,,Caffeine-free cola,مشروب غازي كولا بدون كافيين,,41,0,10.58,,,usda:174851,0
+basic,,Lemon-lime soda,مشروب غازي ليمون,,41,0.09,10.42,491,piece|حبة|491,usda:173205,0
+basic,,Diet cola,مشروب غازي دايت,,2,0.11,0.29,347,piece|حبة|347,usda:175099,0
+basic,,Energy drink,مشروب الطاقة,,43,0.46,10.23,,,usda:173210,0
+basic,,Water,ماء,,0,0,0,,,usda:173647,0
+basic,,Orange juice,عصير برتقال,,49,0.68,11.54,249,cup|كوب|249,usda:169100,0
+basic,,Apple juice,عصير تفاح,,46,0.1,11.3,248,cup|كوب|248,usda:173933,0
+basic,,Grape juice,عصير عنب,,60,0.37,14.77,253,cup|كوب|253,usda:173042,0
+basic,,Pineapple juice,عصير أناناس,,53,0.36,12.87,250,cup|كوب|250,usda:169947,0
+basic,,Grapefruit juice,عصير جريب فروت,,37,0.55,7.54,257,cup|كوب|257,usda:174678,0
+basic,,Lemon juice,عصير ليمون,,22,0.35,6.9,244,cup|كوب|244,usda:167747,0
+basic,,Tomato juice,عصير طماطم,,17,0.85,3.53,243,cup|كوب|243,usda:170545,0
+basic,,Carrot juice,عصير جزر,,40,0.95,9.28,236,cup|كوب|236,usda:170491,0
+basic,,Pomegranate juice,عصير رمان,,54,0.15,13.13,249,cup|كوب|249,usda:167787,0
+basic,,Fruit punch,مشروب فواكه,,47,0,11.94,248,cup|كوب|248,usda:174151,0
+basic,,Orange drink,شراب برتقال,,153,0.4,39,,,usda:175100,0
+basic,,Chocolate milk,حليب بالشوكولاتة,,83,3.17,10.34,250,cup|كوب|250,usda:170879,0
+basic,,Almond milk,حليب اللوز,,15,0.4,1.31,262,cup|كوب|262,usda:174832,0
+basic,,Soy milk,حليب الصويا,,43,2.6,4.92,243,cup|كوب|243,usda:172456,0
+basic,,Sports drink,مشروب رياضي,,26,0,6.43,,,usda:173660,0
+basic,,Chicken noodle soup,شوربة دجاج بالشعيرية,,48,2.37,6.07,248,cup|كوب|248,usda:171543,0
+basic,,Tomato soup,شوربة طماطم,,66,1.46,15.22,148,cup|كوب|148,usda:172882,0
+basic,,Cheese pizza,بيتزا بالجبن,,268,10.36,29.02,,,usda:170317,0
+basic,,"Hamburger, plain",برغر لحم,,297,16.52,31.5,,,usda:170693,0
+basic,,Beef sausage,سجق لحم,,332,18.21,0.35,,,usda:174618,0
+basic,,Chicken nuggets,قطع دجاج مقلية,,261,14.36,16.24,20,piece|حبة|20,usda:172112,0
+basic,,Glazed doughnut,دونات,,421,6.14,47.93,122,piece|حبة|122,usda:172758,0
+basic,,Chocolate chip cookie,بسكويت برقائق الشوكولاتة,,492,5.1,65.36,10,piece|حبة|10,usda:172716,0
+basic,,Chocolate cake,كيك شوكولاتة,,389,3.48,52.84,138,piece|حبة|138,usda:174934,0
+basic,,Sponge cake,كيك إسفنجي,,290,5.4,61,38,piece|حبة|38,usda:172706,0
+basic,,Pancakes,فطائر البان كيك,,227,6.4,28.3,,,usda:175009,0
+basic,,Croissant,كرواسون,,406,8.2,45.8,42,piece|حبة|42,usda:174987,0
+basic,,Blueberry muffin,مافن التوت,,375,4.49,53,66,piece|حبة|66,usda:172765,0
+basic,,Vanilla ice cream,آيس كريم فانيلا,,207,3.5,23.6,66,cup|كوب|66,usda:167575,0
+basic,,Vanilla pudding,بودنغ فانيلا,,130,1.45,22.6,,,usda:169608,0
+basic,,Potato chips,رقائق البطاطس,,532,6.39,53.83,,,usda:169677,0
+basic,,Tortilla chips,رقائق الذرة المقرمشة,,472,7.1,67.78,,,usda:167558,0
+basic,,Whole-wheat crackers,بسكويت القمح الكامل,,427,10.58,69.55,94,cup|كوب|94,usda:172749,0
+basic,,Rice cake,كعك الأرز,,387,8.2,81.5,,,usda:167966,0
+basic,,Jelly candy,حلوى جيلي,,396,0,98.9,3.2,cup|كوب|182;piece|حبة|3.2,usda:167989,0
+basic,,Falafel,فلافل,,333,13.31,31.84,17,piece|حبة|17,usda:172455,0

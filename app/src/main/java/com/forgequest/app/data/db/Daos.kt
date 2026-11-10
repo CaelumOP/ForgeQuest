@@ -237,6 +237,10 @@ interface FoodDao {
     @Upsert
     suspend fun upsertFood(food: FoodEntity): Long
 
+    /** The newest saved food scanned from any of these barcodes (the same product can be written with or without a leading 0). */
+    @Query("SELECT * FROM foods WHERE barcode != '' AND barcode IN (:codes) ORDER BY createdAt DESC LIMIT 1")
+    suspend fun foodByBarcode(codes: List<String>): FoodEntity?
+
     @Query("DELETE FROM foods WHERE id = :id")
     suspend fun deleteFood(id: Long)
 
@@ -260,6 +264,10 @@ interface FoodDao {
     @Query("SELECT COUNT(*) FROM meals")
     fun observeMealCount(): Flow<Int>
 
+    /** Total kcal for every day with a meal, all time (badges count days, not just the loaded window). */
+    @Query("SELECT epochDay AS epochDay, SUM(kcal) AS kcal FROM meals GROUP BY epochDay")
+    fun observeDayKcal(): Flow<List<DayKcal>>
+
     @Query("SELECT COUNT(*) FROM meals WHERE photoPath IS NOT NULL AND foodId IS NULL")
     fun observeScannedCount(): Flow<Int>
 
@@ -267,7 +275,7 @@ interface FoodDao {
     suspend fun allFoods(): List<FoodEntity>
 
     @Insert
-    suspend fun insertMeals(meals: List<MealEntity>)
+    suspend fun insertMeals(meals: List<MealEntity>): List<Long>
 
     /** Puts a deleted meal back with its original id (undo). */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -417,3 +425,5 @@ interface ReadinessDao {
     @Query("SELECT * FROM readiness_days ORDER BY epochDay")
     fun observeAll(): Flow<List<ReadinessDayEntity>>
 }
+
+data class DayKcal(val epochDay: Long, val kcal: Int)

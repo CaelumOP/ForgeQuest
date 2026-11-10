@@ -52,7 +52,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
-import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
@@ -95,6 +95,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -213,6 +214,22 @@ internal fun BodySettingsGroup(
                 }
             }
             Spacer(Modifier.height(16.dp))
+            // Local state owns the text while typing (no key: a saved value landing must not overwrite newer keystrokes).
+            var nameText by rememberSaveable { mutableStateOf(settings.name) }
+            OutlinedTextField(
+                value = nameText,
+                onValueChange = { v -> nameText = v.take(24); vm.setName(nameText.trim()) },
+                label = { Text(stringResource(R.string.onb_your_name)) },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                shape = ForgeShape.Md,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
+                    cursorColor = c.teal, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(12.dp))
             SegmentedTabs(
                 listOf(stringResource(R.string.body_male), stringResource(R.string.body_female)),
                 if (settings.bodyType == BodyType.FEMALE) 1 else 0,
@@ -258,7 +275,7 @@ internal fun BodySettingsGroup(
             )
             if (settings.heightCm <= 0f || age <= 0) {
                 Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.gold)
+                Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
         FitCard {
@@ -514,6 +531,7 @@ internal fun GoalsSettingsGroup(
 internal fun TrainingSettingsGroup(
     vm: ProfileViewModel,
     s: ProgressSnapshot,
+    nav: NavHostController,
     openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
@@ -539,6 +557,9 @@ internal fun TrainingSettingsGroup(
         ),
         open = "training" in openGroups, onToggle = { toggleGroup("training") },
     ) {
+        SettingsRow(Icons.Rounded.Tune, c.teal, c.tealTrack, stringResource(R.string.pb_rebuild), stringResource(R.string.pb_rebuild_hint)) {
+            nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER)
+        }
         EquipmentCard(activePreset, configuredEq, onPreset = { vm.setEquipment(it.encode()) }, onItem = { vm.toggleEquipmentItem(it, configuredEq) })
         FitCard {
             SwitchHeader(
@@ -547,12 +568,16 @@ internal fun TrainingSettingsGroup(
             ) { vm.setJustLog(it) }
         }
         // Workout reminders are part of the consistency side, so "Just log" mode puts them away (the hour is kept).
+        val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
         if (!justLog) FitCard {
             SwitchHeader(
                 Icons.Rounded.Notifications, c.teal, c.tealTrack, stringResource(R.string.profile_reminder),
                 if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
                 settings.reminderHour >= 0,
-            ) { vm.setReminder(if (it) 18 else -1) }
+            ) {
+                if (it && android.os.Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                vm.setReminder(if (it) 18 else -1)
+            }
             if (settings.reminderHour >= 0) {
                 var typingHour by remember { mutableStateOf(false) }
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -585,13 +610,13 @@ internal fun TrainingSettingsGroup(
 @Composable
 internal fun CoachSettingsGroup(
     vm: ProfileViewModel,
+    nav: NavHostController,
     s: ProgressSnapshot,
     apiKey: String,
-    groqKey: String,
+    aiOn: Boolean,
     openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
     onOpenKeyDialog: () -> Unit,
-    onOpenGroqDialog: () -> Unit,
     onOpenNotesDialog: () -> Unit,
 ) {
     val c = Fit.colors
@@ -600,104 +625,16 @@ internal fun CoachSettingsGroup(
 
     SettingsGroup(
         Icons.Rounded.Psychology, c.teal, c.tealTrack, stringResource(R.string.settings_group_coach),
-        summary(
-            stringResource(if (apiKey.isBlank()) R.string.summary_gemini_off else R.string.summary_gemini_on),
-            stringResource(if (groqKey.isBlank()) R.string.summary_groq_off else R.string.summary_groq_on),
-        ),
+        if (aiOn) stringResource(if (apiKey.isBlank()) R.string.summary_gemini_off else R.string.summary_gemini_on) else stringResource(R.string.summary_ai_off),
         open = "coach" in openGroups, onToggle = { toggleGroup("coach") },
     ) {
-        SettingsRow(
-            Icons.Rounded.Key, c.teal, c.tealTrack,
-            stringResource(R.string.profile_ai_key),
-            if (apiKey.isBlank()) stringResource(R.string.profile_key_not_set) else stringResource(R.string.profile_key_connected),
-        ) { onOpenKeyDialog() }
-        SettingsRow(
-            Icons.Rounded.Bolt, c.teal, c.tealTrack,
-            stringResource(R.string.groq_key_title),
-            if (groqKey.isBlank()) stringResource(R.string.groq_key_off) else stringResource(R.string.groq_key_on),
-        ) { onOpenGroqDialog() }
+        // 1. The Gemini app (recommended): plan prompt and reply, and meals.
+        Text(stringResource(R.string.settings_ai_gemini_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.padding(top = 4.dp).semantics { heading() })
+        Text(stringResource(R.string.settings_ai_gemini_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Psychology, c.teal, c.tealTrack)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(
-                        if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
-                        else stringResource(R.string.profile_memory_hint),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                    )
-                }
-                TonalPill(stringResource(R.string.action_add), onClick = { onOpenNotesDialog() })
-            }
-            val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
-            if (notes.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                // The list grows and shrinks smoothly as notes are added or removed.
-                Column(Modifier.animateContentSize()) {
-                    notes.forEach { note ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.removeNote(note) }.padding(vertical = 8.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
-                            Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                }
-            }
+            com.forgequest.app.ui.components.GeminiPlanPills(onPaste = { nav.navigate(com.forgequest.app.ui.Routes.plan(paste = true)) })
         }
-        var pasteOpen by remember { mutableStateOf(false) }
-        val bridgeScope = rememberCoroutineScope()
         val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
-        FitCard {
-            // Turning it on explains what it is first: a stray tap on the title used to start a Google sign-in out of nowhere.
-            var explainBridge by remember { mutableStateOf(false) }
-            SwitchHeader(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack, stringResource(R.string.bridge_title), stringResource(R.string.bridge_hint), settings.bridgeEnabled) { on ->
-                if (on) explainBridge = true else vm.setBridge(false)
-            }
-            if (explainBridge) {
-                AlertDialog(
-                    onDismissRequest = { explainBridge = false },
-                    containerColor = c.card,
-                    title = { Text(stringResource(R.string.bridge_title), color = c.textPrimary) },
-                    text = { Text(stringResource(R.string.bridge_explain), color = c.textSecondary) },
-                    confirmButton = { TextButton(onClick = { explainBridge = false; vm.setBridge(true) }) { Text(stringResource(R.string.bridge_turn_on), color = c.teal) } },
-                    dismissButton = { TextButton(onClick = { explainBridge = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
-                )
-            }
-            if (settings.bridgeEnabled) {
-                Spacer(Modifier.height(12.dp))
-                val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE HH:mm", Locale.getDefault())
-                fun at(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).format(fmt)
-                Text(
-                    (if (settings.bridgeLastWrite > 0) stringResource(R.string.bridge_wrote, at(settings.bridgeLastWrite)) else stringResource(R.string.bridge_never_wrote)) + " · " +
-                        (if (settings.bridgeLastReadAt > 0) stringResource(R.string.bridge_read, at(settings.bridgeLastReadAt)) else stringResource(R.string.bridge_never_read)),
-                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                )
-                if (settings.bridgeIssues.isNotBlank()) Text(stringResource(R.string.bridge_issues, settings.bridgeIssues), style = MaterialTheme.typography.bodySmall, color = c.coral)
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalPill(stringResource(R.string.bridge_sync), onClick = { vm.syncBridge() })
-                    TonalPill(stringResource(R.string.bridge_copy_prompt), onClick = {
-                        val prompt = context.resources.openRawResource(R.raw.gemini_bridge_prompt).bufferedReader().use { it.readText() }
-                        clipboard.copy(prompt)
-                        context.toast(context.getString(R.string.bridge_prompt_copied))
-                    })
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalPill(stringResource(R.string.bridge_copy_data), onClick = {
-                        bridgeScope.launch {
-                            clipboard.copy(vm.bridgeData())
-                            context.toast(context.getString(R.string.bridge_data_copied))
-                        }
-                    }, tint = c.textSecondary)
-                    TonalPill(stringResource(R.string.bridge_paste), onClick = { pasteOpen = true }, tint = c.textSecondary)
-                }
-            }
-        }
         FitCard {
             SwitchHeader(Icons.Rounded.Restaurant, c.teal, c.tealTrack, stringResource(R.string.meals_title), stringResource(R.string.meals_hint), settings.geminiMealsEnabled) { vm.setGeminiMeals(it) }
             if (settings.geminiMealsEnabled) {
@@ -715,18 +652,50 @@ internal fun CoachSettingsGroup(
                 }
             }
         }
-        if (pasteOpen) {
-            var text by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { pasteOpen = false },
-                containerColor = c.card,
-                title = { Text(stringResource(R.string.bridge_paste_title), color = c.textPrimary) },
-                text = {
-                    OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth().height(220.dp), placeholder = { Text("FORGEQUEST-REPLY v1 …") })
-                },
-                confirmButton = { TextButton(onClick = { vm.pasteBridgeReply(text); pasteOpen = false }, enabled = text.isNotBlank()) { Text(stringResource(R.string.bridge_paste_apply), color = c.teal) } },
-                dismissButton = { TextButton(onClick = { pasteOpen = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
-            )
+        // 2. The free API key: basic, so it comes second.
+        Text(stringResource(R.string.settings_ai_key_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.padding(top = 8.dp).semantics { heading() })
+        Text(stringResource(R.string.settings_ai_key_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        FitCard {
+            SwitchHeader(Icons.Rounded.Psychology, c.teal, c.tealTrack, stringResource(R.string.ai_toggle_title), stringResource(R.string.ai_toggle_body), aiOn) { on -> vm.setAiEnabled(on) }
+        }
+        if (aiOn) {
+            SettingsRow(
+                Icons.Rounded.Key, c.teal, c.tealTrack,
+                stringResource(R.string.profile_ai_key),
+                if (apiKey.isBlank()) stringResource(R.string.profile_key_not_set) else stringResource(R.string.profile_key_connected),
+            ) { onOpenKeyDialog() }
+            FitCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconCircle(Icons.Rounded.Psychology, c.teal, c.tealTrack)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                        Text(
+                            if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
+                            else stringResource(R.string.profile_memory_hint),
+                            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                        )
+                    }
+                    TonalPill(stringResource(R.string.action_add), onClick = { onOpenNotesDialog() })
+                }
+                val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
+                if (notes.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    // The list grows and shrinks smoothly as notes are added or removed.
+                    Column(Modifier.animateContentSize()) {
+                        notes.forEach { note ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.removeNote(note) }.padding(vertical = 8.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
+                                Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -799,9 +768,6 @@ internal fun AppSettingsGroup(
                 stringResource(if (!canLock) R.string.profile_lock_unavailable else if (settings.biometricLock) R.string.profile_lock_on else R.string.profile_lock_off),
                 settings.biometricLock && canLock, enabled = canLock,
             ) { vm.setLock(it) }
-        }
-        SettingsRow(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack, stringResource(R.string.tour_replay), stringResource(R.string.tour_replay_hint)) {
-            nav.navigate(com.forgequest.app.ui.Routes.TOUR)
         }
     }
 }
@@ -904,14 +870,10 @@ internal fun AboutSettingsGroup(
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     val taps = remember { longArrayOf(0, 0, 0, 0, 0, 0, 0) }
-                    Text(
-                        stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),
-                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                        // Hidden owner switch: 7 taps within 3 seconds.
-                        modifier = Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, role = null) {
+                    // Hidden owner switch: 7 taps within 3 seconds on the title.
+                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() }.then(
+Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, role = null) {
                             val now = android.os.SystemClock.elapsedRealtime()
                             for (i in 0 until taps.size - 1) taps[i] = taps[i + 1]
                             taps[taps.size - 1] = now
@@ -920,8 +882,10 @@ internal fun AboutSettingsGroup(
                                 val on = com.forgequest.app.PersonalTools.toggle(context)
                                 context.toast(context.getString(if (on) R.string.personal_tools_on else R.string.personal_tools_off))
                             }
-                        },
-                    )
+                        }
+                    ))
+                    Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_credits_data), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(12.dp))

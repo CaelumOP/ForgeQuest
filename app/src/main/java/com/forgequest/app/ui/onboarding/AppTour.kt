@@ -4,55 +4,33 @@ import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.MonitorHeart
-import androidx.compose.material.icons.rounded.Spa
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.AppLocale
 import com.forgequest.app.R
-import com.forgequest.app.container
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.theme.Fit
-import kotlinx.coroutines.launch
 
-/** First-run flags kept next to the language choice, so they survive the activity restart a language change causes. */
+/**
+ * First-run flags kept next to the language choice, so they survive the activity restart a language change causes.
+ * The page-by-page tour is gone (tips now appear next to the buttons they explain); "tour_seen" is still read so
+ * people who finished the old tour don't get the tips again.
+ */
 object TourPrefs {
     private const val PREFS = "ui_prefs"
     fun languageChosen(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("language_chosen", false)
@@ -77,69 +55,11 @@ fun LanguageChoice(onChosen: () -> Unit) {
         Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
-        Text("Choose your language", style = MaterialTheme.typography.headlineSmall, color = c.textPrimary, textAlign = TextAlign.Center)
-        Text("اختر لغتك", style = MaterialTheme.typography.headlineSmall, color = c.textPrimary, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.lang_choose_en), style = MaterialTheme.typography.headlineSmall, color = c.textPrimary, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.lang_choose_ar), style = MaterialTheme.typography.headlineSmall, color = c.textPrimary, textAlign = TextAlign.Center)
         Spacer(Modifier.height(32.dp))
-        PillButton("English", onClick = { choose("en") }, modifier = Modifier.fillMaxWidth())
+        PillButton(stringResource(R.string.lang_name_en), onClick = { choose("en") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
-        PillButton("العربية", onClick = { choose("ar") }, modifier = Modifier.fillMaxWidth())
-    }
-}
-
-private data class Slide(val icon: ImageVector, val color: @Composable () -> Color, val title: Int, val body: Int)
-
-/** Consistency, plans and the live workout, progress and recovery. */
-private val coreSlides = listOf(
-    Slide(Icons.Rounded.Spa, { Fit.colors.teal }, R.string.tour_1_t, R.string.tour_1_b),
-    Slide(Icons.Rounded.FitnessCenter, { Fit.colors.teal }, R.string.tour_3_t, R.string.tour_3_b),
-    Slide(Icons.Rounded.EmojiEvents, { Fit.colors.gold }, R.string.tour_7_t, R.string.tour_7_b),
-)
-
-/** Food-scan and AI-coach slides: only worth showing once an AI key is saved. */
-private val aiSlides = listOf(
-    Slide(Icons.Rounded.CameraAlt, { Fit.colors.coral }, R.string.tour_4_t, R.string.tour_4_b),
-    Slide(Icons.Rounded.AutoAwesome, { Fit.colors.purple }, R.string.tour_5_t, R.string.tour_5_b),
-)
-
-/** Three feature slides (five with an AI key) with Skip, page dots and Next; the last button leads into setup (or back, on a replay). */
-@Composable
-fun AppTour(finishLabel: String, onDone: () -> Unit) {
-    val c = Fit.colors
-    val hasKey = LocalContext.current.container.settings.apiKey.collectAsState().value.isNotBlank()
-    val slides = if (hasKey) listOf(coreSlides[0], coreSlides[1]) + aiSlides + coreSlides[2] else coreSlides
-    val pager = rememberPagerState { slides.size }
-    val scope = rememberCoroutineScope()
-    val last = pager.currentPage == slides.lastIndex
-    Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
-        Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.weight(1f))
-            if (!last) TextButton(onClick = onDone) { Text(stringResource(R.string.tour_skip), color = c.textSecondary) }
-        }
-        HorizontalPager(pager, Modifier.weight(1f)) { page ->
-            val s = slides[page]
-            val tint = s.color()
-            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Box(Modifier.size(132.dp).clip(CircleShape).background(tint.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                    Icon(s.icon, contentDescription = null, tint = tint, modifier = Modifier.size(64.dp))
-                }
-                Spacer(Modifier.height(36.dp))
-                Text(stringResource(s.title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
-                Spacer(Modifier.height(12.dp))
-                Text(stringResource(s.body), style = MaterialTheme.typography.bodyLarge, color = c.textSecondary, textAlign = TextAlign.Center)
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(slides.size) { i ->
-                    val on = i == pager.currentPage
-                    Box(Modifier.height(8.dp).width(if (on) 22.dp else 8.dp).clip(CircleShape).background(if (on) c.teal else c.cardHigh))
-                }
-            }
-            Spacer(Modifier.weight(1f))
-            PillButton(
-                if (last) finishLabel else stringResource(R.string.tour_next),
-                onClick = { if (last) onDone() else scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
-            )
-        }
+        PillButton(stringResource(R.string.lang_name_ar), onClick = { choose("ar") }, modifier = Modifier.fillMaxWidth())
     }
 }

@@ -19,6 +19,7 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.PrPicker
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
@@ -327,23 +328,45 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         id
     }
 
-    /**
-     * Prefills today's sets from the last two finished sessions of [ex] using [Progression]: load and reps
-     * only go up after clean sessions, never on a low-readiness day, and in the person's own unit.
-     */
-    private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
-        val kind = ex?.kind ?: ExerciseKind.REPS
-        val input = Progression.inputs(item, ex?.id, ex?.let { sessions.recentDoneSets(it.id) }.orEmpty())
+    /** The rules' answer for one exercise: [recent] is its done sets, newest workout first. Shared by the prefill and the live card's note. */
+    suspend fun progressionFor(item: PlanItemEntity?, ex: ExerciseEntity?, recent: List<SetEntity>): Progression.Result {
+        val createdAt = plans.active()?.createdAt
+        // A deload session had half the sets, so it would read as "missed" next time: progress from the session before it.
+        val deloadIds = if (createdAt == null) emptySet() else recent.map { it.sessionId }.distinct()
+            .filter { id -> sessions.byId(id)?.let { Progression.isDeloadWeek(createdAt, it.epochDay) } == true }.toSet()
+        val usable = recent.filter { it.sessionId !in deloadIds }.ifEmpty { recent }
+        val deload = createdAt != null && item != null && !WorkoutScore.isExtra(item.block) && Progression.isDeloadWeek(createdAt, Dates.today())
+        val input = Progression.inputs(item, ex?.id, usable)
         val s = settings?.current()
-        val result = Progression.next(
-            kind = kind,
+        return Progression.next(
+            kind = ex?.kind ?: ExerciseKind.REPS,
             target = input.target,
             last = input.last,
             previous = input.previous,
             unit = s?.weightUnit ?: WeightUnit.KG,
             lowReadiness = s?.healthEnabled == true && lowReadinessToday(),
             warmup = input.warmup,
+            deload = deload,
         )
+    }
+
+    /** This week is a lighter one in the active plan's 4-week cycle. */
+    suspend fun isDeloadWeekNow(): Boolean = plans.active()?.let { Progression.isDeloadWeek(it.createdAt, Dates.today()) } == true
+
+    /** One exercise's done sets from finished workouts, newest workout first, as [progressionFor] expects them. */
+    suspend fun recentDoneSets(exerciseId: String): List<SetEntity> = sessions.recentDoneSets(exerciseId)
+
+    /** The plan item behind one position of [session], null for a quick workout or an added exercise. */
+    suspend fun planItemAt(session: SessionEntity, position: Int): PlanItemEntity? =
+        session.planDayId?.let { plans.items(it).firstOrNull { item -> item.position == position } }
+
+    /**
+     * Prefills today's sets from the last two finished sessions of [ex] using [Progression]: load and reps
+     * only go up after clean sessions, never on a low-readiness day, and in the person's own unit.
+     */
+    private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
+        val kind = ex?.kind ?: ExerciseKind.REPS
+        val result = progressionFor(item, ex, ex?.let { sessions.recentDoneSets(it.id) }.orEmpty())
         val label = targetLabel(kind, item).let { base ->
             if (result.holdCeilingReached) listOf(base, AppText.get(R.string.rx_hold_ceiling)).filter { it.isNotBlank() }.joinToString(" · ") else base
         }
@@ -412,7 +435,8 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     }
 
     /** A plan day's sets for the score: warm-ups left out. */
-    private fun plannedSetsOf(items: List<PlanItemEntity>): Int = items.filterNot { WorkoutScore.isWarmUp(it.block) }.sumOf { it.sets }
+    private fun plannedSetsOf(items: List<PlanItemEntity>, deload: Boolean = false): Int =
+        items.filterNot { WorkoutScore.isExtra(it.block) }.sumOf { if (deload) Progression.deloadSets(it.sets) else it.sets }
 
     fun targetLabel(kind: ExerciseKind, item: PlanItemEntity?): String {
         if (item == null) return ""
@@ -485,6 +509,8 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
      */
     suspend fun finishSession(sessionId: Long, tickAll: Boolean = false): FinishResult = db.withTransaction {
         val session = sessions.byId(sessionId) ?: return@withTransaction FinishResult("", 0, emptyList(), 0)
+        // Sets ticked only by "tick all" are not real work, so they can't be records.
+        val unticked = if (tickAll) sessions.sets(sessionId).filter { !it.done }.map { it.id }.toSet() else emptySet()
         if (tickAll) {
             sessions.markAllSetsDone(sessionId, System.currentTimeMillis())
         } else {
@@ -496,21 +522,24 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val earlier = sessions.finished()
             .filter { it.epochDay < session.epochDay || (it.epochDay == session.epochDay && it.startedAt < session.startedAt) }
             .map { it.id }.toSet()
-        val prNames = mutableListOf<String>()
-        for ((exerciseId, setsOfExercise) in done.groupBy { it.exerciseId }) {
+        val kinds = mutableMapOf<String, ExerciseKind>()
+        val previousBest = mutableMapOf<String, Float>()
+        for (exerciseId in done.map { it.exerciseId }.distinct()) {
             val ex = exercises.byId(exerciseId) ?: continue
-            val previousBest = sessions.recentDoneSetsAll(exerciseId)
+            kinds[exerciseId] = ex.kind
+            sessions.recentDoneSetsAll(exerciseId)
                 .filter { it.sessionId in earlier }
                 .maxOfOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
-                ?: continue // first time doing it: nothing to beat yet
-            val best = setsOfExercise.maxByOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) } ?: continue
-            if (Records.score(ex.kind, best.reps, best.seconds, best.weightKg, ex.id) > previousBest) {
-                sessions.updateSet(best.copy(isPr = true))
-                prNames += ex.name
-            }
+                ?.let { previousBest[exerciseId] = it }
+        }
+        val prIds = PrPicker.pick(done.filter { it.id !in unticked }, { kinds[it] ?: ExerciseKind.REPS }, previousBest)
+        val prNames = mutableListOf<String>()
+        for (s in done.filter { it.id in prIds }) {
+            sessions.updateSet(s.copy(isPr = true))
+            prNames += exercises.byId(s.exerciseId)?.name ?: continue
         }
         // The plan day's sets as they are now, kept so a later plan edit can't change this workout's score.
-        val plannedSets = session.planDayId?.let { plannedSetsOf(plans.items(it)) }?.takeIf { it > 0 }
+        val plannedSets = session.planDayId?.let { plannedSetsOf(plans.items(it), deload = plans.active()?.let { p -> Progression.isDeloadWeek(p.createdAt, session.epochDay) } == true) }?.takeIf { it > 0 }
         val now = System.currentTimeMillis()
         val end = com.forgequest.app.domain.WorkoutEnd.endTime(now, sessions.lastDoneAt(sessionId))
         sessions.update(session.copy(finishedAt = end, plannedSets = plannedSets))

@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -34,6 +35,12 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 enum class BodyType { MALE, FEMALE }
+
+/** AI is on if the person chose so; with no choice yet it is on only for people who already saved a key. */
+fun resolveAiOn(optIn: Boolean?, hasKey: Boolean): Boolean = optIn ?: hasKey
+
+/** Chat is the fourth tab (and "ask the coach" shows) only with AI on and a key saved; AI on alone can have no key. */
+fun chatIsTab(aiOn: Boolean, apiKey: String): Boolean = aiOn && apiKey.isNotBlank()
 
 data class Settings(
     val onboarded: Boolean = false,
@@ -53,7 +60,7 @@ data class Settings(
     val modelsCheckedAt: Long = 0,
     /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
     val coachModel: String = "auto",
-    /** Groq chat model picked for the saved Groq key. */
+    /** Unused since the fast-chat provider was removed; kept so old settings still load. */
     val groqModel: String = "",
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
@@ -74,6 +81,10 @@ data class Settings(
     /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
     val coachNotes: String = "",
     val theme: String = "system",
+    /** Insight comments shown lately, "kind:variant:epochDay;..." (domain/Insights.kt). Disposable: not in the backup. */
+    val insightHistory: String = "",
+    /** The one-time unlock of the second badge set has run (see ProgressRepository.evaluateBadges). Not in the backup. */
+    val badgesV2Backfill: Boolean = false,
     val hapticsEnabled: Boolean = true,
     val unit: String = "kg",
     val reminderHour: Int = -1,
@@ -118,6 +129,10 @@ data class Settings(
     val targetNudgeAnswered: Boolean = false,
     /** "Just log" mode: hides streaks, levels, badges, readiness and consistency reminders. Nothing is deleted; XP still accrues. */
     val justLog: Boolean = false,
+    /** Null until the person flips the AI switch; then the key check below decides (so people with a saved key stay on). */
+    val aiOptIn: Boolean? = null,
+    /** The plan builder's last answers as JSON (see PlanAnswers), so a rebuild starts from them. Not part of backups. */
+    val planBuilderAnswers: String? = null,
 ) {
     val weightUnit: WeightUnit
         get() = WeightUnit.fromCodeOrLabel(unit)
@@ -162,6 +177,8 @@ class SettingsRepository(private val context: Context) {
         val coachNotes = stringPreferencesKey("coach_notes")
         val driveDocs = booleanPreferencesKey("drive_docs_enabled")
         val theme = stringPreferencesKey("theme")
+        val insightHistory = stringPreferencesKey("insight_history")
+        val badgesV2Backfill = booleanPreferencesKey("badges_v2_backfill")
         val haptics = booleanPreferencesKey("haptics_enabled")
         val unit = stringPreferencesKey("weight_unit")
         val reminderHour = intPreferencesKey("reminder_hour")
@@ -188,6 +205,8 @@ class SettingsRepository(private val context: Context) {
         val calorieV2Seen = booleanPreferencesKey("calorie_v2_seen")
         val targetNudgeAnswered = booleanPreferencesKey("target_nudge_answered")
         val justLog = booleanPreferencesKey("just_log")
+        val aiEnabled = booleanPreferencesKey("ai_enabled")
+        val planBuilderAnswers = stringPreferencesKey("plan_builder_answers")
     }
 
     /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
@@ -231,6 +250,8 @@ class SettingsRepository(private val context: Context) {
             coachNotes = this[K.coachNotes] ?: "",
             driveDocsEnabled = this[K.driveDocs] ?: false,
             theme = this[K.theme] ?: "system",
+            insightHistory = this[K.insightHistory] ?: "",
+            badgesV2Backfill = this[K.badgesV2Backfill] ?: false,
             hapticsEnabled = this[K.haptics] ?: true,
             unit = normalizedUnit,
             reminderHour = this[K.reminderHour] ?: -1,
@@ -257,6 +278,8 @@ class SettingsRepository(private val context: Context) {
             calorieV2Seen = this[K.calorieV2Seen] ?: false,
             targetNudgeAnswered = this[K.targetNudgeAnswered] ?: false,
             justLog = this[K.justLog] ?: false,
+            aiOptIn = this[K.aiEnabled],
+            planBuilderAnswers = this[K.planBuilderAnswers],
         )
     }
 
@@ -292,6 +315,8 @@ class SettingsRepository(private val context: Context) {
             p[K.coachNotes] = s.coachNotes
             p[K.driveDocs] = s.driveDocsEnabled
             p[K.theme] = s.theme
+            p[K.insightHistory] = s.insightHistory
+            p[K.badgesV2Backfill] = s.badgesV2Backfill
             p[K.haptics] = s.hapticsEnabled
             p[K.unit] = WeightUnit.fromCodeOrLabel(s.unit).code
             p[K.reminderHour] = s.reminderHour
@@ -318,6 +343,8 @@ class SettingsRepository(private val context: Context) {
             p[K.calorieV2Seen] = s.calorieV2Seen
             p[K.targetNudgeAnswered] = s.targetNudgeAnswered
             p[K.justLog] = s.justLog
+            s.aiOptIn?.let { p[K.aiEnabled] = it }
+            s.planBuilderAnswers?.let { p[K.planBuilderAnswers] = it }
         }
     }
 
@@ -356,15 +383,42 @@ class SettingsRepository(private val context: Context) {
         return runCatching { decrypt(stored) }.getOrDefault("")
     }
 
-    // --- Optional Groq key for fast chat, same encryption, also kept out of backups. ---
+    /** Removes the key of the retired fast-chat provider once; a no-op when it is already gone. */
+    fun clearRetiredKeys() {
+        if (keyPrefs.contains("groq")) keyPrefs.edit().remove("groq").apply()
+    }
 
-    private val _groqKey = MutableStateFlow(readKey("groq"))
-    val groqKey: StateFlow<String> = _groqKey
+    // --- AI opt-in: off for new people, on for anyone who already saved a key. ---
 
-    fun setGroqKey(value: String) {
-        val trimmed = value.trim()
-        if (trimmed.isEmpty()) keyPrefs.edit().remove("groq").apply() else keyPrefs.edit().putString("groq", encrypt(trimmed)).apply()
-        _groqKey.value = trimmed
+    private val aiScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+    private val _aiOptIn = MutableStateFlow<Boolean?>(
+        runCatching { kotlinx.coroutines.runBlocking { context.dataStore.data.first()[K.aiEnabled] } }.getOrNull()
+    )
+
+    private fun hasAnyKey() = _apiKey.value.isNotBlank()
+
+    /** Same answer as [aiOn], read right now (the flow below can lag a moment behind a key change). */
+    fun isAiOn(): Boolean = resolveAiOn(_aiOptIn.value, hasAnyKey())
+
+    val aiOn: StateFlow<Boolean> = kotlinx.coroutines.flow.combine(_aiOptIn, _apiKey) { o, a ->
+        resolveAiOn(o, a.isNotBlank())
+    }.distinctUntilChanged().stateIn(aiScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, isAiOn())
+
+    /** [chatIsTab] as a flow. */
+    val chatTab: StateFlow<Boolean> = kotlinx.coroutines.flow.combine(aiOn, _apiKey) { o, k -> chatIsTab(o, k) }
+        .distinctUntilChanged().stateIn(aiScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, chatIsTab(isAiOn(), _apiKey.value))
+
+    suspend fun setBadgesV2Backfill(done: Boolean) {
+        update { it.copy(badgesV2Backfill = done) }
+    }
+
+    suspend fun setInsightHistory(value: String) {
+        update { it.copy(insightHistory = value) }
+    }
+
+    suspend fun setAiEnabled(on: Boolean) {
+        _aiOptIn.value = on
+        update { it.copy(aiOptIn = on) }
     }
 
     private fun secretKey(): SecretKey {
