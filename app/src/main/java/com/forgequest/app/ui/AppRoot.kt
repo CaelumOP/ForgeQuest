@@ -149,6 +149,17 @@ inline fun <reified VM : ViewModel> appViewModel(crossinline create: (AppContain
     return viewModel(factory = viewModelFactory { initializer { create(context.container) } })
 }
 
+/**
+ * The one [ProfileViewModel] behind Profile, Settings and Badges. It is kept by the navigation graph itself, not by a
+ * screen, because Settings is also opened straight from Coach and Scan, where no Profile screen is underneath.
+ */
+@Composable
+fun sharedProfileViewModel(nav: NavHostController): com.forgequest.app.ui.profile.ProfileViewModel {
+    val context = LocalContext.current
+    val root = remember(nav) { nav.getBackStackEntry(nav.graph.id) }
+    return viewModel(viewModelStoreOwner = root, factory = viewModelFactory { initializer { com.forgequest.app.ui.profile.ProfileViewModel(context.container) } })
+}
+
 @Composable
 fun AppRoot() {
     val context = LocalContext.current

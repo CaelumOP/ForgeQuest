@@ -36,14 +36,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.forgequest.app.domain.BadgeCategory
 import com.forgequest.app.domain.Badges
-import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.sharedProfileViewModel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.theme.Fit
 
 /** All badges by category. Opening it marks new ones as seen. */
 @Composable
 fun BadgesScreen(nav: NavHostController) {
-    val vm = appViewModel { ProfileViewModel(it) }
+    val vm = sharedProfileViewModel(nav)
     val snap by vm.snapshot.collectAsState()
     val c = Fit.colors
     DisposableEffect(Unit) { onDispose { vm.markBadgesSeen() } }

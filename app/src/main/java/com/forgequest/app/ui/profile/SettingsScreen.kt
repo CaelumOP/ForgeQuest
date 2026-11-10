@@ -52,6 +52,7 @@ import com.forgequest.app.R
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.sharedProfileViewModel
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.localSummary
 import com.forgequest.app.ui.theme.Fit
@@ -76,7 +77,8 @@ private val groupTitles = listOf(
  */
 @Composable
 fun SettingsScreen(nav: NavHostController, groupId: String?) {
-    val vm = appViewModel { ProfileViewModel(it) }
+    val profile = sharedProfileViewModel(nav)
+    val vm = appViewModel { SettingsViewModel(it, profile.snapshot) }
     val snap by vm.snapshot.collectAsState()
     val apiKey by vm.apiKey.collectAsState()
     val aiOn by vm.aiOn.collectAsState()

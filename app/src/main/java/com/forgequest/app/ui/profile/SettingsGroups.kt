@@ -99,7 +99,7 @@ import java.util.Date
 
 @Composable
 internal fun BodySettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
     toggleGroup: (String) -> Unit,
     probe: com.forgequest.app.data.health.HealthProbe,
@@ -232,7 +232,7 @@ internal fun BodySettingsGroup(
 
 @Composable
 internal fun GoalsSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
     toggleGroup: (String) -> Unit,
 ) {
@@ -452,7 +452,7 @@ internal fun GoalsSettingsGroup(
 
 @Composable
 internal fun TrainingSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
     nav: NavHostController,
     toggleGroup: (String) -> Unit,
@@ -531,7 +531,7 @@ internal fun TrainingSettingsGroup(
 
 @Composable
 internal fun CoachSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     nav: NavHostController,
     s: ProgressSnapshot,
     apiKey: String,
@@ -623,7 +623,7 @@ internal fun CoachSettingsGroup(
 
 @Composable
 internal fun AppSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
     toggleGroup: (String) -> Unit,
 ) {
@@ -694,7 +694,7 @@ internal fun AppSettingsGroup(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun BackupSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
     toggleGroup: (String) -> Unit,
     saveLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Uri?>,
@@ -767,7 +767,7 @@ internal fun BackupSettingsGroup(
 
 @Composable
 internal fun AboutSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors

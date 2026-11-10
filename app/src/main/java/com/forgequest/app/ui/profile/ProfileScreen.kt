@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.forgequest.app.R
 import com.forgequest.app.domain.Badges
-import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.sharedProfileViewModel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
@@ -59,7 +59,7 @@ internal fun summary(vararg parts: String?) = parts.filterNotNull().filter { it.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(nav: NavHostController) {
-    val vm = appViewModel { ProfileViewModel(it) }
+    val vm = sharedProfileViewModel(nav)
     val snap by vm.snapshot.collectAsState()
     val apiKey by vm.apiKey.collectAsState()
     val aiOn by vm.aiOn.collectAsState()
