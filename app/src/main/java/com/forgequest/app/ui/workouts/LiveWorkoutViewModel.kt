@@ -302,20 +302,6 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         if (set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set))
     }
 
-    fun adjust(set: SetEntity, kind: ExerciseKind, field: Field, direction: Int) {
-        val current = when (field) {
-            Field.REPS -> (set.reps ?: 0).toFloat()
-            Field.SECONDS -> (set.seconds ?: 0).toFloat()
-            Field.WEIGHT -> set.weightKg ?: 0f
-        }
-        val step = when (field) {
-            Field.REPS -> 1f
-            Field.SECONDS -> 5f
-            Field.WEIGHT -> 2.5f
-        }
-        setField(set, field, current + step * direction)
-    }
-
     /** Best score ever per exercise (finished sessions only), for the gold flash when a typed value beats it. */
     private val bestScores: StateFlow<Map<String, Float>> = app.progress.snapshot.map { snap ->
         snap.doneSets.groupBy { it.exerciseId }.mapValues { (id, sets) ->

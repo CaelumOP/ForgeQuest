@@ -155,7 +155,6 @@ class ProfileViewModel(val app: AppContainer) : ViewModel() {
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
     fun setHand(length: Float, palm: Float) = viewModelScope.launch { app.settings.update { it.copy(handLengthCm = length, palmWidthCm = palm) } }
-    fun logWeight(kg: Float) = viewModelScope.launch { app.progress.logWeight(kg) }
     fun markBadgesSeen() = viewModelScope.launch { app.progress.markBadgesSeen() }
 
     val aiOn: StateFlow<Boolean> = app.settings.aiOn

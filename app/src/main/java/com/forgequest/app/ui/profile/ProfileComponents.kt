@@ -95,17 +95,6 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
     }
 }
 
-/** Small group title between cards, so related settings read as one block. */
-@Composable
-internal fun SettingsSection(title: String) {
-    Text(
-        title.uppercase(Locale.getDefault()),
-        style = MaterialTheme.typography.labelLarge,
-        color = Fit.colors.textSecondary,
-        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp).semantics { heading() },
-    )
-}
-
 /** Header of a settings card that toggles as a whole: icon, title, current state, switch. */
 @Composable
 internal fun SwitchHeader(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, subtitle: String, checked: Boolean, enabled: Boolean = true, onToggle: (Boolean) -> Unit) {
@@ -187,24 +176,6 @@ internal fun SettingsGroup(
         }
     }
     Spacer(Modifier.height(12.dp))
-}
-
-/** Half-width card that opens another screen. */
-@Composable
-internal fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    // At large text sizes the icon sits above the title, so a long word is never broken in the middle.
-    val stacked = com.forgequest.app.ui.components.reflowText()
-    FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
-        if (stacked) {
-            IconCircle(icon, tint, track, size = 40.dp)
-            Spacer(Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        } else Row(verticalAlignment = Alignment.CenterVertically) {
-            IconCircle(icon, tint, track, size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-    }
 }
 
 /** One full-width option row with a radio circle or a checkbox; the whole row is the touch target. */

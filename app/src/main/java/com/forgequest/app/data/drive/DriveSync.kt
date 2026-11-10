@@ -135,8 +135,6 @@ class DriveSync(
         backups.decode(call(token, Request.Builder().url("$API/files/$id?alt=media").get()))
     }
 
-    suspend fun restore(token: String) = backups.apply(fetchBackup(token))
-
     private fun findBackupId(token: String): String? {
         val body = call(token, Request.Builder().url("$API/files?spaces=appDataFolder&q=name%3D%27$BACKUP_NAME%27&fields=files(id)").get())
         return json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull
@@ -182,18 +180,13 @@ class DriveSync(
         json.parseToJsonElement(body).jsonObject["id"]!!.jsonPrimitive.content
     }
 
+    data class DocText(val id: String, val text: String, val modifiedAt: Long)
+
     /**
-     * Text and modified time of the app-created Doc named [name], or null if none is newer than [sinceMillis]. When
+     * Id, text and modified time of the app-created Doc named [name], or null if none is newer than [sinceMillis]. When
      * the Doc doesn't exist yet it is created with [placeholder], so another app (Gemini) can fill it in and this one
      * can still read it with the file-only scope.
      */
-    suspend fun newestDoc(token: String, name: String, sinceMillis: Long, placeholder: String? = null): Pair<String, Long>? = withContext(Dispatchers.IO) {
-        findNewestDoc(token, name, sinceMillis, placeholder)?.let { it.text to it.modifiedAt }
-    }
-
-    data class DocText(val id: String, val text: String, val modifiedAt: Long)
-
-    /** Like [newestDoc], with the Doc's id so the caller can rewrite it. */
     suspend fun readDoc(token: String, name: String, sinceMillis: Long, placeholder: String): DocText? = withContext(Dispatchers.IO) {
         findNewestDoc(token, name, sinceMillis, placeholder)?.let { DocText(it.id, it.text, it.modifiedAt) }
     }
