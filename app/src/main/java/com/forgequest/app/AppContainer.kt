@@ -12,6 +12,8 @@ import com.forgequest.app.data.backup.BackupRepository
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.drive.DriveSync
 import com.forgequest.app.data.notify.Notifier
+import com.forgequest.app.data.notify.RestAlert
+import com.forgequest.app.data.notify.RestChime
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.ui.Haptics
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +46,17 @@ class AppContainer(context: Context) {
     val meals = com.forgequest.app.data.bridge.MealInbox(context, db, drive)
     val haptics = Haptics(context)
     val notifier = Notifier(context)
+    private val restChime = RestChime(appContext)
+    val restAlert = RestAlert { next, onScreen ->
+        // With notifications refused there is nothing to post, so the app makes the noise itself wherever it is.
+        if (onScreen || !notifier.canPost()) {
+            notifier.cancelRest()
+            haptics.restOver()
+            restChime.play()
+        } else {
+            notifier.restOver(next)
+        }
+    }
 
     /**
      * Strings for view models and workers, in the app's language. Wrapped on every call: the application context keeps the

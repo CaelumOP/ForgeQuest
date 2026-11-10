@@ -173,8 +173,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     if (currentMillis >= r.endsAt) {
                         rest.value = null
                         now.value = currentMillis
-                        app.haptics.restOver()
-                        app.notifier.restOver(r.nextExercise)
+                        app.restAlert.fire(r.nextExercise)
                     }
                 }
                 hold.value?.let { h ->

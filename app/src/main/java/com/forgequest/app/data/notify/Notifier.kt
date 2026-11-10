@@ -91,9 +91,6 @@ class Notifier(private val context: Context) {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            // Before Android 8 there are no channels, so the sound and pattern are set on the notification itself.
-            .setSound(alertSound(), android.media.AudioManager.STREAM_ALARM)
-            .setVibrate(Haptics.REST_OVER_PATTERN)
             .setTimeoutAfter(20_000)
             .setContentIntent(openApp())
             .build()

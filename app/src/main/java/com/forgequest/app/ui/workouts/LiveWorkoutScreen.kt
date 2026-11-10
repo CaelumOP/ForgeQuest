@@ -162,6 +162,20 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val finishing by vm.finishing.collectAsState()
     val context = LocalContext.current
     val c = Fit.colors
+    // While this screen is in front, "rest is over" is a buzz and a short tone, not a notification over the set list.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val alert = context.container.restAlert
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> alert.screenVisible = true
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> alert.screenVisible = false
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer); alert.screenVisible = false }
+    }
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.DisposableEffect(Unit) {
         view.keepScreenOn = true
