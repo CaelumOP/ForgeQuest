@@ -7,7 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 
-/** Owner-only round trip: send the data and a question to the Gemini app, paste its reply back. */
+/** The Gemini app round trip: send the data and a question to the Gemini app, paste its reply back. */
 object AskGemini {
     fun prompt(data: String, question: String, arabic: Boolean): String {
         val language = if (arabic) "formal Modern Standard Arabic (الفصحى), not dialect" else "English"

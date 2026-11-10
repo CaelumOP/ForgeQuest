@@ -784,20 +784,7 @@ internal fun AboutSettingsGroup(
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    val taps = remember { longArrayOf(0, 0, 0, 0, 0, 0, 0) }
-                    // Hidden owner switch: 7 taps within 3 seconds on the title.
-                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() }.then(
-Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, role = null) {
-                            val now = android.os.SystemClock.elapsedRealtime()
-                            for (i in 0 until taps.size - 1) taps[i] = taps[i + 1]
-                            taps[taps.size - 1] = now
-                            if (taps[0] != 0L && now - taps[0] <= 3000) {
-                                taps.fill(0)
-                                val on = com.forgequest.app.PersonalTools.toggle(context)
-                                context.toast(context.getString(if (on) R.string.personal_tools_on else R.string.personal_tools_off))
-                            }
-                        }
-                    ))
+                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     Text(stringResource(R.string.profile_credits_data), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
