@@ -44,8 +44,8 @@ sealed interface DriveAuth {
 }
 
 /**
- * Google Drive backup and Docs import over the Drive REST API.
- * Backups live in the hidden per-app folder; the plan import reads the user's newest "Workout Plan" doc.
+ * Google Drive backup and the app-created meals Doc over the Drive REST API.
+ * Backups live in the hidden per-app folder.
  */
 class DriveSync(
     private val context: Context,

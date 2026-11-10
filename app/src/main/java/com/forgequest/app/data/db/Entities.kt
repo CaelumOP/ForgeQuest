@@ -77,7 +77,7 @@ data class SessionEntity(
     val finishedAt: Long? = null,
     /** Free-text journal note: how it went, how you slept. */
     val note: String = "",
-    /** The AI debrief card as JSON (see data/plan/Debrief.kt); empty when there is none. */
+    /** Debrief JSON from the old AI debrief; nothing in the app reads it now. The column stays for the schema and backups. */
     val debrief: String = "",
     /** The plan day's sets (warm-ups left out) when the workout was finished, so a later plan edit can't change its score. Null before v9 or with no plan day. */
     val plannedSets: Int? = null,
