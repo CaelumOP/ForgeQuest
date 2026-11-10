@@ -342,6 +342,12 @@
     <string name="food_back_to_today">العودة إلى اليوم</string>
     <string name="cd_next_day">اليوم التالي</string>
     <string name="coach_got_it">حسنًا</string>
+    <string name="coach_skip">تخطّي التلميحات</string>
+    <string name="coach_plan_t">هنا خطتك الأسبوعية</string>
+    <string name="coach_plan_b">اضغط «تغيير الخطة» لإنشاء خطة جديدة أو العودة إلى خطة سابقة.</string>
+    <string name="coach_ask_t">اسأل عن تمرينك</string>
+    <string name="coach_ask_b">اكتب سؤالك في الأسفل، أو اضغط «اسأل Gemini» لطرحه في تطبيق Gemini.</string>
+    <string name="coach_ask_b_noai">اضغط «اسأل Gemini» لإرسال بياناتك وسؤالك إلى تطبيق Gemini، ثم الصق الردّ هنا.</string>
     <string name="coach_home_t">ابدأ من هنا</string>
     <string name="coach_home_b">اضغط ابدأ لتبدأ.</string>
     <string name="coach_tick_t">علّم كل مجموعة</string>

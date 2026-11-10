@@ -65,6 +65,7 @@ fun CoachMarkBox(key: String, title: Int, body: Int, enabled: Boolean = true, be
         owner = true
         delay(700) // let the screen and its transition settle so the tip lands on the button
         CoachMarks.markSeen(context, key)
+        com.forgequest.app.ui.onboarding.AppTour.stepSeen(context)
         try {
             state.show()
         } finally {
@@ -78,7 +79,13 @@ fun CoachMarkBox(key: String, title: Int, body: Int, enabled: Boolean = true, be
         tooltip = {
             RichTooltip(
                 title = { Text(stringResource(title), color = c.textPrimary) },
-                action = { TextButton(onClick = { scope.launch { state.dismiss() } }) { Text(stringResource(R.string.coach_got_it), color = c.teal) } },
+                action = {
+                    androidx.compose.foundation.layout.Row {
+                        // Leaves the tour for good; "Got it" only closes this tip.
+                        TextButton(onClick = { com.forgequest.app.ui.onboarding.AppTour.skip(context); scope.launch { state.dismiss() } }) { Text(stringResource(R.string.coach_skip), color = c.textSecondary) }
+                        TextButton(onClick = { scope.launch { state.dismiss() } }) { Text(stringResource(R.string.coach_got_it), color = c.teal) }
+                    }
+                },
                 colors = TooltipDefaults.richTooltipColors(containerColor = c.card, contentColor = c.textSecondary, titleContentColor = c.textPrimary, actionContentColor = c.teal),
             ) { Text(stringResource(body)) }
         },

@@ -297,6 +297,12 @@
     <string name="food_back_to_today">Back to today</string>
     <string name="cd_next_day">Next day</string>
     <string name="coach_got_it">Got it</string>
+    <string name="coach_skip">Skip tips</string>
+    <string name="coach_plan_t">Your week lives here</string>
+    <string name="coach_plan_b">Tap Change plan to build a new plan or go back to an earlier one.</string>
+    <string name="coach_ask_t">Ask about your training</string>
+    <string name="coach_ask_b">Type a question below, or tap Ask Gemini to take it to the Gemini app.</string>
+    <string name="coach_ask_b_noai">Tap Ask Gemini to send your data and a question to the Gemini app, then paste the reply back.</string>
     <string name="coach_home_t">Start here</string>
     <string name="coach_home_b">Tap Start to begin.</string>
     <string name="coach_tick_t">Tick each set</string>

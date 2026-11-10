@@ -238,7 +238,9 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
-            TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
+            com.forgequest.app.ui.components.CoachMarkBox(com.forgequest.app.ui.onboarding.AppTour.WORKOUTS, R.string.coach_plan_t, R.string.coach_plan_b, below = true) {
+                TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
+            }
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 (1..7).forEach { dow ->

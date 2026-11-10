@@ -200,6 +200,7 @@ fun CoachScreen(nav: NavHostController) {
         }
         // The Gemini app round trip, one tap each: send the data with a question, paste the reply back.
         val ctx = androidx.compose.ui.platform.LocalContext.current
+        com.forgequest.app.ui.components.CoachMarkBox(com.forgequest.app.ui.onboarding.AppTour.COACH, R.string.coach_ask_t, if (aiOn) R.string.coach_ask_b else R.string.coach_ask_b_noai, below = true) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TonalPill(stringResource(R.string.ask_gemini), onClick = {
                 val question = input
@@ -222,6 +223,7 @@ fun CoachScreen(nav: NavHostController) {
                     ctx.toast(ctx.getString(R.string.paste_gemini_none))
                 }
             }, icon = Icons.Rounded.ContentPaste, modifier = Modifier.weight(1f))
+        }
         }
         // Once per Gem: the instructions that make Gemini answer in the format "Paste reply" reads.
         val skillClipboard = com.forgequest.app.ui.components.rememberTextClipboard()
