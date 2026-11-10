@@ -28,7 +28,7 @@ Paths are under `app/src/main/java/com/forgequest/app/`. Open these first; grep 
 |---|---|
 | Workouts & live session | `ui/workouts/LiveWorkoutScreen.kt` (screen + group cards), `LiveWorkoutSets.kt` (set row, tick, effort, note dialog, PR tag), `LiveWorkoutTimers.kt` (hold overlay, rest bar), `WorkoutCompleteScreen.kt` (finish screen, debrief card), `ui/workouts/LiveWorkoutViewModel.kt`, `ui/workouts/PlanEditorScreen.kt`, `data/WorkoutRepository.kt`, `domain/ExerciseSwapEngine.kt`, `domain/WorkoutScore.kt`, `domain/WorkoutDebriefMath.kt` |
 | Nutrition & meal scan | `ui/food/FoodScreen.kt`, `ui/food/FoodViewModel.kt`, `ui/food/ScanScreen.kt`, `ShareMealActivity.kt` (package root), `data/FoodRepository.kt`, `data/bridge/MealInbox.kt`, `domain/Nutrition.kt`, `domain/CalorieCheck.kt` |
-| AI coach, Gemini bridge | `ui/coach/CoachScreen.kt`, `data/CoachRepository.kt`, `data/ai/GeminiClient.kt`, `data/bridge/GeminiBridge.kt` |
+| AI coach, Gemini bridge | `ui/coach/CoachScreen.kt`, `data/CoachRepository.kt` (chat, plans), `data/CoachPromptBuilder.kt` (system prompt, progress summary), `data/ai/GeminiClient.kt`, `data/bridge/GeminiBridge.kt` |
 | Home, Health Connect & readiness | `ui/home/HomeScreen.kt`, `ui/home/HomeViewModel.kt`, `ui/home/ReadinessCard.kt`, `ui/home/ReadinessDetailScreen.kt`, `data/health/HealthRepository.kt`, `domain/Readiness.kt` |
 | Backup & Drive sync | `data/backup/BackupRepository.kt`, `data/drive/DriveSync.kt`, `data/drive/DriveSyncWorker.kt` |
 | Database | `data/db/AppDatabase.kt` (schema version 10; never bump without a migration), `data/db/Entities.kt`, `data/db/Daos.kt` |
