@@ -101,7 +101,6 @@ import java.util.Date
 internal fun BodySettingsGroup(
     vm: ProfileViewModel,
     s: ProgressSnapshot,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
     probe: com.forgequest.app.data.health.HealthProbe,
     startHealthCheck: () -> Unit,
@@ -127,7 +126,7 @@ internal fun BodySettingsGroup(
             stringResource(settings.dayActivity.labelRes),
             stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off),
         ),
-        open = "body" in openGroups, onToggle = { toggleGroup("body") },
+        onToggle = { toggleGroup("body") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -235,7 +234,6 @@ internal fun BodySettingsGroup(
 internal fun GoalsSettingsGroup(
     vm: ProfileViewModel,
     s: ProgressSnapshot,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -256,7 +254,7 @@ internal fun GoalsSettingsGroup(
             "${settings.proteinGoal} ${stringResource(R.string.unit_g)}",
             stringResource(R.string.summary_per_week, if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride),
         ),
-        open = "goals" in openGroups, onToggle = { toggleGroup("goals") },
+        onToggle = { toggleGroup("goals") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -457,7 +455,6 @@ internal fun TrainingSettingsGroup(
     vm: ProfileViewModel,
     s: ProgressSnapshot,
     nav: NavHostController,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -480,7 +477,7 @@ internal fun TrainingSettingsGroup(
                 else -> stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour))
             },
         ),
-        open = "training" in openGroups, onToggle = { toggleGroup("training") },
+        onToggle = { toggleGroup("training") },
     ) {
         SettingsRow(Icons.Rounded.Tune, c.teal, c.tealTrack, stringResource(R.string.pb_rebuild), stringResource(R.string.pb_rebuild_hint)) {
             nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER)
@@ -539,7 +536,6 @@ internal fun CoachSettingsGroup(
     s: ProgressSnapshot,
     apiKey: String,
     aiOn: Boolean,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
     onOpenKeyDialog: () -> Unit,
     onOpenNotesDialog: () -> Unit,
@@ -551,7 +547,7 @@ internal fun CoachSettingsGroup(
     SettingsGroup(
         Icons.Rounded.Psychology, c.teal, c.tealTrack, stringResource(R.string.settings_group_coach),
         if (aiOn) stringResource(if (apiKey.isBlank()) R.string.summary_gemini_off else R.string.summary_gemini_on) else stringResource(R.string.summary_ai_off),
-        open = "coach" in openGroups, onToggle = { toggleGroup("coach") },
+        onToggle = { toggleGroup("coach") },
     ) {
         // 1. The Gemini app (recommended): plan prompt and reply, and meals.
         Text(stringResource(R.string.settings_ai_gemini_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.padding(top = 4.dp).semantics { heading() })
@@ -629,8 +625,6 @@ internal fun CoachSettingsGroup(
 internal fun AppSettingsGroup(
     vm: ProfileViewModel,
     s: ProgressSnapshot,
-    nav: NavHostController,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -650,7 +644,7 @@ internal fun AppSettingsGroup(
             settings.weightUnit.label,
             if (settings.biometricLock && canLock) stringResource(R.string.summary_lock_on) else null,
         ),
-        open = "app" in openGroups, onToggle = { toggleGroup("app") },
+        onToggle = { toggleGroup("app") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -702,7 +696,6 @@ internal fun AppSettingsGroup(
 internal fun BackupSettingsGroup(
     vm: ProfileViewModel,
     s: ProgressSnapshot,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
     saveLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Uri?>,
     importLauncher: androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, Uri?>,
@@ -718,7 +711,7 @@ internal fun BackupSettingsGroup(
             settings.lastBackupAt > 0 -> stringResource(R.string.summary_drive_last, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt)))
             else -> stringResource(R.string.summary_drive_none)
         },
-        open = "backup" in openGroups, onToggle = { toggleGroup("backup") },
+        onToggle = { toggleGroup("backup") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -778,7 +771,6 @@ internal fun BackupSettingsGroup(
 @Composable
 internal fun AboutSettingsGroup(
     vm: ProfileViewModel,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -787,7 +779,7 @@ internal fun AboutSettingsGroup(
     SettingsGroup(
         Icons.Rounded.Info, c.textSecondary, c.cardHigh, stringResource(R.string.settings_group_about),
         stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),
-        open = "about" in openGroups, onToggle = { toggleGroup("about") },
+        onToggle = { toggleGroup("about") },
     ) {
         SettingsRow(Icons.Rounded.SystemUpdate, c.teal, c.tealTrack, stringResource(R.string.update_title), stringResource(R.string.update_hint, com.forgequest.app.BuildConfig.VERSION_NAME)) { vm.checkUpdate() }
         FitCard {

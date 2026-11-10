@@ -128,7 +128,6 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     val configuredEq = s.settings.configuredEquipment
     val settings = s.settings
     val id = groupId?.takeIf { g -> groupTitles.any { it.first == g } }
-    val openGroups = setOfNotNull(id)
     val onGroup: (String) -> Unit = { nav.navigate(Routes.settingsGroup(it)) }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
@@ -145,20 +144,20 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
             Spacer(Modifier.height(8.dp))
             CompositionLocalProvider(LocalGroupMode provides if (id == null) GroupMode.Row else GroupMode.Page) {
                 // Language and theme are what people look for first, so "App and appearance" leads the list.
-                if (id == null || id == "app") AppSettingsGroup(vm, s, nav, openGroups, onGroup)
+                if (id == null || id == "app") AppSettingsGroup(vm, s, onGroup)
                 if (id == null || id == "body") BodySettingsGroup(
-                    vm, s, openGroups, onGroup, probe, { startHealthCheck() }, healthAccess,
+                    vm, s, onGroup, probe, { startHealthCheck() }, healthAccess,
                     onOpenHandDialog = { handDialog = true },
                 )
-                if (id == null || id == "goals") GoalsSettingsGroup(vm, s, openGroups, onGroup)
-                if (id == null || id == "training") TrainingSettingsGroup(vm, s, nav, openGroups, onGroup)
-                if (id == null || id == "backup") BackupSettingsGroup(vm, s, openGroups, onGroup, saveLauncher, importLauncher)
+                if (id == null || id == "goals") GoalsSettingsGroup(vm, s, onGroup)
+                if (id == null || id == "training") TrainingSettingsGroup(vm, s, nav, onGroup)
+                if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher)
                 if (id == null || id == "coach") CoachSettingsGroup(
-                    vm, nav, s, apiKey, aiOn, openGroups, onGroup,
+                    vm, nav, s, apiKey, aiOn, onGroup,
                     onOpenKeyDialog = { keyDialog = true },
                     onOpenNotesDialog = { notesDialog = true },
                 )
-                if (id == null || id == "about") AboutSettingsGroup(vm, openGroups, onGroup)
+                if (id == null || id == "about") AboutSettingsGroup(vm, onGroup)
             }
         val latest by vm.update.collectAsState()
         latest?.let { v ->

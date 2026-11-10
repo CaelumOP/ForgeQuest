@@ -141,7 +141,7 @@ internal val LocalGroupMode = androidx.compose.runtime.staticCompositionLocalOf 
 /**
  * A settings category. In the list ([GroupMode.Row]) it is one card with an icon, a title, a one-line summary of
  * the current values and a chevron, and tapping it opens that group's page. On the page ([GroupMode.Page]) only the
- * cards inside are drawn. [open] is ignored; it stays so the seven groups keep their signature.
+ * cards inside are drawn.
  */
 @Composable
 internal fun SettingsGroup(
@@ -150,7 +150,6 @@ internal fun SettingsGroup(
     track: androidx.compose.ui.graphics.Color,
     title: String,
     summary: String,
-    open: Boolean,
     onToggle: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {

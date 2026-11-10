@@ -242,7 +242,7 @@ class CoachRepository(
         }
         if (check != null && checked == null) extraNotes += AppText.get(R.string.coach_plan_unreadable)
         val patch = checked?.patch
-        if (patch != null && current != null) extraNotes += describeChanges(current, patch, snap.exercises)
+        if (patch != null && current != null) extraNotes += describeChanges(patch, snap.exercises)
         val adaptedPlan = if (checked != null && availableEquipment.isNotEmpty()) {
             ExerciseSwapEngine.adaptPlanToEquipment(checked, snap.exercises, availableEquipment, dropUnfit = true).first
         } else {
@@ -351,7 +351,7 @@ class CoachRepository(
     }
 
     /** "Tuesday: Dips → Push-up" lines for a change-only card, in the app language. */
-    private fun describeChanges(base: PlanDraft, patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
+    private fun describeChanges(patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
         fun name(id: String?) = id?.let { PlanValidator.canonicalId(it, null, library) ?: it }?.let { library[it]?.name ?: it }.orEmpty()
         return patch.changes.map { c ->
             val day = Dates.dayName(c.dayOfWeek.coerceIn(1, 7))

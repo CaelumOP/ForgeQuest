@@ -439,7 +439,7 @@ fun FoodScreen(nav: NavHostController) {
                 DayPicker(day, isToday, onPrev = { vm.shiftDay(-1) }, onNext = { vm.shiftDay(1) }, onToday = vm::goToToday)
             }
             if (geminiMeals.isNotEmpty()) item { GeminiInbox(geminiMeals, onOpen = vm::reviewMeal, onDismiss = { vm.dismissMeal(it) }) }
-            snap?.let { s -> item { DayTotals(s, day, meals) } }
+            snap?.let { s -> item { DayTotals(s, meals) } }
             if (isToday && showWeek) snap?.let { s -> item { WeekCard(s) } }
             item {
                 com.forgequest.app.ui.components.CoachMarkBox("coach_food", R.string.coach_food_t, if (aiOn) R.string.coach_food_b else R.string.coach_food_b_noai, below = true) {
@@ -671,7 +671,7 @@ private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: (
 }
 
 @Composable
-private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
+private fun DayTotals(s: ProgressSnapshot, meals: List<MealEntity>) {
     val c = Fit.colors
     val kcal = com.forgequest.app.ui.components.tweenedInt(meals.sumOf { it.kcal })
     val protein = meals.sumOf { it.protein.toDouble() }.toFloat()
