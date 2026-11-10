@@ -43,6 +43,7 @@ import com.forgequest.app.domain.MuscleExercise
 import com.forgequest.app.domain.MuscleExercises
 import com.forgequest.app.domain.MuscleRecovery
 import com.forgequest.app.domain.Tier
+import com.forgequest.app.ui.components.SectionTitle
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.theme.Fit
@@ -95,10 +96,10 @@ fun MuscleExercisesSheet(
                 }
             }
             if (list.inPlan.isNotEmpty()) {
-                item { SectionTitle(stringResource(R.string.muscle_in_plan)) }
+                item { SectionTitle(stringResource(R.string.muscle_in_plan), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleSmall, color = c.textSecondary) }
                 items(list.inPlan, key = { "plan_" + it.exercise.id }) { ExerciseRow(it, onOpen) }
             }
-            item { SectionTitle(stringResource(R.string.muscle_more)) }
+            item { SectionTitle(stringResource(R.string.muscle_more), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleSmall, color = c.textSecondary) }
             if (list.others.isEmpty()) {
                 item { Text(stringResource(R.string.muscle_none), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary) }
             }
@@ -106,14 +107,6 @@ fun MuscleExercisesSheet(
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textSecondary,
-        modifier = Modifier.padding(top = 20.dp, bottom = 4.dp).semantics { heading() },
-    )
 }
 
 @Composable

@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -221,15 +220,6 @@ private fun MapLegend() {
         LegendDot(c.gold, stringResource(R.string.map_recovering))
         LegendDot(c.teal, stringResource(R.string.map_almost_ready))
         LegendDot(c.muscleRest, stringResource(R.string.map_fresh))
-    }
-}
-
-@Composable
-private fun LegendDot(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Fit.colors.textSecondary, maxLines = 1)
     }
 }
 

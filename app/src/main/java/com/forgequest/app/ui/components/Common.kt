@@ -46,6 +46,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.toggleableState
@@ -170,11 +172,28 @@ fun IconCircle(icon: ImageVector, tint: Color, track: Color, size: Dp = 40.dp) {
     }
 }
 
+/** A section heading (announced as one by TalkBack), with room for an action at the end of the line. */
 @Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}) {
+fun SectionTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.titleMedium,
+    color: Color = Fit.colors.textPrimary,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
     Row(modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.titleMedium, color = Fit.colors.textPrimary, modifier = Modifier.weight(1f))
+        Text(text, style = style, color = color, modifier = Modifier.weight(1f).semantics { heading() })
         trailing()
+    }
+}
+
+/** One entry of a chart legend: a colour dot and its label. */
+@Composable
+fun LegendDot(color: Color, label: String, dot: Dp = 10.dp, gap: Dp = 6.dp) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(dot).clip(CircleShape).background(color))
+        Spacer(Modifier.width(gap))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Fit.colors.textSecondary, maxLines = 1)
     }
 }
 

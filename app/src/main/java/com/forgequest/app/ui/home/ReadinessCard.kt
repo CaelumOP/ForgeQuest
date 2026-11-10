@@ -32,14 +32,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -150,8 +147,6 @@ private fun OpenFitbitButton() {
     TextButton(onClick = { runCatching { context.startActivity(launch) } }) { Text(stringResource(R.string.ready_open_fitbit), color = Fit.colors.gold) }
 }
 
-private fun recoveryColor(recovery: Int): Color = recoveryTint(recovery)
-
 @Composable
 private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () -> Unit) {
     val c = Fit.colors
@@ -168,7 +163,7 @@ private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () ->
 @Composable
 fun ReadinessRow(d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit) {
     val c = Fit.colors
-    val recColor = recoveryColor(d.recovery)
+    val recColor = recoveryTint(d.recovery)
     val (title, body) = when (d.call) {
         DayCall.PEAK -> R.string.call_peak_t to R.string.call_peak_b
         DayCall.READY -> R.string.call_ready_t to R.string.call_ready_b

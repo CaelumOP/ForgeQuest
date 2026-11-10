@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -64,6 +63,7 @@ import com.forgequest.app.ui.components.DeltaChip
 import com.forgequest.app.ui.components.EmptyState
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.Heatmap
+import com.forgequest.app.ui.components.LegendDot
 import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.Sparkline
@@ -201,9 +201,9 @@ fun ProgressScreen(nav: NavHostController) {
                 Heatmap(d.grid, c.chartStrength, reveal = reveal)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    LegendDot(c.cardHigh, stringResource(R.string.progress_legend_rest))
-                    LegendDot(c.chartStrength.copy(alpha = 0.55f), stringResource(R.string.progress_legend_workout))
-                    LegendDot(c.gold, stringResource(R.string.progress_legend_record))
+                    LegendDot(c.cardHigh, stringResource(R.string.progress_legend_rest), 8.dp, 5.dp)
+                    LegendDot(c.chartStrength.copy(alpha = 0.55f), stringResource(R.string.progress_legend_workout), 8.dp, 5.dp)
+                    LegendDot(c.gold, stringResource(R.string.progress_legend_record), 8.dp, 5.dp)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -416,15 +416,6 @@ private fun Total(value: String, label: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium.tabular(), color = c.textPrimary, maxLines = 1)
         Text(label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1)
-    }
-}
-
-@Composable
-private fun LegendDot(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(5.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Fit.colors.textSecondary)
     }
 }
 
