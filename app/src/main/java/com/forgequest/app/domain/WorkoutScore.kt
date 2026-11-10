@@ -16,6 +16,9 @@ object WorkoutScore {
 
     fun isWarmUp(block: String) = block.equals(WARM_UP_BLOCK, ignoreCase = true)
 
+    /** Warm-up or cool-down: not working sets, so they stay out of counts, scores and records. */
+    fun isExtra(block: String?) = block != null && (isWarmUp(block) || block.equals(PlanBuilder.COOL_DOWN_BLOCK, ignoreCase = true))
+
     /** The kind of personal record an exercise set, from its exercise kind. */
     enum class PrKind { WEIGHT, REPS, HOLD }
 
@@ -110,7 +113,7 @@ object WorkoutScore {
      * Either way the workout needs only two thirds of the planned sets. Warm-up sets count for nothing but a PR.
      */
     fun compute(work: List<Work>, plannedSets: Int?, lowReadiness: Boolean, firstEver: Boolean = false, afterBreak: Boolean = false): Result {
-        val working = work.map { w -> Work(w.exerciseId, w.kind, w.done.filterNot { isWarmUp(it.block) }, w.last.filterNot { isWarmUp(it.block) }) }
+        val working = work.map { w -> Work(w.exerciseId, w.kind, w.done.filterNot { isExtra(it.block) }, w.last.filterNot { isExtra(it.block) }) }
         val sets = working.flatMap { it.done }
         val pain = working.filter { w -> w.done.any { SetEffort.parse(it.effort) == SetEffort.PAIN } }.map { it.exerciseId }.toSet()
         val rough = lowReadiness || pain.isNotEmpty()

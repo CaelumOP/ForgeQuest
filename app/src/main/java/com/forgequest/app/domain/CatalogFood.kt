@@ -60,7 +60,12 @@ object Catalog {
                 f to s
             }
             .filter { it.second > 0f }
-            .sortedWith(compareByDescending<Pair<CatalogFood, Float>> { it.second }.thenByDescending { it.first.scans })
+            // Equal relevance: the plainer, shorter name first ("Rice" before "Strawberry rice cake clouds"), then the most scanned.
+            .sortedWith(
+                compareByDescending<Pair<CatalogFood, Float>> { it.second }
+                    .thenBy { (it.first.nameEn.ifBlank { it.first.nameAr }).length }
+                    .thenByDescending { it.first.scans },
+            )
             .map { it.first }
             // Most protein per 100 g first, out of the 40 best matches; the sort is stable, so equals keep their relevance order.
             .let { if (byProtein) it.take(PROTEIN_POOL).sortedByDescending { f -> f.protein } else it }

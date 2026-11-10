@@ -23,7 +23,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
-import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.ui.draw.rotate
@@ -257,9 +257,15 @@ internal fun SettingStepper(label: String, value: Float, onChange: (Float) -> Un
         NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp, placeholder = placeholder)
     }
 }
+/** How a [SettingsGroup] draws: a tappable row in the settings list, or the group's own page. */
+internal enum class GroupMode { Row, Page }
+
+internal val LocalGroupMode = androidx.compose.runtime.staticCompositionLocalOf { GroupMode.Row }
+
 /**
- * A folding settings category: one card with an icon, a title and a one-line summary of the current values,
- * so most of the time the summary is enough and the group stays shut. Tap to open the cards inside.
+ * A settings category. In the list ([GroupMode.Row]) it is one card with an icon, a title, a one-line summary of
+ * the current values and a chevron, and tapping it opens that group's page. On the page ([GroupMode.Page]) only the
+ * cards inside are drawn. [open] is ignored; it stays so the seven groups keep their signature.
  */
 @Composable
 internal fun SettingsGroup(
@@ -273,10 +279,11 @@ internal fun SettingsGroup(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = Fit.colors
-    val turn by animateFloatAsState(if (open) 180f else 0f, label = "chevron")
-    val state = stringResource(if (open) R.string.cd_group_open else R.string.cd_group_closed)
+    if (LocalGroupMode.current == GroupMode.Page) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        return
+    }
     FitCard(
-        modifier = Modifier.semantics { stateDescription = state },
         onClick = onToggle,
         padding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
     ) {
@@ -289,12 +296,8 @@ internal fun SettingsGroup(
                 Text(summary, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = if (com.forgequest.app.ui.components.reflowText()) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(8.dp))
-            Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.rotate(turn))
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
         }
-    }
-    AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-        // Indented a little so the cards read as belonging to the category above them.
-        Column(Modifier.padding(start = 12.dp, top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
     Spacer(Modifier.height(12.dp))
 }

@@ -328,7 +328,7 @@ fun ScanScreen(nav: NavHostController) {
                     ) {
                         Text(stringResource(R.string.ai_key_needed_food), style = MaterialTheme.typography.bodyMedium, color = Fit.colors.textPrimary)
                         Spacer(Modifier.height(12.dp))
-                        PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.popBackStack(); nav.goToTab(Routes.PROFILE) })
+                        PillButton(stringResource(R.string.ai_key_needed_button), onClick = { nav.popBackStack(); nav.navigate(Routes.settingsGroup("coach")) })
                     }
                 }
             }
@@ -350,7 +350,7 @@ fun ScanScreen(nav: NavHostController) {
                     keyProblem = s.keyProblem,
                     onRetry = { s.photo?.let(vm::analyze) },
                     onRetake = vm::retake,
-                    onOpenProfile = { nav.popBackStack(); nav.goToTab(Routes.PROFILE) },
+                    onOpenProfile = { nav.popBackStack(); nav.navigate(Routes.settingsGroup("coach")) },
                     onAskOutside = s.photo?.let { photo -> { askOutside(photo) } },
                 )
             }

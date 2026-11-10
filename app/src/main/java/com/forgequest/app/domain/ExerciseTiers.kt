@@ -15,6 +15,7 @@ object ExerciseTiers {
         "hollow_hold", "hanging_knee_raise", "weighted_push_up", "bench_press", "overhead_press", "barbell_row", "deadlift",
         "romanian_deadlift", "back_squat", "skull_crusher", "kb_swing", "kb_clean", "turkish_get_up", "db_lunge",
         "copenhagen_plank_short", "cossack_squat",
+        "single_leg_rdl", "good_morning", "kb_windmill",
     )
     private val ADVANCED = setOf(
         "pistol_squat", "nordic_curl", "hanging_leg_raise", "muscle_up", "l_sit", "handstand_hold", "handstand_push_up",

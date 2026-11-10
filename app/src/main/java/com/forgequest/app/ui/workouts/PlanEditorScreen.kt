@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
@@ -203,7 +204,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
+fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boolean = false) {
     val vm = appViewModel { PlanEditorViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val library by vm.library.collectAsState()
@@ -219,7 +220,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     var swappingItem by remember { mutableStateOf<PlanItemEntity?>(null) }
     var templates by remember { mutableStateOf(false) }
     var changePlan by remember { mutableStateOf(false) }
-    var paste by remember { mutableStateOf(false) }
+    var paste by remember { mutableStateOf(openPaste) }
     var renaming by remember { mutableStateOf(false) }
     var previous by remember { mutableStateOf(false) }
     var moveDay by remember { mutableStateOf(false) }
@@ -433,29 +434,19 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
     }
 
     if (changePlan) {
-        // Most used first; each choice has an ⓘ that explains what it does.
-        val context = LocalContext.current
-        val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
-        val copied = stringResource(R.string.plan_prompt_copied)
+        // Plan builder and ready-made first, then the Gemini paste; each choice has an ⓘ that explains what it does.
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { changePlan = false }, containerColor = c.card) {
             Column(Modifier.padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = ForgeSpace.Gutter, vertical = 8.dp))
-                ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
-                    Row(Modifier.padding(start = 70.dp, end = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TonalPill(stringResource(R.string.plan_gemini_copy), onClick = {
-                            // The app copies res/raw/plan_prompt.txt, mirrored in docs/prompts/plan-from-youtube.md.
-                            val prompt = context.resources.openRawResource(R.raw.plan_prompt).bufferedReader().use { it.readText() }
-                            clipboard.copy(prompt)
-                            if (android.os.Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar(copied) }
-                        }, icon = Icons.Rounded.ContentCopy)
-                        TonalPill(stringResource(R.string.plan_gemini_paste), onClick = { changePlan = false; paste = true }, icon = Icons.Rounded.ContentPaste)
-                    }
-                }
+                ChoiceRow(Icons.Rounded.Tune, stringResource(R.string.pb_title), stringResource(R.string.pb_entry_info), onClick = { changePlan = false; nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER) })
                 ChoiceRow(Icons.AutoMirrored.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_info), onClick = { changePlan = false; templates = true })
+                ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
+                    com.forgequest.app.ui.components.GeminiPlanPills(onPaste = { changePlan = false; paste = true }, modifier = Modifier.padding(start = 70.dp, end = 16.dp, bottom = 8.dp))
+                }
                 if (allPlans.size > 1) {
                     ChoiceRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_info), onClick = { changePlan = false; previous = true })
                 }
-                ChoiceRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_docs_info), onClick = { changePlan = false; nav.goToTab(com.forgequest.app.ui.Routes.PROFILE) })
+                ChoiceRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_docs_info), onClick = { changePlan = false; nav.navigate(com.forgequest.app.ui.Routes.settingsGroup("backup")) })
             }
         }
     }
@@ -465,7 +456,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0) {
             Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_ready_made_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
-                StarterPlans.all.forEach { plan ->
+                (StarterPlans.all + StarterPlans.more).forEach { plan ->
                     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(ForgeShape.Md).background(c.cardHigh).clickable { templates = false; vm.preview(plan) }.padding(16.dp)) {
                         Text(plan.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Spacer(Modifier.height(4.dp))

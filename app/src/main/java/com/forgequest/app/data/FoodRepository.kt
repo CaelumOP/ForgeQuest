@@ -203,7 +203,7 @@ class FoodRepository(
 
     suspend fun scan(photoPath: String, userHint: String = ""): FoodScan {
         val key = settings.apiKey.value
-        if (key.isBlank()) throw AiError.MissingKey
+        if (!settings.isAiOn() || key.isBlank()) throw AiError.MissingKey
         val image = withContext(Dispatchers.IO) { File(photoPath).readBytes() }
         val m = models.current()
         val userPrompt = if (userHint.isBlank()) {
@@ -232,7 +232,7 @@ class FoodRepository(
     /** Reads calories, protein and carbs off a photo of a nutrition label (per 100 g, or per serving converted to 100 g). */
     suspend fun readLabel(photoPath: String, barcode: String): com.forgequest.app.domain.CatalogFood {
         val key = settings.apiKey.value
-        if (key.isBlank()) throw AiError.MissingKey
+        if (!settings.isAiOn() || key.isBlank()) throw AiError.MissingKey
         val image = withContext(Dispatchers.IO) { File(photoPath).readBytes() }
         val m = models.current()
         val raw = gemini.generate(
@@ -251,7 +251,7 @@ class FoodRepository(
     /** Calories and macros for a typed food ("chicken and rice"), for people who don't know the numbers. */
     suspend fun estimate(description: String): FoodScan {
         val key = settings.apiKey.value
-        if (key.isBlank()) throw AiError.MissingKey
+        if (!settings.isAiOn() || key.isBlank()) throw AiError.MissingKey
         val m = models.current()
         val raw = gemini.generate(
             apiKey = key,

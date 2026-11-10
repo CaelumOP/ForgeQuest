@@ -31,7 +31,6 @@ class AppContainer(context: Context) {
     /** One connection pool and thread pool for every API; each client derives its own timeouts from it. */
     private val http = okhttp3.OkHttpClient()
     val gemini = GeminiClient(http)
-    val groq = com.forgequest.app.data.ai.GroqClient(http)
     val models = ModelStore(settings, gemini)
     val workouts = WorkoutRepository(db, settings)
     val progress = ProgressRepository(db, settings, workouts, appScope)
@@ -40,12 +39,12 @@ class AppContainer(context: Context) {
     private val openFoodFacts = com.forgequest.app.data.OpenFoodFacts(http, "ForgeQuest/${BuildConfig.VERSION_NAME} (Android)")
     val barcodes = com.forgequest.app.data.BarcodeLookup({ db.food().foodByBarcode(it) }, catalog::byBarcode, openFoodFacts::lookup)
     val health = com.forgequest.app.data.health.HealthRepository(context, settings, db)
-    val coach = CoachRepository(db, settings, gemini, models, progress, workouts, groq, health)
+    val coach = CoachRepository(db, settings, gemini, models, progress, workouts, health)
     val backup = BackupRepository(context, db, settings, workouts)
     val drive = DriveSync(context, settings, workouts, coach, backup, http)
     val updates = com.forgequest.app.data.update.UpdateChecker(context, http)
     val updateNotice = com.forgequest.app.data.update.UpdateNotice(context, updates, appScope)
-    val bridge = com.forgequest.app.data.bridge.GeminiBridge(context, settings, db, coach, health, drive)
+    val bridge = com.forgequest.app.data.bridge.GeminiBridge(context, db, coach, health)
     val meals = com.forgequest.app.data.bridge.MealInbox(context, db, drive)
     val haptics = Haptics(context)
     val notifier = Notifier(context)
@@ -79,7 +78,10 @@ class ForgeQuestApp : Application() {
         container.appScope.launch { com.forgequest.app.data.suspendRunCatching { container.food.deleteOrphanPhotos() } }
         container.appScope.launch { container.settings.settings.collect { container.haptics.enabled = it.hapticsEnabled } }
         DriveSyncWorker.schedule(this)
-        container.appScope.launch { container.settings.current().let { if (it.bridgeEnabled || it.geminiMealsEnabled) com.forgequest.app.data.bridge.GeminiBridgeWorker.schedule(this@ForgeQuestApp) } }
+        // Retires the periodic bridge job on phones that still have it queued.
+        androidx.work.WorkManager.getInstance(this).cancelUniqueWork("gemini_bridge")
+        // The fast-chat provider key is gone from the app; wipe any copy still stored.
+        container.settings.clearRetiredKeys()
         // New meals from the Gemini Gem wait in the Food tab inbox by the time the person looks.
         container.appScope.launch {
             if (container.settings.current().geminiMealsEnabled) {

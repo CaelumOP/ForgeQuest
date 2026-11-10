@@ -264,6 +264,10 @@ interface FoodDao {
     @Query("SELECT COUNT(*) FROM meals")
     fun observeMealCount(): Flow<Int>
 
+    /** Total kcal for every day with a meal, all time (badges count days, not just the loaded window). */
+    @Query("SELECT epochDay AS epochDay, SUM(kcal) AS kcal FROM meals GROUP BY epochDay")
+    fun observeDayKcal(): Flow<List<DayKcal>>
+
     @Query("SELECT COUNT(*) FROM meals WHERE photoPath IS NOT NULL AND foodId IS NULL")
     fun observeScannedCount(): Flow<Int>
 
@@ -421,3 +425,5 @@ interface ReadinessDao {
     @Query("SELECT * FROM readiness_days ORDER BY epochDay")
     fun observeAll(): Flow<List<ReadinessDayEntity>>
 }
+
+data class DayKcal(val epochDay: Long, val kcal: Int)

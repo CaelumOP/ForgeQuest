@@ -42,6 +42,11 @@ data class SleepDay(val night: Night, val napMin: Int)
 data class Baseline(val mean: Double, val sd: Double, val days: Int)
 
 enum class DayCall { PEAK, READY, STEADY, EASE_OFF, RECOVER }
+/** What today's plan day mostly trains, for readiness advice that names it. */
+enum class TodayFocus { LEGS, UPPER }
+
+/** A readiness sentence that depends on today's plan day; [Readiness.adviceFor] picks it, null keeps the plain one. */
+enum class DayAdvice { LEGS_PEAK, LEGS_STEADY, LEGS_EASE, LEGS_RECOVER, UPPER_EASE, UPPER_RECOVER }
 enum class StrainBand { LIGHT, MODERATE, HIGH, ALL_OUT }
 
 /** Where one of today's numbers sits against the person's own baseline. [USUAL] is the normal range, not a middle verdict. */
@@ -182,6 +187,39 @@ object Readiness {
         recovery >= 67 -> DayCall.STEADY
         recovery >= 51 -> DayCall.EASE_OFF
         else -> DayCall.RECOVER
+    }
+
+    private val LEG_MUSCLES = setOf(Muscle.GLUTES, Muscle.QUADS, Muscle.HAMSTRINGS, Muscle.ADDUCTORS, Muscle.CALVES, Muscle.TIBIALIS)
+    private val UPPER_MUSCLES = setOf(Muscle.CHEST, Muscle.SHOULDERS, Muscle.BICEPS, Muscle.TRICEPS, Muscle.FOREARMS, Muscle.TRAPS, Muscle.UPPER_BACK)
+
+    /** Legs or upper body when that is at least two thirds of the day's primary muscles; null for mixed days, or no muscles. */
+    fun focusOf(primaryMuscles: List<Muscle>): TodayFocus? {
+        val legs = primaryMuscles.count { it in LEG_MUSCLES }
+        val upper = primaryMuscles.count { it in UPPER_MUSCLES }
+        val total = legs + upper
+        if (total == 0) return null
+        return when {
+            legs * 3 >= total * 2 -> TodayFocus.LEGS
+            upper * 3 >= total * 2 -> TodayFocus.UPPER
+            else -> null
+        }
+    }
+
+    /** The plan-aware sentence for today's [call] on a [focus] day, or null to show the plain sentence for the call. */
+    fun adviceFor(call: DayCall, focus: TodayFocus?): DayAdvice? = when (focus) {
+        TodayFocus.LEGS -> when (call) {
+            DayCall.PEAK -> DayAdvice.LEGS_PEAK
+            DayCall.STEADY -> DayAdvice.LEGS_STEADY
+            DayCall.EASE_OFF -> DayAdvice.LEGS_EASE
+            DayCall.RECOVER -> DayAdvice.LEGS_RECOVER
+            DayCall.READY -> null
+        }
+        TodayFocus.UPPER -> when (call) {
+            DayCall.EASE_OFF -> DayAdvice.UPPER_EASE
+            DayCall.RECOVER -> DayAdvice.UPPER_RECOVER
+            else -> null
+        }
+        null -> null
     }
 
     /** Green 67+, yellow 51–66, red below: one colour per [call], so a yellow card never reads "recover". */

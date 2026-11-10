@@ -174,6 +174,19 @@ class WorkoutScoreTest {
         assertEquals(b.compared, a.compared)
     }
 
+    @Test
+    fun coolDownCountsAsAnExtraLikeAWarmUp() {
+        assertTrue(WorkoutScore.isExtra("Warm-up"))
+        assertTrue(WorkoutScore.isExtra("Cool-down"))
+        assertFalse(WorkoutScore.isExtra("Main"))
+        assertFalse(WorkoutScore.isExtra(null))
+        val cool = sets(1, 30, null, block = "Cool-down")
+        val a = scoreOf(listOf(work(cool, cool, "stretch")) + many(4, ::same), planned = 12)
+        val b = scoreOf(many(4, ::same), planned = 12)
+        assertEquals(b.score, a.score)
+        assertEquals(12, a.doneSets)
+    }
+
     private fun session(id: Long, day: Long, plannedSets: Int? = null) =
         SessionEntity(id = id, planDayId = 7, title = "Push", epochDay = day, startedAt = day * 1000, finishedAt = day * 1000 + 1, plannedSets = plannedSets)
 

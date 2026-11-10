@@ -66,6 +66,7 @@ import com.forgequest.app.domain.Records
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.exerciseCues
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.PillButton
@@ -164,6 +165,10 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                 PillButton(stringResource(R.string.cd_watch_form), onClick = { openFormVideo(context, ex) }, icon = Icons.Rounded.PlayArrow, container = c.blueTrack, content = c.blue)
                 TonalPill(if (ex?.videoUrl.isNullOrBlank()) stringResource(R.string.detail_add_link) else stringResource(R.string.detail_change_link), onClick = { editLink = true }, icon = Icons.Rounded.Link)
             }
+            exerciseCues(exerciseId)?.let {
+                Spacer(Modifier.height(12.dp))
+                FormCues(it)
+            }
             ex?.let { ExerciseTiers.of(it) }?.let {
                 Spacer(Modifier.height(12.dp))
                 TierBadge(it)
@@ -255,6 +260,22 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
             confirmButton = { TextButton(onClick = { vm.setVideo(exerciseId, url); editLink = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
             dismissButton = { TextButton(onClick = { editLink = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
+    }
+}
+
+/** "How to do it": two form cues and the common mistake. The form video button sits just above. */
+@Composable
+private fun FormCues(cues: Triple<Int, Int, Int>) {
+    val c = Fit.colors
+    FitCard {
+        Text(stringResource(R.string.cues_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(cues.first), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(cues.second), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+        Spacer(Modifier.height(10.dp))
+        Text(stringResource(R.string.cues_mistake), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+        Text(stringResource(cues.third), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
     }
 }
 

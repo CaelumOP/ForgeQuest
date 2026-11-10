@@ -8,6 +8,7 @@ import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Nudges
+import com.forgequest.app.domain.PrPicker
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseTiers
@@ -73,7 +74,18 @@ data class WorkoutSummary(
     /** Exercise id → name, for the debrief's lines. */
     val exerciseNames: Map<String, String> = emptyMap(),
     val unit: WeightUnit = WeightUnit.KG,
+    /** What the finish screen leads with, the word for the day, and the headline as shown (its phrasing already picked). */
+    val dayType: com.forgequest.app.domain.DayType = com.forgequest.app.domain.DayType.ORDINARY,
+    val tier: com.forgequest.app.domain.ScoreTier? = null,
+    val headline: com.forgequest.app.domain.WorkoutDebriefMath.HeadlineLine? = null,
+    /** Up to two comments picked once at finish; showing them started their cooldown, so they are kept here. */
+    val insights: List<com.forgequest.app.domain.Insight> = emptyList(),
+    /** The record that leads a PR day, with the best it beat. */
+    val prHero: PrHero? = null,
 )
+
+/** A new record ([win]) and the previous best set of that exercise (null when there was none). */
+data class PrHero(val win: com.forgequest.app.domain.WorkoutDebriefMath.Win.Pr, val oldKg: Float?, val oldReps: Int?, val oldSeconds: Int?)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
@@ -106,6 +118,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val previous = MutableStateFlow<Map<String, List<SetEntity>>>(emptyMap())
     /** Exercise id → "ready for a harder version", from its last two finished sessions. */
     val harder = MutableStateFlow<Map<String, HarderHint>>(emptyMap())
+    /** Exercise id → why today's numbers are what they are, from the same rules as the prefill. */
+    val reasons = MutableStateFlow<Map<String, Progression.Reason>>(emptyMap())
 
     val rest = runningRest
     val hold = MutableStateFlow<HoldTimer?>(null)
@@ -120,8 +134,12 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
      */
     val welcomeBack = MutableStateFlow(false)
 
+    /** This is the lighter week of the plan's 4-week cycle. */
+    val deloadWeek = MutableStateFlow(false)
+
     init {
         viewModelScope.launch { checkWelcomeBack() }
+        viewModelScope.launch { deloadWeek.value = repo.isDeloadWeekNow() }
         viewModelScope.launch {
             sets.collect { list ->
                 val missing = list.map { it.exerciseId }.distinct().filter { it !in previous.value }
@@ -132,6 +150,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 }
                 previous.value = previous.value + loaded
                 harder.value = harder.value + harderHints(recentById, list)
+                val session = currentSession
+                val found = recentById.mapNotNull { (id, recent) ->
+                    val first = list.firstOrNull { it.exerciseId == id } ?: return@mapNotNull null
+                    val item = session?.let { repo.planItemAt(it, first.itemPosition) }?.takeIf { it.exerciseId == id }
+                    val ex = repo.library.first().firstOrNull { it.id == id }
+                    repo.progressionFor(item, ex, recent).reason?.let { id to it }
+                }.toMap()
+                reasons.value = reasons.value + found
             }
         }
         viewModelScope.launch {
@@ -169,12 +195,22 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** Sets whose numbers were typed or nudged this session; the rest still hold the plan's defaults. */
     private val edited = mutableSetOf<Long>()
 
+    /** Exercises whose record buzz already fired this workout: one per exercise. */
+    private val prBuzzed = mutableSetOf<String>()
+
+    /** True when ticking [set] makes it the exercise's record set and the buzz hasn't fired for that exercise yet. */
+    private fun isNewPr(set: SetEntity): Boolean {
+        val withTick = sets.value.map { if (it.id == set.id) it.copy(done = true) else it }
+        val picked = PrPicker.pick(withTick, { exercises.value[it]?.kind ?: ExerciseKind.REPS }, bestScores.value)
+        return set.id in picked && prBuzzed.add(set.exerciseId)
+    }
+
     fun toggle(set: SetEntity) {
         val done = !set.done
         effortSetId.value = if (done) set.id else null
         when {
             !done -> app.haptics.tick()
-            set.id in prSetIds.value -> app.haptics.pr()
+            isNewPr(set) -> app.haptics.pr()
             else -> app.haptics.check()
         }
         viewModelScope.launch {
@@ -293,10 +329,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
      * tick turns gold for them; the saved PR flag is still worked out when the workout finishes.
      */
     val prSetIds: StateFlow<Set<Long>> = combine(sets, bestScores, exercises) { list, best, exs ->
-        list.filter { s ->
-            val b = best[s.exerciseId] ?: return@filter false
-            Records.score(exs[s.exerciseId]?.kind ?: ExerciseKind.REPS, s.reps, s.seconds, s.weightKg, s.exerciseId) > b
-        }.map { it.id }.toSet()
+        PrPicker.pick(list, { exs[it]?.kind ?: ExerciseKind.REPS }, best)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     /** Id of the set whose value just beat the person's best; cleared after the flash. */
@@ -317,10 +350,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     }
 
     private fun checkBest(set: SetEntity, updated: SetEntity) {
-        val kind = exercises.value[set.exerciseId]?.kind ?: ExerciseKind.REPS
-        val best = bestScores.value[set.exerciseId] ?: return
-        if (Records.score(kind, updated.reps, updated.seconds, updated.weightKg, updated.exerciseId) > best && celebrated.add(set.id)) {
-            app.haptics.celebrate()
+        // Same rule as ticking and finishing (PrPicker): extras and stretches never flash, one record set per exercise.
+        val withEdit = sets.value.map { if (it.id == set.id) updated.copy(done = true) else it }
+        val picked = PrPicker.pick(withEdit, { exercises.value[it]?.kind ?: ExerciseKind.REPS }, bestScores.value)
+        if (set.id in picked && celebrated.add(set.id)) {
+            if (prBuzzed.add(set.exerciseId)) app.haptics.celebrate()
             newBest.value = set.id
             viewModelScope.launch { delay(1400); if (newBest.value == set.id) newBest.value = null }
         }
@@ -426,7 +460,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         app.notifier.cancelRest()
         viewModelScope.launch {
             try {
-                val before = app.progress.freshSnapshot().level
+                val beforeSnap = app.progress.freshSnapshot()
+                val before = beforeSnap.level
                 val result = repo.finishSession(s.id, tickAll = tickAll)
                 val badges = app.progress.evaluateBadges()
                 val justLog = app.settings.current().justLog
@@ -441,7 +476,37 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     .filter { !it.day.isRest && it.items.isNotEmpty() }
                     .minByOrNull { (it.day.dayOfWeek - today + 7 - 1) % 7 }
                     ?.let { it.day.dayOfWeek to it.day.title }
-                app.haptics.celebrate()
+                val score = repo.scores(snap, only = s.id)[s.id]
+                val debrief = repo.debrief(snap, s.id)
+                val day = Dates.today()
+                val history = snap.settings.insightHistory
+                // Picked once, here: picking starts the cooldown, so recomposing or reopening the screen never picks again.
+                var insights = if (justLog || score == null || debrief == null) emptyList() else com.forgequest.app.domain.pick(
+                    com.forgequest.app.domain.InsightInput(
+                        sessions = snap.sessions.filter { it.finishedAt != null },
+                        sets = snap.doneSets,
+                        exercises = snap.exercises,
+                        streak = snap.streak,
+                        muscleWeekTargets = com.forgequest.app.domain.muscleWeekTargets(snap.plan?.days.orEmpty().flatMap { it.items }, snap.exercises),
+                        focusSessionId = s.id,
+                    ),
+                    history, day,
+                )
+                val dayType = if (score != null && debrief != null) com.forgequest.app.domain.dayType(score, debrief, insights) else com.forgequest.app.domain.DayType.ORDINARY
+                // A rough day stays quiet: nothing extra, and nothing counted as shown.
+                if (dayType == com.forgequest.app.domain.DayType.ROUGH) insights = emptyList()
+                val headline = debrief?.headline?.let { h -> com.forgequest.app.domain.pickHeadlineVariant(h.type, history)?.let { h.copy(variant = it) } ?: h }
+                val bigDay = dayType == com.forgequest.app.domain.DayType.PR || dayType == com.forgequest.app.domain.DayType.MILESTONE
+                // Only what the screen shows goes into the history; History never writes to it.
+                if (!justLog) {
+                    var updated = com.forgequest.app.domain.appendHistory(history, insights, day)
+                    if (headline != null && dayType != com.forgequest.app.domain.DayType.ROUGH && com.forgequest.app.domain.pickHeadlineVariant(headline.type, "") != null) {
+                        updated = com.forgequest.app.domain.appendHistory(updated, com.forgequest.app.domain.headlineKey(headline.type), headline.variant, day)
+                    }
+                    if (updated != history) app.settings.setInsightHistory(updated)
+                }
+                // The strong haptic is for a record or a milestone only.
+                if (bigDay) app.haptics.celebrate()
                 summary.value = WorkoutSummary(
                     title = result.sessionTitle,
                     doneSets = result.doneSets,
@@ -453,18 +518,31 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     after = after,
                     nextUp = nextUp,
                     offerReminder = !justLog && snap.settings.reminderHour < 0 && snap.sessions.count { it.finishedAt != null } <= 3,
-                    score = repo.scores(snap, only = s.id)[s.id],
+                    score = score,
                     clippedEndAt = result.endedAt.takeIf { result.clipped },
                     sessionId = s.id,
-                    debrief = repo.debrief(snap, s.id),
+                    debrief = debrief,
                     exerciseNames = snap.exercises.mapValues { it.value.name },
                     unit = snap.settings.weightUnit,
                     justLog = justLog,
+                    dayType = dayType,
+                    tier = score?.let { com.forgequest.app.domain.scoreTier(it) },
+                    headline = headline,
+                    insights = insights,
+                    prHero = debrief?.wins?.filterIsInstance<com.forgequest.app.domain.WorkoutDebriefMath.Win.Pr>()?.firstOrNull()?.let { prHeroOf(it, snap.doneSets, snap.exercises, s.id) },
                 )
             } finally {
                 finishing.value = false
             }
         }
+    }
+
+    /** The best set of this exercise before this workout, by the same score the records use. */
+    private fun prHeroOf(win: com.forgequest.app.domain.WorkoutDebriefMath.Win.Pr, sets: List<SetEntity>, exercises: Map<String, ExerciseEntity>, sessionId: Long): PrHero {
+        val kind = exercises[win.exerciseId]?.kind ?: ExerciseKind.REPS
+        val old = sets.filter { it.exerciseId == win.exerciseId && it.sessionId != sessionId && !com.forgequest.app.domain.WorkoutScore.isExtra(it.block) }
+            .maxByOrNull { Records.score(kind, it.reps, it.seconds, it.weightKg, win.exerciseId) }
+        return PrHero(win, old?.weightKg?.takeIf { it > 0f }, old?.reps, old?.seconds)
     }
 
     enum class Field { REPS, SECONDS, WEIGHT }

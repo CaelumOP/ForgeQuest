@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Screen reader (TalkBack) descriptions for drawn content: rings, charts, the body map. -->
 <resources>
+    <string name="a11y_rings_left">Left today: %1$d grams of protein, %2$s calories</string>
     <string name="a11y_rings_protein">Protein %1$d of %2$d grams</string>
     <string name="a11y_rings_carbs">Carbs %1$d of %2$d grams</string>
     <string name="a11y_rings_calories">Calories %1$s of %2$s</string>

@@ -33,6 +33,15 @@ class CatalogTest {
 
     private fun hits(q: String) = Catalog.search(foods, q, 10).map { it.id }
 
+    @Test fun aPlainNameBeatsALongOneWithTheSameWord() {
+        val list = listOf(
+            food(1, "Strawberry rice cake clouds", "", scans = 50),
+            food(2, "Rice", "", scans = 1),
+            food(3, "Basmati rice", "", scans = 5),
+        )
+        assertEquals(listOf(2L, 3L, 1L), Catalog.search(list, "rice", 10).map { it.id })
+    }
+
     @Test fun englishSearch() {
         assertEquals(listOf(1L), hits("kabsa"))
         assertTrue(2L in hits("shawarma"))

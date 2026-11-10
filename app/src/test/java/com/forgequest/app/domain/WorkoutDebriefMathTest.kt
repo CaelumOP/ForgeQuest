@@ -121,7 +121,7 @@ class WorkoutDebriefMathTest {
         assertEquals(Headline.MOSTLY_UP, run(listOf(painDown, up("b"))).headline.type)
         // Pain forgives only its own exercise: another exercise's drop stays unforgiven.
         assertEquals(Headline.MOSTLY_DOWN, run(listOf(painDown, down("b"), down("c"))).headline.type)
-        // The footnote is for low recovery (or health data on), not pain alone.
+        // The footnote is for low recovery not pain alone.
         assertFalse(run(listOf(painDown, same("b"))).result.footnote)
     }
 
@@ -287,7 +287,7 @@ class WorkoutDebriefMathTest {
         assertEquals(listOf(Next.PlusRep("row", 11, 50f)), r.next)
         assertTrue(r.result.sameRest)
         assertFalse(r.result.footnote)
-        assertTrue(run(listOf(same("a")), healthOn = true).result.footnote)
+        assertFalse(run(listOf(same("a")), healthOn = true).result.footnote)
         assertTrue(run(listOf(same("a")), low = true).result.footnote)
         val old = run(listOf(ex("row", ExerciseKind.WEIGHTED, n(3, 10, 50f), n(3, 10, 50f), newest = false)))
         assertEquals(emptyList<Next>(), old.next)
@@ -351,6 +351,42 @@ class WorkoutDebriefMathTest {
         val older = WorkoutDebriefMath.forSession(sessions[0], sessions, sets, lib, scores.getValue(1), emptyList(), 0, null, WeightUnit.KG, false, emptySet())
         assertEquals(Headline.FIRST_EVER, older.headline.type)
         assertEquals(emptyList<Next>(), older.next)
+    }
+
+    // ---------------------------------------------------------------- volume vs last time
+
+    @Test
+    fun volumeChangeComparesWorkingSetTotals() {
+        assertEquals(25, WorkoutDebriefMath.volumeChangePercent(n(3, 10, 50f), n(3, 8, 50f)))
+        // A warm-up in the new workout is left out.
+        assertEquals(25, WorkoutDebriefMath.volumeChangePercent(n(3, 10, 50f) + s(10, 20f, block = WorkoutScore.WARM_UP_BLOCK), n(3, 8, 50f)))
+        assertEquals(33, WorkoutDebriefMath.volumeChangePercent(n(4, 8, 50f), n(3, 8, 50f)))
+        assertEquals(-33, WorkoutDebriefMath.volumeChangePercent(n(2, 8, 50f), n(3, 8, 50f)))
+        // Under half a percent reads as the same.
+        assertEquals(0, WorkoutDebriefMath.volumeChangePercent(n(1, 1, 1201f), n(1, 1, 1200f)))
+    }
+
+    @Test
+    fun volumeChangeIsHiddenWhenNothingToCompare() {
+        assertEquals(null, WorkoutDebriefMath.volumeChangePercent(n(3, 8, 50f), emptyList()))
+        assertEquals(null, WorkoutDebriefMath.volumeChangePercent(n(3, 8, 50f), n(3, 10, null)))
+        assertEquals(null, WorkoutDebriefMath.volumeChangePercent(hold(3, 30), n(3, 8, 50f)))
+    }
+
+    @Test
+    fun volumeChangeUsesTheLastWorkoutOfTheSamePlanDay() {
+        fun session(id: Long, day: Long, planDay: Long?) = SessionEntity(id = id, planDayId = planDay, title = "A", epochDay = day, startedAt = day * 1000, finishedAt = day * 1000 + 1)
+        fun row(session: Long, index: Int, reps: Int) = s(reps, 50f).copy(sessionId = session, exerciseId = "row", setIndex = index)
+        val lib = mapOf("row" to ExerciseEntity("row", "Row", ExerciseKind.WEIGHTED, listOf(Muscle.UPPER_BACK), emptyList()))
+        fun change(planDay: Long?, otherPlanDay: Long?): Int? {
+            val sessions = listOf(session(1, 100, otherPlanDay), session(2, 103, planDay))
+            val sets = listOf(row(1, 0, 8), row(1, 1, 8), row(2, 0, 10), row(2, 1, 10))
+            val scores = WorkoutScore.forSessions(sessions, sets, mapOf("row" to ExerciseKind.WEIGHTED), emptyMap(), emptySet())
+            return WorkoutDebriefMath.forSession(sessions[1], sessions, sets, lib, scores.getValue(2), emptyList(), 0, null, WeightUnit.KG, false, emptySet()).volumeChange
+        }
+        assertEquals(25, change(planDay = 7, otherPlanDay = 7))
+        assertEquals(null, change(planDay = 7, otherPlanDay = 8))
+        assertEquals(null, change(planDay = null, otherPlanDay = null))
     }
 
     // ---------------------------------------------------------------- Gemini's 8 cases

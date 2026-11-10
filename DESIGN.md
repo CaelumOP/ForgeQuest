@@ -18,16 +18,16 @@ colors:
   data-purple: { dark: "#C58AF9", light: "#7B2CBF" }
   danger: { dark: "#F28B82", light: "#B8372F" }        # coral: delete, errors, over-limit only
 typography:
-  display: { fontFamily: Manrope, fontWeight: 600, fontSize: 34px, lineHeight: 40px, letterSpacing: -0.5px }
-  headline: { fontFamily: Manrope, fontWeight: 600, fontSize: 24px, lineHeight: 32px, letterSpacing: -0.3px }
+  display: { fontFamily: Instrument Serif, fontWeight: 400, fontSize: 40px, lineHeight: 46px, letterSpacing: 0 }
+  headline: { fontFamily: Instrument Serif, fontWeight: 400, fontSize: 30px, lineHeight: 36px, letterSpacing: 0 }
   title: { fontFamily: Manrope, fontWeight: 600, fontSize: 20px, lineHeight: 26px }
   section: { fontFamily: system, fontWeight: 500, fontSize: 16px, lineHeight: 22px }
   body: { fontFamily: system, fontSize: 16px, lineHeight: 24px }
   body-small: { fontFamily: system, fontSize: 14px, lineHeight: 22px }
   label: { fontFamily: system, fontWeight: 500, fontSize: 14px, lineHeight: 20px }
   caption: { fontFamily: system, fontSize: 12px, lineHeight: 16px }
-  number: { fontFamily: Manrope, fontFeature: tnum }
-  arabic: { fontFamily: IBM Plex Sans Arabic, letterSpacing: 0 }   # every style, same sizes
+  number: { fontFamily: Manrope, fontFeature: tnum }   # stat numbers; hero numbers (ring centre, readiness score) use the serif
+  arabic: { fontFamily: Noto Naskh Arabic, fontWeight: 500, letterSpacing: 0 }   # display 32/48, headline 26/40 and hero numbers (600 allowed); Plex Arabic for the rest, lineHeight ~1.5x
 rounded:
   sm: 12px     # inputs, thumbnails, small tiles inside a card
   md: 20px     # tiles and blocks nested in a card, snackbars
@@ -69,6 +69,7 @@ components:
   switch: { checkedTrack: "{colors.accent}", uncheckedTrack: "{colors.card-high}" }
   input: { backgroundColor: "{colors.card-high}", rounded: "{rounded.sm}", fontSize: 16px }
   progress-line: { height: 8px, rounded: "{rounded.full}" }
+  nav-bar: { backgroundColor: "{colors.card-high}", rounded: "{rounded.full}", inset: 12px, activeItem: "{colors.accent-track} pill, icon + label", inactiveItem: icon only, minTarget: 48px }   # floating pill, no FAB
 ---
 
 # ForgeQuest design system: Soft Coach
@@ -98,12 +99,15 @@ readiness. Soft Coach changes spacing, corners and colour use there, never the l
 - Surfaces step up in tone (background → card → card-high). No shadows, no gradients, no glows, no blur.
 
 ## Typography
-Manrope for display, titles and numbers; the system sans for body and labels; IBM Plex Sans Arabic for every
-style in Arabic, untracked, with direction taken from the text. Numbers that change in place use tabular figures.
+Serif is for the display role only: Instrument Serif 400 (untracked) for screen titles, the Home greeting and hero
+numbers (ring centre, readiness score). Manrope for titles and stat numbers; the system sans for body
+and labels. In Arabic, Noto Naskh Arabic 500/600 covers display, headline and hero numbers, and IBM Plex Sans Arabic
+the rest, untracked, line height about 1.5x, with direction taken from the text. Numbers that change in place use
+tabular figures (Instrument Serif has no tnum, so serif hero numbers sit centred in a fixed-width box).
 Body small gets a taller line (22) for an airier read. Everything must still work at 200% font scale: text
 wraps to two lines instead of being cut, rows grow taller, nothing overlaps.
 Fonts ship with the app (Android `res/font`, web `/fonts`, precached by the service worker), never from a font
-CDN, and only in the weights the styles use: Manrope 500–600, Plex Arabic 400 / 500 / 600.
+CDN, and only in the weights the styles use: Instrument Serif 400, Manrope 500–600, Naskh Arabic 500–600, Plex Arabic 400 / 500 / 600.
 
 ## Layout
 - Screen gutter 20, card padding 24, gap between cards 16. Inside a card: 16 between groups, 8 within a group.
@@ -150,6 +154,26 @@ friends. Web: `web/src/ui/kit`. Screens use these and don't restyle them. The li
 - **Nothing jumps.** A card waiting for content keeps its final size and shows either still placeholder blocks
   in card-high (sm / md corners) or one small neutral indicator. No shimmer sweeps: they are a gradient and
   decorative motion.
+
+## Voice
+A calm coach who has seen your numbers. Every string, English and Arabic, is checked against this.
+- Put a number in the sentence when one exists: "Up on 4 of 5" beats "Up on most exercises".
+- Say what to do next. Never the same sentence two days running where a variant exists.
+- No exclamation marks, no cheesy praise, no streak guilt. Keep each string under 120 characters.
+- Arabic is formal (fusha) and natural, written for the reader, not word for word.
+- One term for one thing, in UI text only:
+
+| Thing | English | Arabic |
+|---|---|---|
+| A single movement | exercise | تمرين |
+| One training day | workout (not session) | جلسة |
+| Energy | kcal | سعرة / kcal |
+| The weekly schedule | plan (not routine or program) | خطة |
+
+Before and after:
+- "Same as last time: finish every set first" -> "Same numbers today. Finish every set and next time goes up."
+- "Cal left" -> "kcal left"
+- "Finish a session and this page fills in" -> "Finish a workout and this page fills in"
 
 ## Decisions Log
 - 2026-11-01: Soft Coach picked over Quiet Material and Clear Instrument.

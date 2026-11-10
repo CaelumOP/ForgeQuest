@@ -44,6 +44,31 @@ object ExerciseCatalog {
     /** A link that opens Hemo's video at the moment the exercise is demonstrated. */
     fun hemo(videoId: String, seconds: Int) = "https://www.youtube.com/watch?v=$videoId&t=${seconds}s"
 
+    /** Stretches and mobility holds: cool-down material only, never picked for a plan slot, a swap or a record. */
+    private val stretches: List<ExerciseEntity> = listOf(
+        ex("quad_stretch", "Standing quad stretch", HOLD, listOf(QUADS)),
+        ex("hamstring_stretch", "Hamstring stretch", HOLD, listOf(HAMSTRINGS), listOf(CALVES)),
+        ex("hip_flexor_stretch", "Kneeling hip flexor stretch", HOLD, listOf(QUADS), listOf(GLUTES)),
+        ex("pigeon_stretch", "Pigeon stretch", HOLD, listOf(GLUTES)),
+        ex("figure_four_stretch", "Figure-four stretch", HOLD, listOf(GLUTES)),
+        ex("calf_stretch", "Wall calf stretch", HOLD, listOf(CALVES)),
+        ex("childs_pose", "Child’s pose", HOLD, listOf(LOWER_BACK), listOf(UPPER_BACK, SHOULDERS)),
+        ex("chest_doorway_stretch", "Doorway chest stretch", HOLD, listOf(CHEST), listOf(SHOULDERS)),
+        ex("cross_body_shoulder_stretch", "Cross-body shoulder stretch", HOLD, listOf(SHOULDERS), listOf(UPPER_BACK)),
+        ex("triceps_overhead_stretch", "Overhead triceps stretch", HOLD, listOf(TRICEPS)),
+        ex("biceps_wall_stretch", "Wall biceps stretch", HOLD, listOf(BICEPS), listOf(CHEST)),
+        ex("neck_side_stretch", "Neck side stretch", HOLD, listOf(TRAPS)),
+        ex("thread_the_needle", "Thread the needle", HOLD, listOf(UPPER_BACK), listOf(SHOULDERS)),
+        ex("butterfly_stretch", "Butterfly stretch", HOLD, listOf(ADDUCTORS)),
+        ex("frog_stretch", "Frog stretch", HOLD, listOf(ADDUCTORS)),
+        ex("wrist_flexor_stretch", "Wrist flexor stretch", HOLD, listOf(FOREARMS)),
+        ex("seated_spinal_twist", "Seated spinal twist", HOLD, listOf(OBLIQUES), listOf(LOWER_BACK, GLUTES)),
+        ex("lat_stretch", "Standing lat stretch", HOLD, listOf(UPPER_BACK), listOf(OBLIQUES)),
+        ex("shin_stretch", "Kneeling shin stretch", HOLD, listOf(TIBIALIS)),
+    )
+
+    val STRETCH_IDS: Set<String> = stretches.mapTo(HashSet()) { it.id }
+
     val all: List<ExerciseEntity> = listOf(
         // Warm-up / conditioning
         ex("jumping_jacks", "Jumping jacks", REPS, listOf(CALVES), listOf(SHOULDERS), hemo(D1, 120)),
@@ -162,5 +187,41 @@ object ExerciseCatalog {
         ex("db_row", "Dumbbell row", WEIGHTED, listOf(UPPER_BACK), listOf(BICEPS)),
         ex("db_lunge", "Dumbbell lunge", WEIGHTED, listOf(QUADS, GLUTES), listOf(HAMSTRINGS)),
         ex("russian_twist", "Russian twist", WEIGHTED, listOf(OBLIQUES), listOf(ABS)),
-    )
+        // More strength moves: hamstrings, arms, calves, back, obliques, machines, bands, kettlebell
+        ex("seated_leg_curl", "Seated leg curl", WEIGHTED, listOf(HAMSTRINGS)),
+        ex("single_leg_rdl", "Single-leg Romanian deadlift", WEIGHTED, listOf(HAMSTRINGS, GLUTES), listOf(LOWER_BACK)),
+        ex("db_romanian_deadlift", "Dumbbell Romanian deadlift", WEIGHTED, listOf(HAMSTRINGS, GLUTES), listOf(LOWER_BACK)),
+        ex("good_morning", "Good morning", WEIGHTED, listOf(HAMSTRINGS, LOWER_BACK), listOf(GLUTES)),
+        ex("band_leg_curl", "Band leg curl", REPS, listOf(HAMSTRINGS)),
+        ex("barbell_curl", "Barbell curl", WEIGHTED, listOf(BICEPS), listOf(FOREARMS)),
+        ex("incline_db_curl", "Incline dumbbell curl", WEIGHTED, listOf(BICEPS), listOf(FOREARMS)),
+        ex("concentration_curl", "Concentration curl", WEIGHTED, listOf(BICEPS)),
+        ex("preacher_curl", "Preacher curl (machine)", WEIGHTED, listOf(BICEPS)),
+        ex("cable_curl", "Cable curl", WEIGHTED, listOf(BICEPS), listOf(FOREARMS)),
+        ex("band_curl", "Band curl", REPS, listOf(BICEPS)),
+        ex("seated_calf_raise", "Seated calf raise (machine)", WEIGHTED, listOf(CALVES)),
+        ex("single_leg_calf_raise", "Single-leg calf raise", REPS, listOf(CALVES)),
+        ex("db_calf_raise", "Dumbbell calf raise", WEIGHTED, listOf(CALVES)),
+        ex("back_extension", "Back extension", REPS, listOf(LOWER_BACK), listOf(GLUTES, HAMSTRINGS)),
+        ex("bird_dog", "Bird dog", REPS, listOf(LOWER_BACK), listOf(GLUTES, ABS)),
+        ex("cable_pull_through", "Cable pull-through", WEIGHTED, listOf(GLUTES, HAMSTRINGS), listOf(LOWER_BACK)),
+        ex("pallof_press", "Pallof press", WEIGHTED, listOf(OBLIQUES), listOf(ABS)),
+        ex("cable_woodchop", "Cable woodchop", WEIGHTED, listOf(OBLIQUES), listOf(ABS, SHOULDERS)),
+        ex("db_side_bend", "Dumbbell side bend", WEIGHTED, listOf(OBLIQUES)),
+        ex("mountain_climber", "Mountain climber", REPS, listOf(ABS), listOf(OBLIQUES, SHOULDERS)),
+        ex("cable_fly", "Cable fly", WEIGHTED, listOf(CHEST), listOf(SHOULDERS)),
+        ex("pec_deck", "Pec deck", WEIGHTED, listOf(CHEST), listOf(SHOULDERS)),
+        ex("chest_press_machine", "Chest press machine", WEIGHTED, listOf(CHEST), listOf(TRICEPS, SHOULDERS)),
+        ex("shoulder_press_machine", "Shoulder press machine", WEIGHTED, listOf(SHOULDERS), listOf(TRICEPS)),
+        ex("cable_lateral_raise", "Cable lateral raise", WEIGHTED, listOf(SHOULDERS)),
+        ex("reverse_pec_deck", "Reverse pec deck", WEIGHTED, listOf(SHOULDERS, UPPER_BACK), listOf(TRAPS)),
+        ex("straight_arm_pulldown", "Straight-arm pulldown", WEIGHTED, listOf(UPPER_BACK), listOf(TRICEPS)),
+        ex("overhead_cable_triceps_extension", "Overhead cable triceps extension", WEIGHTED, listOf(TRICEPS)),
+        ex("band_pull_apart", "Band pull-apart", REPS, listOf(UPPER_BACK, SHOULDERS), listOf(TRAPS)),
+        ex("band_row", "Band row", REPS, listOf(UPPER_BACK), listOf(BICEPS)),
+        ex("band_chest_press", "Band chest press", REPS, listOf(CHEST), listOf(TRICEPS, SHOULDERS)),
+        ex("kb_sumo_deadlift", "Kettlebell sumo deadlift", WEIGHTED, listOf(GLUTES, HAMSTRINGS), listOf(ADDUCTORS, QUADS)),
+        ex("kb_halo", "Kettlebell halo", WEIGHTED, listOf(SHOULDERS), listOf(TRICEPS, ABS)),
+        ex("kb_windmill", "Kettlebell windmill", WEIGHTED, listOf(OBLIQUES, SHOULDERS), listOf(HAMSTRINGS, GLUTES)),
+    ) + stretches
 }

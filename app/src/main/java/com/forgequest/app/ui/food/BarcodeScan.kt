@@ -147,6 +147,7 @@ fun BarcodeScanScreen(
     val app = LocalContext.current.container
     val scope = rememberCoroutineScope()
     val flow = remember { BarcodeFlow(app, scope) }
+    val aiOn = remember { app.settings.isAiOn() }
     val state = flow.state
     BackHandler { if (state is BarcodeState.Scanning || state is BarcodeState.Looking) onClose() else flow.scanAgain() }
 
@@ -163,8 +164,11 @@ fun BarcodeScanScreen(
             is BarcodeState.Missing -> ActionCard(
                 title = stringResource(if (state.offline) R.string.barcode_offline_title else R.string.barcode_missing_title),
                 body = stringResource(if (state.offline) R.string.barcode_offline_body else R.string.barcode_missing_body),
-                primary = stringResource(R.string.barcode_label_photo), onPrimary = { flow.labelCamera(state.code) },
-                secondary = stringResource(R.string.barcode_scan_again), onSecondary = flow::scanAgain,
+                // Reading a label photo needs the AI; with it off the choice is just try again or close.
+                primary = stringResource(if (aiOn) R.string.barcode_label_photo else R.string.barcode_scan_again),
+                onPrimary = { if (aiOn) flow.labelCamera(state.code) else flow.scanAgain() },
+                secondary = stringResource(if (aiOn) R.string.barcode_scan_again else R.string.action_cancel),
+                onSecondary = { if (aiOn) flow.scanAgain() else onClose() },
             )
             is BarcodeState.LabelFailed -> ActionCard(
                 title = stringResource(R.string.barcode_label_failed), body = state.message,

@@ -151,11 +151,7 @@ import java.util.Locale
 @Composable
 internal fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: () -> Unit) {
     val c = Fit.colors
-    val view = androidx.compose.ui.platform.LocalView.current
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        view.keepScreenOn = true
-        onDispose { view.keepScreenOn = false }
-    }
+    // The workout screen already keeps the screen on.
     BackHandler(onBack = onCancel)
     val s = h.elapsed(now)
     val ready = s < 0

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
+import kotlin.math.roundToInt
 import com.forgequest.app.domain.Catalog
 import com.forgequest.app.domain.CatalogAmount
 import com.forgequest.app.domain.CatalogFood
@@ -55,7 +56,7 @@ fun CatalogRow(food: CatalogFood, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(food.name(ar), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val size = food.servingG?.takeIf { food.kind == "product" }?.let { Catalog.formatNumber(it) + " " + stringResource(if (food.liquid) R.string.food_unit_ml_short else R.string.food_unit_g_short) }.orEmpty()
-            val sub = listOf(food.brand(ar), size, stringResource(R.string.food_per_100g, Catalog.formatNumber(food.kcal))).filter { it.isNotBlank() }.joinToString(" · ")
+            val sub = listOf(food.brand(ar), size, stringResource(R.string.food_per_100g, Catalog.formatNumber(kotlin.math.round(food.kcal))), stringResource(R.string.food_protein_short, food.protein.roundToInt())).filter { it.isNotBlank() }.joinToString(" · ")
             Text(sub, style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

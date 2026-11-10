@@ -58,6 +58,7 @@ import com.forgequest.app.domain.TrendPoint
 import com.forgequest.app.domain.TrendRange
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.BarRow
 import com.forgequest.app.ui.components.ChoiceChip
@@ -70,11 +71,14 @@ import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.Sparkline
 import com.forgequest.app.ui.components.TrendChart
 import com.forgequest.app.ui.components.rememberReveal
+import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.Manrope
 import com.forgequest.app.ui.theme.NumberFont
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -87,6 +91,13 @@ class ProgressViewModel(val app: AppContainer) : ViewModel() {
     /** Fitbit readiness saved day by day; empty when the Fitbit isn't connected. */
     val readiness: StateFlow<List<com.forgequest.app.data.db.ReadinessDayEntity>> =
         app.db.readiness().observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** Stalled lifts and the deload check, computed off the main thread. */
+    val report: StateFlow<com.forgequest.app.domain.FatigueAndPlateauReport?> = app.progress.snapshot
+        .map { s -> Trends.analyzeFatigueAndPlateaus(s.sessions, s.doneSets, s.exercises, today = Dates.today()) }
+        .flowOn(kotlinx.coroutines.Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    /** The chat owns the fourth tab, so Progress is a pushed screen and needs its back arrow. */
+    val pushed: StateFlow<Boolean> = app.settings.chatTab
 }
 
 /** Everything derived for one range, computed once per snapshot change. */
@@ -100,7 +111,7 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
     val weeklySets = Trends.weeklySets(s.doneSets, sessionDay, 12, today)
     val weeklyWorkouts = Trends.weeklyCounts(workoutDays, weeksInRange, today)
     val load = Trends.trainingLoad(weeklySets)
-    val topIds = Trends.topExercises(s.doneSets, 6)
+    val topIds = Trends.topExercises(s.doneSets.filterNot { WorkoutScore.isExtra(it.block) }, 6)
     val series: Map<String, List<TrendPoint>> = topIds.associateWith { id ->
         val kind = s.exercises[id]?.kind ?: ExerciseKind.REPS
         Trends.bestSetSeries(s.doneSets.filter { it.exerciseId == id }, kind, sessionDay)
@@ -123,6 +134,8 @@ fun ProgressScreen(nav: NavHostController) {
     val vm = appViewModel { ProgressViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val readiness by vm.readiness.collectAsState()
+    val report by vm.report.collectAsState()
+    val pushed by vm.pushed.collectAsState()
     val c = Fit.colors
     var rangeIndex by rememberSaveable { mutableIntStateOf(1) }
     val range = TrendRange.entries[rangeIndex]
@@ -136,7 +149,8 @@ fun ProgressScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
+            if (pushed) IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
+            else Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(stringResource(R.string.progress_subtitle), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -149,6 +163,7 @@ fun ProgressScreen(nav: NavHostController) {
             return
         }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
+            TodayCards(s, report)
             SegmentedTabs(
                 listOf(R.string.progress_range_1m, R.string.progress_range_3m, R.string.progress_range_6m, R.string.progress_range_1y, R.string.progress_range_all).map { stringResource(it) },
                 rangeIndex, onSelect = { rangeIndex = it },
@@ -202,9 +217,9 @@ fun ProgressScreen(nav: NavHostController) {
                 Text(stringResource(R.string.progress_all_time), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth()) {
-                    Total("%,d".format(d.lifetime.workouts), stringResource(R.string.progress_total_workouts), Modifier.weight(1f))
+                    Total("%,d".format(d.lifetime.workouts), pluralStringResource(R.plurals.progress_total_workouts, d.lifetime.workouts), Modifier.weight(1f))
                     Total("%,d".format(d.lifetime.reps), stringResource(R.string.progress_total_reps), Modifier.weight(1f))
-                    Total("${d.lifetime.minutes / 60} ${stringResource(R.string.unit_h)}", stringResource(R.string.progress_total_hours), Modifier.weight(1f))
+                    Total(if (d.lifetime.minutes < 60) stringResource(R.string.hist_minutes, d.lifetime.minutes) else "${d.lifetime.minutes / 60} ${stringResource(R.string.unit_h)}", stringResource(R.string.progress_total_hours), Modifier.weight(1f))
                     Total("%,d".format(d.lifetime.records), stringResource(R.string.progress_total_records), Modifier.weight(1f))
                 }
                 if (d.lifetime.kgLifted > 0f) {
@@ -428,5 +443,66 @@ private fun formatDelta(diff: Float, kind: ExerciseKind, unit: WeightUnit, sUnit
         ExerciseKind.HOLD -> "$sign${abs(diff).roundToInt()} $sUnit"
         ExerciseKind.WEIGHTED -> "$sign${unit.number(abs(diff), 0)} ${unit.label}"
         ExerciseKind.REPS -> "$sign${abs(diff).roundToInt()}"
+    }
+}
+
+/**
+ * Read-only comments from the insight engine (no cooldown is started here; the finish screen does that), then recovery,
+ * stalled lifts and the deload hint, all worked out from stored data.
+ */
+@Composable
+private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.FatigueAndPlateauReport?) {
+    val c = Fit.colors
+    val res = androidx.compose.ui.platform.LocalContext.current.resources
+    val insights = remember(s.sessions, s.doneSets, s.settings.insightHistory, s.settings.weightUnit) {
+        runCatching {
+            com.forgequest.app.domain.pick(
+                com.forgequest.app.domain.InsightInput(
+                    sessions = s.sessions.filter { it.finishedAt != null },
+                    sets = s.doneSets,
+                    exercises = s.exercises,
+                    streak = s.streak,
+                    muscleWeekTargets = com.forgequest.app.domain.muscleWeekTargets(s.plan?.days.orEmpty().flatMap { it.items }, s.exercises),
+                ),
+                s.settings.insightHistory, Dates.today(), max = 3,
+            ).map { com.forgequest.app.ui.workouts.insightText(it, res, s.exercises.mapValues { e -> e.value.name }, s.settings.weightUnit) }
+        }.getOrDefault(emptyList())
+    }
+    val (fresh, recovering) = com.forgequest.app.domain.recoverySplit(s.recovery)
+    val freshText = fresh.map { it.localLabel() }.joinToString(", ")
+    val recoveringText = recovering.map { it.localLabel() }.joinToString(", ")
+    val today = Dates.today()
+    val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 1, today).lastOrNull() ?: 0
+    val weekSets = Trends.weeklySets(s.doneSets, s.sessions.associate { it.id to it.epochDay }, 1, today).lastOrNull() ?: 0
+    val stalled = report?.stalledLifts.orEmpty().take(3).map { s.exercises[it.exerciseId]?.name ?: it.exerciseId }
+    if (insights.isNotEmpty()) {
+        FitCard {
+            Text(stringResource(R.string.progress_insights_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            insights.forEach { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp)) }
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+    if (fresh.isNotEmpty() || recovering.isNotEmpty()) {
+        FitCard {
+            Text(stringResource(R.string.coach_today_recovery_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            if (fresh.isNotEmpty()) Text(stringResource(R.string.coach_fresh, freshText), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+            if (recovering.isNotEmpty()) Text(stringResource(R.string.coach_recovering, recoveringText), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+    if (stalled.isNotEmpty()) {
+        FitCard {
+            Text(stringResource(R.string.coach_stalled_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Text(stalled.joinToString(", "), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+    if (report?.needsDeload == true) {
+        FitCard { Text(stringResource(R.string.coach_deload_hint), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary) }
+        Spacer(Modifier.height(12.dp))
+    }
+    if (weekWorkouts > 0 || weekSets > 0) {
+        FitCard { Text(stringResource(R.string.coach_week_line, weekWorkouts, weekSets), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary) }
+        Spacer(Modifier.height(12.dp))
     }
 }

@@ -175,7 +175,6 @@ internal fun SetRow(
     if (noteDialog) {
         SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
     }
-    val effortSetId by vm.effortSetId.collectAsState()
     val effort = SetEffort.parse(set.effort.ifBlank { null })
     // From 1.35x text the row splits in two tiers: set number, last-time hint and tick on top, the steppers below.
     val reflow = com.forgequest.app.ui.components.reflowText()
@@ -276,7 +275,7 @@ internal fun SetRow(
                 number()
                 info(Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
-                SetTick(set.done, pr) { vm.toggle(set) }
+                com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
             }
             FlowRow(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -291,17 +290,7 @@ internal fun SetRow(
         Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) { steppers() }
         Spacer(Modifier.width(8.dp))
-        SetTick(set.done, pr) { vm.toggle(set) }
-    }
-    // How did that set feel? Optional; not tapping counts as OK. Feeds the next session's progression.
-    AnimatedVisibility(visible = set.done && effortSetId == set.id) {
-        Column(Modifier.padding(start = 8.dp, top = 8.dp)) {
-            EffortGroup(selected = set.effort, onSelect = { vm.setEffort(set, it) })
-            // Pain is worth a word: one tap opens the same note editor as a long-press.
-            if (set.effort == SetEffort.PAIN.name) {
-                TextButton(onClick = { noteDialog = true }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
-            }
-        }
+        com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
     }
     }
 }

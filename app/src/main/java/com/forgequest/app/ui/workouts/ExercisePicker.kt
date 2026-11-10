@@ -99,6 +99,8 @@ fun ExercisePickerSheet(
     initialMuscle: Muscle? = null,
     sourceExercise: ExerciseEntity? = null,
     userEquipment: Set<Equipment> = emptySet(),
+    /** False hides "create custom", for pickers that only choose from the library. */
+    allowCreate: Boolean = true,
 ) {
     val c = Fit.colors
     // "My equipment" is only offered when the person owns some, but not all, of it.
@@ -275,7 +277,7 @@ fun ExercisePickerSheet(
                             }
                         }
                     }
-                    item {
+                    if (allowCreate) item {
                         Row(
                             Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable { creating = true }.padding(horizontal = 8.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,

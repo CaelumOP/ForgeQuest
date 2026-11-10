@@ -7,6 +7,7 @@ import com.forgequest.app.domain.Barcodes
 import com.forgequest.app.domain.Catalog
 import com.forgequest.app.domain.CatalogFood
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -20,6 +21,15 @@ class CatalogRepository(private val context: Context) {
     private val lock = Mutex()
     private var db: SQLiteDatabase? = null
     private var all: List<CatalogFood>? = null
+
+    /** True once the list is loaded into memory, so the UI can tell "still loading" from "no match". */
+    val ready = MutableStateFlow(false)
+
+    /** Loads the list ahead of the first search. */
+    /** Loads the list in the background after the first Home frame. A failure just leaves search empty; it never crashes the app. */
+    suspend fun warm() = withContext(Dispatchers.IO) {
+        try { lock.withLock { names() } } catch (_: Exception) { } finally { ready.value = true }
+    }
 
     private fun open(): SQLiteDatabase? {
         db?.let { return it }
@@ -67,6 +77,7 @@ class CatalogRepository(private val context: Context) {
 
     suspend fun search(query: String, limit: Int = 20, byProtein: Boolean = false): List<CatalogFood> = withContext(Dispatchers.Default) {
         val list = lock.withLock { names() }
+        ready.value = true
         Catalog.search(list, query, limit, byProtein)
     }
 }

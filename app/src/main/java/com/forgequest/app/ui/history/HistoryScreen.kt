@@ -350,7 +350,7 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
                     }
                 }
                 Text(
-                    listOfNotNull(pluralStringResource(R.plurals.hist_sets, sets.size, sets.size), minutes?.let { stringResource(R.string.hist_minutes, it) }).joinToString(" · "),
+                    listOfNotNull(pluralStringResource(R.plurals.hist_sets, sets.count { !WorkoutScore.isExtra(it.block) }, sets.count { !WorkoutScore.isExtra(it.block) }), minutes?.let { stringResource(R.string.hist_minutes, it) }).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
                 if (names.isNotEmpty()) {
@@ -435,7 +435,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Column(Modifier.weight(1f)) {
                 Text(session.title, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(listOfNotNull(date, minutes?.let { stringResource(R.string.hist_minutes, it) }, pluralStringResource(R.plurals.hist_sets, sets.size, sets.size)).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(listOfNotNull(date, minutes?.let { stringResource(R.string.hist_minutes, it) }, pluralStringResource(R.plurals.hist_sets, sets.count { !WorkoutScore.isExtra(it.block) }, sets.count { !WorkoutScore.isExtra(it.block) })).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textSecondary) }

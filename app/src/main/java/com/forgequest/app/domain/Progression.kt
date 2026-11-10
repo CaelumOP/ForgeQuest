@@ -2,6 +2,7 @@ package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.data.seed.ExerciseCatalog
 import kotlin.math.roundToInt
 
 /**
@@ -23,7 +24,10 @@ object Progression {
 
     data class Prefill(val reps: Int?, val seconds: Int?, val weightKg: Float?)
 
-    data class Result(val sets: List<Prefill>, val holdCeilingReached: Boolean = false)
+    /** Why today's numbers are what they are, for the one-line note on the live card. */
+    enum class Reason { LOAD_UP, MORE_REPS, MORE_TIME, ONCE_MORE, SAME, HARD, PAIN, MISSED, LOW_READINESS }
+
+    data class Result(val sets: List<Prefill>, val holdCeilingReached: Boolean = false, val reason: Reason? = null)
 
     const val HOLD_STEP_SEC = 5
     const val HOLD_CEILING = 1.5f
@@ -41,7 +45,8 @@ object Progression {
         val sessionIds = recent.map { it.sessionId }.distinct()
         fun past(id: Long?) = recent.filter { it.sessionId == id }.sortedBy { it.setIndex }
             .map { PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
-        val warmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || exerciseId == "jumping_jacks"
+        val warmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || exerciseId == "jumping_jacks" ||
+            item?.block?.equals(PlanBuilder.COOL_DOWN_BLOCK, ignoreCase = true) == true || exerciseId in ExerciseCatalog.STRETCH_IDS
         return Inputs(
             target = item?.let { Target(it.sets, it.repsMin, it.repsMax, it.seconds, it.weightKg) },
             last = past(sessionIds.getOrNull(0)),
@@ -49,6 +54,15 @@ object Progression {
             warmup = warmup,
         )
     }
+
+    /** Every 4th week since the plan was made is a lighter one: half the sets, same weights. [createdAt] is the plan's creation time in ms. */
+    fun isDeloadWeek(createdAt: Long, todayEpochDay: Long): Boolean {
+        val start = java.time.Instant.ofEpochMilli(createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+        return ((todayEpochDay - start).coerceAtLeast(0) / 7) % 4 == 3L
+    }
+
+    /** Sets in a lighter week: half, rounded up. */
+    fun deloadSets(sets: Int): Int = (sets + 1) / 2
 
     fun next(
         kind: ExerciseKind,
@@ -58,8 +72,9 @@ object Progression {
         unit: WeightUnit,
         lowReadiness: Boolean,
         warmup: Boolean,
+        deload: Boolean = false,
     ): Result {
-        val count = target?.sets ?: 3
+        val count = (target?.sets ?: 3).let { if (deload) deloadSets(it) else it }
         val repsMin = target?.repsMin ?: 8
         val repsMax = target?.repsMax ?: target?.repsMin ?: 12
         val holdTarget = target?.seconds ?: 30
@@ -70,7 +85,7 @@ object Progression {
         val strained = pain || last.any { it.effort == SetEffort.HARD }
         // "Completed" means every set was done without a hard or painful one; only then may anything go up.
         val completed = !warmup && last.size >= count && !strained
-        val mayProgress = completed && !lowReadiness
+        val mayProgress = completed && !lowReadiness && !deload
 
         fun hitTop(session: List<PastSet>) = session.size >= count && when (kind) {
             ExerciseKind.HOLD -> session.all { (it.seconds ?: 0) >= holdTarget }
@@ -119,7 +134,22 @@ object Progression {
                 }
             }
         }
-        return Result(sets, ceilingReached)
+
+        fun topWeight(w: List<Float?>) = w.maxOfOrNull { it ?: 0f } ?: 0f
+        val lastTop = sessionWeight(last)
+        val nextTop = topWeight(sets.map { it.weightKg })
+        val reason = when {
+            warmup || last.isEmpty() || ceilingReached -> null
+            strained -> if (pain && nextTop < lastTop - 0.1f) Reason.PAIN else Reason.HARD
+            last.size < count -> Reason.MISSED
+            lowReadiness && completed -> Reason.LOW_READINESS
+            nextTop > lastTop + 0.1f -> Reason.LOAD_UP
+            kind == ExerciseKind.HOLD && (sets.firstOrNull()?.seconds ?: 0) > (last.firstOrNull()?.seconds ?: 0) -> Reason.MORE_TIME
+            sets.firstOrNull()?.reps?.let { it > (last.firstOrNull()?.reps ?: 0) } == true -> Reason.MORE_REPS
+            kind == ExerciseKind.WEIGHTED && hitTop(last) && !hasRange -> Reason.ONCE_MORE
+            else -> Reason.SAME
+        }
+        return Result(sets, ceilingReached, reason)
     }
 
     /** One load step up in the person's unit, landing on a loadable number (0.25 kg or 2.5 lb). */

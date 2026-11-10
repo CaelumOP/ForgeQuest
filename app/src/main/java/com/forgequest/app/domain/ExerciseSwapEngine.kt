@@ -4,6 +4,7 @@ import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.plan.PlanDraftItem
+import com.forgequest.app.data.seed.ExerciseCatalog
 import kotlin.math.max
 
 /** Equipment categories for filtering and biomechanical exercise substitution. */
@@ -177,6 +178,7 @@ enum class MovementPattern(val labelEn: String, val labelAr: String) {
     ANKLE_FLEXION("Calf / ankle flexion", "بطة وقصبة الساق"),
     CARRY_CONDITIONING("Loaded carry / conditioning", "حمل ولياقة عامة"),
     HIP_ADDUCTION("Hip adduction (inner thigh)", "ضمّ الورك (باطن الفخذ)"),
+    MOBILITY("Stretch / mobility", "تمدد ومرونة"),
 }
 
 enum class JointAngle {
@@ -206,6 +208,7 @@ enum class JointAngle {
     DORSI_FLEXION,
     LOCOMOTION,
     FRONTAL_ADDUCTION,
+    STRETCH,
 }
 
 data class BiomechanicalProfile(
@@ -234,7 +237,7 @@ object ExerciseSwapEngine {
         vararg swaps: String,
     ) = BiomechanicalProfile(eq, pat, ang, swaps.toList())
 
-    /** Explicit biomechanical profiles for all 100 built-in exercises in ExerciseCatalog. */
+    /** Explicit biomechanical profiles for all 135 built-in exercises in ExerciseCatalog. */
     val catalogProfiles: Map<String, BiomechanicalProfile> = mapOf(
         // Warm-up / conditioning
         "jumping_jacks" to prof(Equipment.BODYWEIGHT, MovementPattern.CARRY_CONDITIONING, JointAngle.LOCOMOTION, "burpee", "calf_raise"),
@@ -355,6 +358,62 @@ object ExerciseSwapEngine {
         "db_row" to prof(Equipment.DUMBBELLS, MovementPattern.HORIZONTAL_PULL, JointAngle.MID_ROW_PRONATED, "barbell_row", "kb_row", "australian_pull_up", "seated_cable_row", "pull_up"),
         "db_lunge" to prof(Equipment.DUMBBELLS, MovementPattern.SQUAT_UNILATERAL, JointAngle.KNEE_DOMINANT_SPLIT, "bulgarian_split_squat", "lunge", "goblet_squat", "back_squat"),
         "russian_twist" to prof(Equipment.BODYWEIGHT, MovementPattern.CORE_FLEXION_ROTATION, JointAngle.ROTATIONAL, "crunch", "plank_shoulder_taps", "hanging_knee_raise"),
+
+        // More strength moves
+        "seated_leg_curl" to prof(Equipment.CABLES_MACHINES, MovementPattern.KNEE_FLEXION, JointAngle.HAMSTRING_CURL, "leg_curl", "nordic_curl", "romanian_deadlift"),
+        "single_leg_rdl" to prof(Equipment.DUMBBELLS, MovementPattern.HIP_HINGE, JointAngle.HIP_HINGE_STANDING, "romanian_deadlift", "db_romanian_deadlift", "kb_deadlift"),
+        "db_romanian_deadlift" to prof(Equipment.DUMBBELLS, MovementPattern.HIP_HINGE, JointAngle.HIP_HINGE_STANDING, "romanian_deadlift", "kb_deadlift", "single_leg_rdl", "hip_bridge"),
+        "good_morning" to prof(Equipment.BARBELL_RACK, MovementPattern.HIP_HINGE, JointAngle.HIP_HINGE_STANDING, "romanian_deadlift", "db_romanian_deadlift", "back_extension"),
+        "band_leg_curl" to prof(Equipment.BAND, MovementPattern.KNEE_FLEXION, JointAngle.HAMSTRING_CURL, "leg_curl", "nordic_curl", "hip_bridge"),
+        "barbell_curl" to prof(Equipment.BARBELL_RACK, MovementPattern.ELBOW_FLEXION, JointAngle.SAGITTAL_SUPINATED, "bicep_curl", "cable_curl", "preacher_curl", "chin_up"),
+        "incline_db_curl" to prof(Equipment.DUMBBELLS, MovementPattern.ELBOW_FLEXION, JointAngle.SAGITTAL_SUPINATED, "bicep_curl", "concentration_curl", "hammer_curl"),
+        "concentration_curl" to prof(Equipment.DUMBBELLS, MovementPattern.ELBOW_FLEXION, JointAngle.SAGITTAL_SUPINATED, "bicep_curl", "incline_db_curl", "preacher_curl"),
+        "preacher_curl" to prof(Equipment.CABLES_MACHINES, MovementPattern.ELBOW_FLEXION, JointAngle.SAGITTAL_SUPINATED, "cable_curl", "barbell_curl", "bicep_curl"),
+        "cable_curl" to prof(Equipment.CABLES_MACHINES, MovementPattern.ELBOW_FLEXION, JointAngle.SAGITTAL_SUPINATED, "bicep_curl", "barbell_curl", "band_curl"),
+        "band_curl" to prof(Equipment.BAND, MovementPattern.ELBOW_FLEXION, JointAngle.SAGITTAL_SUPINATED, "bicep_curl", "cable_curl", "australian_chin_up"),
+        "seated_calf_raise" to prof(Equipment.CABLES_MACHINES, MovementPattern.ANKLE_FLEXION, JointAngle.PLANTAR_FLEXION, "standing_calf_raise", "db_calf_raise", "calf_raise"),
+        "single_leg_calf_raise" to prof(Equipment.BODYWEIGHT, MovementPattern.ANKLE_FLEXION, JointAngle.PLANTAR_FLEXION, "calf_raise", "db_calf_raise", "standing_calf_raise"),
+        "db_calf_raise" to prof(Equipment.DUMBBELLS, MovementPattern.ANKLE_FLEXION, JointAngle.PLANTAR_FLEXION, "standing_calf_raise", "calf_raise", "single_leg_calf_raise"),
+        "back_extension" to prof(Equipment.DIP_BARS_OR_BENCH, MovementPattern.HIP_HINGE, JointAngle.HIP_EXTENSION_SUPINE, "superman_hold", "hip_bridge", "good_morning"),
+        "bird_dog" to prof(Equipment.BODYWEIGHT, MovementPattern.CORE_ANTI_EXTENSION, JointAngle.ISOMETRIC_PLANK, "superman_hold", "plank", "back_extension"),
+        "cable_pull_through" to prof(Equipment.CABLES_MACHINES, MovementPattern.HIP_HINGE, JointAngle.HIP_HINGE_STANDING, "kb_swing", "romanian_deadlift", "hip_thrust"),
+        "pallof_press" to prof(Equipment.CABLES_MACHINES, MovementPattern.CORE_FLEXION_ROTATION, JointAngle.ROTATIONAL, "cable_woodchop", "side_plank", "russian_twist"),
+        "cable_woodchop" to prof(Equipment.CABLES_MACHINES, MovementPattern.CORE_FLEXION_ROTATION, JointAngle.ROTATIONAL, "pallof_press", "russian_twist", "bicycle_crunch"),
+        "db_side_bend" to prof(Equipment.DUMBBELLS, MovementPattern.CORE_FLEXION_ROTATION, JointAngle.ROTATIONAL, "cable_woodchop", "russian_twist", "side_plank"),
+        "mountain_climber" to prof(Equipment.BODYWEIGHT, MovementPattern.CARRY_CONDITIONING, JointAngle.LOCOMOTION, "burpee", "plank_shoulder_taps", "jumping_jacks"),
+        "cable_fly" to prof(Equipment.CABLES_MACHINES, MovementPattern.HORIZONTAL_PUSH, JointAngle.FLAT_HORIZONTAL, "pec_deck", "db_bench_press", "push_up"),
+        "pec_deck" to prof(Equipment.CABLES_MACHINES, MovementPattern.HORIZONTAL_PUSH, JointAngle.FLAT_HORIZONTAL, "cable_fly", "chest_press_machine", "push_up"),
+        "chest_press_machine" to prof(Equipment.CABLES_MACHINES, MovementPattern.HORIZONTAL_PUSH, JointAngle.FLAT_HORIZONTAL, "db_bench_press", "bench_press", "push_up"),
+        "shoulder_press_machine" to prof(Equipment.CABLES_MACHINES, MovementPattern.VERTICAL_PUSH, JointAngle.OVERHEAD_VERTICAL, "db_shoulder_press", "overhead_press", "pike_push_up"),
+        "cable_lateral_raise" to prof(Equipment.CABLES_MACHINES, MovementPattern.LATERAL_RAISE, JointAngle.FRONTAL_ABDUCTION, "lateral_raise", "face_pull", "db_shoulder_press"),
+        "reverse_pec_deck" to prof(Equipment.CABLES_MACHINES, MovementPattern.UPPER_BACK_PULL, JointAngle.HIGH_EXTERNAL_ROTATION, "face_pull", "band_pull_apart", "seated_cable_row"),
+        "straight_arm_pulldown" to prof(Equipment.CABLES_MACHINES, MovementPattern.VERTICAL_PULL, JointAngle.OVERHEAD_PRONATED, "lat_pulldown", "pull_up", "negative_pull_up"),
+        "overhead_cable_triceps_extension" to prof(Equipment.CABLES_MACHINES, MovementPattern.ELBOW_EXTENSION, JointAngle.SAGITTAL_TRICEP, "tricep_pushdown", "skull_crusher", "diamond_push_up"),
+        "band_pull_apart" to prof(Equipment.BAND, MovementPattern.UPPER_BACK_PULL, JointAngle.HIGH_EXTERNAL_ROTATION, "face_pull", "reverse_pec_deck", "scapular_australian_pull_up"),
+        "band_row" to prof(Equipment.BAND, MovementPattern.HORIZONTAL_PULL, JointAngle.MID_ROW_PRONATED, "seated_cable_row", "db_row", "australian_pull_up"),
+        "band_chest_press" to prof(Equipment.BAND, MovementPattern.HORIZONTAL_PUSH, JointAngle.FLAT_HORIZONTAL, "push_up", "db_bench_press", "chest_press_machine"),
+        "kb_sumo_deadlift" to prof(Equipment.KETTLEBELL, MovementPattern.HIP_HINGE, JointAngle.HIP_HINGE_STANDING, "kb_deadlift", "kb_swing", "romanian_deadlift"),
+        "kb_halo" to prof(Equipment.KETTLEBELL, MovementPattern.VERTICAL_PUSH, JointAngle.OVERHEAD_VERTICAL, "kb_press", "db_shoulder_press", "face_pull"),
+        "kb_windmill" to prof(Equipment.KETTLEBELL, MovementPattern.CORE_FLEXION_ROTATION, JointAngle.ROTATIONAL, "turkish_get_up", "russian_twist", "side_plank"),
+        "quad_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "hip_flexor_stretch", "shin_stretch"),
+        "hamstring_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "calf_stretch", "figure_four_stretch"),
+        "hip_flexor_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "quad_stretch", "pigeon_stretch"),
+        "pigeon_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "figure_four_stretch", "hip_flexor_stretch"),
+        "figure_four_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "pigeon_stretch", "hamstring_stretch"),
+        "calf_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "hamstring_stretch", "shin_stretch"),
+        "childs_pose" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "thread_the_needle", "lat_stretch"),
+        "chest_doorway_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "biceps_wall_stretch", "cross_body_shoulder_stretch"),
+        "cross_body_shoulder_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "chest_doorway_stretch", "triceps_overhead_stretch"),
+        "triceps_overhead_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "cross_body_shoulder_stretch", "biceps_wall_stretch"),
+        "biceps_wall_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "chest_doorway_stretch", "wrist_flexor_stretch"),
+        "neck_side_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "cross_body_shoulder_stretch", "thread_the_needle"),
+        "thread_the_needle" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "childs_pose", "seated_spinal_twist"),
+        "butterfly_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "frog_stretch", "figure_four_stretch"),
+        "frog_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "butterfly_stretch", "pigeon_stretch"),
+        "wrist_flexor_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "biceps_wall_stretch", "triceps_overhead_stretch"),
+        "seated_spinal_twist" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "thread_the_needle", "figure_four_stretch"),
+        "lat_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "childs_pose", "triceps_overhead_stretch"),
+        "shin_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "calf_stretch", "quad_stretch"),
     )
 
     fun profileFor(ex: ExerciseEntity): BiomechanicalProfile {
@@ -411,6 +470,7 @@ object ExerciseSwapEngine {
             MovementPattern.ANKLE_FLEXION -> JointAngle.PLANTAR_FLEXION
             MovementPattern.CARRY_CONDITIONING -> JointAngle.LOCOMOTION
             MovementPattern.HIP_ADDUCTION -> JointAngle.FRONTAL_ADDUCTION
+            MovementPattern.MOBILITY -> JointAngle.STRETCH
         }
         return BiomechanicalProfile(eq, pattern, angle)
     }
@@ -422,8 +482,10 @@ object ExerciseSwapEngine {
     ): List<SwapCandidate> {
         val srcProf = profileFor(source)
         val effectiveEquipment = userEquipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
+        val sourceIsStretch = source.id in ExerciseCatalog.STRETCH_IDS
         return library
-            .filter { it.id != source.id }
+            // A stretch is only ever swapped for another stretch, and a lift never for a stretch.
+            .filter { it.id != source.id && (it.id in ExerciseCatalog.STRETCH_IDS) == sourceIsStretch }
             .map { candidate ->
                 val candProf = profileFor(candidate)
                 val patternPts = when {

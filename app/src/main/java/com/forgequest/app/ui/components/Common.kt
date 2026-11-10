@@ -600,7 +600,7 @@ fun ProgressLine(progress: Float, color: Color, track: Color, modifier: Modifier
 
 /** Big number with a small caption underneath, used in stat rows. */
 @Composable
-fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, dot: Color? = null) {
+fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, dot: Color? = null, labelColor: Color? = null) {
     Column(
         modifier.clip(ForgeShape.Md).let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -613,7 +613,7 @@ fun StatColumn(value: String, label: String, color: Color, modifier: Modifier = 
                 Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
                 Spacer(Modifier.width(6.dp))
             }
-            Text(label, style = MaterialTheme.typography.bodySmall, color = Fit.colors.textSecondary, maxLines = if (reflowText()) 2 else 1, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
+            Text(label, style = MaterialTheme.typography.bodySmall, color = labelColor ?: Fit.colors.textSecondary, maxLines = if (reflowText()) 2 else 1, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
         }
     }
 }

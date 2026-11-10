@@ -63,6 +63,12 @@ import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -116,6 +122,7 @@ import com.forgequest.app.data.db.FoodPart
 import com.forgequest.app.data.db.FoodUsage
 import com.forgequest.app.data.db.withParts
 import com.forgequest.app.data.FoodPick
+import com.forgequest.app.domain.FoodLists
 import com.forgequest.app.domain.FoodSearch
 import com.forgequest.app.data.db.MealEntity
 import com.forgequest.app.data.db.SCANNED_NO_PHOTO
@@ -169,6 +176,7 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     val usage: StateFlow<Map<Long, FoodUsage>> = app.food.usage.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
     /** What's typed in the search box; blank shows the open tab's foods. */
     val query = MutableStateFlow("")
+    val catalogReady = app.catalog.ready
     /** Show the food-list matches with the most protein first. */
     val sortProtein = MutableStateFlow(false)
 
@@ -217,6 +225,7 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
     val selection = MutableStateFlow<Map<Long, Pick>>(emptyMap())
     val message = MutableStateFlow<String?>(null)
     val apiKey: StateFlow<String> = app.settings.apiKey
+    val aiOn: StateFlow<Boolean> = app.settings.aiOn
 
     suspend fun estimate(text: String): com.forgequest.app.data.FoodScan = app.food.estimate(text)
 
@@ -268,11 +277,8 @@ class FoodViewModel(val app: AppContainer) : ViewModel() {
      * The meal a ticked food is logged under: drinks always under Drinks; a search result under the open tab (which opens
      * on the meal for the time of day); otherwise the tab it's listed in.
      */
-    private fun mealFor(food: FoodEntity): FoodCategory = when {
-        food.category == FoodCategory.DRINKS -> FoodCategory.DRINKS
-        query.value.isNotBlank() -> category.value
-        else -> food.category
-    }
+    private fun mealFor(food: FoodEntity): FoodCategory =
+        if (food.category == FoodCategory.DRINKS) FoodCategory.DRINKS else category.value
 
     fun toggle(food: FoodEntity) {
         app.haptics.tick()
@@ -352,11 +358,16 @@ fun FoodScreen(nav: NavHostController) {
 
     val geminiMeals by vm.geminiMeals.collectAsState()
     val apiKey by vm.apiKey.collectAsState()
+    val aiOn by vm.aiOn.collectAsState()
     val day by vm.day.collectAsState()
     var confirmDeleteFood by remember { mutableStateOf<FoodEntity?>(null) }
     var quickLog by remember { mutableStateOf(false) }
     var catalogPick by remember { mutableStateOf<com.forgequest.app.domain.CatalogFood?>(null) }
     var scanningBarcode by remember { mutableStateOf(false) }
+    var moreMenu by remember { mutableStateOf(false) }
+    var mealMenu by remember { mutableStateOf(false) }
+    var searchFocused by remember { mutableStateOf(false) }
+    var showWeek by rememberSaveable { mutableStateOf(false) }
     val catalogResults by vm.catalogResults.collectAsState()
     val isToday = day == Dates.today()
     LaunchedEffect(Unit) { vm.onShown() }
@@ -366,6 +377,7 @@ fun FoodScreen(nav: NavHostController) {
 
     val query by vm.query.collectAsState()
     val usage by vm.usage.collectAsState()
+    val catalogReady by vm.catalogReady.collectAsState()
     var partsFor by remember { mutableStateOf<FoodEntity?>(null) }
     val focus = LocalFocusManager.current
     val inCategory = foods.filter { it.category == category }
@@ -387,6 +399,7 @@ fun FoodScreen(nav: NavHostController) {
             .sortedByDescending { it.second }.map { it.first }.take(6)
     }
     val shown = if (searching) results else inCategory
+    val recent = remember(foods, usage, category) { FoodLists.recent(foods, usage, category) }
     val selectedFoods = foods.filter { it.id in selection }
     // Each food rounded on its own, as logFoods stores it, so this is what the day's total gains.
     val selKcal = selectedFoods.sumOf { Nutrition.scaledKcal(it.kcal, selection[it.id]?.qty ?: 1f) }
@@ -401,16 +414,29 @@ fun FoodScreen(nav: NavHostController) {
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.food_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                    PillButton(stringResource(R.string.food_scan_meal), onClick = { nav.navigate(Routes.SCAN) }, icon = Icons.Rounded.CameraAlt)
-                    Spacer(Modifier.width(8.dp))
-                    Box(Modifier.size(44.dp).clip(CircleShape).background(c.cardHigh).clickable { scanningBarcode = true }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.barcode_scan), tint = c.textPrimary)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Box(Modifier.size(44.dp).clip(CircleShape).background(c.cardHigh).clickable {
-                        editing = FoodEntity(name = "", category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
-                    }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.food_add), tint = c.textPrimary)
+                    // One menu for the occasional things; scanning lives inside the search field.
+                    Box {
+                        IconButton(onClick = { moreMenu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textSecondary) }
+                        DropdownMenu(moreMenu, { moreMenu = false }, containerColor = c.cardHigh) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.food_add), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null, tint = c.textSecondary) },
+                                onClick = {
+                                    moreMenu = false
+                                    editing = FoodEntity(name = "", category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.food_quick_log), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.Restaurant, contentDescription = null, tint = c.textSecondary) },
+                                onClick = { moreMenu = false; quickLog = true },
+                            )
+                            if (isToday) DropdownMenuItem(
+                                text = { Text(stringResource(R.string.food_last_7_days), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.Check, contentDescription = null, tint = if (showWeek) c.teal else androidx.compose.ui.graphics.Color.Transparent) },
+                                onClick = { moreMenu = false; showWeek = !showWeek },
+                            )
+                        }
                     }
                 }
             }
@@ -419,35 +445,47 @@ fun FoodScreen(nav: NavHostController) {
             }
             if (geminiMeals.isNotEmpty()) item { GeminiInbox(geminiMeals, onOpen = vm::reviewMeal, onDismiss = { vm.dismissMeal(it) }) }
             snap?.let { s -> item { DayTotals(s, day, meals) } }
-            if (isToday) snap?.let { s -> item { WeekCard(s) } }
+            if (isToday && showWeek) snap?.let { s -> item { WeekCard(s) } }
             item {
-                SearchField(query, onChange = { vm.query.value = it }, onDone = { focus.clearFocus() })
+                com.forgequest.app.ui.components.CoachMarkBox("coach_food", R.string.coach_food_t, if (aiOn) R.string.coach_food_b else R.string.coach_food_b_noai, below = true) {
+                    SearchField(
+                        query, onChange = { vm.query.value = it }, onDone = { focus.clearFocus() },
+                        onScan = if (aiOn) ({ nav.navigate(Routes.SCAN) }) else null, onBarcode = { scanningBarcode = true }, onFocus = { searchFocused = it },
+                    )
+                }
             }
-            if (!searching && recentPlaces.isNotEmpty()) {
+            // Restaurant shortcuts appear the moment the user is about to search.
+            if (searchFocused && !searching && recentPlaces.isNotEmpty()) {
                 item { RestaurantShortcuts(recentPlaces, onPick = { vm.query.value = it; focus.clearFocus() }) }
             }
             item {
-                val withSelection = selection.values.map { FoodCategory.entries.indexOf(it.category) }.toSet()
-                SegmentedTabs(
-                    FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category),
-                    onSelect = { vm.category.value = FoodCategory.entries[it] }, dots = withSelection,
-                )
+                val withSelection = selection.values.map { it.category }.toSet()
+                Box {
+                    TonalPill(stringResource(R.string.food_meal_chip, category.localLabel()), onClick = { mealMenu = true }, icon = Icons.Rounded.ArrowDropDown)
+                    DropdownMenu(mealMenu, { mealMenu = false }, containerColor = c.cardHigh) {
+                        FoodCategory.entries.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat.localLabel(), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.Check, contentDescription = null, tint = if (cat == category) c.teal else androidx.compose.ui.graphics.Color.Transparent) },
+                                trailingIcon = if (cat in withSelection) ({ Box(Modifier.size(8.dp).clip(CircleShape).background(c.teal)) }) else null,
+                                onClick = { mealMenu = false; vm.category.value = cat },
+                            )
+                        }
+                    }
+                }
             }
             if (searching) {
                 item {
                     Text(
-                        if (results.isEmpty()) stringResource(R.string.food_search_none, query.trim()) else stringResource(R.string.food_search_logs_as, category.localLabel()),
+                        when {
+                            results.isNotEmpty() || catalogResults.isNotEmpty() -> stringResource(R.string.food_search_logs_as, category.localLabel())
+                            !catalogReady -> stringResource(R.string.food_list_loading)
+                            else -> stringResource(R.string.food_search_none, query.trim())
+                        },
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
-                if (results.isEmpty()) {
-                    item {
-                        TonalPill(stringResource(R.string.food_search_add, query.trim()), onClick = {
-                            editing = FoodEntity(name = query.trim().take(48), category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
-                        }, icon = Icons.Rounded.Add)
-                    }
-                }
-            } else if (inCategory.isEmpty()) {
+            } else if (inCategory.isEmpty() && recent.isEmpty()) {
                 item {
                     FitCard {
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -456,10 +494,6 @@ fun FoodScreen(nav: NavHostController) {
                             Text(stringResource(R.string.food_none_in_category, category.localLabel()), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                             Spacer(Modifier.height(4.dp))
                             Text(stringResource(R.string.food_empty_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
-                            Spacer(Modifier.height(12.dp))
-                            TonalPill(stringResource(R.string.food_add_a_food), onClick = {
-                                editing = FoodEntity(name = "", category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
-                            }, icon = Icons.Rounded.Add)
                         }
                     }
                 }
@@ -491,10 +525,32 @@ fun FoodScreen(nav: NavHostController) {
                 }
                 items(catalogResults, key = { "c${it.id}" }) { item -> CatalogRow(item, onClick = { focus.clearFocus(); catalogPick = item }) }
             }
+            if (searching && results.isEmpty()) {
+                item {
+                    TonalPill(stringResource(R.string.food_search_add, query.trim()), onClick = {
+                        editing = FoodEntity(name = query.trim().take(48), category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
+                    }, icon = Icons.Rounded.Add)
+                }
+            }
+            if (!searching && recent.isNotEmpty()) {
+                item { Text(stringResource(R.string.food_recent), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.padding(start = 4.dp, top = 8.dp)) }
+                items(recent, key = { "r${it.id}" }) { food ->
+                    Box(itemMotion()) {
+                        FoodRow(
+                            food = food,
+                            qty = selection[food.id]?.qty,
+                            onToggle = { vm.toggle(food) },
+                            onQty = { vm.setQty(food, it) },
+                            onPhoto = { photoFor = food },
+                            onEdit = { editing = food },
+                            onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
+                        )
+                    }
+                }
+            }
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                    TonalPill(stringResource(R.string.food_quick_log), onClick = { quickLog = true }, icon = Icons.Rounded.Add)
                 }
             }
             if (meals.isEmpty()) {
@@ -530,13 +586,13 @@ fun FoodScreen(nav: NavHostController) {
     }
     if (quickLog) {
         val recentOneOffs by vm.recentOneOffs.collectAsState()
-        QuickLogSheet(category, recent = recentOneOffs, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (apiKey.isNotBlank()) vm::estimate else null, onLog = { n, cat, k, p, cb -> vm.logOnce(n, cat, k, p, cb); quickLog = false }, onDismiss = { quickLog = false })
+        QuickLogSheet(category, recent = recentOneOffs, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (aiOn && apiKey.isNotBlank()) vm::estimate else null, onLog = { n, cat, k, p, cb -> vm.logOnce(n, cat, k, p, cb); quickLog = false }, onDismiss = { quickLog = false })
     }
     partsFor?.let { food ->
         PartsSheet(food.name, food.parts, carbsOn = snap?.settings?.trackCarbs == true, onSave = { vm.saveParts(food, it); partsFor = null }, onDismiss = { partsFor = null })
     }
     editing?.let { food ->
-        FoodEditorSheet(food, places, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (apiKey.isNotBlank()) vm::estimate else null, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
+        FoodEditorSheet(food, places, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (aiOn && apiKey.isNotBlank()) vm::estimate else null, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
     }
     confirmDeleteFood?.let { food ->
         AlertDialog(
@@ -629,17 +685,25 @@ private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
     FitCard {
         Row {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.food_protein_of_goal, proteinShown, s.settings.proteinGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = c.teal)
-                Text(stringResource(R.string.label_protein), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                val proteinLeft = (s.settings.proteinGoal - proteinShown).coerceAtLeast(0)
+                Text(
+                    if (proteinLeft > 0) stringResource(R.string.food_protein_left, proteinLeft) else stringResource(R.string.food_protein_met),
+                    style = MaterialTheme.typography.titleMedium.tabular(), color = c.gold,
+                )
+                Text("⁦%d / %d⁩ ".format(proteinShown, s.settings.proteinGoal) + stringResource(R.string.food_unit_g_short), style = MaterialTheme.typography.labelSmall.tabular(), color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
-                ProgressLine(protein / s.settings.proteinGoal.coerceAtLeast(1), c.teal, c.tealTrack, height = 5.dp)
+                ProgressLine(protein / s.settings.proteinGoal.coerceAtLeast(1), c.gold, c.goldTrack, height = 5.dp)
             }
             Spacer(Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("⁦%,d / %,d⁩".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.titleSmall.tabular(), color = if (over) c.gold else c.blue)
-                Text(if (over) stringResource(R.string.food_calories_surplus) else stringResource(R.string.home_legend_calories), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                val diff = "⁦%,d⁩".format(kotlin.math.abs(s.settings.kcalGoal - kcal))
+                Text(
+                    if (over) stringResource(R.string.food_kcal_over, diff) else stringResource(R.string.food_kcal_left, diff),
+                    style = MaterialTheme.typography.titleMedium.tabular(), color = if (over) c.coral else c.blue,
+                )
+                Text("⁦%,d / %,d⁩".format(kcal, s.settings.kcalGoal), style = MaterialTheme.typography.labelSmall.tabular(), color = c.textSecondary)
                 Spacer(Modifier.height(8.dp))
-                ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.gold else c.blue, if (over) c.goldTrack else c.blueTrack, height = 5.dp)
+                ProgressLine(kcal.toFloat() / s.settings.kcalGoal.coerceAtLeast(1), if (over) c.coral else c.blue, if (over) c.coralTrack else c.blueTrack, height = 5.dp)
             }
         }
         if (s.settings.trackCarbs) {
@@ -699,22 +763,27 @@ private fun WeekCard(s: ProgressSnapshot) {
 
 /** Search over your own saved foods and their restaurants (FoodSearch: spelling variants, Arabic/English, typos). */
 @Composable
-private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () -> Unit) {
+private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () -> Unit, onScan: (() -> Unit)?, onBarcode: () -> Unit, onFocus: (Boolean) -> Unit) {
     val c = Fit.colors
     OutlinedTextField(
         query, { onChange(it.take(48).replace("\n", "")) },
-        placeholder = { Text(stringResource(R.string.food_search_hint), color = c.textSecondary) },
+        placeholder = { Text(stringResource(R.string.food_search_hint), color = c.textSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = c.textSecondary) },
         trailingIcon = if (query.isNotEmpty()) ({
             IconButton(onClick = { onChange("") }) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.food_search_clear), tint = c.textSecondary) }
-        }) else null,
+        }) else ({
+            Row {
+                if (onScan != null) IconButton(onClick = onScan) { Icon(Icons.Rounded.CameraAlt, contentDescription = stringResource(R.string.food_scan_meal), tint = c.teal) }
+                IconButton(onClick = onBarcode) { Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.barcode_scan), tint = c.textSecondary) }
+            }
+        }),
         singleLine = true, shape = ForgeShape.Lg,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onDone() }),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
             focusedContainerColor = c.card, unfocusedContainerColor = c.card,
         ),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().onFocusChanged { onFocus(it.isFocused) },
     )
 }
 
@@ -1000,10 +1069,7 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
 @Composable
 private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onResult: (Int, String, String) -> Unit) {
     val c = Fit.colors
-    if (estimate == null) {
-        Text(stringResource(R.string.food_estimate_needs_key), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp))
-        return
-    }
+    if (estimate == null) return
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }

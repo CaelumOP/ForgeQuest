@@ -11,6 +11,9 @@ import androidx.work.WorkerParameters
 import com.forgequest.app.container
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Nudges
+import com.forgequest.app.domain.Progression
+import com.forgequest.app.domain.ReminderBody
+import com.forgequest.app.domain.ReminderText
 import kotlinx.coroutines.flow.first
 import java.time.Duration
 import java.time.LocalDateTime
@@ -40,7 +43,20 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val remind = !settings.justLog && Nudges.shouldRemind(planned, snap.workoutDoneToday, snap.excusedToday != null, missed)
         if (remind && app.workouts.openSessionNow() == null) {
             val count = today!!.items.map { it.exerciseId }.distinct().size
-            app.notifier.showReminder(app.str(R.string.notif_reminder_title, today.day.title), app.plural(R.plurals.notif_reminder_body, count, count))
+            // "Bench moves to 62.5 kg" when the first main lift goes up; any failure falls back to the exercise count.
+            val body = runCatching {
+                val item = ReminderText.firstMainLift(today.items, snap.exercises)
+                val ex = item?.let { snap.exercises[it.exerciseId] }
+                val recent = ex?.let { app.workouts.recentDoneSets(it.id) }.orEmpty()
+                val last = Progression.inputs(item, ex?.id, recent).last.maxOfOrNull { it.weightKg ?: 0f }
+                val next = item?.let { app.workouts.progressionFor(it, ex, recent).sets.maxOfOrNull { s -> s.weightKg ?: 0f } }
+                ReminderText.body(ex?.id, last, next, count)
+            }.getOrDefault(ReminderBody.Count(count))
+            val text = when (body) {
+                is ReminderBody.LoadUp -> app.str(R.string.notif_reminder_moves, snap.exercises[body.exerciseId]?.name.orEmpty(), settings.weightUnit.format(body.kg))
+                is ReminderBody.Count -> app.plural(R.plurals.notif_reminder_body, body.exercises, body.exercises)
+            }
+            app.notifier.showReminder(app.str(R.string.notif_reminder_title, today.day.title), text)
         }
         schedule(applicationContext, settings.reminderHour)
         return Result.success()

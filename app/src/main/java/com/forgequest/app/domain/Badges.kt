@@ -12,6 +12,17 @@ data class BadgeStats(
     val mealsLogged: Int = 0,
     val mealsScanned: Int = 0,
     val proteinGoalDaysInARow: Int = 0,
+    /** Latest logged body weight in kg; 0 when none, which switches the big-lift badges to fixed kg marks. */
+    val bodyKg: Float = 0f,
+    val lifetimeSets: Int = 0,
+    val lifetimeHours: Int = 0,
+    val lifetimeKg: Double = 0.0,
+    /** Longest run of consecutive days with a weigh-in. */
+    val weighInRun: Int = 0,
+    /** Days with at least one meal logged, over all time. */
+    val mealDays: Int = 0,
+    /** Days whose total landed within 10% of the calorie goal, over all time. */
+    val kcalGoalDays: Int = 0,
 )
 
 data class BadgeDef(
@@ -30,6 +41,29 @@ object Badges {
     /** Best added weight across [ids]; a plain pull-up or dip logged with added weight counts too. */
     private fun loadAny(ids: List<String>, kg: Float): (BadgeStats) -> Boolean = { s -> ids.maxOf { s.bestWeight[it] ?: 0f } >= kg }
 
+    /** Best [id] weight reaching [bodyMult] x body weight, or [absKg] when no body weight is known. */
+    private fun lift(id: String, bodyMult: Float, absKg: Float): (BadgeStats) -> Boolean = { s ->
+        val need = if (s.bodyKg > 0f) s.bodyKg * bodyMult else absKg
+        (s.bestWeight[id] ?: 0f) >= need
+    }
+
+    /** Longest run of consecutive days in [days]. */
+    fun longestRun(days: Collection<Long>): Int {
+        var best = 0
+        var run = 0
+        var prev = 0L
+        for (d in days.distinct().sorted()) {
+            run = if (run > 0 && d == prev + 1L) run + 1 else 1
+            best = maxOf(best, run)
+            prev = d
+        }
+        return best
+    }
+
+    /** Days (of [dayKcal], epoch day to total kcal) within 10% of [goal]. */
+    fun kcalGoalDays(dayKcal: Map<Long, Int>, goal: Int): Int =
+        if (goal <= 0) 0 else dayKcal.values.count { it >= goal * 0.9 && it <= goal * 1.1 }
+
     private val PULL_UPS = listOf("pull_up", "chin_up", "weighted_pull_up", "weighted_chin_up")
     private val DIPS = listOf("dip", "weighted_dip")
 
@@ -43,6 +77,12 @@ object Badges {
             id.startsWith("workouts_") -> s.workouts
             id.startsWith("streak_") -> s.bestStreakWeeks
             id.startsWith("protein_") -> s.proteinGoalDaysInARow
+            id.startsWith("life_sets_") -> s.lifetimeSets
+            id.startsWith("life_hours_") -> s.lifetimeHours
+            id.startsWith("life_kg_") -> s.lifetimeKg.toInt().coerceAtLeast(0)
+            id.startsWith("weigh_streak_") -> s.weighInRun
+            id.startsWith("log_days_") -> s.mealDays
+            id.startsWith("kcal_days_") -> s.kcalGoalDays
             else -> return null
         }
         return done.coerceAtMost(n) to n
@@ -75,12 +115,40 @@ object Badges {
         BadgeDef("str_weighted_pull_20", "+20 kg pull-up", "Pull-up with 20 kg added", BadgeCategory.STRENGTH, loadAny(PULL_UPS, 20f)),
         BadgeDef("str_weighted_dip_30", "+30 kg dip", "Dip with 30 kg added", BadgeCategory.STRENGTH, loadAny(DIPS, 30f)),
 
+        BadgeDef("str_bench_1", "Bench: bodyweight", "Bench press your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("bench_press", 1f, 60f)),
+        BadgeDef("str_bench_2", "Bench: one and a half", "Bench press 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("bench_press", 1.5f, 100f)),
+        BadgeDef("str_squat_1", "Squat: bodyweight", "Back squat your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("back_squat", 1f, 60f)),
+        BadgeDef("str_squat_2", "Squat: one and a half", "Back squat 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("back_squat", 1.5f, 100f)),
+        BadgeDef("str_deadlift_1", "Deadlift: bodyweight", "Deadlift your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("deadlift", 1f, 60f)),
+        BadgeDef("str_deadlift_2", "Deadlift: one and a half", "Deadlift 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("deadlift", 1.5f, 100f)),
+
+        BadgeDef("life_sets_500", "500 sets", "Complete 500 sets", BadgeCategory.CONSISTENCY) { it.lifetimeSets >= 500 },
+        BadgeDef("life_hours_50", "50 hours", "Train for 50 hours in total", BadgeCategory.CONSISTENCY) { it.lifetimeHours >= 50 },
+        BadgeDef("life_kg_100000", "100 tonnes", "Lift 100,000 kg in total", BadgeCategory.CONSISTENCY) { it.lifetimeKg >= 100_000.0 },
+        BadgeDef("weigh_streak_7", "Weigh-in week", "Log your weight 7 days in a row", BadgeCategory.CONSISTENCY) { it.weighInRun >= 7 },
+        BadgeDef("weigh_streak_30", "Weigh-in month", "Log your weight 30 days in a row", BadgeCategory.CONSISTENCY) { it.weighInRun >= 30 },
+
         BadgeDef("food_first", "First bite", "Log your first meal", BadgeCategory.NUTRITION) { it.mealsLogged >= 1 },
         BadgeDef("food_scan", "Snap & log", "Log a meal with the camera", BadgeCategory.NUTRITION) { it.mealsScanned >= 1 },
         BadgeDef("protein_3", "Protein habit", "Hit your protein goal 3 days in a row", BadgeCategory.NUTRITION) { it.proteinGoalDaysInARow >= 3 },
         BadgeDef("protein_7", "Protein week", "Hit your protein goal 7 days in a row", BadgeCategory.NUTRITION) { it.proteinGoalDaysInARow >= 7 },
         BadgeDef("protein_30", "Protein month", "Hit your protein goal 30 days in a row", BadgeCategory.NUTRITION) { it.proteinGoalDaysInARow >= 30 },
+        BadgeDef("log_days_30", "30 days logged", "Log meals on 30 days", BadgeCategory.NUTRITION) { it.mealDays >= 30 },
+        BadgeDef("log_days_100", "100 days logged", "Log meals on 100 days", BadgeCategory.NUTRITION) { it.mealDays >= 100 },
+        BadgeDef("kcal_days_10", "On target x10", "End 10 days within 10 percent of your calorie goal", BadgeCategory.NUTRITION) { it.kcalGoalDays >= 10 },
+        BadgeDef("kcal_days_30", "On target x30", "End 30 days within 10 percent of your calorie goal", BadgeCategory.NUTRITION) { it.kcalGoalDays >= 30 },
     )
+
+    /** Ids added in the second badge set: the first evaluation after the update stores the ones already earned as seen. */
+    val V2_IDS: Set<String> = setOf(
+        "str_bench_1", "str_bench_2", "str_squat_1", "str_squat_2", "str_deadlift_1", "str_deadlift_2",
+        "life_sets_500", "life_hours_50", "life_kg_100000", "weigh_streak_7", "weigh_streak_30",
+        "log_days_30", "log_days_100", "kcal_days_10", "kcal_days_30",
+    )
+
+    /** Splits [fresh] into (silent, loud): on the one-time backfill the V2 badges are silent (stored as seen). */
+    fun splitBackfill(fresh: List<BadgeDef>, backfill: Boolean): Pair<List<BadgeDef>, List<BadgeDef>> =
+        if (backfill) fresh.partition { it.id in V2_IDS } else emptyList<BadgeDef>() to fresh
 
     val byId = all.associateBy { it.id }
 }

@@ -24,7 +24,7 @@ class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
         val token = app.drive.silentToken() ?: return Result.success()
         return try {
             app.drive.backup(token)
-            if (s.driveDocsEnabled && app.settings.apiKey.value.isNotBlank()) {
+            if (s.driveDocsEnabled && app.settings.isAiOn() && app.settings.apiKey.value.isNotBlank()) {
                 val docsToken = app.drive.silentToken() ?: return Result.success()
                 com.forgequest.app.data.suspendRunCatching { app.drive.fetchPlanDoc(docsToken, s.lastDocImportModified) }.getOrNull()?.let { doc ->
                     // Staged, not applied: the person reviews it in the Coach tab and taps Apply, so edits made
