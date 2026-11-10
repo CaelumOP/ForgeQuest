@@ -211,9 +211,10 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
     var picker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PlanItemEntity?>(null) }
     var swappingItem by remember { mutableStateOf<PlanItemEntity?>(null) }
-    var templates by remember { mutableStateOf(openTemplates) }
+    // Saveable: the route argument must open the sheet once, not again after a rotation or on coming back to this screen.
+    var templates by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(openTemplates) }
     var changePlan by remember { mutableStateOf(false) }
-    var paste by remember { mutableStateOf(openPaste) }
+    var paste by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(openPaste) }
     var renaming by remember { mutableStateOf(false) }
     var previous by remember { mutableStateOf(false) }
     var moveDay by remember { mutableStateOf(false) }
