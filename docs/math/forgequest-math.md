@@ -286,8 +286,8 @@ Candidates the person has the equipment for, scoring 45+, come first.
 Calorie plan v2 compares the target with what the person actually logs. All of it runs on a 21-day window.
 
 - **A day counts as logged** only with at least `max(800, 0.70 x BMR)` kcal, so a half-logged day cannot fake a low intake.
-- **Real daily burn** needs 17 of the 21 days logged and 6 weigh-ins. It is average intake minus the energy in the weight change (7,700 kcal per kg).
-- **Moving the target** toward the real burn is limited to 200 kcal per step, rounded to 50, with 14 days between steps, and skipped for 7 days after the goal changes.
+- **Real daily burn** is average logged intake minus the weight trend times 7,700 kcal per kg. The trend is the median of the slopes between every pair of weigh-ins (Theil-Sen), so one salty day cannot swing it. It needs 17 of the 21 days logged, 6+ weigh-ins spanning 14+ days with 2 in the first week and 2 in the last, and a window that starts 7+ days after the goal changed (week-one water weight). The result is kept within 0.8 to 1.3 times the formula's burn.
+- **Moving the target** toward a new suggestion: at most 200 kcal per step, only when it moves 100 kcal or more, rounded to 50, and at most every 14 days.
 - **Four signals**, most important first:
   - *Under-fuelled*: on a Standard or Fast cut, and either the deload check fired or weight is falling faster than the pace plus a 0.25 % per week margin. The margin keeps normal scale noise from firing it.
   - *Weight changed*: the 7-day average is 2.5 kg or more from the weight the target was set at.
