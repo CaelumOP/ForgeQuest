@@ -60,7 +60,11 @@ object DebriefText {
             watch = d.watch.map { w -> watch(w, res, name, weight, ::reps, ::seconds) },
             next = d.next.mapNotNull { n -> next(n, res, name, weight, ::reps, ::seconds) }.map { res.getString(R.string.debrief_next_time, it) },
             sameRest = if (d.sameRest) res.getString(R.string.debrief_same_rest) else null,
-            footnote = if (d.footnote) res.getString(R.string.debrief_footnote) else null,
+            footnote = when (d.note) {
+                WorkoutDebriefMath.Footnote.NUMBERS_ONLY -> res.getString(R.string.debrief_footnote_numbers)
+                WorkoutDebriefMath.Footnote.CONNECT_WATCH -> res.getString(R.string.debrief_footnote_connect)
+                else -> if (d.footnote) res.getString(R.string.debrief_footnote) else null
+            },
         )
     }
 

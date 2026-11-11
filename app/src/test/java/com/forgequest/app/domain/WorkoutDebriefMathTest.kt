@@ -9,6 +9,7 @@ import com.forgequest.app.domain.WorkoutDebriefMath.Next
 import com.forgequest.app.domain.WorkoutDebriefMath.Watch
 import com.forgequest.app.domain.WorkoutDebriefMath.Win
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -75,6 +76,7 @@ class WorkoutDebriefMathTest {
         unit: WeightUnit = WeightUnit.KG,
         healthOn: Boolean = false,
         sessionId: Long = 6,
+        recoveryKnown: Boolean = true,
     ): Run {
         val score = WorkoutScore.compute(exs.map { WorkoutScore.Work(it.exerciseId, it.kind, it.done, it.last) }, planned, low, firstEver, afterBreak)
         val input = WorkoutDebriefMath.Input(
@@ -88,6 +90,7 @@ class WorkoutDebriefMathTest {
             report = report,
             unit = unit,
             healthOn = healthOn,
+            recoveryKnown = recoveryKnown,
         )
         return Run(WorkoutDebriefMath.compute(input), score)
     }
@@ -530,5 +533,19 @@ class WorkoutDebriefMathTest {
         assertEquals(listOf(Win.EffortMastery("push_up"), Win.AllSets(6)), r.wins)
         assertEquals(emptyList<Watch>(), r.watch)
         assertEquals(listOf(Next.Harder("push_up", "Diamond push-up"), Next.PlusRep("db_lunge", 11, 15f)), r.next)
+    }
+
+    @Test fun footnoteFollowsWhatTheAppKnowsAboutRecovery() {
+        val F = WorkoutDebriefMath.Footnote
+        // A watch and low recovery: the app eased off.
+        assertEquals(F.LOW_RECOVERY, run(listOf(same("a")), low = true, healthOn = true).result.note)
+        // A watch but no number for the day: judged on the numbers alone.
+        assertEquals(F.NUMBERS_ONLY, run(listOf(same("a")), healthOn = true, recoveryKnown = false).result.note)
+        // A watch and a normal day: nothing to add.
+        assertNull(run(listOf(same("a")), healthOn = true).result.note)
+        // No watch: recovery is never mentioned, apart from a hint on one workout in five.
+        assertNull(run(listOf(same("a")), sessionId = 6).result.note)
+        assertEquals(F.CONNECT_WATCH, run(listOf(same("a")), sessionId = 10).result.note)
+        assertFalse(run(listOf(same("a")), sessionId = 10).result.footnote)
     }
 }

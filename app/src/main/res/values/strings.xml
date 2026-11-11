@@ -1078,6 +1078,8 @@
     <string name="debrief_ask_coach">Ask the coach about this workout</string>
     <string name="debrief_same_rest">Everything else: same numbers.</string>
     <string name="debrief_footnote">The app eases off by itself on a low-recovery day.</string>
+    <string name="debrief_footnote_numbers">No recovery data for today, so this was judged on your numbers alone.</string>
+    <string name="debrief_footnote_connect">Judged on your numbers alone. Connect a watch to factor in recovery.</string>
     <string name="debrief_win_pr_weight">%1$s: new record, %2$s × %3$s</string>
     <string name="debrief_win_pr_reps">%1$s: new record, %2$s</string>
     <string name="debrief_win_pr_reps_weight">%1$s: new record, %2$s with %3$s</string>

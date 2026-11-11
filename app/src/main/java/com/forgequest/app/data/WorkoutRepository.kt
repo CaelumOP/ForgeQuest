@@ -432,6 +432,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             healthOn = snap.settings.healthEnabled && snap.settings.healthConnected,
             equipment = snap.settings.configuredEquipment,
             variations = variations(snap, report.stalledLifts),
+            recoveryKnown = readiness.any { it.epochDay == session.epochDay && it.recovery > 0 },
         )
     }
 

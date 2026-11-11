@@ -1191,6 +1191,8 @@
     <string name="debrief_ask_coach">اسأل المدرّب عن هذا التمرين</string>
     <string name="debrief_same_rest">بقية التمارين: الأرقام نفسها.</string>
     <string name="debrief_footnote">يخفّف التطبيق الحمل تلقائيًا في أيام التعافي المنخفض.</string>
+    <string name="debrief_footnote_numbers">لا توجد بيانات تعافٍ لهذا اليوم، فقُيّم التمرين بأرقامك فقط.</string>
+    <string name="debrief_footnote_connect">قُيّم التمرين بأرقامك فقط. اربط ساعتك لاحتساب التعافي.</string>
     <string name="debrief_win_pr_weight">%1$s: رقم قياسي جديد، %2$s × %3$s</string>
     <string name="debrief_win_pr_reps">%1$s: رقم قياسي جديد، %2$s</string>
     <string name="debrief_win_pr_reps_weight">%1$s: رقم قياسي جديد، %2$s بوزن %3$s</string>
