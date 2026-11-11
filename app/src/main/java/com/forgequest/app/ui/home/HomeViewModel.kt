@@ -35,6 +35,16 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
         val found = app.health.refresh()
         refreshWatch.resume(found, waiting = (app.health.state.value as? HealthState.Ready)?.day?.showsYesterday() == true)
     }
+    /** Remembers which wording of a readiness sentence was shown today, so the wordings take turns ([dailyVariant]). */
+    fun noteReadinessLine(kind: String, variant: Int) = viewModelScope.launch {
+        val today = com.forgequest.app.domain.Dates.today()
+        app.settings.update { s ->
+            // Checked again inside the update: two frames can ask before the first write lands.
+            if (!com.forgequest.app.domain.dailyVariant(kind, variant + 1, s.insightHistory, today).second) s
+            else s.copy(insightHistory = com.forgequest.app.domain.appendHistory(s.insightHistory, kind, variant, today))
+        }
+    }
+
     fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
 
     /** Catches badges a workout or meal earned but that were missed (they used to be checked against stale data). */

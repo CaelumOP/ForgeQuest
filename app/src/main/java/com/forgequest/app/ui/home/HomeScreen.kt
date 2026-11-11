@@ -61,6 +61,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -174,6 +175,14 @@ fun HomeScreen(nav: NavHostController) {
     val healthOn = !justLog && s.settings.healthEnabled && s.settings.healthConnected
     val readinessLoading = healthOn && health == HealthState.Loading
     val readinessInCard = readyDay != null || readinessLoading
+    // The sentence under the verdict, and which of its wordings: the same all day, a different one next time.
+    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext) }
+    val readyVariant = remember(readyLine, s.settings.insightHistory) {
+        readyLine?.let { com.forgequest.app.domain.dailyVariant(it.historyKind, it.variants, s.settings.insightHistory, Dates.today()) }
+    }
+    LaunchedEffect(readyLine, readyVariant) {
+        if (readyLine != null && readyVariant?.second == true) vm.noteReadinessLine(readyLine.historyKind, readyVariant.first)
+    }
     val todayCard: @Composable () -> Unit = {
         TodayCard(
             day = today,
@@ -185,7 +194,7 @@ fun HomeScreen(nav: NavHostController) {
             onCantTrain = { tagDay = Dates.today() },
             showCantTrain = !justLog,
             readiness = when {
-                readyDay != null -> ({ ReadinessRow(readyDay, todayFocus, note = refreshNote, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") }) })
+                readyDay != null -> ({ ReadinessRow(readyDay, todayFocus, note = refreshNote, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") }, line = readyLine ?: com.forgequest.app.domain.ReadinessLine.READY, variant = readyVariant?.first ?: 0) })
                 readinessLoading -> ({ ReadinessRowPlaceholder() })
                 else -> null
             },

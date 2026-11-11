@@ -525,6 +525,26 @@ val ScoreTier.labelRes: Int
         ScoreTier.LIGHT_DAY -> R.string.score_tier_light_day
     }
 
+/** The wording number [variant] of a readiness sentence (see [com.forgequest.app.domain.ReadinessLine]). */
+fun com.forgequest.app.domain.ReadinessLine.bodyRes(variant: Int): Int {
+    val all = when (this) {
+        com.forgequest.app.domain.ReadinessLine.PEAK -> intArrayOf(R.string.call_peak_b, R.string.call_peak_b2, R.string.call_peak_b3)
+        com.forgequest.app.domain.ReadinessLine.READY -> intArrayOf(R.string.call_ready_b, R.string.call_ready_b2, R.string.call_ready_b3)
+        com.forgequest.app.domain.ReadinessLine.STEADY -> intArrayOf(R.string.call_steady_b, R.string.call_steady_b2, R.string.call_steady_b3)
+        com.forgequest.app.domain.ReadinessLine.EASE_OFF -> intArrayOf(R.string.call_ease_b, R.string.call_ease_b2, R.string.call_ease_b3)
+        com.forgequest.app.domain.ReadinessLine.RECOVER -> intArrayOf(R.string.call_recover_b, R.string.call_recover_b2, R.string.call_recover_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_PEAK -> intArrayOf(R.string.call_legs_peak_b, R.string.call_legs_peak_b2, R.string.call_legs_peak_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_STEADY -> intArrayOf(R.string.call_legs_steady_b, R.string.call_legs_steady_b2, R.string.call_legs_steady_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_EASE -> intArrayOf(R.string.call_legs_ease_b, R.string.call_legs_ease_b2, R.string.call_legs_ease_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_RECOVER -> intArrayOf(R.string.call_legs_recover_b, R.string.call_legs_recover_b2, R.string.call_legs_recover_b3)
+        com.forgequest.app.domain.ReadinessLine.UPPER_EASE -> intArrayOf(R.string.call_upper_ease_b, R.string.call_upper_ease_b2, R.string.call_upper_ease_b3)
+        com.forgequest.app.domain.ReadinessLine.UPPER_RECOVER -> intArrayOf(R.string.call_upper_recover_b, R.string.call_upper_recover_b2, R.string.call_upper_recover_b3)
+        com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_NIGHTS -> intArrayOf(R.string.call_steady_short_nights)
+        com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP -> intArrayOf(R.string.call_ease_short_sleep)
+    }
+    return all[variant.coerceIn(0, all.lastIndex)]
+}
+
 /** The readiness sentence for a plan-aware [DayAdvice]. */
 @get:StringRes
 val DayAdvice.bodyRes: Int

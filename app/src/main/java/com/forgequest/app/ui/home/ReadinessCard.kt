@@ -174,16 +174,21 @@ fun ReadinessRowPlaceholder() {
 
 /** One slim row at the top of Today's workout card: recovery ring and verdict with the day's advice, and the "I feel great" bolt. */
 @Composable
-fun ReadinessRow(d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit) {
+fun ReadinessRow(
+    d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit,
+    /** Which sentence to show and which of its wordings; Home picks the wording so it stays the same all day. */
+    line: com.forgequest.app.domain.ReadinessLine = com.forgequest.app.domain.readinessLine(d.call, focus, d.sleepContext),
+    variant: Int = 0,
+) {
     val c = Fit.colors
     val recColor = recoveryTint(d.recovery)
-    val (title, body) = when (d.call) {
+    val (title, _) = when (d.call) {
         DayCall.PEAK -> R.string.call_peak_t to R.string.call_peak_b
         DayCall.READY -> R.string.call_ready_t to R.string.call_ready_b
         DayCall.STEADY -> R.string.call_steady_t to R.string.call_steady_b
         DayCall.EASE_OFF -> R.string.call_ease_t to R.string.call_ease_b
         DayCall.RECOVER -> R.string.call_recover_t to R.string.call_recover_b
-    }.let { (t, b) -> t to (Readiness.adviceFor(d.call, focus)?.bodyRes ?: b) }
+    }
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.weight(1f).clip(ForgeShape.Sm)
@@ -213,7 +218,12 @@ fun ReadinessRow(d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFelt
                     }
                     Text(stringResource(line), style = MaterialTheme.typography.bodySmall, color = c.gold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 } else {
-                    Text(stringResource(body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    // The short-sleep sentence names how long the person slept; the others take no number.
+                    val slept = d.sleepContext?.lastNightMin ?: 0
+                    val text = if (line == com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP) {
+                        stringResource(line.bodyRes(variant), stringResource(R.string.dur_hm, slept / 60, slept % 60))
+                    } else stringResource(line.bodyRes(variant))
+                    Text(text, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
