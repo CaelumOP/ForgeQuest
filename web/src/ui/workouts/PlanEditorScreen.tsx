@@ -12,7 +12,7 @@ import { adaptPlanToEquipment, EQUIPMENT, type Equipment } from '../../domain/ex
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 import { fromKg, loadStep, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, Card, Dialog, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
+import { Button, Card, CoachMark, Dialog, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
 import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
@@ -96,7 +96,9 @@ export function PlanEditorScreen({ param }: { param?: string }) {
         </Card>
       )}
 
-      <Button variant="tonal" block icon={<SwapIcon />} onClick={() => setPanel('change')}>{t('plan_change')}</Button>
+      <CoachMark id="coach_plan" title={t('coach_plan_t')} body={t('coach_plan_b')} below>
+        <Button variant="tonal" block icon={<SwapIcon />} onClick={() => setPanel('change')}>{t('plan_change')}</Button>
+      </CoachMark>
 
       <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
         {[1, 2, 3, 4, 5, 6, 7].map((dow) => (

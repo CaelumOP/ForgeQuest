@@ -9,7 +9,7 @@ import { weeklyCounts } from '../../domain/trends'
 import { bodyStep, fromKg, toKg, unitLabel, weightNumber } from '../../domain/units'
 import { BADGES } from '../../domain/badges'
 import { gramsLeft } from '../../domain/nutrition'
-import { Button, Card, Chip, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
+import { Button, Card, Chip, CoachMark, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
@@ -296,10 +296,14 @@ function TodayCard(p: {
             <span class="home-s home-sub2" style={{ display: 'block' }}>{sub}</span>
           </span>
         </a>
-        {hasOpen ? <Button onClick={p.onStart}>{t('action_resume')}</Button>
-          : done ? <span style={{ color: 'var(--teal)' }}><CheckCircleIcon /></span>
-          : noPlan ? <Button onClick={() => go('#/workouts')}>{t('action_set_up')}</Button>
-          : !isRest ? <Button onClick={p.onStart}>{t('action_start')}</Button> : null}
+        {done && !hasOpen ? <span style={{ color: 'var(--teal)' }}><CheckCircleIcon /></span>
+          : (hasOpen || noPlan || !isRest) ? (
+            <CoachMark id="coach_home" title={t('coach_home_t')} body={t('coach_home_b')} enabled={hasOpen || (!noPlan && !isRest)} below>
+              {hasOpen ? <Button onClick={p.onStart}>{t('action_resume')}</Button>
+                : noPlan ? <Button onClick={() => go('#/workouts')}>{t('action_set_up')}</Button>
+                : <Button onClick={p.onStart}>{t('action_start')}</Button>}
+            </CoachMark>
+          ) : null}
       </div>
       {p.onCant && !isRest && !hasOpen && !done && !excused && (
         <Button variant="text" class="home-cant" onClick={p.onCant}>{t('today_cant_train')}</Button>

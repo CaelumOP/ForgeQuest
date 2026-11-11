@@ -193,10 +193,23 @@ button.kit-stepper-val { overflow: hidden; }
   .kit-morph::before { animation: none; border-radius: 28% 72% 30% 70% / 70% 30% 72% 28%; }
   .kit-spinner { animation-duration: 2s !important; animation: kit-spin 2s linear infinite !important; }
   /* Nothing slides or rises: sheets, dialogs, toasts, pushed screens and new rows just fade in, briefly. */
-  .kit-sheet, .kit-dialog, .kit-toast, .kit-backdrop, .scroll-push, .food-row, .kit-swipe, .wk-item {
+  .kit-sheet, .kit-dialog, .kit-toast, .kit-backdrop, .kit-coach, .scroll-push, .food-row, .kit-swipe, .wk-item {
     animation: kit-fade var(--forge-reduced-fade) linear !important;
   }
 }
+
+/* First-run coach mark (CoachMark.tsx): small persistent tip card next to the wrapped control. */
+.kit-coach-anchor { display: contents; }
+.kit-coach {
+  position: fixed; z-index: 45; inline-size: max-content; max-inline-size: min(320px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 4px; padding-block: 16px 8px; padding-inline: 20px;
+  border-radius: var(--r-md); background: var(--card-high); color: var(--text); border: 1px solid var(--teal); box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+  text-align: start; animation: kit-fade var(--dur-short) var(--ease-enter);
+}
+.kit-coach-title { font-size: 16px; line-height: 22px; font-weight: 600; color: var(--text); }
+.kit-coach-body { margin: 0; font-size: 14px; line-height: 20px; color: var(--text-2); }
+.kit-coach-actions { display: flex; justify-content: flex-end; align-items: center; gap: 4px; flex-wrap: wrap; margin-block-start: 4px; margin-inline-end: -12px; }
+.kit-coach-skip.kit-btn-text { color: var(--text-2); }
 
 /* The sheet and dialog sit on --card-high, so tonal controls inside use --card to stay visible. */
 .kit-sheet .kit-chip:not(.kit-chip-on), .kit-sheet .kit-iconbtn-tonal, .kit-sheet .kit-btn-tonal,

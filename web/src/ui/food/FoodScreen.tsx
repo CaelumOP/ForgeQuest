@@ -9,7 +9,7 @@ import { scaledKcal } from '../../domain/nutrition'
 import { evaluateBadges, useProgress } from '../../data/progress'
 import { loadSettings, useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
-import { Button, Card, Chip, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast, useTweened } from '../kit'
+import { Button, Card, Chip, CoachMark, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast, useTweened } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { PartsSheet, PlaceField, partsCount } from './FoodParts'
@@ -333,15 +333,17 @@ export function FoodScreen(_: { param?: string }) {
       <DayPicker day={day} today={today} onShift={shift} onToday={() => { setDay(today); setFollowToday(true) }} />
       <Totals meals={meals} kcalGoal={s.kcalGoal} proteinGoal={s.proteinGoal} carbsGoal={s.carbsGoal} trackCarbs={s.trackCarbs} />
       {isToday && <WeekCard proteinGoal={s.proteinGoal} trackCarbs={s.trackCarbs} />}
-      <div class="food-search">
-        <SearchIcon size={20} />
-        <input
-          type="search" class="food-search-input" value={query} placeholder={t('food_search_hint')} aria-label={t('food_search_hint')} enterkeyhint="search"
-          onInput={(e) => setQuery((e.target as HTMLInputElement).value.slice(0, 48))}
-          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-        />
-        {query && <IconButton label={t('food_search_clear')} onClick={() => setQuery('')}><CloseIcon size={18} /></IconButton>}
-      </div>
+      <CoachMark id="coach_food" title={t('coach_food_t')} body={t(s.apiKey.trim() ? 'coach_food_b' : 'coach_food_b_noai')} below>
+        <div class="food-search">
+          <SearchIcon size={20} />
+          <input
+            type="search" class="food-search-input" value={query} placeholder={t('food_search_hint')} aria-label={t('food_search_hint')} enterkeyhint="search"
+            onInput={(e) => setQuery((e.target as HTMLInputElement).value.slice(0, 48))}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          />
+          {query && <IconButton label={t('food_search_clear')} onClick={() => setQuery('')}><CloseIcon size={18} /></IconButton>}
+        </div>
+      </CoachMark>
       {!searching && recentPlaces.length > 0 && (
         <div class="food-places">
           <span class="food-note">{t('food_restaurants')}</span>
