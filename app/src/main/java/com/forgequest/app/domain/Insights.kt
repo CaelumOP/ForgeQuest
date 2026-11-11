@@ -44,19 +44,25 @@ enum class InsightKind(val rank: Int, val cooldownDays: Int, val plural: Boolean
     ANNIVERSARY(90, 28, plural = true),
     NEAR_RECORD_WEIGHT(85, 5),
     NEAR_RECORD_REPS(84, 5),
+    BIGGEST_SESSION(83, 7),
     CROSS_HOURS(82, 3, plural = true),
     CROSS_KG(81, 3),
     CROSS_SETS(80, 3, plural = true),
     CROSS_REPS(79, 3, plural = true),
+    EXERCISE_TIMES(78, 3),
     BACK_AFTER_GAP(75, 14, plural = true),
     VS_FOUR_WEEKS(70, 14),
     EASY_STREAK(65, 14),
     HARD_TWICE(64, 14),
     SAME_WEEKDAY(60, 21, plural = true),
+    MONTH_UP(58, 14),
+    STREAK_BEST(57, 7),
+    WEEK_ONE_LEFT(56, 5),
     STREAK_NEXT(55, 10, plural = true),
     PACE_FASTER(50, 10, plural = true),
     MUSCLE_NEGLECTED(45, 14, plural = true),
     MUSCLE_WEEK(40, 7, plural = true),
+    MUSCLE_TOP(35, 14),
     AVG_REST(30, 10),
     FORM_TIP(20, 21),
 }
@@ -164,6 +170,7 @@ private val HOUR_MARKS = listOf(10L, 25, 50, 100, 250, 500, 1000)
 private val KG_MARKS = listOf(5000L, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000)
 private val ANNIVERSARY_MONTHS = listOf(1L, 6, 12, 24, 36, 48, 60)
 private val STREAK_BADGE_WEEKS = listOf(4, 12, 52)
+private val TIMES_MARKS = listOf(10, 25, 50, 100, 150, 200, 300)
 private val builtInIds: Set<String> by lazy { ExerciseCatalog.all.mapTo(HashSet()) { it.id } }
 
 private class InsightContext(val input: InsightInput, val today: Long) {
@@ -210,9 +217,63 @@ private class InsightContext(val input: InsightInput, val today: Long) {
         InsightKind.MUSCLE_WEEK -> muscleWeek()
         InsightKind.AVG_REST -> averageRest()
         InsightKind.FORM_TIP -> formTip()
+        InsightKind.BIGGEST_SESSION -> biggestSession()
+        InsightKind.EXERCISE_TIMES -> exerciseTimes()
+        InsightKind.MONTH_UP -> monthUp()
+        InsightKind.STREAK_BEST -> streakBest()
+        InsightKind.WEEK_ONE_LEFT -> weekOneLeft()
+        InsightKind.MUSCLE_TOP -> muscleTop()
     }
 
     private fun prior(id: String) = setsOf(before, id)
+
+    private fun volumeOf(s: SessionEntity) = WorkoutDebriefMath.volume(workBySession[s.id].orEmpty())
+
+    /** The most kg lifted in one workout, after at least five earlier workouts that lifted something. */
+    private fun biggestSession(): List<Slot>? {
+        val f = focus ?: return null
+        val earlier = before.map { volumeOf(it) }.filter { it > 0 }
+        val now = volumeOf(f)
+        return if (earlier.size >= 5 && now > earlier.max()) listOf(Slot.Kg(now.toFloat())) else null
+    }
+
+    /** The focus workout was a round-number time for one of its exercises (the biggest such number). */
+    private fun exerciseTimes(): List<Slot>? = focusExercises
+        .mapNotNull { (id, _) -> (before.count { s -> workBySession[s.id].orEmpty().any { it.exerciseId == id } } + 1).takeIf { it in TIMES_MARKS }?.let { id to it } }
+        .maxWithOrNull(compareBy({ it.second }, { it.first }))
+        ?.let { listOf(Slot.Exercise(it.first), Slot.Count(it.second)) }
+
+    /** Workouts in the last 30 days against the 30 before: at least two more, from a base of three. */
+    private fun monthUp(): List<Slot>? {
+        val now = trained.count { today - it.epochDay in 0..29 }
+        val was = trained.count { today - it.epochDay in 30..59 }
+        return if (was >= 3 && now >= was + 2) listOf(Slot.Count(now), Slot.Count(was)) else null
+    }
+
+    /** The streak is as long as it has ever been, at three weeks or more. */
+    private fun streakBest(): List<Slot>? {
+        val s = input.streak ?: return null
+        return if (s.weeks >= 3 && s.weeks >= s.best) listOf(Slot.Count(s.weeks)) else null
+    }
+
+    /** One workout short of this week's target. */
+    private fun weekOneLeft(): List<Slot>? {
+        val s = input.streak ?: return null
+        return if (s.targetThisWeek >= 2 && s.doneThisWeek == s.targetThisWeek - 1) listOf(Slot.Count(s.doneThisWeek), Slot.Count(s.targetThisWeek)) else null
+    }
+
+    /** The muscle with the most working sets in the last 28 days, when there are at least 30 sets to judge from. */
+    private fun muscleTop(): List<Slot>? {
+        val counts = HashMap<Muscle, Int>()
+        var total = 0
+        for (s in work) {
+            if (today - (dayOf[s.sessionId] ?: continue) !in 0..27) continue
+            total++
+            for (m in primary(s.exerciseId)) counts[m] = (counts[m] ?: 0) + 1
+        }
+        if (total < 30) return null
+        return counts.entries.maxWithOrNull(compareBy({ it.value }, { -it.key.ordinal }))?.let { listOf(Slot.Group(it.key), Slot.Count(it.value)) }
+    }
 
     private fun firstRoundReps(): List<Slot>? = focusExercises
         .filter { (id, _) -> kindOf(id) == ExerciseKind.REPS }

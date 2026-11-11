@@ -146,7 +146,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
             if (custom.isNotEmpty()) {
                 item { Text(stringResource(R.string.lib_yours), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) }
                 items(custom, key = { it.id }) { ex -> Box(itemMotion()) { LibraryRow(ex, onClick = { editing = ex }) } }
-            } else if (query.isBlank()) {
+            } else if (query.isBlank() && muscle == null) {
                 item {
                     Text(
                         stringResource(R.string.lib_none_custom),

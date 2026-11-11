@@ -175,8 +175,19 @@ fun HomeScreen(nav: NavHostController) {
     val healthOn = !justLog && s.settings.healthEnabled && s.settings.healthConnected
     val readinessLoading = healthOn && health == HealthState.Loading
     val readinessInCard = readyDay != null || readinessLoading
+    // A finished workout or a rest (or excused) day changes what the sentence may ask for.
+    val todayState = when {
+        s.workoutDoneToday -> com.forgequest.app.domain.TodayState.DONE
+        s.excusedToday != null || (s.plan != null && (today == null || today.day.isRest)) -> com.forgequest.app.domain.TodayState.REST
+        else -> com.forgequest.app.domain.TodayState.TRAIN
+    }
+    // A rest day says where the week stands and what comes next, instead of a fixed line.
+    val nextTraining = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
+        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() }?.let { dow to it.day.title } }
+    val restLine = nextTraining?.takeIf { s.streak.targetThisWeek > 0 && !justLog }
+        ?.let { (dow, title) -> stringResource(R.string.today_rest_week, s.streak.doneThisWeek, s.streak.targetThisWeek, title, Dates.dayName(dow)) }
     // The sentence under the verdict, and which of its wordings: the same all day, a different one next time.
-    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext, com.forgequest.app.domain.HeartContext.from(it.hrv, it.hrvUsual, it.hrvTrend, it.rhr, it.rhrUsual, it.rhrTrend)) }
+    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext, com.forgequest.app.domain.HeartContext.from(it.hrv, it.hrvUsual, it.hrvTrend, it.rhr, it.rhrUsual, it.rhrTrend), todayState) }
     val readyVariant = remember(readyLine, s.settings.insightHistory) {
         readyLine?.let { com.forgequest.app.domain.dailyVariant(it.historyKind, it.variants, s.settings.insightHistory, Dates.today()) }
     }
@@ -191,6 +202,7 @@ fun HomeScreen(nav: NavHostController) {
             hasOpenSession = open != null,
             doneToday = s.workoutDoneToday,
             doneLine = doneInsight,
+            restLine = restLine,
             excused = s.excusedToday,
             onCantTrain = { tagDay = Dates.today() },
             showCantTrain = !justLog,
@@ -717,6 +729,7 @@ private fun TodayCard(
     hasOpenSession: Boolean,
     doneToday: Boolean,
     doneLine: String?,
+    restLine: String? = null,
     excused: DayTag?,
     onCantTrain: () -> Unit,
     showCantTrain: Boolean,
@@ -779,7 +792,7 @@ private fun TodayCard(
                         excused != null -> stringResource(R.string.today_excused, stringResource(excused.labelRes))
                         noActivePlan -> stringResource(R.string.pb_entry_info)
                         noPlan -> stringResource(R.string.today_no_plan_hint)
-                        isRest -> day?.day?.note?.ifBlank { null } ?: stringResource(R.string.today_rest_hint)
+                        isRest -> day?.day?.note?.ifBlank { null } ?: restLine ?: stringResource(R.string.today_rest_hint)
                         else -> pluralStringResource(R.plurals.today_exercises, exerciseNames.size, exerciseNames.size, exerciseNames.take(3).joinToString(stringResource(R.string.list_separator)))
                     },
                     style = MaterialTheme.typography.bodySmall,

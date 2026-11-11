@@ -202,6 +202,53 @@ class InsightsTest {
         quiet(InsightKind.MUSCLE_NEGLECTED, input(listOf(recent, b), listOf(set(recent, "bench", 5, 60f), set(b, "pull_up", 5)), targets = targets))
     }
 
+    private fun slotsOf(kind: InsightKind, i: InsightInput) = pick(i, "", today, 99).first { it.kind == kind }.slots
+    private fun streakOf(weeks: Int, best: Int, done: Int, target: Int) = WeeklyStreak(weeks, best, done, target, emptyList())
+
+    @Test fun biggestSessionNeedsFiveEarlierWorkoutsAndMoreKg() {
+        val old = (1..5).map { session(today - 10L * it) }
+        val f = session(today)
+        val sets = old.map { set(it, "bench", 5, 60f) } + set(f, "bench", 5, 70f)
+        assertEquals(listOf(Slot.Kg(350f)), slotsOf(InsightKind.BIGGEST_SESSION, input(old + f, sets)))
+        quiet(InsightKind.BIGGEST_SESSION, input(old + f, old.map { set(it, "bench", 5, 60f) } + set(f, "bench", 5, 60f)))
+        quiet(InsightKind.BIGGEST_SESSION, input(old.take(4) + f, sets))
+    }
+
+    @Test fun exerciseTimesOnARoundNumber() {
+        val all = (9 downTo 0).map { session(today - it) }
+        val sets = all.map { set(it, "bench", 5, 60f) }
+        assertEquals(listOf(Slot.Exercise("bench"), Slot.Count(10)), slotsOf(InsightKind.EXERCISE_TIMES, input(all, sets)))
+        quiet(InsightKind.EXERCISE_TIMES, input(all.drop(1), sets))
+    }
+
+    @Test fun monthUpNeedsTwoMoreThanTheThirtyDaysBefore() {
+        val was = (0 until 3).map { session(today - 35 - it) }
+        val now = (0 until 5).map { session(today - 2L * it) }
+        val sets = (was + now).map { set(it, "bench", 5, 60f) }
+        assertEquals(listOf(Slot.Count(5), Slot.Count(3)), slotsOf(InsightKind.MONTH_UP, input(was + now, sets)))
+        quiet(InsightKind.MONTH_UP, input(was + now.take(4), sets))
+        quiet(InsightKind.MONTH_UP, input(was.take(2) + now, sets))
+    }
+
+    @Test fun streakBestAndOneWorkoutLeft() {
+        val s = session(today)
+        val sets = listOf(set(s, "bench", 5, 60f))
+        assertEquals(listOf(Slot.Count(4)), slotsOf(InsightKind.STREAK_BEST, input(listOf(s), sets, streak = streakOf(4, 4, 1, 3))))
+        quiet(InsightKind.STREAK_BEST, input(listOf(s), sets, streak = streakOf(4, 6, 1, 3)))
+        quiet(InsightKind.STREAK_BEST, input(listOf(s), sets, streak = streakOf(2, 2, 1, 3)))
+        assertEquals(listOf(Slot.Count(2), Slot.Count(3)), slotsOf(InsightKind.WEEK_ONE_LEFT, input(listOf(s), sets, streak = streakOf(1, 5, 2, 3))))
+        quiet(InsightKind.WEEK_ONE_LEFT, input(listOf(s), sets, streak = streakOf(1, 5, 1, 3)))
+        quiet(InsightKind.WEEK_ONE_LEFT, input(listOf(s), sets, streak = streakOf(1, 5, 0, 1)))
+        quiet(InsightKind.WEEK_ONE_LEFT, input(listOf(s), sets))
+    }
+
+    @Test fun muscleTopNeedsThirtySets() {
+        val s = session(today)
+        val sets = (0 until 20).map { set(s, "bench", 5, 60f, index = it) } + (0 until 10).map { set(s, "pull_up", 5, index = 20 + it) }
+        assertEquals(listOf(Slot.Group(Muscle.CHEST), Slot.Count(20)), slotsOf(InsightKind.MUSCLE_TOP, input(listOf(s), sets)))
+        quiet(InsightKind.MUSCLE_TOP, input(listOf(s), sets.take(29)))
+    }
+
     @Test fun muscleWeek() {
         val friday = today + 2
         val s = session(friday)

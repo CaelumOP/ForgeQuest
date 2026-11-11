@@ -218,18 +218,17 @@ fun ReadinessRow(
                     }
                     Text(stringResource(line), style = MaterialTheme.typography.bodySmall, color = c.gold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 } else {
-                    // The short-sleep sentence names how long the person slept; the others take no number.
-                    val slept = d.sleepContext?.lastNightMin ?: 0
-                    val text = if (line == com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP || line == com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_SLEEP) {
-                        stringResource(line.bodyRes(variant), stringResource(R.string.dur_hm, slept / 60, slept % 60))
-                    } else if (line.showsHrv) {
+                    // Each sentence says which number it carries (LineArg); the card fills in the person's own.
+                    val body = line.bodyRes(variant)
+                    val text = when (line.arg) {
+                        com.forgequest.app.domain.LineArg.SLEPT -> (d.sleepContext?.lastNightMin ?: 0).let { stringResource(body, stringResource(R.string.dur_hm, it / 60, it % 60)) }
+                        com.forgequest.app.domain.LineArg.SLEEP_NEED -> stringResource(body, stringResource(R.string.dur_hm, d.sleepNeedTonight / 60, d.sleepNeedTonight % 60))
+                        com.forgequest.app.domain.LineArg.SHORT_RUN -> stringResource(body, d.sleepContext?.shortNightsInRow ?: 0)
                         // The reason lines carry the person's own number and their usual, as the Recovery page shows them.
-                        val ms = stringResource(R.string.unit_ms)
-                        stringResource(line.bodyRes(variant), "${d.hrv?.toInt() ?: 0} $ms", "${d.hrvUsual?.toInt() ?: 0} $ms")
-                    } else if (line.showsRhr) {
-                        val bpm = stringResource(R.string.unit_bpm)
-                        stringResource(line.bodyRes(variant), "${d.rhr?.toInt() ?: 0} $bpm", "${d.rhrUsual?.toInt() ?: 0} $bpm")
-                    } else stringResource(line.bodyRes(variant))
+                        com.forgequest.app.domain.LineArg.HRV -> stringResource(R.string.unit_ms).let { ms -> stringResource(body, "${d.hrv?.toInt() ?: 0} $ms", "${d.hrvUsual?.toInt() ?: 0} $ms") }
+                        com.forgequest.app.domain.LineArg.RHR -> stringResource(R.string.unit_bpm).let { bpm -> stringResource(body, "${d.rhr?.toInt() ?: 0} $bpm", "${d.rhrUsual?.toInt() ?: 0} $bpm") }
+                        com.forgequest.app.domain.LineArg.NONE -> stringResource(body)
+                    }
                     Text(text, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
