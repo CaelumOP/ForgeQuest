@@ -39,6 +39,25 @@ data class SleepContext(
 }
 
 /**
+ * What the heart numbers say about today, for a readiness sentence that can give its reason with the person's own
+ * numbers ("HRV 24 ms, under your usual 31 ms"). A flag is only set when the trend the score read and the two whole
+ * numbers the sentence would show agree: HRV in the score is blended with the week, so last night's number alone can
+ * sit on the other side of the usual, and the sentence must never say something the numbers beside it contradict.
+ */
+data class HeartContext(val hrvLow: Boolean, val hrvHigh: Boolean, val rhrHigh: Boolean) {
+    companion object {
+        fun from(hrv: Double?, hrvUsual: Double?, hrvTrend: Trend?, rhr: Double?, rhrUsual: Double?, rhrTrend: Trend?): HeartContext {
+            val h = hrv?.toInt(); val hu = hrvUsual?.toInt(); val r = rhr?.toInt(); val ru = rhrUsual?.toInt()
+            return HeartContext(
+                hrvLow = hrvTrend == Trend.WORSE && h != null && hu != null && h < hu,
+                hrvHigh = hrvTrend == Trend.BETTER && h != null && hu != null && h > hu,
+                rhrHigh = rhrTrend == Trend.WORSE && r != null && ru != null && r > ru,
+            )
+        }
+    }
+}
+
+/**
  * The sentence under the readiness verdict on Home. Each has [variants] wordings that take turns, so the same advice does
  * not read the same every morning. The text lives in the UI layer (`ReadinessLine.bodyRes` in ui/EnumLabels.kt).
  */
@@ -50,7 +69,14 @@ enum class ReadinessLine(val variants: Int) {
     /** An ease-off day after a short night: names how long the person slept. */
     EASE_SHORT_SLEEP(1),
     /** A recover day after a short night: names how long the person slept and asks for rest. */
-    RECOVER_SHORT_SLEEP(1);
+    RECOVER_SHORT_SLEEP(1),
+    /** The verdict with its reason: HRV (the heaviest signal) or resting heart rate against the person's usual. */
+    EASE_HRV(2), RECOVER_HRV(2), EASE_RHR(2), RECOVER_RHR(2), PEAK_HRV(2);
+
+    /** True for the lines that show HRV and its usual; [showsRhr] for resting heart rate. */
+    val showsHrv: Boolean get() = this == EASE_HRV || this == RECOVER_HRV || this == PEAK_HRV
+    val showsRhr: Boolean get() = this == EASE_RHR || this == RECOVER_RHR
+
 
     /** The key this line is stored under in the shown-lately history. */
     val historyKind: String get() = "call_$name"
@@ -58,13 +84,23 @@ enum class ReadinessLine(val variants: Int) {
 
 /**
  * Which sentence fits today. Sleep comes first when it explains the verdict, because it is the part the person can act on
- * tonight; then the plan-aware advice for a leg or upper-body day ([Readiness.adviceFor]); then the plain one for [call].
+ * tonight; then the heart number behind a low or a peak day ([HeartContext], HRV before resting heart rate, the order
+ * of their weights in the score), so "recovery is low" comes with its reason; then the plan-aware advice for a leg or
+ * upper-body day ([Readiness.adviceFor]); then the plain one for [call]. A peak leg day keeps its leg sentence.
  */
-fun readinessLine(call: DayCall, focus: TodayFocus?, sleep: SleepContext?): ReadinessLine {
+fun readinessLine(call: DayCall, focus: TodayFocus?, sleep: SleepContext?, heart: HeartContext? = null): ReadinessLine {
     if (sleep != null) {
         if (call == DayCall.STEADY && sleep.shortNightsInRow >= 2) return ReadinessLine.STEADY_SHORT_NIGHTS
         if (call == DayCall.RECOVER && (sleep.lastNightMin ?: Int.MAX_VALUE) < SleepContext.SHORT_NIGHT_MIN) return ReadinessLine.RECOVER_SHORT_SLEEP
         if (call == DayCall.EASE_OFF && (sleep.lastNightMin ?: Int.MAX_VALUE) < SleepContext.SHORT_NIGHT_MIN) return ReadinessLine.EASE_SHORT_SLEEP
+    }
+    if (heart != null) {
+        when (call) {
+            DayCall.EASE_OFF -> if (heart.hrvLow) return ReadinessLine.EASE_HRV else if (heart.rhrHigh) return ReadinessLine.EASE_RHR
+            DayCall.RECOVER -> if (heart.hrvLow) return ReadinessLine.RECOVER_HRV else if (heart.rhrHigh) return ReadinessLine.RECOVER_RHR
+            DayCall.PEAK -> if (heart.hrvHigh && focus != TodayFocus.LEGS) return ReadinessLine.PEAK_HRV
+            else -> Unit
+        }
     }
     return when (Readiness.adviceFor(call, focus)) {
         DayAdvice.LEGS_PEAK -> ReadinessLine.LEGS_PEAK

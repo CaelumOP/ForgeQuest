@@ -542,6 +542,11 @@ fun com.forgequest.app.domain.ReadinessLine.bodyRes(variant: Int): Int {
         com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_NIGHTS -> intArrayOf(R.string.call_steady_short_nights)
         com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP -> intArrayOf(R.string.call_ease_short_sleep)
         com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_SLEEP -> intArrayOf(R.string.call_recover_short_sleep)
+        com.forgequest.app.domain.ReadinessLine.EASE_HRV -> intArrayOf(R.string.call_ease_hrv, R.string.call_ease_hrv2)
+        com.forgequest.app.domain.ReadinessLine.RECOVER_HRV -> intArrayOf(R.string.call_recover_hrv, R.string.call_recover_hrv2)
+        com.forgequest.app.domain.ReadinessLine.EASE_RHR -> intArrayOf(R.string.call_ease_rhr, R.string.call_ease_rhr2)
+        com.forgequest.app.domain.ReadinessLine.RECOVER_RHR -> intArrayOf(R.string.call_recover_rhr, R.string.call_recover_rhr2)
+        com.forgequest.app.domain.ReadinessLine.PEAK_HRV -> intArrayOf(R.string.call_peak_hrv, R.string.call_peak_hrv2)
     }
     return all[variant.coerceIn(0, all.lastIndex)]
 }

@@ -1047,6 +1047,16 @@
     <string name="call_steady_short_nights">ليلتان قصيرتان متتاليتان. أدِّ التمرين وتوقّف قبل المجموعة الأخيرة.</string>
     <string name="call_ease_short_sleep">نمت %1$s. التمارين نفسها بوزن أخف.</string>
     <string name="call_recover_short_sleep">نمت %1$s. اجعل اليوم يوم راحة؛ يكفيك مشي خفيف أو إطالة.</string>
+    <string name="call_ease_hrv">تقلّب نبض القلب %1$s، أقل من معتادك %2$s. التمارين نفسها بوزن أخف.</string>
+    <string name="call_ease_hrv2">انخفض تقلّب نبض قلبك: %1$s مقابل معتادك %2$s. أنقص مجموعة من كل تمرين.</string>
+    <string name="call_recover_hrv">تقلّب نبض القلب %1$s، أقل من معتادك %2$s. استرح اليوم: مشي أو إطالة.</string>
+    <string name="call_recover_hrv2">انخفض تقلّب نبض قلبك: %1$s مقابل معتادك %2$s. تجنّب الجهد الشديد اليوم.</string>
+    <string name="call_ease_rhr">نبض الراحة %1$s، أعلى من معتادك %2$s. خفّف تمرينك اليوم.</string>
+    <string name="call_ease_rhr2">ارتفع نبض راحتك: %1$s مقابل معتادك %2$s. أنقص مجموعة من كل تمرين اليوم.</string>
+    <string name="call_recover_rhr">نبض الراحة %1$s، أعلى من معتادك %2$s. استرح اليوم ونم مبكرًا.</string>
+    <string name="call_recover_rhr2">ارتفع نبض راحتك: %1$s مقابل معتادك %2$s. يكفيك المشي اليوم.</string>
+    <string name="call_peak_hrv">تقلّب نبض القلب %1$s، أعلى من معتادك %2$s. يوم مناسب لتحطيم رقمك القياسي.</string>
+    <string name="call_peak_hrv2">ارتفع تقلّب نبض قلبك: %1$s مقابل معتادك %2$s. اضغط في المجموعات الثقيلة.</string>
     <string name="ready_no_data">لا توجد بيانات Fitbit لليلة الماضية بعد. ارتدِه عند النوم ليظهر تعافيك هنا صباحًا.</string>
     <string name="ready_felt_great">أشعر بنشاط كبير اليوم</string>
     <string name="ready_usual">المعتاد %1$s</string>

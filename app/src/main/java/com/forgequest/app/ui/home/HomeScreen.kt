@@ -176,7 +176,7 @@ fun HomeScreen(nav: NavHostController) {
     val readinessLoading = healthOn && health == HealthState.Loading
     val readinessInCard = readyDay != null || readinessLoading
     // The sentence under the verdict, and which of its wordings: the same all day, a different one next time.
-    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext) }
+    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext, com.forgequest.app.domain.HeartContext.from(it.hrv, it.hrvUsual, it.hrvTrend, it.rhr, it.rhrUsual, it.rhrTrend)) }
     val readyVariant = remember(readyLine, s.settings.insightHistory) {
         readyLine?.let { com.forgequest.app.domain.dailyVariant(it.historyKind, it.variants, s.settings.insightHistory, Dates.today()) }
     }

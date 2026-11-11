@@ -934,6 +934,16 @@
     <string name="call_steady_short_nights">Two short nights in a row. Do the work, stop one set early.</string>
     <string name="call_ease_short_sleep">You slept %1$s. Same exercises, lighter weight.</string>
     <string name="call_recover_short_sleep">You slept %1$s. Make today a rest day: a walk or light stretching is enough.</string>
+    <string name="call_ease_hrv">HRV %1$s, under your usual %2$s. Same workout, lighter weights.</string>
+    <string name="call_ease_hrv2">Your HRV is down: %1$s against a usual %2$s. Drop a set from each exercise.</string>
+    <string name="call_recover_hrv">HRV %1$s, under your usual %2$s. Rest today: a walk or stretching.</string>
+    <string name="call_recover_hrv2">Your HRV is down: %1$s against a usual %2$s. Skip the hard work today.</string>
+    <string name="call_ease_rhr">Resting heart rate %1$s, above your usual %2$s. Go lighter today.</string>
+    <string name="call_ease_rhr2">Your resting heart rate is up: %1$s against a usual %2$s. One set fewer today.</string>
+    <string name="call_recover_rhr">Resting heart rate %1$s, above your usual %2$s. Rest today and sleep early.</string>
+    <string name="call_recover_rhr2">Your resting heart rate is up: %1$s against a usual %2$s. A walk is enough today.</string>
+    <string name="call_peak_hrv">HRV %1$s, above your usual %2$s. A good day to chase a record.</string>
+    <string name="call_peak_hrv2">Your HRV is up: %1$s against a usual %2$s. Push the heavy sets.</string>
     <string name="ready_no_data">No Fitbit data for last night yet. Wear it to bed and your recovery shows up here in the morning.</string>
     <string name="ready_felt_great">I feel great today</string>
     <string name="ready_usual">usual %1$s</string>

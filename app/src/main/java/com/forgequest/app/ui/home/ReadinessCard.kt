@@ -177,7 +177,7 @@ fun ReadinessRowPlaceholder() {
 fun ReadinessRow(
     d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit,
     /** Which sentence to show and which of its wordings; Home picks the wording so it stays the same all day. */
-    line: com.forgequest.app.domain.ReadinessLine = com.forgequest.app.domain.readinessLine(d.call, focus, d.sleepContext),
+    line: com.forgequest.app.domain.ReadinessLine = com.forgequest.app.domain.readinessLine(d.call, focus, d.sleepContext, com.forgequest.app.domain.HeartContext.from(d.hrv, d.hrvUsual, d.hrvTrend, d.rhr, d.rhrUsual, d.rhrTrend)),
     variant: Int = 0,
 ) {
     val c = Fit.colors
@@ -222,6 +222,13 @@ fun ReadinessRow(
                     val slept = d.sleepContext?.lastNightMin ?: 0
                     val text = if (line == com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP || line == com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_SLEEP) {
                         stringResource(line.bodyRes(variant), stringResource(R.string.dur_hm, slept / 60, slept % 60))
+                    } else if (line.showsHrv) {
+                        // The reason lines carry the person's own number and their usual, as the Recovery page shows them.
+                        val ms = stringResource(R.string.unit_ms)
+                        stringResource(line.bodyRes(variant), "${d.hrv?.toInt() ?: 0} $ms", "${d.hrvUsual?.toInt() ?: 0} $ms")
+                    } else if (line.showsRhr) {
+                        val bpm = stringResource(R.string.unit_bpm)
+                        stringResource(line.bodyRes(variant), "${d.rhr?.toInt() ?: 0} $bpm", "${d.rhrUsual?.toInt() ?: 0} $bpm")
                     } else stringResource(line.bodyRes(variant))
                     Text(text, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
