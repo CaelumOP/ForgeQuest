@@ -74,11 +74,11 @@ export function computeStreak(
   const targetFor = (ws: number) => {
     const weekTarget = lockedTargets.get(ws) ?? full
     // Joined after the last planned day of the week: that week is free, it neither counts nor breaks.
-    const base = ws !== firstWeek
+    const base = ws !== firstWeek || plannedTrainingDays.size === 0
       ? weekTarget
       : Math.min(weekTarget, countDays(startEpochDay, ws + 6, (d) => plannedTrainingDays.has(dayOfWeek(d))))
     // Each excused planned day (sick, travel...) lowers the week's target; a fully excused week is free.
-    const excused = countDays(ws, ws + 6, (d) => excusedDays.has(d) && !workoutDays.has(d) && plannedTrainingDays.has(dayOfWeek(d)))
+    const excused = countDays(ws, ws + 6, (d) => excusedDays.has(d) && !workoutDays.has(d) && (plannedTrainingDays.size === 0 || plannedTrainingDays.has(dayOfWeek(d))))
     return Math.max(base - excused, 0)
   }
 

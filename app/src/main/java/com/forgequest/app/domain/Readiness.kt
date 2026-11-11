@@ -65,6 +65,8 @@ object Readiness {
     private const val JOIN_GAP_SECONDS = 3 * 3600L
     const val BASE_NEED_MIN = 480
     const val MIN_BASELINE_DAYS = 4
+    /** How fast the cost of missing sleep grows ([sleepFactor]). */
+    const val SLEEP_SHORTFALL_CURVE = 0.05
 
     // ---------- Sleep ----------
 
@@ -180,6 +182,10 @@ object Readiness {
      * of the needed sleep is neutral and every 15 points is one unit. A missing signal drops out and the rest are
      * re-weighted. The weighted z then goes through a logistic curve, `100 / (1 + e^-(1.4 z + 1.1))`: the slope 1.4
      * sets how fast the score moves, and the offset 1.1 is what puts a normal day (z = 0) at 75 %.
+     *
+     * Last, the result is multiplied by [sleepFactor]. Sleep therefore counts twice, on purpose: the straight-line
+     * term above is the everyday nudge (a slightly short or long night moves the score a little, as before), and the
+     * factor is the growing cost of a big shortfall, which the heart signals cannot outvote.
      */
     fun recovery(hrvLn: Double?, rhr: Double?, resp: Double?, sleepPerf: Int?, hrvBase: Baseline?, rhrBase: Baseline?, respBase: Baseline?): Int {
         var sum = 0.0
@@ -192,7 +198,28 @@ object Readiness {
         // At least half the full weight in the divisor: before HRV and resting-HR baselines exist (first days with a
         // watch), one short night alone can't swing the score as if it were a full reading (6 h used to give 37 %).
         val z = if (weight > 0) sum / maxOf(weight, 0.5) else 0.0
-        return (100 / (1 + exp(-(1.4 * z + 1.1)))).roundToInt().coerceIn(1, 99)
+        val body = 100 / (1 + exp(-(1.4 * z + 1.1)))
+        // The weighted score, scaled by how much of the needed sleep was had: a good heart cannot cancel a lost night.
+        return (body * (if (sleepPerf != null) sleepFactor(sleepPerf) else 1.0)).roundToInt().coerceIn(1, 99)
+    }
+
+    /**
+     * The share of the score that survives a sleep shortfall: 1 at 85 % of the needed sleep or more, falling faster
+     * the bigger the shortfall, because each further hour lost costs more than the one before it.
+     *
+     * Why it exists: the plain sleep term in [recovery] is one signal of four, a straight line that stops at -3. So 40 %
+     * of the needed sleep and 20 % of it cost the same, and with a normal heart the worst night there is could not
+     * score under about 62 % ("train lighter"). HRV and resting heart rate often look normal after one very short
+     * night while strength, coordination and injury risk do not, so the heart must not be able to outvote it.
+     *
+     * The factor is `e^(-[SLEEP_SHORTFALL_CURVE] × units²)`, one unit being 15 points under 85 %: a smooth curve that
+     * starts flat, steepens, and never reaches zero, so it needs no floor. With a normal heart and an 8-hour need:
+     * 7 h or more is untouched, 6 h about 71 % (steady), 5 h about 61 % (ease off), 4 h about 49 %, 3 h about 37 %
+     * and 2.5 h about 32 % (recover).
+     */
+    fun sleepFactor(sleepPerf: Int): Double {
+        val units = maxOf(0, 85 - sleepPerf) / 15.0
+        return exp(-SLEEP_SHORTFALL_CURVE * units * units)
     }
 
     /** Recovery calls for an easier day: ease off or recover (below 67 on the re-centred scale). */

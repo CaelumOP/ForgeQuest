@@ -120,6 +120,7 @@ internal fun SettingsRow(icon: ImageVector, tint: androidx.compose.ui.graphics.C
                 Text(title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
         }
     }
 }

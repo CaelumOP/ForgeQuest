@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import fixtureText from './fixtures/android-backup.json?raw';
 import { applyBackup, decodeBackup } from './backup';
 import { db, putSession } from './db';
-import { todayEpochDay } from '../domain/dates';
+import { todayEpochDay, weekStart } from '../domain/dates';
 import { weekTargets } from './settings';
-import { applyPlan, seedLibrary } from './workouts';
+import { applyPlan, getActivePlan, seedLibrary } from './workouts';
 import { evaluateBadges, getProgressSnapshot, logWeight, setDayTag, type ProgressSnapshot } from './progress';
+import { quickStart } from '../ui/onboarding/OnboardingScreen';
 import type { PlanDraft } from './seed/starter-plans';
 
 const day = (dayOfWeek: number, isRest: boolean) => ({
@@ -85,5 +86,28 @@ describe('progress', () => {
     await getProgressSnapshot();
     expect((await weekTargets()).size).toBeGreaterThan(0);
     expect((await firstLive(() => getProgressSnapshot(Date.now(), false))).streak).toEqual(live.streak);
+  });
+
+  it('quickStart applies no plan and counts quick workouts toward 3 a week', async () => {
+    await quickStart();
+    expect(await getActivePlan()).toBeNull();
+    expect(await db.plans.count()).toBe(0);
+
+    const today = todayEpochDay();
+    const lastWeekMon = weekStart(today) - 7;
+    await finishedOn(lastWeekMon);
+    await finishedOn(lastWeekMon + 2);
+    await finishedOn(lastWeekMon + 4);
+    await finishedOn(today);
+
+    const snap = await getProgressSnapshot();
+    expect(snap.settings.onboarded).toBe(true);
+    expect(snap.settings.weeklyTargetOverride).toBe(3);
+    expect(snap.settings.calorieV2Seen).toBe(true);
+    expect(snap.plan).toBeNull();
+    expect(snap.streak.doneThisWeek).toBe(1);
+    expect(snap.streak.targetThisWeek).toBe(3);
+    expect(snap.streak.weeks).toBe(1);
+    expect((await weekTargets()).get(lastWeekMon)).toBe(3);
   });
 });

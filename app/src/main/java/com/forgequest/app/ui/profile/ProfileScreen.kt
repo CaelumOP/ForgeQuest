@@ -118,7 +118,7 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.profile_xp_line, s.level.xpIntoLevel, s.level.xpForNextLevel, s.level.level + 1), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f))
-                androidx.compose.material3.IconButton(onClick = { showXpHow = !showXpHow }, modifier = Modifier.size(32.dp)) {
+                androidx.compose.material3.IconButton(onClick = { showXpHow = !showXpHow }) {
                     Icon(Icons.Outlined.Info, contentDescription = stringResource(R.string.cd_xp_info), tint = c.textSecondary, modifier = Modifier.size(18.dp))
                 }
             }

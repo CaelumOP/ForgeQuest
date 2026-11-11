@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import androidx.compose.foundation.border
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
@@ -175,8 +176,19 @@ fun HomeScreen(nav: NavHostController) {
     val healthOn = !justLog && s.settings.healthEnabled && s.settings.healthConnected
     val readinessLoading = healthOn && health == HealthState.Loading
     val readinessInCard = readyDay != null || readinessLoading
+    // A finished workout or a rest (or excused) day changes what the sentence may ask for.
+    val todayState = when {
+        s.workoutDoneToday -> com.forgequest.app.domain.TodayState.DONE
+        s.excusedToday != null || (s.plan != null && (today == null || today.day.isRest)) -> com.forgequest.app.domain.TodayState.REST
+        else -> com.forgequest.app.domain.TodayState.TRAIN
+    }
+    // A rest day says where the week stands and what comes next, instead of a fixed line.
+    val nextTraining = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
+        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() }?.let { dow to it.day.title } }
+    val restLine = nextTraining?.takeIf { s.streak.targetThisWeek > 0 && !justLog }
+        ?.let { (dow, title) -> stringResource(R.string.today_rest_week, s.streak.doneThisWeek, s.streak.targetThisWeek, title, Dates.dayName(dow)) }
     // The sentence under the verdict, and which of its wordings: the same all day, a different one next time.
-    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext) }
+    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext, com.forgequest.app.domain.HeartContext.from(it.hrv, it.hrvUsual, it.hrvTrend, it.rhr, it.rhrUsual, it.rhrTrend), todayState) }
     val readyVariant = remember(readyLine, s.settings.insightHistory) {
         readyLine?.let { com.forgequest.app.domain.dailyVariant(it.historyKind, it.variants, s.settings.insightHistory, Dates.today()) }
     }
@@ -186,10 +198,12 @@ fun HomeScreen(nav: NavHostController) {
     val todayCard: @Composable () -> Unit = {
         TodayCard(
             day = today,
+            noActivePlan = s.plan == null,
             exerciseNames = today?.items?.mapNotNull { s.exercises[it.exerciseId]?.name }?.distinct().orEmpty(),
             hasOpenSession = open != null,
             doneToday = s.workoutDoneToday,
             doneLine = doneInsight,
+            restLine = restLine,
             excused = s.excusedToday,
             onCantTrain = { tagDay = Dates.today() },
             showCantTrain = !justLog,
@@ -204,8 +218,14 @@ fun HomeScreen(nav: NavHostController) {
                     nav.navigate(Routes.LIVE)
                 }
             },
-            // After training, the card leads to what was done; before, to the plan.
-            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
+            // After training, the card leads to what was done; with no plan, to the plan builder; else to the plan.
+            onOpenPlan = {
+                when {
+                    s.workoutDoneToday -> nav.navigate(Routes.HISTORY)
+                    s.plan == null -> nav.navigate(Routes.PLAN_BUILDER)
+                    else -> nav.goToTab(Routes.WORKOUTS)
+                }
+            },
             // A rest day can still be a training day: start the next planned workout.
             onTrainAnyway = {
                 scope.launch {
@@ -287,7 +307,7 @@ fun HomeScreen(nav: NavHostController) {
             )
             CalorieCardView(s, health, vm.app.settings)
             if (unseen.isNotEmpty()) {
-                FitCard(onClick = { nav.navigate(Routes.PROFILE) }, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
+                FitCard(onClick = { nav.navigate(Routes.BADGES) }, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
                         Spacer(Modifier.width(12.dp))
@@ -624,7 +644,11 @@ private fun StreakCard(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    DayCircle(state, size = 28.dp)
+                    // A thin grey outline says "this day can be tapped". Today's planned circle already has its teal ring.
+                    val cue = canTag && state != DayState.TODAY_PLANNED
+                    Box(if (cue) Modifier.border(1.5.dp, c.textSecondary.copy(alpha = 0.55f), CircleShape) else Modifier) {
+                        DayCircle(state, size = 28.dp)
+                    }
                     Spacer(Modifier.height(4.dp))
                     Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
@@ -705,10 +729,12 @@ private fun DayTagDialog(epochDay: Long, current: DayTag?, onPick: (DayTag?) -> 
 @Composable
 private fun TodayCard(
     day: PlanDayWithItems?,
+    noActivePlan: Boolean,
     exerciseNames: List<String>,
     hasOpenSession: Boolean,
     doneToday: Boolean,
     doneLine: String?,
+    restLine: String? = null,
     excused: DayTag?,
     onCantTrain: () -> Unit,
     showCantTrain: Boolean,
@@ -724,10 +750,13 @@ private fun TodayCard(
     val hasAction = hasOpenSession || (!doneToday && (noPlan || !isRest || excused == null))
     val action: @Composable () -> Unit = {
         val full = Modifier.fillMaxWidth()
-        // The first-run tip only points at a real Start or Resume button.
-        com.forgequest.app.ui.components.CoachMarkBox("coach_home", R.string.coach_home_t, R.string.coach_home_b, enabled = hasOpenSession || (!noPlan && !isRest), below = true) {
+        // The first-run tip points at Start, Resume, or Build my plan when there is no active plan yet.
+        val tipTitle = if (noActivePlan && !hasOpenSession) R.string.coach_home_noplan_t else R.string.coach_home_t
+        val tipBody = if (noActivePlan && !hasOpenSession) R.string.coach_home_noplan_b else R.string.coach_home_b
+        com.forgequest.app.ui.components.CoachMarkBox("coach_home", tipTitle, tipBody, enabled = hasOpenSession || noActivePlan || (!noPlan && !isRest), below = true) {
             when {
                 hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart, modifier = full)
+                noActivePlan -> PillButton(stringResource(R.string.action_build_plan), onClick = onOpenPlan, modifier = full)
                 noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan, modifier = full)
                 !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart, modifier = full)
                 excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway, modifier = full)
@@ -766,8 +795,9 @@ private fun TodayCard(
                         hasOpenSession -> stringResource(R.string.today_resume_hint)
                         doneToday -> doneLine ?: stringResource(R.string.today_done)
                         excused != null -> stringResource(R.string.today_excused, stringResource(excused.labelRes))
+                        noActivePlan -> stringResource(R.string.pb_entry_info)
                         noPlan -> stringResource(R.string.today_no_plan_hint)
-                        isRest -> day?.day?.note?.ifBlank { null } ?: stringResource(R.string.today_rest_hint)
+                        isRest -> day?.day?.note?.ifBlank { null } ?: restLine ?: stringResource(R.string.today_rest_hint)
                         else -> pluralStringResource(R.plurals.today_exercises, exerciseNames.size, exerciseNames.size, exerciseNames.take(3).joinToString(stringResource(R.string.list_separator)))
                     },
                     style = MaterialTheme.typography.bodySmall,

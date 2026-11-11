@@ -1,0 +1,394 @@
+/* PlanBuilderScreen — Soft Coach tokens and logical properties only (RTL-ready). */
+
+.pb {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pb-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pb-title {
+  margin: 0;
+  font-size: var(--t-headline-md);
+  line-height: var(--lh-headline-md);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pb-sub {
+  margin: 0;
+  font-size: var(--t-body-md);
+  line-height: var(--lh-body-md);
+  color: var(--text-2);
+}
+
+.pb-ready-link {
+  align-self: flex-start;
+  min-block-size: 44px;
+  padding-inline: 4px;
+  padding-block: 0;
+  border: 0;
+  background: transparent;
+  color: var(--teal);
+  font: inherit;
+  font-size: var(--t-label-lg);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pb-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pb-label {
+  font-size: var(--t-title-sm);
+  line-height: var(--lh-title-sm);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.pb-hint {
+  font-size: var(--t-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-2);
+  margin: 0;
+}
+
+.pb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* "Fit it to me" toggle pill and expandable deep rows */
+.pb-fit-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pb-fit-toggle {
+  align-self: flex-start;
+  min-block-size: 44px;
+  padding-inline: 16px;
+  padding-block: 10px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--card-high);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--t-label-lg);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.pb-fit-toggle-ic {
+  color: var(--teal);
+  display: inline-flex;
+}
+
+.pb-fit-toggle-chev {
+  color: var(--text-2);
+  display: inline-flex;
+  transition: transform var(--d-fast) var(--ease-standard);
+}
+
+.pb-fit-toggle-chev.open {
+  transform: rotate(180deg);
+}
+
+.pb-deep {
+  background: var(--card);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.pb-deep-head {
+  inline-size: 100%;
+  min-block-size: 56px;
+  padding-inline: var(--s-card);
+  padding-block: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.pb-deep-title {
+  font-size: var(--t-title-sm);
+  line-height: var(--lh-title-sm);
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.pb-deep-sum {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: var(--t-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-2);
+  text-align: end;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-deep-chev {
+  color: var(--text-2);
+  display: inline-flex;
+  flex-shrink: 0;
+  transition: transform var(--d-fast) var(--ease-standard);
+}
+
+.pb-deep-chev.open {
+  transform: rotate(180deg);
+}
+
+.pb-deep-body {
+  padding-inline: var(--s-card);
+  padding-block-start: 0;
+  padding-block-end: var(--s-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-block-size: 44px;
+}
+
+.pb-row-text {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: var(--t-body-md);
+  line-height: var(--lh-body-md);
+  color: var(--text);
+}
+
+/* Schedule 7-day picker */
+.pb-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pb-day {
+  min-block-size: 44px;
+  padding-inline: 2px;
+  padding-block: 10px;
+  border-radius: var(--r-sm);
+  border: 2px solid transparent;
+  background: var(--card-high);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--t-label-md);
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pb-day.in-plan {
+  background: var(--teal-track);
+  color: var(--teal);
+}
+
+.pb-day.editing {
+  border-color: var(--teal);
+}
+
+.pb-day-remove {
+  align-self: flex-start;
+  min-block-size: 44px;
+  padding-inline: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--coral);
+  font: inherit;
+  font-size: var(--t-label-lg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Toggle switch line (StyleRow) */
+.pb-switch-row {
+  inline-size: 100%;
+  min-block-size: 48px;
+  padding-inline: 0;
+  padding-block: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.pb-switch {
+  inline-size: 46px;
+  block-size: 28px;
+  border-radius: var(--r-full);
+  background: var(--card-high);
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: background var(--d-fast) var(--ease-standard);
+}
+
+.pb-switch.on {
+  background: var(--teal);
+  justify-content: flex-end;
+}
+
+.pb-switch-knob {
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--r-full);
+  background: var(--text-2);
+}
+
+.pb-switch.on .pb-switch-knob {
+  background: var(--on-teal);
+}
+
+/* Avoid removable pills */
+.pb-avoid-pill {
+  min-block-size: 44px;
+  padding-inline: 12px;
+  padding-block: 6px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--card-high);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--t-label-md);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.pb-avoid-pill svg {
+  color: var(--text-2);
+}
+
+/* Review step */
+.pb-review {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pb-rday-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pb-rday-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.pb-rday-name {
+  margin: 0;
+  font-size: var(--t-title-md);
+  line-height: var(--lh-title-md);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pb-rday-focus {
+  font-size: var(--t-label-md);
+  line-height: var(--lh-label-md);
+  font-weight: 600;
+  color: var(--teal);
+}
+
+.pb-rday-mins {
+  font-size: var(--t-label-lg);
+  line-height: var(--lh-label-lg);
+  font-weight: 600;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.pb-rday-why {
+  margin: 0;
+  font-size: var(--t-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-2);
+}
+
+.pb-rday-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pb-ritem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-block-size: 44px;
+}
+
+.pb-ritem-text {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: var(--t-body-md);
+  line-height: var(--lh-body-md);
+  color: var(--text);
+}
+
+.pb-review-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* The main action stays in reach while the answers scroll under it (as on Android). */
+.pb-cta {
+  position: sticky;
+  inset-block-end: calc(16px + env(safe-area-inset-bottom));
+  z-index: 2;
+  box-shadow: 0 0 0 8px var(--bg);
+}
+
+/* Room under the last control, so at the end of the page the sticky button rests below it, not on it. */
+.pb { padding-block-end: calc(72px + env(safe-area-inset-bottom)); }

@@ -1,19 +1,9 @@
 package com.forgequest.app.ui.components
 
-import com.forgequest.app.R
-import com.forgequest.app.ui.localLabel
-
-import androidx.compose.ui.res.stringResource
-
 import android.content.Context
 import android.graphics.Region
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,25 +11,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -50,11 +32,15 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import com.forgequest.app.R
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.MuscleRecovery
+import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.FitColors
 import kotlinx.coroutines.Dispatchers
@@ -125,87 +111,64 @@ fun recoveryColor(fatigue: Float, c: FitColors): Color = when {
 }
 
 @Composable
+fun recoverySummaryDescription(recovery: Map<Muscle, MuscleRecovery>): String {
+    val base = if (recovery.isEmpty()) stringResource(R.string.map_cd_all_fresh)
+    else stringResource(
+        R.string.map_cd_recovering,
+        recovery.entries.sortedByDescending { it.value.fatigue }
+            .map { stringResource(R.string.map_cd_muscle_ready, it.key.localLabel(), it.value.hoursUntilReady) }
+            .joinToString(stringResource(R.string.list_separator)),
+    )
+    return "$base ${stringResource(R.string.map_tap_hint)}"
+}
+
+/**
+ * Front and back figures side by side, centred (front on the left and back on the right in every language),
+ * with the four-dot recovery legend on one line underneath. Tapping a muscle opens its details sheet.
+ */
+@Composable
 fun MuscleRecoveryMap(
     recovery: Map<Muscle, MuscleRecovery>,
     bodyType: BodyType,
     modifier: Modifier = Modifier,
-    /** How many exercises a muscle has; with it, a chip row and a "See exercises" button appear. */
-    exerciseCount: ((Muscle) -> Int)? = null,
+    fallbackScroll: Boolean = false,
     onSeeExercises: (Muscle) -> Unit = {},
 ) {
     val context = LocalContext.current
     val art by produceState<BodyArt?>(null, bodyType) { value = BodyArtLoader.load(context, bodyType) }
-    var selected by remember { mutableStateOf<Muscle?>(null) }
-    val c = Fit.colors
+    val summary = recoverySummaryDescription(recovery)
 
-    val summary = if (recovery.isEmpty()) stringResource(R.string.map_cd_all_fresh)
-    else stringResource(R.string.map_cd_recovering, recovery.entries.sortedByDescending { it.value.fatigue }.map { stringResource(R.string.map_cd_muscle_ready, it.key.localLabel(), it.value.hoursUntilReady) }.joinToString(stringResource(R.string.list_separator)))
-    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        val rowMod = if (fallbackScroll) {
+            Modifier.fillMaxWidth().height(220.dp)
+        } else {
+            Modifier.weight(1f).fillMaxWidth()
+        }
         // Front on the left and back on the right in every language: it's a picture of a body, not a reading order.
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-        // TalkBack reads the figures as one summary; the drawing is not exposed. The chip row below is how a screen
-        // reader picks a muscle.
-        Row(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = summary }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(stringResource(R.string.map_front) to art?.front, stringResource(R.string.map_back) to art?.back).forEach { (label, view) ->
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(0.5f)) {
+            Row(
+                rowMod.clearAndSetSemantics { contentDescription = summary },
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                listOf(art?.front, art?.back).forEach { view ->
+                    // Equal shares of the row: with a height-driven aspect ratio the first figure took its full width and the
+                    // second was squeezed into what was left, so the back came out smaller than the front.
+                    Box(Modifier.weight(1f, fill = false).widthIn(max = 150.dp).fillMaxHeight().heightIn(max = 300.dp)) {
                         if (view != null) {
-                            BodyFigure(view, recovery, selected, onTap = { selected = if (selected == it) null else it })
+                            BodyFigure(view, recovery, selected = null, onTap = onSeeExercises)
                         }
                     }
-                    Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                 }
             }
         }
-        }
-        if (exerciseCount != null) {
-            // Every muscle as a chip too: small ones (forearms, tibialis) are hard to hit on the picture.
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Muscle.entries.forEach { m ->
-                    val status = muscleStatus(recovery[m])
-                    ChoiceChip(m.localLabel(), selected == m, { selected = if (selected == m) null else m }, Modifier.semantics { stateDescription = status })
-                }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        val info = selected?.let { m ->
-            val r = recovery[m]
-            if (r == null) stringResource(R.string.map_fully_recovered, m.localLabel())
-            else stringResource(R.string.map_recovering_detail, m.localLabel(), ((1f - r.fatigue) * 100).roundToInt(), r.hoursUntilReady)
-        } ?: if (recovery.isEmpty()) stringResource(R.string.map_all_fresh_tap) else stringResource(R.string.map_tap_hint)
-        Box(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(c.cardHigh).padding(horizontal = 16.dp, vertical = 10.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(info, style = MaterialTheme.typography.labelLarge, color = c.textPrimary, textAlign = TextAlign.Center, maxLines = 2)
-        }
-        val chosen = selected
-        if (chosen != null && exerciseCount != null) {
-            Spacer(Modifier.height(8.dp))
-            TonalPill(
-                stringResource(R.string.muscle_see_exercises, chosen.localLabel(), exerciseCount(chosen)),
-                onClick = { onSeeExercises(chosen) }, modifier = Modifier.fillMaxWidth(), tint = c.teal,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(4.dp))
         MapLegend()
     }
-}
-
-/** A muscle's state in the legend's words, for TalkBack: "Fresh", or "Recovering, 60% recovered". */
-@Composable
-private fun muscleStatus(r: MuscleRecovery?): String {
-    val fatigue = r?.fatigue ?: 0f
-    if (fatigue <= 0f) return stringResource(R.string.map_fresh)
-    val stage = stringResource(
-        when {
-            fatigue < 0.33f -> R.string.map_almost_ready
-            fatigue < 0.66f -> R.string.map_recovering
-            else -> R.string.map_just_trained
-        },
-    )
-    return stringResource(R.string.a11y_muscle_recovering, stage, ((1f - fatigue) * 100).roundToInt())
 }
 
 /** Wraps onto a second line at large text sizes instead of running off the card. */
@@ -214,17 +177,19 @@ private fun muscleStatus(r: MuscleRecovery?): String {
 private fun MapLegend() {
     val c = Fit.colors
     androidx.compose.foundation.layout.FlowRow(
-        Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(6.dp),
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        LegendDot(c.coral, stringResource(R.string.map_just_trained))
-        LegendDot(c.gold, stringResource(R.string.map_recovering))
-        LegendDot(c.teal, stringResource(R.string.map_almost_ready))
-        LegendDot(c.muscleRest, stringResource(R.string.map_fresh))
+        LegendDot(c.coral, stringResource(R.string.map_just_trained), dot = 8.dp, gap = 4.dp)
+        LegendDot(c.gold, stringResource(R.string.map_recovering), dot = 8.dp, gap = 4.dp)
+        LegendDot(c.teal, stringResource(R.string.map_almost_ready), dot = 8.dp, gap = 4.dp)
+        LegendDot(c.muscleRest, stringResource(R.string.map_fresh), dot = 8.dp, gap = 4.dp)
     }
 }
 
 @Composable
-private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, selected: Muscle?, onTap: (Muscle) -> Unit) {
+private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, selected: Muscle?, onTap: ((Muscle) -> Unit)?) {
     val c = Fit.colors
     // Animated colors per muscle so the map "cools down" smoothly when data changes.
     val colors = Muscle.entries.associateWith { m ->
@@ -232,8 +197,8 @@ private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, se
     }
     val bodyNeutral = if (c.isDark) Color(0xFF2A2C2F) else Color(0xFFE6EAF0)
 
-    Canvas(
-        Modifier.fillMaxWidth().aspectRatio(0.5f).pointerInput(view) {
+    val canvasMod = Modifier.fillMaxSize().let { base ->
+        if (onTap == null) base else base.pointerInput(view) {
             detectTapGestures { tap ->
                 val scale = minOf(size.width / view.width, size.height / view.height)
                 val dx = (size.width - view.width * scale) / 2f
@@ -255,7 +220,9 @@ private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, se
                 hit?.muscle?.let(onTap)
             }
         }
-    ) {
+    }
+
+    Canvas(canvasMod) {
         val scale = minOf(size.width / view.width, size.height / view.height)
         val dx = (size.width - view.width * scale) / 2f
         val dy = (size.height - view.height * scale) / 2f

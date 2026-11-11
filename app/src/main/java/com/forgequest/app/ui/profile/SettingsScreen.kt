@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import com.forgequest.app.ui.components.UndoSnackbarEffect
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -88,6 +89,7 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     val restorePreview by vm.restorePreview.collectAsState()
     val shareUri by vm.shareUri.collectAsState()
     val snackbar = LocalSnackbar.current
+    UndoSnackbarEffect(vm.undo)
     val context = LocalContext.current
     val c = Fit.colors
     var keyDialog by remember { mutableStateOf(false) }

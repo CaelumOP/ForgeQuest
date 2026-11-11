@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import androidx.compose.foundation.layout.heightIn
 import com.forgequest.app.ui.theme.ForgeShape
 import android.app.Activity
 import android.content.Intent
@@ -602,12 +603,13 @@ internal fun CoachSettingsGroup(
                     Column(Modifier.animateContentSize()) {
                         notes.forEach { note ->
                             Row(
-                                Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.removeNote(note) }.padding(vertical = 8.dp, horizontal = 4.dp),
+                                Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable(onClickLabel = stringResource(R.string.cd_remove), role = androidx.compose.ui.semantics.Role.Button) { vm.removeNote(note) }
+                                    .heightIn(min = 48.dp).padding(vertical = 8.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
                                 Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_remove), tint = c.textSecondary, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.Close, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(16.dp))
                             }
                         }
                     }

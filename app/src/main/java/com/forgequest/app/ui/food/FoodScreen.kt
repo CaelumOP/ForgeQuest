@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.food
 
+import androidx.compose.ui.semantics.Role
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
@@ -506,10 +507,15 @@ private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: (
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.cd_previous_day), tint = c.textPrimary) }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+        // The whole centre is the "back to today" target on another day, not just the small teal line.
+        Column(
+            Modifier.weight(1f).clip(ForgeShape.Sm).clickable(enabled = !isToday, role = Role.Button, onClick = onToday).heightIn(min = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             if (!isToday) {
-                Text(stringResource(R.string.food_back_to_today), style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.clip(ForgeShape.Sm).clickable(onClick = onToday).padding(horizontal = 8.dp, vertical = 2.dp))
+                Text(stringResource(R.string.food_back_to_today), style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
             }
         }
         IconButton(onClick = onNext, enabled = !isToday) {
@@ -773,9 +779,13 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
                 Text(
                     partsCount(food.parts) + " · " + stringResource(R.string.food_parts_change),
                     style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp).clip(ForgeShape.Sm).clickable(onClick = onParts).padding(vertical = 4.dp),
+                    modifier = Modifier.clip(ForgeShape.Sm).clickable(role = Role.Button, onClick = onParts).padding(vertical = 10.dp).padding(end = 12.dp),
                 )
             }
+        }
+        // Unticked rows show the way into the editor; a ticked row uses the space for its stepper (long-press still edits).
+        if (qty == null) {
+            IconButton(onClick = onEdit) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.food_edit_title), tint = c.textSecondary) }
         }
         if (qty != null) {
             var typing by remember { mutableStateOf(false) }

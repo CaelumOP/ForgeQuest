@@ -9,7 +9,7 @@ import { weeklyCounts } from '../../domain/trends'
 import { bodyStep, fromKg, toKg, unitLabel, weightNumber } from '../../domain/units'
 import { BADGES } from '../../domain/badges'
 import { gramsLeft } from '../../domain/nutrition'
-import { Button, Card, Chip, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
+import { Button, Card, Chip, CoachMark, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
@@ -42,12 +42,13 @@ export function HomeScreen(_: { param?: string }) {
     go('#/live')
   }
 
-  // On a training day with the workout still to do (or one in progress), today's card leads the page.
-  const startOnTop = !!open || (!!todayPlan && !todayPlan.day.isRest && !s.workoutDoneToday && !s.excusedToday)
+  // On a training day with the workout still to do (or one in progress, or no plan yet), today's card leads the page.
+  const startOnTop = !!open || ((!plan || (!!todayPlan && !todayPlan.day.isRest)) && !s.workoutDoneToday && !s.excusedToday)
 
   const todayCard = (
     <TodayCard
       s={s} title={todayPlan?.day.title ?? ''} isRest={!todayPlan || todayPlan.day.isRest} noPlan={!todayPlan}
+      noActivePlan={!plan}
       note={todayPlan?.day.note ?? ''}
       names={[...new Set((todayPlan?.items ?? []).map((i) => s.exercises.get(i.exerciseId)?.name).filter((n): n is string => !!n))]}
       hasOpen={!!open} onStart={start} onCant={justLog ? undefined : () => setTagDay(today)}
@@ -267,18 +268,19 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
 }
 
 function TodayCard(p: {
-  s: ProgressSnapshot; title: string; isRest: boolean; noPlan: boolean; note: string; names: string[]
+  s: ProgressSnapshot; title: string; isRest: boolean; noPlan: boolean; noActivePlan: boolean; note: string; names: string[]
   hasOpen: boolean; onStart: () => void
   /** Undefined in "Just log" mode: no streak to excuse a day from. */
   onCant?: () => void
 }) {
-  const { s, isRest, noPlan, hasOpen } = p
+  const { s, isRest, noPlan, noActivePlan, hasOpen } = p
   const done = s.workoutDoneToday
   const excused = s.excusedToday
   const head = hasOpen ? t('today_in_progress') : noPlan ? t('today_no_plan') : isRest ? t('today_rest_day') : p.title
   const sub = hasOpen ? t('today_resume_hint')
     : done ? t('today_done')
     : excused ? t('today_excused', t(`daytag_${excused.toLowerCase()}`))
+    : noActivePlan ? t('pb_entry_info')
     : noPlan ? t('today_no_plan_hint')
     : isRest ? (p.note.trim() || t('today_rest_hint'))
     : plural('today_exercises', p.names.length, p.names.length, p.names.slice(0, 3).join(t('list_separator')))
@@ -288,18 +290,23 @@ function TodayCard(p: {
   return (
     <Card>
       <div class="home-label">{t('today_title')}</div>
-      <div class="home-row home-today">
-        <a class="home-row home-grow home-plan-link" href="#/workouts">
+      <div class={`home-row home-today${noActivePlan && !hasOpen ? ' home-today-stack' : ''}`}>
+        <a class="home-row home-grow home-plan-link" href={noActivePlan ? '#/plan-builder' : '#/workouts'}>
           <span class="home-ic" style={{ background: `var(${colour}-track)`, color: `var(${colour})` }}><Icon /></span>
           <span class="home-grow">
             <span class="home-t home-clip" style={{ display: 'block' }}>{head}</span>
             <span class="home-s home-sub2" style={{ display: 'block' }}>{sub}</span>
           </span>
         </a>
-        {hasOpen ? <Button onClick={p.onStart}>{t('action_resume')}</Button>
-          : done ? <span style={{ color: 'var(--teal)' }}><CheckCircleIcon /></span>
-          : noPlan ? <Button onClick={() => go('#/workouts')}>{t('action_set_up')}</Button>
-          : !isRest ? <Button onClick={p.onStart}>{t('action_start')}</Button> : null}
+        {done && !hasOpen ? <span style={{ color: 'var(--teal)' }}><CheckCircleIcon /></span>
+          : (hasOpen || noPlan || !isRest) ? (
+            <CoachMark id="coach_home" title={t(noActivePlan && !hasOpen ? 'coach_home_noplan_t' : 'coach_home_t')} body={t(noActivePlan && !hasOpen ? 'coach_home_noplan_b' : 'coach_home_b')} enabled={hasOpen || noActivePlan || (!noPlan && !isRest)} below>
+              {hasOpen ? <Button onClick={p.onStart}>{t('action_resume')}</Button>
+                : noActivePlan ? <Button onClick={() => go('#/plan-builder')}>{t('action_build_plan')}</Button>
+                : noPlan ? <Button onClick={() => go('#/workouts')}>{t('action_set_up')}</Button>
+                : <Button onClick={p.onStart}>{t('action_start')}</Button>}
+            </CoachMark>
+          ) : null}
       </div>
       {p.onCant && !isRest && !hasOpen && !done && !excused && (
         <Button variant="text" class="home-cant" onClick={p.onCant}>{t('today_cant_train')}</Button>

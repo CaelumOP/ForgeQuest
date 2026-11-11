@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import androidx.compose.ui.semantics.Role
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import android.content.Context
@@ -227,7 +228,7 @@ fun ExercisePickerSheet(
                                     .padding(vertical = 3.dp)
                                     .clip(ForgeShape.Md)
                                     .background(c.tealTrack.copy(alpha = 0.45f))
-                                    .clickable { onPick(ex) }
+                                    .clickable(role = Role.Button) { onPick(ex) }
                                     .padding(horizontal = 12.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -263,7 +264,7 @@ fun ExercisePickerSheet(
                     items(filtered, key = { it.id }) { ex ->
                         val prof = remember(ex.id) { ExerciseSwapEngine.profileFor(ex) }
                         Row(
-                            Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable { onPick(ex) }.padding(horizontal = 8.dp, vertical = 12.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable(role = Role.Button) { onPick(ex) }.padding(horizontal = 8.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -276,9 +277,16 @@ fun ExercisePickerSheet(
                             }
                         }
                     }
+                    if (filtered.isEmpty() && topSwaps.isEmpty()) item {
+                        Text(
+                            stringResource(R.string.lib_search_none),
+                            style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+                        )
+                    }
                     if (allowCreate) item {
                         Row(
-                            Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable { creating = true }.padding(horizontal = 8.dp, vertical = 16.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable(role = Role.Button) { creating = true }.padding(horizontal = 8.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = null, tint = c.teal)
@@ -296,7 +304,7 @@ fun ExercisePickerSheet(
 }
 
 @Composable
-private fun CreateExerciseForm(initialName: String, initialMuscle: Muscle?, onCreate: (String, ExerciseKind, Muscle) -> Unit, onCancel: () -> Unit) {
+internal fun CreateExerciseForm(initialName: String, initialMuscle: Muscle?, onCreate: (String, ExerciseKind, Muscle) -> Unit, onCancel: () -> Unit) {
     val c = Fit.colors
     var name by remember { mutableStateOf(initialName.trim()) }
     var kind by remember { mutableStateOf(ExerciseKind.REPS) }

@@ -66,7 +66,7 @@ export async function getProgressSnapshot(now = Date.now(), save = true): Promis
 
   // Lock each finished week's target the first time it is seen.
   let locked = await weekTargets();
-  if (plan) {
+  if (plan || settings.weeklyTargetOverride > 0) {
     const fresh = weeksToLock(locked, fullTarget(planned, settings.weeklyTargetOverride), start, today);
     if (fresh.size) { if (save) await saveWeekTargets(fresh); locked = new Map([...locked, ...fresh]); }
   }

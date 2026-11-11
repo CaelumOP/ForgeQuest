@@ -121,7 +121,7 @@ class ProgressRepository(
         val plannedDays = plan?.trainingDays ?: emptySet()
         // Lock each finished week's target the first time it is seen, so a later plan change keeps past streaks.
         val locked = settingsRepo.weekTargets().let { saved ->
-            if (plan == null) return@let saved
+            if (plan == null && settings.weeklyTargetOverride <= 0) return@let saved
             val fresh = StreakCalculator.weeksToLock(saved, StreakCalculator.fullTarget(plannedDays, settings.weeklyTargetOverride), start, today)
             if (fresh.isNotEmpty()) settingsRepo.saveWeekTargets(fresh)
             saved + fresh

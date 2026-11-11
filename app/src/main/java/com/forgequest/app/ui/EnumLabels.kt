@@ -448,6 +448,12 @@ private val insightText: Map<InsightKind, List<Int>> = mapOf(
     InsightKind.MUSCLE_WEEK to listOf(R.plurals.insight_muscle_week_1, R.plurals.insight_muscle_week_2, R.plurals.insight_muscle_week_3),
     InsightKind.AVG_REST to listOf(R.string.insight_avg_rest_1, R.string.insight_avg_rest_2, R.string.insight_avg_rest_3),
     InsightKind.FORM_TIP to listOf(R.string.insight_form_tip_1, R.string.insight_form_tip_2, R.string.insight_form_tip_3),
+    InsightKind.BIGGEST_SESSION to listOf(R.string.insight_biggest_session_1, R.string.insight_biggest_session_2, R.string.insight_biggest_session_3),
+    InsightKind.EXERCISE_TIMES to listOf(R.string.insight_exercise_times_1, R.string.insight_exercise_times_2, R.string.insight_exercise_times_3),
+    InsightKind.MONTH_UP to listOf(R.string.insight_month_up_1, R.string.insight_month_up_2, R.string.insight_month_up_3),
+    InsightKind.STREAK_BEST to listOf(R.string.insight_streak_best_1, R.string.insight_streak_best_2, R.string.insight_streak_best_3),
+    InsightKind.WEEK_ONE_LEFT to listOf(R.string.insight_week_one_left_1, R.string.insight_week_one_left_2, R.string.insight_week_one_left_3),
+    InsightKind.MUSCLE_TOP to listOf(R.string.insight_muscle_top_1, R.string.insight_muscle_top_2, R.string.insight_muscle_top_3),
 )
 
 /** The lifetime-weight sentence in pounds, for people who log in lb (the count is converted by the caller). */
@@ -539,8 +545,33 @@ fun com.forgequest.app.domain.ReadinessLine.bodyRes(variant: Int): Int {
         com.forgequest.app.domain.ReadinessLine.LEGS_RECOVER -> intArrayOf(R.string.call_legs_recover_b, R.string.call_legs_recover_b2, R.string.call_legs_recover_b3)
         com.forgequest.app.domain.ReadinessLine.UPPER_EASE -> intArrayOf(R.string.call_upper_ease_b, R.string.call_upper_ease_b2, R.string.call_upper_ease_b3)
         com.forgequest.app.domain.ReadinessLine.UPPER_RECOVER -> intArrayOf(R.string.call_upper_recover_b, R.string.call_upper_recover_b2, R.string.call_upper_recover_b3)
-        com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_NIGHTS -> intArrayOf(R.string.call_steady_short_nights)
-        com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP -> intArrayOf(R.string.call_ease_short_sleep)
+        com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_NIGHTS -> intArrayOf(R.string.call_steady_short_nights, R.string.call_steady_short_nights2)
+        com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP -> intArrayOf(R.string.call_ease_short_sleep, R.string.call_ease_short_sleep2)
+        com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_SLEEP -> intArrayOf(R.string.call_recover_short_sleep, R.string.call_recover_short_sleep2)
+        com.forgequest.app.domain.ReadinessLine.EASE_HRV -> intArrayOf(R.string.call_ease_hrv, R.string.call_ease_hrv2)
+        com.forgequest.app.domain.ReadinessLine.RECOVER_HRV -> intArrayOf(R.string.call_recover_hrv, R.string.call_recover_hrv2)
+        com.forgequest.app.domain.ReadinessLine.EASE_RHR -> intArrayOf(R.string.call_ease_rhr, R.string.call_ease_rhr2)
+        com.forgequest.app.domain.ReadinessLine.RECOVER_RHR -> intArrayOf(R.string.call_recover_rhr, R.string.call_recover_rhr2)
+        com.forgequest.app.domain.ReadinessLine.PEAK_HRV -> intArrayOf(R.string.call_peak_hrv, R.string.call_peak_hrv2)
+        com.forgequest.app.domain.ReadinessLine.LEGS_READY -> intArrayOf(R.string.call_legs_ready_b, R.string.call_legs_ready_b2, R.string.call_legs_ready_b3)
+        com.forgequest.app.domain.ReadinessLine.UPPER_PEAK -> intArrayOf(R.string.call_upper_peak_b, R.string.call_upper_peak_b2, R.string.call_upper_peak_b3)
+        com.forgequest.app.domain.ReadinessLine.UPPER_READY -> intArrayOf(R.string.call_upper_ready_b, R.string.call_upper_ready_b2, R.string.call_upper_ready_b3)
+        com.forgequest.app.domain.ReadinessLine.UPPER_STEADY -> intArrayOf(R.string.call_upper_steady_b, R.string.call_upper_steady_b2, R.string.call_upper_steady_b3)
+        com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_SLEEP -> intArrayOf(R.string.call_steady_short_sleep, R.string.call_steady_short_sleep2)
+        com.forgequest.app.domain.ReadinessLine.EASE_SHORT_RUN -> intArrayOf(R.string.call_ease_short_run)
+        com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_RUN -> intArrayOf(R.string.call_recover_short_run)
+        com.forgequest.app.domain.ReadinessLine.STEADY_HRV -> intArrayOf(R.string.call_steady_hrv, R.string.call_steady_hrv2)
+        com.forgequest.app.domain.ReadinessLine.STEADY_RHR -> intArrayOf(R.string.call_steady_rhr, R.string.call_steady_rhr2)
+        com.forgequest.app.domain.ReadinessLine.READY_HRV -> intArrayOf(R.string.call_ready_hrv, R.string.call_ready_hrv2)
+        com.forgequest.app.domain.ReadinessLine.PEAK_SLEPT_WELL -> intArrayOf(R.string.call_peak_slept_well, R.string.call_peak_slept_well2)
+        com.forgequest.app.domain.ReadinessLine.READY_SLEPT_WELL -> intArrayOf(R.string.call_ready_slept_well, R.string.call_ready_slept_well2)
+        com.forgequest.app.domain.ReadinessLine.REST_CHARGED -> intArrayOf(R.string.call_rest_charged, R.string.call_rest_charged2, R.string.call_rest_charged3)
+        com.forgequest.app.domain.ReadinessLine.REST_STEADY -> intArrayOf(R.string.call_rest_steady, R.string.call_rest_steady2)
+        com.forgequest.app.domain.ReadinessLine.REST_LOW -> intArrayOf(R.string.call_rest_low, R.string.call_rest_low2, R.string.call_rest_low3)
+        com.forgequest.app.domain.ReadinessLine.REST_LOW_SLEEP -> intArrayOf(R.string.call_rest_low_sleep, R.string.call_rest_low_sleep2)
+        com.forgequest.app.domain.ReadinessLine.REST_LOW_HRV -> intArrayOf(R.string.call_rest_low_hrv, R.string.call_rest_low_hrv2)
+        com.forgequest.app.domain.ReadinessLine.DONE_GOOD -> intArrayOf(R.string.call_done_good, R.string.call_done_good2, R.string.call_done_good3)
+        com.forgequest.app.domain.ReadinessLine.DONE_LOW -> intArrayOf(R.string.call_done_low, R.string.call_done_low2)
     }
     return all[variant.coerceIn(0, all.lastIndex)]
 }

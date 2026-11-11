@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.onboarding
 
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.activity.compose.BackHandler
@@ -11,7 +13,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -136,11 +137,9 @@ data class OnboardingState(
     val fastBlocked get() = Nutrition.allowedCutPace(CutPace.AGGRESSIVE, weightKg, heightCm, age, male) != CutPace.AGGRESSIVE
 }
 
-/** Tour-only first run (no setup screens): empty plan, 3 days a week, everything editable later in Profile. */
+/** Tour-only first run (no setup screens): no starting plan, 3 days a week target, everything editable later in Profile. */
 suspend fun quickStart(app: AppContainer) {
     app.workouts.seedLibrary()
-    val days = (1..7).map { PlanDraftDay(it, app.str(R.string.today_rest_day), isRest = true) }
-    app.workouts.applyPlan(PlanDraft(app.str(R.string.onb_my_plan), app.str(R.string.onb_my_plan_desc), days), "manual")
     app.settings.update { it.copy(onboarded = true, weeklyTargetOverride = 3, calorieV2Seen = true) }
 }
 
@@ -394,7 +393,7 @@ private fun ChoiceCard(name: String, desc: String, selected: Boolean, onClick: (
     Row(
         Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card)
             .then(if (selected) Modifier.border(2.dp, c.teal, ForgeShape.Md) else Modifier)
-            .clickable(onClick = onClick).padding(16.dp),
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -569,7 +568,7 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
         Row(
             Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card)
                 .then(if (selected) Modifier.border(2.dp, c.teal, ForgeShape.Md) else Modifier)
-                .clickable {
+                .selectable(selected = selected, role = Role.RadioButton) {
                     val autoPreset = when {
                         index == StarterPlans.GYM_SPLIT_INDEX -> EquipmentPreset.FULL_GYM
                         index == StarterPlans.DUMBBELLS_INDEX && Equipment.DUMBBELLS !in s.equipmentPreset.equipment -> EquipmentPreset.DUMBBELLS_AND_BAR

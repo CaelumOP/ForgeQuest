@@ -1,5 +1,9 @@
 package com.forgequest.app.ui.food
 
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.R
 import com.forgequest.app.domain.Nutrition
@@ -360,7 +364,7 @@ fun ScanScreen(nav: NavHostController) {
 
 @Composable
 private fun CircleButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(modifier.size(44.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(modifier.size(48.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)).clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, contentDescription = description, tint = Color.White)
     }
 }
@@ -462,10 +466,12 @@ private fun CameraView(onCaptured: (ByteArray) -> Unit, onPicked: (android.net.U
                     ) { Icon(Icons.Rounded.PhotoLibrary, contentDescription = stringResource(R.string.photo_choose_gallery), tint = Color.White) }
                 }
                 // Shutter: white ring with a filled core, like the system camera.
+                val shutterCd = stringResource(R.string.photo_take)
                 Box(
                     Modifier.size(78.dp).clip(CircleShape).border(4.dp, Color.White, CircleShape).padding(7.dp).clip(CircleShape)
                         .background(if (shooting) Color.White.copy(alpha = 0.5f) else Color.White)
-                        .clickable(enabled = granted && !shooting) {
+                        .semantics { contentDescription = shutterCd }
+                        .clickable(enabled = granted && !shooting, role = Role.Button) {
                             shooting = true
                             val file = File(context.cacheDir, "capture.jpg")
                             capture.takePicture(
@@ -686,18 +692,21 @@ private fun ResultSheet(
                     val on = i in included
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(ForgeShape.Md).background(c.cardHigh)
-                            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                            .padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // A 48 dp checkbox named after the food, so TalkBack says its name and whether it is ticked.
                         Box(
-                            Modifier.size(36.dp).clip(CircleShape).clickable { included = if (on) included - i else included + i },
+                            Modifier.size(48.dp).clip(CircleShape)
+                                .toggleable(value = on, role = Role.Checkbox) { included = if (on) included - i else included + i }
+                                .semantics { contentDescription = item.name },
                             contentAlignment = Alignment.Center,
                         ) {
                             Box(Modifier.size(24.dp).clip(CircleShape).background(if (on) c.teal else c.card), contentAlignment = Alignment.Center) {
-                                if (on) Icon(Icons.Rounded.Check, contentDescription = if (on) stringResource(R.string.cd_included) else stringResource(R.string.cd_excluded), tint = c.onTeal, modifier = Modifier.size(16.dp))
+                                if (on) Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(16.dp))
                             }
                         }
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(2.dp))
                         Column(Modifier.weight(1f).padding(end = 12.dp).clip(ForgeShape.Sm).clickable { editingGrams = i }.padding(vertical = 4.dp)) {
                             Text(item.name, style = MaterialTheme.typography.bodyMedium, color = if (on) c.textPrimary else c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(if (item.grams > 0) stringResource(R.string.scan_about_grams, item.grams) else stringResource(R.string.scan_set_grams), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

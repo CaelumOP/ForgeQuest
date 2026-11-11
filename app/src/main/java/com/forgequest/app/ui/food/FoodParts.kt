@@ -1,5 +1,9 @@
 package com.forgequest.app.ui.food
 
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -109,15 +113,20 @@ fun PartsSheet(foodName: String, initial: List<FoodPart>, carbsOn: Boolean, onSa
 private fun PartRow(part: FoodPart, onToggle: () -> Unit, onGrams: () -> Unit) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(ForgeShape.Md).background(c.cardHigh).padding(horizontal = 12.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(ForgeShape.Md).background(c.cardHigh).padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(36.dp).clip(CircleShape).clickable(onClick = onToggle), contentAlignment = Alignment.Center) {
+        // A 48 dp checkbox named after the part, so TalkBack says its name and whether it is ticked.
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).toggleable(value = part.on, role = Role.Checkbox) { onToggle() }
+                .semantics { contentDescription = part.name },
+            contentAlignment = Alignment.Center,
+        ) {
             Box(Modifier.size(24.dp).clip(CircleShape).background(if (part.on) c.teal else c.card), contentAlignment = Alignment.Center) {
-                if (part.on) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_included), tint = c.onTeal, modifier = Modifier.size(16.dp))
+                if (part.on) Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(16.dp))
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(2.dp))
         Column(Modifier.weight(1f).padding(end = 12.dp).clip(ForgeShape.Sm).clickable(onClick = onGrams).padding(vertical = 4.dp)) {
             Text(part.name, style = MaterialTheme.typography.bodyMedium, color = if (part.on) c.textPrimary else c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(if (part.grams > 0) stringResource(R.string.scan_about_grams, part.grams) else stringResource(R.string.scan_set_grams), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

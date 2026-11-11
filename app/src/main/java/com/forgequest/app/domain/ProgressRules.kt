@@ -89,7 +89,7 @@ object StreakCalculator {
 
         fun targetFor(weekStart: Long): Int {
             val weekTarget = lockedTargets[weekStart] ?: fullTarget
-            val base = if (weekStart != firstWeek) {
+            val base = if (weekStart != firstWeek || plannedTrainingDays.isEmpty()) {
                 weekTarget
             } else {
                 val remainingPlanned = (startEpochDay..weekStart + 6).count { Dates.dayOfWeek(it) in plannedTrainingDays }
@@ -97,7 +97,9 @@ object StreakCalculator {
                 min(weekTarget, remainingPlanned)
             }
             // Each excused planned day (sick, travel...) lowers the week's target; a fully excused week is free.
-            val excused = (weekStart..weekStart + 6).count { it in excusedDays && it !in workoutDays && Dates.dayOfWeek(it) in plannedTrainingDays }
+            val excused = (weekStart..weekStart + 6).count {
+                it in excusedDays && it !in workoutDays && (plannedTrainingDays.isEmpty() || Dates.dayOfWeek(it) in plannedTrainingDays)
+            }
             return (base - excused).coerceAtLeast(0)
         }
 

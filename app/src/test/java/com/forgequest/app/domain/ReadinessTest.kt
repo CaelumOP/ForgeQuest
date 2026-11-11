@@ -70,6 +70,29 @@ class ReadinessTest {
         assertEquals(DayCall.RECOVER, Readiness.call(bad))
     }
 
+    @Test fun aVeryShortNightIsARecoverDayEvenWithANormalHeart() {
+        val hrv = Baseline(ln(28.0), 0.12, 20); val rhr = Baseline(68.0, 3.0, 20); val resp = Baseline(16.3, 0.6, 20)
+        fun normalHeart(asleepMin: Int) = Readiness.recovery(ln(28.0), 68.0, 16.3, Readiness.sleepPerformance(asleepMin, 480), hrv, rhr, resp)
+        // An ordinary short night barely moves: 6 h is still a steady day.
+        assertEquals(DayCall.STEADY, Readiness.call(normalHeart(360)))
+        // Each lost hour costs more than the one before: 5 h eases off, 4 h is just into recover, under that clearly so.
+        assertEquals(DayCall.EASE_OFF, Readiness.call(normalHeart(300)))
+        assertTrue(normalHeart(240) in 46..50)
+        assertEquals(DayCall.RECOVER, Readiness.call(normalHeart(210)))
+        assertEquals(DayCall.RECOVER, Readiness.call(normalHeart(180)))
+        assertTrue(normalHeart(150) in 26..34)
+        val steps = listOf(480, 420, 360, 300, 240, 180, 150, 60).map(::normalHeart)
+        assertEquals(steps.sortedDescending(), steps)
+        assertTrue(steps[3] - steps[4] > steps[1] - steps[2])
+        // Nothing is taken off at or above the neutral 85 %.
+        assertEquals(1.0, Readiness.sleepFactor(85), 1e-9)
+        assertEquals(1.0, Readiness.sleepFactor(100), 1e-9)
+        // The heart still counts, but it cannot cancel a lost night: a very good HRV after 2.5 h is still a recover day.
+        val strongHeart = Readiness.recovery(ln(37.0), 63.0, 15.6, 31, hrv, rhr, resp)
+        assertTrue(strongHeart > normalHeart(150))
+        assertEquals(DayCall.RECOVER, Readiness.call(strongHeart))
+    }
+
     @Test fun hrvSignalBlendsTonightWithTheWeek() {
         val s = Readiness.hrvSignal(26.0, listOf(26.0, 37.0, 37.0, 37.0, 37.0, 37.0, 37.0))!!
         assertTrue(s > ln(26.0) && s < ln(37.0))

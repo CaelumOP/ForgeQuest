@@ -4,7 +4,7 @@ import type { ChatRow } from '../../data/db'
 import { clearChat, errorKindOf, lastAnswer, planOfMessage, sendCoachMessage, applyChatPlan, takePendingCoachMessage, useChat } from '../../data/coach-chat'
 import { updateSettings, useSettings } from '../../data/settings'
 import { useLibrary } from '../../data/workouts'
-import { Button, Dialog, IconButton, Markdown, Sheet, toast } from '../kit'
+import { Button, CoachMark, Dialog, IconButton, Markdown, Sheet, toast } from '../kit'
 import { CalendarIcon, CheckIcon, KeyIcon, MoreIcon, SendIcon } from '../icons'
 import { CopyIcon, SparkleIcon } from '../workouts/glyphs'
 import { buzzError } from '../live/feedback'
@@ -105,13 +105,15 @@ export function CoachScreen(_: { param?: string }) {
           {SUGGESTIONS.slice(0, 3).map((k) => <button key={k} type="button" class="coach-chip" onClick={() => send(t(k))}>{t(k)}</button>)}
         </div>
       )}
-      <form class="coach-composer" onSubmit={(e) => { e.preventDefault(); void send(input) }}>
-        <textarea
-          class="coach-input" rows={1} value={input} disabled={!hasKey} placeholder={t('coach_input_hint')} aria-label={t('coach_input_hint')}
-          onInput={(e) => { const el = e.target as HTMLTextAreaElement; setInput(el.value); el.style.blockSize = 'auto'; el.style.blockSize = `${Math.min(el.scrollHeight, 120)}px` }}
-        />
-        <button type="submit" class="coach-send" aria-label={t('cd_send')} disabled={!input.trim() || sending || !hasKey}><SendIcon /></button>
-      </form>
+      <CoachMark id="coach_ask" title={t('coach_ask_t')} body={t(hasKey ? 'coach_ask_b' : 'coach_ask_b_noai')} below>
+        <form class="coach-composer" onSubmit={(e) => { e.preventDefault(); void send(input) }}>
+          <textarea
+            class="coach-input" rows={1} value={input} disabled={!hasKey} placeholder={t('coach_input_hint')} aria-label={t('coach_input_hint')}
+            onInput={(e) => { const el = e.target as HTMLTextAreaElement; setInput(el.value); el.style.blockSize = 'auto'; el.style.blockSize = `${Math.min(el.scrollHeight, 120)}px` }}
+          />
+          <button type="submit" class="coach-send" aria-label={t('cd_send')} disabled={!input.trim() || sending || !hasKey}><SendIcon /></button>
+        </form>
+      </CoachMark>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={t('coach_model_header')}>
         {last && last.ms >= 0 && <p class="coach-answered">{t('coach_answered_by', last.who, (last.ms / 1000).toFixed(1))}</p>}

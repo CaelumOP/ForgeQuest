@@ -1,5 +1,8 @@
 package com.forgequest.app.ui.workouts
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Add
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.itemMotion
@@ -81,6 +84,10 @@ class ExerciseLibraryViewModel(val app: AppContainer) : ViewModel() {
     val usage = MutableStateFlow<WorkoutRepository.ExerciseUsage?>(null)
 
     fun loadUsage(id: String) = viewModelScope.launch { usage.value = app.workouts.usage(id) }
+    fun create(name: String, kind: ExerciseKind, muscle: Muscle) = viewModelScope.launch {
+        app.workouts.addCustomExercise(name, kind, listOf(muscle), null)
+        message.value = app.str(R.string.lib_saved, name)
+    }
 
     fun save(ex: ExerciseEntity) = viewModelScope.launch { app.workouts.updateExercise(ex); message.value = app.str(R.string.lib_saved, ex.name) }
 
@@ -107,6 +114,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
     var query by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf<Muscle?>(null) }
     var editing by remember { mutableStateOf<ExerciseEntity?>(null) }
+    var creating by remember { mutableStateOf(false) }
     var merging by remember { mutableStateOf<ExerciseEntity?>(null) }
     var confirmDelete by remember { mutableStateOf<ExerciseEntity?>(null) }
 
@@ -125,6 +133,7 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
                 Text(stringResource(R.string.profile_exercise_library), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(stringResource(R.string.lib_counts, library.count { it.custom }, library.count { !it.custom }), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
+            IconButton(onClick = { creating = true }) { Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.picker_create_custom), tint = c.teal) }
         }
         OutlinedTextField(
             value = query, onValueChange = { query = it }, placeholder = { Text(stringResource(R.string.lib_search)) },
@@ -145,8 +154,8 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)) {
             if (custom.isNotEmpty()) {
                 item { Text(stringResource(R.string.lib_yours), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) }
-                items(custom, key = { it.id }) { ex -> Box(itemMotion()) { LibraryRow(ex, onClick = { editing = ex }) } }
-            } else if (query.isBlank()) {
+                items(custom, key = { it.id }) { ex -> Box(itemMotion()) { LibraryRow(ex, onClick = { nav.navigate(Routes.exercise(ex.id)) }, onEdit = { editing = ex }) } }
+            } else if (query.isBlank() && muscle == null) {
                 item {
                     Text(
                         stringResource(R.string.lib_none_custom),
@@ -154,8 +163,26 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
                     )
                 }
             }
-            item { Text(stringResource(R.string.lib_built_in), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) }
+            if (builtIn.isNotEmpty()) {
+                item { Text(stringResource(R.string.lib_built_in), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) }
+            } else if (custom.isEmpty()) {
+                item { Text(stringResource(R.string.lib_search_none), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp)) }
+            }
             items(builtIn, key = { it.id }) { ex -> Box(itemMotion()) { LibraryRow(ex, onClick = { nav.navigate(Routes.exercise(ex.id)) }) } }
+        }
+    }
+
+    if (creating) {
+        ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { creating = false }, containerColor = c.card) {
+            Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
+                Text(stringResource(R.string.picker_create_custom), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Spacer(Modifier.height(12.dp))
+                CreateExerciseForm(
+                    initialName = query, initialMuscle = muscle,
+                    onCreate = { name, kind, m -> vm.create(name, kind, m); creating = false },
+                    onCancel = { creating = false },
+                )
+            }
         }
     }
 
@@ -227,10 +254,10 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
 }
 
 @Composable
-private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit) {
+private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit, onEdit: (() -> Unit)? = null) {
     val c = Fit.colors
     Row(
-        Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().clip(ForgeShape.Md).clickable(onClick = onClick).padding(start = 8.dp, end = if (onEdit != null) 0.dp else 8.dp).heightIn(min = 64.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -243,5 +270,6 @@ private fun LibraryRow(ex: ExerciseEntity, onClick: () -> Unit) {
                 Text(stringResource(R.string.lib_custom), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
             }
         }
+        if (onEdit != null) IconButton(onClick = onEdit) { Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.cd_edit), tint = c.textSecondary) }
     }
 }

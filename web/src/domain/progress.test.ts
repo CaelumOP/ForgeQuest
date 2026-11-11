@@ -87,6 +87,20 @@ describe('StreakCalculatorTest', () => {
     expect(s.targetThisWeek).toBe(3)
     expect(s.hitThisWeek).toBe(true)
   })
+
+  it('streakTargetWorksWithoutAPlan', () => {
+    // Fresh quickStart: no active plan (empty plannedTrainingDays), weeklyTargetOverride = 3.
+    const oneDone = computeStreak(days(mon1 + 2), new Set(), 3, mon1 + 2, mon1 + 2)
+    expect(oneDone.doneThisWeek).toBe(1)
+    expect(oneDone.targetThisWeek).toBe(3)
+    expect(oneDone.hitThisWeek).toBe(false)
+
+    const threeDone = computeStreak(days(mon1 + 2, mon1 + 4, mon1 + 6), new Set(), 3, mon1 + 2, mon1 + 6)
+    expect(threeDone.doneThisWeek).toBe(3)
+    expect(threeDone.targetThisWeek).toBe(3)
+    expect(threeDone.hitThisWeek).toBe(true)
+    expect(threeDone.weeks).toBe(1)
+  })
 })
 
 describe('XpTest', () => {

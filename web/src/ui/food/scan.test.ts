@@ -32,6 +32,15 @@ describe('parseScan (Gemini food JSON)', () => {
     expect(parseScan('```json\n' + json + '\n```')?.items).toHaveLength(2);
     expect(extractJson('x {"a":1} y')).toBe('{"a":1}');
   });
+  it('reads a text-only Gem reply with handVisible false and Arabic item names', () => {
+    const reply = '```json\n{"mealId": "m8p4qz1b", "date": "2026-11-11", "time": "14:15", "dish": "مندي دجاج", "place": "الرومانسية", "items": [{"name": "نصف دجاجة مندي (لحم صافي)", "grams": 195, "kcal": 448, "protein": 47, "carbs": 0, "fat": 29}, {"name": "أرز مندي", "grams": 280, "kcal": 490, "protein": 8.4, "carbs": 84, "fat": 13.5}], "handVisible": false, "confidence": "high", "note": "تقدير نصي بدون صورة؛ خُصم نحو 35% لوزن العظم."}\n```';
+    const s = parseScan(reply)!;
+    expect(s.handVisible).toBe(false);
+    expect(s.dish).toBe('مندي دجاج');
+    expect(s.items[0]).toEqual({ name: 'نصف دجاجة مندي (لحم صافي)', grams: 195, kcal: 448, protein: 47, carbs: 0 });
+    expect(s.items[1].name).toBe('أرز مندي');
+    expect(s.note).toContain('35%');
+  });
   it('fills defaults, coerces numbers and drops nameless items', () => {
     const s = parseScan('{"items":[{"name":" Egg ","kcal":"72","protein":6.3},{"grams":5},{"name":"Dates","grams":-3,"kcal":null}]}')!;
     expect(s.dish).toBe('Meal');

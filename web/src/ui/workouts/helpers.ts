@@ -72,3 +72,30 @@ export function filterExercises(library: readonly ExerciseRow[], f: PickerFilter
       Number(f.focusMuscle != null && !a.primary.includes(f.focusMuscle)) - Number(f.focusMuscle != null && !b.primary.includes(f.focusMuscle)) ||
       a.name.localeCompare(b.name))
 }
+
+export const ROW_HEIGHT_2COL = 46
+export const MIN_EXERCISE_ROWS = 2
+export const MAX_EXERCISE_ROWS = 4
+
+export type ExerciseFit = { rows: number; visibleCount: number; hiddenCount: number }
+
+/**
+ * Fits `itemCount` exercise glance cells (2 columns, 46 px rows) into `availableHeight` px:
+ * - normally 2 rows (up to 4 exercises; when > 4, the 4th cell is "+N more");
+ * - on tall screens where `availableHeight` allows, grows to 3 or 4 rows (up to 6 or 8 cells).
+ */
+export function fitExerciseRows(availableHeight: number, itemCount: number): ExerciseFit {
+  if (itemCount <= 0) return { rows: MIN_EXERCISE_ROWS, visibleCount: 0, hiddenCount: 0 }
+  const h = Math.max(0, Math.floor(availableHeight))
+  const maxRows = Math.min(MAX_EXERCISE_ROWS, Math.max(MIN_EXERCISE_ROWS, Math.floor(h / ROW_HEIGHT_2COL)))
+  const neededRows = Math.max(MIN_EXERCISE_ROWS, Math.ceil(itemCount / 2))
+  const rows = Math.min(maxRows, neededRows)
+  const cells = rows * 2
+  if (cells >= itemCount) {
+    return { rows, visibleCount: itemCount, hiddenCount: 0 }
+  }
+  const visibleCount = cells - 1
+  return { rows, visibleCount, hiddenCount: itemCount - visibleCount }
+}
+
+

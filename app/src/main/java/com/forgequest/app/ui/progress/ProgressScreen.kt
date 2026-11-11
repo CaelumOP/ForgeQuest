@@ -1,5 +1,8 @@
 package com.forgequest.app.ui.progress
 
+import com.forgequest.app.ui.components.PillButton
+import com.forgequest.app.ui.goToTab
+import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
@@ -158,7 +161,9 @@ fun ProgressScreen(nav: NavHostController) {
         }
         if (s.sessions.isEmpty()) {
             FitCard(Modifier.padding(16.dp)) {
-                EmptyState(Icons.AutoMirrored.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body))
+                EmptyState(Icons.AutoMirrored.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body)) {
+                    PillButton(stringResource(R.string.hist_go_workouts), onClick = { nav.goToTab(Routes.WORKOUTS) })
+                }
             }
             return
         }

@@ -73,6 +73,8 @@ export interface Settings {
   apiKey: string;
   /** Optional Groq key. Never in a backup, never logged. */
   groqKey: string;
+  /** The plan builder's last answers as JSON (see PlanAnswers), so a rebuild starts from them. Not part of backups. */
+  planBuilderAnswers: string | null;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
@@ -84,10 +86,12 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true, apiKey: '', groqKey: '',
   dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
   calorieSnoozeUntil: 0, calorieV2Seen: false, targetNudgeAnswered: false, justLog: false,
+  planBuilderAnswers: null,
 } satisfies Settings);
 
 const SETTINGS_KEY = 'settings';
 const WEEK_TARGETS_KEY = 'weekTargets';
+const PLAN_BUILDER_ANSWERS_KEY = 'plan_builder_answers';
 
 /** Same clean-up as Kotlin toSettings()/update(): unknown keys dropped, bad enums back to default, kcal ≥ 1200. */
 function normalize(raw: unknown): Settings {
@@ -97,6 +101,7 @@ function normalize(raw: unknown): Settings {
     const v = src[key];
     if (v !== undefined && typeof v === typeof out[key]) out[key] = v;
   }
+  const rawAnswers = src.planBuilderAnswers ?? src.plan_builder_answers;
   const s = out as unknown as Settings;
   return {
     ...s,
@@ -107,11 +112,20 @@ function normalize(raw: unknown): Settings {
     dayActivity: parseDayActivity(s.dayActivity), cutPace: parseCutPace(s.cutPace), gainPace: parseGainPace(s.gainPace),
     apiKey: s.apiKey.trim(),
     groqKey: s.groqKey.trim(),
+    planBuilderAnswers: typeof rawAnswers === 'string' ? rawAnswers : null,
   };
 }
 
 export async function loadSettings(): Promise<Settings> {
-  return normalize((await db.kv.get(SETTINGS_KEY))?.value);
+  const [raw, pb] = await Promise.all([
+    db.kv.get(SETTINGS_KEY),
+    db.kv.get(PLAN_BUILDER_ANSWERS_KEY),
+  ]);
+  const s = normalize(raw?.value);
+  if (s.planBuilderAnswers === null && typeof pb?.value === 'string') {
+    return { ...s, planBuilderAnswers: pb.value };
+  }
+  return s;
 }
 
 /** Reads, transforms and saves in one short transaction, like DataStore edit. Returns what was saved. */
@@ -119,6 +133,8 @@ export function updateSettings(fn: (s: Settings) => Settings): Promise<Settings>
   return db.transaction('rw', db.kv, async () => {
     const next = normalize(fn(await loadSettings()));
     await db.kv.put({ key: SETTINGS_KEY, value: next });
+    if (next.planBuilderAnswers === null) await db.kv.delete(PLAN_BUILDER_ANSWERS_KEY);
+    else await db.kv.put({ key: PLAN_BUILDER_ANSWERS_KEY, value: next.planBuilderAnswers });
     return next;
   });
 }

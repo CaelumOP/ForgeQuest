@@ -42,6 +42,7 @@ const ICONS: Record<string, string> = {
   weight: 'M12 3a4 4 0 00-4 4h8a4 4 0 00-4-4zM5 9l-2 12h18L19 9z',
   chart: 'M3.5 18.5l6-6 4 4L22 6.92 20.59 5.5l-7.09 8-4-4L2 17z',
   checklist: 'M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z',
+  tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
   dumbbell: 'M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 2.71 4.14 2 7.71z',
 }
 const Glyph = ({ name, size = 22 }: { name: string; size?: number }) => (
@@ -357,6 +358,9 @@ export function ProfileScreen() {
           <ChipGroup multiple label={t('equipment_step_items')} value={EQUIPMENT.filter((e) => configured.has(e))}
             onChange={(next) => { const added = EQUIPMENT.find((e) => next.includes(e) && !configured.has(e)); const removed = EQUIPMENT.find((e) => !next.includes(e) && configured.has(e)); const item = added ?? removed; if (item) void set({ equipment: toggleEquipment(configured, item) }) }}
             options={EQUIPMENT.map((e) => ({ value: e, label: eqLabel(e) }))} />
+        </Card>
+        <Card padded={false}>
+          <ListRow title={t('pb_rebuild')} subtitle={t('pb_rebuild_hint')} icon={<span class="pf-ic pf-teal"><Glyph name="tune" /></span>} href="#/plan-builder" />
         </Card>
         <Card>
           <Switch icon="checklist" label={t('just_log_title')} hint={t('just_log_subtitle')} on={s.justLog} onChange={(v) => void set({ justLog: v })} />

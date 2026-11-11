@@ -4,7 +4,7 @@ import type { SetRow } from '../../data/db'
 import type { ExerciseKind } from '../../domain/muscle'
 import { SET_EFFORTS, parseEffort, type SetEffort } from '../../domain/effort'
 import { fromKg, loadStep, toKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
-import { Chip, Sheet, Stepper, TextField, Button, haptics } from '../kit'
+import { Chip, CoachMark, Sheet, Stepper, TextField, Button, haptics } from '../kit'
 import { clampField } from './groups'
 import { PlayIcon } from './glyphs'
 
@@ -112,7 +112,9 @@ export function SetRowView(p: SetRowProps) {
           )}
           {(kind === 'WEIGHTED' || set.weightKg != null) && weightStepper}
         </div>
-        <SetTick checked={set.done} pr={set.isPr || p.pr} onToggle={() => p.onToggle(set)} />
+        <CoachMark id="coach_tick" title={t('coach_tick_t')} body={t('coach_tick_b')} below>
+          <SetTick checked={set.done} pr={set.isPr || p.pr} onToggle={() => p.onToggle(set)} />
+        </CoachMark>
       </div>
       {set.done && p.showEffort && (
         <div class="lw-efforts">

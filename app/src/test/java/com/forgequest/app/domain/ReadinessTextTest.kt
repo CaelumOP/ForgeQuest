@@ -36,17 +36,100 @@ class ReadinessTextTest {
         val twoShort = SleepContext(330, 2, 0.2f)
         assertEquals(ReadinessLine.STEADY_SHORT_NIGHTS, readinessLine(DayCall.STEADY, TodayFocus.LEGS, twoShort))
         assertEquals(ReadinessLine.EASE_SHORT_SLEEP, readinessLine(DayCall.EASE_OFF, null, SleepContext(300, 1, 0.2f)))
-        // One short night does not make a steady day about sleep, and sleep never talks over a good verdict.
-        assertEquals(ReadinessLine.STEADY, readinessLine(DayCall.STEADY, null, SleepContext(330, 1, 0.2f)))
+        // A recover day after a short night names the sleep, even on a leg day; after a full night it does not.
+        assertEquals(ReadinessLine.RECOVER_SHORT_SLEEP, readinessLine(DayCall.RECOVER, TodayFocus.LEGS, SleepContext(150, 1, 0.2f)))
+        assertEquals(ReadinessLine.RECOVER, readinessLine(DayCall.RECOVER, null, SleepContext(420, 0, 0.2f)))
+        // One short night on a steady day names the sleep; short sleep never talks over a good verdict.
+        assertEquals(ReadinessLine.STEADY_SHORT_SLEEP, readinessLine(DayCall.STEADY, null, SleepContext(330, 1, 0.2f)))
+        // Three short nights or more on a low day: the run is the reason, not last night alone.
+        assertEquals(ReadinessLine.EASE_SHORT_RUN, readinessLine(DayCall.EASE_OFF, null, SleepContext(300, 3, 0.2f)))
+        assertEquals(ReadinessLine.RECOVER_SHORT_RUN, readinessLine(DayCall.RECOVER, TodayFocus.LEGS, SleepContext(300, 4, 0.2f)))
         assertEquals(ReadinessLine.READY, readinessLine(DayCall.READY, null, twoShort))
+    }
+
+    @Test fun aLowOrPeakDayGivesItsHeartReason() {
+        val hrvLow = HeartContext.from(24.0, 31.0, Trend.WORSE, 60.0, 60.0, Trend.USUAL)
+        val rhrHigh = HeartContext.from(31.0, 31.0, Trend.USUAL, 66.0, 60.0, Trend.WORSE)
+        val both = HeartContext.from(24.0, 31.0, Trend.WORSE, 66.0, 60.0, Trend.WORSE)
+        assertEquals(ReadinessLine.EASE_HRV, readinessLine(DayCall.EASE_OFF, TodayFocus.LEGS, null, hrvLow))
+        assertEquals(ReadinessLine.RECOVER_RHR, readinessLine(DayCall.RECOVER, null, null, rhrHigh))
+        // HRV weighs most in the score, so it is the reason named when both are off.
+        assertEquals(ReadinessLine.RECOVER_HRV, readinessLine(DayCall.RECOVER, null, null, both))
+        // Sleep still comes first: it is the part the person can act on tonight.
+        assertEquals(ReadinessLine.RECOVER_SHORT_SLEEP, readinessLine(DayCall.RECOVER, null, SleepContext(150, 1, 0.2f), both))
+        // A good day names what improved, but a peak leg day keeps its leg sentence.
+        val hrvHigh = HeartContext.from(37.0, 31.0, Trend.BETTER, 60.0, 60.0, Trend.USUAL)
+        assertEquals(ReadinessLine.PEAK_HRV, readinessLine(DayCall.PEAK, null, null, hrvHigh))
+        assertEquals(ReadinessLine.LEGS_PEAK, readinessLine(DayCall.PEAK, TodayFocus.LEGS, null, hrvHigh))
+        // A steady day names the number that held it back, a ready day the one that is up; a normal heart gives no reason.
+        assertEquals(ReadinessLine.STEADY_HRV, readinessLine(DayCall.STEADY, null, null, both))
+        assertEquals(ReadinessLine.STEADY_RHR, readinessLine(DayCall.STEADY, TodayFocus.UPPER, null, rhrHigh))
+        assertEquals(ReadinessLine.READY_HRV, readinessLine(DayCall.READY, null, null, hrvHigh))
+        assertEquals(ReadinessLine.LEGS_READY, readinessLine(DayCall.READY, TodayFocus.LEGS, null, hrvHigh))
+        assertEquals(ReadinessLine.READY, readinessLine(DayCall.READY, null, null, both))
+        assertEquals(ReadinessLine.EASE_OFF, readinessLine(DayCall.EASE_OFF, null, null, HeartContext.from(31.0, 31.0, Trend.USUAL, 60.0, 60.0, Trend.USUAL)))
+        // The blended score can read "worse" while last night's own number is not under the usual: no sentence then,
+        // because the two numbers shown would contradict it. Same when they round to the same whole number.
+        assertEquals(false, HeartContext.from(32.0, 31.0, Trend.WORSE, null, null, null).hrvLow)
+        assertEquals(false, HeartContext.from(30.9, 30.2, Trend.WORSE, null, null, null).hrvLow)
+        assertEquals(false, HeartContext.from(null, 31.0, Trend.WORSE, 66.0, null, Trend.WORSE).rhrHigh)
     }
 
     @Test fun planAwareAdviceThenThePlainCall() {
         assertEquals(ReadinessLine.LEGS_EASE, readinessLine(DayCall.EASE_OFF, TodayFocus.LEGS, null))
         assertEquals(ReadinessLine.UPPER_RECOVER, readinessLine(DayCall.RECOVER, TodayFocus.UPPER, null))
-        assertEquals(ReadinessLine.READY, readinessLine(DayCall.READY, TodayFocus.LEGS, null))
-        assertEquals(ReadinessLine.PEAK, readinessLine(DayCall.PEAK, TodayFocus.UPPER, null))
+        assertEquals(ReadinessLine.LEGS_READY, readinessLine(DayCall.READY, TodayFocus.LEGS, null))
+        assertEquals(ReadinessLine.UPPER_PEAK, readinessLine(DayCall.PEAK, TodayFocus.UPPER, null))
+        assertEquals(ReadinessLine.UPPER_READY, readinessLine(DayCall.READY, TodayFocus.UPPER, null))
+        assertEquals(ReadinessLine.UPPER_STEADY, readinessLine(DayCall.STEADY, TodayFocus.UPPER, null))
+        assertEquals(ReadinessLine.LEGS_STEADY, readinessLine(DayCall.STEADY, TodayFocus.LEGS, null))
         assertEquals(ReadinessLine.RECOVER, readinessLine(DayCall.RECOVER, null, SleepContext(480, 0, 0.2f)))
+    }
+
+    @Test fun aLongNightExplainsAGoodDay() {
+        val long = SleepContext(470, 0, 0.2f)
+        assertEquals(ReadinessLine.PEAK_SLEPT_WELL, readinessLine(DayCall.PEAK, null, long))
+        assertEquals(ReadinessLine.READY_SLEPT_WELL, readinessLine(DayCall.READY, null, long))
+        // The heart reason comes before sleep, a planned focus keeps its own sentence, and 7 hours is not a long night.
+        val hrvHigh = HeartContext.from(37.0, 31.0, Trend.BETTER, 60.0, 60.0, Trend.USUAL)
+        assertEquals(ReadinessLine.PEAK_HRV, readinessLine(DayCall.PEAK, null, long, hrvHigh))
+        assertEquals(ReadinessLine.UPPER_READY, readinessLine(DayCall.READY, TodayFocus.UPPER, long))
+        assertEquals(ReadinessLine.READY, readinessLine(DayCall.READY, null, SleepContext(420, 0, 0.2f)))
+        assertEquals(ReadinessLine.STEADY, readinessLine(DayCall.STEADY, null, long))
+    }
+
+    @Test fun aRestDayOrAFinishedWorkoutNeverAsksForTraining() {
+        val hrvLow = HeartContext.from(24.0, 31.0, Trend.WORSE, 60.0, 60.0, Trend.USUAL)
+        val short = SleepContext(300, 1, 0.2f)
+        fun rest(call: DayCall, sleep: SleepContext? = null, heart: HeartContext? = null) = readinessLine(call, TodayFocus.LEGS, sleep, heart, TodayState.REST)
+        assertEquals(ReadinessLine.REST_CHARGED, rest(DayCall.PEAK))
+        assertEquals(ReadinessLine.REST_CHARGED, rest(DayCall.READY, short))
+        assertEquals(ReadinessLine.REST_STEADY, rest(DayCall.STEADY, short, hrvLow))
+        assertEquals(ReadinessLine.REST_LOW, rest(DayCall.EASE_OFF))
+        assertEquals(ReadinessLine.REST_LOW_SLEEP, rest(DayCall.RECOVER, short, hrvLow))
+        assertEquals(ReadinessLine.REST_LOW_HRV, rest(DayCall.EASE_OFF, null, hrvLow))
+        for (call in DayCall.entries) {
+            val done = readinessLine(call, TodayFocus.UPPER, short, hrvLow, TodayState.DONE)
+            assertEquals(if (call == DayCall.EASE_OFF || call == DayCall.RECOVER) ReadinessLine.DONE_LOW else ReadinessLine.DONE_GOOD, done)
+        }
+    }
+
+    @Test fun everyCaseHasASentence() {
+        // The whole grid resolves, and a line that carries a number only comes up when that number exists.
+        val sleeps = listOf(null, SleepContext(null, 0, null), SleepContext(300, 1, 0.2f), SleepContext(300, 3, 0.2f), SleepContext(480, 0, 0.2f))
+        val hearts = listOf(null, HeartContext(false, false, false), HeartContext(true, false, false), HeartContext(false, true, false), HeartContext(false, false, true))
+        for (call in DayCall.entries) for (focus in listOf(null, TodayFocus.LEGS, TodayFocus.UPPER)) for (sleep in sleeps) for (heart in hearts) for (state in TodayState.entries) {
+            val line = readinessLine(call, focus, sleep, heart, state)
+            assertTrue(line.variants >= 1)
+            when (line.arg) {
+                LineArg.SLEPT -> assertTrue("$line", sleep?.lastNightMin != null)
+                LineArg.SHORT_RUN -> assertTrue("$line", sleep!!.shortNightsInRow >= 3)
+                LineArg.HRV -> assertTrue("$line", heart!!.hrvLow || heart.hrvHigh)
+                LineArg.RHR -> assertTrue("$line", heart!!.rhrHigh)
+                LineArg.SLEEP_NEED -> assertEquals(TodayState.DONE, state)
+                LineArg.NONE -> Unit
+            }
+        }
     }
 
     @Test fun theWordingStaysForTheDayThenTakesTurns() {
