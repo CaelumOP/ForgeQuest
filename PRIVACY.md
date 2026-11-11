@@ -19,7 +19,7 @@ You can disconnect at any time in the app (Profile › Google Drive › Disconne
 
 ## AI features
 
-The coach and meal scanning send your messages, meal photos and a summary of your training to Google Gemini, and to Groq if you add a Groq key, using API keys you provide. Those services handle the data under their own privacy policies; free keys may let them use it to improve their models. In the Android app, your keys are stored encrypted on your phone.
+The coach and meal scanning send your messages, meal photos and a summary of your training to Google Gemini, using the API key you provide. Google handles the data under its own privacy policy; a free key may let Google use it to improve its models. The web app can also send chat messages to Groq, only if you add a Groq key there. Without any key, nothing is sent by the app itself: the "Ask Gemini" and "Copy skill" buttons only copy text, which you paste into the Gemini app yourself. In the Android app, your keys are stored encrypted on your phone.
 
 ## Web app (iPhone)
 
