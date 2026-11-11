@@ -307,7 +307,7 @@ fun HomeScreen(nav: NavHostController) {
             )
             CalorieCardView(s, health, vm.app.settings)
             if (unseen.isNotEmpty()) {
-                FitCard(onClick = { nav.navigate(Routes.PROFILE) }, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
+                FitCard(onClick = { nav.navigate(Routes.BADGES) }, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
                         Spacer(Modifier.width(12.dp))

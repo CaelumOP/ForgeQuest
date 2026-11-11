@@ -301,6 +301,7 @@
     <string name="stepper_enter_value">أدخل قيمة</string>
     <string name="stepper_range">بين %1$s و %2$s</string>
     <string name="action_cancel">إلغاء</string>
+    <string name="action_paste">لصق</string>
     <string name="food_cat_breakfast">الفطور</string>
     <string name="food_cat_lunch">الغداء</string>
     <string name="food_cat_dinner">العشاء</string>
@@ -460,8 +461,6 @@
     <string name="scan_grams_title">%1$s: كم غرامًا؟</string>
     <string name="scan_tap_name">اضغط على الاسم لتغييره</string>
     <string name="scan_hand_scaled">قُدّرت الكميات بالاستعانة بحجم يدك</string>
-    <string name="cd_included">مضمّن</string>
-    <string name="cd_excluded">مستبعد</string>
     <string name="scan_about_grams">نحو %1$d غ · اضغط للتصحيح</string>
     <string name="scan_set_grams">اضغط لتحديد الغرامات</string>
     <string name="scan_portion_size">حجم الحصة</string>

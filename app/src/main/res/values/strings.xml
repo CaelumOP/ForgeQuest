@@ -260,6 +260,7 @@
     <string name="stepper_enter_value">Enter a value</string>
     <string name="stepper_range">Between %1$s and %2$s</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_paste">Paste</string>
     <string name="food_cat_breakfast">Breakfast</string>
     <string name="food_cat_lunch">Lunch</string>
     <string name="food_cat_dinner">Dinner</string>
@@ -407,8 +408,6 @@
     <string name="scan_grams_title">%1$s: how many grams?</string>
     <string name="scan_tap_name">Tap the name to change it</string>
     <string name="scan_hand_scaled">Portions scaled using your hand</string>
-    <string name="cd_included">Included</string>
-    <string name="cd_excluded">Excluded</string>
     <string name="scan_about_grams">about %1$d g · tap to correct</string>
     <string name="scan_set_grams">tap to set grams</string>
     <string name="scan_portion_size">Portion size</string>

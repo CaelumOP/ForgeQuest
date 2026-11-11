@@ -553,6 +553,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
             containerColor = c.card,
             title = { Text(stringResource(R.string.plan_paste), color = c.textPrimary) },
             text = {
+                Column {
                 OutlinedTextField(
                     value = text, onValueChange = { text = it },
                     placeholder = { Text(stringResource(R.string.plan_paste_hint_text)) },
@@ -560,6 +561,13 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     shape = ForgeShape.Md,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                 )
+                // One tap instead of a long-press in the field. Shown while the field is empty.
+                val pasteCtx = androidx.compose.ui.platform.LocalContext.current
+                if (text.isBlank()) TextButton(onClick = {
+                    text = (pasteCtx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                        .primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(pasteCtx)?.toString().orEmpty()
+                }) { Text(stringResource(R.string.action_paste), color = c.teal) }
+                }
             },
             confirmButton = { TextButton(onClick = { paste = false; vm.parsePasted(text) }, enabled = text.isNotBlank()) { Text(stringResource(R.string.plan_read), color = c.teal) } },
             dismissButton = { TextButton(onClick = { paste = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
