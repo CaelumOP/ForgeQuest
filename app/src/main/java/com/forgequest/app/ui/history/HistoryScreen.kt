@@ -74,7 +74,6 @@ import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.domain.WorkoutScore
-import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import androidx.compose.material3.SnackbarDuration
@@ -173,7 +172,7 @@ fun HistoryScreen(nav: NavHostController) {
             scope.launch {
                 vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(ses.id)
                 vm.debriefFor.value = null
-                nav.goToTab(Routes.COACH)
+                nav.navigate(Routes.COACH)
             }
         } else null
         DebriefSheet(vm, ses, names, unit, askCoach)
@@ -445,7 +444,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
         }
         // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
         val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
-            scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sessionId); nav.goToTab(Routes.COACH) }
+            scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sessionId); nav.navigate(Routes.COACH) }
         } else null
         LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap)) {
             item {

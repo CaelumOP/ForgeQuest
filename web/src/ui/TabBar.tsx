@@ -5,8 +5,7 @@ export const tabs: { route: string; label: string; icon: TabIconName }[] = [
   { route: '/', label: 'tab_home', icon: 'home' },
   { route: '/workouts', label: 'tab_workouts', icon: 'fitness' },
   { route: '/food', label: 'tab_food', icon: 'restaurant' },
-  { route: '/coach', label: 'tab_coach', icon: 'sparkle' },
-  { route: '/profile', label: 'tab_profile', icon: 'account' },
+  { route: '/progress', label: 'tab_progress', icon: 'chart' },
 ]
 
 /** Flex row, so the order follows the reading direction (Home sits at the right in Arabic). */

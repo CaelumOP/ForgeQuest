@@ -102,7 +102,7 @@ function Header({ s, showRank }: { s: ProgressSnapshot; showRank: boolean }) {
         <div class="home-date">{date}</div>
       </div>
       {showRank && (
-        <a class="home-rank" href="#/progress" aria-label={t('home_web_rank_cd', mark)}>
+        <a class="home-rank" href="#/profile" aria-label={t('home_web_rank_cd', mark)}>
           <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
             <span class="home-rank-letter">{mark}</span>
           </Ring>
