@@ -104,12 +104,20 @@ object Readiness {
 
     fun nights(pieces: List<SleepPiece>, zone: ZoneId): Map<LocalDate, Night> = sleepDays(pieces, zone).mapValues { it.value.night }
 
-    /** Extra sleep a hard day asks for: about 4 minutes per strain point above 10. */
+    /**
+     * Extra sleep a hard day asks for: 4 minutes per strain point above 10, nothing below it. Strain runs 0 to 21, so
+     * the most a day can add is 44 minutes.
+     */
     fun strainNeedMin(strain: Double): Int = (maxOf(0.0, strain - 10) * 4).roundToInt()
 
     /** A third of the last three nights' shortfall carries over, capped at two hours. */
     fun debtMin(previousAsleep: List<Int>): Int = (previousAsleep.takeLast(3).sumOf { maxOf(0, BASE_NEED_MIN - it) } / 3.0).roundToInt().coerceAtMost(120)
 
+    /**
+     * Minutes of sleep needed tonight: the 8-hour base ([BASE_NEED_MIN]), plus [strainNeedMin] for the day before, plus
+     * the carried-over shortfall ([debtMin]), minus naps already taken. Kept between 6 and 12 hours so one odd day
+     * cannot ask for something absurd.
+     */
     fun sleepNeed(strainBefore: Double, previousAsleep: List<Int>, napMin: Int): Int =
         (BASE_NEED_MIN + strainNeedMin(strainBefore) + debtMin(previousAsleep) - napMin).coerceIn(360, 720)
 
@@ -118,6 +126,12 @@ object Readiness {
 
     // ---------- Recovery ----------
 
+    /**
+     * A person's usual level of one signal (HRV, resting heart rate, breathing rate): the mean and sample standard
+     * deviation of [values]. Null with fewer than [MIN_BASELINE_DAYS] days, because a "usual" from two nights is noise.
+     * [floorSd] is the smallest spread allowed: a few very even nights would otherwise make the next ordinary night
+     * look like an extreme one.
+     */
     fun baseline(values: List<Double>, floorSd: Double): Baseline? {
         if (values.size < MIN_BASELINE_DAYS) return null
         val mean = values.average()
@@ -159,6 +173,13 @@ object Readiness {
      * 1–99 %. HRV weighs most, then resting heart rate, then sleep, then breathing rate. A normal day lands near 75 %:
      * an ordinary morning is a green morning, and the colour is saved for days that really are off. [call] holds the
      * advice steady across that shift, so the same body gets the same session it did before.
+     *
+     * Each signal becomes a z-score against the person's own baseline (how many of their usual spreads away from their
+     * usual), clamped to ±3 so one wild reading cannot decide the day. The weights are 0.50 HRV, 0.25 resting heart
+     * rate, 0.10 breathing rate and 0.15 sleep; sleep has no baseline, so its term is `(sleepPerf - 85) / 15`: 85 %
+     * of the needed sleep is neutral and every 15 points is one unit. A missing signal drops out and the rest are
+     * re-weighted. The weighted z then goes through a logistic curve, `100 / (1 + e^-(1.4 z + 1.1))`: the slope 1.4
+     * sets how fast the score moves, and the offset 1.1 is what puts a normal day (z = 0) at 75 %.
      */
     fun recovery(hrvLn: Double?, rhr: Double?, resp: Double?, sleepPerf: Int?, hrvBase: Baseline?, rhrBase: Baseline?, respBase: Baseline?): Int {
         var sum = 0.0
