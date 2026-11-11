@@ -10,6 +10,7 @@ import { HistoryScreen } from './ui/history/HistoryScreen'
 import { SessionScreen } from './ui/history/SessionScreen'
 import { HomeScreen } from './ui/home/HomeScreen'
 import { LiveWorkoutScreen } from './ui/live/LiveWorkoutScreen'
+import { PlanBuilderScreen } from './ui/plan/PlanBuilderScreen'
 import { ProfileScreen } from './ui/profile/ProfileScreen'
 import { BadgesScreen } from './ui/progress/BadgesScreen'
 import { ProgressScreen } from './ui/progress/ProgressScreen'
@@ -32,6 +33,7 @@ export const routes: Record<string, Route> = {
   '/profile': { title: 'tab_profile', Screen: ProfileScreen },
   '/live': { title: 'tab_workouts', Screen: LiveWorkoutScreen, bare: true },
   '/plan': { title: 'tab_workouts', Screen: PlanEditorScreen },
+  '/plan-builder': { title: 'pb_title', Screen: PlanBuilderScreen },
   '/library': { title: 'tab_workouts', Screen: LibraryScreen },
   '/exercise': { title: 'tab_workouts', Screen: ExerciseDetailScreen },
   '/history': { title: 'tab_workouts', Screen: HistoryScreen },

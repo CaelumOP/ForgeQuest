@@ -31,8 +31,10 @@ export function PlanEditorScreen({ param }: { param?: string }) {
   const s = useProgress()
   const library = useLibrary()
   const allPlans = useAllPlans()
+  const openTemplates = param === 'templates'
   const [selected, setSelected] = useState(() => dayOfWeek(todayEpochDay()))
-  const [panel, setPanel] = useState<Panel>(null)
+  const [panel, setPanel] = useState<Panel>(() => (openTemplates ? 'templates' : null))
+  useEffect(() => { if (openTemplates) setPanel('templates') }, [openTemplates])
   const [editing, setEditing] = useState<PlanItemRow | null>(null)
   const [swapping, setSwapping] = useState<PlanItemRow | null>(null)
   const [pending, setPending] = useState<PlanDraft | null>(null)
@@ -51,7 +53,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
   const unit = weightUnit(s.settings)
   const equipment = configuredEquipment(s.settings)
   const arabic = lang === 'ar'
-  const viewed = param ? allPlans.find((p) => String(p.id) === param) : undefined
+  const viewed = param && !openTemplates ? allPlans.find((p) => String(p.id) === param) : undefined
 
   const showUndo = (u: Undo) => {
     setUndo(u)
@@ -208,6 +210,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
 
       <ChangePlanSheet
         open={panel === 'change'} onClose={() => setPanel(null)} hasPrevious={allPlans.length > 1}
+        onBuilder={() => { setPanel(null); location.replace('#/plan-builder') }}
         onTemplates={() => setPanel('templates')} onPrevious={() => setPanel('previous')} onPaste={() => setPanel('paste')}
       />
       <PastePlanSheet open={panel === 'paste'} onClose={() => setPanel(null)} onParsed={(draft) => { pendingSource.current = 'manual'; setPanel(null); setPending(draft) }} />
@@ -344,13 +347,20 @@ function ChoiceRow({ icon, title, info, onClick, extra }: { icon: preact.Compone
   )
 }
 
-function ChangePlanSheet({ open, onClose, hasPrevious, onTemplates, onPrevious, onPaste }: { open: boolean; onClose: () => void; hasPrevious: boolean; onTemplates: () => void; onPrevious: () => void; onPaste: () => void }) {
+const TuneIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+  </svg>
+)
+
+function ChangePlanSheet({ open, onClose, hasPrevious, onBuilder, onTemplates, onPrevious, onPaste }: { open: boolean; onClose: () => void; hasPrevious: boolean; onBuilder: () => void; onTemplates: () => void; onPrevious: () => void; onPaste: () => void }) {
   const copy = async () => {
     try { await navigator.clipboard.writeText(planPrompt); toast(t('plan_prompt_copied')) } catch { toast(t('workouts_web_copy_failed')) }
   }
   return (
     <Sheet open={open} onClose={onClose} title={t('plan_change')}>
       <ChoiceRow icon={<SparkleIcon />} title={t('plan_gemini')} info={t('plan_gemini_info')} extra={<><Button variant="tonal" icon={<CopyIcon size={18} />} onClick={copy}>{t('plan_gemini_copy')}</Button> <Button variant="tonal" icon={<DocIcon size={18} />} onClick={onPaste}>{t('plan_gemini_paste')}</Button></>} />
+      <ChoiceRow icon={<TuneIcon />} title={t('pb_title')} info={t('pb_entry_info')} onClick={onBuilder} />
       <ChoiceRow icon={<ListIcon />} title={t('plan_ready_made')} info={t('plan_ready_made_info')} onClick={onTemplates} />
       {hasPrevious && <ChoiceRow icon={<HistoryIcon />} title={t('plan_previous')} info={t('plan_previous_info')} onClick={onPrevious} />}
       <ChoiceRow icon={<DocIcon />} title={t('plan_import_docs')} info={t('plan_docs_info')} onClick={() => { location.hash = '#/profile' }} />
