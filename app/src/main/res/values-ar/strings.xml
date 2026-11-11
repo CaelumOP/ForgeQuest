@@ -1210,7 +1210,7 @@
     <string name="debrief_watch_pain_same">%1$s: ستبقى الأرقام نفسها في المرة القادمة بعد الألم. إن تكرر الألم فاستبدله.</string>
     <string name="debrief_watch_deload">يتراكم التعب. اجعل تمارينك القليلة القادمة أخف.</string>
     <string name="debrief_watch_plateau">%1$s: لا تقدّم في %2$s على مدى %3$s. جرّب حركة قريبة منه.</string>
-    <string name="debrief_watch_plateau_try">%1$s: لا تقدّم في %2$s على مدى %3$s (أعلى رقم %4$s). جرّب %5$s لبضعة أسابيع.</string>
+    <string name="debrief_watch_plateau_try">%1$s: لا تقدّم في %2$s على مدى %3$s (%4$s). جرّب %5$s لبضعة أسابيع.</string>
     <string name="debrief_watch_drop">%1$s: أقل من المرة السابقة. تمرين واحد لا يعني اتجاهًا ثابتًا.</string>
     <string name="debrief_watch_skipped_one">لم يُنجَز %1$s. ابدأ به في المرة القادمة.</string>
     <string name="debrief_watch_skipped_more">لم يُنجَز %1$s و%2$s. ابدأ بها في المرة القادمة.</string>
@@ -1606,7 +1606,9 @@
     <string name="coach_fresh">جاهز: %1$s</string>
     <string name="coach_recovering">قيد التعافي: %1$s</string>
     <string name="coach_stalled_title">تمارين متوقفة عن التقدم</string>
-    <string name="stalled_peak">%1$s · أعلى رقم %2$s</string>
+    <string name="stalled_peak">%1$s · %2$s</string>
+    <string name="peak_est_max">الحد الأقصى التقديري %1$s</string>
+    <string name="peak_best">أفضل رقم %1$s</string>
     <string name="stalled_switch">التبديل إلى %1$s</string>
     <string name="coach_deload_hint">التعب يتراكم. أسبوع أخف سيفيدك.</string>
     <string name="coach_week_line">هذا الأسبوع · التمارين: %1$d · المجموعات: %2$d</string>

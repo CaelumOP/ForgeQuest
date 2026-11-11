@@ -345,7 +345,8 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 
     val prMessage by vm.prMessage.collectAsState()
     val snackbar = com.forgequest.app.ui.LocalSnackbar.current
-    androidx.compose.runtime.LaunchedEffect(prMessage) { prMessage?.let { vm.prMessage.value = null; snackbar.showSnackbar(it) } }
+    // Cleared only after the snackbar has gone: clearing first would restart this effect and cancel the snackbar.
+    androidx.compose.runtime.LaunchedEffect(prMessage) { prMessage?.let { snackbar.showSnackbar(it); vm.prMessage.value = null } }
 
     val offerExactAlarm by vm.offerExactAlarm.collectAsState()
     if (offerExactAlarm) {

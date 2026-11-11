@@ -59,6 +59,22 @@ class VariationCycleTest {
         assertNotEquals(first.id, third.id)
     }
 
+    @Test fun aPressIsNeverSwappedForAFlyNorAHingeForAKickback() {
+        val isolation = setOf("cable_fly", "pec_deck", "db_fly", "cable_crossover_high_to_low", "cable_crossover_low_to_high", "cable_glute_kickback")
+        // Walk down the whole list of suggestions for a press and a hinge: none of them is a single-joint move.
+        for (id in listOf("bench_press", "db_bench_press", "romanian_deadlift")) {
+            val plan = mutableSetOf(id)
+            while (true) {
+                val to = next(id, plan = plan) ?: break
+                assertFalse("$id -> ${to.id}", to.id in isolation)
+                plan += to.id
+            }
+        }
+        // With the dumbbell press already in the plan, a stalled bench still gets a press.
+        val to = next("bench_press", plan = setOf("bench_press", "db_bench_press"))!!
+        assertFalse(to.id in isolation)
+    }
+
     @Test fun theTierStaysWithinOneStep() {
         // A Foundation pull (band-assisted) is never sent straight to an Advanced one.
         val to = next("band_assisted_pull_up")!!

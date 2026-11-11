@@ -1097,7 +1097,7 @@
     <string name="debrief_watch_pain_same">%1$s: next time keeps the same numbers after the pain. If it hurts again, swap it.</string>
     <string name="debrief_watch_deload">Tiredness is building up. Make your next few workouts lighter.</string>
     <string name="debrief_watch_plateau">%1$s: no progress in %2$s over %3$s. Try a close variation.</string>
-    <string name="debrief_watch_plateau_try">%1$s: no progress in %2$s over %3$s (peak %4$s). Try %5$s for a few weeks.</string>
+    <string name="debrief_watch_plateau_try">%1$s: no progress in %2$s over %3$s (%4$s). Try %5$s for a few weeks.</string>
     <string name="debrief_watch_drop">%1$s: lower than last time. One workout is not a trend.</string>
     <string name="debrief_watch_skipped_one">%1$s was left out. Start with it next time.</string>
     <string name="debrief_watch_skipped_more">%1$s and %2$s were left out. Start with them next time.</string>
@@ -1430,7 +1430,9 @@
     <string name="coach_fresh">Ready: %1$s</string>
     <string name="coach_recovering">Recovering: %1$s</string>
     <string name="coach_stalled_title">Stalled lifts</string>
-    <string name="stalled_peak">%1$s · peak %2$s</string>
+    <string name="stalled_peak">%1$s · %2$s</string>
+    <string name="peak_est_max">estimated max %1$s</string>
+    <string name="peak_best">best %1$s</string>
     <string name="stalled_switch">Switch to %1$s</string>
     <string name="coach_deload_hint">Tiredness is building up. A lighter week would help.</string>
     <string name="coach_week_line">This week · workouts: %1$d · sets: %2$d</string>

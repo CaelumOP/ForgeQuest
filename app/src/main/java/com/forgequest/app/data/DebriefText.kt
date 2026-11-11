@@ -105,9 +105,9 @@ object DebriefText {
             if (w.suggestId != null && best != null) {
                 // The peak is a record score: an estimated max for weights, plain reps or seconds otherwise.
                 val peak = when (w.kind) {
-                    ExerciseKind.WEIGHTED -> weight(best)
-                    ExerciseKind.HOLD -> seconds(best.toInt())
-                    else -> reps(best.toInt())
+                    ExerciseKind.WEIGHTED -> res.getString(R.string.peak_est_max, weight(best))
+                    ExerciseKind.HOLD -> res.getString(R.string.peak_best, seconds(best.toInt()))
+                    else -> res.getString(R.string.peak_best, reps(best.toInt()))
                 }
                 res.getString(R.string.debrief_watch_plateau_try, name(w.exerciseId), workouts, span, peak, name(w.suggestId))
             } else {

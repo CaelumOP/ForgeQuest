@@ -22,7 +22,8 @@ enum class CorePattern(val patterns: Set<MovementPattern>) {
  * variation to train for a few weeks instead, the usual way past a plateau. Pure, so it is unit tested.
  *
  * A suggestion must be the same core movement (a stalled bench press never becomes a row), fit the person's equipment,
- * be the same kind of exercise (weighted, reps or hold) and at most one difficulty tier away. It is never something
+ * be the same kind of exercise (weighted, reps or hold), be a compound lift and not a fly or kickback, and sit at most
+ * one difficulty tier away. It is never something
  * already in the plan, and never a lift the person cycled away from in the last [COOLDOWN_DAYS], so two lifts are not
  * swapped back and forth every week.
  */
@@ -31,6 +32,14 @@ object VariationCycle {
     const val COOLDOWN_DAYS = 56L
 
     data class Suggestion(val from: StalledLift, val to: ExerciseEntity)
+
+    /**
+     * Single-joint moves that share a movement pattern with the big lifts (a fly is a "horizontal push" to the swap
+     * engine). They are fine as accessories but never stand in for a stalled press or hinge.
+     */
+    private val ISOLATION = setOf(
+        "cable_fly", "pec_deck", "db_fly", "cable_crossover_high_to_low", "cable_crossover_low_to_high", "cable_glute_kickback",
+    )
 
     /**
      * The variation to try for [stalled], or null when there is none (not one of the six core movements, or nothing
@@ -54,7 +63,7 @@ object VariationCycle {
         val allowed = equipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
         fun curated(id: String) = profile.preferredSwaps.indexOf(id).let { if (it < 0) Int.MAX_VALUE else it }
         return library.asSequence()
-            .filter { it.id != source.id && it.id !in ExerciseCatalog.STRETCH_IDS && it.id !in planIds && it.id !in recentlyCycled }
+            .filter { it.id != source.id && it.id !in ExerciseCatalog.STRETCH_IDS && it.id !in ISOLATION && it.id !in planIds && it.id !in recentlyCycled }
             .filter { it.kind == source.kind }
             .map { it to ExerciseSwapEngine.profileFor(it) }
             .filter { (_, p) -> p.pattern in core.patterns && p.equipment in allowed }

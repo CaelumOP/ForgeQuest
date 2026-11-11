@@ -496,7 +496,7 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
                 val ex = s.exercises[lift.exerciseId]
                 val name = ex?.name ?: lift.exerciseName
                 Text(
-                    if (ex == null) name else stringResource(R.string.stalled_peak, name, formatValue(lift.bestScore, ex.kind, s.settings.weightUnit, sUnit)),
+                    if (ex == null) name else stringResource(R.string.stalled_peak, name, stringResource(if (ex.kind == ExerciseKind.WEIGHTED) R.string.peak_est_max else R.string.peak_best, formatValue(lift.bestScore, ex.kind, s.settings.weightUnit, sUnit))),
                     style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp),
                 )
                 val to = if (lift.exerciseId in planIds) {
