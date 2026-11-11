@@ -201,7 +201,22 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     private fun isNewPr(set: SetEntity): Boolean {
         val withTick = sets.value.map { if (it.id == set.id) it.copy(done = true) else it }
         val picked = PrPicker.pick(withTick, { exercises.value[it]?.kind ?: ExerciseKind.REPS }, bestScores.value)
-        return set.id in picked && prBuzzed.add(set.exerciseId)
+        val fresh = set.id in picked && prBuzzed.add(set.exerciseId)
+        if (fresh) announcePr(set)
+        return fresh
+    }
+
+    /** One line for the snackbar when a set becomes the exercise's record; at most once per exercise per workout. */
+    val prMessage = MutableStateFlow<String?>(null)
+
+    private fun announcePr(set: SetEntity) {
+        val ex = exercises.value[set.exerciseId] ?: return
+        val what = when (ex.kind) {
+            ExerciseKind.WEIGHTED -> "${set.reps ?: 0} × ${unit.value.format(set.weightKg ?: 0f)}"
+            ExerciseKind.HOLD -> (set.seconds ?: 0).let { app.plural(R.plurals.debrief_n_seconds, it, it) }
+            ExerciseKind.REPS -> (set.reps ?: 0).let { app.plural(R.plurals.debrief_n_reps, it, it) }
+        }
+        prMessage.value = app.str(R.string.live_pr_new, ex.name, what)
     }
 
     fun toggle(set: SetEntity) {
@@ -350,7 +365,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val withEdit = sets.value.map { if (it.id == set.id) updated.copy(done = true) else it }
         val picked = PrPicker.pick(withEdit, { exercises.value[it]?.kind ?: ExerciseKind.REPS }, bestScores.value)
         if (set.id in picked && celebrated.add(set.id)) {
-            if (prBuzzed.add(set.exerciseId)) app.haptics.celebrate()
+            if (prBuzzed.add(set.exerciseId)) { app.haptics.celebrate(); announcePr(updated) }
             newBest.value = set.id
             viewModelScope.launch { delay(1400); if (newBest.value == set.id) newBest.value = null }
         }

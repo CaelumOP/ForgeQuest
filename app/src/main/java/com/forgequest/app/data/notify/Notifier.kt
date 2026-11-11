@@ -82,12 +82,16 @@ class Notifier(private val context: Context) {
         runCatching { manager.notify(REST_ID, n) }
     }
 
+    /** Counts the rest-over notifications of this run of the app, so their three wordings take turns. */
+    private var restOverCount = 0
+
     fun restOver(exercise: String?) {
         if (!canPost()) return
+        val wording = REST_OVER_WORDINGS[restOverCount++ % REST_OVER_WORDINGS.size]
         val n = NotificationCompat.Builder(context, REST_DONE_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.notif_rest_over))
-            .setContentText(exercise?.let { context.getString(R.string.notif_back_to, it) } ?: context.getString(R.string.notif_back_to_it))
+            .setContentText(exercise?.let { context.getString(wording, it) } ?: context.getString(R.string.notif_back_to_it))
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -126,6 +130,9 @@ class Notifier(private val context: Context) {
          */
         fun alertSound(): Uri? =
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+
+        /** Each takes the next exercise's name. */
+        private val REST_OVER_WORDINGS = intArrayOf(R.string.notif_back_to, R.string.notif_back_to_2, R.string.notif_back_to_3)
 
         private const val REST_CHANNEL = "rest"
         private const val REST_DONE_CHANNEL = "rest_done_v2"

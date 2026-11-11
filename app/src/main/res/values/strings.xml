@@ -767,6 +767,9 @@
     <string name="notif_next_set">Next set when the timer ends</string>
     <string name="notif_rest_over">Rest over</string>
     <string name="notif_back_to">Back to %1$s</string>
+    <string name="notif_back_to_2">Rest is done. %1$s is waiting.</string>
+    <string name="notif_back_to_3">Time is up. Next: %1$s.</string>
+    <string name="live_pr_new">New best on %1$s: %2$s.</string>
     <string name="notif_back_to_it">Back to it</string>
     <string name="notif_reminder_title">Today: %1$s</string>
     <string name="notif_reminder_moves">%1$s moves to %2$s. Tap to start.</string>

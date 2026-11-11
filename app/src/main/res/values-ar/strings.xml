@@ -868,6 +868,9 @@
     <string name="notif_next_set">المجموعة التالية عند انتهاء المؤقت</string>
     <string name="notif_rest_over">انتهت الراحة</string>
     <string name="notif_back_to">عودة إلى %1$s</string>
+    <string name="notif_back_to_2">انتهت الراحة. %1$s بانتظارك.</string>
+    <string name="notif_back_to_3">انتهى الوقت. التالي: %1$s.</string>
+    <string name="live_pr_new">رقم جديد في %1$s: %2$s.</string>
     <string name="notif_back_to_it">حان وقت العودة إلى التمرين</string>
     <string name="notif_reminder_title">اليوم: %1$s</string>
     <string name="notif_reminder_moves">يرتفع وزن %1$s إلى %2$s. اضغط للبدء.</string>

@@ -343,6 +343,10 @@ fun LiveWorkoutScreen(nav: NavHostController) {
         hold?.let { HoldOverlay(it, now, onStop = vm::stopHold, onCancel = vm::cancelHold) }
     }
 
+    val prMessage by vm.prMessage.collectAsState()
+    val snackbar = com.forgequest.app.ui.LocalSnackbar.current
+    androidx.compose.runtime.LaunchedEffect(prMessage) { prMessage?.let { vm.prMessage.value = null; snackbar.showSnackbar(it) } }
+
     val offerExactAlarm by vm.offerExactAlarm.collectAsState()
     if (offerExactAlarm) {
         AlertDialog(
