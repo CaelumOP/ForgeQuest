@@ -58,7 +58,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -634,10 +634,8 @@ private fun BottomActionRow(
                     quickShort,
                     onClick = onQuick,
                     icon = Icons.Rounded.Bolt,
-                    modifier = Modifier.clearAndSetSemantics {
-                        contentDescription = quickCd
-                        role = Role.Button
-                    },
+                    // Plain semantics: clearAndSetSemantics here would also wipe the pill's own click action for TalkBack.
+                    modifier = Modifier.semantics { contentDescription = quickCd },
                 )
             }
         }
@@ -666,10 +664,8 @@ private fun BottomActionRow(
                     quickShort,
                     onClick = onQuick,
                     icon = Icons.Rounded.Bolt,
-                    modifier = Modifier.clearAndSetSemantics {
-                        contentDescription = quickCd
-                        role = Role.Button
-                    },
+                    // Plain semantics: clearAndSetSemantics here would also wipe the pill's own click action for TalkBack.
+                    modifier = Modifier.semantics { contentDescription = quickCd },
                 )
             }
         }
@@ -784,8 +780,10 @@ private fun DayDetailsContent(
 @Composable
 private fun HeaderAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Column(
-        Modifier.clip(ForgeShape.Sm).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
+        Modifier.clip(ForgeShape.Sm).clickable(role = Role.Button, onClick = onClick)
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Icon(icon, contentDescription = null, tint = Fit.colors.textPrimary)
         Text(label, style = MaterialTheme.typography.labelSmall, color = Fit.colors.textSecondary)

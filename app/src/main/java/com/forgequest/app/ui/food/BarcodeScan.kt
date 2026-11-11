@@ -1,5 +1,8 @@
 package com.forgequest.app.ui.food
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -315,10 +318,12 @@ private fun BarcodeCamera(detecting: Boolean, labelMode: Boolean, onClose: () ->
                 if (labelMode) {
                     Spacer(Modifier.height(16.dp))
                     // Shutter: white ring with a filled core, like the meal camera.
+                    val shutterCd = stringResource(R.string.photo_take)
                     Box(
                         Modifier.size(78.dp).clip(CircleShape).border(4.dp, Color.White, CircleShape).padding(7.dp).clip(CircleShape)
                             .background(if (shooting) Color.White.copy(alpha = 0.5f) else Color.White)
-                            .clickable(enabled = granted && !shooting) {
+                            .semantics { contentDescription = shutterCd }
+                            .clickable(enabled = granted && !shooting, role = Role.Button) {
                                 shooting = true
                                 val file = File(context.cacheDir, "label.jpg")
                                 capture.takePicture(
@@ -348,7 +353,7 @@ private fun BarcodeCamera(detecting: Boolean, labelMode: Boolean, onClose: () ->
 
 @Composable
 private fun RoundButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, onClick: () -> Unit) {
-    Box(Modifier.size(44.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(48.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)).clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, contentDescription = description, tint = Color.White)
     }
 }

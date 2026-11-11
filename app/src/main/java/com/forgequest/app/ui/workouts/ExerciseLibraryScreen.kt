@@ -154,7 +154,11 @@ fun ExerciseLibraryScreen(nav: NavHostController) {
                     )
                 }
             }
-            item { Text(stringResource(R.string.lib_built_in), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) }
+            if (builtIn.isNotEmpty()) {
+                item { Text(stringResource(R.string.lib_built_in), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) }
+            } else if (custom.isEmpty()) {
+                item { Text(stringResource(R.string.lib_search_none), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 16.dp)) }
+            }
             items(builtIn, key = { it.id }) { ex -> Box(itemMotion()) { LibraryRow(ex, onClick = { nav.navigate(Routes.exercise(ex.id)) }) } }
         }
     }

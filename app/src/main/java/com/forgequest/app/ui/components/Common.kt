@@ -358,7 +358,7 @@ fun Stepper(
         modifier.clip(ForgeShape.Full).background(c.cardHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable { direction = -1; onMinus() }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(CircleShape).repeatingClickable { direction = -1; onMinus() }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
         Box(
@@ -390,7 +390,7 @@ fun Stepper(
                 )
             }
         }
-        Box(Modifier.size(44.dp).clip(CircleShape).repeatingClickable { direction = 1; onPlus() }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(CircleShape).repeatingClickable { direction = 1; onPlus() }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
     }

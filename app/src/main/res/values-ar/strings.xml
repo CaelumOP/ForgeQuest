@@ -334,7 +334,7 @@
     <string name="food_estimate">قدِّر السعرات من الاسم</string>
     <string name="food_estimating">جارٍ التقدير…</string>
     <string name="food_estimate_basis">بناءً على: %1$s. عدّل الأرقام إن اختلفت حصتك.</string>
-    <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد من أطعمتك أعلاه، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
+    <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد من أطعمتك أدناه، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
     <string name="food_nothing_that_day">لم يُسجَّل شيء في هذا اليوم.</string>
     <plurals name="food_log_selection">
         <item quantity="zero">تسجيل %1$d · %2$d سعرة · %3$d غ بروتين</item>
@@ -776,6 +776,7 @@
     <string name="lib_still_used">%1$s مستخدم؛ ادمجه في تمرين آخر بدلًا من حذفه.</string>
     <string name="lib_counts">%1$d مخصص · %2$d مدمج</string>
     <string name="lib_search">بحث</string>
+    <string name="lib_search_none">لا توجد تمارين تطابق بحثك.</string>
     <string name="lib_yours">تمارينك</string>
     <string name="lib_none_custom">لا تمارين مخصصة بعد. تظهر هنا التمارين التي تنشئها في تمرين أو في محرر الخطة، والتي يقترحها المدرب.</string>
     <string name="lib_built_in">المدمجة</string>

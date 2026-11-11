@@ -182,6 +182,11 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     fun activate(plan: PlanEntity) = viewModelScope.launch { app.workouts.activatePlan(plan.id); message.value = app.str(R.string.plan_switched, plan.name) }
     fun deletePlan(plan: PlanEntity) = viewModelScope.launch { app.workouts.deletePlan(plan.id); message.value = app.str(R.string.lib_deleted, plan.name) }
     fun move(item: PlanItemEntity, delta: Int) = viewModelScope.launch { app.workouts.movePlanItem(item, delta) }
+    /** From the item sheet: save what was edited there, then move, in that order. */
+    fun saveAndMove(draft: PlanItemEntity, delta: Int) = viewModelScope.launch {
+        app.workouts.updatePlanItem(draft)
+        app.workouts.movePlanItem(draft, delta)
+    }
     fun swapDays(planId: Long, a: Int, b: Int) = viewModelScope.launch {
         app.workouts.swapPlanDays(planId, a, b)
         message.value = app.str(R.string.plan_days_swapped, Dates.dayName(a), Dates.dayName(b))
@@ -259,7 +264,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                             Modifier.weight(1f).clip(ForgeShape.Sm).background(if (sel) c.teal else c.card)
                                 .selectable(selected = sel, role = Role.Tab) { selectedDay = dow }
                                 .semantics { contentDescription = Dates.dayName(dow) }
-                                .padding(vertical = 10.dp),
+                                .heightIn(min = 48.dp).padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(Dates.dayShort(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, softWrap = false)
@@ -432,8 +437,9 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
             unit = s.settings.weightUnit,
             canMoveUp = index > 0,
             canMoveDown = index >= 0 && index < siblings.lastIndex,
-            onMove = { delta -> vm.move(item, delta); editing = null },
-            onSwap = { editing = null; swappingItem = item },
+            // Both carry the sheet's draft, so sets, reps or rest changed there are not lost.
+            onMove = { draft, delta -> vm.saveAndMove(draft, delta); editing = null },
+            onSwap = { draft -> vm.updateItem(draft); editing = null; swappingItem = draft },
             onSave = { vm.updateItem(it); editing = null },
             onDismiss = { editing = null },
         )
@@ -526,7 +532,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     (1..7).filter { it != selectedDay }.forEach { dow ->
                         val target = s.plan.day(dow)
                         Row(
-                            Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.swapDays(s.plan.plan.id, selectedDay, dow); moveDay = false; selectedDay = dow }.padding(vertical = 10.dp, horizontal = 8.dp),
+                            Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.swapDays(s.plan.plan.id, selectedDay, dow); moveDay = false; selectedDay = dow }.heightIn(min = 48.dp).padding(vertical = 10.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(Dates.dayName(dow), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -628,8 +634,8 @@ private fun ItemEditorSheet(
     unit: WeightUnit,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
-    onMove: (Int) -> Unit,
-    onSwap: () -> Unit,
+    onMove: (PlanItemEntity, Int) -> Unit,
+    onSwap: (PlanItemEntity) -> Unit,
     onSave: (PlanItemEntity) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -639,7 +645,7 @@ private fun ItemEditorSheet(
         Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz)
+                TonalPill(stringResource(R.string.live_swap_exercise), onClick = { onSwap(draft) }, icon = Icons.Rounded.SwapHoriz)
             }
             Spacer(Modifier.height(16.dp))
             EditorRow(if (draft.circuit) stringResource(R.string.plan_rounds) else stringResource(R.string.live_sets), draft.sets.toFloat(), { draft = draft.copy(sets = it.toInt()) }, step = 1f, min = 1f, max = 10f)
@@ -675,8 +681,8 @@ private fun ItemEditorSheet(
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.plan_order), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                TonalPill(stringResource(R.string.plan_move_up), onClick = { onMove(-1) }, icon = Icons.Rounded.ArrowUpward, tint = if (canMoveUp) c.textPrimary else c.textSecondary)
-                TonalPill(stringResource(R.string.plan_move_down), onClick = { onMove(1) }, icon = Icons.Rounded.ArrowDownward, tint = if (canMoveDown) c.textPrimary else c.textSecondary)
+                PillButton(stringResource(R.string.plan_move_up), onClick = { onMove(draft, -1) }, icon = Icons.Rounded.ArrowUpward, container = c.cardHigh, content = c.textPrimary, enabled = canMoveUp)
+                PillButton(stringResource(R.string.plan_move_down), onClick = { onMove(draft, 1) }, icon = Icons.Rounded.ArrowDownward, container = c.cardHigh, content = c.textPrimary, enabled = canMoveDown)
             }
             Spacer(Modifier.height(16.dp))
             PillButton(stringResource(R.string.action_save), onClick = { onSave(draft) }, modifier = Modifier.fillMaxWidth())

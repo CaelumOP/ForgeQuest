@@ -289,7 +289,7 @@
     <string name="food_estimate">Estimate calories from the name</string>
     <string name="food_estimating">Estimating…</string>
     <string name="food_estimate_basis">Based on: %1$s. Change the numbers if your portion was different.</string>
-    <string name="food_nothing_today">Nothing logged yet. Tick foods above, scan a plate, or quick-log a one-off meal.</string>
+    <string name="food_nothing_today">Nothing logged yet. Tick foods below, scan a plate, or quick-log a one-off meal.</string>
     <string name="food_nothing_that_day">Nothing was logged on this day.</string>
     <plurals name="food_log_selection">
         <item quantity="one">Log %1$d item · %2$d kcal · %3$d g protein</item>
@@ -683,6 +683,7 @@
     <string name="lib_still_used">%1$s is still used. Merge it into another exercise instead.</string>
     <string name="lib_counts">%1$d custom · %2$d built in</string>
     <string name="lib_search">Search</string>
+    <string name="lib_search_none">No exercises match your search.</string>
     <string name="lib_yours">Your exercises</string>
     <string name="lib_none_custom">Nothing custom yet. Exercises you create in a workout or the plan editor, and ones the coach invents, show up here.</string>
     <string name="lib_built_in">Built in</string>

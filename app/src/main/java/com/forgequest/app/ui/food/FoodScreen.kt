@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.food
 
+import androidx.compose.ui.semantics.Role
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
@@ -506,10 +507,15 @@ private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: (
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onPrev) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.cd_previous_day), tint = c.textPrimary) }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+        // The whole centre is the "back to today" target on another day, not just the small teal line.
+        Column(
+            Modifier.weight(1f).clip(ForgeShape.Sm).clickable(enabled = !isToday, role = Role.Button, onClick = onToday).heightIn(min = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             if (!isToday) {
-                Text(stringResource(R.string.food_back_to_today), style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.clip(ForgeShape.Sm).clickable(onClick = onToday).padding(horizontal = 8.dp, vertical = 2.dp))
+                Text(stringResource(R.string.food_back_to_today), style = MaterialTheme.typography.labelMedium, color = c.teal, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
             }
         }
         IconButton(onClick = onNext, enabled = !isToday) {

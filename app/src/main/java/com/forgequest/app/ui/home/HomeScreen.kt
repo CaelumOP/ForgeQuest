@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.home
 
+import androidx.compose.foundation.border
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
@@ -643,7 +644,11 @@ private fun StreakCard(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    DayCircle(state, size = 28.dp)
+                    // A thin grey outline says "this day can be tapped". Today's planned circle already has its teal ring.
+                    val cue = canTag && state != DayState.TODAY_PLANNED
+                    Box(if (cue) Modifier.border(1.5.dp, c.textSecondary.copy(alpha = 0.55f), CircleShape) else Modifier) {
+                        DayCircle(state, size = 28.dp)
+                    }
                     Spacer(Modifier.height(4.dp))
                     Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }

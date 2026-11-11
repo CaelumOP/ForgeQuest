@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.history
 
+import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -192,7 +193,7 @@ fun HistoryScreen(nav: NavHostController) {
         if (s.sessions.isEmpty()) {
             FitCard(Modifier.padding(16.dp)) {
                 EmptyState(Icons.Rounded.History, stringResource(R.string.hist_empty_title), stringResource(R.string.hist_empty_body)) {
-                    PillButton(stringResource(R.string.hist_go_workouts), onClick = { nav.popBackStack() })
+                    PillButton(stringResource(R.string.hist_go_workouts), onClick = { nav.goToTab(Routes.WORKOUTS) })
                 }
             }
             return

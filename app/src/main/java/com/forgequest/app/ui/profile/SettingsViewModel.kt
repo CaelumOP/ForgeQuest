@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import com.forgequest.app.ui.components.UndoState
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.size
@@ -135,8 +136,14 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     }
 
     fun addNote(note: String) = viewModelScope.launch { app.coach.setNotes(app.settings.current().coachNotes + "\n" + note.trim()) }
+    val undo = UndoState(viewModelScope)
+
     fun removeNote(note: String) = viewModelScope.launch {
-        app.coach.setNotes(app.settings.current().coachNotes.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
+        val before = app.settings.current().coachNotes
+        app.coach.setNotes(before.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
+        // Undo puts the whole list back as it was, so the note returns to its old place.
+        val short = note.trim().let { if (it.length > 32) it.take(32).trimEnd() + "…" else it }
+        undo.offer(app.str(R.string.food_removed, short)) { app.coach.setNotes(before) }
     }
 
     fun setReminder(hour: Int) = viewModelScope.launch {
