@@ -213,10 +213,10 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val ex = exercises.value[set.exerciseId] ?: return
         val what = when (ex.kind) {
             ExerciseKind.WEIGHTED -> "${set.reps ?: 0} × ${unit.value.format(set.weightKg ?: 0f)}"
-            ExerciseKind.HOLD -> (set.seconds ?: 0).let { app.plural(R.plurals.debrief_n_seconds, it, it) }
-            ExerciseKind.REPS -> (set.reps ?: 0).let { app.plural(R.plurals.debrief_n_reps, it, it) }
+            ExerciseKind.HOLD -> (set.seconds ?: 0).let { app.plural(com.forgequest.app.R.plurals.debrief_n_seconds, it, it) }
+            ExerciseKind.REPS -> (set.reps ?: 0).let { app.plural(com.forgequest.app.R.plurals.debrief_n_reps, it, it) }
         }
-        prMessage.value = app.str(R.string.live_pr_new, ex.name, what)
+        prMessage.value = app.str(com.forgequest.app.R.string.live_pr_new, ex.name, what)
     }
 
     fun toggle(set: SetEntity) {

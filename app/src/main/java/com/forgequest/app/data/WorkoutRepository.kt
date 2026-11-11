@@ -455,7 +455,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val items = plans.allItems().filter { it.exerciseId == fromExerciseId }
         val active = plans.active()?.let { p -> plans.days(p.id).map { it.id }.toSet() }.orEmpty()
         items.filter { it.dayId in active }.forEach { swapPlanItem(it, toExerciseId) }
-        settings.update { it.copy(cycleHistory = com.forgequest.app.domain.VariationCycle.record(it.cycleHistory, fromExerciseId, Dates.today())) }
+        settings?.update { it.copy(cycleHistory = com.forgequest.app.domain.VariationCycle.record(it.cycleHistory, fromExerciseId, Dates.today())) }
     }
 
     /** A plan day's sets for the score: warm-ups left out. */
