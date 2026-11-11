@@ -1,4 +1,4 @@
-// Weekly streak, reminders, XP, recovery and personal records: same rules as Android Progress.kt.
+// Weekly streak, reminders, XP, recovery and personal records: same rules as Android ProgressRules.kt.
 // Kotlin uses 32-bit Float for recovery and record scores, so those go through Math.fround.
 import { dayOfWeek, weekStart } from './dates'
 import { effortOf } from './effort'

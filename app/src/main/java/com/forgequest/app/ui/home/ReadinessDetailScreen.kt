@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -45,7 +44,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -63,6 +61,7 @@ import com.forgequest.app.data.health.HealthState
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.StrainBand
 import com.forgequest.app.domain.Trend
+import com.forgequest.app.ui.components.SectionTitle
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.theme.Fit
 import java.time.Instant
@@ -149,13 +148,6 @@ private fun BigNumber(value: String, suffix: String?, sub: String?, color: Color
         }
     }
     if (sub != null) Text(sub, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Spacer(Modifier.height(24.dp))
-    Text(text, style = MaterialTheme.typography.titleMedium, color = Fit.colors.textPrimary, modifier = Modifier.semantics { heading() })
-    Spacer(Modifier.height(12.dp))
 }
 
 /**
@@ -287,7 +279,7 @@ private fun RecoveryDay(d: DayReadiness) {
         }
     )
     BigNumber("${d.recovery}%", null, callBody, tint)
-    SectionTitle(stringResource(R.string.ready_contributors))
+    SectionTitle(stringResource(R.string.ready_contributors), Modifier.padding(top = 16.dp, bottom = 8.dp))
     val ms = stringResource(R.string.unit_ms)
     val bpm = stringResource(R.string.unit_bpm)
     MetricRow(stringResource(R.string.ready_c_hrv), d.hrv?.let { "${it.toInt()} $ms" } ?: "—", d.hrvUsual?.let { stringResource(R.string.ready_usual, "${it.toInt()} $ms") }, d.hrvTrend)
@@ -328,11 +320,11 @@ private fun SleepDay(d: DayReadiness) {
     BigNumber(hm(n.asleepMin), "${n.start.atZone(zone).format(fmt)} – ${n.end.atZone(zone).format(fmt)}", null, SleepTint)
     val efficiency = if (n.inBedMin > 0) (100 * n.asleepMin / n.inBedMin) else 0
     Text(stringResource(R.string.ready_sleep_sentence, d.sleepPerf ?: 0, hm(d.sleepNeedLastNight), hm(n.inBedMin), efficiency), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
-    SectionTitle(stringResource(R.string.ready_stages_title))
+    SectionTitle(stringResource(R.string.ready_stages_title), Modifier.padding(top = 16.dp, bottom = 8.dp))
     // A watch that sent no stages gets one line, not four empty lanes.
     if (n.segments.isEmpty()) Text(stringResource(R.string.ready_no_stages), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     else Hypnogram(n.start, n.end, n.segments, listOf(n.awakeMin, n.remMin, n.lightMin, n.deepMin), n.gaps)
-    SectionTitle(stringResource(R.string.ready_c_tonight))
+    SectionTitle(stringResource(R.string.ready_c_tonight), Modifier.padding(top = 16.dp, bottom = 8.dp))
     BigNumber(hm(d.sleepNeedTonight), null, if (d.debtMin > 0) stringResource(R.string.ready_debt, hm(d.debtMin)) else null, c.textPrimary)
 }
 
@@ -433,7 +425,7 @@ private fun StrainDay(d: DayReadiness) {
         val fill = (d.strain / 21).toFloat().coerceIn(0f, 1f) * size.width
         drawRoundRect(StrainTint, Offset(if (rtl) size.width - fill else 0f, 0f), Size(fill, size.height), CornerRadius(size.height / 2))
     }
-    SectionTitle(stringResource(R.string.ready_how_earned))
+    SectionTitle(stringResource(R.string.ready_how_earned), Modifier.padding(top = 16.dp, bottom = 8.dp))
     // No strain yet: "other activity 100%" on a 0.0 day read as broken.
     val fq = (d.workoutShare * 100).toInt()
     // An empty bar labelled "0 %" reads as broken, so a source that earned nothing today is simply left out.
@@ -446,12 +438,12 @@ private fun StrainDay(d: DayReadiness) {
     }
     val rest = (100 - fq - other).coerceAtLeast(0)
     if (d.strain >= 0.1 && rest > 0) ShareBar(stringResource(R.string.ready_earned_other, rest), (1f - d.workoutShare - d.otherShare).coerceAtLeast(0f), StrainTint.copy(alpha = 0.6f))
-    SectionTitle(stringResource(R.string.ready_zones))
+    SectionTitle(stringResource(R.string.ready_zones), Modifier.padding(top = 16.dp, bottom = 8.dp))
     val names = listOf(R.string.zone_1, R.string.zone_2, R.string.zone_3, R.string.zone_4, R.string.zone_5)
     d.zoneMin.forEachIndexed { i, m ->
         MetricRow(stringResource(names[i]), if (m < 1 && m > 0) stringResource(R.string.ready_under_1_min) else stringResource(R.string.ready_minutes, m.toInt()), null, null)
     }
-    SectionTitle(stringResource(R.string.ready_activity))
+    SectionTitle(stringResource(R.string.ready_activity), Modifier.padding(top = 16.dp, bottom = 8.dp))
     MetricRow(stringResource(R.string.ready_c_steps), "%,d".format(Locale.US, d.steps), null, null)
     MetricRow(stringResource(R.string.ready_c_kcal), "%,d".format(Locale.US, d.kcalBurned), null, null)
 }

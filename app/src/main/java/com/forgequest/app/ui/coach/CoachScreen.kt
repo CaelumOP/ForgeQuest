@@ -1,7 +1,6 @@
 package com.forgequest.app.ui.coach
 
 import com.forgequest.app.ui.theme.ForgeShape
-import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.R
 
 import androidx.compose.ui.res.pluralStringResource
@@ -16,9 +15,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.forgequest.app.ui.components.FitCard
-import com.forgequest.app.ui.localLabel
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,13 +48,11 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -98,13 +92,11 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MarkdownText
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.TonalPill
-import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.workouts.PlanPreviewSheet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -206,38 +198,46 @@ fun CoachScreen(nav: NavHostController) {
                 }
             }
         }
-        if (!aiOn) {
-            // The digest moved to Progress; the chat only keeps the way to the switch.
-            TextButton(onClick = { nav.navigate(Routes.settingsGroup("coach")) }, modifier = Modifier.padding(16.dp)) { Text(stringResource(R.string.coach_turn_on_ai), color = c.teal) }
-            return@Column
-        }
-        // Personal tools (owner only): the Gemini app round trip, one tap each, in plain sight.
+        // The Gemini app round trip, one tap each: send the data with a question, paste the reply back.
         val ctx = androidx.compose.ui.platform.LocalContext.current
-        val personal by com.forgequest.app.PersonalTools.flow(ctx).collectAsState()
-        if (personal == true) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TonalPill(stringResource(R.string.ask_gemini), onClick = {
-                    val question = input
-                    val arabic = ctx.resources.configuration.locales[0].language == "ar"
+        com.forgequest.app.ui.components.CoachMarkBox(com.forgequest.app.ui.onboarding.AppTour.COACH, R.string.coach_ask_t, if (aiOn) R.string.coach_ask_b else R.string.coach_ask_b_noai, below = true) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TonalPill(stringResource(R.string.ask_gemini), onClick = {
+                val question = input
+                val arabic = ctx.resources.configuration.locales[0].language == "ar"
+                scope.launch {
+                    val data = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { ctx.container.bridge.dataText() }
+                    val opened = com.forgequest.app.data.bridge.AskGemini.send(ctx, com.forgequest.app.data.bridge.AskGemini.prompt(data, question, arabic))
+                    ctx.toast(ctx.getString(if (opened) R.string.ask_gemini_sent else R.string.ask_gemini_copied))
+                }
+            }, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.weight(1f))
+            TonalPill(stringResource(R.string.paste_gemini_reply), onClick = {
+                val clip = (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                    .primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
+                if (clip.contains(com.forgequest.app.data.bridge.BridgeFormat.HEADER)) {
                     scope.launch {
-                        val data = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { ctx.container.bridge.dataText() }
-                        val opened = com.forgequest.app.data.bridge.AskGemini.send(ctx, com.forgequest.app.data.bridge.AskGemini.prompt(data, question, arabic))
-                        ctx.toast(ctx.getString(if (opened) R.string.ask_gemini_sent else R.string.ask_gemini_copied))
+                        ctx.container.bridge.applyText(clip)
+                        ctx.toast(ctx.getString(R.string.paste_gemini_done))
                     }
-                }, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.weight(1f))
-                TonalPill(stringResource(R.string.paste_gemini_reply), onClick = {
-                    val clip = (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
-                        .primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
-                    if (clip.contains(com.forgequest.app.data.bridge.BridgeFormat.HEADER)) {
-                        scope.launch {
-                            ctx.container.bridge.applyText(clip)
-                            ctx.toast(ctx.getString(R.string.paste_gemini_done))
-                        }
-                    } else {
-                        ctx.toast(ctx.getString(R.string.paste_gemini_none))
-                    }
-                }, icon = Icons.Rounded.ContentPaste, modifier = Modifier.weight(1f))
-            }
+                } else {
+                    ctx.toast(ctx.getString(R.string.paste_gemini_none))
+                }
+            }, icon = Icons.Rounded.ContentPaste, modifier = Modifier.weight(1f))
+        }
+        }
+        // Once per Gem: the instructions that make Gemini answer in the format "Paste reply" reads.
+        val skillClipboard = com.forgequest.app.ui.components.rememberTextClipboard()
+        TextButton(
+            onClick = {
+                skillClipboard.copy(com.forgequest.app.ui.components.SkillPrompts.coach(ctx))
+                ctx.toast(ctx.getString(R.string.skill_copied))
+            },
+            modifier = Modifier.padding(horizontal = 8.dp),
+        ) { Text(stringResource(R.string.coach_copy_skill), color = c.teal) }
+        // Everything above works through the Gemini app, with no API key; only the chat below needs the coach on.
+        if (!aiOn) {
+            TextButton(onClick = { nav.navigate(Routes.settingsGroup("coach")) }, modifier = Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.coach_turn_on_ai), color = c.teal) }
+            return@Column
         }
         // Out of the way while typing, so a tap near Send never sends a suggestion instead.
         val showChips = messages.isNotEmpty() && hasKey && !sending && input.isBlank()

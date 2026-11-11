@@ -8,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
@@ -19,37 +18,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -70,7 +56,6 @@ import com.forgequest.app.domain.TodayFocus
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.ui.bodyRes
 import com.forgequest.app.ui.components.FitCard
-import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.tabular
@@ -89,14 +74,9 @@ fun ReadinessCard(
     when {
         // Not connected: nothing on Home; Profile › Your body › Fitbit readiness connects it.
         !enabled || state == HealthState.Unavailable -> Unit
-        // Same height as the full card, so Home doesn't jump when the numbers arrive.
-        state == HealthState.Loading -> {
-            FitCard(padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
-                Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.labelLarge, color = Fit.colors.textSecondary)
-                Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Fit.colors.textSecondary) }
-            }
-            Spacer(Modifier.height(ForgeSpace.Sm))
-        }
+        // Still reading: no card of its own. The workout card already holds the row's place ([ReadinessRowPlaceholder]),
+        // so nothing on Home moves when the numbers arrive.
+        state == HealthState.Loading -> Unit
         state == HealthState.NeedsAccess -> MessageCard(stringResource(R.string.ready_reconnect_body), stringResource(R.string.ready_reconnect), onReconnect)
         state == HealthState.Failed -> MessageCard(stringResource(R.string.ready_failed_body), stringResource(R.string.ready_try_again), onRefresh)
         state is HealthState.Ready -> if (!state.day.hasData) NoDataCard(refreshing, note, onRefresh)
@@ -161,8 +141,6 @@ private fun OpenFitbitButton() {
     TextButton(onClick = { runCatching { context.startActivity(launch) } }) { Text(stringResource(R.string.ready_open_fitbit), color = Fit.colors.gold) }
 }
 
-private fun recoveryColor(recovery: Int): Color = recoveryTint(recovery)
-
 @Composable
 private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () -> Unit) {
     val c = Fit.colors
@@ -175,18 +153,42 @@ private fun NoDataCard(refreshing: Boolean, note: RefreshNote?, onRefresh: () ->
     Spacer(Modifier.height(ForgeSpace.Sm))
 }
 
+/**
+ * Holds [ReadinessRow]'s place in the workout card while Health Connect is still being read: the same height, an empty
+ * ring and the title. Home decides to show it from the saved "connected" setting, which is known on the first frame.
+ */
+@Composable
+fun ReadinessRowPlaceholder() {
+    val c = Fit.colors
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val w = 5.dp.toPx()
+                drawArc(c.textSecondary.copy(alpha = 0.18f), 0f, 360f, false, androidx.compose.ui.geometry.Offset(w / 2, w / 2), androidx.compose.ui.geometry.Size(size.width - w, size.height - w), style = Stroke(w))
+            }
+        }
+        Spacer(Modifier.width(ForgeSpace.Sm))
+        Text(stringResource(R.string.ready_title), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
+    }
+}
+
 /** One slim row at the top of Today's workout card: recovery ring and verdict with the day's advice, and the "I feel great" bolt. */
 @Composable
-fun ReadinessRow(d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit) {
+fun ReadinessRow(
+    d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFeltGreat: (Boolean) -> Unit, onOpen: (ReadinessKind) -> Unit,
+    /** Which sentence to show and which of its wordings; Home picks the wording so it stays the same all day. */
+    line: com.forgequest.app.domain.ReadinessLine = com.forgequest.app.domain.readinessLine(d.call, focus, d.sleepContext),
+    variant: Int = 0,
+) {
     val c = Fit.colors
-    val recColor = recoveryColor(d.recovery)
-    val (title, body) = when (d.call) {
+    val recColor = recoveryTint(d.recovery)
+    val (title, _) = when (d.call) {
         DayCall.PEAK -> R.string.call_peak_t to R.string.call_peak_b
         DayCall.READY -> R.string.call_ready_t to R.string.call_ready_b
         DayCall.STEADY -> R.string.call_steady_t to R.string.call_steady_b
         DayCall.EASE_OFF -> R.string.call_ease_t to R.string.call_ease_b
         DayCall.RECOVER -> R.string.call_recover_t to R.string.call_recover_b
-    }.let { (t, b) -> t to (Readiness.adviceFor(d.call, focus)?.bodyRes ?: b) }
+    }
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.weight(1f).clip(ForgeShape.Sm)
@@ -216,7 +218,12 @@ fun ReadinessRow(d: DayReadiness, focus: TodayFocus?, note: RefreshNote?, onFelt
                     }
                     Text(stringResource(line), style = MaterialTheme.typography.bodySmall, color = c.gold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 } else {
-                    Text(stringResource(body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    // The short-sleep sentence names how long the person slept; the others take no number.
+                    val slept = d.sleepContext?.lastNightMin ?: 0
+                    val text = if (line == com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP) {
+                        stringResource(line.bodyRes(variant), stringResource(R.string.dur_hm, slept / 60, slept % 60))
+                    } else stringResource(line.bodyRes(variant))
+                    Text(text, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

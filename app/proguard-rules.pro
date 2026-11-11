@@ -18,9 +18,6 @@
 
 # Health Connect records are created reflectively when reading by type.
 -keep class androidx.health.connect.client.records.** { *; }
-# Tink / security-crypto used for the encrypted API keys.
--dontwarn com.google.errorprone.annotations.**
--dontwarn javax.annotation.**
 
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**

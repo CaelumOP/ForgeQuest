@@ -1,70 +1,38 @@
 package com.forgequest.app.ui.profile
 
-import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.background
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Checklist
-import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.RadioButtonChecked
-import androidx.compose.material.icons.rounded.RadioButtonUnchecked
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Backup
-import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MonitorHeart
-import androidx.compose.material.icons.rounded.MonitorWeight
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Palette
@@ -73,12 +41,9 @@ import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.automirrored.rounded.ShowChart
-import androidx.compose.material.icons.rounded.SportsGymnastics
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material.icons.automirrored.rounded.Undo
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -86,59 +51,34 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
-import com.forgequest.app.AppContainer
 import com.forgequest.app.R
 import com.forgequest.app.data.ProgressSnapshot
-import com.forgequest.app.data.ai.AiError
-import com.forgequest.app.data.backup.BackupError
-import com.forgequest.app.data.backup.BackupFile
-import com.forgequest.app.data.db.ExerciseEntity
-import com.forgequest.app.data.drive.DriveAuth
-import com.forgequest.app.data.drive.DriveError
-import com.forgequest.app.data.drive.DriveSync
-import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
-import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.CutPace
 import com.forgequest.app.domain.DayActivity
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.GainPace
-import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.EquipmentPreset
-import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightTrend
 import com.forgequest.app.domain.WeightUnit
-import com.forgequest.app.ui.LocalSnackbar
-import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.descRes
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.CalorieUi
@@ -146,37 +86,21 @@ import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
-import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.NumberEntryDialog
-import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
-import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.Stepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.toast
-import com.forgequest.app.ui.localDescription
-import com.forgequest.app.ui.localSummary
-import com.forgequest.app.ui.localTitle
-import com.forgequest.app.ui.mark
 import com.forgequest.app.ui.theme.Fit
-import com.forgequest.app.ui.workouts.LineChart
-import com.forgequest.app.ui.workouts.PlanPreviewSheet
-import com.forgequest.app.ui.workouts.localName
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 
 @Composable
 internal fun BodySettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
     probe: com.forgequest.app.data.health.HealthProbe,
     startHealthCheck: () -> Unit,
@@ -202,7 +126,7 @@ internal fun BodySettingsGroup(
             stringResource(settings.dayActivity.labelRes),
             stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off),
         ),
-        open = "body" in openGroups, onToggle = { toggleGroup("body") },
+        onToggle = { toggleGroup("body") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -308,9 +232,8 @@ internal fun BodySettingsGroup(
 
 @Composable
 internal fun GoalsSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -331,7 +254,7 @@ internal fun GoalsSettingsGroup(
             "${settings.proteinGoal} ${stringResource(R.string.unit_g)}",
             stringResource(R.string.summary_per_week, if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride),
         ),
-        open = "goals" in openGroups, onToggle = { toggleGroup("goals") },
+        onToggle = { toggleGroup("goals") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -529,10 +452,9 @@ internal fun GoalsSettingsGroup(
 
 @Composable
 internal fun TrainingSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
     nav: NavHostController,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -555,7 +477,7 @@ internal fun TrainingSettingsGroup(
                 else -> stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour))
             },
         ),
-        open = "training" in openGroups, onToggle = { toggleGroup("training") },
+        onToggle = { toggleGroup("training") },
     ) {
         SettingsRow(Icons.Rounded.Tune, c.teal, c.tealTrack, stringResource(R.string.pb_rebuild), stringResource(R.string.pb_rebuild_hint)) {
             nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER)
@@ -609,12 +531,11 @@ internal fun TrainingSettingsGroup(
 
 @Composable
 internal fun CoachSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     nav: NavHostController,
     s: ProgressSnapshot,
     apiKey: String,
     aiOn: Boolean,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
     onOpenKeyDialog: () -> Unit,
     onOpenNotesDialog: () -> Unit,
@@ -626,7 +547,7 @@ internal fun CoachSettingsGroup(
     SettingsGroup(
         Icons.Rounded.Psychology, c.teal, c.tealTrack, stringResource(R.string.settings_group_coach),
         if (aiOn) stringResource(if (apiKey.isBlank()) R.string.summary_gemini_off else R.string.summary_gemini_on) else stringResource(R.string.summary_ai_off),
-        open = "coach" in openGroups, onToggle = { toggleGroup("coach") },
+        onToggle = { toggleGroup("coach") },
     ) {
         // 1. The Gemini app (recommended): plan prompt and reply, and meals.
         Text(stringResource(R.string.settings_ai_gemini_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.padding(top = 4.dp).semantics { heading() })
@@ -642,11 +563,7 @@ internal fun CoachSettingsGroup(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncMeals)
                     TonalPill(stringResource(R.string.meals_copy_gem), onClick = {
-                        // The person's own hand size goes in as the ruler, or the line goes when it isn't set.
-                        val hand = if (settings.handLengthCm > 0f) "MY HAND: length ${settings.handLengthCm} cm, palm width ${settings.palmWidthCm} cm." else ""
-                        val prompt = context.resources.openRawResource(R.raw.food_gem_prompt).bufferedReader().use { it.readText() }
-                            .replace(Regex("MY HAND:[^\n]*\n"), if (hand.isBlank()) "" else hand + " When my hand is in the photo, use it as an exact ruler.\n")
-                        clipboard.copy(prompt)
+                        clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context, settings.handLengthCm, settings.palmWidthCm))
                         context.toast(context.getString(R.string.bridge_prompt_copied))
                     })
                 }
@@ -702,10 +619,8 @@ internal fun CoachSettingsGroup(
 
 @Composable
 internal fun AppSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
-    nav: NavHostController,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -725,7 +640,7 @@ internal fun AppSettingsGroup(
             settings.weightUnit.label,
             if (settings.biometricLock && canLock) stringResource(R.string.summary_lock_on) else null,
         ),
-        open = "app" in openGroups, onToggle = { toggleGroup("app") },
+        onToggle = { toggleGroup("app") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -775,9 +690,8 @@ internal fun AppSettingsGroup(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun BackupSettingsGroup(
-    vm: ProfileViewModel,
+    vm: SettingsViewModel,
     s: ProgressSnapshot,
-    openGroups: Set<String>,
     toggleGroup: (String) -> Unit,
     saveLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Uri?>,
     importLauncher: androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, Uri?>,
@@ -793,7 +707,7 @@ internal fun BackupSettingsGroup(
             settings.lastBackupAt > 0 -> stringResource(R.string.summary_drive_last, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(settings.lastBackupAt)))
             else -> stringResource(R.string.summary_drive_none)
         },
-        open = "backup" in openGroups, onToggle = { toggleGroup("backup") },
+        onToggle = { toggleGroup("backup") },
     ) {
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -834,15 +748,12 @@ internal fun BackupSettingsGroup(
             } else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(stringResource(R.string.drive_back_up_now), onClick = vm::backupNow)
-                    TonalPill(if (settings.driveDocsEnabled) stringResource(R.string.drive_import_doc) else stringResource(R.string.drive_import_doc_first), onClick = vm::importDoc)
-                    if (settings.driveDocsEnabled) TonalPill(stringResource(R.string.drive_stop_docs), onClick = vm::disableDocs, tint = c.textSecondary)
                     TonalPill(stringResource(R.string.action_restore), onClick = vm::restore)
                     TonalPill(stringResource(R.string.drive_disconnect), onClick = vm::disconnectDrive, tint = c.textSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (settings.driveDocsEnabled) stringResource(R.string.drive_docs_on_hint)
-                    else stringResource(R.string.drive_docs_off_hint),
+                    stringResource(R.string.drive_docs_off_hint),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
             }
@@ -852,8 +763,7 @@ internal fun BackupSettingsGroup(
 
 @Composable
 internal fun AboutSettingsGroup(
-    vm: ProfileViewModel,
-    openGroups: Set<String>,
+    vm: SettingsViewModel,
     toggleGroup: (String) -> Unit,
 ) {
     val c = Fit.colors
@@ -862,7 +772,7 @@ internal fun AboutSettingsGroup(
     SettingsGroup(
         Icons.Rounded.Info, c.textSecondary, c.cardHigh, stringResource(R.string.settings_group_about),
         stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),
-        open = "about" in openGroups, onToggle = { toggleGroup("about") },
+        onToggle = { toggleGroup("about") },
     ) {
         SettingsRow(Icons.Rounded.SystemUpdate, c.teal, c.tealTrack, stringResource(R.string.update_title), stringResource(R.string.update_hint, com.forgequest.app.BuildConfig.VERSION_NAME)) { vm.checkUpdate() }
         FitCard {
@@ -870,20 +780,7 @@ internal fun AboutSettingsGroup(
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    val taps = remember { longArrayOf(0, 0, 0, 0, 0, 0, 0) }
-                    // Hidden owner switch: 7 taps within 3 seconds on the title.
-                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() }.then(
-Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, role = null) {
-                            val now = android.os.SystemClock.elapsedRealtime()
-                            for (i in 0 until taps.size - 1) taps[i] = taps[i + 1]
-                            taps[taps.size - 1] = now
-                            if (taps[0] != 0L && now - taps[0] <= 3000) {
-                                taps.fill(0)
-                                val on = com.forgequest.app.PersonalTools.toggle(context)
-                                context.toast(context.getString(if (on) R.string.personal_tools_on else R.string.personal_tools_off))
-                            }
-                        }
-                    ))
+                    Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     Text(stringResource(R.string.profile_credits_data), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }

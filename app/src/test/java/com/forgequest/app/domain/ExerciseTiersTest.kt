@@ -15,11 +15,11 @@ class ExerciseTiersTest {
     private val gym = Equipment.entries.toSet()
 
     @Test fun tierCounts() {
-        assertEquals(154, all.size)
+        assertEquals(186, all.size)
         val counts = all.groupingBy { ExerciseTiers.of(it) }.eachCount()
-        assertEquals(110, counts[Tier.FOUNDATION])
-        assertEquals(27, counts[Tier.INTERMEDIATE])
-        assertEquals(17, counts[Tier.ADVANCED])
+        assertEquals(133, counts[Tier.FOUNDATION])
+        assertEquals(33, counts[Tier.INTERMEDIATE])
+        assertEquals(20, counts[Tier.ADVANCED])
         assertNull(ExerciseTiers.of(ex("push_up").copy(id = "my_push_up", custom = true)))
     }
 
@@ -60,6 +60,18 @@ class ExerciseTiersTest {
         val obliques = MuscleExercises.list(Muscle.OBLIQUES, all, emptySet(), gym)
         assertTrue(obliques.size >= 5)
         assertTrue(obliques.others.any { it.exercise.id == "crunch" })
+    }
+
+    @Test fun smallMusclesShowWithTheirBiggerNeighbour() {
+        assertEquals(listOf(Muscle.CALVES), MuscleExercises.COMPANIONS[Muscle.TIBIALIS])
+        assertEquals(listOf(Muscle.BICEPS), MuscleExercises.COMPANIONS[Muscle.FOREARMS])
+        assertEquals(listOf(Muscle.UPPER_BACK), MuscleExercises.COMPANIONS[Muscle.TRAPS])
+        // The shin list now carries calf work too, and still leads with the muscle that was tapped.
+        val shins = MuscleExercises.list(Muscle.TIBIALIS, all, emptySet(), gym)
+        assertTrue(shins.others.any { it.exercise.id == "calf_raise" })
+        assertTrue(shins.others.any { it.exercise.id == "tibialis_raise" })
+        // A muscle with no companion is unchanged.
+        assertNull(MuscleExercises.COMPANIONS[Muscle.CHEST])
     }
 
     @Test fun replaceOrderPutsTheSameMovementFirst() {

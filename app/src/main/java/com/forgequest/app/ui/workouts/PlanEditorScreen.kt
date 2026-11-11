@@ -30,15 +30,10 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
-import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -107,7 +102,6 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
-import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.UndoSnackbarEffect
@@ -122,7 +116,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -204,7 +197,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boolean = false) {
+fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boolean = false, openTemplates: Boolean = false) {
     val vm = appViewModel { PlanEditorViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val library by vm.library.collectAsState()
@@ -218,9 +211,10 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
     var picker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PlanItemEntity?>(null) }
     var swappingItem by remember { mutableStateOf<PlanItemEntity?>(null) }
-    var templates by remember { mutableStateOf(false) }
+    // Saveable: the route argument must open the sheet once, not again after a rotation or on coming back to this screen.
+    var templates by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(openTemplates) }
     var changePlan by remember { mutableStateOf(false) }
-    var paste by remember { mutableStateOf(openPaste) }
+    var paste by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(openPaste) }
     var renaming by remember { mutableStateOf(false) }
     var previous by remember { mutableStateOf(false) }
     var moveDay by remember { mutableStateOf(false) }
@@ -245,7 +239,9 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
-            TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
+            com.forgequest.app.ui.components.CoachMarkBox(com.forgequest.app.ui.onboarding.AppTour.WORKOUTS, R.string.coach_plan_t, R.string.coach_plan_b, below = true) {
+                TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
+            }
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 (1..7).forEach { dow ->
@@ -434,19 +430,17 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
     }
 
     if (changePlan) {
-        // Plan builder and ready-made first, then the Gemini paste; each choice has an ⓘ that explains what it does.
+        // Three ways to a new plan, each with one line saying what it does. Ready-made plans are reached from the builder.
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { changePlan = false }, containerColor = c.card) {
             Column(Modifier.padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = ForgeSpace.Gutter, vertical = 8.dp))
                 ChoiceRow(Icons.Rounded.Tune, stringResource(R.string.pb_title), stringResource(R.string.pb_entry_info), onClick = { changePlan = false; nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER) })
-                ChoiceRow(Icons.AutoMirrored.Rounded.ViewList, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_info), onClick = { changePlan = false; templates = true })
                 ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
-                    com.forgequest.app.ui.components.GeminiPlanPills(onPaste = { changePlan = false; paste = true }, modifier = Modifier.padding(start = 70.dp, end = 16.dp, bottom = 8.dp))
+                    com.forgequest.app.ui.components.GeminiPlanPills(onPaste = { changePlan = false; paste = true }, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
                 }
                 if (allPlans.size > 1) {
                     ChoiceRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_info), onClick = { changePlan = false; previous = true })
                 }
-                ChoiceRow(Icons.Rounded.Description, stringResource(R.string.plan_import_docs), stringResource(R.string.plan_docs_info), onClick = { changePlan = false; nav.navigate(com.forgequest.app.ui.Routes.settingsGroup("backup")) })
             }
         }
     }
@@ -599,20 +593,18 @@ private fun ChoiceRow(
     extra: (@Composable () -> Unit)? = null,
 ) {
     val c = Fit.colors
-    var showInfo by remember { mutableStateOf(false) }
     Column {
         Row(
-            Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+            Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconCircle(icon, c.teal, c.tealTrack, 40.dp)
             Spacer(Modifier.width(12.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
-            IconButton(onClick = { showInfo = !showInfo }) {
-                Icon(Icons.Rounded.Info, contentDescription = stringResource(R.string.cd_what_is_this, title), tint = if (showInfo) c.teal else c.textSecondary)
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                Text(info, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
-        if (showInfo) Text(info, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(start = 70.dp, end = 20.dp, bottom = 8.dp))
         extra?.invoke()
     }
 }

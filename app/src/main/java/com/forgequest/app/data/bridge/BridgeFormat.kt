@@ -30,8 +30,6 @@ data class BridgeReply(
 
 object BridgeFormat {
     const val HEADER = "FORGEQUEST-REPLY"
-    const val DATA_DOC = "ForgeQuest data"
-    const val REPLY_DOC = "ForgeQuest from Gemini"
     private val SECTIONS = listOf("TODAY", "WEEK", "COACH NOTES", "PLAN")
 
     fun parse(raw: String): BridgeReply {

@@ -5,11 +5,8 @@ import com.forgequest.app.R
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.forgequest.app.data.CoachRepository
-import com.forgequest.app.data.WorkoutRepository
 import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.backup.BackupRepository
-import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
@@ -36,7 +33,6 @@ sealed class DriveError(res: Int, vararg args: Any) : com.forgequest.app.Localiz
     object NotConfigured : DriveError(R.string.drive_err_not_configured)
     object NeedsConsent : DriveError(R.string.drive_err_needs_consent)
     object Offline : DriveError(R.string.drive_err_offline)
-    object NoDoc : DriveError(R.string.drive_err_no_doc)
     object NoBackup : DriveError(R.string.drive_err_no_backup)
     class Http(code: Int) : DriveError(R.string.drive_err_http, code)
 }
@@ -48,14 +44,12 @@ sealed interface DriveAuth {
 }
 
 /**
- * Google Drive backup and Docs import over the Drive REST API.
- * Backups live in the hidden per-app folder; the plan import reads the user's newest "Workout Plan" doc.
+ * Google Drive backup and the app-created meals Doc over the Drive REST API.
+ * Backups live in the hidden per-app folder.
  */
 class DriveSync(
     private val context: Context,
     private val settings: SettingsRepository,
-    private val workouts: WorkoutRepository,
-    private val coach: CoachRepository,
     private val backups: BackupRepository,
     private val http: OkHttpClient = OkHttpClient(),
 ) {
@@ -63,8 +57,8 @@ class DriveSync(
 
     /**
      * One sign-in covers everything, and both scopes are Google's low-risk ones (no security review, so the OAuth
-     * app can be published for anyone): the hidden backup folder, and Docs the app creates itself ("ForgeQuest data",
-     * "ForgeQuest from Gemini", "ForgeQuest plan"). The app never sees the person's other files.
+     * app can be published for anyone): the hidden backup folder, and Docs the app creates itself (the meals Doc).
+     * The app never sees the person's other files.
      */
     private val backupScope = Scope("https://www.googleapis.com/auth/drive.appdata")
     private val fileScope = Scope("https://www.googleapis.com/auth/drive.file")
@@ -135,33 +129,12 @@ class DriveSync(
         backups.decode(call(token, Request.Builder().url("$API/files/$id?alt=media").get()))
     }
 
-    suspend fun restore(token: String) = backups.apply(fetchBackup(token))
-
     private fun findBackupId(token: String): String? {
         val body = call(token, Request.Builder().url("$API/files?spaces=appDataFolder&q=name%3D%27$BACKUP_NAME%27&fields=files(id)").get())
         return json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull
     }
 
-    // ------------------------------------------------------------ Docs import
-
-    data class DocPlan(val docName: String, val modifiedAt: Long, val plan: PlanDraft)
-
-    /**
-     * Reads the app's "ForgeQuest plan" Google Doc. The first time, the app creates it with a short how-to and
-     * reports [DriveError.NoDoc] so the person knows where to write the plan. Null when unchanged since [sinceMillis].
-     */
-    suspend fun fetchPlanDoc(token: String, sinceMillis: Long = 0): DocPlan? = withContext(Dispatchers.IO) {
-        val found = findNewestDoc(token, PLAN_DOC, sinceMillis, context.getString(R.string.drive_plan_doc_template)) { throw DriveError.NoDoc }
-            ?: return@withContext null
-        DocPlan(found.name ?: "Workout Plan", found.modifiedAt, coach.parsePlanText(found.text))
-    }
-
-    suspend fun applyDocPlan(doc: DocPlan) {
-        workouts.applyPlan(doc.plan, "docs")
-        settings.update { it.copy(lastDocImportModified = doc.modifiedAt) }
-    }
-
-    // ------------------------------------------------------------ Gemini bridge
+    // ------------------------------------------------------------ App-created Docs
 
     /** Creates the named Google Doc from plain text, or replaces the text of [fileId]. Returns the doc's id. */
     suspend fun upsertTextDoc(token: String, name: String, text: String, fileId: String?): String = withContext(Dispatchers.IO) {
@@ -182,18 +155,13 @@ class DriveSync(
         json.parseToJsonElement(body).jsonObject["id"]!!.jsonPrimitive.content
     }
 
+    data class DocText(val id: String, val text: String, val modifiedAt: Long)
+
     /**
-     * Text and modified time of the app-created Doc named [name], or null if none is newer than [sinceMillis]. When
+     * Id, text and modified time of the app-created Doc named [name], or null if none is newer than [sinceMillis]. When
      * the Doc doesn't exist yet it is created with [placeholder], so another app (Gemini) can fill it in and this one
      * can still read it with the file-only scope.
      */
-    suspend fun newestDoc(token: String, name: String, sinceMillis: Long, placeholder: String? = null): Pair<String, Long>? = withContext(Dispatchers.IO) {
-        findNewestDoc(token, name, sinceMillis, placeholder)?.let { it.text to it.modifiedAt }
-    }
-
-    data class DocText(val id: String, val text: String, val modifiedAt: Long)
-
-    /** Like [newestDoc], with the Doc's id so the caller can rewrite it. */
     suspend fun readDoc(token: String, name: String, sinceMillis: Long, placeholder: String): DocText? = withContext(Dispatchers.IO) {
         findNewestDoc(token, name, sinceMillis, placeholder)?.let { DocText(it.id, it.text, it.modifiedAt) }
     }
@@ -237,6 +205,5 @@ class DriveSync(
         const val API = "https://www.googleapis.com/drive/v3"
         const val UPLOAD = "https://www.googleapis.com/upload/drive/v3"
         const val BACKUP_NAME = "forgequest_backup.json"
-        const val PLAN_DOC = "ForgeQuest plan"
     }
 }

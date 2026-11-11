@@ -57,10 +57,14 @@ object DebriefText {
             // Only SOME_UP's wordings use the numbers; the others ignore them.
             headline = res.getString(ids[d.headline.variant.coerceIn(0, ids.lastIndex)], d.headline.up, d.headline.compared),
             wins = d.wins.mapNotNull { w -> win(w, res, name, weight, ::reps, ::seconds) },
-            watch = d.watch.map { w -> watch(w, res, name) },
+            watch = d.watch.map { w -> watch(w, res, name, weight, ::reps, ::seconds) },
             next = d.next.mapNotNull { n -> next(n, res, name, weight, ::reps, ::seconds) }.map { res.getString(R.string.debrief_next_time, it) },
             sameRest = if (d.sameRest) res.getString(R.string.debrief_same_rest) else null,
-            footnote = if (d.footnote) res.getString(R.string.debrief_footnote) else null,
+            footnote = when (d.note) {
+                WorkoutDebriefMath.Footnote.NUMBERS_ONLY -> res.getString(R.string.debrief_footnote_numbers)
+                WorkoutDebriefMath.Footnote.CONNECT_WATCH -> res.getString(R.string.debrief_footnote_connect)
+                else -> if (d.footnote) res.getString(R.string.debrief_footnote) else null
+            },
         )
     }
 
@@ -88,18 +92,27 @@ object DebriefText {
         is Win.NewStarts -> res.getString(R.string.debrief_win_new_starts, res.getQuantityString(R.plurals.debrief_n_new_exercises, w.count, w.count))
     }
 
-    private fun watch(w: Watch, res: Resources, name: (String) -> String): String = when (w) {
+    private fun watch(w: Watch, res: Resources, name: (String) -> String, weight: (Float) -> String, reps: (Int) -> String, seconds: (Int) -> String): String = when (w) {
         is Watch.PainSwap -> res.getString(R.string.debrief_watch_pain_swap, name(w.exerciseId))
         is Watch.PainEased -> res.getString(R.string.debrief_watch_pain_eased, name(w.exerciseId))
         is Watch.PainSameNumbers -> res.getString(R.string.debrief_watch_pain_same, name(w.exerciseId))
         Watch.Deload -> res.getString(R.string.debrief_watch_deload)
         is Watch.Plateau -> {
             val weeks = ((w.days + 3) / 7).coerceAtLeast(1)
-            res.getString(
-                R.string.debrief_watch_plateau, name(w.exerciseId),
-                res.getQuantityString(R.plurals.debrief_n_workouts, w.workouts, w.workouts),
-                res.getQuantityString(R.plurals.debrief_n_weeks, weeks, weeks),
-            )
+            val workouts = res.getQuantityString(R.plurals.debrief_n_workouts, w.workouts, w.workouts)
+            val span = res.getQuantityString(R.plurals.debrief_n_weeks, weeks, weeks)
+            val best = w.best
+            if (w.suggestId != null && best != null) {
+                // The peak is a record score: an estimated max for weights, plain reps or seconds otherwise.
+                val peak = when (w.kind) {
+                    ExerciseKind.WEIGHTED -> res.getString(R.string.peak_est_max, weight(best))
+                    ExerciseKind.HOLD -> res.getString(R.string.peak_best, seconds(best.toInt()))
+                    else -> res.getString(R.string.peak_best, reps(best.toInt()))
+                }
+                res.getString(R.string.debrief_watch_plateau_try, name(w.exerciseId), workouts, span, peak, name(w.suggestId))
+            } else {
+                res.getString(R.string.debrief_watch_plateau, name(w.exerciseId), workouts, span)
+            }
         }
         is Watch.Drop -> res.getString(R.string.debrief_watch_drop, name(w.exerciseId))
         is Watch.Skipped ->

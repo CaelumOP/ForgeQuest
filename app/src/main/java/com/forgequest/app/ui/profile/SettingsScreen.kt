@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -53,12 +52,12 @@ import com.forgequest.app.R
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.sharedProfileViewModel
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.localSummary
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.ForgeSpace
-import com.forgequest.app.ui.workouts.PlanPreviewSheet
 import kotlinx.coroutines.launch
 
 /** Group ids in list order, with the title each page shows. */
@@ -78,14 +77,14 @@ private val groupTitles = listOf(
  */
 @Composable
 fun SettingsScreen(nav: NavHostController, groupId: String?) {
-    val vm = appViewModel { ProfileViewModel(it) }
+    val profile = sharedProfileViewModel(nav)
+    val vm = appViewModel { SettingsViewModel(it, profile.snapshot) }
     val snap by vm.snapshot.collectAsState()
     val apiKey by vm.apiKey.collectAsState()
     val aiOn by vm.aiOn.collectAsState()
     val message by vm.message.collectAsState()
     val busy by vm.busy.collectAsState()
     val consent by vm.consent.collectAsState()
-    val docPreview by vm.docPreview.collectAsState()
     val restorePreview by vm.restorePreview.collectAsState()
     val shareUri by vm.shareUri.collectAsState()
     val snackbar = LocalSnackbar.current
@@ -129,7 +128,6 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     val configuredEq = s.settings.configuredEquipment
     val settings = s.settings
     val id = groupId?.takeIf { g -> groupTitles.any { it.first == g } }
-    val openGroups = setOfNotNull(id)
     val onGroup: (String) -> Unit = { nav.navigate(Routes.settingsGroup(it)) }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
@@ -146,20 +144,20 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
             Spacer(Modifier.height(8.dp))
             CompositionLocalProvider(LocalGroupMode provides if (id == null) GroupMode.Row else GroupMode.Page) {
                 // Language and theme are what people look for first, so "App and appearance" leads the list.
-                if (id == null || id == "app") AppSettingsGroup(vm, s, nav, openGroups, onGroup)
+                if (id == null || id == "app") AppSettingsGroup(vm, s, onGroup)
                 if (id == null || id == "body") BodySettingsGroup(
-                    vm, s, openGroups, onGroup, probe, { startHealthCheck() }, healthAccess,
+                    vm, s, onGroup, probe, { startHealthCheck() }, healthAccess,
                     onOpenHandDialog = { handDialog = true },
                 )
-                if (id == null || id == "goals") GoalsSettingsGroup(vm, s, openGroups, onGroup)
-                if (id == null || id == "training") TrainingSettingsGroup(vm, s, nav, openGroups, onGroup)
-                if (id == null || id == "backup") BackupSettingsGroup(vm, s, openGroups, onGroup, saveLauncher, importLauncher)
+                if (id == null || id == "goals") GoalsSettingsGroup(vm, s, onGroup)
+                if (id == null || id == "training") TrainingSettingsGroup(vm, s, nav, onGroup)
+                if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher)
                 if (id == null || id == "coach") CoachSettingsGroup(
-                    vm, nav, s, apiKey, aiOn, openGroups, onGroup,
+                    vm, nav, s, apiKey, aiOn, onGroup,
                     onOpenKeyDialog = { keyDialog = true },
                     onOpenNotesDialog = { notesDialog = true },
                 )
-                if (id == null || id == "about") AboutSettingsGroup(vm, openGroups, onGroup)
+                if (id == null || id == "about") AboutSettingsGroup(vm, onGroup)
             }
         val latest by vm.update.collectAsState()
         latest?.let { v ->
@@ -281,16 +279,5 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     busy?.let {
         AlertDialog(onDismissRequest = {}, containerColor = c.card, confirmButton = {}, title = { Text(it, color = c.textPrimary) },
             text = { androidx.compose.material3.LinearProgressIndicator(color = c.teal, trackColor = c.tealTrack, modifier = Modifier.fillMaxWidth()) })
-    }
-
-    docPreview?.let { doc ->
-        PlanPreviewSheet(
-            draft = doc.plan,
-            exercises = s.exercises,
-            userEquipment = configuredEq,
-            onAdapt = { vm.adaptDocPlan(s.exercises, configuredEq) },
-            onApply = vm::applyDoc,
-            onDismiss = { vm.docPreview.value = null },
-        )
     }
 }

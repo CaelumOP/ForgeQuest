@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import com.forgequest.app.R
 import com.forgequest.app.ui.localLabel
-import com.forgequest.app.ui.titleRes
 
 import androidx.compose.ui.res.pluralStringResource
 
@@ -41,6 +40,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -48,10 +48,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
@@ -81,15 +82,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ModalBottomSheet
 import com.forgequest.app.ui.components.rememberFullSheetState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -109,19 +106,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
-import com.forgequest.app.AppContainer
 import com.forgequest.app.data.bridge.GeminiMeal
 import com.forgequest.app.data.ProgressSnapshot
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.FoodEntity
-import com.forgequest.app.data.db.FoodPart
-import com.forgequest.app.data.db.FoodUsage
 import com.forgequest.app.data.db.withParts
-import com.forgequest.app.data.FoodPick
 import com.forgequest.app.domain.FoodLists
 import com.forgequest.app.domain.FoodSearch
 import com.forgequest.app.data.db.MealEntity
@@ -133,26 +124,15 @@ import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.UndoSnackbarEffect
-import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.SectionTitle
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.SwipeToDelete
 import com.forgequest.app.ui.theme.Fit
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Instant
@@ -161,185 +141,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-class FoodViewModel(val app: AppContainer) : ViewModel() {
-    val foods: StateFlow<List<FoodEntity>> = app.food.foods.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val recentOneOffs: StateFlow<List<MealEntity>> = app.db.food().observeRecentOneOffs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    /** The day being viewed and logged to. Follows the real date until the person steps away from today. */
-    val day = MutableStateFlow(Dates.today())
-    private var followToday = true
-    val meals: StateFlow<List<MealEntity>> = day.flatMapLatest { app.food.mealsOn(it) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-    val category = MutableStateFlow(app.food.categoryForNow())
-
-    /** How often each saved food was logged, so search puts your usual foods first. */
-    val usage: StateFlow<Map<Long, FoodUsage>> = app.food.usage.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-    /** What's typed in the search box; blank shows the open tab's foods. */
-    val query = MutableStateFlow("")
-    val catalogReady = app.catalog.ready
-    /** Show the food-list matches with the most protein first. */
-    val sortProtein = MutableStateFlow(false)
-
-    /** Matches from the built-in food list for what's typed (nothing for a blank box). */
-    val catalogResults: StateFlow<List<com.forgequest.app.domain.CatalogFood>> =
-        combine(query.debounce(150), sortProtein) { q, byProtein -> q to byProtein }
-            .mapLatest { (q, byProtein) -> app.catalog.search(q.trim(), 12, byProtein) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    /** Logs [amount] of a food-list item to the open day, and keeps it as the person's own food so it's theirs next time. */
-    fun logCatalog(item: com.forgequest.app.domain.CatalogFood, amount: com.forgequest.app.domain.CatalogAmount, unitLabel: String, barcode: String = "") = viewModelScope.launch {
-        val each = amount.gramsEach
-        val name = item.name(com.forgequest.app.ui.isArabic()).take(48)
-        val serving = if (each == 1f) "" else "$unitLabel (${com.forgequest.app.domain.Catalog.formatNumber(each)} g)"
-        val qty = if (each == 1f) 1f else amount.count
-        val grams = if (each == 1f) amount.count else each
-        val food = FoodEntity(
-            name = name, category = category.value, kcal = com.forgequest.app.domain.Catalog.kcalFor(item, grams),
-            protein = com.forgequest.app.domain.Catalog.proteinFor(item, grams), carbs = com.forgequest.app.domain.Catalog.carbsFor(item, grams),
-            serving = if (each == 1f) "${com.forgequest.app.domain.Catalog.formatNumber(grams)} g" else serving,
-            createdAt = System.currentTimeMillis(), place = item.brand(com.forgequest.app.ui.isArabic()), barcode = barcode,
-        )
-        val same = foods.value.firstOrNull { it.name == food.name && it.serving == food.serving && it.kcal == food.kcal }
-        // The same food saved before without its barcode picks it up now, so the next scan finds it.
-        val saved = if (same != null && barcode.isNotBlank() && same.barcode != barcode) same.copy(barcode = barcode).also { app.food.saveFood(it) } else same
-        val id = saved?.id ?: app.food.saveFood(food)
-        app.food.logFoods(listOf(FoodPick((saved ?: food).copy(id = id), qty, mealFor(food), food.name)), day.value)
-        app.haptics.setDone()
-        val badges = app.progress.evaluateBadges()
-        message.value = app.str(R.string.food_logged_name, food.name) +
-            if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
-    }
-
-    /** A scanned barcode that is already one of the person's foods: logs one of it to the open day. */
-    fun logOwn(food: FoodEntity) = viewModelScope.launch {
-        app.food.logFoods(listOf(FoodPick(food, 1f, mealFor(food), food.name)), day.value)
-        app.haptics.setDone()
-        val badges = app.progress.evaluateBadges()
-        message.value = app.str(R.string.food_logged_name, food.name) +
-            if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
-    }
-
-    /** A ticked food: how much, and the meal it's logged under. */
-    data class Pick(val qty: Float, val category: FoodCategory)
-
-    /** foodId → pick for items ticked but not yet logged. */
-    val selection = MutableStateFlow<Map<Long, Pick>>(emptyMap())
-    val message = MutableStateFlow<String?>(null)
-    val apiKey: StateFlow<String> = app.settings.apiKey
-    val aiOn: StateFlow<Boolean> = app.settings.aiOn
-
-    suspend fun estimate(text: String): com.forgequest.app.data.FoodScan = app.food.estimate(text)
-
-    /** Called whenever the screen is shown, so a tab left open overnight moves on to the new day. */
-    fun onShown() {
-        if (followToday) day.value = Dates.today()
-        syncGeminiMeals()
-    }
-
-    // ------------------------------------------------------------ Meals from the Gemini Gem
-
-    val geminiMeals: StateFlow<List<GeminiMeal>> = app.meals.pending
-
-    /** Quietly checks the Gem's meals Doc; at most every two minutes, and never asks to sign in. */
-    private fun syncGeminiMeals() = viewModelScope.launch {
-        if (!app.settings.current().geminiMealsEnabled) return@launch
-        val now = System.currentTimeMillis()
-        if (now - lastMealSync < 2 * 60 * 1000L) return@launch
-        lastMealSync = now
-        val token = app.drive.silentToken() ?: return@launch
-        com.forgequest.app.data.suspendRunCatching { app.meals.sync(token) }
-    }
-
-    fun reviewMeal(meal: GeminiMeal) { app.meals.review.value = meal }
-
-    fun dismissMeal(meal: GeminiMeal) = viewModelScope.launch { app.meals.markHandled(meal.mealId) }
-
-    private companion object {
-        var lastMealSync = 0L
-    }
-
-    fun shiftDay(delta: Int) {
-        val next = (day.value + delta).coerceAtMost(Dates.today())
-        day.value = next
-        followToday = next == Dates.today()
-        app.haptics.tick()
-    }
-
-    fun goToToday() { followToday = true; day.value = Dates.today() }
-
-    fun logOnce(name: String, category: FoodCategory, kcal: Int, protein: Float, carbs: Float = 0f) = viewModelScope.launch {
-        app.food.logOnce(name, category, kcal, protein, epochDay = day.value, carbs = carbs)
-        app.haptics.setDone()
-        app.progress.evaluateBadges()
-        message.value = app.str(R.string.food_logged_name, name)
-    }
-
-    /**
-     * The meal a ticked food is logged under: drinks always under Drinks; a search result under the open tab (which opens
-     * on the meal for the time of day); otherwise the tab it's listed in.
-     */
-    private fun mealFor(food: FoodEntity): FoodCategory =
-        if (food.category == FoodCategory.DRINKS) FoodCategory.DRINKS else category.value
-
-    fun toggle(food: FoodEntity) {
-        app.haptics.tick()
-        selection.update { if (food.id in it) it - food.id else it + (food.id to Pick(1f, mealFor(food))) }
-    }
-
-    fun setQty(food: FoodEntity, qty: Float) {
-        app.haptics.tick()
-        selection.update { if (qty <= 0f) it - food.id else it + (food.id to Pick(qty, it[food.id]?.category ?: mealFor(food))) }
-    }
-
-    /** The name in the day's log, saying which parts were left out: "Chicken shawarma, no Ketchup". */
-    private fun logName(food: FoodEntity): String {
-        val off = food.parts.filter { !it.on }.map { it.name }
-        return if (off.isEmpty()) food.name else app.str(R.string.food_without, food.name, off.joinToString(app.str(R.string.food_list_sep)))
-    }
-
-    /** Saves which parts are ticked (remembered for next time); the food's totals follow them. */
-    fun saveParts(food: FoodEntity, parts: List<FoodPart>) = viewModelScope.launch { app.food.saveFood(food.withParts(parts)) }
-
-    fun logSelected() {
-        val foodsById = foods.value.associateBy { it.id }
-        val picked = selection.value.mapNotNull { (id, p) -> foodsById[id]?.let { FoodPick(it, p.qty, p.category, logName(it)) } }
-        if (picked.isEmpty()) return
-        viewModelScope.launch {
-            app.food.logFoods(picked, day.value)
-            selection.value = emptyMap()
-            app.haptics.setDone()
-            val badges = app.progress.evaluateBadges()
-            message.value = app.plural(R.plurals.food_logged_items, picked.size, picked.size) +
-                if (badges.isNotEmpty() && !app.settings.current().justLog) app.str(R.string.badge_unlocked_suffix, app.str(badges.first().titleRes)) else ""
-        }
-    }
-
-    fun save(food: FoodEntity) = viewModelScope.launch { app.food.saveFood(food) }
-    fun delete(food: FoodEntity) = viewModelScope.launch { app.food.deleteFood(food.id); selection.update { it - food.id } }
-    /** Deleted right away; [undo] puts it back with the same id. */
-    val undo = UndoState(viewModelScope)
-
-    fun deleteMeal(meal: MealEntity) = viewModelScope.launch {
-        app.food.deleteMeal(meal.id)
-        undo.offer(app.str(R.string.food_removed, meal.name)) { app.food.restoreMeal(meal) }
-    }
-
-    /** Copies a logged meal to the open day, with undo. */
-    fun logAgain(meal: MealEntity) = viewModelScope.launch {
-        val id = app.food.logAgain(meal, day.value)
-        app.haptics.setDone()
-        app.progress.evaluateBadges()
-        undo.offer(app.str(R.string.food_logged_name, meal.name)) { app.food.deleteMeal(id) }
-    }
-
-    fun setPhotoFromUri(food: FoodEntity, uri: Uri) = viewModelScope.launch {
-        runCatching { app.food.importPhoto(uri) }.onSuccess { app.food.saveFood(food.copy(photoPath = it)) }
-            .onFailure { message.value = app.str(R.string.food_photo_failed) }
-    }
-
-    fun setPhotoFromBitmap(food: FoodEntity, bitmap: Bitmap) = viewModelScope.launch {
-        app.food.saveFood(food.copy(photoPath = app.food.saveBitmap(bitmap)))
-    }
-}
+/** How many logged meals show before "Show all". */
+private const val MEALS_SHOWN = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -353,6 +156,8 @@ fun FoodScreen(nav: NavHostController) {
     val message by vm.message.collectAsState()
     val snackbar = LocalSnackbar.current
     val c = Fit.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboard = com.forgequest.app.ui.components.rememberTextClipboard()
     var editing by remember { mutableStateOf<FoodEntity?>(null) }
     var photoFor by remember { mutableStateOf<FoodEntity?>(null) }
 
@@ -368,6 +173,8 @@ fun FoodScreen(nav: NavHostController) {
     var mealMenu by remember { mutableStateOf(false) }
     var searchFocused by remember { mutableStateOf(false) }
     var showWeek by rememberSaveable { mutableStateOf(false) }
+    var showAllMeals by rememberSaveable(day) { mutableStateOf(false) }
+    val newestMeals = remember(meals) { meals.asReversed() }
     val catalogResults by vm.catalogResults.collectAsState()
     val isToday = day == Dates.today()
     LaunchedEffect(Unit) { vm.onShown() }
@@ -398,9 +205,14 @@ fun FoodScreen(nav: NavHostController) {
             .map { (p, fs) -> p to fs.maxOf { usage[it.id]?.lastAt ?: it.createdAt } }
             .sortedByDescending { it.second }.map { it.first }.take(6)
     }
-    val shown = if (searching) results else inCategory
     val recent = remember(foods, usage, category) { FoodLists.recent(foods, usage, category) }
     val selectedFoods = foods.filter { it.id in selection }
+    // The chip tray: this meal's pinned and most-logged foods, then what was logged lately under other meals.
+    val quickPicks = remember(foods, usage, category, recent) {
+        (inCategory.sortedWith(compareByDescending<FoodEntity> { it.pinned }.thenByDescending { usage[it.id]?.times ?: 0 }.thenByDescending { usage[it.id]?.lastAt ?: 0L }).take(8) + recent)
+            .distinctBy { it.id }.take(12)
+    }
+    var browseAll by rememberSaveable(category) { mutableStateOf(false) }
     // Each food rounded on its own, as logFoods stores it, so this is what the day's total gains.
     val selKcal = selectedFoods.sumOf { Nutrition.scaledKcal(it.kcal, selection[it.id]?.qty ?: 1f) }
     val selProtein = selectedFoods.sumOf { (it.protein * (selection[it.id]?.qty ?: 1f)).toDouble() }.roundToInt()
@@ -431,6 +243,21 @@ fun FoodScreen(nav: NavHostController) {
                                 leadingIcon = { Icon(Icons.Rounded.Restaurant, contentDescription = null, tint = c.textSecondary) },
                                 onClick = { moreMenu = false; quickLog = true },
                             )
+                            // The Gemini app round trip, open with the coach off: copy the skill once, then paste each meal answer.
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.food_paste_meal), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.ContentPaste, contentDescription = null, tint = c.textSecondary) },
+                                onClick = { moreMenu = false; clipboard.readThen { vm.pasteMeal(it) } },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.food_copy_skill), color = c.textPrimary) },
+                                leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = c.textSecondary) },
+                                onClick = {
+                                    moreMenu = false
+                                    clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context, snap?.settings?.handLengthCm ?: 0f, snap?.settings?.palmWidthCm ?: 0f))
+                                    vm.message.value = context.getString(R.string.skill_copied)
+                                },
+                            )
                             if (isToday) DropdownMenuItem(
                                 text = { Text(stringResource(R.string.food_last_7_days), color = c.textPrimary) },
                                 leadingIcon = { Icon(Icons.Rounded.Check, contentDescription = null, tint = if (showWeek) c.teal else androidx.compose.ui.graphics.Color.Transparent) },
@@ -444,8 +271,27 @@ fun FoodScreen(nav: NavHostController) {
                 DayPicker(day, isToday, onPrev = { vm.shiftDay(-1) }, onNext = { vm.shiftDay(1) }, onToday = vm::goToToday)
             }
             if (geminiMeals.isNotEmpty()) item { GeminiInbox(geminiMeals, onOpen = vm::reviewMeal, onDismiss = { vm.dismissMeal(it) }) }
-            snap?.let { s -> item { DayTotals(s, day, meals) } }
+            snap?.let { s -> item { DayTotals(s, meals) } }
             if (isToday && showWeek) snap?.let { s -> item { WeekCard(s) } }
+            // What is already logged sits right under the totals it adds up to: the latest three, the rest one tap away.
+            item {
+                SectionTitle(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day))
+            }
+            if (meals.isEmpty()) {
+                item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
+            }
+            items(if (showAllMeals) newestMeals else newestMeals.take(MEALS_SHOWN), key = { "m${it.id}" }) { meal ->
+                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {
+                    MealRow(meal, onAgain = { vm.logAgain(meal) }, onDelete = { vm.deleteMeal(meal) })
+                }
+            }
+            if (meals.size > MEALS_SHOWN) {
+                item {
+                    TextButton(onClick = { showAllMeals = !showAllMeals }) {
+                        Text(if (showAllMeals) stringResource(R.string.food_show_less) else stringResource(R.string.food_show_all, meals.size), color = c.teal)
+                    }
+                }
+            }
             item {
                 com.forgequest.app.ui.components.CoachMarkBox("coach_food", R.string.coach_food_t, if (aiOn) R.string.coach_food_b else R.string.coach_food_b_noai, below = true) {
                     SearchField(
@@ -498,21 +344,47 @@ fun FoodScreen(nav: NavHostController) {
                     }
                 }
             }
-            // Saved foods are logged by ticking them; say so while nothing is ticked.
-            if (!searching && inCategory.isNotEmpty() && selection.isEmpty()) {
-                item { Text(stringResource(R.string.food_tick_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(horizontal = 4.dp)) }
-            }
-            items(shown, key = { it.id }) { food ->
-                Box(itemMotion()) {
-                    FoodRow(
-                        food = food,
-                        qty = selection[food.id]?.qty,
-                        onToggle = { vm.toggle(food) },
-                        onQty = { vm.setQty(food, it) },
-                        onPhoto = { photoFor = food },
-                        onEdit = { editing = food },
-                        onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
-                    )
+            if (searching) {
+                items(results, key = { it.id }) { food ->
+                    Box(itemMotion()) {
+                        FoodRow(
+                            food = food,
+                            qty = selection[food.id]?.qty,
+                            onToggle = { vm.toggle(food) },
+                            onQty = { vm.setQty(food, it) },
+                            onPhoto = { photoFor = food },
+                            onEdit = { editing = food },
+                            onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
+                        )
+                    }
+                }
+            } else {
+                // The usual foods as one row of chips: a tap ticks one. The long lists stay folded until asked for.
+                if (quickPicks.isNotEmpty()) {
+                    item { QuickPickChips(quickPicks, selection.keys, onToggle = { vm.toggle(it) }) }
+                }
+                // Ticked foods get their full row, which is where the amount is changed.
+                items(selectedFoods, key = { it.id }) { food ->
+                    Box(itemMotion()) {
+                        FoodRow(
+                            food = food,
+                            qty = selection[food.id]?.qty,
+                            onToggle = { vm.toggle(food) },
+                            onQty = { vm.setQty(food, it) },
+                            onPhoto = { photoFor = food },
+                            onEdit = { editing = food },
+                            onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
+                        )
+                    }
+                }
+                if (inCategory.isNotEmpty()) {
+                    if (browseAll || searchFocused) {
+                        items(inCategory.filter { it.id !in selection }, key = { "b${it.id}" }) { food ->
+                            CompactFoodRow(food, onToggle = { vm.toggle(food) }, onEdit = { editing = food })
+                        }
+                    } else {
+                        item { TonalPill(stringResource(R.string.food_browse_all, inCategory.size), onClick = { browseAll = true }, icon = Icons.Rounded.ArrowDropDown) }
+                    }
                 }
             }
             if (searching && catalogResults.isNotEmpty()) {
@@ -530,35 +402,6 @@ fun FoodScreen(nav: NavHostController) {
                     TonalPill(stringResource(R.string.food_search_add, query.trim()), onClick = {
                         editing = FoodEntity(name = query.trim().take(48), category = category, kcal = 0, protein = 0f, createdAt = System.currentTimeMillis())
                     }, icon = Icons.Rounded.Add)
-                }
-            }
-            if (!searching && recent.isNotEmpty()) {
-                item { Text(stringResource(R.string.food_recent), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.padding(start = 4.dp, top = 8.dp)) }
-                items(recent, key = { "r${it.id}" }) { food ->
-                    Box(itemMotion()) {
-                        FoodRow(
-                            food = food,
-                            qty = selection[food.id]?.qty,
-                            onToggle = { vm.toggle(food) },
-                            onQty = { vm.setQty(food, it) },
-                            onPhoto = { photoFor = food },
-                            onEdit = { editing = food },
-                            onParts = if (food.parts.isNotEmpty()) ({ partsFor = food }) else null,
-                        )
-                    }
-                }
-            }
-            item {
-                Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                }
-            }
-            if (meals.isEmpty()) {
-                item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
-            }
-            items(meals, key = { "m${it.id}" }) { meal ->
-                SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {
-                    MealRow(meal, onAgain = { vm.logAgain(meal) }, onDelete = { vm.deleteMeal(meal) })
                 }
             }
         }
@@ -592,7 +435,7 @@ fun FoodScreen(nav: NavHostController) {
         PartsSheet(food.name, food.parts, carbsOn = snap?.settings?.trackCarbs == true, onSave = { vm.saveParts(food, it); partsFor = null }, onDismiss = { partsFor = null })
     }
     editing?.let { food ->
-        FoodEditorSheet(food, places, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (aiOn && apiKey.isNotBlank()) vm::estimate else null, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onDismiss = { editing = null })
+        FoodEditorSheet(food, places, carbsOn = snap?.settings?.trackCarbs == true, estimate = if (aiOn && apiKey.isNotBlank()) vm::estimate else null, onSave = { vm.save(it); editing = null }, onDelete = if (food.id != 0L) ({ confirmDeleteFood = food; editing = null }) else null, onPhoto = if (food.id != 0L) ({ photoFor = food; editing = null }) else null, onDismiss = { editing = null })
     }
     confirmDeleteFood?.let { food ->
         AlertDialog(
@@ -676,7 +519,7 @@ private fun DayPicker(day: Long, isToday: Boolean, onPrev: () -> Unit, onNext: (
 }
 
 @Composable
-private fun DayTotals(s: ProgressSnapshot, day: Long, meals: List<MealEntity>) {
+private fun DayTotals(s: ProgressSnapshot, meals: List<MealEntity>) {
     val c = Fit.colors
     val kcal = com.forgequest.app.ui.components.tweenedInt(meals.sumOf { it.kcal })
     val protein = meals.sumOf { it.protein.toDouble() }.toFloat()
@@ -856,6 +699,34 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbs
     }
 }
 
+/** The usual foods as chips in one scrolling row; a tap ticks or unticks one. */
+@Composable
+private fun QuickPickChips(foods: List<FoodEntity>, selected: Set<Long>, onToggle: (FoodEntity) -> Unit) {
+    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(foods, key = { it.id }) { food -> ChoiceChip(food.name, selected = food.id in selected, onClick = { onToggle(food) }) }
+    }
+}
+
+/** One line per food in "Browse all": a tap ticks it, a long press edits it. Grows with large text, never clips. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CompactFoodRow(food: FoodEntity, onToggle: () -> Unit, onEdit: () -> Unit) {
+    val c = Fit.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(ForgeShape.Md).background(c.card)
+            .combinedClickable(onClick = onToggle, onLongClick = onEdit, onClickLabel = stringResource(R.string.cd_select), onLongClickLabel = stringResource(R.string.cd_edit))
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(food.name, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.food_kcal, food.kcal) + " · " + stringResource(R.string.food_g_protein, food.protein.roundToInt()),
+            style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1,
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: (Float) -> Unit, onPhoto: () -> Unit, onEdit: () -> Unit, onParts: (() -> Unit)?) {
@@ -876,21 +747,20 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
             if (selected) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_selected), tint = c.onTeal, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.size(48.dp).clip(ForgeShape.Sm).background(c.cardHigh).clickable(onClick = onPhoto), contentAlignment = Alignment.Center) {
-            if (food.photoPath != null) {
+        // Only foods that have a photo show one; adding a photo lives in the editor (long-press the row).
+        if (food.photoPath != null) {
+            Box(Modifier.size(48.dp).clip(ForgeShape.Sm).background(c.cardHigh).clickable(onClick = onPhoto), contentAlignment = Alignment.Center) {
                 AsyncImage(model = File(food.photoPath), contentDescription = food.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            } else {
-                Icon(Icons.Rounded.PhotoCamera, contentDescription = stringResource(R.string.cd_add_photo), tint = c.textSecondary, modifier = Modifier.size(20.dp))
             }
+            Spacer(Modifier.width(12.dp))
         }
-        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f).padding(end = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (food.pinned) {
                     Icon(Icons.Rounded.PushPin, contentDescription = stringResource(R.string.cd_pinned), tint = c.gold, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
                 }
-                Text(food.name, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(food.name, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (food.place.isNotBlank()) {
                 Text(food.place, style = MaterialTheme.typography.bodySmall, color = c.textPrimary.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -984,7 +854,7 @@ private fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boolean, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit) {
+private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boolean, estimate: (suspend (String) -> com.forgequest.app.data.FoodScan)?, onSave: (FoodEntity) -> Unit, onDelete: (() -> Unit)?, onPhoto: (() -> Unit)?, onDismiss: () -> Unit) {
     var carbs by remember { mutableStateOf(if (food.carbs == 0f) "" else food.carbs.toString().removeSuffix(".0")) }
     val c = Fit.colors
     var name by remember { mutableStateOf(food.name) }
@@ -1037,6 +907,10 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                 FitSwitch(pinned, { pinned = it })
+            }
+            if (onPhoto != null) {
+                Spacer(Modifier.height(12.dp))
+                TonalPill(stringResource(if (food.photoPath != null) R.string.food_photo_change else R.string.cd_add_photo), onClick = onPhoto, icon = Icons.Rounded.PhotoCamera)
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {

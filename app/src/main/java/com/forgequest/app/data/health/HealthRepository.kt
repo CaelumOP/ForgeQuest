@@ -66,6 +66,8 @@ data class DayReadiness(
     /** Share earned in workouts other apps recorded (0–1), and what they were. */
     val otherShare: Float = 0f,
     val otherWorkouts: List<OtherWorkout> = emptyList(),
+    /** Last night and the run of short nights before it, for the readiness sentence; null when not worked out. */
+    val sleepContext: com.forgequest.app.domain.SleepContext? = null,
     val steps: Long,
     val kcalBurned: Int,
     /** Average calories burned a day over the last 14 full days the watch was worn; null with fewer than 10 such days. */
@@ -397,6 +399,7 @@ class HealthRepository(private val context: Context, private val settings: Setti
             recovery = recovery,
             call = Readiness.call(recovery),
             night = night,
+            sleepContext = com.forgequest.app.domain.SleepContext.from(Readiness.nights(sleep, zone), day),
             sleepPerf = perf,
             sleepNeedLastNight = needFor(day),
             sleepNeedTonight = Readiness.sleepNeed(strain, (2L downTo 0L).map { nightOf(day.minusDays(it))?.asleepMin ?: Readiness.BASE_NEED_MIN }, sleepDays[day]?.napMin ?: 0),

@@ -25,7 +25,6 @@
     </plurals>
     <string name="weight_log_title">تسجيل الوزن</string>
     <string name="weight_saved">حُفظ الوزن</string>
-    <string name="food_tick_hint">حدّد ما أكلته، ثم اضغط «تسجيل».</string>
     <string name="food_search_hint">ابحث في أطعمتك أو مطاعمك</string>
     <string name="food_search_logs_as">من جميع أطعمتك. ما تحدّده يُسجَّل ضمن %1$s.</string>
     <string name="food_search_none">لا يوجد طعام محفوظ يطابق «%1$s».</string>
@@ -317,6 +316,9 @@
     <string name="food_meal_chip">الوجبة: %1$s</string>
     <string name="food_logged_today">سُجّل اليوم</string>
     <string name="food_logged_that_day">سُجّل في ذلك اليوم</string>
+    <string name="food_show_all">عرض الكل (%1$d)</string>
+    <string name="food_show_less">عرض أقل</string>
+    <string name="food_browse_all">تصفّح الكل (%1$d)</string>
     <string name="food_quick_log">تسجيل سريع</string>
     <string name="food_estimate">قدِّر السعرات من الاسم</string>
     <string name="food_estimating">جارٍ التقدير…</string>
@@ -340,6 +342,12 @@
     <string name="food_back_to_today">العودة إلى اليوم</string>
     <string name="cd_next_day">اليوم التالي</string>
     <string name="coach_got_it">حسنًا</string>
+    <string name="coach_skip">تخطّي التلميحات</string>
+    <string name="coach_plan_t">هنا خطتك الأسبوعية</string>
+    <string name="coach_plan_b">اضغط «تغيير الخطة» لإنشاء خطة جديدة أو العودة إلى خطة سابقة.</string>
+    <string name="coach_ask_t">اسأل عن تمرينك</string>
+    <string name="coach_ask_b">اكتب سؤالك في الأسفل، أو اضغط «اسأل Gemini» لطرحه في تطبيق Gemini.</string>
+    <string name="coach_ask_b_noai">اضغط «اسأل Gemini» لإرسال بياناتك وسؤالك إلى تطبيق Gemini، ثم الصق الردّ هنا.</string>
     <string name="coach_home_t">ابدأ من هنا</string>
     <string name="coach_home_b">اضغط ابدأ لتبدأ.</string>
     <string name="coach_tick_t">علّم كل مجموعة</string>
@@ -372,6 +380,7 @@
     <string name="food_g">%1$d غ</string>
     <string name="cd_remove">إزالة</string>
     <string name="food_photo">صورة الطعام</string>
+    <string name="food_photo_change">تغيير الصورة</string>
     <string name="photo_choose_gallery">اختر من المعرض</string>
     <string name="photo_take">التقط صورة</string>
     <string name="photo_remove">حذف الصورة</string>
@@ -401,7 +410,6 @@
     <string name="drive_err_not_configured">لم يُهيَّأ Google Drive لهذه النسخة من التطبيق بعد.</string>
     <string name="drive_err_needs_consent">اربط Google Drive من الملف الشخصي أولًا.</string>
     <string name="drive_err_offline">لا يوجد اتصال بالإنترنت.</string>
-    <string name="drive_err_no_doc">أُنشئ المستند «ForgeQuest plan» في Google Drive. افتحه في Google Docs، واكتب خطتك الأسبوعية أو الصقها، ثم أعد الاستيراد.</string>
     <string name="drive_err_no_backup">لا توجد نسخة احتياطية في Google Drive بعد.</string>
     <string name="drive_err_http">أعاد Google Drive خطأً (%1$d). أعد المحاولة لاحقًا.</string>
     <string name="scan_portion_small">صغيرة</string>
@@ -540,8 +548,6 @@
     <string name="backup_restoring">جارٍ الاسترجاع…</string>
     <string name="backup_restored_from">استُرجعت البيانات من %1$s</string>
     <string name="backup_restore_failed">تعذّر استرجاع هذه النسخة.</string>
-    <string name="drive_reading_doc">جارٍ قراءة مستند «ForgeQuest plan»…</string>
-    <string name="drive_imported">استُورد %1$s</string>
     <string name="backup_share_subject">نسخة احتياطية من ForgeQuest</string>
     <string name="backup_share_title">حفظ نسختك الاحتياطية</string>
     <string name="profile_setup_title">تفعيل المدرب وتصوير الوجبات</string>
@@ -605,12 +611,8 @@
     <string name="drive_backed_up_at">%1$s · آخر نسخة %2$s</string>
     <string name="drive_connect">ربط Google Drive</string>
     <string name="drive_back_up_now">النسخ الاحتياطي الآن</string>
-    <string name="drive_import_doc">استيراد خطة من Docs</string>
-    <string name="drive_import_doc_first">استيراد خطة من Docs…</string>
-    <string name="drive_stop_docs">إيقاف قراءة Docs</string>
     <string name="action_restore">استرجاع</string>
     <string name="drive_disconnect">قطع الاتصال</string>
-    <string name="drive_docs_on_hint">يأخذ نسخة احتياطية يوميًا تلقائيًا، ويفحص مستند «ForgeQuest plan» يوميًا أيضًا؛ فتظهر التغييرات في المدرب لتطبّقها.</string>
     <string name="drive_docs_off_hint">يأخذ نسخة احتياطية يوميًا. لا يرى التطبيق إلا نسخته والمستندات التي ينشئها.</string>
     <string name="profile_credits">شكر وتقدير</string>
     <string name="profile_credits_body">الخطة الأساسي من Hemo Calisthenics، ورسوم التشريح من react-native-body-highlighter (MIT).</string>
@@ -815,10 +817,8 @@
     <string name="plan_days_swapped">تبادل %1$s و%2$s مكانيهما</string>
     <string name="plan_your_plan">خطتك</string>
     <string name="plan_no_plan">دون خطة</string>
-    <string name="plan_ready_made">التحوّل إلى خطة جاهزة</string>
     <string name="plan_previous">الخطط السابقة</string>
     <string name="plan_paste">لصق خطة</string>
-    <string name="plan_import_docs">الاستيراد من Google Docs</string>
     <string name="cd_move_day">النقل إلى يوم آخر</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="zero">تمرين دائري، 0 جولات</item>
@@ -831,6 +831,7 @@
     <string name="plan_rest_seconds">راحة %1$d ث</string>
     <string name="plan_add_to_day">إضافة إلى %1$s</string>
     <string name="plan_ready_made_title">خطط جاهزة</string>
+    <string name="plan_ready_made_link">أو اختر خطة جاهزة</string>
     <string name="plan_previous_tap">اضغط على إحداها لتعود خطتك.</string>
     <string name="plan_src_coach">من المدرب</string>
     <string name="plan_src_docs">من Google Docs</string>
@@ -856,12 +857,20 @@
     <string name="plan_use_this">استخدام هذه الخطة</string>
     <string name="notif_rest_channel">مؤقت الراحة</string>
     <string name="notif_rest_channel_desc">عدّ تنازلي بين المجموعات في أثناء التمرين</string>
+    <string name="notif_rest_done_channel">تنبيه انتهاء الراحة</string>
+    <string name="notif_rest_done_channel_desc">صوت واهتزاز عند انتهاء الراحة بين المجموعات</string>
+    <string name="rest_exact_title">ليصلك تنبيه الراحة في وقته</string>
+    <string name="rest_exact_body">اسمح لتطبيق ForgeQuest بضبط المنبّهات ليصلك تنبيه انتهاء الراحة في وقته والشاشة مطفأة. من دون ذلك قد يتأخر التنبيه قليلًا.</string>
+    <string name="rest_exact_open">فتح الإعدادات</string>
     <string name="notif_reminder_channel">تذكيرات التمرين</string>
     <string name="notif_reminder_channel_desc">تنبيه في أيام التمرين المخطط لها</string>
     <string name="notif_next">التالي: %1$s</string>
     <string name="notif_next_set">المجموعة التالية عند انتهاء المؤقت</string>
     <string name="notif_rest_over">انتهت الراحة</string>
     <string name="notif_back_to">عودة إلى %1$s</string>
+    <string name="notif_back_to_2">انتهت الراحة. %1$s بانتظارك.</string>
+    <string name="notif_back_to_3">انتهى الوقت. التالي: %1$s.</string>
+    <string name="live_pr_new">رقم جديد في %1$s: %2$s.</string>
     <string name="notif_back_to_it">حان وقت العودة إلى التمرين</string>
     <string name="notif_reminder_title">اليوم: %1$s</string>
     <string name="notif_reminder_moves">يرتفع وزن %1$s إلى %2$s. اضغط للبدء.</string>
@@ -873,7 +882,6 @@
         <item quantity="many">%1$d تمرينًا في الخطة. اضغط للبدء.</item>
         <item quantity="other">%1$d تمرين في الخطة. اضغط للبدء.</item>
     </plurals>
-    <string name="drive_doc_changed">تغيّر مستندك ‏**%1$s** في Google Docs. هذا هو الأسبوع الجديد الوارد فيه؛ استعرضه وطبّقه متى كنت مستعدًا.</string>
     <string name="quick_workout_title">تمرين سريع</string>
     <string name="rx_reps_n">%1$d تكرار</string>
     <string name="unit_g">غ</string>
@@ -1001,6 +1009,30 @@
     <string name="call_legs_recover_b">اليوم تمرين الساقين وجسمك يحتاج إلى راحة. امشِ بدلًا منه، أو أدِّ نصف المجموعات بوزن خفيف.</string>
     <string name="call_upper_ease_b">اليوم تمرين الجزء العلوي وتعافيك منخفض. أدِّ الجلسة لكن خفّف أثقل تمرين فيها.</string>
     <string name="call_upper_recover_b">اليوم تمرين الجزء العلوي وجسمك يحتاج إلى راحة. اكتفِ بجلسة قصيرة خفيفة، أو امشِ بدلًا منها.</string>
+    <string name="call_peak_b2">كل المؤشرات في أعلاها. اسعَ اليوم إلى رقم جديد.</string>
+    <string name="call_peak_b3">تعافيك في أفضل حالاته. اضغط في المجموعات الثقيلة.</string>
+    <string name="call_ready_b2">الضوء أخضر. نفّذ الخطة كما هي.</string>
+    <string name="call_ready_b3">تعافيت جيدًا. أدِّ التمرين كاملًا.</string>
+    <string name="call_steady_b2">جاهزيتك كافية للتمرين. أدِّ التمارين الأساسية واترك الإضافات.</string>
+    <string name="call_steady_b3">يوم عادي. تمرّن وتوقّف قبل المجموعات الإضافية.</string>
+    <string name="call_ease_b2">التعافي منخفض. أبقِ التمرين واحذف مجموعة من كل تمرين.</string>
+    <string name="call_ease_b3">خفّف اليوم: أوزان أخف ولا تصل إلى الإجهاد التام.</string>
+    <string name="call_recover_b2">جسمك لم يتعافَ بعد. المشي اليوم يكفي.</string>
+    <string name="call_recover_b3">تجنّب الجهد الشديد اليوم. تمدّد وامشِ ونم مبكرًا.</string>
+    <string name="call_legs_peak_b2">يوم الأرجل وأنت في كامل طاقتك. اسعَ إلى مجموعة ثقيلة.</string>
+    <string name="call_legs_peak_b3">الأرجل اليوم وتعافيك في أفضل حالاته. يوم مناسب لرقم جديد.</string>
+    <string name="call_legs_steady_b2">يوم الأرجل. أدِّ التمارين الأساسية واترك الإضافات.</string>
+    <string name="call_legs_steady_b3">الأرجل اليوم في يوم عادي. تمرّن وتوقّف قبل المجموعات الإضافية.</string>
+    <string name="call_legs_ease_b2">يوم الأرجل والتعافي منخفض. التمارين نفسها بمجموعة أقل.</string>
+    <string name="call_legs_ease_b3">الأرجل اليوم لكن بحمل أخف: أنقص الوزن في التمارين الكبيرة.</string>
+    <string name="call_legs_recover_b2">يوم الأرجل لكن جسمك يحتاج إلى الراحة. المشي يكفي اليوم.</string>
+    <string name="call_legs_recover_b3">الأرجل تنتظر يومًا. امشِ، أو أدِّ نصف المجموعات بوزن خفيف.</string>
+    <string name="call_upper_ease_b2">الجزء العلوي والتعافي منخفض. خفّف الوزن في أثقل تمرين.</string>
+    <string name="call_upper_ease_b3">الجزء العلوي اليوم. أبقِ الخطة بمجموعة أقل في كل تمرين.</string>
+    <string name="call_upper_recover_b2">الجزء العلوي لكن جسمك يحتاج إلى الراحة. اجعل التمرين قصيرًا وخفيفًا.</string>
+    <string name="call_upper_recover_b3">الراحة أولًا اليوم. تمرين علوي خفيف أو مشي.</string>
+    <string name="call_steady_short_nights">ليلتان قصيرتان متتاليتان. أدِّ التمرين وتوقّف قبل المجموعة الأخيرة.</string>
+    <string name="call_ease_short_sleep">نمت %1$s. التمارين نفسها بوزن أخف.</string>
     <string name="ready_no_data">لا توجد بيانات Fitbit لليلة الماضية بعد. ارتدِه عند النوم ليظهر تعافيك هنا صباحًا.</string>
     <string name="ready_felt_great">أشعر بنشاط كبير اليوم</string>
     <string name="ready_usual">المعتاد %1$s</string>
@@ -1033,9 +1065,6 @@
     <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول بحساب Google، فلم يُربط شيء. حاول مجددًا متى شئت.</string>
     <string name="hc_check_ok">يعمل Health Connect: %1$d من %2$d أنواع بيانات فيها قراءات (%3$s).</string>
     <string name="hc_check_empty">يعمل Health Connect، لكن لم يُسجَّل شيء في آخر 14 يومًا. تأكّد أن Google Health يشارك البيانات مع Health Connect.</string>
-    <string name="drive_plan_doc_template">اكتب خطتك الأسبوعية أو الصقها تحت هذا السطر: قائمة بالأيام والتمارين، أو JSON للخطة. ثم اضغط «استيراد خطة من Docs».
-
-</string>
     <string name="ready_tab_day">اليوم</string>
     <string name="ready_tab_week">الأسبوع</string>
     <string name="ready_about">عن %1$s</string>
@@ -1109,14 +1138,11 @@
         <item quantity="other">%1$d مجموعة مكتملة</item>
     </plurals>
     <string name="plan_change">تغيير الخطة</string>
-    <string name="plan_gemini">إنشاء خطة باستخدام Gemini (ومن يوتيوب أيضًا)</string>
-    <string name="plan_gemini_copy">نسخ طلب الخطة</string>
-    <string name="plan_gemini_paste">لصق ردّ Gemini</string>
-    <string name="plan_gemini_info">ينسخ طلبًا لتطبيق Gemini. الصقه هناك مع روابط يوتيوب أو وصف، فيسألك عن معدّاتك ثم يردّ بخطة. ثم اضغط «لصق ردّ Gemini».</string>
-    <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
-    <string name="plan_previous_info">خطط استخدمتها من قبل. يمكنك العودة إلى أيّ منها في أي وقت، ويبقى سجل تمارينك كما هو.</string>
-    <string name="plan_docs_info">يحمّل خطة من مستند Google «ForgeQuest plan» في Drive. يفتح الملف الشخصي حيث يُربط Google Drive.</string>
-    <string name="cd_what_is_this">ما هو %1$s؟</string>
+    <string name="plan_gemini">إنشاء خطة باستخدام Gemini</string>
+    <string name="plan_gemini_copy">نسخ قالب الخطة</string>
+    <string name="plan_gemini_paste">لصق الخطة</string>
+    <string name="plan_gemini_info">انسخ القالب، واسأل Gemini، ثم الصق الخطة</string>
+    <string name="plan_previous_info">عُد إليها متى شئت؛ سجلّك محفوظ</string>
     <string name="goal_title">هدفك</string>
     <string name="goal_cut">خفض الوزن</string>
     <string name="goal_maintain">ثبات الوزن</string>
@@ -1165,6 +1191,8 @@
     <string name="debrief_ask_coach">اسأل المدرّب عن هذا التمرين</string>
     <string name="debrief_same_rest">بقية التمارين: الأرقام نفسها.</string>
     <string name="debrief_footnote">يخفّف التطبيق الحمل تلقائيًا في أيام التعافي المنخفض.</string>
+    <string name="debrief_footnote_numbers">لا توجد بيانات تعافٍ لهذا اليوم، فقُيّم التمرين بأرقامك فقط.</string>
+    <string name="debrief_footnote_connect">قُيّم التمرين بأرقامك فقط. اربط ساعتك لاحتساب التعافي.</string>
     <string name="debrief_win_pr_weight">%1$s: رقم قياسي جديد، %2$s × %3$s</string>
     <string name="debrief_win_pr_reps">%1$s: رقم قياسي جديد، %2$s</string>
     <string name="debrief_win_pr_reps_weight">%1$s: رقم قياسي جديد، %2$s بوزن %3$s</string>
@@ -1182,6 +1210,7 @@
     <string name="debrief_watch_pain_same">%1$s: ستبقى الأرقام نفسها في المرة القادمة بعد الألم. إن تكرر الألم فاستبدله.</string>
     <string name="debrief_watch_deload">يتراكم التعب. اجعل تمارينك القليلة القادمة أخف.</string>
     <string name="debrief_watch_plateau">%1$s: لا تقدّم في %2$s على مدى %3$s. جرّب حركة قريبة منه.</string>
+    <string name="debrief_watch_plateau_try">%1$s: لا تقدّم في %2$s على مدى %3$s (%4$s). جرّب %5$s لبضعة أسابيع.</string>
     <string name="debrief_watch_drop">%1$s: أقل من المرة السابقة. تمرين واحد لا يعني اتجاهًا ثابتًا.</string>
     <string name="debrief_watch_skipped_one">لم يُنجَز %1$s. ابدأ به في المرة القادمة.</string>
     <string name="debrief_watch_skipped_more">لم يُنجَز %1$s و%2$s. ابدأ بها في المرة القادمة.</string>
@@ -1404,6 +1433,10 @@
     <string name="meals_paste_wrong">انسخ إجابة الـ Gem كاملة أولًا، ثم اضغط على «لصق».</string>
     <string name="meals_share_wrong">لا يبدو هذا وجبة بتنسيق ForgeQuest.</string>
     <string name="meals_already_logged">هذه الوجبة مسجَّلة من قبل.</string>
+    <string name="food_paste_meal">لصق ردّ الوجبة</string>
+    <string name="food_copy_skill">نسخ مهارة الطعام للذكاء الاصطناعي</string>
+    <string name="coach_copy_skill">نسخ مهارة المدرب</string>
+    <string name="skill_copied">نُسخت المهارة. الصقها في تعليمات Gem داخل تطبيق Gemini.</string>
     <string name="meals_share_label">تسجيل الوجبة في ForgeQuest</string>
     <string name="meals_inbox_title">من Gemini (%d)</string>
     <string name="meals_inbox_hint">اضغط على وجبة لمراجعتها وتسجيلها.</string>
@@ -1573,6 +1606,10 @@
     <string name="coach_fresh">جاهز: %1$s</string>
     <string name="coach_recovering">قيد التعافي: %1$s</string>
     <string name="coach_stalled_title">تمارين متوقفة عن التقدم</string>
+    <string name="stalled_peak">%1$s · %2$s</string>
+    <string name="peak_est_max">الحد الأقصى التقديري %1$s</string>
+    <string name="peak_best">أفضل رقم %1$s</string>
+    <string name="stalled_switch">التبديل إلى %1$s</string>
     <string name="coach_deload_hint">التعب يتراكم. أسبوع أخف سيفيدك.</string>
     <string name="coach_week_line">هذا الأسبوع · التمارين: %1$d · المجموعات: %2$d</string>
     <string name="coach_turn_on_ai">تشغيل المدرب الذكي</string>
@@ -1584,8 +1621,6 @@
     <string name="crash_prompt">أُغلق ForgeQuest على نحوٍ غير متوقع في المرة السابقة. أتودّ إرسال تقرير بالعطل؟</string>
     <string name="crash_send">إرسال</string>
     <string name="crash_dismiss">تجاهل</string>
-    <string name="personal_tools_on">تم تفعيل الأدوات الشخصية</string>
-    <string name="personal_tools_off">تم إيقاف الأدوات الشخصية</string>
     <string name="ask_gemini">اسأل Gemini</string>
     <string name="ask_gemini_sent">أُرسل السؤال إلى Gemini. انسخ رده كاملًا، ثم عُد واضغط «لصق رد Gemini».</string>
     <string name="ask_gemini_copied">لم يُعثر على تطبيق Gemini. نُسخ سؤالك، فألصقه في صفحة Gemini.</string>
@@ -1706,10 +1741,10 @@
     <string name="pb_saved">تم حفظ الخطة</string>
     <string name="pb_plan_name">خطة %1$s</string>
     <string name="pb_progression">التدرّج: عند بلوغ الحد الأعلى من التكرارات في كل المجموعات، زد الحمل أو التكرارات. كل رابع أسبوع، خفّض المجموعات للنصف.</string>
-    <string name="pb_entry_info">أجب عن أسئلة قليلة لتحصل على خطة مصممة لك</string>
+    <string name="pb_entry_info">أجب عن بضعة أسئلة لتحصل على خطة</string>
     <string name="pb_rebuild">أعد بناء خطتي</string>
     <string name="pb_rebuild_hint">أجب عن أسئلة قليلة من جديد</string>
-    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/Labels.kt -->
+    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/EnumLabels.kt -->
     <plurals name="insight_first_round_reps_1">
         <item quantity="zero">أول مجموعة لك في %1$s بعدد %2$d تكرارات.</item>
         <item quantity="one">أول مجموعة لك في %1$s بعدد تكرار واحد.</item>

@@ -173,8 +173,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     if (currentMillis >= r.endsAt) {
                         rest.value = null
                         now.value = currentMillis
-                        app.haptics.setDone()
-                        app.notifier.restOver(r.nextExercise)
+                        app.restAlert.fire(r.nextExercise)
                     }
                 }
                 hold.value?.let { h ->
@@ -202,7 +201,22 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     private fun isNewPr(set: SetEntity): Boolean {
         val withTick = sets.value.map { if (it.id == set.id) it.copy(done = true) else it }
         val picked = PrPicker.pick(withTick, { exercises.value[it]?.kind ?: ExerciseKind.REPS }, bestScores.value)
-        return set.id in picked && prBuzzed.add(set.exerciseId)
+        val fresh = set.id in picked && prBuzzed.add(set.exerciseId)
+        if (fresh) announcePr(set)
+        return fresh
+    }
+
+    /** One line for the snackbar when a set becomes the exercise's record; at most once per exercise per workout. */
+    val prMessage = MutableStateFlow<String?>(null)
+
+    private fun announcePr(set: SetEntity) {
+        val ex = exercises.value[set.exerciseId] ?: return
+        val what = when (ex.kind) {
+            ExerciseKind.WEIGHTED -> "${set.reps ?: 0} × ${unit.value.format(set.weightKg ?: 0f)}"
+            ExerciseKind.HOLD -> (set.seconds ?: 0).let { app.plural(com.forgequest.app.R.plurals.debrief_n_seconds, it, it) }
+            ExerciseKind.REPS -> (set.reps ?: 0).let { app.plural(com.forgequest.app.R.plurals.debrief_n_reps, it, it) }
+        }
+        prMessage.value = app.str(com.forgequest.app.R.string.live_pr_new, ex.name, what)
     }
 
     fun toggle(set: SetEntity) {
@@ -251,17 +265,28 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val endsAt = System.currentTimeMillis() + seconds * 1000L
         rest.value = RestTimer(seconds, endsAt, nextExercise)
         app.notifier.showRest(endsAt, nextExercise)
+        app.restAlert.start(endsAt, nextExercise)
+        if (app.restAlarms.shouldOfferExact()) offerExactAlarm.value = true
+    }
+
+    /** Asked once: the system refuses exact alarms until the person allows them, and without them the alert can be late. */
+    val offerExactAlarm = MutableStateFlow(false)
+
+    fun answerExactAlarm() {
+        offerExactAlarm.value = false
+        app.restAlarms.offerAnswered()
     }
 
     fun addRest(seconds: Int) {
         rest.value = rest.value?.let { it.copy(totalSeconds = (it.totalSeconds + seconds).coerceAtLeast(15), endsAt = it.endsAt + seconds * 1000L) }
-        rest.value?.let { app.notifier.showRest(it.endsAt, it.nextExercise) }
+        rest.value?.let { app.notifier.showRest(it.endsAt, it.nextExercise); app.restAlert.start(it.endsAt, it.nextExercise) }
         app.haptics.tick()
     }
 
     fun skipRest() {
         rest.value = null
         app.notifier.cancelRest()
+        app.restAlert.cancel()
     }
 
     // ------------------------------------------------------------ Hold timer
@@ -302,20 +327,6 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         if (set.restSeconds > 0) startRest(set.restSeconds, nextExerciseAfter(set))
     }
 
-    fun adjust(set: SetEntity, kind: ExerciseKind, field: Field, direction: Int) {
-        val current = when (field) {
-            Field.REPS -> (set.reps ?: 0).toFloat()
-            Field.SECONDS -> (set.seconds ?: 0).toFloat()
-            Field.WEIGHT -> set.weightKg ?: 0f
-        }
-        val step = when (field) {
-            Field.REPS -> 1f
-            Field.SECONDS -> 5f
-            Field.WEIGHT -> 2.5f
-        }
-        setField(set, field, current + step * direction)
-    }
-
     /** Best score ever per exercise (finished sessions only), for the gold flash when a typed value beats it. */
     private val bestScores: StateFlow<Map<String, Float>> = app.progress.snapshot.map { snap ->
         snap.doneSets.groupBy { it.exerciseId }.mapValues { (id, sets) ->
@@ -354,7 +365,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val withEdit = sets.value.map { if (it.id == set.id) updated.copy(done = true) else it }
         val picked = PrPicker.pick(withEdit, { exercises.value[it]?.kind ?: ExerciseKind.REPS }, bestScores.value)
         if (set.id in picked && celebrated.add(set.id)) {
-            if (prBuzzed.add(set.exerciseId)) app.haptics.celebrate()
+            if (prBuzzed.add(set.exerciseId)) { app.haptics.celebrate(); announcePr(updated) }
             newBest.value = set.id
             viewModelScope.launch { delay(1400); if (newBest.value == set.id) newBest.value = null }
         }
@@ -443,6 +454,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val s = currentSession ?: return onDone()
         rest.value = null
         app.notifier.cancelRest()
+        app.restAlert.cancel()
         viewModelScope.launch {
             repo.discardSession(s.id)
             onDone()
@@ -458,6 +470,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         finishing.value = true
         rest.value = null
         app.notifier.cancelRest()
+        app.restAlert.cancel()
         viewModelScope.launch {
             try {
                 val beforeSnap = app.progress.freshSnapshot()

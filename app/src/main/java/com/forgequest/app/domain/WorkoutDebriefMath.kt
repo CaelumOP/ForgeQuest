@@ -56,7 +56,14 @@ object WorkoutDebriefMath {
         /** Bodyweight or hold: next time keeps the same numbers; if it hurts again, swap it. */
         data class PainSameNumbers(val exerciseId: String) : Watch
         data object Deload : Watch
-        data class Plateau(val exerciseId: String, val workouts: Int, val days: Int) : Watch
+        /**
+         * A stalled lift. With a variation to try ([suggestId], from [VariationCycle]), it also carries the peak the lift
+         * reached ([best], a [Records.score]) and the exercise [kind], so the text can write the peak in the right unit.
+         */
+        data class Plateau(
+            val exerciseId: String, val workouts: Int, val days: Int,
+            val suggestId: String? = null, val best: Float? = null, val kind: ExerciseKind? = null,
+        ) : Watch
         data class Drop(val exerciseId: String) : Watch
         /** [count] planned exercises had no done sets; [exerciseId] is the first. */
         data class Skipped(val exerciseId: String, val count: Int) : Watch
@@ -84,8 +91,10 @@ object WorkoutDebriefMath {
         val next: List<Next>,
         /** "Everything else: same numbers": some exercise shown for next time keeps its numbers. */
         val sameRest: Boolean,
-        /** "The app eases off by itself on a low-recovery day." */
+        /** "The app eases off by itself on a low-recovery day." True exactly when [note] is [Footnote.LOW_RECOVERY]. */
         val footnote: Boolean,
+        /** The small print under the debrief, or null for none. */
+        val note: Footnote? = null,
         /** Whole-percent total volume change vs the previous workout of the same plan day; null when not comparable. */
         val volumeChange: Int? = null,
     )
@@ -122,7 +131,21 @@ object WorkoutDebriefMath {
         val report: FatigueAndPlateauReport?,
         val unit: WeightUnit,
         val healthOn: Boolean,
+        /** With health on: whether the watch had a recovery number for the workout's day. */
+        val recoveryKnown: Boolean = true,
+        /** Stalled exercise id to the variation to try instead ([VariationCycle.next]); empty when there is none. */
+        val variations: Map<String, String> = emptyMap(),
     )
+
+    /**
+     * The debrief's small print, by what the app knows about recovery:
+     * a watch is connected and recovery was low ([LOW_RECOVERY], the app eased off); a watch is connected but had no
+     * number for the day ([NUMBERS_ONLY]); no watch ([CONNECT_WATCH], shown only now and then).
+     */
+    enum class Footnote { LOW_RECOVERY, NUMBERS_ONLY, CONNECT_WATCH }
+
+    /** Without a watch, the "connect a watch" hint shows on one workout in this many. */
+    const val CONNECT_HINT_EVERY = 5L
 
     /** An exercise back after this many days or more is a win. */
     const val BACK_AFTER_DAYS = 42
@@ -183,6 +206,13 @@ object WorkoutDebriefMath {
             next = next,
             sameRest = sameRest,
             footnote = lowRecovery,
+            note = when {
+                lowRecovery -> Footnote.LOW_RECOVERY
+                input.healthOn && !input.recoveryKnown -> Footnote.NUMBERS_ONLY
+                // No watch: recovery is never mentioned, apart from this hint every few workouts.
+                !input.healthOn && input.sessionId % CONNECT_HINT_EVERY == 0L -> Footnote.CONNECT_WATCH
+                else -> null
+            },
         )
     }
 
@@ -285,8 +315,14 @@ object WorkoutDebriefMath {
         if (pain != null) return if (deload) listOf(pain, Watch.Deload) else listOf(pain)
         if (deload) return listOf(Watch.Deload)
         if (!score.afterBreak) {
-            exs.firstNotNullOfOrNull { x -> input.report?.stalledLifts?.firstOrNull { it.exerciseId == x.id } }
-                ?.let { return listOf(Watch.Plateau(it.exerciseId, it.sessionsCount, it.spanDays)) }
+            exs.firstNotNullOfOrNull { x -> input.report?.stalledLifts?.firstOrNull { it.exerciseId == x.id }?.let { x to it } }
+                ?.let { (x, lift) ->
+                    val to = input.variations[lift.exerciseId]
+                    return listOf(
+                        if (to == null) Watch.Plateau(lift.exerciseId, lift.sessionsCount, lift.spanDays)
+                        else Watch.Plateau(lift.exerciseId, lift.sessionsCount, lift.spanDays, to, lift.bestScore, x.e.kind),
+                    )
+                }
         }
         // A comeback is never told about a drop.
         if (headline != Headline.MOSTLY_DOWN && !score.afterBreak) exs.firstOrNull { it.unforgivenDrop }?.let { return listOf(Watch.Drop(it.id)) }
@@ -374,6 +410,8 @@ object WorkoutDebriefMath {
         unit: WeightUnit,
         healthOn: Boolean,
         equipment: Set<Equipment>,
+        variations: Map<String, String> = emptyMap(),
+        recoveryKnown: Boolean = true,
     ): Result {
         val byId = sessions.associateBy { it.id }
         fun earlier(o: SessionEntity, s: SessionEntity) = o.epochDay < s.epochDay || (o.epochDay == s.epochDay && o.startedAt < s.startedAt)
@@ -410,6 +448,8 @@ object WorkoutDebriefMath {
                 report = report,
                 unit = unit,
                 healthOn = healthOn,
+                variations = variations,
+                recoveryKnown = recoveryKnown,
             ),
         ).copy(volumeChange = volumeChangeVsLastTime(session, sessions, doneSets, mine))
     }

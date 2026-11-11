@@ -64,6 +64,22 @@ object Progression {
     /** Sets in a lighter week: half, rounded up. */
     fun deloadSets(sets: Int): Int = (sets + 1) / 2
 
+    /**
+     * What to do next time on one exercise: the sets with their reps, seconds and weight, and the [Reason] shown as "why".
+     *
+     * [target] is the plan's prescription (3 sets of 8 to 12, or a 30 s hold, when the plan gives none). [last] is the
+     * done sets of the most recent workout with this exercise and [previous] those of the one before it.
+     *
+     * Anything goes up only after a completed workout: every planned set done, none marked Hard or Pain, and not a
+     * warm-up. Even then it stays put when [lowReadiness] (recovery calls for an easier day) or in a [deload] week,
+     * which also halves the sets ([deloadSets]).
+     * - Weighted, with a rep range: one more rep per workout; once every set reaches the top of the range, the weight
+     *   goes up one load step of [unit] and the reps return to the bottom (double progression).
+     * - Weighted, with a fixed rep count: the weight goes up only after two clean workouts in a row at the same weight.
+     * - A Pain set on a weighted exercise takes the weight one step down (never below one load step).
+     * - Bodyweight reps: one more rep, up to two past the top of the range. Holds: a few seconds more once every set
+     *   reaches the target, up to a ceiling above it.
+     */
     fun next(
         kind: ExerciseKind,
         target: Target?,

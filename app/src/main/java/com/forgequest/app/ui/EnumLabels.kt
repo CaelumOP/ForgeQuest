@@ -9,7 +9,6 @@ import com.forgequest.app.domain.BadgeCategory
 import com.forgequest.app.domain.BadgeDef
 import com.forgequest.app.domain.DayAdvice
 import com.forgequest.app.domain.DayTag
-import com.forgequest.app.domain.HEADLINE_VARIANTS
 import com.forgequest.app.domain.InsightKind
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.NutritionGoal
@@ -368,6 +367,38 @@ private val exerciseCueText: Map<String, Triple<Int, Int, Int>> = mapOf(
     "kb_sumo_deadlift" to Triple(R.string.cue_kb_sumo_deadlift_1, R.string.cue_kb_sumo_deadlift_2, R.string.cue_kb_sumo_deadlift_mistake),
     "kb_halo" to Triple(R.string.cue_kb_halo_1, R.string.cue_kb_halo_2, R.string.cue_kb_halo_mistake),
     "kb_windmill" to Triple(R.string.cue_kb_windmill_1, R.string.cue_kb_windmill_2, R.string.cue_kb_windmill_mistake),
+    "smith_squat" to Triple(R.string.cue_smith_squat_1, R.string.cue_smith_squat_2, R.string.cue_smith_squat_mistake),
+    "smith_bench_press" to Triple(R.string.cue_smith_bench_press_1, R.string.cue_smith_bench_press_2, R.string.cue_smith_bench_press_mistake),
+    "smith_incline_press" to Triple(R.string.cue_smith_incline_press_1, R.string.cue_smith_incline_press_2, R.string.cue_smith_incline_press_mistake),
+    "smith_overhead_press" to Triple(R.string.cue_smith_overhead_press_1, R.string.cue_smith_overhead_press_2, R.string.cue_smith_overhead_press_mistake),
+    "smith_row" to Triple(R.string.cue_smith_row_1, R.string.cue_smith_row_2, R.string.cue_smith_row_mistake),
+    "smith_romanian_deadlift" to Triple(R.string.cue_smith_romanian_deadlift_1, R.string.cue_smith_romanian_deadlift_2, R.string.cue_smith_romanian_deadlift_mistake),
+    "scapular_pull_up" to Triple(R.string.cue_scapular_pull_up_1, R.string.cue_scapular_pull_up_2, R.string.cue_scapular_pull_up_mistake),
+    "flexed_arm_hang" to Triple(R.string.cue_flexed_arm_hang_1, R.string.cue_flexed_arm_hang_2, R.string.cue_flexed_arm_hang_mistake),
+    "band_assisted_pull_up" to Triple(R.string.cue_band_assisted_pull_up_1, R.string.cue_band_assisted_pull_up_2, R.string.cue_band_assisted_pull_up_mistake),
+    "neutral_grip_pull_up" to Triple(R.string.cue_neutral_grip_pull_up_1, R.string.cue_neutral_grip_pull_up_2, R.string.cue_neutral_grip_pull_up_mistake),
+    "wide_grip_pull_up" to Triple(R.string.cue_wide_grip_pull_up_1, R.string.cue_wide_grip_pull_up_2, R.string.cue_wide_grip_pull_up_mistake),
+    "archer_pull_up" to Triple(R.string.cue_archer_pull_up_1, R.string.cue_archer_pull_up_2, R.string.cue_archer_pull_up_mistake),
+    "l_sit_pull_up" to Triple(R.string.cue_l_sit_pull_up_1, R.string.cue_l_sit_pull_up_2, R.string.cue_l_sit_pull_up_mistake),
+    "incline_push_up" to Triple(R.string.cue_incline_push_up_1, R.string.cue_incline_push_up_2, R.string.cue_incline_push_up_mistake),
+    "decline_push_up" to Triple(R.string.cue_decline_push_up_1, R.string.cue_decline_push_up_2, R.string.cue_decline_push_up_mistake),
+    "archer_push_up" to Triple(R.string.cue_archer_push_up_1, R.string.cue_archer_push_up_2, R.string.cue_archer_push_up_mistake),
+    "single_arm_cable_row" to Triple(R.string.cue_single_arm_cable_row_1, R.string.cue_single_arm_cable_row_2, R.string.cue_single_arm_cable_row_mistake),
+    "cable_rear_delt_fly" to Triple(R.string.cue_cable_rear_delt_fly_1, R.string.cue_cable_rear_delt_fly_2, R.string.cue_cable_rear_delt_fly_mistake),
+    "cable_crossover_high_to_low" to Triple(R.string.cue_cable_crossover_high_to_low_1, R.string.cue_cable_crossover_high_to_low_2, R.string.cue_cable_crossover_high_to_low_mistake),
+    "cable_crossover_low_to_high" to Triple(R.string.cue_cable_crossover_low_to_high_1, R.string.cue_cable_crossover_low_to_high_2, R.string.cue_cable_crossover_low_to_high_mistake),
+    "cable_glute_kickback" to Triple(R.string.cue_cable_glute_kickback_1, R.string.cue_cable_glute_kickback_2, R.string.cue_cable_glute_kickback_mistake),
+    "step_up" to Triple(R.string.cue_step_up_1, R.string.cue_step_up_2, R.string.cue_step_up_mistake),
+    "reverse_lunge" to Triple(R.string.cue_reverse_lunge_1, R.string.cue_reverse_lunge_2, R.string.cue_reverse_lunge_mistake),
+    "single_leg_hip_thrust" to Triple(R.string.cue_single_leg_hip_thrust_1, R.string.cue_single_leg_hip_thrust_2, R.string.cue_single_leg_hip_thrust_mistake),
+    "single_arm_db_press" to Triple(R.string.cue_single_arm_db_press_1, R.string.cue_single_arm_db_press_2, R.string.cue_single_arm_db_press_mistake),
+    "single_arm_lat_pulldown" to Triple(R.string.cue_single_arm_lat_pulldown_1, R.string.cue_single_arm_lat_pulldown_2, R.string.cue_single_arm_lat_pulldown_mistake),
+    "incline_bench_press" to Triple(R.string.cue_incline_bench_press_1, R.string.cue_incline_bench_press_2, R.string.cue_incline_bench_press_mistake),
+    "front_squat" to Triple(R.string.cue_front_squat_1, R.string.cue_front_squat_2, R.string.cue_front_squat_mistake),
+    "hack_squat" to Triple(R.string.cue_hack_squat_1, R.string.cue_hack_squat_2, R.string.cue_hack_squat_mistake),
+    "chest_supported_row" to Triple(R.string.cue_chest_supported_row_1, R.string.cue_chest_supported_row_2, R.string.cue_chest_supported_row_mistake),
+    "db_fly" to Triple(R.string.cue_db_fly_1, R.string.cue_db_fly_2, R.string.cue_db_fly_mistake),
+    "rear_delt_db_fly" to Triple(R.string.cue_rear_delt_db_fly_1, R.string.cue_rear_delt_db_fly_2, R.string.cue_rear_delt_db_fly_mistake),
     "quad_stretch" to Triple(R.string.cue_quad_stretch_1, R.string.cue_quad_stretch_2, R.string.cue_quad_stretch_mistake),
     "hamstring_stretch" to Triple(R.string.cue_hamstring_stretch_1, R.string.cue_hamstring_stretch_2, R.string.cue_hamstring_stretch_mistake),
     "hip_flexor_stretch" to Triple(R.string.cue_hip_flexor_stretch_1, R.string.cue_hip_flexor_stretch_2, R.string.cue_hip_flexor_stretch_mistake),
@@ -493,6 +524,26 @@ val ScoreTier.labelRes: Int
         ScoreTier.HELD_STEADY -> R.string.score_tier_held_steady
         ScoreTier.LIGHT_DAY -> R.string.score_tier_light_day
     }
+
+/** The wording number [variant] of a readiness sentence (see [com.forgequest.app.domain.ReadinessLine]). */
+fun com.forgequest.app.domain.ReadinessLine.bodyRes(variant: Int): Int {
+    val all = when (this) {
+        com.forgequest.app.domain.ReadinessLine.PEAK -> intArrayOf(R.string.call_peak_b, R.string.call_peak_b2, R.string.call_peak_b3)
+        com.forgequest.app.domain.ReadinessLine.READY -> intArrayOf(R.string.call_ready_b, R.string.call_ready_b2, R.string.call_ready_b3)
+        com.forgequest.app.domain.ReadinessLine.STEADY -> intArrayOf(R.string.call_steady_b, R.string.call_steady_b2, R.string.call_steady_b3)
+        com.forgequest.app.domain.ReadinessLine.EASE_OFF -> intArrayOf(R.string.call_ease_b, R.string.call_ease_b2, R.string.call_ease_b3)
+        com.forgequest.app.domain.ReadinessLine.RECOVER -> intArrayOf(R.string.call_recover_b, R.string.call_recover_b2, R.string.call_recover_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_PEAK -> intArrayOf(R.string.call_legs_peak_b, R.string.call_legs_peak_b2, R.string.call_legs_peak_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_STEADY -> intArrayOf(R.string.call_legs_steady_b, R.string.call_legs_steady_b2, R.string.call_legs_steady_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_EASE -> intArrayOf(R.string.call_legs_ease_b, R.string.call_legs_ease_b2, R.string.call_legs_ease_b3)
+        com.forgequest.app.domain.ReadinessLine.LEGS_RECOVER -> intArrayOf(R.string.call_legs_recover_b, R.string.call_legs_recover_b2, R.string.call_legs_recover_b3)
+        com.forgequest.app.domain.ReadinessLine.UPPER_EASE -> intArrayOf(R.string.call_upper_ease_b, R.string.call_upper_ease_b2, R.string.call_upper_ease_b3)
+        com.forgequest.app.domain.ReadinessLine.UPPER_RECOVER -> intArrayOf(R.string.call_upper_recover_b, R.string.call_upper_recover_b2, R.string.call_upper_recover_b3)
+        com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_NIGHTS -> intArrayOf(R.string.call_steady_short_nights)
+        com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP -> intArrayOf(R.string.call_ease_short_sleep)
+    }
+    return all[variant.coerceIn(0, all.lastIndex)]
+}
 
 /** The readiness sentence for a plan-aware [DayAdvice]. */
 @get:StringRes

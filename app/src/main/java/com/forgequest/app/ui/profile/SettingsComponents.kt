@@ -1,175 +1,61 @@
 package com.forgequest.app.ui.profile
 
-import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.rounded.CheckBox
-import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Accessibility
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Backup
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Cloud
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.MonitorHeart
-import androidx.compose.material.icons.rounded.MonitorWeight
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.PanTool
-import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Restaurant
-import androidx.compose.material.icons.rounded.SaveAlt
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.SportsGymnastics
-import androidx.compose.material.icons.rounded.SystemUpdate
-import androidx.compose.material.icons.rounded.TrackChanges
-import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.navigation.NavHostController
-import com.forgequest.app.AppContainer
 import com.forgequest.app.R
-import com.forgequest.app.data.ProgressSnapshot
-import com.forgequest.app.data.ai.AiError
-import com.forgequest.app.data.backup.BackupError
-import com.forgequest.app.data.backup.BackupFile
-import com.forgequest.app.data.db.ExerciseEntity
-import com.forgequest.app.data.drive.DriveAuth
-import com.forgequest.app.data.drive.DriveError
-import com.forgequest.app.data.drive.DriveSync
-import com.forgequest.app.data.notify.ReminderWorker
-import com.forgequest.app.data.prefs.BodyType
-import com.forgequest.app.domain.Badges
-import com.forgequest.app.domain.CutPace
-import com.forgequest.app.domain.DayActivity
-import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.GainPace
-import com.forgequest.app.domain.Equipment
-import com.forgequest.app.domain.EquipmentPreset
-import com.forgequest.app.domain.ExerciseSwapEngine
-import com.forgequest.app.domain.Nutrition
-import com.forgequest.app.domain.NutritionGoal
-import com.forgequest.app.domain.WeightTrend
-import com.forgequest.app.domain.WeightUnit
-import com.forgequest.app.ui.LocalSnackbar
-import com.forgequest.app.ui.appViewModel
-import com.forgequest.app.ui.descRes
-import com.forgequest.app.ui.labelRes
-import com.forgequest.app.ui.CalorieUi
-import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
-import com.forgequest.app.ui.components.MiniRing
-import com.forgequest.app.ui.components.NumberEntryDialog
 import com.forgequest.app.ui.components.NumberStepper
-import com.forgequest.app.ui.components.PillButton
-import com.forgequest.app.ui.components.ProgressLine
-import com.forgequest.app.ui.components.SegmentedTabs
-import com.forgequest.app.ui.components.Stepper
-import com.forgequest.app.ui.components.TonalPill
-import com.forgequest.app.ui.components.toast
-import com.forgequest.app.ui.localDescription
-import com.forgequest.app.ui.localSummary
-import com.forgequest.app.ui.localTitle
-import com.forgequest.app.ui.mark
 import com.forgequest.app.ui.theme.Fit
-import com.forgequest.app.ui.workouts.LineChart
-import com.forgequest.app.ui.workouts.PlanPreviewSheet
-import com.forgequest.app.ui.workouts.localName
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-import java.text.DateFormat
-import java.util.Date
-import java.util.Locale
 
 internal fun badgeIcon(cat: com.forgequest.app.domain.BadgeCategory): ImageVector = when (cat) {
     com.forgequest.app.domain.BadgeCategory.CONSISTENCY -> Icons.Rounded.LocalFireDepartment
@@ -206,17 +92,6 @@ internal fun BadgeChip(title: String, description: String, icon: ImageVector, un
             confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_ok), color = c.teal) } },
         )
     }
-}
-
-/** Small group title between cards, so related settings read as one block. */
-@Composable
-internal fun SettingsSection(title: String) {
-    Text(
-        title.uppercase(Locale.getDefault()),
-        style = MaterialTheme.typography.labelLarge,
-        color = Fit.colors.textSecondary,
-        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp).semantics { heading() },
-    )
 }
 
 /** Header of a settings card that toggles as a whole: icon, title, current state, switch. */
@@ -265,7 +140,7 @@ internal val LocalGroupMode = androidx.compose.runtime.staticCompositionLocalOf 
 /**
  * A settings category. In the list ([GroupMode.Row]) it is one card with an icon, a title, a one-line summary of
  * the current values and a chevron, and tapping it opens that group's page. On the page ([GroupMode.Page]) only the
- * cards inside are drawn. [open] is ignored; it stays so the seven groups keep their signature.
+ * cards inside are drawn.
  */
 @Composable
 internal fun SettingsGroup(
@@ -274,7 +149,6 @@ internal fun SettingsGroup(
     track: androidx.compose.ui.graphics.Color,
     title: String,
     summary: String,
-    open: Boolean,
     onToggle: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -300,24 +174,6 @@ internal fun SettingsGroup(
         }
     }
     Spacer(Modifier.height(12.dp))
-}
-
-/** Half-width card that opens another screen. */
-@Composable
-internal fun ShortcutCard(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, track: androidx.compose.ui.graphics.Color, title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    // At large text sizes the icon sits above the title, so a long word is never broken in the middle.
-    val stacked = com.forgequest.app.ui.components.reflowText()
-    FitCard(modifier, onClick = onClick, padding = PaddingValues(16.dp)) {
-        if (stacked) {
-            IconCircle(icon, tint, track, size = 40.dp)
-            Spacer(Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        } else Row(verticalAlignment = Alignment.CenterVertically) {
-            IconCircle(icon, tint, track, size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, color = Fit.colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-    }
 }
 
 /** One full-width option row with a radio circle or a checkbox; the whole row is the touch target. */

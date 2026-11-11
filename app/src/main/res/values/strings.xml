@@ -16,7 +16,6 @@
     </plurals>
     <string name="weight_log_title">Log body weight</string>
     <string name="weight_saved">Weight saved</string>
-    <string name="food_tick_hint">Tick what you ate, then tap Log.</string>
     <string name="food_search_hint">Search your foods or restaurants</string>
     <string name="food_search_logs_as">From all your foods. Ticked ones log under %1$s.</string>
     <string name="food_search_none">No saved food matches “%1$s”.</string>
@@ -276,6 +275,9 @@
     <string name="food_meal_chip">Meal: %1$s</string>
     <string name="food_logged_today">Logged today</string>
     <string name="food_logged_that_day">Logged that day</string>
+    <string name="food_show_all">Show all (%1$d)</string>
+    <string name="food_show_less">Show less</string>
+    <string name="food_browse_all">Browse all (%1$d)</string>
     <string name="food_quick_log">Quick log</string>
     <string name="food_estimate">Estimate calories from the name</string>
     <string name="food_estimating">Estimating…</string>
@@ -295,6 +297,12 @@
     <string name="food_back_to_today">Back to today</string>
     <string name="cd_next_day">Next day</string>
     <string name="coach_got_it">Got it</string>
+    <string name="coach_skip">Skip tips</string>
+    <string name="coach_plan_t">Your week lives here</string>
+    <string name="coach_plan_b">Tap Change plan to build a new plan or go back to an earlier one.</string>
+    <string name="coach_ask_t">Ask about your training</string>
+    <string name="coach_ask_b">Type a question below, or tap Ask Gemini to take it to the Gemini app.</string>
+    <string name="coach_ask_b_noai">Tap Ask Gemini to send your data and a question to the Gemini app, then paste the reply back.</string>
     <string name="coach_home_t">Start here</string>
     <string name="coach_home_b">Tap Start to begin.</string>
     <string name="coach_tick_t">Tick each set</string>
@@ -323,6 +331,7 @@
     <string name="food_g">%1$d g</string>
     <string name="cd_remove">Remove</string>
     <string name="food_photo">Food photo</string>
+    <string name="food_photo_change">Change photo</string>
     <string name="photo_choose_gallery">Choose from gallery</string>
     <string name="photo_take">Take a photo</string>
     <string name="photo_remove">Remove photo</string>
@@ -352,7 +361,6 @@
     <string name="drive_err_not_configured">Google Drive isn\'t set up for this copy of the app yet.</string>
     <string name="drive_err_needs_consent">Connect Google Drive in Profile first.</string>
     <string name="drive_err_offline">No internet connection.</string>
-    <string name="drive_err_no_doc">Created \"ForgeQuest plan\" in your Drive. Write or paste your weekly plan there, then import again.</string>
     <string name="drive_err_no_backup">No backup found in your Google Drive yet.</string>
     <string name="drive_err_http">Google Drive returned an error (%1$d). Try again later.</string>
     <string name="scan_portion_small">Small</string>
@@ -471,8 +479,6 @@
     <string name="backup_restoring">Restoring…</string>
     <string name="backup_restored_from">Restored from %1$s</string>
     <string name="backup_restore_failed">Couldn\'t restore that backup.</string>
-    <string name="drive_reading_doc">Reading your ForgeQuest plan doc…</string>
-    <string name="drive_imported">Imported %1$s</string>
     <string name="backup_share_subject">ForgeQuest backup</string>
     <string name="backup_share_title">Save your backup</string>
     <string name="profile_setup_title">Turn on the coach and meal scanning</string>
@@ -536,12 +542,8 @@
     <string name="drive_backed_up_at">%1$s · backed up %2$s</string>
     <string name="drive_connect">Connect Google Drive</string>
     <string name="drive_back_up_now">Back up now</string>
-    <string name="drive_import_doc">Import plan from Docs</string>
-    <string name="drive_import_doc_first">Import plan from Docs…</string>
-    <string name="drive_stop_docs">Stop reading Docs</string>
     <string name="action_restore">Restore</string>
     <string name="drive_disconnect">Disconnect</string>
-    <string name="drive_docs_on_hint">Backs up daily. The \"ForgeQuest plan\" Doc is checked daily too; changes show in the Coach tab.</string>
     <string name="drive_docs_off_hint">Backs up daily on its own. The app only sees its own backup and the Docs it creates, never your other files.</string>
     <string name="profile_credits">Credits</string>
     <string name="profile_credits_body">Foundation plan by Hemo Calisthenics. Anatomy art from react-native-body-highlighter (MIT).</string>
@@ -718,10 +720,8 @@
     <string name="plan_days_swapped">%1$s and %2$s swapped</string>
     <string name="plan_your_plan">Your plan</string>
     <string name="plan_no_plan">No plan</string>
-    <string name="plan_ready_made">Switch to a ready-made plan</string>
     <string name="plan_previous">Previous plans</string>
     <string name="plan_paste">Paste a plan</string>
-    <string name="plan_import_docs">Import from Google Docs</string>
     <string name="cd_move_day">Move to another day</string>
     <plurals name="plan_circuit_rounds">
         <item quantity="one">circuit, %1$d round</item>
@@ -730,6 +730,7 @@
     <string name="plan_rest_seconds">rest %1$ds</string>
     <string name="plan_add_to_day">Add to %1$s</string>
     <string name="plan_ready_made_title">Ready-made plans</string>
+    <string name="plan_ready_made_link">Or pick a ready-made plan</string>
     <string name="plan_previous_tap">Tap one to make it your plan again.</string>
     <string name="plan_src_coach">From the coach</string>
     <string name="plan_src_docs">From Google Docs</string>
@@ -755,12 +756,20 @@
     <string name="plan_use_this">Use this plan</string>
     <string name="notif_rest_channel">Rest timer</string>
     <string name="notif_rest_channel_desc">Countdown between sets while a workout is open</string>
+    <string name="notif_rest_done_channel">Rest over alert</string>
+    <string name="notif_rest_done_channel_desc">Sound and vibration when the rest between sets ends</string>
+    <string name="rest_exact_title">Get the rest alert on time</string>
+    <string name="rest_exact_body">Allow alarms for ForgeQuest so the rest-over alert arrives on time when the screen is off. Without it, the alert can be a little late.</string>
+    <string name="rest_exact_open">Open settings</string>
     <string name="notif_reminder_channel">Workout reminders</string>
     <string name="notif_reminder_channel_desc">A nudge on planned training days</string>
     <string name="notif_next">Next: %1$s</string>
     <string name="notif_next_set">Next set when the timer ends</string>
     <string name="notif_rest_over">Rest over</string>
     <string name="notif_back_to">Back to %1$s</string>
+    <string name="notif_back_to_2">Rest is done. %1$s is waiting.</string>
+    <string name="notif_back_to_3">Time is up. Next: %1$s.</string>
+    <string name="live_pr_new">New best on %1$s: %2$s.</string>
     <string name="notif_back_to_it">Back to it</string>
     <string name="notif_reminder_title">Today: %1$s</string>
     <string name="notif_reminder_moves">%1$s moves to %2$s. Tap to start.</string>
@@ -768,7 +777,6 @@
         <item quantity="one">%1$d exercise on the plan. Tap to start.</item>
         <item quantity="other">%1$d exercises on the plan. Tap to start.</item>
     </plurals>
-    <string name="drive_doc_changed">Your Google Doc **%1$s** changed. Here\'s the new week it describes. Preview it, and apply it when you\'re ready.</string>
     <string name="quick_workout_title">Quick workout</string>
     <string name="rx_reps_n">%1$d reps</string>
     <string name="unit_g">g</string>
@@ -892,6 +900,30 @@
     <string name="call_legs_recover_b">Legs today, and your body is asking for rest. Walk instead, or do half the sets at an easy weight.</string>
     <string name="call_upper_ease_b">Upper body today, and recovery is low. Keep the workout but go lighter on the heaviest exercise.</string>
     <string name="call_upper_recover_b">Upper body today, and your body is asking for rest. Do a short, light workout or walk instead.</string>
+    <string name="call_peak_b2">Everything is topped up. Go for a best today.</string>
+    <string name="call_peak_b3">Recovery is as good as it gets. Push the heavy sets.</string>
+    <string name="call_ready_b2">Green light. Run the plan as written.</string>
+    <string name="call_ready_b3">You are recovered. Do the full workout.</string>
+    <string name="call_steady_b2">Good enough to train. Do the main lifts, leave the extras.</string>
+    <string name="call_steady_b3">A normal day. Train, but stop before the extra sets.</string>
+    <string name="call_ease_b2">Recovery is low. Keep the workout, drop a set from each exercise.</string>
+    <string name="call_ease_b3">Take it easier today: lighter weights, nothing to failure.</string>
+    <string name="call_recover_b2">Your body is behind today. A walk counts.</string>
+    <string name="call_recover_b3">Skip the hard work today. Stretch, walk, sleep early.</string>
+    <string name="call_legs_peak_b2">Leg day on a full charge. Go after a heavy set.</string>
+    <string name="call_legs_peak_b3">Legs today, and recovery is at its best. A good day for a record.</string>
+    <string name="call_legs_steady_b2">Leg day. Do the main lifts, leave the extras.</string>
+    <string name="call_legs_steady_b3">Legs today on a normal day. Train, stop before the extra sets.</string>
+    <string name="call_legs_ease_b2">Leg day with low recovery. Same exercises, one set fewer.</string>
+    <string name="call_legs_ease_b3">Legs today, but go lighter: lower the weight on the big lifts.</string>
+    <string name="call_legs_recover_b2">Leg day, but your body needs rest. A walk is enough today.</string>
+    <string name="call_legs_recover_b3">Legs can wait a day. Walk, or do half the sets at an easy weight.</string>
+    <string name="call_upper_ease_b2">Upper body with low recovery. Go lighter on the heaviest lift.</string>
+    <string name="call_upper_ease_b3">Upper body today. Keep the plan, one set fewer on each lift.</string>
+    <string name="call_upper_recover_b2">Upper body, but your body needs rest. Keep it short and light.</string>
+    <string name="call_upper_recover_b3">Rest comes first today. A light upper session or a walk.</string>
+    <string name="call_steady_short_nights">Two short nights in a row. Do the work, stop one set early.</string>
+    <string name="call_ease_short_sleep">You slept %1$s. Same exercises, lighter weight.</string>
     <string name="ready_no_data">No Fitbit data for last night yet. Wear it to bed and your recovery shows up here in the morning.</string>
     <string name="ready_felt_great">I feel great today</string>
     <string name="ready_usual">usual %1$s</string>
@@ -924,7 +956,6 @@
     <string name="drive_signin_cancelled">Google sign-in didn\'t finish, so nothing was connected. Try again when you\'re ready.</string>
     <string name="hc_check_ok">Health Connect works: %1$d of %2$d data types have readings (%3$s).</string>
     <string name="hc_check_empty">Health Connect works, but nothing was recorded in the last 14 days. Check that Google Health shares with Health Connect.</string>
-    <string name="drive_plan_doc_template">Write or paste your weekly plan below this line: days and exercises, or plan JSON. Then tap Import plan from Docs.\n\n</string>
     <string name="ready_tab_day">Day</string>
     <string name="ready_tab_week">Week</string>
     <string name="ready_about">About %1$s</string>
@@ -994,14 +1025,11 @@
         <item quantity="other">%1$d sets done</item>
     </plurals>
     <string name="plan_change">Change plan</string>
-    <string name="plan_gemini">Make a plan with Gemini (from YouTube too)</string>
-    <string name="plan_gemini_copy">Copy plan prompt</string>
-    <string name="plan_gemini_paste">Paste Gemini\'s reply</string>
-    <string name="plan_gemini_info">Copies a prompt for Gemini. Paste it there with YouTube links or a description, then tap Paste Gemini\'s reply here.</string>
-    <string name="plan_ready_made_info">Plans that come with the app, beginner to advanced. Picking one replaces your plan, which stays under Previous plans.</string>
-    <string name="plan_previous_info">Plans you used before. Switch back to one at any time; your workout history is kept.</string>
-    <string name="plan_docs_info">Loads a plan from the \"ForgeQuest plan\" Google Doc in your Drive. Opens Profile, where Google Drive is connected.</string>
-    <string name="cd_what_is_this">What is %1$s?</string>
+    <string name="plan_gemini">Make a plan with Gemini</string>
+    <string name="plan_gemini_copy">Copy plan template</string>
+    <string name="plan_gemini_paste">Paste plan</string>
+    <string name="plan_gemini_info">Copy the template, ask Gemini, paste the plan back</string>
+    <string name="plan_previous_info">Switch back any time; history is kept</string>
     <string name="goal_title">Your goal</string>
     <string name="goal_cut">Lose fat</string>
     <string name="goal_maintain">Maintain</string>
@@ -1050,6 +1078,8 @@
     <string name="debrief_ask_coach">Ask the coach about this workout</string>
     <string name="debrief_same_rest">Everything else: same numbers.</string>
     <string name="debrief_footnote">The app eases off by itself on a low-recovery day.</string>
+    <string name="debrief_footnote_numbers">No recovery data for today, so this was judged on your numbers alone.</string>
+    <string name="debrief_footnote_connect">Judged on your numbers alone. Connect a watch to factor in recovery.</string>
     <string name="debrief_win_pr_weight">%1$s: new record, %2$s × %3$s</string>
     <string name="debrief_win_pr_reps">%1$s: new record, %2$s</string>
     <string name="debrief_win_pr_reps_weight">%1$s: new record, %2$s with %3$s</string>
@@ -1067,6 +1097,7 @@
     <string name="debrief_watch_pain_same">%1$s: next time keeps the same numbers after the pain. If it hurts again, swap it.</string>
     <string name="debrief_watch_deload">Tiredness is building up. Make your next few workouts lighter.</string>
     <string name="debrief_watch_plateau">%1$s: no progress in %2$s over %3$s. Try a close variation.</string>
+    <string name="debrief_watch_plateau_try">%1$s: no progress in %2$s over %3$s (%4$s). Try %5$s for a few weeks.</string>
     <string name="debrief_watch_drop">%1$s: lower than last time. One workout is not a trend.</string>
     <string name="debrief_watch_skipped_one">%1$s was left out. Start with it next time.</string>
     <string name="debrief_watch_skipped_more">%1$s and %2$s were left out. Start with them next time.</string>
@@ -1250,6 +1281,10 @@
     <string name="meals_paste_wrong">Copy the Gem\'s whole answer first, then tap Paste.</string>
     <string name="meals_share_wrong">That doesn\'t look like a ForgeQuest meal.</string>
     <string name="meals_already_logged">This meal is already logged.</string>
+    <string name="food_paste_meal">Paste meal reply</string>
+    <string name="food_copy_skill">Copy Food AI Skill</string>
+    <string name="coach_copy_skill">Copy Coach Skill</string>
+    <string name="skill_copied">Skill copied. Paste it into the instructions of a Gem in the Gemini app.</string>
     <string name="meals_share_label">Log meal in ForgeQuest</string>
     <string name="meals_inbox_title">From Gemini (%d)</string>
     <string name="meals_inbox_hint">Tap a meal to check it and log it.</string>
@@ -1395,6 +1430,10 @@
     <string name="coach_fresh">Ready: %1$s</string>
     <string name="coach_recovering">Recovering: %1$s</string>
     <string name="coach_stalled_title">Stalled lifts</string>
+    <string name="stalled_peak">%1$s · %2$s</string>
+    <string name="peak_est_max">estimated max %1$s</string>
+    <string name="peak_best">best %1$s</string>
+    <string name="stalled_switch">Switch to %1$s</string>
     <string name="coach_deload_hint">Tiredness is building up. A lighter week would help.</string>
     <string name="coach_week_line">This week · workouts: %1$d · sets: %2$d</string>
     <string name="coach_turn_on_ai">Turn on AI coach</string>
@@ -1406,8 +1445,6 @@
     <string name="crash_prompt">ForgeQuest closed unexpectedly last time. Send a crash report?</string>
     <string name="crash_send">Send</string>
     <string name="crash_dismiss">Dismiss</string>
-    <string name="personal_tools_on">Personal tools on</string>
-    <string name="personal_tools_off">Personal tools off</string>
     <string name="ask_gemini">Ask Gemini</string>
     <string name="ask_gemini_sent">Sent to Gemini. Copy its whole reply, then come back and tap Paste Gemini reply.</string>
     <string name="ask_gemini_copied">Gemini app not found. Your question is copied: paste it on the Gemini page.</string>
@@ -1528,14 +1565,14 @@
     <string name="pb_saved">Plan saved</string>
     <string name="pb_plan_name">%1$s plan</string>
     <string name="pb_progression">Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.</string>
-    <string name="pb_entry_info">Answer a few questions and get a plan made for you</string>
+    <string name="pb_entry_info">Answer a few questions, get a plan</string>
     <string name="pb_rebuild">Rebuild my plan</string>
     <string name="pb_rebuild_hint">Answer a few questions again</string>
     <string name="lang_choose_en" translatable="false">Choose your language</string>
     <string name="lang_choose_ar" translatable="false">اختر لغتك</string>
     <string name="lang_name_en" translatable="false">English</string>
     <string name="lang_name_ar" translatable="false">العربية</string>
-    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/Labels.kt -->
+    <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/EnumLabels.kt -->
     <plurals name="insight_first_round_reps_1">
         <item quantity="one">%1$s: your first set of %2$d rep.</item>
         <item quantity="other">%1$s: your first set of %2$d reps.</item>

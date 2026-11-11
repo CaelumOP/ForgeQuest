@@ -220,7 +220,6 @@ class FoodRepository(
             turns = listOf("user" to userPrompt),
             image = image,
             jsonOutput = true,
-            fast = false,
             lowThinking = true,
         )
         val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()

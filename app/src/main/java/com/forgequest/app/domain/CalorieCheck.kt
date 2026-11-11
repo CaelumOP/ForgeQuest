@@ -88,6 +88,11 @@ object CalorieCheck {
      * The signals that apply today, most important first. [steps] = epochDay → steps (empty without a watch);
      * [deloadNeeded] = the deload check found stalled lifts or several low-recovery days; [loggedShare] from
      * [loggedShare]; [targetWeightKg] = the weight the target was set at (0 when unknown).
+     *
+     * Two numbers here are margins against scale noise, in percent of body weight per week. Under-fuelled needs the
+     * loss to beat the chosen pace by more than 0.25 (a Standard cut at 0.5 fires past 0.75): water alone moves the
+     * weekly trend by a quarter of a percent. Scale creep needs the 4-week trend to be above -0.15, which is "barely
+     * losing": slower than even the Gentle pace, measured over a month so one flat week does not count.
      */
     fun signals(
         goal: NutritionGoal,

@@ -18,21 +18,10 @@ import com.forgequest.app.data.plan.PlanPatch
 import com.forgequest.app.data.plan.PlanPatches
 import com.forgequest.app.data.plan.PlanValidator
 import com.forgequest.app.data.prefs.SettingsRepository
-import com.forgequest.app.data.seed.ExerciseCatalog
-import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.Equipment
-import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.inferEquipmentFromText
-import com.forgequest.app.domain.Muscle
-import com.forgequest.app.domain.Nutrition
-import com.forgequest.app.domain.NutritionGoal
-import com.forgequest.app.domain.Records
-import com.forgequest.app.domain.Trends
-import com.forgequest.app.domain.WeightTrend
-import com.forgequest.app.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,10 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 class CoachRepository(
     private val db: AppDatabase,
@@ -54,6 +40,8 @@ class CoachRepository(
     private val workouts: WorkoutRepository,
     private val health: com.forgequest.app.data.health.HealthRepository,
 ) {
+    /** The system prompt, the plan format and the progress summary; the Gemini bridge reads the last two. */
+    val prompts = CoachPromptBuilder(progress, health, db)
     private val chat = db.chat()
     private val chatMutex = Mutex()
 
@@ -104,7 +92,7 @@ class CoachRepository(
 
         _draft.value = ""
         try {
-            val system = coachSystemPrompt(
+            val system = prompts.coachSystemPrompt(
                 replyLanguage = if (aboutWorkout && isArabicUi()) "Arabic" else languageOf(trimmed),
                 plan = shouldEmitPlanJson,
                 needsEquipmentIntake = needsEquipmentIntake,
@@ -116,17 +104,14 @@ class CoachRepository(
                 if (firstText < 0) firstText = SystemClock.elapsedRealtime() - tapped
                 _draft.value = (_draft.value ?: "") + delta
             }
-            // One fixed model chain since the picker went: an old stored "lite" choice no longer applies.
-            val useZeroThinking = false
             val reply = gemini.generateStreaming(
                 apiKey = requireKey(),
                 models = models(),
                 system = system,
                 turns = turns,
                 // Full thinking for weekly plans; lowThinking (~1,024 budget) for normal coaching so the coach
-                // actually reasons over Readiness, HRV, recovery and set history; zero thinking only if user pinned "lite".
-                fast = useZeroThinking,
-                lowThinking = !shouldEmitPlanJson && !useZeroThinking,
+                // actually reasons over Readiness, HRV, recovery and set history.
+                lowThinking = !shouldEmitPlanJson,
                 onDelta = onDelta,
             )
             _lastAnswer.value = "Gemini" to firstText
@@ -242,7 +227,7 @@ class CoachRepository(
         }
         if (check != null && checked == null) extraNotes += AppText.get(R.string.coach_plan_unreadable)
         val patch = checked?.patch
-        if (patch != null && current != null) extraNotes += describeChanges(current, patch, snap.exercises)
+        if (patch != null && current != null) extraNotes += describeChanges(patch, snap.exercises)
         val adaptedPlan = if (checked != null && availableEquipment.isNotEmpty()) {
             ExerciseSwapEngine.adaptPlanToEquipment(checked, snap.exercises, availableEquipment, dropUnfit = true).first
         } else {
@@ -351,7 +336,7 @@ class CoachRepository(
     }
 
     /** "Tuesday: Dips → Push-up" lines for a change-only card, in the app language. */
-    private fun describeChanges(base: PlanDraft, patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
+    private fun describeChanges(patch: PlanPatch, library: Map<String, ExerciseEntity>): List<String> {
         fun name(id: String?) = id?.let { PlanValidator.canonicalId(it, null, library) ?: it }?.let { library[it]?.name ?: it }.orEmpty()
         return patch.changes.map { c ->
             val day = Dates.dayName(c.dayOfWeek.coerceIn(1, 7))
@@ -369,7 +354,7 @@ class CoachRepository(
         val eq = settings.current().configuredEquipment
         val system = """
             Convert the user's workout plan text into JSON. Keep their exercises, sets, reps and days.
-            ${planSchemaInstructions(eq)}
+            ${prompts.planSchemaInstructions(eq)}
             Reply ONLY with the JSON object, no other text.
         """.trimIndent()
         val raw = gemini.generate(requireKey(), models(), system, listOf("user" to text.take(20_000)), jsonOutput = true, lowThinking = true)
@@ -389,7 +374,7 @@ class CoachRepository(
 
     private suspend fun models(): List<String> {
         val m = models.current()
-        // One fixed chain (the model picker was removed); a stored "lite"/"pro" choice is ignored.
+        // One fixed chain: the model picker was removed.
         return listOf(m.fast, GeminiClient.FALLBACK_STABLE_FLASH, m.lite)
     }
 
@@ -416,293 +401,11 @@ class CoachRepository(
     internal suspend fun systemPromptForBench(latest: String): String {
         val eq = settings.current().configuredEquipment
         val wants = wantsPlan(latest)
-        return coachSystemPrompt(languageOf(latest), plan = wants && eq.isNotEmpty(), needsEquipmentIntake = wants && eq.isEmpty(), availableEquipment = eq)
-    }
-
-    private suspend fun coachSystemPrompt(
-        replyLanguage: String,
-        plan: Boolean = false,
-        needsEquipmentIntake: Boolean = false,
-        availableEquipment: Set<Equipment> = emptySet(),
-    ): String = buildString {
-        appendLine(CORE_RULES)
-        appendLine()
-        when {
-            needsEquipmentIntake -> {
-                appendLine("EQUIPMENT INTAKE REQUIRED: The user asked to build or change a workout plan, but we do not yet know what equipment they have access to.")
-                appendLine("Do NOT output a ```json plan block in this reply. Instead, ask a concise, friendly 3-bullet intake question:")
-                appendLine("1. What equipment do you have access to? (e.g., Full commercial gym, home dumbbells/barbell, pull-up bar & dip bars, doorway pull-up bar only, or pure bodyweight)")
-                appendLine("2. How many days per week do you want to train? (if not already stated)")
-                appendLine("3. What is your main goal right now? (muscle growth, strength, fat loss, or calisthenics skills)")
-                appendLine("Tell them you will generate their ready-to-apply plan as soon as they answer.")
-            }
-            plan -> {
-                appendLine("When the user asks to create or change their weekly plan, describe it briefly, then add the full plan as a ```json code block at the very end.")
-                appendLine(planSchemaInstructions(availableEquipment, progress.snapshot.first().plan?.toDraft()))
-            }
-            else -> {
-                appendLine("Never write plan JSON in this reply. If they want a new or changed weekly plan, outline it in a few lines and tell them to say \"make it my plan\" (in Arabic: \"اعمل لي الخطة\") to get one they can apply.")
-            }
-        }
-        appendLine()
-        append(progressSummary())
-        appendLine()
-        append("LANGUAGE: reply in $replyLanguage. Decide from the latest message only, never from earlier messages, the user's name or the data above.")
-        if (replyLanguage == "Arabic") append(" Write formal Modern Standard Arabic (الفصحى), not dialect: natural Arabic phrasing, not translated English; use the Arabic comma (،) and question mark (؟). Keep exercise names in English in parentheses the first time, and write numbers as Western digits (0-9).")
-    }
-
-    fun planSchemaInstructions(availableEquipment: Set<Equipment> = emptySet(), current: PlanDraft? = null): String {
-        val allowed = availableEquipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
-        val allowedCatalog = ExerciseCatalog.all.filter { ex ->
-            ExerciseSwapEngine.profileFor(ex).equipment in allowed
-        }
-        val ids = allowedCatalog.joinToString(", ") { it.id }
-        val equipmentRule = if (availableEquipment.isNotEmpty() && !allowed.containsAll(Equipment.entries)) {
-            "CRITICAL EQUIPMENT CONSTRAINT: The user ONLY has access to: ${allowed.joinToString(", ") { it.labelEn }}. You MUST ONLY program exercises that use this equipment. NEVER program unavailable machines, cables, or barbells."
-        } else {
-            "Match exercise selection to the user's available equipment."
-        }
-        return """
-            Plan JSON shape: {"name": string, "description": string, "days": [{"dayOfWeek": 1-7 (1 = Monday), "title": string, "isRest": boolean, "note": string,
-            "items": [{"exerciseId": string, "name": string, "kind": "REPS"|"HOLD"|"WEIGHTED", "muscles": [string], "block": string, "circuit": boolean,
-            "sets": int, "repsMin": int|null, "repsMax": int|null, "seconds": int|null, "weightKg": number|null, "restSeconds": int, "note": string}]}]}
-            Include all 7 days. $equipmentRule
-            Prefer these equipment-compatible exercise ids: $ids.
-            For an exercise not in that list, invent a snake_case id that strictly uses their available equipment and set name, kind and muscles (from: ${Muscle.entries.joinToString(", ") { it.name }}).
-            Keep the JSON short: for ids from the list leave out name, kind and muscles; omit "note" unless needed; one-sentence description.
-            Use "seconds" for holds, "repsMin"/"repsMax" for reps. Items with the same block and circuit=true are done round by round.
-        """.trimIndent() + (current?.let { plan ->
-            val lines = plan.days.sortedBy { it.dayOfWeek }.filter { it.items.isNotEmpty() }.joinToString("\n") { d ->
-                "  ${d.dayOfWeek}: " + d.items.joinToString(", ") { i ->
-                    i.exerciseId + " " + i.sets + "x" + (i.seconds?.let { "${it}s" } ?: listOfNotNull(i.repsMin, i.repsMax).distinct().joinToString("-"))
-                }
-            }
-            "\n\n" + """
-                SMALL CHANGES: when the user wants to adjust the current plan (swap, add or remove a few exercises, or change sets/reps/seconds/weight/rest) and not a whole new week, send ONLY the changes instead of the full plan, as a ```json block at the very end:
-                {"changes": [{"type": "swap"|"add"|"remove"|"edit", "dayOfWeek": 1-7, "exerciseId": current id (swap/remove/edit), "newExerciseId": id (swap/add), "sets": int, "repsMin": int, "repsMax": int, "seconds": int, "weightKg": number, "restSeconds": int}]}
-                Only include the fields that change. Use ids from the list above. Current plan (dayOfWeek: exerciseId setsxreps):
-            """.trimIndent() + "\n" + lines
-        }.orEmpty())
-    }
-
-    /**
-     * What the coach knows about the user: goals, equipment, this week, plan, recovery, fatigue/deload status,
-     * recent sessions, 4-week trends, records, nutrition, badges and remembered facts.
-     */
-    suspend fun progressSummary(): String {
-        val snap = progress.snapshot.first()
-        val s = snap.settings
-        val today = Dates.today()
-        val nameOf = { id: String -> snap.exercises[id]?.name ?: id }
-        val sb = StringBuilder("User data (today is ${LocalDate.ofEpochDay(today).format(DateTimeFormatter.ofPattern("EEEE, MMM d yyyy", Locale.ENGLISH))}):\n")
-        if (s.name.isNotBlank()) sb.append("- Name: ${s.name}\n")
-
-        // Body weight and trend
-        snap.latestWeight?.let { latest ->
-            val monthAgo = snap.weights.filter { it.epochDay <= today - 28 }.lastOrNull() ?: snap.weights.firstOrNull()
-            val trend = monthAgo?.takeIf { it.epochDay < (snap.weights.lastOrNull()?.epochDay ?: today) }?.let { base ->
-                val delta = latest - base.kg
-                val days = (snap.weights.last().epochDay - base.epochDay).toInt()
-                if (abs(delta) < 0.05f) " (steady over the last $days days)" else " (${if (delta > 0) "+" else "−"}${"%.1f".format(Locale.US, abs(delta))} kg over the last $days days)"
-            }.orEmpty()
-            sb.append("- Body weight: ${"%.1f".format(Locale.US, latest)} kg$trend\n")
-        }
-        val bodyMetrics = listOfNotNull(
-            if (s.heightCm > 0f) "Height ${s.heightCm.toInt()} cm" else null,
-            if (s.birthYear > 0) "age ${java.time.Year.now().value - s.birthYear}" else null,
-            if (s.bodyFatPct in 4f..60f) "body fat ${"%.1f".format(Locale.US, s.bodyFatPct)}%" else null,
-        )
-        if (bodyMetrics.isNotEmpty()) sb.append("- ${bodyMetrics.joinToString(", ")}\n")
-        if (s.weightUnit == WeightUnit.LB) sb.append("- Units: the user thinks in pounds. The data below is in kg; convert weights to lb when you mention them.\n")
-
-        val eq = s.configuredEquipment
-        if (eq.isNotEmpty()) {
-            sb.append("- Available equipment: ${eq.joinToString(", ") { it.labelEn }}\n")
-        } else {
-            sb.append("- Available equipment: not specified yet (ask before building a workout plan)\n")
-        }
-
-        val target = if (s.weeklyTargetOverride > 0) s.weeklyTargetOverride else snap.plan?.trainingDays?.size ?: 0
-        sb.append("- Goals: ${s.kcalGoal} kcal and ${s.proteinGoal} g protein per day; $target workouts per week\n")
-        val goalText = when (s.nutritionGoal) {
-            NutritionGoal.CUT -> "CUT (lose fat while keeping muscle and strength: keep protein high, aim to hold lifts steady, a moderate deficit)"
-            NutritionGoal.MAINTAIN -> "MAINTAIN (keep body weight steady while getting stronger)"
-            NutritionGoal.GAIN -> "GAIN (build muscle with a small surplus: push progressive overload)"
-        }
-        sb.append("- Body goal: $goalText\n")
-        if (s.nutritionGoal == NutritionGoal.CUT) sb.append("- Cut pace: ${s.cutPace.name.lowercase()} (${s.cutPace.weeklyPct}% of body weight a week)\n")
-        else if (s.nutritionGoal == NutritionGoal.GAIN) sb.append("- Gain pace: ${s.gainPace.name.lowercase()} (${s.gainPace.weeklyPct}% of body weight a week)\n")
-        when (Nutrition.weightTrendNote(s.nutritionGoal, s.goalSetDay, snap.weights.map { it.epochDay to it.kg }, today, s.cutPace, s.gainPace, s.bodyType.name == "FEMALE")) {
-            WeightTrend.CUT_TOO_FAST -> sb.append("- Weight trend: losing faster than the chosen cut pace allows; suggest eating a little more\n")
-            WeightTrend.GAIN_STALLED -> sb.append("- Weight trend: no gain for 3+ weeks on the gain goal; suggest a little more food\n")
-            WeightTrend.GAIN_TOO_FAST -> sb.append("- Weight trend: gaining faster than the chosen pace; most of the extra is fat, suggest a little less food\n")
-            WeightTrend.DIET_BREAK_DUE -> sb.append("- Diet break due: this cut has run its planned weeks; suggest 1-2 weeks at maintenance calories\n")
-            null -> Unit
-        }
-
-        // This week
-        val streak = snap.streak
-        val missed = streak.days.withIndex().filter { it.value == DayState.MISSED }.map { Dates.dayName(it.index + 1) }
-        val upcoming = streak.days.withIndex().filter { it.value == DayState.UPCOMING }.map { Dates.dayName(it.index + 1) }
-        sb.append("- Level ${snap.level.level} (rank ${snap.level.rank.letter}, ${snap.level.rank.title}); weekly streak ${streak.weeks} (best ${streak.best})\n")
-        if (streak.targetThisWeek == 0) {
-            sb.append("- This week: ${streak.doneThisWeek} workouts done; they started mid-week, so the weekly target starts next Monday")
-        } else {
-            sb.append("- This week: ${streak.doneThisWeek} of ${streak.targetThisWeek} workouts done")
-        }
-        if (missed.isNotEmpty()) sb.append("; missed planned days: ${missed.joinToString(", ")}")
-        if (upcoming.isNotEmpty()) sb.append("; still to come: ${upcoming.joinToString(", ")}")
-        sb.append("\n")
-        val recentTags = snap.dayTags.filterKeys { it >= today - 13 }.toSortedMap()
-        if (recentTags.isNotEmpty()) {
-            sb.append("- Excused days (last 2 weeks; never treat these as missed, be kind about them): ")
-            sb.append(recentTags.entries.joinToString(", ") { (d, t) -> "${LocalDate.ofEpochDay(d).format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.ENGLISH))} ${t.name.lowercase()}" })
-            sb.append("\n")
-        }
-        val todayPlan = snap.plan?.day(Dates.todayDayOfWeek())
-        sb.append("- Today: ")
-        when {
-            todayPlan == null || todayPlan.day.isRest -> sb.append("rest day")
-            snap.workoutDoneToday -> sb.append("${todayPlan.day.title} (done)")
-            else -> sb.append("${todayPlan.day.title} (not done yet)")
-        }
-        sb.append("\n")
-
-        // Plan
-        snap.plan?.let { plan ->
-            sb.append("- Current plan: ${plan.plan.name} (source: ${plan.plan.source})\n")
-            plan.days.forEach { d ->
-                if (d.day.isRest) {
-                    sb.append("  ${Dates.dayAbbrev(d.day.dayOfWeek)}: rest\n")
-                } else {
-                    val names = d.items.joinToString(", ") { item ->
-                        val ex = snap.exercises[item.exerciseId]
-                        val per = when {
-                            ex?.kind == ExerciseKind.HOLD -> "${item.seconds ?: 30}s"
-                            item.repsMin != null && item.repsMax != null && item.repsMax != item.repsMin -> "${item.repsMin}-${item.repsMax}"
-                            item.repsMin != null -> "${item.repsMin}"
-                            else -> ""
-                        }
-                        "${nameOf(item.exerciseId)}${if (per.isNotEmpty()) " ${item.sets}×$per" else ""}"
-                    }
-                    sb.append("  ${Dates.dayAbbrev(d.day.dayOfWeek)}: ${d.day.title}: $names\n")
-                }
-            }
-        } ?: sb.append("- No plan set yet\n")
-
-        // Muscle recovery
-        val recovering = snap.recovery.entries.filter { it.value.fatigue >= 0.20f }.sortedByDescending { it.value.fatigue }.take(6)
-        if (recovering.isNotEmpty()) {
-            sb.append("- Muscle recovery: ${recovering.joinToString(", ") { "${it.key.label} (${((1f - it.value.fatigue) * 100).roundToInt()}% recovered, ready in ${it.value.hoursUntilReady} h)" }}\n")
-        }
-
-        // Fatigue, training load & plateau / deload analysis
-        val readinessHistory = suspendRunCatching { db.readiness().all().takeLast(14) }.getOrDefault(emptyList())
-        val loadReport = Trends.analyzeFatigueAndPlateaus(snap.sessions, snap.doneSets, snap.exercises, readinessHistory, today)
-        if (snap.sessions.isNotEmpty()) {
-            sb.append("- Training load & deload status: weekly set volume is ${loadReport.trainingLoadPct}% of 4-week average")
-            if (loadReport.stalledLifts.isNotEmpty()) {
-                sb.append("; stalled lifts (3+ weeks without progression): ${loadReport.stalledLifts.take(4).joinToString(", ") { "${it.exerciseName} (${it.sessionsCount} sessions)" }}")
-            }
-            if (loadReport.needsDeload) {
-                sb.append("; DELOAD RECOMMENDED (${loadReport.deloadReasons.joinToString("; ")} — suggest reducing working sets by 35-40% or intensity by 10% for 1 week)")
-            }
-            sb.append("\n")
-        }
-
-        // Recent workouts
-        val recent = snap.sessions.take(5)
-        if (recent.isNotEmpty()) {
-            sb.append("- Recent workouts (newest first):\n")
-            recent.forEach { session ->
-                val sets = snap.doneSets.filter { it.sessionId == session.id }
-                val minutes = session.finishedAt?.let { ((it - session.startedAt) / 60_000).toInt() }
-                val summary = sets.groupBy { it.exerciseId }.entries.take(7).joinToString("; ") { (id, list) ->
-                    "${nameOf(id)} ${list.joinToString("/") { setLabel(snap.exercises[id]?.kind, it) }}${if (list.any { it.isPr }) " PR" else ""}"
-                }
-                sb.append("  ${LocalDate.ofEpochDay(session.epochDay)} ${session.title}${minutes?.let { " ($it min)" } ?: ""}: $summary\n")
-                val notes = sets.filter { it.note.isNotBlank() }.take(4).joinToString("; ") { "${nameOf(it.exerciseId)}: ${it.note}" }
-                if (notes.isNotEmpty()) sb.append("    notes: $notes\n")
-                val felt = sets.filter { it.effort == "HARD" || it.effort == "PAIN" }.take(4)
-                    .joinToString("; ") { "${nameOf(it.exerciseId)} set ${it.setIndex + 1}: ${it.effort.lowercase()}" }
-                if (felt.isNotEmpty()) sb.append("    felt: $felt\n")
-            }
-        }
-
-        // 4-week trends for the exercises done most
-        val sessionDay = snap.sessions.associate { it.id to it.epochDay }
-        val byExercise = snap.doneSets.groupBy { it.exerciseId }
-        fun score(ex: ExerciseEntity, set: SetEntity) = Records.score(ex.kind, set.reps, set.seconds, set.weightKg, ex.id)
-        val trends = byExercise.entries.sortedByDescending { it.value.size }.take(8).mapNotNull { (id, sets) ->
-            val ex = snap.exercises[id] ?: return@mapNotNull null
-            val old = sets.filter { (sessionDay[it.sessionId] ?: 0) in (today - 56)..(today - 21) }
-            val new = sets.filter { (sessionDay[it.sessionId] ?: 0) > today - 21 }
-            if (old.isEmpty() || new.isEmpty()) return@mapNotNull null
-            val bestOld = old.maxBy { score(ex, it) }
-            val bestNew = new.maxBy { score(ex, it) }
-            "${ex.name} ${setLabel(ex.kind, bestOld)} → ${setLabel(ex.kind, bestNew)}"
-        }
-        if (trends.isNotEmpty()) sb.append("- Best set 3-8 weeks ago → best set in the last 3 weeks: ${trends.joinToString("; ")}\n")
-
-        // Personal bests
-        val bests = byExercise.entries.mapNotNull { (id, sets) ->
-            val ex = snap.exercises[id] ?: return@mapNotNull null
-            val best = sets.maxByOrNull { score(ex, it) } ?: return@mapNotNull null
-            Triple(ex.name, setLabel(ex.kind, best), sets.size)
-        }.sortedByDescending { it.third }.take(12)
-        if (bests.isNotEmpty()) sb.append("- Personal bests: ${bests.joinToString(", ") { "${it.first} ${it.second}" }}\n")
-
-        // Nutrition
-        val week = snap.nutritionByDay.filter { it.epochDay > today - 7 && it.epochDay < today }
-        if (week.isNotEmpty()) {
-            val hit = week.count { it.protein >= s.proteinGoal }
-            sb.append("- Last 7 days nutrition: avg ${(week.sumOf { it.kcal }.toDouble() / week.size).roundToInt()} kcal, ${(week.sumOf { it.protein.toDouble() } / week.size).roundToInt()} g protein over ${week.size} logged days; protein goal hit on $hit of them\n")
-        } else {
-            sb.append("- No meals logged in the last 7 days\n")
-        }
-        sb.append("- Today so far: ${snap.today.kcal} kcal, ${snap.today.protein.roundToInt()} g protein")
-        if (s.trackCarbs) sb.append(", ${snap.today.carbs.roundToInt()} g carbs (goal ${s.carbsGoal} g)")
-        sb.append("\n")
-        health.coachLine()?.let { sb.append(it) }
-
-        // Badges
-        val unlocked = snap.badges.sortedByDescending { it.unlockedAt }
-        sb.append("- Badges: ${unlocked.size} of ${Badges.all.size} unlocked")
-        if (unlocked.isNotEmpty()) sb.append("; latest: ${unlocked.take(3).mapNotNull { Badges.byId[it.id]?.title }.joinToString(", ")}")
-        sb.append("\n")
-
-        // Memory
-        val notes = s.coachNotes.lines().filter { it.isNotBlank() }
-        if (notes.isNotEmpty()) {
-            sb.append("- Things to remember about the user:\n")
-            notes.forEach { sb.append("  • $it\n") }
-        }
-        return sb.toString()
-    }
-
-    private fun setLabel(kind: ExerciseKind?, set: SetEntity): String {
-        fun kg(x: Float) = "%.1f".format(Locale.US, x).removeSuffix(".0") + "kg"
-        val extra = set.weightKg?.takeIf { it > 0f }?.let { "+${kg(it)}" }.orEmpty()
-        return when (kind) {
-            ExerciseKind.HOLD -> "${set.seconds}s$extra"
-            ExerciseKind.WEIGHTED -> "${set.reps}×${kg(set.weightKg ?: 0f)}"
-            else -> "${set.reps}$extra"
-        }
+        return prompts.coachSystemPrompt(languageOf(latest), plan = wants && eq.isNotEmpty(), needsEquipmentIntake = wants && eq.isEmpty(), availableEquipment = eq)
     }
 
     private companion object {
         const val TAG = "FQ-AI"
-
-        val CORE_RULES = """
-            You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Sports Science, Calisthenics & Gym Coach).
-            - Synthesize, do not just parrot stats back: connect the dots between Fitbit Readiness (recovery %, HRV vs baseline, resting HR, sleep debt, strain target), muscle recovery hours, training load / deload status, recent set performance, and daily protein/calorie intake.
-            - Give concrete, actionable prescriptions: when asked about today's session or progression, specify exact set/rep/hold/weight adjustments based on recovery state and their last logged sets. If a deload or lift plateau is flagged in the summary, proactively prescribe a structured deload (cutting sets by 35-40% for 1 week) or a biomechanical exercise variation.
-            - Strict sports nutrition guardrails: NEVER prescribe a daily calorie target below ${Nutrition.MIN_SAFE_KCAL_MALE} kcal/day for men or ${Nutrition.MIN_SAFE_KCAL} for women (and never under 85% of their BMR), or a loss faster than 1% of body weight a week (a deficit over 30% of TDEE). Always maintain a protein floor of 1.6-2.2 g/kg and an essential dietary fat floor of at least 0.6-0.8 g/kg before allocating carbohydrates.
-            - Keep normal replies focused and punchy (120-250 words), using **bold** and clean bullet points, and go deeper when the user asks for analysis or meal/workout breakdowns.
-            - Never shame food choices; going over calories is fuel, not failure.
-            - You cannot open links or watch videos. If the user shares a YouTube or other link, say so plainly, then point them to Workouts → Change plan → "Make a plan with Gemini", which turns a YouTube programme into a plan through the Gemini app.
-        """.trimIndent()
-
     }
 }
 

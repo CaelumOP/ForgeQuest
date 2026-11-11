@@ -110,7 +110,7 @@ object Routes {
     const val COACH = "coach"
     const val PROFILE = "profile"
     const val LIVE = "live"
-    const val PLAN = "plan?day={day}&paste={paste}"
+    const val PLAN = "plan?day={day}&paste={paste}&templates={templates}"
     const val SCAN = "scan"
     const val EXERCISE = "exercise/{id}"
     const val HISTORY = "history"
@@ -125,7 +125,7 @@ object Routes {
     fun exercise(id: String) = "exercise/$id"
     fun session(id: Long) = "session/$id"
     /** The plan editor, opened on [day] (1 = Monday) or on today. */
-    fun plan(day: Int = 0, paste: Boolean = false) = "plan?day=$day&paste=$paste"
+    fun plan(day: Int = 0, paste: Boolean = false, templates: Boolean = false) = "plan?day=$day&paste=$paste&templates=$templates"
 }
 
 private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector)
@@ -147,6 +147,17 @@ val LocalSnackbar = staticCompositionLocalOf { SnackbarHostState() }
 inline fun <reified VM : ViewModel> appViewModel(crossinline create: (AppContainer) -> VM): VM {
     val context = LocalContext.current
     return viewModel(factory = viewModelFactory { initializer { create(context.container) } })
+}
+
+/**
+ * The one [ProfileViewModel] behind Profile, Settings and Badges. It is kept by the navigation graph itself, not by a
+ * screen, because Settings is also opened straight from Coach and Scan, where no Profile screen is underneath.
+ */
+@Composable
+fun sharedProfileViewModel(nav: NavHostController): com.forgequest.app.ui.profile.ProfileViewModel {
+    val context = LocalContext.current
+    val root = remember(nav) { nav.getBackStackEntry(nav.graph.id) }
+    return viewModel(viewModelStoreOwner = root, factory = viewModelFactory { initializer { com.forgequest.app.ui.profile.ProfileViewModel(context.container) } })
 }
 
 @Composable
@@ -257,8 +268,8 @@ private fun MainScaffold() {
                 composable(Routes.COACH) { CoachScreen(nav) }
                 composable(Routes.PROFILE) { ProfileScreen(nav) }
                 composable(Routes.LIVE, enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None }) { LiveWorkoutScreen(nav) }
-                composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 }, navArgument("paste") { type = NavType.BoolType; defaultValue = false })) { entry ->
-                    PlanEditorScreen(nav, entry.arguments?.getInt("day") ?: 0, entry.arguments?.getBoolean("paste") ?: false)
+                composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 }, navArgument("paste") { type = NavType.BoolType; defaultValue = false }, navArgument("templates") { type = NavType.BoolType; defaultValue = false })) { entry ->
+                    PlanEditorScreen(nav, entry.arguments?.getInt("day") ?: 0, entry.arguments?.getBoolean("paste") ?: false, entry.arguments?.getBoolean("templates") ?: false)
                 }
                 composable(Routes.PLAN_BUILDER) { com.forgequest.app.ui.plan.PlanBuilderScreen(nav) }
                 composable(Routes.SCAN) { ScanScreen(nav) }

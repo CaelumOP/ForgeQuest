@@ -42,22 +42,9 @@ private fun Modifier.ringSemantics(description: String?): Modifier =
     if (description != null) clearAndSetSemantics { contentDescription = description } else this
 
 /**
- * Google Fit concentric rings. At 0 a ring shows a single dot at 12 o'clock;
+ * Google Fit concentric rings, listed outer to inner. At 0 a ring shows a single dot at 12 o'clock;
  * it then grows clockwise as a rounded arc. Values over 100 % keep drawing past the top.
  */
-@Composable
-fun ConcentricRings(
-    outer: RingSpec,
-    inner: RingSpec,
-    modifier: Modifier = Modifier,
-    size: Dp = 220.dp,
-    stroke: Dp = 16.dp,
-    gap: Dp = 6.dp,
-    description: String? = null,
-    center: @Composable () -> Unit = {},
-) = ConcentricRings(listOf(outer, inner), modifier, size, stroke, gap, description, center)
-
-/** Rings listed outer to inner. */
 @Composable
 fun ConcentricRings(
     rings: List<RingSpec>,

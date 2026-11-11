@@ -58,10 +58,6 @@ data class Settings(
     val liteModel: String = "",
     /** When the model list was last read from Google; new models ship often, so it's refreshed weekly. */
     val modelsCheckedAt: Long = 0,
-    /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
-    val coachModel: String = "auto",
-    /** Unused since the fast-chat provider was removed; kept so old settings still load. */
-    val groqModel: String = "",
     val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
@@ -73,16 +69,15 @@ data class Settings(
     val bridgeLastReadAt: Long = 0,
     val bridgeToday: String = "",
     val bridgeIssues: String = "",
-    /** Meals from the owner's "ForgeQuest Food" Gem, read from a Drive Doc into the Food tab inbox. */
+    /** Meals from the person's own "ForgeQuest Food" Gem, read from a Drive Doc into the Food tab inbox. */
     val geminiMealsEnabled: Boolean = false,
-    val lastDocImportModified: Long = 0,
-    /** The person separately allowed reading their Drive to import a "Workout Plan" doc. */
-    val driveDocsEnabled: Boolean = false,
     /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
     val coachNotes: String = "",
     val theme: String = "system",
     /** Insight comments shown lately, "kind:variant:epochDay;..." (domain/Insights.kt). Disposable: not in the backup. */
     val insightHistory: String = "",
+    /** Lifts swapped out for a variation, "exerciseId:epochDay;..." (domain/VariationCycle.kt). Disposable: not in the backup. */
+    val cycleHistory: String = "",
     /** The one-time unlock of the second badge set has run (see ProgressRepository.evaluateBadges). Not in the backup. */
     val badgesV2Backfill: Boolean = false,
     val hapticsEnabled: Boolean = true,
@@ -111,8 +106,6 @@ data class Settings(
     val nutritionGoal: NutritionGoal = NutritionGoal.MAINTAIN,
     /** Epoch day the goal was last changed, so the weight-trend note waits for real data under the new goal. */
     val goalSetDay: Long = 0,
-    /** No longer read: the workout debrief is calculated, with no switch. Kept so old backups and saved settings still load. */
-    val debriefEnabled: Boolean = true,
     /** How active a normal day is outside workouts (calorie plan v2); watch steps override it on Android. */
     val dayActivity: DayActivity = DayActivity.SITTING,
     val cutPace: CutPace = CutPace.STANDARD,
@@ -160,12 +153,9 @@ class SettingsRepository(private val context: Context) {
         val smartModel = stringPreferencesKey("smart_model")
         val liteModel = stringPreferencesKey("lite_model")
         val modelsCheckedAt = longPreferencesKey("models_checked_at")
-        val coachModel = stringPreferencesKey("coach_model")
-        val groqModel = stringPreferencesKey("groq_model")
         val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
-        val lastDocImport = longPreferencesKey("last_doc_import_modified")
         val bridgeEnabled = booleanPreferencesKey("bridge_enabled")
         val bridgeDataId = stringPreferencesKey("bridge_data_id")
         val bridgeLastWrite = longPreferencesKey("bridge_last_write")
@@ -175,9 +165,9 @@ class SettingsRepository(private val context: Context) {
         val bridgeIssues = stringPreferencesKey("bridge_issues")
         val geminiMeals = booleanPreferencesKey("gemini_meals_enabled")
         val coachNotes = stringPreferencesKey("coach_notes")
-        val driveDocs = booleanPreferencesKey("drive_docs_enabled")
         val theme = stringPreferencesKey("theme")
         val insightHistory = stringPreferencesKey("insight_history")
+        val cycleHistory = stringPreferencesKey("cycle_history")
         val badgesV2Backfill = booleanPreferencesKey("badges_v2_backfill")
         val haptics = booleanPreferencesKey("haptics_enabled")
         val unit = stringPreferencesKey("weight_unit")
@@ -195,7 +185,6 @@ class SettingsRepository(private val context: Context) {
         val bodyFatPct = floatPreferencesKey("body_fat_pct")
         val nutritionGoal = stringPreferencesKey("nutrition_goal")
         val goalSetDay = longPreferencesKey("goal_set_day")
-        val debrief = booleanPreferencesKey("debrief_enabled")
         val dayActivity = stringPreferencesKey("day_activity")
         val cutPace = stringPreferencesKey("cut_pace")
         val gainPace = stringPreferencesKey("gain_pace")
@@ -233,8 +222,6 @@ class SettingsRepository(private val context: Context) {
             smartModel = this[K.smartModel] ?: "",
             liteModel = this[K.liteModel] ?: "",
             modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
-            coachModel = this[K.coachModel] ?: "auto",
-            groqModel = this[K.groqModel] ?: "",
             lastCheckinWeek = this[K.lastCheckin] ?: -1,
             driveEmail = this[K.driveEmail] ?: "",
             lastBackupAt = this[K.lastBackup] ?: 0,
@@ -246,11 +233,10 @@ class SettingsRepository(private val context: Context) {
             bridgeToday = this[K.bridgeToday] ?: "",
             bridgeIssues = this[K.bridgeIssues] ?: "",
             geminiMealsEnabled = this[K.geminiMeals] ?: false,
-            lastDocImportModified = this[K.lastDocImport] ?: 0,
             coachNotes = this[K.coachNotes] ?: "",
-            driveDocsEnabled = this[K.driveDocs] ?: false,
             theme = this[K.theme] ?: "system",
             insightHistory = this[K.insightHistory] ?: "",
+            cycleHistory = this[K.cycleHistory] ?: "",
             badgesV2Backfill = this[K.badgesV2Backfill] ?: false,
             hapticsEnabled = this[K.haptics] ?: true,
             unit = normalizedUnit,
@@ -268,7 +254,6 @@ class SettingsRepository(private val context: Context) {
             bodyFatPct = this[K.bodyFatPct] ?: 0f,
             nutritionGoal = runCatching { NutritionGoal.valueOf(this[K.nutritionGoal] ?: "MAINTAIN") }.getOrDefault(NutritionGoal.MAINTAIN),
             goalSetDay = this[K.goalSetDay] ?: 0,
-            debriefEnabled = this[K.debrief] ?: true,
             dayActivity = DayActivity.parse(this[K.dayActivity]),
             cutPace = CutPace.parse(this[K.cutPace]),
             gainPace = GainPace.parse(this[K.gainPace]),
@@ -298,8 +283,6 @@ class SettingsRepository(private val context: Context) {
             p[K.smartModel] = s.smartModel
             p[K.liteModel] = s.liteModel
             p[K.modelsCheckedAt] = s.modelsCheckedAt
-            p[K.coachModel] = s.coachModel
-            p[K.groqModel] = s.groqModel
             p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
@@ -311,11 +294,10 @@ class SettingsRepository(private val context: Context) {
             p[K.bridgeToday] = s.bridgeToday
             p[K.bridgeIssues] = s.bridgeIssues
             p[K.geminiMeals] = s.geminiMealsEnabled
-            p[K.lastDocImport] = s.lastDocImportModified
             p[K.coachNotes] = s.coachNotes
-            p[K.driveDocs] = s.driveDocsEnabled
             p[K.theme] = s.theme
             p[K.insightHistory] = s.insightHistory
+            p[K.cycleHistory] = s.cycleHistory
             p[K.badgesV2Backfill] = s.badgesV2Backfill
             p[K.haptics] = s.hapticsEnabled
             p[K.unit] = WeightUnit.fromCodeOrLabel(s.unit).code
@@ -333,7 +315,6 @@ class SettingsRepository(private val context: Context) {
             p[K.bodyFatPct] = s.bodyFatPct
             p[K.nutritionGoal] = s.nutritionGoal.name
             p[K.goalSetDay] = s.goalSetDay
-            p[K.debrief] = s.debriefEnabled
             p[K.dayActivity] = s.dayActivity.name
             p[K.cutPace] = s.cutPace.name
             p[K.gainPace] = s.gainPace.name

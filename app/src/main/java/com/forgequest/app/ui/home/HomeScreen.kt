@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -62,6 +61,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -78,14 +78,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
-import com.forgequest.app.AppContainer
 import com.forgequest.app.data.PlanDayWithItems
 import com.forgequest.app.data.ProgressRepository
 import com.forgequest.app.data.ProgressSnapshot
-import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.Badges
 import com.forgequest.app.domain.DayState
 import com.forgequest.app.domain.Dates
@@ -115,54 +111,13 @@ import com.forgequest.app.ui.goToTab
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.SerifFont
 import androidx.compose.foundation.layout.widthIn
-import com.forgequest.app.ui.theme.NumberFont
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.SharingStarted
 import com.forgequest.app.data.health.HealthState
-import com.forgequest.app.data.health.RefreshWatch
-import com.forgequest.app.data.health.showsYesterday
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.roundToInt
-
-class HomeViewModel(val app: AppContainer) : ViewModel() {
-    val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-    val openSession: StateFlow<SessionEntity?> = app.workouts.openSession.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
-    init {
-        // Load the food list quietly, so the first food search isn't empty while it loads.
-        viewModelScope.launch { delay(1500); app.catalog.warm() }
-    }
-
-    fun logWeight(kg: Float) = viewModelScope.launch { app.progress.logWeight(kg) }
-    val health = app.health.state
-    fun refreshHealth(force: Boolean = false) = viewModelScope.launch { app.health.refresh(force) }
-    val refreshWatch = RefreshWatch(viewModelScope) { app.health.refresh(force = true) }
-
-    /** Home is on screen: re-read Health Connect, and keep looking for a while if last night is still missing. */
-    fun resumeHealth() = viewModelScope.launch {
-        val found = app.health.refresh()
-        refreshWatch.resume(found, waiting = (app.health.state.value as? HealthState.Ready)?.day?.showsYesterday() == true)
-    }
-    fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
-
-    /** Catches badges a workout or meal earned but that were missed (they used to be checked against stale data). */
-    fun checkBadges() = viewModelScope.launch { app.progress.evaluateBadges() }
-
-    suspend fun startToday(day: PlanDayWithItems?) = app.workouts.startSession(day)
-
-    fun setDayTag(epochDay: Long, tag: DayTag?) = viewModelScope.launch { app.progress.setDayTag(epochDay, tag) }
-
-    /** Answers the one-time weekly-target question: [make] is the new target, or null to keep the current one. */
-    fun answerNudge(make: Int?) = viewModelScope.launch {
-        app.settings.update { it.copy(targetNudgeAnswered = true, weeklyTargetOverride = make ?: it.weeklyTargetOverride) }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -214,6 +169,20 @@ fun HomeScreen(nav: NavHostController) {
     )
     // Good readiness news rides as the first row of Today's workout card; every other state keeps its own card above the calorie card.
     val readyDay = (health as? HealthState.Ready)?.day?.takeIf { it.hasData && !justLog && s.settings.healthEnabled }
+    // The card's shape comes from the saved settings, which are there on the first frame, not from whether the health
+    // data has arrived: with a watch connected the row's place is held while it loads, so the first frames already have
+    // the final layout. With no watch there is no row and no gap.
+    val healthOn = !justLog && s.settings.healthEnabled && s.settings.healthConnected
+    val readinessLoading = healthOn && health == HealthState.Loading
+    val readinessInCard = readyDay != null || readinessLoading
+    // The sentence under the verdict, and which of its wordings: the same all day, a different one next time.
+    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext) }
+    val readyVariant = remember(readyLine, s.settings.insightHistory) {
+        readyLine?.let { com.forgequest.app.domain.dailyVariant(it.historyKind, it.variants, s.settings.insightHistory, Dates.today()) }
+    }
+    LaunchedEffect(readyLine, readyVariant) {
+        if (readyLine != null && readyVariant?.second == true) vm.noteReadinessLine(readyLine.historyKind, readyVariant.first)
+    }
     val todayCard: @Composable () -> Unit = {
         TodayCard(
             day = today,
@@ -224,7 +193,11 @@ fun HomeScreen(nav: NavHostController) {
             excused = s.excusedToday,
             onCantTrain = { tagDay = Dates.today() },
             showCantTrain = !justLog,
-            readiness = readyDay?.let { d -> { ReadinessRow(d, todayFocus, note = refreshNote, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") }) } },
+            readiness = when {
+                readyDay != null -> ({ ReadinessRow(readyDay, todayFocus, note = refreshNote, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") }, line = readyLine ?: com.forgequest.app.domain.ReadinessLine.READY, variant = readyVariant?.first ?: 0) })
+                readinessLoading -> ({ ReadinessRowPlaceholder() })
+                else -> null
+            },
             onStart = {
                 scope.launch {
                     vm.startToday(today?.takeIf { !it.day.isRest })
@@ -258,7 +231,7 @@ fun HomeScreen(nav: NavHostController) {
     }.takeIf { !justLog }
     val hasCalorieCard = remember(s, health) { com.forgequest.app.ui.CalorieUi.card(s, health) } != null
     // Readiness only shows once a Fitbit is connected, so it counts as an extra too.
-    val readinessShown = !justLog && s.settings.healthEnabled && health != HealthState.Unavailable
+    val readinessShown = healthOn || (!justLog && s.settings.healthEnabled && health != HealthState.Unavailable && health != HealthState.Loading)
     val extras = listOf(readinessShown, unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs).count { it }
 
     // One screen, no scrolling, at normal text on a common phone (about 412 x 919 dp: 780 dp between the status bar and
@@ -294,7 +267,7 @@ fun HomeScreen(nav: NavHostController) {
             }
             if (!justLog) {
                 StreakCard(
-                    s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY && readyDay == null,
+                    s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY && !readinessInCard,
                     nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge, footer = monthRow,
                 )
                 Spacer(Modifier.height(ForgeSpace.Sm))

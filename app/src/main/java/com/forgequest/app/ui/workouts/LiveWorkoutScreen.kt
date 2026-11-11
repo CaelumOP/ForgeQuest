@@ -3,35 +3,7 @@ package com.forgequest.app.ui.workouts
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.ui.theme.itemMotion
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathMeasure
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.Dp
-import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.container
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import kotlinx.coroutines.delay
-import kotlin.math.roundToInt
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import com.forgequest.app.ui.theme.LocalReducedMotion
-import com.forgequest.app.ui.theme.effectsSpec
-import com.forgequest.app.ui.theme.spatialSpec
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -39,16 +11,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,23 +32,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material3.AlertDialog
@@ -91,8 +50,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -109,11 +66,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -121,32 +74,22 @@ import androidx.navigation.NavHostController
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.data.DebriefText
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.WeightUnit
-import com.forgequest.app.domain.WorkoutDebriefMath
-import com.forgequest.app.ui.goToTab
 import kotlinx.coroutines.launch
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.WorkoutScore
-import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.blockLabel
 import com.forgequest.app.ui.exerciseCues
-import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.toast
-import com.forgequest.app.ui.components.IconCircle
-import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
-import com.forgequest.app.ui.components.steadyToggleable
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.TonalPill
-import com.forgequest.app.ui.localTitle
 import com.forgequest.app.ui.theme.Fit
-import com.forgequest.app.ui.workouts.LiveWorkoutViewModel.Field
 import java.util.Locale
 
 /** One visual group: a circuit block (shown round by round) or a single straight-sets exercise. */
@@ -219,6 +162,20 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val finishing by vm.finishing.collectAsState()
     val context = LocalContext.current
     val c = Fit.colors
+    // While this screen is in front, "rest is over" is a buzz and a short tone, not a notification over the set list.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val alert = context.container.restAlert
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> alert.screenVisible = true
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> alert.screenVisible = false
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer); alert.screenVisible = false }
+    }
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.DisposableEffect(Unit) {
         view.keepScreenOn = true
@@ -384,6 +341,28 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 
         val hold by vm.hold.collectAsState()
         hold?.let { HoldOverlay(it, now, onStop = vm::stopHold, onCancel = vm::cancelHold) }
+    }
+
+    val prMessage by vm.prMessage.collectAsState()
+    val snackbar = com.forgequest.app.ui.LocalSnackbar.current
+    // Cleared only after the snackbar has gone: clearing first would restart this effect and cancel the snackbar.
+    androidx.compose.runtime.LaunchedEffect(prMessage) { prMessage?.let { snackbar.showSnackbar(it); vm.prMessage.value = null } }
+
+    val offerExactAlarm by vm.offerExactAlarm.collectAsState()
+    if (offerExactAlarm) {
+        AlertDialog(
+            onDismissRequest = { vm.answerExactAlarm() },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.rest_exact_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.rest_exact_body), color = c.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.answerExactAlarm()
+                    context.container.restAlarms.exactSettingsIntent()?.let { runCatching { context.startActivity(it) } }
+                }) { Text(stringResource(R.string.rest_exact_open), color = c.teal) }
+            },
+            dismissButton = { TextButton(onClick = { vm.answerExactAlarm() }) { Text(stringResource(R.string.cal_not_now), color = c.textSecondary) } },
+        )
     }
 
     if (confirmFinish) {

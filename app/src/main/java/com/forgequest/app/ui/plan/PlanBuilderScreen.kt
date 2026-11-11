@@ -262,6 +262,17 @@ fun PlanBuilderScreen(nav: NavHostController) {
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter).padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                // The other quick way to a plan: the ones that ship with the app, opened on the plan screen.
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        // Opened from the plan screen: replace that one too, so Back does not land on a second copy of it.
+                        val fromEditor = nav.previousBackStackEntry?.destination?.route == com.forgequest.app.ui.Routes.PLAN
+                        nav.navigate(com.forgequest.app.ui.Routes.plan(templates = true)) {
+                            popUpTo(if (fromEditor) com.forgequest.app.ui.Routes.PLAN else com.forgequest.app.ui.Routes.PLAN_BUILDER) { inclusive = true }
+                        }
+                    },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp),
+                ) { Text(stringResource(R.string.plan_ready_made_link), color = c.teal) }
                 QuickCard(a, vm::change)
                 FitMeSection(a, vm::change, library)
             }

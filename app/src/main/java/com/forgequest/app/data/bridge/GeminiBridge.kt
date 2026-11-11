@@ -33,7 +33,7 @@ class GeminiBridge(
         sb.appendLine("Copied from the ForgeQuest app. Reply using the exact format from your instructions; the person will paste your reply back into the app.")
         sb.appendLine()
         sb.appendLine("## ATHLETE")
-        sb.appendLine(coach.progressSummary().trim())
+        sb.appendLine(coach.prompts.progressSummary().trim())
         sb.appendLine()
         sb.appendLine("## READINESS TODAY")
         sb.appendLine(health.coachLine()?.removePrefix("- ")?.trim() ?: "Fitbit readiness is not connected or has no data yet.")
@@ -52,7 +52,7 @@ class GeminiBridge(
         }
         sb.appendLine()
         sb.appendLine("## PLAN FORMAT (only needed if you change the plan)")
-        sb.appendLine(coach.planSchemaInstructions())
+        sb.appendLine(coach.prompts.planSchemaInstructions())
         return sb.toString()
     }
 

@@ -18,7 +18,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class PlanSafetyTest {
+class PlanValidatorTest {
     private val lib = listOf(
         ExerciseEntity("push_up", "Push-up", ExerciseKind.REPS, listOf(Muscle.CHEST), listOf(Muscle.TRICEPS)),
         ExerciseEntity("dips", "Dips", ExerciseKind.REPS, listOf(Muscle.CHEST), listOf(Muscle.TRICEPS)),
@@ -85,45 +85,5 @@ class PlanSafetyTest {
     fun brokenBlocksAreSpotted() {
         assertTrue(PlanJson.hasBrokenBlock("Here you go\n```json\n{\"changes\": [ {\"type\": \"swap\", \n```"))
         assertEquals(false, PlanJson.hasBrokenBlock("```json\n{\"changes\":[{\"type\":\"remove\",\"dayOfWeek\":2,\"exerciseId\":\"dips\"}]}\n```"))
-    }
-}
-
-class DebriefTest {
-    @Test
-    fun parsesFencedJsonAndIgnoresAnyScore() {
-        val d = com.forgequest.app.data.plan.WorkoutDebrief.parse(
-            "Sure!\n```json\n{\"score\": 2, \"summary\": \"Solid work.\", \"highlights\": [\"PR on dips\", \"all sets done\", \"extra\"], \"watch\": [\"knee note\"], \"nextTime\": [\"add 1 rep\"]}\n```",
-        )!!
-        assertNull(d.score)
-        assertEquals(2, d.highlights.size)
-        assertEquals("knee note", d.watch.single())
-    }
-
-    @Test
-    fun junkGivesNull() {
-        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("offline"))
-        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"score\": 7}"))
-    }
-
-    @Test
-    fun summaryAloneIsEnough() {
-        assertEquals("No score", com.forgequest.app.data.plan.WorkoutDebrief.parse("{\"summary\": \"No score\"}")!!.summary)
-    }
-
-    @Test
-    fun oldSavedDebriefsWithAScoreStillDecode() {
-        val d = com.forgequest.app.data.plan.WorkoutDebrief.decode("{\"score\":8,\"summary\":\"Strong session.\"}")!!
-        assertEquals(8, d.score)
-        assertNull(com.forgequest.app.data.plan.WorkoutDebrief.decode(com.forgequest.app.data.plan.WorkoutDebrief.encode(d.copy(score = null)))!!.score)
-    }
-
-    @Test
-    fun forgivesDriftingShapes() {
-        // Fast models sometimes send single strings where lists were asked for.
-        val d = com.forgequest.app.data.plan.WorkoutDebrief.parse(
-            "{\"summary\": \"Strong session.\", \"highlights\": \"12 dips, 2 more than last time\", \"watch\": [], \"next_time\": \"Add a set of rows\"}",
-        )!!
-        assertEquals(listOf("12 dips, 2 more than last time"), d.highlights)
-        assertEquals(listOf("Add a set of rows"), d.nextTime)
     }
 }

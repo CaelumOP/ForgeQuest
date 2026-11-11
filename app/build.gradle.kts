@@ -22,8 +22,8 @@ android {
         applicationId = "com.forgequest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 35
-        versionName = "3.1.0"
+        versionCode = 36
+        versionName = "3.2.0"
 
         // QA only: `-PgeminiBase=http://10.0.2.2:8765/v1beta` points a build at a local test server.
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"
@@ -92,7 +92,7 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.10.0")
-    implementation("androidx.fragment:fragment-ktx:1.8.5")
+    implementation("androidx.fragment:fragment:1.8.5")
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
@@ -100,7 +100,6 @@ dependencies {
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
     // Pinned past the BOM: the Expressive components (LoadingIndicator, wavy progress) ship only in 1.5.
     implementation("androidx.compose.material3:material3:1.5.0-beta02")
     implementation("androidx.compose.material:material-icons-extended")
@@ -108,7 +107,6 @@ dependencies {
 
     val room = "2.7.2"
     implementation("androidx.room:room-runtime:$room")
-    implementation("androidx.room:room-ktx:$room")
     ksp("androidx.room:room-compiler:$room")
 
     implementation("androidx.datastore:datastore-preferences:1.1.2")

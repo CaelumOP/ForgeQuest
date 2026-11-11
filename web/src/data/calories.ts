@@ -1,5 +1,5 @@
 // Calorie plan v2 on the web: the inputs behind a suggestion, and the one card Home shows about the calorie target
-// (the one-time "more accurate target", the learned real burn, or one of the four signals). Android: CalorieCards.kt.
+// (the one-time "more accurate target", the learned real burn, or one of the four signals). Android: CalorieUi.kt.
 import { calorieSignals, loggedShare, nextTarget, realBurn } from '../domain/calorie-check';
 import {
   ageFromBirthYear, bmrKcal, calorieFloor, CUT_PACE, DAY_BASE, dailyBurn, legacySuggestedKcal, suggestedKcal,

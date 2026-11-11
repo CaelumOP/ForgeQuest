@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -78,7 +77,7 @@ private data class ViewJson(val viewBox: List<Float>, val outline: String? = nul
 @Serializable
 private data class PartJson(val slug: String, val side: String, val d: String)
 
-class BodyPart(val slug: String, val muscle: Muscle?, val path: Path, val region: Region)
+class BodyPart(val muscle: Muscle?, val path: Path, val region: Region)
 
 class BodyView(val minX: Float, val minY: Float, val width: Float, val height: Float, val outline: Path?, val parts: List<BodyPart>)
 
@@ -101,7 +100,7 @@ object BodyArtLoader {
             val android = path.asAndroidPath()
             val bounds = android.computeBoundsCompat()
             val region = Region().apply { setPath(android, Region(bounds)) }
-            BodyPart(p.slug, Muscle.fromSlug(p.slug), path, region)
+            BodyPart(Muscle.fromSlug(p.slug), path, region)
         }
         val outlinePath = outline?.let { PathParser().parsePathString(it).toPath() }
         return BodyView(viewBox[0], viewBox[1], viewBox[2], viewBox[3], outlinePath, parts)
@@ -221,15 +220,6 @@ private fun MapLegend() {
         LegendDot(c.gold, stringResource(R.string.map_recovering))
         LegendDot(c.teal, stringResource(R.string.map_almost_ready))
         LegendDot(c.muscleRest, stringResource(R.string.map_fresh))
-    }
-}
-
-@Composable
-private fun LegendDot(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Fit.colors.textSecondary, maxLines = 1)
     }
 }
 

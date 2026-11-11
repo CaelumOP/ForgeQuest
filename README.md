@@ -80,16 +80,16 @@ Google Drive.
 
 **AI coach**
 
-- Runs on Google Gemini with your own free key, with Groq as an optional fast chat provider.
+- Runs on Google Gemini with your own free key.
 - Knows your plan, workouts, records, recovery and meals, and remembers lasting notes like an injury or
   your equipment.
 - Builds or edits plans you apply in one tap, with safety checks on what it suggests.
-- An optional bridge to the Gemini app through two Google Docs.
+- Works without a key too: copy a ready-made skill into the Gemini app, ask there, and paste the reply back.
 
 **Motivation**
 
 - A weekly streak flame. Planned rest days never break it.
-- Subtle XP and ranks, 27 badges for consistency, skills, strength and nutrition, and haptics instead of sounds.
+- Subtle XP and ranks, 43 badges for consistency, skills, strength and nutrition. Touch feedback is haptic; the one sound is the alert when a rest between sets ends.
 - A gentle "welcome back" that offers an easier first session after time off.
 
 **Data and privacy**
