@@ -304,7 +304,7 @@ fun ExercisePickerSheet(
 }
 
 @Composable
-private fun CreateExerciseForm(initialName: String, initialMuscle: Muscle?, onCreate: (String, ExerciseKind, Muscle) -> Unit, onCancel: () -> Unit) {
+internal fun CreateExerciseForm(initialName: String, initialMuscle: Muscle?, onCreate: (String, ExerciseKind, Muscle) -> Unit, onCancel: () -> Unit) {
     val c = Fit.colors
     var name by remember { mutableStateOf(initialName.trim()) }
     var kind by remember { mutableStateOf(ExerciseKind.REPS) }

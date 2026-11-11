@@ -779,9 +779,13 @@ private fun FoodRow(food: FoodEntity, qty: Float?, onToggle: () -> Unit, onQty: 
                 Text(
                     partsCount(food.parts) + " · " + stringResource(R.string.food_parts_change),
                     style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp).clip(ForgeShape.Sm).clickable(onClick = onParts).padding(vertical = 4.dp),
+                    modifier = Modifier.clip(ForgeShape.Sm).clickable(role = Role.Button, onClick = onParts).padding(vertical = 10.dp).padding(end = 12.dp),
                 )
             }
+        }
+        // Unticked rows show the way into the editor; a ticked row uses the space for its stepper (long-press still edits).
+        if (qty == null) {
+            IconButton(onClick = onEdit) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.food_edit_title), tint = c.textSecondary) }
         }
         if (qty != null) {
             var typing by remember { mutableStateOf(false) }

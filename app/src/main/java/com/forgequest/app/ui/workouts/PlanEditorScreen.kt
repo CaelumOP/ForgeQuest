@@ -1,5 +1,7 @@
 package com.forgequest.app.ui.workouts
 
+import androidx.compose.material.icons.rounded.EditCalendar
+import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.background
@@ -247,7 +249,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
             com.forgequest.app.ui.components.CoachMarkBox(com.forgequest.app.ui.onboarding.AppTour.WORKOUTS, R.string.coach_plan_t, R.string.coach_plan_b, below = true) {
-                TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
+                TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.AutoMirrored.Rounded.ListAlt, modifier = Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(16.dp))
             if (s.plan == null) {
@@ -278,16 +280,22 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Row(
-                                Modifier.clip(ForgeShape.Sm).clickable { moveDay = true }.padding(end = 4.dp),
+                                Modifier.clip(ForgeShape.Sm).clickable(onClickLabel = stringResource(R.string.cd_move_day), role = Role.Button) { moveDay = true }
+                                    .heightIn(min = 40.dp).padding(end = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(Dates.dayName(selectedDay), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-                                Icon(Icons.Rounded.SwapHoriz, contentDescription = stringResource(R.string.cd_move_day), tint = c.textSecondary, modifier = Modifier.padding(start = 4.dp).size(16.dp))
+                                Icon(Icons.Rounded.EditCalendar, contentDescription = null, tint = c.teal, modifier = Modifier.padding(start = 6.dp).size(18.dp))
                             }
-                            Text(
-                                day.day.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary,
-                                modifier = Modifier.clip(ForgeShape.Sm).clickable(enabled = !day.day.isRest) { renaming = true },
-                            )
+                            // The pencil shows the title can be renamed (not on a rest day).
+                            Row(
+                                Modifier.clip(ForgeShape.Sm).clickable(enabled = !day.day.isRest, onClickLabel = stringResource(R.string.cd_edit), role = Role.Button) { renaming = true }
+                                    .heightIn(min = 40.dp).padding(end = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(day.day.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f, fill = false))
+                                if (!day.day.isRest) Icon(Icons.Rounded.Edit, contentDescription = null, tint = c.teal, modifier = Modifier.padding(start = 6.dp).size(16.dp))
+                            }
                         }
                         Text(stringResource(R.string.today_rest_day), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
                         Spacer(Modifier.width(8.dp))
