@@ -33,6 +33,13 @@ const emptyPlan = (): PlanDraft => ({
   days: [1, 2, 3, 4, 5, 6, 7].map((d) => ({ dayOfWeek: d, title: t('today_rest_day'), isRest: true, note: '', items: [] })),
 })
 
+/** Tour-only first run (no setup screens): empty plan, 3 days a week, everything editable later in Profile. */
+export async function quickStart(): Promise<void> {
+  await seedLibrary(getLang())
+  await applyPlan(emptyPlan(), 'manual')
+  await updateSettings(settingsPatch({ ...initialState(), daysPerWeek: 3 }, null))
+}
+
 /** Training days of starter plan [i], for its "N days a week" label. */
 const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 0
 

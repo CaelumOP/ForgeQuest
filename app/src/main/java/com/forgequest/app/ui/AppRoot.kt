@@ -163,14 +163,9 @@ fun AppRoot() {
         return
     }
     if (!current.onboarded) {
-        // First run: language (both scripts shown), then the feature slides, then setup. Read from prefs so the
-        // activity restart after picking a language re-reads it (saved state would bring the language screen back).
-        var langDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.languageChosen(context)) }
-        // No slide tour any more: small tips point at the real buttons later (CoachMarkBox). The tour stays as a replay.
-        when {
-            !langDone -> com.forgequest.app.ui.onboarding.LanguageChoice { langDone = true }
-            else -> OnboardingScreen()
-        }
+        // Tour only: a first run skips setup (language follows the phone) and lands on Home, where the tips run.
+        LaunchedEffect(Unit) { com.forgequest.app.ui.onboarding.quickStart(context.container) }
+        Box(Modifier.fillMaxSize().background(Fit.colors.background))
         return
     }
     MainScaffold()
