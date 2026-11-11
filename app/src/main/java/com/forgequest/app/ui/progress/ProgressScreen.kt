@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
@@ -94,6 +96,9 @@ class ProgressViewModel(val app: AppContainer) : ViewModel() {
         .map { s -> Trends.analyzeFatigueAndPlateaus(s.sessions, s.doneSets, s.exercises, today = Dates.today()) }
         .flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    /** "Switch" on a stalled lift: its variation takes its place in the plan. */
+    fun switchVariation(from: String, to: String) = viewModelScope.launch { app.workouts.cycleVariation(from, to) }
+
     /** The chat owns the fourth tab, so Progress is a pushed screen and needs its back arrow. */
     val pushed: StateFlow<Boolean> = app.settings.chatTab
 }
@@ -161,7 +166,7 @@ fun ProgressScreen(nav: NavHostController) {
             return
         }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
-            TodayCards(s, report)
+            TodayCards(s, report, onSwitch = vm::switchVariation)
             SegmentedTabs(
                 listOf(R.string.progress_range_1m, R.string.progress_range_3m, R.string.progress_range_6m, R.string.progress_range_1y, R.string.progress_range_all).map { stringResource(it) },
                 rangeIndex, onSelect = { rangeIndex = it },
@@ -440,7 +445,7 @@ private fun formatDelta(diff: Float, kind: ExerciseKind, unit: WeightUnit, sUnit
  * stalled lifts and the deload hint, all worked out from stored data.
  */
 @Composable
-private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.FatigueAndPlateauReport?) {
+private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.FatigueAndPlateauReport?, onSwitch: (String, String) -> Unit) {
     val c = Fit.colors
     val res = androidx.compose.ui.platform.LocalContext.current.resources
     val insights = remember(s.sessions, s.doneSets, s.settings.insightHistory, s.settings.weightUnit) {
@@ -463,7 +468,7 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
     val today = Dates.today()
     val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 1, today).lastOrNull() ?: 0
     val weekSets = Trends.weeklySets(s.doneSets, s.sessions.associate { it.id to it.epochDay }, 1, today).lastOrNull() ?: 0
-    val stalled = report?.stalledLifts.orEmpty().take(3).map { s.exercises[it.exerciseId]?.name ?: it.exerciseId }
+    val stalled = report?.stalledLifts.orEmpty().take(3)
     if (insights.isNotEmpty()) {
         FitCard {
             Text(stringResource(R.string.progress_insights_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
@@ -482,7 +487,28 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
     if (stalled.isNotEmpty()) {
         FitCard {
             Text(stringResource(R.string.coach_stalled_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-            Text(stalled.joinToString(", "), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
+            // Each stalled lift with the peak it reached; one still in the plan gets a close variation to switch to.
+            val sUnit = stringResource(R.string.unit_s)
+            val library = remember(s.exercises) { s.exercises.values.toList() }
+            val planIds = remember(s.plan) { s.plan?.days.orEmpty().flatMap { d -> d.items.map { it.exerciseId } }.toSet() }
+            val cycled = remember(s.settings.cycleHistory, today) { com.forgequest.app.domain.VariationCycle.recentlyCycled(s.settings.cycleHistory, today) }
+            stalled.forEach { lift ->
+                val ex = s.exercises[lift.exerciseId]
+                val name = ex?.name ?: lift.exerciseName
+                Text(
+                    if (ex == null) name else stringResource(R.string.stalled_peak, name, formatValue(lift.bestScore, ex.kind, s.settings.weightUnit, sUnit)),
+                    style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp),
+                )
+                val to = if (lift.exerciseId in planIds) {
+                    com.forgequest.app.domain.VariationCycle.next(lift, library, s.settings.configuredEquipment, planIds, cycled)?.to
+                } else null
+                if (to != null) {
+                    com.forgequest.app.ui.components.TonalPill(
+                        stringResource(R.string.stalled_switch, to.name), onClick = { onSwitch(lift.exerciseId, to.id) },
+                        icon = androidx.compose.material.icons.Icons.Rounded.SwapHoriz, modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
     }
