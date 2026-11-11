@@ -76,6 +76,8 @@ data class Settings(
     val theme: String = "system",
     /** Insight comments shown lately, "kind:variant:epochDay;..." (domain/Insights.kt). Disposable: not in the backup. */
     val insightHistory: String = "",
+    /** Lifts swapped out for a variation, "exerciseId:epochDay;..." (domain/VariationCycle.kt). Disposable: not in the backup. */
+    val cycleHistory: String = "",
     /** The one-time unlock of the second badge set has run (see ProgressRepository.evaluateBadges). Not in the backup. */
     val badgesV2Backfill: Boolean = false,
     val hapticsEnabled: Boolean = true,
@@ -165,6 +167,7 @@ class SettingsRepository(private val context: Context) {
         val coachNotes = stringPreferencesKey("coach_notes")
         val theme = stringPreferencesKey("theme")
         val insightHistory = stringPreferencesKey("insight_history")
+        val cycleHistory = stringPreferencesKey("cycle_history")
         val badgesV2Backfill = booleanPreferencesKey("badges_v2_backfill")
         val haptics = booleanPreferencesKey("haptics_enabled")
         val unit = stringPreferencesKey("weight_unit")
@@ -233,6 +236,7 @@ class SettingsRepository(private val context: Context) {
             coachNotes = this[K.coachNotes] ?: "",
             theme = this[K.theme] ?: "system",
             insightHistory = this[K.insightHistory] ?: "",
+            cycleHistory = this[K.cycleHistory] ?: "",
             badgesV2Backfill = this[K.badgesV2Backfill] ?: false,
             hapticsEnabled = this[K.haptics] ?: true,
             unit = normalizedUnit,
@@ -293,6 +297,7 @@ class SettingsRepository(private val context: Context) {
             p[K.coachNotes] = s.coachNotes
             p[K.theme] = s.theme
             p[K.insightHistory] = s.insightHistory
+            p[K.cycleHistory] = s.cycleHistory
             p[K.badgesV2Backfill] = s.badgesV2Backfill
             p[K.haptics] = s.hapticsEnabled
             p[K.unit] = WeightUnit.fromCodeOrLabel(s.unit).code
