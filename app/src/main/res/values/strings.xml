@@ -933,6 +933,7 @@
     <string name="call_upper_recover_b3">Rest comes first today. A light upper session or a walk.</string>
     <string name="call_steady_short_nights">Two short nights in a row. Do the work, stop one set early.</string>
     <string name="call_ease_short_sleep">You slept %1$s. Same exercises, lighter weight.</string>
+    <string name="call_recover_short_sleep">You slept %1$s. Make today a rest day: a walk or light stretching is enough.</string>
     <string name="ready_no_data">No Fitbit data for last night yet. Wear it to bed and your recovery shows up here in the morning.</string>
     <string name="ready_felt_great">I feel great today</string>
     <string name="ready_usual">usual %1$s</string>

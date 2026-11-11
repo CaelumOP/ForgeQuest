@@ -255,6 +255,7 @@
   "call_recover_b": "Rest, walk or do mobility. Recovery is training too.",
   "call_recover_b2": "Your body is behind today. A walk counts.",
   "call_recover_b3": "Skip the hard work today. Stretch, walk, sleep early.",
+  "call_recover_short_sleep": "You slept {1}. Make today a rest day: a walk or light stretching is enough.",
   "call_recover_t": "Recover",
   "call_steady_b": "Do the workout, skip the extra sets.",
   "call_steady_b2": "Good enough to train. Do the main lifts, leave the extras.",

@@ -48,7 +48,9 @@ enum class ReadinessLine(val variants: Int) {
     /** A steady day after two or more short nights: says so, and asks for one set less. */
     STEADY_SHORT_NIGHTS(1),
     /** An ease-off day after a short night: names how long the person slept. */
-    EASE_SHORT_SLEEP(1);
+    EASE_SHORT_SLEEP(1),
+    /** A recover day after a short night: names how long the person slept and asks for rest. */
+    RECOVER_SHORT_SLEEP(1);
 
     /** The key this line is stored under in the shown-lately history. */
     val historyKind: String get() = "call_$name"
@@ -61,6 +63,7 @@ enum class ReadinessLine(val variants: Int) {
 fun readinessLine(call: DayCall, focus: TodayFocus?, sleep: SleepContext?): ReadinessLine {
     if (sleep != null) {
         if (call == DayCall.STEADY && sleep.shortNightsInRow >= 2) return ReadinessLine.STEADY_SHORT_NIGHTS
+        if (call == DayCall.RECOVER && (sleep.lastNightMin ?: Int.MAX_VALUE) < SleepContext.SHORT_NIGHT_MIN) return ReadinessLine.RECOVER_SHORT_SLEEP
         if (call == DayCall.EASE_OFF && (sleep.lastNightMin ?: Int.MAX_VALUE) < SleepContext.SHORT_NIGHT_MIN) return ReadinessLine.EASE_SHORT_SLEEP
     }
     return when (Readiness.adviceFor(call, focus)) {

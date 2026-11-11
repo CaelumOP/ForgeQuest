@@ -36,6 +36,9 @@ class ReadinessTextTest {
         val twoShort = SleepContext(330, 2, 0.2f)
         assertEquals(ReadinessLine.STEADY_SHORT_NIGHTS, readinessLine(DayCall.STEADY, TodayFocus.LEGS, twoShort))
         assertEquals(ReadinessLine.EASE_SHORT_SLEEP, readinessLine(DayCall.EASE_OFF, null, SleepContext(300, 1, 0.2f)))
+        // A recover day after a short night names the sleep, even on a leg day; after a full night it does not.
+        assertEquals(ReadinessLine.RECOVER_SHORT_SLEEP, readinessLine(DayCall.RECOVER, TodayFocus.LEGS, SleepContext(150, 1, 0.2f)))
+        assertEquals(ReadinessLine.RECOVER, readinessLine(DayCall.RECOVER, null, SleepContext(420, 0, 0.2f)))
         // One short night does not make a steady day about sleep, and sleep never talks over a good verdict.
         assertEquals(ReadinessLine.STEADY, readinessLine(DayCall.STEADY, null, SleepContext(330, 1, 0.2f)))
         assertEquals(ReadinessLine.READY, readinessLine(DayCall.READY, null, twoShort))

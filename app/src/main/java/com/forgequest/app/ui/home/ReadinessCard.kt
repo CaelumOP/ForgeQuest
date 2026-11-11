@@ -220,7 +220,7 @@ fun ReadinessRow(
                 } else {
                     // The short-sleep sentence names how long the person slept; the others take no number.
                     val slept = d.sleepContext?.lastNightMin ?: 0
-                    val text = if (line == com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP) {
+                    val text = if (line == com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP || line == com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_SLEEP) {
                         stringResource(line.bodyRes(variant), stringResource(R.string.dur_hm, slept / 60, slept % 60))
                     } else stringResource(line.bodyRes(variant))
                     Text(text, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)

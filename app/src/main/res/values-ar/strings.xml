@@ -1046,6 +1046,7 @@
     <string name="call_upper_recover_b3">الراحة أولًا اليوم. تمرين علوي خفيف أو مشي.</string>
     <string name="call_steady_short_nights">ليلتان قصيرتان متتاليتان. أدِّ التمرين وتوقّف قبل المجموعة الأخيرة.</string>
     <string name="call_ease_short_sleep">نمت %1$s. التمارين نفسها بوزن أخف.</string>
+    <string name="call_recover_short_sleep">نمت %1$s. اجعل اليوم يوم راحة؛ يكفيك مشي خفيف أو إطالة.</string>
     <string name="ready_no_data">لا توجد بيانات Fitbit لليلة الماضية بعد. ارتدِه عند النوم ليظهر تعافيك هنا صباحًا.</string>
     <string name="ready_felt_great">أشعر بنشاط كبير اليوم</string>
     <string name="ready_usual">المعتاد %1$s</string>

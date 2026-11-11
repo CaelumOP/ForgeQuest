@@ -541,6 +541,7 @@ fun com.forgequest.app.domain.ReadinessLine.bodyRes(variant: Int): Int {
         com.forgequest.app.domain.ReadinessLine.UPPER_RECOVER -> intArrayOf(R.string.call_upper_recover_b, R.string.call_upper_recover_b2, R.string.call_upper_recover_b3)
         com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_NIGHTS -> intArrayOf(R.string.call_steady_short_nights)
         com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP -> intArrayOf(R.string.call_ease_short_sleep)
+        com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_SLEEP -> intArrayOf(R.string.call_recover_short_sleep)
     }
     return all[variant.coerceIn(0, all.lastIndex)]
 }

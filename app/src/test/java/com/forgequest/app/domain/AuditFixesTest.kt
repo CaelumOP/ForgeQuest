@@ -110,8 +110,8 @@ class AuditFixesTest {
     }
 
     @Test fun sleepOnlyFirstDaysDontCrashRecovery() {
-        // No HRV or resting-HR baseline yet and a 6 h night (75 %): 69 % (Ease off), not a near-zero score.
-        assertEquals(69, Readiness.recovery(null, null, null, 75, null, null, null))
+        // No HRV or resting-HR baseline yet and a 6 h night (75 %): 68 % (steady; the sleep factor takes one point), not a near-zero score.
+        assertEquals(68, Readiness.recovery(null, null, null, 75, null, null, null))
         // With every input at its baseline the score is the middle of the scale: 75 %.
         val base = Baseline(4.0, 0.1, 14)
         assertEquals(75, Readiness.recovery(4.0, 60.0, 15.0, 85, base, Baseline(60.0, 2.0, 14), Baseline(15.0, 0.5, 14)))
