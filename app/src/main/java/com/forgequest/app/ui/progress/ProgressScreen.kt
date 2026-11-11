@@ -99,8 +99,6 @@ class ProgressViewModel(val app: AppContainer) : ViewModel() {
     /** "Switch" on a stalled lift: its variation takes its place in the plan. */
     fun switchVariation(from: String, to: String) = viewModelScope.launch { app.workouts.cycleVariation(from, to) }
 
-    /** The chat owns the fourth tab, so Progress is a pushed screen and needs its back arrow. */
-    val pushed: StateFlow<Boolean> = app.settings.chatTab
 }
 
 /** Everything derived for one range, computed once per snapshot change. */
@@ -138,7 +136,6 @@ fun ProgressScreen(nav: NavHostController) {
     val snap by vm.snapshot.collectAsState()
     val readiness by vm.readiness.collectAsState()
     val report by vm.report.collectAsState()
-    val pushed by vm.pushed.collectAsState()
     val c = Fit.colors
     var rangeIndex by rememberSaveable { mutableIntStateOf(1) }
     val range = TrendRange.entries[rangeIndex]
@@ -152,8 +149,8 @@ fun ProgressScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (pushed) IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
-            else Spacer(Modifier.width(12.dp))
+
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(stringResource(R.string.progress_subtitle), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

@@ -39,13 +39,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Restaurant
@@ -130,14 +126,12 @@ object Routes {
 
 private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector)
 
-/** The fourth tab is the coach chat only when [chat] (see chatIsTab); otherwise Progress, which needs no key. */
-private fun tabsFor(chat: Boolean) = listOf(
+/** The bar is always Home, Workouts, Food, Progress. Coach and Profile are pushed screens. */
+private fun tabsFor() = listOf(
     Tab(Routes.HOME, R.string.tab_home, Icons.Outlined.Home, Icons.Rounded.Home),
     Tab(Routes.WORKOUTS, R.string.tab_workouts, Icons.Outlined.FitnessCenter, Icons.Rounded.FitnessCenter),
     Tab(Routes.FOOD, R.string.tab_food, Icons.Outlined.Restaurant, Icons.Rounded.Restaurant),
-    if (chat) Tab(Routes.COACH, R.string.tab_coach, Icons.Outlined.AutoAwesome, Icons.Rounded.AutoAwesome)
-    else Tab(Routes.PROGRESS, R.string.tab_progress, Icons.AutoMirrored.Outlined.ShowChart, Icons.AutoMirrored.Rounded.ShowChart),
-    Tab(Routes.PROFILE, R.string.tab_profile, Icons.Outlined.AccountCircle, Icons.Rounded.AccountCircle),
+    Tab(Routes.PROGRESS, R.string.tab_progress, Icons.AutoMirrored.Outlined.ShowChart, Icons.AutoMirrored.Rounded.ShowChart),
 )
 
 /** App-wide snackbar so any screen can confirm an action in one line. */
@@ -169,14 +163,9 @@ fun AppRoot() {
         return
     }
     if (!current.onboarded) {
-        // First run: language (both scripts shown), then the feature slides, then setup. Read from prefs so the
-        // activity restart after picking a language re-reads it (saved state would bring the language screen back).
-        var langDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.languageChosen(context)) }
-        // No slide tour any more: small tips point at the real buttons later (CoachMarkBox). The tour stays as a replay.
-        when {
-            !langDone -> com.forgequest.app.ui.onboarding.LanguageChoice { langDone = true }
-            else -> OnboardingScreen()
-        }
+        // Tour only: a first run skips setup (language follows the phone) and lands on Home, where the tips run.
+        LaunchedEffect(Unit) { com.forgequest.app.ui.onboarding.quickStart(context.container) }
+        Box(Modifier.fillMaxSize().background(Fit.colors.background))
         return
     }
     MainScaffold()
@@ -188,13 +177,8 @@ private fun MainScaffold() {
     val snackbar = remember { SnackbarHostState() }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
-    val chat by LocalContext.current.container.settings.chatTab.collectAsState()
-    val tabs = tabsFor(chat)
+    val tabs = remember { tabsFor() }
     val showBar = tabs.any { it.route == route }
-    // Chat stops being a tab while it is open (key removed or AI turned off): go to Progress so the bar comes back.
-    LaunchedEffect(chat, route) {
-        if (!chat && route == Routes.COACH) nav.navigate(Routes.PROGRESS) { popUpTo(Routes.COACH) { inclusive = true }; launchSingleTop = true }
-    }
     val c = Fit.colors
     val reduced = LocalReducedMotion.current
     // A Gemini meal shared into the app or picked in the Food tab inbox opens on the scan screen's review sheet.

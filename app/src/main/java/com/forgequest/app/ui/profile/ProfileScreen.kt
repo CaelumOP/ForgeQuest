@@ -22,8 +22,10 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.automirrored.rounded.ShowChart
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,6 +79,7 @@ fun ProfileScreen(nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
         }
 
@@ -157,12 +160,12 @@ fun ProfileScreen(nav: NavHostController) {
         }
         if (!justLog) Spacer(Modifier.height(12.dp))
 
-        // Progress is the fourth tab unless the coach chat took it; then it stays one tap away here. Weight is logged from Home.
-        if (com.forgequest.app.data.prefs.chatIsTab(aiOn, apiKey)) FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.PROGRESS) }) {
+        // The coach chat is a pushed screen, one tap away here once AI is set up. Weight is logged from Home.
+        if (com.forgequest.app.data.prefs.chatIsTab(aiOn, apiKey)) FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.COACH) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.AutoMirrored.Rounded.ShowChart, c.teal, c.tealTrack)
+                IconCircle(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack)
                 Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.profile_progress_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
+                Text(stringResource(R.string.tab_coach), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
             }
         }

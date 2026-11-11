@@ -13,10 +13,10 @@ const bodyweight = presetEquipment('BODYWEIGHT_ONLY')
 const gym = new Set<Equipment>(EQUIPMENT)
 
 describe('exercise tiers', () => {
-  it('rates all 100: 59 Foundation, 24 Intermediate, 17 Advanced; custom has none', () => {
-    expect(all.length).toBe(100)
+  it('rates all 186: 133 Foundation, 33 Intermediate, 20 Advanced; custom has none', () => {
+    expect(all.length).toBe(186)
     const count = (t: string) => all.filter((e) => tierOf(e) === t).length
-    expect([count('FOUNDATION'), count('INTERMEDIATE'), count('ADVANCED')]).toEqual([59, 24, 17])
+    expect([count('FOUNDATION'), count('INTERMEDIATE'), count('ADVANCED')]).toEqual([133, 33, 20])
     expect(tierOf({ ...ex('push_up'), id: 'my_push_up', custom: true })).toBeNull()
   })
 

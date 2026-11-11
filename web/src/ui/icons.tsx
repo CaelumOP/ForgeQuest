@@ -18,10 +18,11 @@ const paths = {
   sparkleFilled: 'M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z',
   account: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM7.35 18.5C8.66 17.56 10.26 17 12 17s3.34.56 4.65 1.5c-1.31.94-2.91 1.5-4.65 1.5s-3.34-.56-4.65-1.5zm10.79-1.38C16.45 15.8 14.32 15 12 15s-4.45.8-6.14 2.12C4.7 15.73 4 13.95 4 12c0-4.42 3.58-8 8-8s8 3.58 8 8c0 1.95-.7 3.73-1.86 5.12zM12 6c-1.93 0-3.5 1.57-3.5 3.5S10.07 13 12 13s3.5-1.57 3.5-3.5S13.93 6 12 6zm0 5c-.83 0-1.5-.67-1.5-1.5S11.17 8 12 8s1.5.67 1.5 1.5S12.83 11 12 11z',
   accountFilled: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z',
+  chart: 'M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z',
   chevron: 'M17.77 3.77L16 2 6 12l10 10 1.77-1.77L9.54 12z',
 }
 
-export type TabIconName = 'home' | 'fitness' | 'restaurant' | 'sparkle' | 'account'
+export type TabIconName = 'home' | 'fitness' | 'restaurant' | 'sparkle' | 'account' | 'chart'
 
 /** Outlined when idle, filled when selected (FitnessCenter and Restaurant are the same shape in both). */
 export function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
@@ -31,6 +32,7 @@ export function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }
     restaurant: paths.restaurant,
     sparkle: paths.sparkleFilled,
     account: paths.accountFilled,
+    chart: paths.chart,
   }
   return <Icon d={filled ? filledPaths[name] : paths[name]} />
 }

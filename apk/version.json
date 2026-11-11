@@ -1,6 +1,6 @@
 {
-  "versionCode": 36,
-  "versionName": "3.2.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.2.0/ForgeQuest-v3.2.0.apk",
-  "notes": "• Rest timer alarm fixed: it now fires reliably when your rest is over.\n• Food and Plan screens redesigned.\n• 32 new exercises.\n• Stalled lifts now cycle through variations.\n• Coach messages adapt to your day, in English and Arabic."
+  "versionCode": 37,
+  "versionName": "3.3.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.3.0/ForgeQuest-v3.3.0.apk",
+  "notes": "• No setup screens: open the app and start, with quick tips along the way.\n• Simpler navigation: four tabs, Home, Workouts, Food and Progress.\n• Tap your level badge on Home to open your profile.\n• Coach is one tap away from Profile and your workout debriefs."
 }

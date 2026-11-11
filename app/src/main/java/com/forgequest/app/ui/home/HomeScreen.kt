@@ -246,7 +246,7 @@ fun HomeScreen(nav: NavHostController) {
             // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
             Box(Modifier.fillMaxWidth()) {
                 Header(
-                    s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROGRESS) },
+                    s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROFILE) },
                     status = homeStatus(
                         hasOpen = open != null, noPlan = today == null, isRest = today?.day?.isRest == true,
                         done = s.workoutDoneToday, excused = s.excusedToday != null,
@@ -287,7 +287,7 @@ fun HomeScreen(nav: NavHostController) {
             )
             CalorieCardView(s, health, vm.app.settings)
             if (unseen.isNotEmpty()) {
-                FitCard(onClick = { nav.goToTab(Routes.PROFILE) }, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
+                FitCard(onClick = { nav.navigate(Routes.PROFILE) }, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconCircle(Icons.Rounded.EmojiEvents, c.gold, c.goldTrack)
                         Spacer(Modifier.width(12.dp))
@@ -416,7 +416,7 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
             Text(statusText(status, dayTitle, s), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         // The rank letter alone meant nothing to new people; the level under it says what the ring is.
-        if (showRank) Column(Modifier.clip(ForgeShape.Sm).clickable(onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (showRank) Column(Modifier.clip(ForgeShape.Sm).clickable(onClickLabel = stringResource(R.string.cd_open_profile), role = Role.Button, onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             MiniRing(s.level.progress, c.blue, c.blueTrack, size = 40.dp, stroke = 3.dp) {
                 Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, fontWeight = FontWeight.Bold)
             }

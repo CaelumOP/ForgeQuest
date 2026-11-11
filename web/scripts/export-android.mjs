@@ -135,8 +135,10 @@ const skipAr = new Set(ar.nonTranslatable);
 const arStrings = Object.fromEntries(Object.entries(ar.strings).filter(([k]) => !skipAr.has(k)));
 
 mkdirSync(join(outDir, 'prompts'), { recursive: true });
-writeFileSync(join(outDir, 'en.json'), JSON.stringify(sortKeys(en.strings), null, 2) + '\n');
-writeFileSync(join(outDir, 'ar.json'), JSON.stringify(sortKeys(arStrings), null, 2) + '\n');
+// Keep keys the web still uses after Android dropped them: Android wins on shared keys, web-only keys survive.
+const existing = (f) => { try { return JSON.parse(readFileSync(join(outDir, f), 'utf8')); } catch { return {}; } };
+writeFileSync(join(outDir, 'en.json'), JSON.stringify(sortKeys({ ...existing('en.json'), ...en.strings }), null, 2) + '\n');
+writeFileSync(join(outDir, 'ar.json'), JSON.stringify(sortKeys({ ...existing('ar.json'), ...arStrings }), null, 2) + '\n');
 
 const rawDir = join(resDir, 'raw');
 const prompts = readdirSync(rawDir).filter((f) => f.endsWith('.txt'));

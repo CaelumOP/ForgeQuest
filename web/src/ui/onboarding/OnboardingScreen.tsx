@@ -3,7 +3,7 @@ import { getLang, plural, setLang, t, type Lang, intlLocale } from '../../i18n'
 import { updateSettings } from '../../data/settings'
 import { applyPlan, seedLibrary } from '../../data/workouts'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
-import { STARTER_PLANS, localizePlan, type PlanDraft } from '../../data/seed/starter-plans'
+import { ONBOARDING_PLAN_COUNT, STARTER_PLANS, localizePlan, type PlanDraft } from '../../data/seed/starter-plans'
 import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
 import {
   allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, DAY_BASE, dailyBurn, GAIN_PACE, GAIN_PACES, NUTRITION_GOALS, type CutPace, type GainPace,
@@ -32,6 +32,13 @@ const emptyPlan = (): PlanDraft => ({
   name: t('onb_my_plan'), description: t('onb_my_plan_desc'),
   days: [1, 2, 3, 4, 5, 6, 7].map((d) => ({ dayOfWeek: d, title: t('today_rest_day'), isRest: true, note: '', items: [] })),
 })
+
+/** Tour-only first run (no setup screens): empty plan, 3 days a week, everything editable later in Profile. */
+export async function quickStart(): Promise<void> {
+  await seedLibrary(getLang())
+  await applyPlan(emptyPlan(), 'manual')
+  await updateSettings(settingsPatch({ ...initialState(), daysPerWeek: 3 }, null))
+}
 
 /** Training days of starter plan [i], for its "N days a week" label. */
 const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 0
@@ -276,7 +283,7 @@ function Target({ s, update }: StepProps) {
 /** Weekly target first (full-width control), then equipment, then plans that name how many days a week they ask for. */
 function StepPlan({ s, update }: StepProps) {
   const ar = getLang() === 'ar'
-  const plans = STARTER_PLANS.map((p) => localizePlan(p, getLang()))
+  const plans = STARTER_PLANS.slice(0, ONBOARDING_PLAN_COUNT).map((p) => localizePlan(p, getLang()))
   const options = [...plans.map((p) => ({ name: p.name, desc: p.description })), { name: t('onb_start_empty'), desc: t('onb_start_empty_desc') }]
   return (
     <>
