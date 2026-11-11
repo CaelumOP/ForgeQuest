@@ -1,11 +1,10 @@
 // Muscle recovery map. Anatomy art: react-native-body-highlighter 3.2.0, MIT License (c) 2022 ELABBASSI Hicham.
 // Exported so the Workouts tab can reuse it: <BodyMap recovery={snapshot.recovery} bodyType={settings.bodyType} />.
-import { useState } from 'preact/hooks'
+import type { Ref } from 'preact'
 import { t } from '../../i18n'
 import { MUSCLES, muscleFromSlug, type Muscle } from '../../domain/muscle'
 import type { MuscleRecovery } from '../../domain/progress'
 import art from './body_map.json'
-import { Button, Chip } from '../kit'
 import { recoveryFill } from './helpers'
 import './progress.css'
 
@@ -22,8 +21,8 @@ function status(r: MuscleRecovery | undefined): string {
   return t('a11y_muscle_recovering', stage, Math.round((1 - fatigue) * 100))
 }
 
-function Figure({ view, recovery, selected, onTap }: {
-  view: View; recovery: Map<Muscle, MuscleRecovery>; selected: Muscle | null; onTap: (m: Muscle) => void
+function Figure({ view, recovery, onTap }: {
+  view: View; recovery: Map<Muscle, MuscleRecovery>; onTap?: (m: Muscle) => void
 }) {
   const [x, y, w, h] = view.viewBox
   return (
@@ -34,69 +33,54 @@ function Figure({ view, recovery, selected, onTap }: {
         if (!m) return <path key={i} d={d} class="bm-neutral" />
         return (
           <path key={i} d={d} class="bm-muscle" style={{ fill: recoveryFill(recovery.get(m)?.fatigue ?? 0) }}
-            onClick={() => onTap(m)} />
+            onClick={onTap ? () => onTap(m) : undefined} />
         )
       })}
       {view.outline && <path d={view.outline} class="bm-outline" vector-effect="non-scaling-stroke" />}
-      {selected && view.parts.map(([slug, d], i) => (muscleFromSlug(slug) === selected
-        ? <path key={i} d={d} class="bm-selected" vector-effect="non-scaling-stroke" /> : null))}
     </svg>
   )
 }
 
-/**
- * Front and back figures (front on the start-left, back on the right in every language), a detail pill and the legend.
- * With `exerciseCount`, every muscle is also a chip and a picked muscle gets a "See exercises" button.
- */
-export function BodyMap({ recovery, bodyType, exerciseCount, onSeeExercises }: {
-  recovery: Map<Muscle, MuscleRecovery>; bodyType: 'MALE' | 'FEMALE'
-  exerciseCount?: (m: Muscle) => number; onSeeExercises?: (m: Muscle) => void
-}) {
-  const [selected, setSelected] = useState<Muscle | null>(null)
-  const body = (art as unknown as Art)[bodyType === 'FEMALE' ? 'female' : 'male']
-  const tap = (m: Muscle) => setSelected((s) => (s === m ? null : m))
-
-  const ranked = [...recovery.entries()].sort((a, b) => b[1].fatigue - a[1].fatigue)
-  const summary = ranked.length === 0
+export function recoverySummary(recovery: Map<Muscle, MuscleRecovery>): string {
+  const ranked = [...recovery.entries()].filter(([, r]) => r.fatigue > 0).sort((a, b) => b[1].fatigue - a[1].fatigue)
+  const base = ranked.length === 0
     ? t('map_cd_all_fresh')
     : t('map_cd_recovering', ranked.map(([m, r]) => t('map_cd_muscle_ready', label(m), r.hoursUntilReady)).join(t('list_separator')))
-  const r = selected ? recovery.get(selected) : undefined
-  const info = selected
-    ? (r ? t('map_recovering_detail', label(selected), Math.round((1 - r.fatigue) * 100), r.hoursUntilReady) : t('map_fully_recovered', label(selected)))
-    : (recovery.size === 0 ? t('map_all_fresh_tap') : t('map_tap_hint'))
+  return `${base} ${t('map_tap_hint')}`
+}
+
+/**
+ * Front and back figures side by side, centred (front on the left, back on the right in every language),
+ * with the four-dot recovery legend on one line underneath. Tapping a muscle opens its details sheet.
+ */
+export function BodyMap({ recovery, bodyType, onSeeExercises, figuresRef }: {
+  recovery: Map<Muscle, MuscleRecovery>
+  bodyType: 'MALE' | 'FEMALE'
+  onSeeExercises?: (m: Muscle) => void
+  figuresRef?: Ref<HTMLDivElement>
+}) {
+  const body = (art as unknown as Art)[bodyType === 'FEMALE' ? 'female' : 'male']
+  const summary = recoverySummary(recovery)
 
   return (
     <div class="bm">
       {/* A picture of a body, not a reading order: the figures keep their sides in right-to-left too. */}
-      {/* Screen readers get the summary as one image; the drawing is hidden and the chips below pick a muscle. */}
-      <div class="bm-row" dir="ltr" role="img" aria-label={summary}>
-        {([['map_front', body.front], ['map_back', body.back]] as const).map(([key, view]) => (
-          <div class="bm-col" key={key}>
-            <Figure view={view} recovery={recovery} selected={selected} onTap={tap} />
-            <span class="bm-cap" dir="auto" aria-hidden="true">{t(key)}</span>
-          </div>
-        ))}
+      <div class="bm-row" dir="ltr" role="img" aria-label={summary} ref={figuresRef}>
+        <Figure view={body.front} recovery={recovery} onTap={onSeeExercises} />
+        <Figure view={body.back} recovery={recovery} onTap={onSeeExercises} />
       </div>
-      {exerciseCount && (
-        // Small muscles (forearms, tibialis) are hard to hit on the picture.
-        <div class="bm-chips" role="group" aria-label={t('recovery_title')}>
-          {MUSCLES.map((m) => <Chip key={m} label={label(m)} selected={selected === m} onClick={() => tap(m)} srDetail={status(recovery.get(m))} />)}
-        </div>
-      )}
-      <p class="bm-info" aria-live="polite">{info}</p>
-      {selected && exerciseCount && onSeeExercises && (
-        <Button variant="tonal" block onClick={() => onSeeExercises(selected)}>{t('muscle_see_exercises', label(selected), exerciseCount(selected))}</Button>
-      )}
       <ul class="bm-legend">
         {([['--coral', 'map_just_trained'], ['--gold', 'map_recovering'], ['--teal', 'map_almost_ready'], ['--muscle-rest', 'map_fresh']] as const).map(([c, k]) => (
           <li key={k}><span class="pg-dot" style={{ background: `var(${c})` }} aria-hidden="true" />{t(k)}</li>
         ))}
       </ul>
-      {!exerciseCount && <div class="kit-sr" aria-hidden="false">
-        {MUSCLES.map((m) => (
-          <button key={m} type="button" onClick={() => tap(m)}>{label(m)}</button>
-        ))}
-      </div>}
+      {onSeeExercises && (
+        <div class="kit-sr" aria-hidden="false">
+          {MUSCLES.map((m) => (
+            <button key={m} type="button" onClick={() => onSeeExercises(m)}>{`${label(m)}, ${status(recovery.get(m))}`}</button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

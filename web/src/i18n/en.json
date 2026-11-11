@@ -1637,6 +1637,11 @@
   "ready_week_avg_night": "average night this week",
   "ready_yesterday": "Yesterday's score: last night's sleep hasn't reached the app yet. Sync Fitbit, then tap refresh.",
   "ready_zones": "Heart-rate zones today",
+  "recovery_all_fresh": "All fresh",
+  "recovery_not_fresh_n": {
+    "one": "{1} not fresh",
+    "other": "{1} not fresh"
+  },
   "recovery_subtitle": "Based on your recent workouts",
   "recovery_title": "Muscle recovery",
   "rest_exact_body": "Allow alarms for ForgeQuest so the rest-over alert arrives on time when the screen is off. Without it, the alert can be a little late.",
@@ -1897,8 +1902,15 @@
     "one": "Circuit · {1} round",
     "other": "Circuit · {1} rounds"
   },
+  "workouts_details": "Details",
   "workouts_library": "Library",
+  "workouts_more_n": {
+    "one": "+{1} more",
+    "other": "+{1} more"
+  },
+  "workouts_next_day": "Next: {1} · {2}",
   "workouts_quick": "Quick workout without a plan",
+  "workouts_quick_short": "Quick",
   "workouts_rest_hint": "Recovery is when muscles grow. Take it easy, stretch, walk.",
   "workouts_set_up_plan": "Set up a plan",
   "workouts_start": "Start workout",

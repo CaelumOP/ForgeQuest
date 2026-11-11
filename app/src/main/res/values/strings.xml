@@ -235,6 +235,12 @@
     <string name="cd_watch_form">Watch form</string>
     <string name="workouts_start">Start workout</string>
     <string name="workouts_start_this">Start this workout</string>
+    <string name="workouts_details">Details</string>
+    <string name="workouts_quick_short">Quick</string>
+    <plurals name="workouts_more_n">
+        <item quantity="one">+%1$d more</item>
+        <item quantity="other">+%1$d more</item>
+    </plurals>
     <string name="map_cd_all_fresh">Muscle recovery map. All muscles fresh.</string>
     <string name="map_cd_recovering">Muscle recovery map. Recovering: %1$s</string>
     <string name="map_cd_muscle_ready">%1$s ready in %2$d hours</string>

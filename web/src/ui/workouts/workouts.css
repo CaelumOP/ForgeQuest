@@ -127,3 +127,257 @@ div.wk-choice-main { cursor: default; }
   .wk-day { flex: 1 0 calc((100% - 12px) / 4); }
   .wk-day span:first-child { overflow: visible; text-overflow: clip; }
 }
+
+/* One-screen Workouts layout (no scrolling at normal text size on screens >= 568px tall). */
+@media (min-height: 568px) and (min-width: 301px) {
+  .scroll:has(> .wk-one) {
+    display: flex;
+    flex-direction: column;
+    overflow-y: hidden;
+  }
+  .content.wk-one {
+    flex: 1;
+    block-size: 100%;
+    min-block-size: 0;
+    overflow: hidden;
+    gap: clamp(4px, 1.3vh, 12px);
+    padding-block: 0 clamp(4px, 1.3vh, 12px);
+  }
+  .content.wk-one > .wk-head {
+    padding-block-start: 0;
+  }
+}
+
+.wk-hero {
+  flex: 1;
+  min-block-size: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  padding-block: 6px;
+  padding-inline: 16px;
+  overflow: hidden;
+}
+
+.wk-hero-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
+  min-inline-size: 0;
+  padding-block-start: 8px;
+}
+
+/* Small label over the day title, both in the app's own face (the same pairing as a card title on Home). */
+.wk-hero-lead {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wk-hero-tag {
+  color: var(--teal);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.wk-hero-title {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-inline-size: 0;
+}
+
+/* In the hero the figures fill whatever height the card has (a tall window must not leave it empty). */
+.wk-hero .bm-svg { max-block-size: none; }
+
+.wk-hero-count {
+  font-size: 13px;
+  line-height: 26px;
+  color: var(--text-2);
+  white-space: nowrap;
+  flex: none;
+}
+
+.wk-list-card {
+  flex: none;
+  padding-block: 4px 6px;
+  padding-inline: 16px;
+  cursor: pointer;
+}
+
+.wk-lh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  block-size: 20px;
+  font-size: 12px;
+  color: var(--text-2);
+  flex: none;
+}
+
+.wk-lh-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--teal);
+  font-weight: 600;
+  white-space: nowrap;
+  flex: none;
+}
+
+.wk-lh-chev {
+  display: inline-block;
+  font-size: 13px;
+  line-height: 1;
+}
+html[dir='rtl'] .wk-lh-chev {
+  transform: scaleX(-1);
+}
+
+.wk-rows {
+  block-size: calc(var(--wk-rows, 2) * 46px);
+  overflow: hidden;
+}
+
+.wk-r {
+  display: flex;
+  align-items: center;
+  block-size: 46px;
+  gap: 10px;
+  border-block-start: 1px solid var(--divider);
+  flex: none;
+}
+.wk-r:first-of-type {
+  border-block-start: 0;
+}
+.wk-r b {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+  flex: 1;
+  min-inline-size: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wk-r span {
+  color: var(--text-2);
+  font-size: 12px;
+  white-space: nowrap;
+  flex: none;
+}
+.wk-r.w b {
+  color: var(--text-2);
+  font-weight: 400;
+}
+.wk-r-more b {
+  color: var(--teal);
+  font-weight: 500;
+}
+
+.wk-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+  align-content: start;
+}
+.wk-two .wk-r {
+  block-size: 46px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+.wk-two .wk-r:nth-of-type(2) {
+  border-block-start: 0;
+}
+.wk-two .wk-r b {
+  flex: none;
+  inline-size: 100%;
+  font-size: 14px;
+}
+.wk-two .wk-r span {
+  font-size: 12px;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wk-rest-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding-block: 8px;
+  padding-inline: 16px;
+  text-align: center;
+}
+
+.wk-rest-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  padding-inline: 12px;
+  color: var(--teal);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: var(--r-full);
+}
+
+.wk-noplan-line {
+  flex: none;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-2);
+  text-align: center;
+  padding-inline: 8px;
+}
+
+.wk-go {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.wk-go .kit-btn {
+  min-block-size: 48px;
+}
+
+.wk-go-main {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.wk-go-quick {
+  flex: none;
+  padding-inline: 18px;
+}
+
+/* Accessibility fallback: when screen < 568px tall or font scale > 1.3 (max-width: 300px), allow normal scrolling without clipping. */
+@media (max-height: 567px), (max-width: 300px) {
+  .wk-hero,
+  .wk-rows {
+    block-size: auto;
+    overflow: visible;
+  }
+  .wk-hero-title,
+  .wk-noplan-line {
+    white-space: normal;
+  }
+}

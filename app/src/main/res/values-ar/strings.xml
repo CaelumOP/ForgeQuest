@@ -272,6 +272,16 @@
     <string name="cd_watch_form">مشاهدة الأداء الصحيح</string>
     <string name="workouts_start">بدء التمرين</string>
     <string name="workouts_start_this">بدء هذا التمرين</string>
+    <string name="workouts_details">التفاصيل</string>
+    <string name="workouts_quick_short">سريع</string>
+    <plurals name="workouts_more_n">
+        <item quantity="zero">+%1$d أخرى</item>
+        <item quantity="one">+تمرين واحد آخر</item>
+        <item quantity="two">+تمرينان آخران</item>
+        <item quantity="few">+%1$d تمارين أخرى</item>
+        <item quantity="many">+%1$d تمرينًا آخر</item>
+        <item quantity="other">+%1$d تمرين آخر</item>
+    </plurals>
     <string name="map_cd_all_fresh">خريطة تعافي العضلات. كل العضلات مستعدة.</string>
     <string name="map_cd_recovering">خريطة تعافي العضلات. في طور التعافي: %1$s</string>
     <string name="map_cd_muscle_ready">%1$s تستعد بعد %2$d ساعة</string>
