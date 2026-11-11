@@ -431,7 +431,30 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             // The health switch defaults to on, so it alone doesn't mean health data: it must also have been read once.
             healthOn = snap.settings.healthEnabled && snap.settings.healthConnected,
             equipment = snap.settings.configuredEquipment,
+            variations = variations(snap, report.stalledLifts),
         )
+    }
+
+    /** For each stalled lift, the variation to try instead ([VariationCycle]); lifts with none are left out. */
+    private fun variations(snap: ProgressSnapshot, stalled: List<com.forgequest.app.domain.StalledLift>): Map<String, String> {
+        if (stalled.isEmpty()) return emptyMap()
+        val library = snap.exercises.values.toList()
+        val planIds = snap.plan?.days.orEmpty().flatMap { d -> d.items.map { it.exerciseId } }.toSet()
+        val cycled = com.forgequest.app.domain.VariationCycle.recentlyCycled(snap.settings.cycleHistory, Dates.today())
+        return stalled.mapNotNull { lift ->
+            com.forgequest.app.domain.VariationCycle.next(lift, library, snap.settings.configuredEquipment, planIds, cycled)?.let { lift.exerciseId to it.to.id }
+        }.toMap()
+    }
+
+    /**
+     * Swaps a stalled lift for its variation everywhere in the active plan and remembers it, so the old lift is not
+     * suggested back for [com.forgequest.app.domain.VariationCycle.COOLDOWN_DAYS].
+     */
+    suspend fun cycleVariation(fromExerciseId: String, toExerciseId: String) {
+        val items = plans.allItems().filter { it.exerciseId == fromExerciseId }
+        val active = plans.active()?.let { p -> plans.days(p.id).map { it.id }.toSet() }.orEmpty()
+        items.filter { it.dayId in active }.forEach { swapPlanItem(it, toExerciseId) }
+        settings.update { it.copy(cycleHistory = com.forgequest.app.domain.VariationCycle.record(it.cycleHistory, fromExerciseId, Dates.today())) }
     }
 
     /** A plan day's sets for the score: warm-ups left out. */
