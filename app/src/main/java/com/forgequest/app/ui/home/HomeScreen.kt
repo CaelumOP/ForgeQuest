@@ -186,6 +186,7 @@ fun HomeScreen(nav: NavHostController) {
     val todayCard: @Composable () -> Unit = {
         TodayCard(
             day = today,
+            noActivePlan = s.plan == null,
             exerciseNames = today?.items?.mapNotNull { s.exercises[it.exerciseId]?.name }?.distinct().orEmpty(),
             hasOpenSession = open != null,
             doneToday = s.workoutDoneToday,
@@ -204,8 +205,14 @@ fun HomeScreen(nav: NavHostController) {
                     nav.navigate(Routes.LIVE)
                 }
             },
-            // After training, the card leads to what was done; before, to the plan.
-            onOpenPlan = { if (s.workoutDoneToday) nav.navigate(Routes.HISTORY) else nav.goToTab(Routes.WORKOUTS) },
+            // After training, the card leads to what was done; with no plan, to the plan builder; else to the plan.
+            onOpenPlan = {
+                when {
+                    s.workoutDoneToday -> nav.navigate(Routes.HISTORY)
+                    s.plan == null -> nav.navigate(Routes.PLAN_BUILDER)
+                    else -> nav.goToTab(Routes.WORKOUTS)
+                }
+            },
             // A rest day can still be a training day: start the next planned workout.
             onTrainAnyway = {
                 scope.launch {
@@ -705,6 +712,7 @@ private fun DayTagDialog(epochDay: Long, current: DayTag?, onPick: (DayTag?) -> 
 @Composable
 private fun TodayCard(
     day: PlanDayWithItems?,
+    noActivePlan: Boolean,
     exerciseNames: List<String>,
     hasOpenSession: Boolean,
     doneToday: Boolean,
@@ -724,10 +732,13 @@ private fun TodayCard(
     val hasAction = hasOpenSession || (!doneToday && (noPlan || !isRest || excused == null))
     val action: @Composable () -> Unit = {
         val full = Modifier.fillMaxWidth()
-        // The first-run tip only points at a real Start or Resume button.
-        com.forgequest.app.ui.components.CoachMarkBox("coach_home", R.string.coach_home_t, R.string.coach_home_b, enabled = hasOpenSession || (!noPlan && !isRest), below = true) {
+        // The first-run tip points at Start, Resume, or Build my plan when there is no active plan yet.
+        val tipTitle = if (noActivePlan && !hasOpenSession) R.string.coach_home_noplan_t else R.string.coach_home_t
+        val tipBody = if (noActivePlan && !hasOpenSession) R.string.coach_home_noplan_b else R.string.coach_home_b
+        com.forgequest.app.ui.components.CoachMarkBox("coach_home", tipTitle, tipBody, enabled = hasOpenSession || noActivePlan || (!noPlan && !isRest), below = true) {
             when {
                 hasOpenSession -> PillButton(stringResource(R.string.action_resume), onClick = onStart, modifier = full)
+                noActivePlan -> PillButton(stringResource(R.string.action_build_plan), onClick = onOpenPlan, modifier = full)
                 noPlan -> PillButton(stringResource(R.string.action_set_up), onClick = onOpenPlan, modifier = full)
                 !isRest -> PillButton(stringResource(R.string.action_start), onClick = onStart, modifier = full)
                 excused == null -> TonalPill(stringResource(R.string.today_train_anyway), onClick = onTrainAnyway, modifier = full)
@@ -766,6 +777,7 @@ private fun TodayCard(
                         hasOpenSession -> stringResource(R.string.today_resume_hint)
                         doneToday -> doneLine ?: stringResource(R.string.today_done)
                         excused != null -> stringResource(R.string.today_excused, stringResource(excused.labelRes))
+                        noActivePlan -> stringResource(R.string.pb_entry_info)
                         noPlan -> stringResource(R.string.today_no_plan_hint)
                         isRest -> day?.day?.note?.ifBlank { null } ?: stringResource(R.string.today_rest_hint)
                         else -> pluralStringResource(R.plurals.today_exercises, exerciseNames.size, exerciseNames.size, exerciseNames.take(3).joinToString(stringResource(R.string.list_separator)))

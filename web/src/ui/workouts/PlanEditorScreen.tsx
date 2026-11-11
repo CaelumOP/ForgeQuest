@@ -12,10 +12,10 @@ import { adaptPlanToEquipment, EQUIPMENT, type Equipment } from '../../domain/ex
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 import { fromKg, loadStep, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, Card, CoachMark, Dialog, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
+import { Button, Card, CoachMark, Dialog, EmptyState, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
-import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
+import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, EditIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
 import { blockLabel, dayName, dayShort, isRestTitle, prescription } from './helpers'
 import { stepReorder } from './reorder'
 import { PastePlanSheet } from '../coach/PastePlanSheet'
@@ -100,13 +100,22 @@ export function PlanEditorScreen({ param }: { param?: string }) {
         <Button variant="tonal" block icon={<SwapIcon />} onClick={() => setPanel('change')}>{t('plan_change')}</Button>
       </CoachMark>
 
-      <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
-        {[1, 2, 3, 4, 5, 6, 7].map((dow) => (
-          <button key={dow} type="button" role="tab" class="wk-day" aria-selected={dow === selected} aria-label={dayName(dow, lang)} onClick={() => setSelected(dow)}>
-            <span>{dayShort(dow, lang)}</span>
-          </button>
-        ))}
-      </div>
+      {!plan ? (
+        <Card>
+          <EmptyState
+            icon={<EditIcon size={32} />} title={t('today_no_plan')} body={t('pb_entry_info')}
+            action={<div class="wk-empty-btn"><Button onClick={() => { location.hash = '#/plan-builder' }}>{t('action_build_plan')}</Button></div>}
+          />
+        </Card>
+      ) : (
+        <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
+          {[1, 2, 3, 4, 5, 6, 7].map((dow) => (
+            <button key={dow} type="button" role="tab" class="wk-day" aria-selected={dow === selected} aria-label={dayName(dow, lang)} onClick={() => setSelected(dow)}>
+              <span>{dayShort(dow, lang)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {day && plan && (
         <Card>

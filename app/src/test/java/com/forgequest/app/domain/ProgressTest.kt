@@ -96,6 +96,21 @@ class StreakCalculatorTest {
         assertEquals(3, s.targetThisWeek)
         assertTrue(s.hitThisWeek)
     }
+
+    @Test
+    fun streakTargetWorksWithoutAPlan() {
+        // Fresh quickStart: no active plan (empty plannedTrainingDays), weeklyTargetOverride = 3.
+        val oneDone = StreakCalculator.compute(setOf(mon1 + 2), emptySet(), 3, mon1 + 2, mon1 + 2)
+        assertEquals(1, oneDone.doneThisWeek)
+        assertEquals(3, oneDone.targetThisWeek)
+        assertFalse(oneDone.hitThisWeek)
+
+        val threeDone = StreakCalculator.compute(setOf(mon1 + 2, mon1 + 4, mon1 + 6), emptySet(), 3, mon1 + 2, mon1 + 6)
+        assertEquals(3, threeDone.doneThisWeek)
+        assertEquals(3, threeDone.targetThisWeek)
+        assertTrue(threeDone.hitThisWeek)
+        assertEquals(1, threeDone.weeks)
+    }
 }
 
 class XpTest {

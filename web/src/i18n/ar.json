@@ -1,6 +1,7 @@
 {
   "action_add": "إضافة",
   "action_back": "رجوع",
+  "action_build_plan": "أنشئ خطتي",
   "action_cancel": "إلغاء",
   "action_clear": "مسح",
   "action_continue": "التالي",
@@ -353,6 +354,8 @@
   "coach_fresh": "جاهز: {1}",
   "coach_got_it": "حسنًا",
   "coach_home_b": "اضغط ابدأ لتبدأ.",
+  "coach_home_noplan_b": "أجب عن بضعة أسئلة لبناء خطتك الأسبوعية.",
+  "coach_home_noplan_t": "ابدأ بخطتك",
   "coach_home_t": "ابدأ من هنا",
   "coach_input_hint": "اسأل مدربك…",
   "coach_model_auto": "تلقائي",

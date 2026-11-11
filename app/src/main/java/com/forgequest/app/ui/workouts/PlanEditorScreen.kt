@@ -32,8 +32,10 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.SwapHoriz
+import com.forgequest.app.ui.components.EmptyState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -243,21 +245,29 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                 TonalPill(stringResource(R.string.plan_change), onClick = { changePlan = true }, icon = Icons.Rounded.SwapHoriz, modifier = Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                (1..7).forEach { dow ->
-                    val sel = dow == selectedDay
-                    Box(
-                        Modifier.weight(1f).clip(ForgeShape.Sm).background(if (sel) c.teal else c.card)
-                            .selectable(selected = sel, role = Role.Tab) { selectedDay = dow }
-                            .semantics { contentDescription = Dates.dayName(dow) }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(Dates.dayShort(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, softWrap = false)
+            if (s.plan == null) {
+                FitCard {
+                    EmptyState(Icons.Rounded.Edit, stringResource(R.string.today_no_plan), stringResource(R.string.pb_entry_info)) {
+                        PillButton(stringResource(R.string.action_build_plan), onClick = { nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER) })
                     }
                 }
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..7).forEach { dow ->
+                        val sel = dow == selectedDay
+                        Box(
+                            Modifier.weight(1f).clip(ForgeShape.Sm).background(if (sel) c.teal else c.card)
+                                .selectable(selected = sel, role = Role.Tab) { selectedDay = dow }
+                                .semantics { contentDescription = Dates.dayName(dow) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(Dates.dayShort(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, softWrap = false)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
             }
-            Spacer(Modifier.height(12.dp))
             if (day != null) {
                 FitCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {

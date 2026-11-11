@@ -67,7 +67,7 @@ export function WorkoutsScreen(_: { param?: string }) {
           <h1 class="wk-plan">{plan?.plan.name ?? t('today_no_plan')}</h1>
         </div>
         <a class="wk-iconlink" href="#/history" aria-label={t('cd_workout_history')}><HistoryIcon /></a>
-        <a class="wk-iconlink" href="#/plan" aria-label={t('cd_edit_plan')}><EditIcon /></a>
+        {plan && <a class="wk-iconlink" href="#/plan" aria-label={t('cd_edit_plan')}><EditIcon /></a>}
       </div>
 
       {open && (
@@ -83,28 +83,30 @@ export function WorkoutsScreen(_: { param?: string }) {
         </Card>
       )}
 
-      <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
-        {[1, 2, 3, 4, 5, 6, 7].map((dow) => {
-          const rest = plan?.days.find((d) => d.day.dayOfWeek === dow)?.day.isRest ?? true
-          const sel = dow === selected
-          return (
-            <button
-              key={dow} type="button" role="tab" aria-selected={sel} class={`wk-day${dow === today ? ' today' : ''}`}
-              aria-label={t(rest ? 'day_cd_rest' : 'day_cd_training', dayName(dow, lang))}
-              onClick={() => setSelected(dow)}
-            >
-              <span>{dayShort(dow, lang)}</span>
-              <span class={`wk-day-dot${rest ? ' rest' : ''}`} />
-            </button>
-          )
-        })}
-      </div>
+      {plan && (
+        <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
+          {[1, 2, 3, 4, 5, 6, 7].map((dow) => {
+            const rest = plan.days.find((d) => d.day.dayOfWeek === dow)?.day.isRest ?? true
+            const sel = dow === selected
+            return (
+              <button
+                key={dow} type="button" role="tab" aria-selected={sel} class={`wk-day${dow === today ? ' today' : ''}`}
+                aria-label={t(rest ? 'day_cd_rest' : 'day_cd_training', dayName(dow, lang))}
+                onClick={() => setSelected(dow)}
+              >
+                <span>{dayShort(dow, lang)}</span>
+                <span class={`wk-day-dot${rest ? ' rest' : ''}`} />
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {!plan ? (
         <Card>
           <EmptyState
-            icon={<EditIcon size={32} />} title={t('today_no_plan')} body={t('today_no_plan_hint')}
-            action={<div class="wk-empty-btn"><Button onClick={() => go('#/plan')}>{t('workouts_set_up_plan')}</Button></div>}
+            icon={<EditIcon size={32} />} title={t('today_no_plan')} body={t('pb_entry_info')}
+            action={<div class="wk-empty-btn"><Button onClick={() => go('#/plan-builder')}>{t('action_build_plan')}</Button></div>}
           />
         </Card>
       ) : (

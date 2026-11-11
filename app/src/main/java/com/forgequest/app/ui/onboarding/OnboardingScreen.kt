@@ -136,11 +136,9 @@ data class OnboardingState(
     val fastBlocked get() = Nutrition.allowedCutPace(CutPace.AGGRESSIVE, weightKg, heightCm, age, male) != CutPace.AGGRESSIVE
 }
 
-/** Tour-only first run (no setup screens): empty plan, 3 days a week, everything editable later in Profile. */
+/** Tour-only first run (no setup screens): no starting plan, 3 days a week target, everything editable later in Profile. */
 suspend fun quickStart(app: AppContainer) {
     app.workouts.seedLibrary()
-    val days = (1..7).map { PlanDraftDay(it, app.str(R.string.today_rest_day), isRest = true) }
-    app.workouts.applyPlan(PlanDraft(app.str(R.string.onb_my_plan), app.str(R.string.onb_my_plan_desc), days), "manual")
     app.settings.update { it.copy(onboarded = true, weeklyTargetOverride = 3, calorieV2Seen = true) }
 }
 

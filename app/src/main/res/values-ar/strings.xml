@@ -130,6 +130,7 @@
     <string name="list_separator">"، "</string>
     <string name="action_resume">استئناف</string>
     <string name="action_set_up">إعداد</string>
+    <string name="action_build_plan">أنشئ خطتي</string>
     <string name="action_start">بدء</string>
     <string name="badge_first_workout_title">الخطوة الأولى</string>
     <string name="badge_first_workout_desc">أنهِ تمرينك الأول</string>
@@ -350,6 +351,8 @@
     <string name="coach_ask_b_noai">اضغط «اسأل Gemini» لإرسال بياناتك وسؤالك إلى تطبيق Gemini، ثم الصق الردّ هنا.</string>
     <string name="coach_home_t">ابدأ من هنا</string>
     <string name="coach_home_b">اضغط ابدأ لتبدأ.</string>
+    <string name="coach_home_noplan_t">ابدأ بخطتك</string>
+    <string name="coach_home_noplan_b">أجب عن بضعة أسئلة لبناء خطتك الأسبوعية.</string>
     <string name="coach_tick_t">علّم كل مجموعة</string>
     <string name="coach_tick_b">علّم المجموعة عند الانتهاء. تبدأ الراحة تلقائيًا.</string>
     <string name="coach_food_t">سجّل طعامك بسرعة</string>

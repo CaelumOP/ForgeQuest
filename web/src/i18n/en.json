@@ -1,6 +1,7 @@
 {
   "action_add": "Add",
   "action_back": "Back",
+  "action_build_plan": "Build my plan",
   "action_cancel": "Cancel",
   "action_clear": "Clear",
   "action_continue": "Continue",
@@ -337,6 +338,8 @@
   "coach_fresh": "Ready: {1}",
   "coach_got_it": "Got it",
   "coach_home_b": "Tap Start to begin.",
+  "coach_home_noplan_b": "Answer a few questions to build your weekly plan.",
+  "coach_home_noplan_t": "Start with a plan",
   "coach_home_t": "Start here",
   "coach_input_hint": "Ask your coach…",
   "coach_model_auto": "Automatic",

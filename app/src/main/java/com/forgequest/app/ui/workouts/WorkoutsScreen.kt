@@ -149,7 +149,9 @@ fun WorkoutsScreen(nav: NavHostController) {
             // Labelled, so past workouts and the editor are found without guessing what an icon means.
             HeaderAction(Icons.AutoMirrored.Rounded.MenuBook, stringResource(R.string.workouts_library)) { nav.navigate(Routes.LIBRARY) }
             HeaderAction(Icons.Rounded.History, stringResource(R.string.cd_workout_history)) { nav.navigate(Routes.HISTORY) }
-            HeaderAction(Icons.Rounded.Edit, stringResource(R.string.cd_edit_plan)) { nav.navigate(Routes.plan(selectedDay)) }
+            if (plan != null) {
+                HeaderAction(Icons.Rounded.Edit, stringResource(R.string.cd_edit_plan)) { nav.navigate(Routes.plan(selectedDay)) }
+            }
         }
         Spacer(Modifier.height(16.dp))
 
@@ -168,8 +170,10 @@ fun WorkoutsScreen(nav: NavHostController) {
             Spacer(Modifier.height(12.dp))
         }
 
-        DayStrip(plan?.days.orEmpty(), selectedDay, s.workoutDoneToday) { selectedDay = it }
-        Spacer(Modifier.height(12.dp))
+        if (plan != null) {
+            DayStrip(plan.days, selectedDay, s.workoutDoneToday) { selectedDay = it }
+            Spacer(Modifier.height(12.dp))
+        }
 
         val day = plan?.day(selectedDay)
         if (plan != null && day != null && !day.day.isRest && Progression.isDeloadWeek(plan.plan.createdAt, Dates.today())) {
@@ -177,8 +181,8 @@ fun WorkoutsScreen(nav: NavHostController) {
         }
         if (plan == null) {
             FitCard {
-                EmptyState(Icons.Rounded.Edit, stringResource(R.string.today_no_plan), stringResource(R.string.today_no_plan_hint)) {
-                    PillButton(stringResource(R.string.workouts_set_up_plan), onClick = { nav.navigate(Routes.plan(selectedDay)) })
+                EmptyState(Icons.Rounded.Edit, stringResource(R.string.today_no_plan), stringResource(R.string.pb_entry_info)) {
+                    PillButton(stringResource(R.string.action_build_plan), onClick = { nav.navigate(Routes.PLAN_BUILDER) })
                 }
             }
         } else {
