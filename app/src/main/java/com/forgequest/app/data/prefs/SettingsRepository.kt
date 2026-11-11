@@ -69,7 +69,7 @@ data class Settings(
     val bridgeLastReadAt: Long = 0,
     val bridgeToday: String = "",
     val bridgeIssues: String = "",
-    /** Meals from the owner's "ForgeQuest Food" Gem, read from a Drive Doc into the Food tab inbox. */
+    /** Meals from the person's own "ForgeQuest Food" Gem, read from a Drive Doc into the Food tab inbox. */
     val geminiMealsEnabled: Boolean = false,
     /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
     val coachNotes: String = "",

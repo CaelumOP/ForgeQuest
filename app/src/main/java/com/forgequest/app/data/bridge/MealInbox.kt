@@ -22,7 +22,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.math.abs
 
-/** One meal estimated by the owner's "ForgeQuest Food" Gem, from the meals Doc or shared/pasted text. */
+/** One meal estimated by the person's own "ForgeQuest Food" Gem, from the meals Doc or shared/pasted text. */
 @Serializable
 data class GeminiMeal(
     val mealId: String = "",
