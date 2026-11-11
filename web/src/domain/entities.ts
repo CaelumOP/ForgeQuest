@@ -102,3 +102,10 @@ export type PlanDraftDay = {
   note: string
   items: PlanDraftItem[]
 }
+
+export type PlanDraft = {
+  name: string
+  description: string
+  days: PlanDraftDay[]
+}
+
