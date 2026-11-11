@@ -56,6 +56,9 @@ button.home-day { cursor: pointer; }
 .home-spark { flex: none; }
 .home-today { margin-block-start: 12px; }
 .home-plan-link { text-decoration: none; color: inherit; min-block-size: 44px; }
+/* No plan yet: the hint needs the full width, so the button drops to its own line. */
+.home-today-stack { flex-wrap: wrap; gap: 12px; }
+.home-today-stack .home-plan-link { flex-basis: 100%; }
 .home-sub2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .home-streak-top .home-t { margin: 0; }
 

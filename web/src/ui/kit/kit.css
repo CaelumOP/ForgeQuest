@@ -206,6 +206,14 @@ button.kit-stepper-val { overflow: hidden; }
   border-radius: var(--r-md); background: var(--card-high); color: var(--text); border: 1px solid var(--teal); box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
   text-align: start; animation: kit-fade var(--dur-short) var(--ease-enter);
 }
+.kit-coach::before {
+  content: ''; position: absolute; inset-block-start: -7px; inset-inline-start: var(--caret, 28px); margin-inline-start: -6px;
+  inline-size: 12px; block-size: 12px; background: var(--card-high); border: 1px solid var(--teal); border-block-end: 0; border-inline-end: 0;
+  transform: rotate(45deg);
+}
+[dir="rtl"] .kit-coach::before { transform: rotate(-45deg); }
+.kit-coach-above::before { inset-block-start: auto; inset-block-end: -7px; transform: rotate(225deg); }
+[dir="rtl"] .kit-coach-above::before { transform: rotate(-225deg); }
 .kit-coach-title { font-size: 16px; line-height: 22px; font-weight: 600; color: var(--text); }
 .kit-coach-body { margin: 0; font-size: 14px; line-height: 20px; color: var(--text-2); }
 .kit-coach-actions { display: flex; justify-content: flex-end; align-items: center; gap: 4px; flex-wrap: wrap; margin-block-start: 4px; margin-inline-end: -12px; }

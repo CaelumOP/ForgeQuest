@@ -290,7 +290,7 @@ function TodayCard(p: {
   return (
     <Card>
       <div class="home-label">{t('today_title')}</div>
-      <div class="home-row home-today">
+      <div class={`home-row home-today${noActivePlan && !hasOpen ? ' home-today-stack' : ''}`}>
         <a class="home-row home-grow home-plan-link" href={noActivePlan ? '#/plan-builder' : '#/workouts'}>
           <span class="home-ic" style={{ background: `var(${colour}-track)`, color: `var(${colour})` }}><Icon /></span>
           <span class="home-grow">

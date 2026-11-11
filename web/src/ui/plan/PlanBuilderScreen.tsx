@@ -76,6 +76,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
     setTried(new Map())
     setReview(built)
     setBusy(false)
+    document.querySelector('.scroll')?.scrollTo(0, 0) // the review starts at its first day, not where the answers were scrolled to
   }
 
   const swap = (dayOfWeek: number, index: number) => {
@@ -105,7 +106,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
   return (
     <div class="content pb">
       <header class="pb-head">
-        <h1 class="pb-title">{t(review == null ? 'pb_title' : 'pb_review_title')}</h1>
+        {review != null && <h1 class="pb-title">{t('pb_review_title')}</h1>}
         <p class="pb-sub">{t(review == null ? 'pb_quick_hint' : 'pb_review_hint')}</p>
         {review == null && (
           <button
@@ -134,6 +135,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
           />
           <Button
             block
+            class="pb-cta"
             icon={<TuneIcon size={18} />}
             disabled={answers.days.size === 0 || library.length === 0 || busy}
             loading={busy}
@@ -646,6 +648,7 @@ function ReviewSection({
 
       <Button
         block
+        class="pb-cta"
         icon={<CheckIcon size={20} />}
         disabled={days.length === 0 || busy}
         loading={busy}

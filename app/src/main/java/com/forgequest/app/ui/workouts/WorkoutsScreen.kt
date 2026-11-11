@@ -374,11 +374,7 @@ private fun RecoveryHeroCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            Column(Modifier.weight(1f)) {
                 Text(
                     tagText,
                     style = MaterialTheme.typography.labelMedium,
@@ -389,11 +385,10 @@ private fun RecoveryHeroCard(
                 )
                 Text(
                     titleText,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 24.sp, lineHeight = 28.sp),
+                    style = MaterialTheme.typography.titleLarge,
                     color = c.textPrimary,
                     maxLines = if (fallbackScroll) 2 else 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
                 )
             }
             if (countText.isNotEmpty()) {

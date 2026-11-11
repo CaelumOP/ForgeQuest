@@ -108,6 +108,12 @@ export function CoachMark({ id, title, body, enabled = true, below = false, chil
     })
     tipEl.style.insetBlockStart = `${pos.blockStart}px`
     tipEl.style.insetInlineStart = `${pos.inlineStart}px`
+    // The caret sits under (or over) the middle of the control, so the tip visibly points at it.
+    const width = tip.width || 280
+    const centre = anchor.left + anchor.width / 2
+    const fromStart = rtl ? window.innerWidth - pos.inlineStart - centre : centre - pos.inlineStart
+    tipEl.style.setProperty('--caret', `${Math.min(width - 28, Math.max(28, Math.round(fromStart)))}px`)
+    tipEl.classList.toggle('kit-coach-above', pos.blockStart < anchor.top)
   }
 
   useLayoutEffect(() => {

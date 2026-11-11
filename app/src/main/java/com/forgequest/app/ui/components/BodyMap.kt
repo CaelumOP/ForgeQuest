@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -155,7 +156,9 @@ fun MuscleRecoveryMap(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 listOf(art?.front, art?.back).forEach { view ->
-                    Box(Modifier.fillMaxHeight().heightIn(max = 300.dp).aspectRatio(0.5f)) {
+                    // Equal shares of the row: with a height-driven aspect ratio the first figure took its full width and the
+                    // second was squeezed into what was left, so the back came out smaller than the front.
+                    Box(Modifier.weight(1f, fill = false).widthIn(max = 150.dp).fillMaxHeight().heightIn(max = 300.dp)) {
                         if (view != null) {
                             BodyFigure(view, recovery, selected = null, onTap = onSeeExercises)
                         }
