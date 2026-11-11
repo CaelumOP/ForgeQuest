@@ -1,6 +1,6 @@
 {
-  "versionCode": 35,
-  "versionName": "3.1.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.1.0/ForgeQuest-v3.1.0.apk",
-  "notes": "• Home now fits on one screen: no scrolling to see your day.\n• Today's workout sits at the bottom, right by your thumb.\n• Your readiness verdict now leads the workout card; sleep and strain are one tap away.\n• Your streak and this month's progress share one card."
+  "versionCode": 36,
+  "versionName": "3.2.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.2.0/ForgeQuest-v3.2.0.apk",
+  "notes": "• Rest timer alarm fixed: it now fires reliably when your rest is over.\n• Food and Plan screens redesigned.\n• 32 new exercises.\n• Stalled lifts now cycle through variations.\n• Coach messages adapt to your day, in English and Arabic."
 }
