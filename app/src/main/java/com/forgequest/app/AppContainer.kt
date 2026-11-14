@@ -1,7 +1,6 @@
 package com.forgequest.app
 
 import android.content.Context
-import com.forgequest.app.data.CoachRepository
 import com.forgequest.app.data.CatalogRepository
 import com.forgequest.app.data.FoodRepository
 import com.forgequest.app.data.ProgressRepository
@@ -38,12 +37,10 @@ class AppContainer(context: Context) {
     private val openFoodFacts = com.forgequest.app.data.OpenFoodFacts(http, "ForgeQuest/${BuildConfig.VERSION_NAME} (Android)")
     val barcodes = com.forgequest.app.data.BarcodeLookup({ db.food().foodByBarcode(it) }, catalog::byBarcode, openFoodFacts::lookup)
     val health = com.forgequest.app.data.health.HealthRepository(context, settings, db)
-    val coach = CoachRepository(db, settings, gemini, models, progress, workouts, health)
     val backup = BackupRepository(context, db, settings, workouts)
     val drive = DriveSync(context, settings, backup, http)
     val updates = com.forgequest.app.data.update.UpdateChecker(context, http)
     val updateNotice = com.forgequest.app.data.update.UpdateNotice(context, updates, appScope)
-    val bridge = com.forgequest.app.data.bridge.GeminiBridge(context, db, coach, health)
     val meals = com.forgequest.app.data.bridge.MealInbox(context, db, drive)
     val haptics = Haptics(context)
     val notifier = Notifier(context)

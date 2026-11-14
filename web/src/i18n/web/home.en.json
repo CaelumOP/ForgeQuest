@@ -52,5 +52,22 @@
   "target_web_burn": "Daily burn ≈ {1} · target {2} ({3} a day)",
   "target_web_burn_only": "Daily burn ≈ {1} kcal",
   "target_web_from": "From your weight, height, age, your normal day ({2}) and {1} training days a week.",
-  "tour_web_page": "Page {1} of {2}"
+  "tour_web_page": "Page {1} of {2}",
+  "home_center_kcal": "{1} kcal",
+  "home_good_night": "Good night",
+  "onb_ai_body": "The meal scanner and coach run on Google Gemini. A personal key is free and takes about a minute.",
+  "onb_ai_step1": "Open Google AI Studio and sign in with your Google account.",
+  "onb_ai_step2": "Tap \"Create API key\", then copy it.",
+  "onb_ai_step3": "Paste it below.",
+  "onb_ai_title": "Turn on AI features",
+  "onb_check_key": "Check key",
+  "onb_checking": "Checking…",
+  "onb_get_key": "Get a free key",
+  "onb_groq_hint": "Want even faster chat? Add a free Groq key later in Profile.",
+  "onb_key_check_failed": "Couldn't check the key.",
+  "onb_key_label": "Gemini API key",
+  "onb_key_works": "Key works. AI features are ready.",
+  "onb_lets_go": "Let's go",
+  "onb_optional": "Optional",
+  "onb_privacy": "Your key stays encrypted on this phone. Meal photos and your training data are sent to Google Gemini under it; free keys let Google use them to improve its models."
 }

@@ -39,8 +39,6 @@ enum class BodyType { MALE, FEMALE }
 /** AI is on if the person chose so; with no choice yet it is on only for people who already saved a key. */
 fun resolveAiOn(optIn: Boolean?, hasKey: Boolean): Boolean = optIn ?: hasKey
 
-/** Chat is the fourth tab (and "ask the coach" shows) only with AI on and a key saved; AI on alone can have no key. */
-fun chatIsTab(aiOn: Boolean, apiKey: String): Boolean = aiOn && apiKey.isNotBlank()
 
 data class Settings(
     val onboarded: Boolean = false,
@@ -385,9 +383,6 @@ class SettingsRepository(private val context: Context) {
         resolveAiOn(o, a.isNotBlank())
     }.distinctUntilChanged().stateIn(aiScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, isAiOn())
 
-    /** [chatIsTab] as a flow. */
-    val chatTab: StateFlow<Boolean> = kotlinx.coroutines.flow.combine(aiOn, _apiKey) { o, k -> chatIsTab(o, k) }
-        .distinctUntilChanged().stateIn(aiScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, chatIsTab(isAiOn(), _apiKey.value))
 
     suspend fun setBadgesV2Backfill(done: Boolean) {
         update { it.copy(badgesV2Backfill = done) }

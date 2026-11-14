@@ -11,7 +11,7 @@ import {
   thenNow, topExercises, trainingLoad, trendRangeFrom, weeklyCounts, weeklySets, type TrendPoint, type TrendRange,
 } from '../../domain/trends'
 import { fromKg, toKg, unitLabel, weightNumber, formatWeight, type WeightUnit } from '../../domain/units'
-import { Card, Chip, ChipGroup, EmptyState, LineChart, ListRow, Ring } from '../kit'
+import { Card, Chip, ChipGroup, EmptyState, LineChart, Ring } from '../kit'
 import { carbWeeks, formatDelta, formatValue, grouped } from './helpers'
 import './progress.css'
 
@@ -245,7 +245,6 @@ export function ProgressScreen(_: { param?: string }) {
         <div class="pg-list">
           <Card><EmptyState title={t('progress_empty_title')} body={t('progress_empty_body')}
             icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" /></svg>} /></Card>
-          <Card padded={false}><ListRow title={t('tab_coach')} href="#/coach" /></Card>
         </div>
       </div>
     )
@@ -293,7 +292,6 @@ export function ProgressScreen(_: { param?: string }) {
           </div>
           {lt.kgLifted > 0 && <p class="pg-hint pg-lifted">{`${grouped(fromKg(unit, lt.kgLifted))} ${unitLabel(unit, ar)} ${t('progress_total_lifted')}`}</p>}
         </Card>
-          <Card padded={false}><ListRow title={t('tab_coach')} href="#/coach" /></Card>
       </div>
     </div>
   )

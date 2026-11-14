@@ -249,7 +249,7 @@
     <string name="map_fully_recovered">%1$s · fully recovered</string>
     <string name="map_recovering_detail">%1$s · %2$d%% recovered · ready in %3$d h</string>
     <string name="map_all_fresh_tap">All muscles fresh. Tap a muscle for details.</string>
-    <string name="map_tap_hint">Tap a muscle for details</string>
+    <string name="map_tap_hint">Tap a muscle to pick it, then See exercises. With TalkBack, use the actions menu to open a muscle\'s exercises.</string>
     <string name="map_just_trained">Just trained</string>
     <string name="map_recovering">Recovering</string>
     <string name="map_almost_ready">Almost ready</string>
@@ -489,7 +489,7 @@
     <string name="backup_restore_failed">Couldn\'t restore that backup.</string>
     <string name="backup_share_subject">ForgeQuest backup</string>
     <string name="backup_share_title">Save your backup</string>
-    <string name="profile_setup_title">Turn on the coach and meal scanning</string>
+    <string name="profile_setup_title">Turn on meal photo scanning</string>
     <string name="profile_setup_body">Paste a free Gemini key. Takes about a minute.</string>
     <string name="profile_add_key">Add key</string>
     <string name="profile_default_name">Athlete</string>
@@ -503,9 +503,6 @@
     <string name="action_see_all">See all</string>
     <string name="profile_daily_protein">Daily protein</string>
     <string name="profile_daily_calories">Daily calories</string>
-    <string name="profile_workouts_per_week">Workouts per week</string>
-    <string name="profile_from_plan">From your plan</string>
-    <string name="profile_streak_explain">Your weekly streak counts weeks where you reach this number.</string>
     <string name="profile_ai_key">Gemini key</string>
     <string name="profile_key_not_set">Not set · coach, meal scan and plans are off</string>
     <string name="profile_key_connected">Connected · runs the coach, meal scans and plans</string>
@@ -537,9 +534,6 @@
     <string name="profile_exercise_library">Exercise library</string>
     <string name="workouts_library">Library</string>
     <string name="cd_open_food">Open Food</string>
-    <string name="profile_hand_size">Hand size (optional)</string>
-    <string name="profile_hand_value">%1$s cm long · %2$s cm palm</string>
-    <string name="profile_hand_hint">Helps portion estimates when your hand is in the photo</string>
     <string name="body_male">Male</string>
     <string name="body_female">Female</string>
     <string name="profile_your_data_hint">Save a file to keep, or bring everything to a new phone. Photos and your AI key stay out of it.</string>
@@ -565,10 +559,6 @@
     <string name="action_remove">Remove</string>
     <string name="notes_dialog_title">Something the coach should know</string>
     <string name="notes_dialog_body">One fact per note, e.g. \"Left knee hurts in deep squats\" or \"Only have a pull-up bar and rings\".</string>
-    <string name="hand_dialog_title">Hand size</string>
-    <string name="hand_dialog_body">Measure from wrist crease to the tip of your middle finger, and across your palm.</string>
-    <string name="hand_length">Length</string>
-    <string name="hand_palm">Palm width</string>
     <string name="restore_title">Restore from %1$s?</string>
     <string name="restore_body">Everything on this phone is replaced. A copy is kept: undo it in Profile → Backup and sync → Undo last restore.</string>
     <string name="badge_unlocked_detail">Unlocked. %1$s.</string>
@@ -724,6 +714,7 @@
     <string name="detail_link_body">Paste a YouTube link for this exercise. Leave empty to search YouTube instead.</string>
     <string name="plan_switched_to">Plan switched to %1$s</string>
     <string name="plan_reading">Reading your plan…</string>
+    <string name="plan_paste_unreadable">Couldn\'t find a plan in that text. Copy the Gem\'s whole answer, then paste it again.</string>
     <string name="plan_workout">Workout</string>
     <string name="plan_switched">Switched to %1$s</string>
     <string name="plan_days_swapped">%1$s and %2$s swapped</string>
@@ -739,7 +730,6 @@
     <string name="plan_rest_seconds">rest %1$ds</string>
     <string name="plan_add_to_day">Add to %1$s</string>
     <string name="plan_ready_made_title">Ready-made plans</string>
-    <string name="plan_ready_made_link">Or pick a ready-made plan</string>
     <string name="plan_previous_tap">Tap one to make it your plan again.</string>
     <string name="plan_src_coach">From the coach</string>
     <string name="plan_src_docs">From Google Docs</string>
@@ -874,13 +864,10 @@
     <string name="food_g_carbs">%1$d g carbs</string>
     <string name="profile_track_carbs">Track carbs</string>
     <string name="profile_daily_carbs">Daily carbs</string>
-    <string name="profile_carbs_suggested">Suggested %1$d g: calories left after protein and a %2$d%% fat share</string>
     <string name="profile_about_you">About you</string>
     <string name="profile_about_you_hint">Sets your calorie suggestion and the body on the muscle map</string>
     <string name="profile_daily_targets">Daily targets</string>
-    <string name="goals_protein_suggested">Suggested %1$d g at %2$s g per kg of body weight</string>
     <string name="profile_backup_file">Backup file</string>
-    <string name="profile_protein_per_kg">Protein per kg</string>
     <string name="unit_g_per_kg">g/kg</string>
     <string name="profile_fat_share">Fat share of calories</string>
     <string name="hc_test_title">Check Health Connect</string>
@@ -1225,10 +1212,7 @@
     <string name="debrief_open">Workout debrief</string>
     <!-- Profile: folding settings categories -->
     <string name="settings_section_settings">Settings</string>
-    <string name="settings_group_body">Body and health</string>
-    <string name="settings_group_goals">Goals and nutrition</string>
-    <string name="settings_group_training">Training</string>
-    <string name="settings_group_coach">Advanced: AI</string>
+    <string name="settings_group_coach">Gemini</string>
     <string name="settings_group_app">App and appearance</string>
     <string name="settings_group_backup">Backup and sync</string>
     <string name="settings_group_about">About</string>
@@ -1236,7 +1220,6 @@
     <string name="summary_body_not_set">Height and age not set yet</string>
     <string name="summary_fitbit_on">Fitbit on</string>
     <string name="summary_fitbit_off">Fitbit off</string>
-    <string name="summary_per_week">%1$d per week</string>
     <string name="summary_reminder_at">Reminder %1$s</string>
     <string name="summary_reminder_off">No reminder</string>
     <string name="summary_equipment_unset">Equipment not set</string>
@@ -1248,15 +1231,19 @@
     <string name="summary_drive_none">Drive connected · no backup yet</string>
     <!-- Profile: equipment picker -->
     <string name="equipment_title">Training equipment</string>
-    <string name="equipment_hint">The coach and the exercise swapper only suggest exercises you can do with this.</string>
-    <string name="equipment_step_setup">Pick your setup</string>
-    <string name="equipment_step_setup_hint">Choose the one closest to where you train.</string>
-    <string name="equipment_step_items">Adjust single items</string>
-    <string name="equipment_step_items_hint">Tick what you have, untick what you don\'t.</string>
-    <string name="equipment_custom">Custom mix</string>
-    <string name="equipment_custom_hint">Your own choice of items below</string>
-    <string name="equipment_no_items">No equipment needed</string>
-    <string name="equipment_always">Always included</string>
+    <string name="equipment_hint">Exercise swaps and the exercise picker only suggest what you can do with this.</string>
+    <string name="equipment_customize">Customize gear</string>
+    <string name="equipment_customize_row">Customize gear · %1$s (%2$s)</string>
+    <string name="equipment_select_all">All</string>
+    <string name="equipment_custom">Custom</string>
+    <string name="equipment_no_items">Bodyweight only</string>
+    <string name="equipment_always">Bodyweight exercises always included</string>
+    <plurals name="equipment_item_count">
+        <item quantity="zero">Bodyweight only</item>
+        <item quantity="one">1 item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <string name="equipment_group_count">%1$d/%2$d</string>
     <!-- 2.8.0 Fitbit readiness -->
     <string name="ready_reconnect_body">Fitbit access was turned off in Health Connect. Reconnect to see your readiness.</string>
     <string name="ready_reconnect">Reconnect</string>
@@ -1321,9 +1308,8 @@
     <string name="cd_edit">edit</string>
     <string name="picker_my_equipment">My equipment</string>
     <string name="picker_best_swaps">Best biomechanical matches</string>
-    <string name="profile_body_fat_optional" formatted="false">Body fat % (optional)</string>
     <string name="onb_available_equipment">Your available equipment</string>
-    <string name="onb_equipment_hint">Pick what you have on most days. You can tick more later in Profile → Training.</string>
+    <string name="onb_equipment_hint">Pick what you have on most days. You can customize individual items any time in your plan.</string>
     <string name="live_tag_easy">Easy · RIR 3+</string>
     <string name="live_tag_solid">Solid · RIR 1-2</string>
     <string name="live_tag_max">Max · RIR 0</string>
@@ -1444,7 +1430,7 @@
     <string name="target_nudge_make">Make it %1$d</string>
     <string name="target_nudge_keep">Keep %1$d</string>
     <string name="ai_key_needed_coach">A free Gemini key turns the coach on.</string>
-    <string name="ai_toggle_title">Advanced: AI coach (bring your own key)</string>
+    <string name="ai_toggle_title">Advanced: meal photo AI (bring your own key)</string>
     <string name="ai_toggle_body">Off: the app works fully without AI.</string>
     <string name="coach_today_recovery_title">Recovery</string>
     <string name="coach_fresh">Ready: %1$s</string>
@@ -1503,16 +1489,20 @@
     <string name="barcode_unnamed">Product %1$s</string>
     <string name="profile_credits_data">Food data: Open Food Facts (ODbL), Saudi Food and Drug Authority, USDA.</string>
     <string name="pb_title">Build my plan</string>
-    <string name="pb_quick_hint">Four quick answers. You can change anything afterwards.</string>
     <string name="pb_goal">Goal</string>
     <string name="pb_goal_strength">Strength</string>
+    <string name="pb_goal_strength_desc">Heavy lifts · 4–6 reps · 2.5m rest</string>
     <string name="pb_goal_muscle">Build muscle</string>
+    <string name="pb_goal_muscle_desc">Hypertrophy · 8–12 reps · 90s rest</string>
     <string name="pb_goal_fat">Lose fat</string>
+    <string name="pb_goal_fat_desc">Fast circuits · 12–15 reps · 45s rest</string>
     <string name="pb_goal_endurance">Endurance</string>
+    <string name="pb_goal_endurance_desc">Stamina · 15–20 reps · 30s rest</string>
     <string name="pb_goal_general">General fitness</string>
+    <string name="pb_goal_general_desc">All-around · 8–12 reps · 75s rest</string>
     <string name="pb_days">Days per week</string>
     <string name="pb_minutes">Minutes per workout</string>
-    <string name="pb_equipment">Where you train</string>
+    <string name="pb_equipment">Where do you train?</string>
     <string name="pb_build">Build my plan</string>
     <string name="pb_building">Building your plan…</string>
     <string name="pb_fit_me">Make it fit me perfectly</string>
@@ -1521,7 +1511,6 @@
     <string name="pb_row_you">You</string>
     <string name="pb_row_body">Body</string>
     <string name="pb_row_schedule">Schedule</string>
-    <string name="pb_row_gear">Gear</string>
     <string name="pb_row_style">Style</string>
     <string name="pb_row_avoid">Avoid</string>
     <string name="pb_exp_new">New</string>
@@ -1586,8 +1575,6 @@
     <string name="pb_plan_name">%1$s plan</string>
     <string name="pb_progression">Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.</string>
     <string name="pb_entry_info">Answer a few questions, get a plan</string>
-    <string name="pb_rebuild">Rebuild my plan</string>
-    <string name="pb_rebuild_hint">Answer a few questions again</string>
     <string name="lang_choose_en" translatable="false">Choose your language</string>
     <string name="lang_choose_ar" translatable="false">اختر لغتك</string>
     <string name="lang_name_en" translatable="false">English</string>
@@ -1808,7 +1795,7 @@
     <string name="settings_ai_gemini_title">Use the Gemini app (recommended)</string>
     <string name="settings_ai_gemini_body">Free, and it gives the best results. Copy a prompt, ask Gemini in its own app, then paste its reply here.</string>
     <string name="settings_ai_key_title">API key (basic)</string>
-    <string name="settings_ai_key_body">The free API is basic. It handles quick meal estimates and chat, but the Gemini app does more.</string>
+    <string name="settings_ai_key_body">The free API is basic. It handles quick meal estimates from a photo, but the Gemini app does more.</string>
     <string name="progress_insights_title">Worth noticing</string>
     <string name="call_steady_short_nights2">Sleep has been short two nights running. Train, but leave the extra sets.</string>
     <string name="call_ease_short_sleep2">Only %1$s of sleep. Keep the workout and take weight off the bar.</string>
@@ -1875,4 +1862,25 @@
     <string name="insight_muscle_top_1">Most of your work in the last four weeks went to %1$s. Sets: %2$d.</string>
     <string name="insight_muscle_top_2">%1$s led the last four weeks. Sets: %2$d.</string>
     <string name="insight_muscle_top_3">Four-week tally: %1$s is on top. Sets: %2$d.</string>
+    <string name="settings_group_you">You and your goals</string>
+    <string name="settings_group_health">Fitbit and health</string>
+    <string name="summary_protein">%1$d g protein</string>
+    <string name="you_current_weight">Current weight</string>
+    <string name="you_weight_from_log">From your weight log</string>
+    <string name="you_targets_hint">What you aim to eat each day. Suggested numbers follow your details and goal.</string>
+    <string name="you_protein_ratio">%1$s g per kg of body weight</string>
+    <string name="you_protein_tap">Tap to change</string>
+    <string name="you_protein_dialog_body">Pick grams per kg of body weight and the daily grams follow. You can also set the grams yourself.</string>
+    <string name="you_protein_no_weight">Log your weight to work protein out from grams per kg. Until then, set the grams yourself.</string>
+    <string name="you_protein_slider_state">%1$s g per kg</string>
+    <string name="you_protein_grams">Grams a day</string>
+    <string name="you_body_fat">Body fat</string>
+    <string name="you_carbs_ratio">With %1$d%% of calories from fat</string>
+    <string name="you_carbs_dialog_body">Carbs fill the calories left after protein and fat. Pick how much of your calories come from fat and the daily grams follow. You can also set the grams yourself.</string>
+    <string name="cd_expanded">expanded</string>
+    <string name="cd_collapsed">collapsed</string>
+    <string name="you_advanced">Advanced</string>
+    <string name="you_advanced_hint">Body fat, if you know it</string>
+    <string name="you_advanced_bodyfat">Body fat %1$s%%</string>
+    <string name="plan_equipment_hint">Exercises and swaps follow it</string>
 </resources>

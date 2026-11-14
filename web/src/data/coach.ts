@@ -6,7 +6,7 @@ import type { ReadinessDayRow } from './db';
 import type { ProgressSnapshot } from './progress';
 import type { PlanDraft } from './seed/starter-plans';
 import type { PlanDraftDay, PlanDraftItem, ExerciseEntity, SessionEntity } from '../domain/entities';
-import { EQUIPMENT, EQUIPMENT_LABEL, profileFor, rankSubstitutes, translateDraftItem, type Equipment } from '../domain/exercise-swap-engine';
+import { ALL_ACTIVE_EQUIPMENT, EQUIPMENT_LABEL, expandLegacyEquipment, profileFits, profileFor, rankSubstitutes, translateDraftItem, type Equipment } from '../domain/exercise-swap-engine';
 import { isExerciseKind, isMuscle, MUSCLES, MUSCLE_INFO, type ExerciseKind } from '../domain/muscle';
 import { CUT_PACE, GAIN_PACE, MIN_SAFE_KCAL, MIN_SAFE_KCAL_MALE, weightTrendNote } from '../domain/nutrition';
 import { recordScore } from '../domain/progress';
@@ -484,10 +484,11 @@ const equipmentLabel = (e: Equipment) => EQUIPMENT_LABEL[e].en;
 
 /** The plan JSON shape, exercise ids the person can do, and (with a current plan) the small-changes format. */
 export function planSchemaInstructions(library: readonly ExerciseEntity[], available: ReadonlySet<Equipment> = new Set(), current: CoachPlan | null = null): string {
-  const allowed = new Set<Equipment>(available.size ? available : EQUIPMENT);
+  const exp = expandLegacyEquipment(available);
+  const allowed = new Set<Equipment>(exp.size ? exp : ALL_ACTIVE_EQUIPMENT);
   allowed.add('BODYWEIGHT');
-  const ids = library.filter((e) => !e.custom && allowed.has(profileFor(e).equipment)).map((e) => e.id).join(', ');
-  const limited = available.size > 0 && !EQUIPMENT.every((e) => allowed.has(e));
+  const ids = library.filter((e) => !e.custom && profileFits(profileFor(e), allowed)).map((e) => e.id).join(', ');
+  const limited = available.size > 0 && !ALL_ACTIVE_EQUIPMENT.every((e) => allowed.has(e));
   const equipmentRule = limited
     ? `CRITICAL EQUIPMENT CONSTRAINT: The user ONLY has access to: ${[...allowed].map(equipmentLabel).join(', ')}. You MUST ONLY program exercises that use this equipment. NEVER program unavailable machines, cables, or barbells.`
     : "Match exercise selection to the user's available equipment.";

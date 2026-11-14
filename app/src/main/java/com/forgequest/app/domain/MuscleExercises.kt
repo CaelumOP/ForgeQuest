@@ -39,13 +39,13 @@ object MuscleExercises {
         allEquipment: Boolean = false,
     ): MuscleExerciseList {
         val targets = setOf(muscle) + COMPANIONS[muscle].orEmpty()
-        val allowed = equipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
+        val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
         val rows = library
             .filter { ex -> ex.id !in ExerciseCatalog.STRETCH_IDS && (ex.primary.any { it in targets } || ex.secondary.any { it in targets }) }
             .map { MuscleExercise(it, it.primary.any { m -> m in targets }, ExerciseTiers.of(it)) }
             .sortedWith(compareBy<MuscleExercise> { !it.main }.thenBy { it.tier?.ordinal ?: Tier.entries.size }.thenBy { it.exercise.name })
         val (inPlan, rest) = rows.partition { it.exercise.id in planExerciseIds }
-        val shown = if (allEquipment) rest else rest.filter { ExerciseSwapEngine.profileFor(it.exercise).equipment in allowed }
+        val shown = if (allEquipment) rest else rest.filter { ExerciseSwapEngine.profileFor(it.exercise).fits(allowed) }
         return MuscleExerciseList(inPlan, shown, rest.size - shown.size)
     }
 

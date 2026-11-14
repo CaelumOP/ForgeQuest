@@ -51,6 +51,7 @@ import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.MovementPattern
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.expandLegacyEquipment
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.localLabel
@@ -104,7 +105,8 @@ fun ExercisePickerSheet(
 ) {
     val c = Fit.colors
     // "My equipment" is only offered when the person owns some, but not all, of it.
-    val partialEquipment = userEquipment.isNotEmpty() && userEquipment.size < Equipment.entries.size
+    val expandedUserEquipment = remember(userEquipment) { expandLegacyEquipment(userEquipment) }
+    val partialEquipment = expandedUserEquipment.isNotEmpty() && !expandedUserEquipment.containsAll(Equipment.allActive)
     var query by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf(if (sourceExercise != null) null else initialMuscle) }
     var onlyMyEquipment by remember { mutableStateOf(partialEquipment) }
@@ -112,12 +114,12 @@ fun ExercisePickerSheet(
     var creating by remember { mutableStateOf(false) }
     val sheetState = rememberFullSheetState()
 
-    val effectiveEquipment = remember(userEquipment, onlyMyEquipment, selectedEquipment) {
+    val effectiveEquipment = remember(expandedUserEquipment, onlyMyEquipment, selectedEquipment) {
         val picked = selectedEquipment
         when {
             picked != null -> setOf(picked)
-            onlyMyEquipment -> userEquipment + Equipment.BODYWEIGHT
-            else -> Equipment.entries.toSet()
+            onlyMyEquipment -> expandedUserEquipment + Equipment.BODYWEIGHT
+            else -> Equipment.allActive
         }
     }
 
@@ -167,7 +169,7 @@ fun ExercisePickerSheet(
                         onClick = { onlyMyEquipment = !onlyMyEquipment; selectedEquipment = null },
                     )
                 }
-                Equipment.entries.forEach { eq ->
+                (listOf(Equipment.BODYWEIGHT) + Equipment.selectableEntries).forEach { eq ->
                     ChoiceChip(
                         text = eq.localName(),
                         selected = selectedEquipment == eq,
@@ -193,11 +195,12 @@ fun ExercisePickerSheet(
                     onCancel = { creating = false },
                 )
             } else {
-                val filtered = remember(library, query, muscle, effectiveEquipment, sourceExercise, topSwaps) {
+                val filtered = remember(library, query, muscle, effectiveEquipment, selectedEquipment, sourceExercise, topSwaps) {
                     val topSwapIds = topSwaps.map { it.exercise.id }.toSet()
                     library.filter { ex ->
                         val prof = ExerciseSwapEngine.profileFor(ex)
-                        val eqOk = prof.equipment in effectiveEquipment
+                        val eqOk = selectedEquipment?.let { picked -> picked == prof.equipment || picked in prof.requires }
+                            ?: prof.fits(effectiveEquipment)
                         val queryOk = query.isBlank() || ex.name.contains(query.trim(), ignoreCase = true)
                         val muscleOk = muscle == null || muscle in ex.primary || muscle in ex.secondary
                         eqOk && queryOk && muscleOk && ex.id != sourceExercise?.id && ex.id !in topSwapIds

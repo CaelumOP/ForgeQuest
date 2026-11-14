@@ -29,15 +29,24 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.MonitorHeart
+import androidx.compose.material.icons.rounded.RadioButtonChecked
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -77,9 +86,10 @@ import com.forgequest.app.data.plan.PlanAnswers
 import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.domain.Cardio
+import androidx.compose.foundation.BorderStroke
+import com.forgequest.app.container
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Equipment
-import com.forgequest.app.domain.EquipmentPreset
 import com.forgequest.app.domain.Experience
 import com.forgequest.app.domain.Injury
 import com.forgequest.app.domain.Muscle
@@ -88,21 +98,25 @@ import com.forgequest.app.domain.PlanBuilder
 import com.forgequest.app.domain.RepPref
 import com.forgequest.app.domain.RestPref
 import com.forgequest.app.domain.TrainGoal
+import com.forgequest.app.domain.expandLegacyEquipment
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
+import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.localLabel
-import com.forgequest.app.ui.profile.shortLabel
+import com.forgequest.app.ui.profile.GearSheet
+import com.forgequest.app.ui.profile.TrainingPlaceSelector
+import com.forgequest.app.ui.profile.encodeEquipmentSet
+import com.forgequest.app.ui.profile.gearCustomizeSummary
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.workouts.ExercisePickerSheet
-import com.forgequest.app.ui.workouts.localName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -114,10 +128,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Equipment setting text for [equipment]: a preset's own encoding when it matches one, else the item names. */
-internal fun equipmentSetting(equipment: Set<Equipment>): String {
-    val all = equipment + Equipment.BODYWEIGHT
-    return EquipmentPreset.entries.firstOrNull { it.equipment == all }?.encode() ?: all.joinToString(",") { it.name }
-}
+/** Encodes the equipment set into the `equipment` setting string. */
+internal fun equipmentSetting(equipment: Set<Equipment>): String = encodeEquipmentSet(equipment)
 
 class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
     val library: StateFlow<List<ExerciseEntity>> = app.workouts.library.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -140,7 +152,7 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
         viewModelScope.launch {
             val s = app.settings.current()
             answers.value = PlanAnswers.decode(s.planBuilderAnswers)
-                ?: s.configuredEquipment.takeIf { it.isNotEmpty() }?.let { PlanAnswers(equipment = it + Equipment.BODYWEIGHT) }
+                ?: s.configuredEquipment.takeIf { it.isNotEmpty() }?.let { PlanAnswers(equipment = expandLegacyEquipment(it) + Equipment.BODYWEIGHT) }
                 ?: PlanAnswers()
             ready.value = true
         }
@@ -217,7 +229,8 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
             try {
                 val draft = localizeBuiltPlan(app, plan, a.goal)
                 app.workouts.applyPlan(draft, "builder")
-                app.settings.update { it.copy(equipment = equipmentSetting(a.equipment), planBuilderAnswers = a.encode()) }
+                // weeklyTargetOverride = 0: the weekly target follows the days picked here, not an older number from onboarding.
+                app.settings.update { it.copy(equipment = equipmentSetting(a.equipment), planBuilderAnswers = a.encode(), weeklyTargetOverride = 0) }
                 onDone()
             } finally {
                 busy.value = false
@@ -251,28 +264,19 @@ fun PlanBuilderScreen(nav: NavHostController) {
                     stringResource(if (review != null) R.string.pb_review_title else R.string.pb_title),
                     style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.semantics { heading() },
                 )
-                Text(
-                    stringResource(if (review != null) R.string.pb_review_hint else R.string.pb_quick_hint),
-                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                )
+                if (review != null) {
+                    Text(
+                        stringResource(R.string.pb_review_hint),
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
+                }
             }
         }
         if (review == null) {
             Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter).padding(bottom = 16.dp),
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter).padding(top = 4.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // The other quick way to a plan: the ones that ship with the app, opened on the plan screen.
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        // Opened from the plan screen: replace that one too, so Back does not land on a second copy of it.
-                        val fromEditor = nav.previousBackStackEntry?.destination?.route == com.forgequest.app.ui.Routes.PLAN
-                        nav.navigate(com.forgequest.app.ui.Routes.plan(templates = true)) {
-                            popUpTo(if (fromEditor) com.forgequest.app.ui.Routes.PLAN else com.forgequest.app.ui.Routes.PLAN_BUILDER) { inclusive = true }
-                        }
-                    },
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp),
-                ) { Text(stringResource(R.string.plan_ready_made_link), color = c.teal) }
                 QuickCard(a, vm::change)
                 FitMeSection(a, vm::change, library)
             }
@@ -321,18 +325,14 @@ fun PlanBuilderScreen(nav: NavHostController) {
 
 // ---- the four quick answers ----
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun QuickCard(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -> Unit) {
-    val c = Fit.colors
     val minuteOptions = listOf(20, 30, 45, 60)
     FitCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Label(stringResource(R.string.pb_goal))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TrainGoal.entries.forEach { g ->
-                    AnswerChip(stringResource(g.pbRes()), a.goal == g) { change { it.copy(goal = g) } }
-                }
+            TrainGoalSelector(a.goal) { g ->
+                change { it.copy(goal = g) }
             }
             Label(stringResource(R.string.pb_days))
             SegmentedTabs(
@@ -348,14 +348,115 @@ private fun QuickCard(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -> 
                 onSelect = { i -> change { it.copy(minutes = minuteOptions[i], minutesByDay = emptyMap()) } },
                 modifier = Modifier.heightIn(min = 48.dp),
             )
+            var gearOpen by remember { mutableStateOf(false) }
             Label(stringResource(R.string.pb_equipment))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EquipmentPreset.entries.forEach { p ->
-                    AnswerChip(p.shortLabel(), a.equipment == p.equipment) { change { it.copy(equipment = p.equipment) } }
+            TrainingPlaceSelector(a.equipment) { place ->
+                change { it.copy(equipment = place.equipment) }
+            }
+            Surface(
+                onClick = { gearOpen = true },
+                shape = ForgeShape.Sm,
+                color = Fit.colors.cardHigh,
+                border = BorderStroke(1.dp, Fit.colors.divider),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Rounded.Tune, contentDescription = null, tint = Fit.colors.teal, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        gearCustomizeSummary(a.equipment),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Fit.colors.textPrimary,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = Fit.colors.textSecondary)
+                }
+            }
+            if (gearOpen) {
+                GearSheet(
+                    equipment = a.equipment,
+                    onUpdate = { next -> change { it.copy(equipment = next) } },
+                    onDismiss = { gearOpen = false },
+                )
+            }
+        }
+    }
+}
+
+/** Five full-width goal choice rows (Draft 3): icon circle, title, rep/rest spec subtitle, and radio state. */
+@Composable
+private fun TrainGoalSelector(
+    selected: TrainGoal,
+    onSelect: (TrainGoal) -> Unit,
+) {
+    val c = Fit.colors
+    val haptics = LocalContext.current.container.haptics
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        TrainGoal.entries.forEach { g ->
+            val on = selected == g
+            Surface(
+                shape = ForgeShape.Sm,
+                color = if (on) c.tealTrack else c.cardHigh,
+                border = BorderStroke(1.dp, if (on) c.teal else c.divider),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .selectable(selected = on, role = Role.RadioButton) {
+                        haptics.lightTick()
+                        onSelect(g)
+                    },
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconCircle(
+                        icon = g.icon(),
+                        tint = if (on) c.onTeal else c.teal,
+                        track = if (on) c.teal else c.card,
+                        size = 34.dp,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(g.pbRes()),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = c.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            stringResource(g.descRes()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (on) c.teal else c.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Icon(
+                        imageVector = if (on) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
+                        contentDescription = null,
+                        tint = if (on) c.teal else c.textSecondary,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
         }
     }
+}
+
+private fun TrainGoal.icon() = when (this) {
+    TrainGoal.STRENGTH -> Icons.Rounded.Bolt
+    TrainGoal.MUSCLE -> Icons.Rounded.FitnessCenter
+    TrainGoal.FAT_LOSS -> Icons.Rounded.LocalFireDepartment
+    TrainGoal.ENDURANCE -> Icons.Rounded.MonitorHeart
+    TrainGoal.GENERAL -> Icons.Rounded.TrackChanges
 }
 
 // ---- the optional deep section ----
@@ -388,9 +489,6 @@ private fun FitMeSection(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) 
                 if (scheduleCustom) a.days.sorted().joinToString(sep) { Dates.dayShort(it) } else auto,
                 open == "schedule", { toggle("schedule") },
             ) { ScheduleRow(a, change) }
-
-            val gearCustom = EquipmentPreset.entries.none { it.equipment == a.equipment }
-            DeepRow(stringResource(R.string.pb_row_gear), if (gearCustom) stringResource(R.string.pb_custom) else auto, open == "gear", { toggle("gear") }) { GearRow(a, change) }
 
             val styleCustom = a.reps != RepPref.AUTO || a.rest != RestPref.AUTO || !a.holdsOk || a.cardio != Cardio.NONE || !a.warmUp || a.coolDown
             DeepRow(stringResource(R.string.pb_row_style), if (styleCustom) stringResource(R.string.pb_custom) else auto, open == "style", { toggle("style") }) { StyleRow(a, change) }
@@ -513,17 +611,6 @@ private fun ScheduleRow(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -
             onClick = { change { it.copy(days = it.days - day, minutesByDay = it.minutesByDay - day) }; editDay = 0 },
             modifier = Modifier.heightIn(min = 48.dp),
         ) { Text(stringResource(R.string.pb_day_remove)) }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun GearRow(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Equipment.entries.filter { it != Equipment.BODYWEIGHT }.forEach { eq ->
-            val on = eq in a.equipment
-            AnswerChip(eq.localName(), on) { change { it.copy(equipment = if (on) it.equipment - eq else it.equipment + eq + Equipment.BODYWEIGHT) } }
-        }
     }
 }
 

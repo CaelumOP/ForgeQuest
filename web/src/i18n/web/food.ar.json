@@ -10,5 +10,11 @@
   "food_w_day_nav": "اليوم",
   "food_w_take_photo": "التقاط صورة",
   "food_w_photo_bad": "تعذّر فتح هذه الصورة. جرّب صورة أخرى.",
-  "food_w_scan_privacy": "تُرسل الصورة إلى Gemini بمفتاحك الخاص لتقدير الوجبة، ولا تُحفظ على هاتفك."
+  "food_w_scan_privacy": "تُرسل الصورة إلى Gemini بمفتاحك الخاص لتقدير الوجبة، ولا تُحفظ على هاتفك.",
+  "cd_excluded": "مستبعد",
+  "cd_included": "مضمّن",
+  "food_add_a_food": "إضافة طعام",
+  "food_calories_surplus": "سعرات زائدة",
+  "food_protein_of_goal": "⁦{1} / {2}⁩ غ",
+  "label_protein": "البروتين"
 }

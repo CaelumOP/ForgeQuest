@@ -300,8 +300,8 @@ internal fun scoreColor(score: Int) = if (score >= 8) Fit.colors.gold else Fit.c
 
 /**
  * The workout debrief: the calculated score with its reasons, then the headline, what went well (teal), what to watch
- * (gold) and next time (blue), all worked out from the person's numbers ([DebriefText]). [onAskCoach] shows the coach
- * button; null hides it (no AI key). [names] maps an exercise id to its name.
+ * (gold) and next time (blue), all worked out from the person's numbers ([DebriefText]). [names] maps an exercise id
+ * to its name.
  */
 @Composable
 fun DebriefCard(
@@ -309,7 +309,6 @@ fun DebriefCard(
     score: WorkoutScore.Result?,
     names: Map<String, String>,
     unit: WeightUnit,
-    onAskCoach: (() -> Unit)? = null,
     /** True on the finish screen only: the score counts up and the lines rise in. Reopened from the journal it just shows. */
     celebrate: Boolean = false,
 ) {
@@ -374,11 +373,6 @@ fun DebriefCard(
             lines.next.forEachIndexed { i, it -> Text(it, style = MaterialTheme.typography.bodySmall, color = c.blue, modifier = Modifier.riseIn(celebrate, linesGo, 1 + lines.wins.size + lines.watch.size + i).padding(top = 4.dp)) }
             lines.sameRest?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
             lines.footnote?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp)) }
-        }
-        if (onAskCoach != null) {
-            TextButton(onClick = onAskCoach, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                Text(stringResource(R.string.debrief_ask_coach), color = c.teal)
-            }
         }
     }
 }

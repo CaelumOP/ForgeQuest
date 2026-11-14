@@ -3,7 +3,10 @@ import {
   DAY_BASE, MIN_FAT_SHARE_PCT, proteinPerKgFor, suggestedCarbs, suggestedKcal, suggestedProtein,
   type NutritionGoal,
 } from '../../domain/nutrition'
-import { EQUIPMENT, type Equipment } from '../../domain/exercise-swap-engine'
+import { getLang, plural, t } from '../../i18n'
+import {
+  ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, matchTrainingPlace, TRAINING_PLACE_INFO, type Equipment,
+} from '../../domain/exercise-swap-engine'
 import type { Settings } from '../../data/settings'
 
 /** "a · b · c" of the non-blank parts, like Kotlin summary(). */
@@ -11,11 +14,39 @@ export const summary = (...parts: (string | null | undefined | false)[]): string
   parts.filter((p): p is string => !!p && p.trim() !== '').join(' · ')
 
 /** Encoded equipment setting after ticking/unticking one item; bodyweight is always included. */
-export function toggleEquipment(current: ReadonlySet<Equipment>, item: Equipment): string {
-  const next = new Set<Equipment>(current)
-  if (next.has(item)) next.delete(item); else next.add(item)
+export function toggledEquipmentSet(current: ReadonlySet<Equipment>, item: Equipment): Set<Equipment> {
+  const next = expandLegacyEquipment(current)
+  if (item !== 'BODYWEIGHT') {
+    if (next.has(item)) next.delete(item); else next.add(item)
+  }
   next.add('BODYWEIGHT')
-  return EQUIPMENT.filter((e) => next.has(e)).join(',')
+  return next
+}
+
+export function toggleEquipment(current: ReadonlySet<Equipment>, item: Equipment): string {
+  const next = toggledEquipmentSet(current, item)
+  return ALL_ACTIVE_EQUIPMENT.filter((e) => next.has(e)).join(',')
+}
+
+export function equipmentSummary(configured: ReadonlySet<Equipment>): string {
+  const clean = expandLegacyEquipment(configured)
+  if (clean.size === 0) return t('summary_equipment_unset')
+  const place = matchTrainingPlace(clean)
+  if (place) return getLang() === 'ar' ? TRAINING_PLACE_INFO[place].labelAr : TRAINING_PLACE_INFO[place].labelEn
+  const count = [...clean].filter((e) => e !== 'BODYWEIGHT').length
+  const countLabel = plural('equipment_item_count', count, count)
+  return count === 0 ? countLabel : `${t('equipment_custom')} · ${countLabel}`
+}
+
+export function gearCustomizeSummary(equipment: ReadonlySet<Equipment>): string {
+  const clean = expandLegacyEquipment(equipment)
+  const place = matchTrainingPlace(clean)
+  const placeLabel = place
+    ? (getLang() === 'ar' ? TRAINING_PLACE_INFO[place].labelAr : TRAINING_PLACE_INFO[place].labelEn)
+    : t('equipment_custom')
+  const count = [...clean].filter((e) => e !== 'BODYWEIGHT').length
+  const countLabel = plural('equipment_item_count', count, count)
+  return t('equipment_customize_row', placeLabel, countLabel)
 }
 
 export const noteLines = (notes: string): string[] => notes.split('\n').map((l) => l.trim()).filter(Boolean)
@@ -77,3 +108,7 @@ export function applyNutrition(i: GoalInputs, patch: NutritionPatch, today: numb
 /** Switching goal (kept for its callers and tests). */
 export const applyGoal = (i: GoalInputs, goal: NutritionGoal, today: number): Settings =>
   goal === i.settings.nutritionGoal ? i.settings : applyNutrition(i, { nutritionGoal: goal }, today)
+
+/** The share of calories that protein + carb grams leave for fat, or null when kcalGoal <= 0. */
+export const impliedFatPct = (s: Pick<Settings, 'kcalGoal' | 'proteinGoal' | 'carbsGoal'>): number | null =>
+  s.kcalGoal > 0 ? Math.min(100, Math.max(0, Math.round(((s.kcalGoal - 4 * (s.proteinGoal + s.carbsGoal)) * 100) / s.kcalGoal))) : null

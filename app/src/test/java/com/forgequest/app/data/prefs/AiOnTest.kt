@@ -9,7 +9,4 @@ class AiOnTest {
     @Test fun noChoiceNoKeyIsOff() = assertFalse(resolveAiOn(null, false))
     @Test fun offWithKeyIsOff() = assertFalse(resolveAiOn(false, true))
     @Test fun onWithoutKeyIsOn() = assertTrue(resolveAiOn(true, false))
-    @Test fun chatTabNeedsAiAndKey() = assertTrue(chatIsTab(true, "k"))
-    @Test fun chatTabOffWithoutKey() = assertFalse(chatIsTab(true, " "))
-    @Test fun chatTabOffWhenAiOff() = assertFalse(chatIsTab(false, "k"))
 }

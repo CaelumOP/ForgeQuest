@@ -15,7 +15,8 @@ class StarterPlanIndexTest {
         .map { ExerciseSwapEngine.profileFor(catalog.getValue(it.exerciseId)).equipment }.toSet()
 
     @Test fun bodyweightPlanNeedsNoWeights() {
-        assertTrue(equipmentOf(StarterPlans.BODYWEIGHT_INDEX).all { it == Equipment.BODYWEIGHT || it == Equipment.DIP_BARS_OR_BENCH })
+        val allowed = setOf(Equipment.BODYWEIGHT, Equipment.DIP_STATION, Equipment.LOW_BAR, Equipment.FLAT_BENCH)
+        assertTrue(equipmentOf(StarterPlans.BODYWEIGHT_INDEX).all { it in allowed })
     }
 
     @Test fun dumbbellPlanUsesDumbbells() {

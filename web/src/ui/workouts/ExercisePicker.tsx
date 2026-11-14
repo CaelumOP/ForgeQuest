@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
 import type { ExerciseRow } from '../../data/db'
-import { EQUIPMENT, EQUIPMENT_LABEL, MOVEMENT_PATTERN_LABEL, profileFor, rankSubstitutes, type Equipment } from '../../domain/exercise-swap-engine'
+import { ALL_ACTIVE_EQUIPMENT, EQUIPMENT_LABEL, MOVEMENT_PATTERN_LABEL, expandLegacyEquipment, profileFor, rankSubstitutes, type Equipment } from '../../domain/exercise-swap-engine'
 import { EXERCISE_KINDS, MUSCLES, type ExerciseKind, type Muscle } from '../../domain/muscle'
 import { Button, Chip, ChipGroup, Sheet, TextField } from '../kit'
 import { AddIcon, SearchIcon } from './glyphs'
@@ -35,8 +35,8 @@ export function ExercisePicker(p: ExercisePickerProps) {
 
 function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, userEquipment }: ExercisePickerProps) {
   const lang = getLang()
-  const mine = userEquipment ?? new Set<Equipment>()
-  const limited = mine.size > 0 && mine.size < EQUIPMENT.length
+  const mine = useMemo(() => expandLegacyEquipment(userEquipment ?? new Set<Equipment>()), [userEquipment])
+  const limited = mine.size > 0 && !ALL_ACTIVE_EQUIPMENT.every((e) => mine.has(e))
   const [query, setQuery] = useState('')
   const [muscle, setMuscle] = useState<Muscle | null>(sourceExercise ? null : initialMuscle ?? null)
   const [onlyMine, setOnlyMine] = useState(limited)
@@ -46,19 +46,26 @@ function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, 
   const effective = useMemo<ReadonlySet<Equipment>>(() => {
     if (eq) return new Set([eq])
     if (onlyMine && mine.size > 0) return new Set<Equipment>([...mine, 'BODYWEIGHT'])
-    return new Set(EQUIPMENT)
-  }, [eq, onlyMine, userEquipment])
+    return new Set(ALL_ACTIVE_EQUIPMENT)
+  }, [eq, onlyMine, mine])
 
   const top = useMemo(() => {
     if (!sourceExercise || query.trim() || muscle) return []
-    return rankSubstitutes(sourceExercise, library, effective).filter((c) => c.matchesUserEquipment && c.score >= 40).slice(0, 5)
-  }, [sourceExercise, library, effective, query, muscle])
+    const swapSet = eq ? new Set(ALL_ACTIVE_EQUIPMENT) : effective
+    return rankSubstitutes(sourceExercise, library, swapSet)
+      .filter((c) => {
+        const prof = profileFor(c.exercise)
+        const ok = eq ? eq === prof.equipment || Boolean(prof.requires?.includes(eq)) : c.matchesUserEquipment
+        return ok && c.score >= 40
+      })
+      .slice(0, 5)
+  }, [sourceExercise, library, effective, eq, query, muscle])
 
   const rows = useMemo(() => {
     const exclude = new Set(top.map((c) => c.exercise.id))
     if (sourceExercise) exclude.add(sourceExercise.id)
-    return filterExercises(library, { query, muscle, equipment: effective, excludeIds: exclude, focusMuscle: sourceExercise?.primary[0] })
-  }, [library, query, muscle, effective, top, sourceExercise])
+    return filterExercises(library, { query, muscle, equipment: effective, selectedEquipment: eq, excludeIds: exclude, focusMuscle: sourceExercise?.primary[0] })
+  }, [library, query, muscle, effective, eq, top, sourceExercise])
 
   if (creating && onCreate) {
     return <CreateForm initialName={query.trim()} initialMuscle={muscle ?? sourceExercise?.primary[0] ?? null} onCreate={onCreate} onCancel={() => setCreating(false)} />
@@ -77,7 +84,7 @@ function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, 
       </div>
       <div class="wk-scroll" role="group" aria-label={t('workouts_web_filter_equipment')}>
         {limited && <Chip label={t('picker_my_equipment')} selected={onlyMine && !eq} onClick={() => { setOnlyMine(!onlyMine); setEq(null) }} />}
-        {EQUIPMENT.map((e) => (
+        {ALL_ACTIVE_EQUIPMENT.map((e) => (
           <Chip key={e} label={eqName(e)} selected={eq === e} onClick={() => { const next = eq === e ? null : e; setEq(next); if (next) setOnlyMine(false) }} />
         ))}
       </div>

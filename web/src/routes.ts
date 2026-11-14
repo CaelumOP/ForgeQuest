@@ -3,7 +3,6 @@ import { AiCheck } from './dev/AiCheck'
 import { DesignScreen } from './ui/design/DesignScreen'
 import { KitGallery } from './dev/KitGallery'
 import { ViewportCheck } from './dev/ViewportCheck'
-import { CoachScreen } from './ui/coach/CoachScreen'
 import { FoodScreen } from './ui/food/FoodScreen'
 import { ScanScreen } from './ui/food/ScanScreen'
 import { HistoryScreen } from './ui/history/HistoryScreen'
@@ -29,7 +28,6 @@ export const routes: Record<string, Route> = {
   '/': { title: 'tab_home', Screen: HomeScreen, tab: true },
   '/workouts': { title: 'tab_workouts', Screen: WorkoutsScreen, tab: true },
   '/food': { title: 'tab_food', Screen: FoodScreen, tab: true },
-  '/coach': { title: 'tab_coach', Screen: CoachScreen },
   '/profile': { title: 'tab_profile', Screen: ProfileScreen },
   '/live': { title: 'tab_workouts', Screen: LiveWorkoutScreen, bare: true },
   '/plan': { title: 'tab_workouts', Screen: PlanEditorScreen },

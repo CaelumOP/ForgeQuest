@@ -42,8 +42,8 @@ import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -75,7 +75,6 @@ import com.forgequest.app.domain.CutPace
 import com.forgequest.app.domain.DayActivity
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.GainPace
-import com.forgequest.app.domain.EquipmentPreset
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.WeightTrend
@@ -99,438 +98,6 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-internal fun BodySettingsGroup(
-    vm: SettingsViewModel,
-    s: ProgressSnapshot,
-    toggleGroup: (String) -> Unit,
-    probe: com.forgequest.app.data.health.HealthProbe,
-    startHealthCheck: () -> Unit,
-    healthAccess: androidx.activity.compose.ManagedActivityResultLauncher<Set<String>, Set<String>>,
-    onOpenHandDialog: () -> Unit,
-) {
-    val c = Fit.colors
-    val context = LocalContext.current
-    val settings = s.settings
-    val health by vm.app.health.state.collectAsState()
-    val thisYear = java.time.Year.now().value
-    val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
-    val steps = CalorieUi.stepsBase(health, s.sessions)
-    val connected = settings.healthEnabled && (health is com.forgequest.app.data.health.HealthState.Ready || health is com.forgequest.app.data.health.HealthState.Loading)
-
-    SettingsGroup(
-        Icons.Rounded.Accessibility, c.teal, c.tealTrack, stringResource(R.string.settings_group_body),
-        if (settings.heightCm <= 0f || age <= 0) summary(stringResource(R.string.summary_body_not_set), stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off))
-        else summary(
-            stringResource(if (settings.bodyType == BodyType.FEMALE) R.string.body_female else R.string.body_male),
-            "${settings.heightCm.toInt()} ${stringResource(R.string.unit_cm)}",
-            "$age ${stringResource(R.string.unit_years)}",
-            stringResource(settings.dayActivity.labelRes),
-            stringResource(if (connected) R.string.summary_fitbit_on else R.string.summary_fitbit_off),
-        ),
-        onToggle = { toggleGroup("body") },
-    ) {
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.Accessibility, c.teal, c.tealTrack)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_about_you), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.profile_about_you_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            // Local state owns the text while typing (no key: a saved value landing must not overwrite newer keystrokes).
-            var nameText by rememberSaveable { mutableStateOf(settings.name) }
-            OutlinedTextField(
-                value = nameText,
-                onValueChange = { v -> nameText = v.take(24); vm.setName(nameText.trim()) },
-                label = { Text(stringResource(R.string.onb_your_name)) },
-                singleLine = true,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                shape = ForgeShape.Md,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
-                    cursorColor = c.teal, focusedLabelColor = c.teal, unfocusedLabelColor = c.textSecondary,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(12.dp))
-            SegmentedTabs(
-                listOf(stringResource(R.string.body_male), stringResource(R.string.body_female)),
-                if (settings.bodyType == BodyType.FEMALE) 1 else 0,
-                onSelect = { vm.setBody(if (it == 1) BodyType.FEMALE else BodyType.MALE) },
-            )
-            Spacer(Modifier.height(8.dp))
-            // Not set yet: a dash, not a made-up 170 cm / 25 years that looks like a real value.
-            SettingStepper(
-                stringResource(R.string.profile_height), if (settings.heightCm > 0f) settings.heightCm else 170f, { vm.setBodyMeasures(heightCm = it) },
-                step = 1f, min = 120f, max = 230f, unit = stringResource(R.string.unit_cm),
-                placeholder = if (settings.heightCm > 0f) null else "– ${stringResource(R.string.unit_cm)}",
-            )
-            SettingStepper(
-                stringResource(R.string.profile_age), if (age > 0) age.toFloat() else 25f, { vm.setBodyMeasures(birthYear = thisYear - it.toInt()) },
-                step = 1f, min = 10f, max = 100f, unit = stringResource(R.string.unit_years),
-                placeholder = if (age > 0) null else "– ${stringResource(R.string.unit_years)}",
-            )
-            SettingStepper(
-                label = stringResource(R.string.profile_body_fat_optional),
-                value = settings.bodyFatPct,
-                onChange = { vm.setBodyMeasures(bodyFatPct = if (it < 4f) 0f else it) },
-                step = 0.5f,
-                min = 0f,
-                max = 55f,
-                unit = "%",
-                decimals = 1,
-            )
-            Text(stringResource(R.string.profile_bodyfat_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            Spacer(Modifier.height(16.dp))
-            Text(stringResource(R.string.day_short_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-            Spacer(Modifier.height(8.dp))
-            SegmentedTabs(
-                DayActivity.entries.map { stringResource(it.labelRes) },
-                DayActivity.entries.indexOf(settings.dayActivity),
-                onSelect = { i -> vm.setNutrition { it.copy(dayActivity = DayActivity.entries[i]) } },
-                wrap = true,
-            )
-            Spacer(Modifier.height(8.dp))
-            // With a watch, the steps decide; the choice above is the fallback for days it isn't worn.
-            Text(
-                steps?.let { stringResource(R.string.steps_using, "%,d".format(it.avgSteps)) } ?: stringResource(settings.dayActivity.descRes),
-                style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-            )
-            if (settings.heightCm <= 0f || age <= 0) {
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.profile_body_not_set), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            }
-        }
-        FitCard {
-            SwitchHeader(
-                Icons.Rounded.MonitorHeart, c.teal, c.tealTrack, stringResource(R.string.profile_health_title),
-                stringResource(if (connected) R.string.profile_health_on else R.string.profile_health_hint), connected,
-            ) { on ->
-                when {
-                    !on -> vm.setHealth(false)
-                    probe.status() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE -> context.toast(context.getString(R.string.hc_unavailable))
-                    else -> { vm.setHealth(true); healthAccess.launch(vm.app.health.requestPermissions()) }
-                }
-            }
-            if (connected) {
-                TextButton(onClick = { startHealthCheck() }) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
-            }
-            // Switched on here but access was taken back in Health Connect: say so rather than look switched off.
-            if (settings.healthEnabled && health == com.forgequest.app.data.health.HealthState.NeedsAccess) {
-                Text(stringResource(R.string.ready_reconnect_body), style = MaterialTheme.typography.bodySmall, color = c.gold)
-                TextButton(onClick = { healthAccess.launch(vm.app.health.requestPermissions()) }) { Text(stringResource(R.string.ready_reconnect), color = c.gold) }
-            }
-        }
-        SettingsRow(
-            Icons.Rounded.PanTool, c.teal, c.tealTrack,
-            stringResource(R.string.profile_hand_size),
-            if (settings.handLengthCm > 0f) stringResource(R.string.profile_hand_value, "%.1f".format(settings.handLengthCm), "%.1f".format(settings.palmWidthCm)) else stringResource(R.string.profile_hand_hint),
-        ) { onOpenHandDialog() }
-    }
-}
-
-@Composable
-internal fun GoalsSettingsGroup(
-    vm: SettingsViewModel,
-    s: ProgressSnapshot,
-    toggleGroup: (String) -> Unit,
-) {
-    val c = Fit.colors
-    val settings = s.settings
-    val justLog = settings.justLog
-    val health by vm.app.health.state.collectAsState()
-    val planDays = s.plan?.trainingDays?.size ?: 0
-    val thisYear = java.time.Year.now().value
-    val age = Nutrition.ageFromBirthYear(settings.birthYear, thisYear)
-    val steps = CalorieUi.stepsBase(health, s.sessions)
-    val calInputs = CalorieUi.inputs(settings, s.latestWeight, planDays, steps, thisYear)
-
-    SettingsGroup(
-        Icons.Rounded.TrackChanges, c.teal, c.tealTrack, stringResource(R.string.settings_group_goals),
-        summary(
-            stringResource(settings.nutritionGoal.labelRes),
-            "%,d %s".format(settings.kcalGoal, stringResource(R.string.unit_kcal)),
-            "${settings.proteinGoal} ${stringResource(R.string.unit_g)}",
-            stringResource(R.string.summary_per_week, if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride),
-        ),
-        onToggle = { toggleGroup("goals") },
-    ) {
-        FitCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.TrackChanges, c.teal, c.tealTrack)
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.profile_daily_targets), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-            }
-            val trainingDaysForKcal = CalorieUi.trainingDays(settings, planDays)
-            val hasBodyStats = CalorieUi.hasBodyStats(settings, age)
-            fun kcalFor(goal: NutritionGoal) = calInputs?.let { CalorieUi.suggestion(it, settings, goal) }
-            val floor = calInputs?.let(CalorieUi::floor) ?: Nutrition.MIN_SAFE_KCAL
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.goal_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-            Row(Modifier.padding(top = 8.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NutritionGoal.entries.forEach { g ->
-                    ChoiceChip(stringResource(g.labelRes), settings.nutritionGoal == g, {
-                        if (g != settings.nutritionGoal) vm.setNutrition { it.copy(nutritionGoal = g) }
-                    })
-                }
-            }
-            val kg = s.latestWeight
-            when (settings.nutritionGoal) {
-                NutritionGoal.CUT -> {
-                    val paces = CutPace.entries
-                    val fastBlocked = kg != null &&
-                        Nutrition.allowedCutPace(CutPace.AGGRESSIVE, kg, settings.heightCm, age, settings.bodyType == BodyType.MALE, settings.bodyFatPct) != CutPace.AGGRESSIVE
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.pace_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                    Spacer(Modifier.height(8.dp))
-                    SegmentedTabs(
-                        options = paces.map { stringResource(it.labelRes) },
-                        selected = paces.indexOf(settings.cutPace),
-                        onSelect = { i -> vm.setNutrition { it.copy(cutPace = paces[i]) } },
-                        subs = if (kg == null) emptyList() else paces.map { stringResource(R.string.pace_week, settings.weightUnit.format(kg * it.weeklyPct / 100f)) },
-                        disabled = if (fastBlocked) setOf(paces.indexOf(CutPace.AGGRESSIVE)) else emptySet(),
-                        wrap = true,
-                    )
-                    if (fastBlocked) Text(stringResource(R.string.pace_blocked), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 8.dp))
-                    Spacer(Modifier.height(8.dp))
-                }
-                NutritionGoal.GAIN -> {
-                    val paces = GainPace.entries
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.pace_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                    Spacer(Modifier.height(8.dp))
-                    SegmentedTabs(
-                        options = paces.map { stringResource(it.labelRes) },
-                        selected = paces.indexOf(settings.gainPace),
-                        onSelect = { i -> vm.setNutrition { it.copy(gainPace = paces[i]) } },
-                        subs = if (kg == null) emptyList() else paces.map { stringResource(R.string.pace_month, settings.weightUnit.format(kg * it.weeklyPct * 4.35f / 100f)) },
-                        wrap = true,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                NutritionGoal.MAINTAIN -> Unit
-            }
-            val trend = Nutrition.weightTrendNote(
-                settings.nutritionGoal, settings.goalSetDay, s.weights.map { it.epochDay to it.kg }, Dates.today(),
-                settings.cutPace, settings.gainPace, settings.bodyType == BodyType.FEMALE,
-            )
-            if (trend != null) {
-                Text(
-                    stringResource(
-                        when (trend) {
-                            WeightTrend.CUT_TOO_FAST -> R.string.goal_trend_cut_fast
-                            WeightTrend.GAIN_STALLED -> R.string.goal_trend_gain_stalled
-                            WeightTrend.GAIN_TOO_FAST -> R.string.goal_trend_gain_fast
-                            WeightTrend.DIET_BREAK_DUE -> R.string.goal_trend_diet_break
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodySmall, color = c.gold, modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
-            SettingStepper(
-                stringResource(R.string.profile_daily_calories),
-                settings.kcalGoal.toFloat(),
-                { vm.setKcal(it.toInt()) },
-                step = 50f,
-                min = floor.toFloat(),
-                max = Nutrition.MAX_SAFE_KCAL.toFloat(),
-                unit = stringResource(R.string.unit_kcal),
-            )
-            val suggested = kcalFor(settings.nutritionGoal)
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    when {
-                        !hasBodyStats -> stringResource(R.string.goals_suggest_missing)
-                        suggested != null -> stringResource(R.string.profile_suggested_v2, "%,d".format(suggested), trainingDaysForKcal, stringResource(settings.dayActivity.labelRes))
-                        else -> stringResource(R.string.goals_suggest_missing)
-                    },
-                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f),
-                )
-                if (suggested != null && hasBodyStats && suggested != settings.kcalGoal) {
-                    Spacer(Modifier.width(8.dp))
-                    TonalPill(stringResource(R.string.goals_use), onClick = { vm.setKcal(suggested) })
-                }
-            }
-            if (settings.kcalGoal <= floor) {
-                Text(stringResource(R.string.profile_floor_hint, "%,d".format(floor)), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 8.dp))
-            }
-            // What the Fitbit measured against what the formula guesses, once there are two weeks of it.
-            val fitbitKcal = (health as? com.forgequest.app.data.health.HealthState.Ready)?.day?.kcalAvg14
-            val maintain = kcalFor(NutritionGoal.MAINTAIN)
-            if (fitbitKcal != null && maintain != null && hasBodyStats) {
-                Text(
-                    stringResource(R.string.goals_fitbit_burn, "%,d".format(maintain), "%,d".format(fitbitKcal)),
-                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(bottom = 8.dp),
-                )
-            }
-            SettingStepper(
-                stringResource(R.string.profile_daily_protein),
-                settings.proteinGoal.toFloat(),
-                { vm.updateGoals(protein = it.toInt()) },
-                step = 5f,
-                min = 60f,
-                max = 400f,
-                unit = stringResource(R.string.unit_g),
-            )
-            SettingStepper(
-                stringResource(R.string.profile_protein_per_kg),
-                settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG),
-                { vm.setRatios(perKg = it) },
-                step = 0.1f,
-                min = Nutrition.MIN_PROTEIN_PER_KG,
-                max = 2.5f,
-                unit = stringResource(R.string.unit_g_per_kg),
-                decimals = 1,
-            )
-            s.latestWeight?.let { kg ->
-                Nutrition.suggestedProtein(kg, settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG), settings.bodyFatPct, settings.heightCm)
-            }?.takeIf { it != settings.proteinGoal }?.let { suggestedProtein ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.goals_protein_suggested, suggestedProtein, "%.1f".format(settings.proteinPerKg.coerceAtLeast(Nutrition.MIN_PROTEIN_PER_KG))),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = c.textSecondary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    TonalPill(stringResource(R.string.goals_use), onClick = { vm.updateGoals(protein = suggestedProtein) })
-                }
-            }
-            // The whole row toggles, not just the switch.
-            Row(Modifier.fillMaxWidth().toggleable(settings.trackCarbs, role = Role.Switch) { vm.setCarbs(track = it) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.profile_track_carbs), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                FitSwitch(settings.trackCarbs, null)
-            }
-            if (settings.trackCarbs) {
-                SettingStepper(stringResource(R.string.profile_daily_carbs), settings.carbsGoal.toFloat(), { vm.setCarbs(goal = it.toInt()) }, step = 10f, min = 20f, max = 800f, unit = stringResource(R.string.unit_g))
-                SettingStepper(
-                    stringResource(R.string.profile_fat_share),
-                    settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT).toFloat(),
-                    { vm.setRatios(fatPct = it.toInt()) },
-                    step = 5f,
-                    min = Nutrition.MIN_FAT_SHARE_PCT.toFloat(),
-                    max = 40f,
-                    unit = "%",
-                )
-                val suggestedCarbs = Nutrition.suggestedCarbs(
-                    kcal = settings.kcalGoal,
-                    proteinG = settings.proteinGoal,
-                    fatPct = settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT),
-                    bodyWeightKg = s.latestWeight ?: 0f,
-                )
-                if (suggestedCarbs != settings.carbsGoal && suggestedCarbs > 0) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.profile_carbs_suggested, suggestedCarbs, settings.fatSharePct.coerceAtLeast(Nutrition.MIN_FAT_SHARE_PCT)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = c.textSecondary,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        TonalPill(stringResource(R.string.goals_use), onClick = { vm.setCarbs(goal = suggestedCarbs) })
-                    }
-                }
-            }
-            val weeklyShown = if (settings.weeklyTargetOverride == 0) planDays else settings.weeklyTargetOverride
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_workouts_per_week), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    if (settings.weeklyTargetOverride == 0) Text(stringResource(R.string.profile_from_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-                Stepper(
-                    "$weeklyShown",
-                    onMinus = { vm.updateGoals(weekly = (weeklyShown - 1).coerceAtLeast(1).let { if (it == planDays) 0 else it }) },
-                    onPlus = { vm.updateGoals(weekly = (weeklyShown + 1).coerceAtMost(7).let { if (it == planDays) 0 else it }) },
-                    minValueWidth = 84.dp,
-                )
-            }
-            if (!justLog) Text(stringResource(R.string.profile_streak_explain), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        }
-    }
-}
-
-@Composable
-internal fun TrainingSettingsGroup(
-    vm: SettingsViewModel,
-    s: ProgressSnapshot,
-    nav: NavHostController,
-    toggleGroup: (String) -> Unit,
-) {
-    val c = Fit.colors
-    val settings = s.settings
-    val configuredEq = settings.configuredEquipment
-    val justLog = settings.justLog
-    val activePreset = remember(settings.equipment) { EquipmentPreset.fromEncoded(settings.equipment) }
-
-    SettingsGroup(
-        Icons.Rounded.FitnessCenter, c.teal, c.tealTrack, stringResource(R.string.settings_group_training),
-        summary(
-            when {
-                activePreset != null -> activePreset.shortLabel()
-                configuredEq.isEmpty() -> stringResource(R.string.summary_equipment_unset)
-                else -> stringResource(R.string.equipment_custom)
-            },
-            when {
-                justLog -> stringResource(R.string.just_log_title)
-                settings.reminderHour < 0 -> stringResource(R.string.summary_reminder_off)
-                else -> stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour))
-            },
-        ),
-        onToggle = { toggleGroup("training") },
-    ) {
-        SettingsRow(Icons.Rounded.Tune, c.teal, c.tealTrack, stringResource(R.string.pb_rebuild), stringResource(R.string.pb_rebuild_hint)) {
-            nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER)
-        }
-        EquipmentCard(activePreset, configuredEq, onPreset = { vm.setEquipment(it.encode()) }, onItem = { vm.toggleEquipmentItem(it, configuredEq) })
-        FitCard {
-            SwitchHeader(
-                Icons.Rounded.Checklist, c.teal, c.tealTrack, stringResource(R.string.just_log_title),
-                stringResource(R.string.just_log_subtitle), justLog,
-            ) { vm.setJustLog(it) }
-        }
-        // Workout reminders are part of the consistency side, so "Just log" mode puts them away (the hour is kept).
-        val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-        if (!justLog) FitCard {
-            SwitchHeader(
-                Icons.Rounded.Notifications, c.teal, c.tealTrack, stringResource(R.string.profile_reminder),
-                if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
-                settings.reminderHour >= 0,
-            ) {
-                if (it && android.os.Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                vm.setReminder(if (it) 18 else -1)
-            }
-            if (settings.reminderHour >= 0) {
-                var typingHour by remember { mutableStateOf(false) }
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.profile_time), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                    Stepper(
-                        "%02d:00".format(settings.reminderHour),
-                        onMinus = { vm.setReminder((settings.reminderHour + 23) % 24) },
-                        onPlus = { vm.setReminder((settings.reminderHour + 1) % 24) },
-                        minValueWidth = 72.dp,
-                        onValueClick = { typingHour = true },
-                    )
-                }
-                if (typingHour) {
-                    NumberEntryDialog(stringResource(R.string.profile_reminder_hour), settings.reminderHour.toFloat(), stringResource(R.string.unit_h), 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
-                }
-            }
-        }
-        FitCard {
-            Row(Modifier.fillMaxWidth().toggleable(settings.hapticsEnabled, role = Role.Switch) { vm.setHaptics(it) }, verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.profile_vibration), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    Text(stringResource(R.string.profile_vibration_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-                FitSwitch(settings.hapticsEnabled, null)
-            }
-        }
-    }
-}
-
-@Composable
 internal fun CoachSettingsGroup(
     vm: SettingsViewModel,
     nav: NavHostController,
@@ -539,7 +106,6 @@ internal fun CoachSettingsGroup(
     aiOn: Boolean,
     toggleGroup: (String) -> Unit,
     onOpenKeyDialog: () -> Unit,
-    onOpenNotesDialog: () -> Unit,
 ) {
     val c = Fit.colors
     val context = LocalContext.current
@@ -582,39 +148,6 @@ internal fun CoachSettingsGroup(
                 stringResource(R.string.profile_ai_key),
                 if (apiKey.isBlank()) stringResource(R.string.profile_key_not_set) else stringResource(R.string.profile_key_connected),
             ) { onOpenKeyDialog() }
-            FitCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Psychology, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.profile_coach_memory), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                        Text(
-                            if (settings.coachNotes.isBlank()) stringResource(R.string.profile_memory_empty)
-                            else stringResource(R.string.profile_memory_hint),
-                            style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                        )
-                    }
-                    TonalPill(stringResource(R.string.action_add), onClick = { onOpenNotesDialog() })
-                }
-                val notes = settings.coachNotes.lines().filter { it.isNotBlank() }
-                if (notes.isNotEmpty()) {
-                    Spacer(Modifier.height(12.dp))
-                    // The list grows and shrinks smoothly as notes are added or removed.
-                    Column(Modifier.animateContentSize()) {
-                        notes.forEach { note ->
-                            Row(
-                                Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable(onClickLabel = stringResource(R.string.cd_remove), role = androidx.compose.ui.semantics.Role.Button) { vm.removeNote(note) }
-                                    .heightIn(min = 48.dp).padding(vertical = 8.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text("•", style = MaterialTheme.typography.bodyMedium, color = c.purple, modifier = Modifier.width(16.dp))
-                                Text(note, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-                                Icon(Icons.Rounded.Close, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -641,6 +174,11 @@ internal fun AppSettingsGroup(
             when (com.forgequest.app.AppLocale.current(context)) { "en" -> "English"; "ar" -> "العربية"; else -> stringResource(R.string.language_system) },
             settings.weightUnit.label,
             if (settings.biometricLock && canLock) stringResource(R.string.summary_lock_on) else null,
+            when {
+                settings.justLog -> stringResource(R.string.just_log_title)
+                settings.reminderHour < 0 -> stringResource(R.string.summary_reminder_off)
+                else -> stringResource(R.string.summary_reminder_at, "%02d:00".format(settings.reminderHour))
+            },
         ),
         onToggle = { toggleGroup("app") },
     ) {
@@ -685,6 +223,47 @@ internal fun AppSettingsGroup(
                 stringResource(if (!canLock) R.string.profile_lock_unavailable else if (settings.biometricLock) R.string.profile_lock_on else R.string.profile_lock_off),
                 settings.biometricLock && canLock, enabled = canLock,
             ) { vm.setLock(it) }
+        }
+        val justLog = settings.justLog
+        FitCard {
+            SwitchHeader(
+                Icons.Rounded.Checklist, c.teal, c.tealTrack, stringResource(R.string.just_log_title),
+                stringResource(R.string.just_log_subtitle), justLog,
+            ) { vm.setJustLog(it) }
+        }
+        // Workout reminders are part of the consistency side, so "Just log" mode puts them away (the hour is kept).
+        val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+        if (!justLog) FitCard {
+            SwitchHeader(
+                Icons.Rounded.Notifications, c.teal, c.tealTrack, stringResource(R.string.profile_reminder),
+                if (settings.reminderHour < 0) stringResource(R.string.profile_reminder_off) else stringResource(R.string.profile_reminder_on, "%02d:00".format(settings.reminderHour)),
+                settings.reminderHour >= 0,
+            ) {
+                if (it && android.os.Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                vm.setReminder(if (it) 18 else -1)
+            }
+            if (settings.reminderHour >= 0) {
+                var typingHour by remember { mutableStateOf(false) }
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.profile_time), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                    Stepper(
+                        "%02d:00".format(settings.reminderHour),
+                        onMinus = { vm.setReminder((settings.reminderHour + 23) % 24) },
+                        onPlus = { vm.setReminder((settings.reminderHour + 1) % 24) },
+                        minValueWidth = 72.dp,
+                        onValueClick = { typingHour = true },
+                    )
+                }
+                if (typingHour) {
+                    NumberEntryDialog(stringResource(R.string.profile_reminder_hour), settings.reminderHour.toFloat(), stringResource(R.string.unit_h), 0, 0f, 23f, onDismiss = { typingHour = false }, onConfirm = { vm.setReminder(it.toInt()); typingHour = false })
+                }
+            }
+        }
+        FitCard {
+            SwitchHeader(
+                Icons.Rounded.Vibration, c.teal, c.tealTrack, stringResource(R.string.profile_vibration),
+                stringResource(R.string.profile_vibration_hint), settings.hapticsEnabled,
+            ) { vm.setHaptics(it) }
         }
     }
 }
@@ -776,7 +355,6 @@ internal fun AboutSettingsGroup(
         stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),
         onToggle = { toggleGroup("about") },
     ) {
-        SettingsRow(Icons.Rounded.SystemUpdate, c.teal, c.tealTrack, stringResource(R.string.update_title), stringResource(R.string.update_hint, com.forgequest.app.BuildConfig.VERSION_NAME)) { vm.checkUpdate() }
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)

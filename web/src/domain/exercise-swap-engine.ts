@@ -6,39 +6,185 @@ import { isExerciseKind, isMuscle, type ExerciseKind } from './muscle'
 const f = Math.fround
 
 /** Equipment categories for filtering and biomechanical exercise substitution. */
-export const EQUIPMENT = ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_BARS_OR_BENCH', 'DUMBBELLS', 'KETTLEBELL', 'BARBELL_RACK', 'CABLES_MACHINES', 'BAND'] as const
+export const EQUIPMENT_GROUPS = [
+  'FREE_WEIGHTS',
+  'BENCHES_RACKS',
+  'BARS',
+  'UPPER_MACHINES',
+  'LOWER_MACHINES',
+] as const
+export type EquipmentGroup = (typeof EQUIPMENT_GROUPS)[number]
+
+export const EQUIPMENT_GROUP_LABEL: Record<EquipmentGroup, { en: string; ar: string }> = {
+  FREE_WEIGHTS: { en: 'Free weights & bands', ar: 'أوزان حرة وأحزمة' },
+  BENCHES_RACKS: { en: 'Benches & racks', ar: 'مقاعد وحوامل' },
+  BARS: { en: 'Bars', ar: 'العقلة والمتوازي' },
+  UPPER_MACHINES: { en: 'Upper cables & machines', ar: 'كوابل وأجهزة علوي' },
+  LOWER_MACHINES: { en: 'Lower machines', ar: 'أجهزة سفلي' },
+}
+
+export const EQUIPMENT = [
+  'BODYWEIGHT',
+  // Free weights & bands
+  'DUMBBELLS', 'KETTLEBELL', 'BARBELL', 'BAND',
+  // Benches & racks
+  'SQUAT_RACK', 'FLAT_BENCH', 'ADJ_BENCH', 'ROMAN_CHAIR',
+  // Bars
+  'PULL_UP_BAR', 'DIP_STATION', 'LOW_BAR',
+  // Upper cables & machines
+  'CABLE_MACHINE', 'LAT_PULLDOWN', 'SEATED_ROW_MACHINE', 'SMITH_MACHINE',
+  'CHEST_PRESS_MACHINE', 'SHOULDER_PRESS_MACHINE', 'PEC_DECK', 'PREACHER_CURL_MACHINE',
+  // Lower machines
+  'LEG_PRESS', 'HACK_SQUAT', 'LEG_EXTENSION', 'LEG_CURL', 'CALF_MACHINE',
+  // Legacy grouped values preserved for old DataStore/Dexie/backup decoding; never shown in pickers.
+  'DIP_BARS_OR_BENCH', 'BARBELL_RACK', 'CABLES_MACHINES',
+] as const
 export type Equipment = (typeof EQUIPMENT)[number]
 
-export const EQUIPMENT_LABEL: Record<Equipment, { en: string; ar: string }> = {
-  BODYWEIGHT: { en: 'Bodyweight', ar: 'وزن الجسم' },
-  PULL_UP_BAR: { en: 'Pull-up bar', ar: 'عقلة' },
-  DIP_BARS_OR_BENCH: { en: 'Dip bars / rings / bench', ar: 'متوازي أو حلقات أو مقعد' },
-  DUMBBELLS: { en: 'Dumbbells', ar: 'دمبل' },
-  KETTLEBELL: { en: 'Kettlebell', ar: 'كيتل بيل' },
-  BARBELL_RACK: { en: 'Barbell & rack', ar: 'بار وراك' },
-  CABLES_MACHINES: { en: 'Cables & gym machines', ar: 'أجهزة وكوابل النادي' },
-  BAND: { en: 'Resistance band', ar: 'حزام مطاطي' },
+export type EquipmentMeta = {
+  en: string
+  ar: string
+  group: EquipmentGroup | null
+  legacy?: boolean
 }
+
+export const EQUIPMENT_META: Record<Equipment, EquipmentMeta> = {
+  BODYWEIGHT: { en: 'Bodyweight', ar: 'وزن الجسم', group: null },
+  DUMBBELLS: { en: 'Dumbbells', ar: 'دمبل', group: 'FREE_WEIGHTS' },
+  KETTLEBELL: { en: 'Kettlebell', ar: 'كيتل بيل', group: 'FREE_WEIGHTS' },
+  BARBELL: { en: 'Barbell', ar: 'بار حديد', group: 'FREE_WEIGHTS' },
+  BAND: { en: 'Bands', ar: 'أحزمة مطاطية', group: 'FREE_WEIGHTS' },
+  SQUAT_RACK: { en: 'Squat rack', ar: 'حامل سكوات', group: 'BENCHES_RACKS' },
+  FLAT_BENCH: { en: 'Flat bench', ar: 'مقعد مستوٍ', group: 'BENCHES_RACKS' },
+  ADJ_BENCH: { en: 'Adj. bench', ar: 'مقعد متغيّر', group: 'BENCHES_RACKS' },
+  ROMAN_CHAIR: { en: 'Roman chair', ar: 'كرسي ظهر', group: 'BENCHES_RACKS' },
+  PULL_UP_BAR: { en: 'Pull-up bar', ar: 'عقلة', group: 'BARS' },
+  DIP_STATION: { en: 'Dip station', ar: 'متوازي', group: 'BARS' },
+  LOW_BAR: { en: 'Low bar', ar: 'بار منخفض', group: 'BARS' },
+  CABLE_MACHINE: { en: 'Cable machine', ar: 'جهاز كابل', group: 'UPPER_MACHINES' },
+  LAT_PULLDOWN: { en: 'Lat pulldown', ar: 'سحب علوي', group: 'UPPER_MACHINES' },
+  SEATED_ROW_MACHINE: { en: 'Seated row', ar: 'تجديف جالس', group: 'UPPER_MACHINES' },
+  SMITH_MACHINE: { en: 'Smith machine', ar: 'جهاز سميث', group: 'UPPER_MACHINES' },
+  CHEST_PRESS_MACHINE: { en: 'Chest press', ar: 'جهاز صدر', group: 'UPPER_MACHINES' },
+  SHOULDER_PRESS_MACHINE: { en: 'Shoulder press', ar: 'جهاز أكتاف', group: 'UPPER_MACHINES' },
+  PEC_DECK: { en: 'Pec deck', ar: 'جهاز تفتيح', group: 'UPPER_MACHINES' },
+  PREACHER_CURL_MACHINE: { en: 'Preacher curl', ar: 'جهاز بايسبس', group: 'UPPER_MACHINES' },
+  LEG_PRESS: { en: 'Leg press', ar: 'دفع أرجل', group: 'LOWER_MACHINES' },
+  HACK_SQUAT: { en: 'Hack squat', ar: 'هاك سكوات', group: 'LOWER_MACHINES' },
+  LEG_EXTENSION: { en: 'Leg extension', ar: 'مد أرجل', group: 'LOWER_MACHINES' },
+  LEG_CURL: { en: 'Leg curl', ar: 'ثني أرجل', group: 'LOWER_MACHINES' },
+  CALF_MACHINE: { en: 'Calf machine', ar: 'جهاز بطة', group: 'LOWER_MACHINES' },
+  DIP_BARS_OR_BENCH: { en: 'Dip bars / rings / bench', ar: 'متوازي أو حلقات أو مقعد', group: null, legacy: true },
+  BARBELL_RACK: { en: 'Barbell & rack', ar: 'بار وراك', group: null, legacy: true },
+  CABLES_MACHINES: { en: 'Cables & gym machines', ar: 'أجهزة وكوابل النادي', group: null, legacy: true },
+}
+
+export const EQUIPMENT_LABEL: Record<Equipment, { en: string; ar: string }> = EQUIPMENT_META
+
+export const SELECTABLE_EQUIPMENT: readonly Equipment[] = EQUIPMENT.filter(
+  (e) => !EQUIPMENT_META[e].legacy && e !== 'BODYWEIGHT',
+)
+export const ALL_ACTIVE_EQUIPMENT: readonly Equipment[] = EQUIPMENT.filter(
+  (e) => !EQUIPMENT_META[e].legacy,
+)
 
 /** Lowest score a plan auto-swap accepts: a related movement (18) plus some shared muscles, or the same pattern. */
 export const MIN_SWAP_SCORE = 30
 
-const allEquipment = (): Set<Equipment> => new Set(EQUIPMENT)
-const isEquipment = (raw: string): raw is Equipment => (EQUIPMENT as readonly string[]).includes(raw)
+const allEquipment = (): Set<Equipment> => new Set(ALL_ACTIVE_EQUIPMENT)
+export const isEquipment = (raw: unknown): raw is Equipment =>
+  typeof raw === 'string' && (EQUIPMENT as readonly string[]).includes(raw)
 
-/** Quick presets for Onboarding and Profile settings. */
+export function expandLegacyEquipment(raw: Iterable<Equipment>): Set<Equipment> {
+  const list = [...raw]
+  if (list.every((e) => !EQUIPMENT_META[e]?.legacy)) return new Set(list)
+  const out = new Set<Equipment>()
+  for (const eq of list) {
+    switch (eq) {
+      case 'DIP_BARS_OR_BENCH':
+        out.add('DIP_STATION'); out.add('LOW_BAR'); out.add('FLAT_BENCH'); out.add('ROMAN_CHAIR')
+        break
+      case 'BARBELL_RACK':
+        out.add('BARBELL'); out.add('SQUAT_RACK'); out.add('FLAT_BENCH'); out.add('ADJ_BENCH')
+        break
+      case 'CABLES_MACHINES':
+        for (const item of SELECTABLE_EQUIPMENT) {
+          const g = EQUIPMENT_META[item].group
+          if (g === 'UPPER_MACHINES' || g === 'LOWER_MACHINES') out.add(item)
+        }
+        break
+      default:
+        out.add(eq)
+    }
+  }
+  return out
+}
+
+export function encodeEquipmentSet(equipment: Iterable<Equipment>): string {
+  const clean = expandLegacyEquipment(equipment)
+  clean.add('BODYWEIGHT')
+  return [...clean].filter((e) => !EQUIPMENT_META[e].legacy).join(',')
+}
+
+/** High-level training locations for A2 Plan Builder & Gear sheet. */
+export const TRAINING_PLACES = ['GYM', 'HOME', 'NONE'] as const
+export type TrainingPlace = (typeof TRAINING_PLACES)[number]
+
+export const TRAINING_PLACE_INFO: Record<TrainingPlace, {
+  id: string; labelEn: string; labelAr: string; descEn: string; descAr: string; equipment: readonly Equipment[]
+}> = {
+  GYM: {
+    id: 'full_gym',
+    labelEn: 'Gym',
+    labelAr: 'نادي رياضي',
+    descEn: 'Machines, cables, benches & free weights',
+    descAr: 'أجهزة كاملة، كوابل، مقاعد وأوزان حرة',
+    equipment: ALL_ACTIVE_EQUIPMENT,
+  },
+  HOME: {
+    id: 'home_gym',
+    labelEn: 'Home gym',
+    labelAr: 'نادي منزلي',
+    descEn: 'Free weights, benches, rack & bars',
+    descAr: 'أوزان حرة، مقاعد، حامل سكوات وعقلة',
+    equipment: [
+      'BODYWEIGHT',
+      'DUMBBELLS', 'KETTLEBELL', 'BARBELL', 'BAND',
+      'SQUAT_RACK', 'FLAT_BENCH', 'ADJ_BENCH',
+      'PULL_UP_BAR', 'DIP_STATION', 'LOW_BAR',
+    ],
+  },
+  NONE: {
+    id: 'bodyweight',
+    labelEn: 'No gear',
+    labelAr: 'بدون معدات',
+    descEn: 'Bodyweight only',
+    descAr: 'وزن الجسم فقط',
+    equipment: ['BODYWEIGHT'],
+  },
+}
+
+const sameSet = <T>(a: ReadonlySet<T>, b: ReadonlySet<T>) => a.size === b.size && [...a].every((x) => b.has(x))
+
+export function matchTrainingPlace(equipment: Iterable<Equipment>): TrainingPlace | null {
+  const normalized = expandLegacyEquipment(equipment)
+  normalized.add('BODYWEIGHT')
+  for (const place of TRAINING_PLACES) {
+    if (sameSet(new Set(TRAINING_PLACE_INFO[place].equipment), normalized)) return place
+  }
+  return null
+}
+
+/** Quick presets for Onboarding and legacy saved token compatibility. */
 export const EQUIPMENT_PRESETS = ['FULL_GYM', 'HOME_GYM', 'DUMBBELLS_AND_BAR', 'DUMBBELLS_AND_KETTLEBELL', 'CALISTHENICS_PARK', 'PULL_UP_BAR_ONLY', 'BODYWEIGHT_ONLY'] as const
 export type EquipmentPreset = (typeof EQUIPMENT_PRESETS)[number]
 
 export const PRESET_INFO: Record<EquipmentPreset, { id: string; labelEn: string; labelAr: string; equipment: readonly Equipment[] }> = {
-  FULL_GYM: { id: 'full_gym', labelEn: 'Full gym', labelAr: 'نادي متكامل', equipment: EQUIPMENT },
-  HOME_GYM: {
-    id: 'home_gym', labelEn: 'Home gym (barbell, dumbbells, bar)', labelAr: 'نادي منزلي (بار، دمبل، عقلة)',
-    equipment: ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_BARS_OR_BENCH', 'DUMBBELLS', 'KETTLEBELL', 'BARBELL_RACK'],
-  },
+  FULL_GYM: { id: 'full_gym', labelEn: 'Full gym', labelAr: 'نادي متكامل', equipment: TRAINING_PLACE_INFO.GYM.equipment },
+  HOME_GYM: { id: 'home_gym', labelEn: 'Home gym (barbell, dumbbells, bar)', labelAr: 'نادي منزلي (بار، دمبل، عقلة)', equipment: TRAINING_PLACE_INFO.HOME.equipment },
   DUMBBELLS_AND_BAR: {
     id: 'dumbbells_bar', labelEn: 'Dumbbells & pull-up bar', labelAr: 'دمبل وعقلة',
-    equipment: ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_BARS_OR_BENCH', 'DUMBBELLS'],
+    equipment: ['BODYWEIGHT', 'DUMBBELLS', 'PULL_UP_BAR', 'DIP_STATION', 'LOW_BAR', 'FLAT_BENCH'],
   },
   DUMBBELLS_AND_KETTLEBELL: {
     id: 'dumbbells_kb', labelEn: 'Dumbbells & kettlebell', labelAr: 'دمبل وكيتلبل',
@@ -46,7 +192,7 @@ export const PRESET_INFO: Record<EquipmentPreset, { id: string; labelEn: string;
   },
   CALISTHENICS_PARK: {
     id: 'calisthenics', labelEn: 'Calisthenics (pull-up bar & dip bars)', labelAr: 'كاليستنكس (عقلة ومتوازي)',
-    equipment: ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_BARS_OR_BENCH'],
+    equipment: ['BODYWEIGHT', 'PULL_UP_BAR', 'DIP_STATION', 'LOW_BAR', 'FLAT_BENCH'],
   },
   PULL_UP_BAR_ONLY: { id: 'pull_up_bar', labelEn: 'Doorway pull-up bar only', labelAr: 'عقلة منزلية فقط', equipment: ['BODYWEIGHT', 'PULL_UP_BAR'] },
   BODYWEIGHT_ONLY: { id: 'bodyweight', labelEn: 'Pure bodyweight (no equipment)', labelAr: 'وزن الجسم فقط (بدون معدات)', equipment: ['BODYWEIGHT'] },
@@ -57,8 +203,6 @@ export const presetEquipment = (preset: EquipmentPreset): Set<Equipment> => new 
 export function encodePreset(preset: EquipmentPreset): string {
   return PRESET_INFO[preset].equipment.join(',')
 }
-
-const sameSet = <T>(a: ReadonlySet<T>, b: ReadonlySet<T>) => a.size === b.size && [...a].every((x) => b.has(x))
 
 export function presetFromEncoded(raw: string): EquipmentPreset | null {
   if (raw.trim() === '') return null
@@ -83,8 +227,9 @@ export function parseEquipmentSet(raw: string): Set<Equipment> {
     if (isEquipment(name)) parsed.add(name)
   }
   if (parsed.size === 0) return parsed
-  parsed.add('BODYWEIGHT')
-  return parsed
+  const expanded = expandLegacyEquipment(parsed)
+  expanded.add('BODYWEIGHT')
+  return expanded
 }
 
 /**
@@ -122,13 +267,29 @@ export function inferEquipmentFromText(...texts: string[]): Set<Equipment> | nul
 
   const found = new Set<Equipment>()
   if (hasPositive(words('pull-?up bar|chin-?up bar|doorway bar|عقلة|بار عقلة'), combined)) found.add('PULL_UP_BAR')
-  if (hasPositive(words('dip bar|parallel bar|rings|gymnastic rings|متوازي|حلقات'), combined)) found.add('DIP_BARS_OR_BENCH')
+  if (hasPositive(words('dip bar|dip station|parallel bar|rings|gymnastic rings|متوازي|حلقات'), combined)) found.add('DIP_STATION')
   if (hasPositive(words('dumbbell|dumbbells|دمبل|دامبل'), combined)) found.add('DUMBBELLS')
   if (hasPositive(words('kettlebell|kettlebells|كيتل بيل|كيتلبيل'), combined)) found.add('KETTLEBELL')
+  if (hasPositive(words('band|bands|resistance band|حزام مطاطي|أحزمة مطاطية'), combined)) found.add('BAND')
   // Not a lone «بار»: «بار عقلة» is a pull-up bar.
-  if (hasPositive(words('barbell|squat rack|power rack|bench press|باربل|بار حديد|بار أولمبي|راك'), combined)) found.add('BARBELL_RACK')
+  if (hasPositive(words('barbell|باربل|بار حديد|بار أولمبي'), combined)) found.add('BARBELL')
+  if (hasPositive(words('squat rack|power rack|راك'), combined)) found.add('SQUAT_RACK')
+  if (hasPositive(words('bench press'), combined)) {
+    found.add('BARBELL')
+    found.add('FLAT_BENCH')
+  }
+  if (hasPositive(words('flat bench|adjustable bench|weight bench|بنش|مقعد'), combined)) found.add('FLAT_BENCH')
   // Not a lone «أجهزة»: it means any device.
-  if (hasPositive(words('cable|cables|lat pulldown|leg press|smith machine|كيبل|كوابل|أجهزة النادي|أجهزة الجيم'), combined)) found.add('CABLES_MACHINES')
+  if (hasPositive(words('cable|cables|كيبل|كوابل'), combined)) found.add('CABLE_MACHINE')
+  if (hasPositive(words('lat pulldown|سحب علوي'), combined)) found.add('LAT_PULLDOWN')
+  if (hasPositive(words('leg press|دفع أرجل'), combined)) found.add('LEG_PRESS')
+  if (hasPositive(words('smith machine|جهاز سميث'), combined)) found.add('SMITH_MACHINE')
+  if (hasPositive(words('أجهزة النادي|أجهزة الجيم'), combined)) {
+    for (const item of SELECTABLE_EQUIPMENT) {
+      const g = EQUIPMENT_META[item].group
+      if (g === 'UPPER_MACHINES' || g === 'LOWER_MACHINES') found.add(item)
+    }
+  }
   if (words('calisthenics|home workout|at home|في البيت|في المنزل|كاليستنكس').test(combined) && found.size === 0) {
     if (words('bodyweight|وزن الجسم').test(combined)) return new Set(['BODYWEIGHT'])
   }
@@ -178,6 +339,12 @@ export type BiomechanicalProfile = {
   pattern: MovementPattern
   angle: JointAngle
   preferredSwaps: string[]
+  requires?: readonly Equipment[]
+}
+
+export function profileFits(profile: BiomechanicalProfile, available: ReadonlySet<Equipment>): boolean {
+  const req = profile.requires ?? [profile.equipment]
+  return req.every((r) => available.has(r) || (r === 'FLAT_BENCH' && available.has('ADJ_BENCH')))
 }
 
 export type SwapCandidate = {
@@ -188,7 +355,10 @@ export type SwapCandidate = {
 }
 
 const prof = (equipment: Equipment, pattern: MovementPattern, angle: JointAngle, ...preferredSwaps: string[]): BiomechanicalProfile =>
-  ({ equipment, pattern, angle, preferredSwaps })
+  ({ equipment, pattern, angle, preferredSwaps, requires: [equipment] })
+
+const profReq = (equipment: Equipment, req: readonly Equipment[], pattern: MovementPattern, angle: JointAngle, ...preferredSwaps: string[]): BiomechanicalProfile =>
+  ({ equipment, pattern, angle, preferredSwaps, requires: [...new Set([equipment, ...req])] })
 
 /** Explicit biomechanical profiles for all 186 built-in exercises in the exercise catalog. */
 export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new Map([
@@ -206,13 +376,13 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
 
   // Hemo foundation: upper body
   ['knee_scapular_push_up', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'knee_push_up', 'plank_shoulder_taps', 'push_up')],
-  ['scapular_australian_pull_up', prof('DIP_BARS_OR_BENCH', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'australian_pull_up', 'dead_hang', 'db_row')],
-  ['bent_leg_bench_dip', prof('DIP_BARS_OR_BENCH', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'reverse_grip_bench_dip', 'dip', 'diamond_push_up', 'incline_diamond_knee_push_up')],
-  ['scapular_australian_chin_up', prof('DIP_BARS_OR_BENCH', 'HORIZONTAL_PULL', 'MID_ROW_SUPINATED', 'australian_chin_up', 'scapular_australian_pull_up', 'chin_up')],
+  ['scapular_australian_pull_up', prof('LOW_BAR', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'australian_pull_up', 'dead_hang', 'db_row')],
+  ['bent_leg_bench_dip', prof('FLAT_BENCH', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'reverse_grip_bench_dip', 'dip', 'diamond_push_up', 'incline_diamond_knee_push_up')],
+  ['scapular_australian_chin_up', prof('LOW_BAR', 'HORIZONTAL_PULL', 'MID_ROW_SUPINATED', 'australian_chin_up', 'scapular_australian_pull_up', 'chin_up')],
   ['knee_push_up', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'wide_knee_push_up', 'push_up', 'incline_diamond_knee_push_up', 'db_bench_press')],
-  ['australian_pull_up', prof('DIP_BARS_OR_BENCH', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'kb_row', 'barbell_row', 'seated_cable_row', 'negative_pull_up', 'pull_up')],
-  ['reverse_grip_bench_dip', prof('DIP_BARS_OR_BENCH', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'bent_leg_bench_dip', 'dip', 'diamond_push_up')],
-  ['australian_chin_up', prof('DIP_BARS_OR_BENCH', 'HORIZONTAL_PULL', 'MID_ROW_SUPINATED', 'australian_pull_up', 'chin_up', 'negative_pull_up', 'db_row')],
+  ['australian_pull_up', prof('LOW_BAR', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'kb_row', 'barbell_row', 'seated_cable_row', 'negative_pull_up', 'pull_up')],
+  ['reverse_grip_bench_dip', prof('FLAT_BENCH', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'bent_leg_bench_dip', 'dip', 'diamond_push_up')],
+  ['australian_chin_up', prof('LOW_BAR', 'HORIZONTAL_PULL', 'MID_ROW_SUPINATED', 'australian_pull_up', 'chin_up', 'negative_pull_up', 'db_row')],
   ['wide_knee_push_up', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'knee_push_up', 'push_up', 'db_bench_press')],
   ['dead_hang', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'scapular_australian_pull_up', 'negative_pull_up', 'farmers_carry')],
   ['incline_diamond_knee_push_up', prof('BODYWEIGHT', 'ELBOW_EXTENSION', 'INCLINE_UPWARD', 'diamond_push_up', 'bent_leg_bench_dip', 'knee_push_up', 'tricep_pushdown')],
@@ -231,10 +401,10 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
   ['pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'chin_up', 'lat_pulldown', 'weighted_pull_up', 'negative_pull_up', 'australian_pull_up', 'db_row')],
   ['chin_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_SUPINATED', 'pull_up', 'weighted_chin_up', 'lat_pulldown', 'australian_chin_up', 'db_row')],
   ['negative_pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'australian_pull_up', 'lat_pulldown', 'pull_up', 'chin_up')],
-  ['dip', prof('DIP_BARS_OR_BENCH', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'weighted_dip', 'push_up', 'diamond_push_up', 'db_bench_press', 'bench_press', 'bent_leg_bench_dip')],
+  ['dip', prof('DIP_STATION', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'weighted_dip', 'push_up', 'diamond_push_up', 'db_bench_press', 'bench_press', 'bent_leg_bench_dip')],
   ['squat', prof('BODYWEIGHT', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'goblet_squat', 'back_squat', 'lunge', 'bulgarian_split_squat', 'leg_press')],
   ['lunge', prof('BODYWEIGHT', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'db_lunge', 'bulgarian_split_squat', 'squat', 'goblet_squat')],
-  ['bulgarian_split_squat', prof('DIP_BARS_OR_BENCH', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'db_lunge', 'lunge', 'pistol_squat', 'goblet_squat', 'back_squat')],
+  ['bulgarian_split_squat', prof('FLAT_BENCH', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'db_lunge', 'lunge', 'pistol_squat', 'goblet_squat', 'back_squat')],
   ['pistol_squat', prof('BODYWEIGHT', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'bulgarian_split_squat', 'db_lunge', 'lunge', 'goblet_squat')],
   ['nordic_curl', prof('BODYWEIGHT', 'KNEE_FLEXION', 'HAMSTRING_CURL', 'leg_curl', 'romanian_deadlift', 'hip_bridge', 'kb_swing')],
   ['plank', prof('BODYWEIGHT', 'CORE_ANTI_EXTENSION', 'ISOMETRIC_PLANK', 'hollow_hold', 'incline_hollow_plank', 'plank_shoulder_taps', 'l_sit')],
@@ -244,7 +414,7 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
 
   // Calisthenics skills
   ['muscle_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'weighted_pull_up', 'pull_up', 'dip')],
-  ['l_sit', prof('DIP_BARS_OR_BENCH', 'CORE_ANTI_EXTENSION', 'ISOMETRIC_PLANK', 'hollow_hold', 'hanging_leg_raise', 'plank')],
+  ['l_sit', prof('DIP_STATION', 'CORE_ANTI_EXTENSION', 'ISOMETRIC_PLANK', 'hollow_hold', 'hanging_leg_raise', 'plank')],
   ['handstand_hold', prof('BODYWEIGHT', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'pike_push_up', 'handstand_push_up', 'overhead_press', 'db_shoulder_press')],
   ['handstand_push_up', prof('BODYWEIGHT', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'pike_push_up', 'overhead_press', 'db_shoulder_press', 'kb_press')],
   ['tuck_planche', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'pseudo_planche_push_up', 'push_up', 'dip')],
@@ -256,39 +426,39 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
   // Weighted calisthenics
   ['weighted_pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'pull_up', 'weighted_chin_up', 'lat_pulldown', 'chin_up')],
   ['weighted_chin_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_SUPINATED', 'chin_up', 'weighted_pull_up', 'lat_pulldown', 'pull_up')],
-  ['weighted_dip', prof('DIP_BARS_OR_BENCH', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'dip', 'bench_press', 'db_bench_press', 'weighted_push_up')],
+  ['weighted_dip', prof('DIP_STATION', 'DIP_PUSH', 'DECLINE_DOWNWARD', 'dip', 'bench_press', 'db_bench_press', 'weighted_push_up')],
   ['weighted_push_up', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'push_up', 'bench_press', 'db_bench_press', 'pseudo_planche_push_up')],
 
   // Gym (Barbell, Dumbbells, Cables & Machines)
-  ['bench_press', prof('BARBELL_RACK', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'db_bench_press', 'weighted_push_up', 'push_up', 'dip', 'pseudo_planche_push_up')],
-  ['incline_db_press', prof('DUMBBELLS', 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'db_bench_press', 'bench_press', 'pike_push_up', 'push_up', 'incline_diamond_knee_push_up')],
-  ['overhead_press', prof('BARBELL_RACK', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'db_shoulder_press', 'kb_press', 'pike_push_up', 'handstand_push_up')],
+  ['bench_press', profReq('BARBELL', ['BARBELL', 'FLAT_BENCH'], 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'db_bench_press', 'weighted_push_up', 'push_up', 'dip', 'pseudo_planche_push_up')],
+  ['incline_db_press', profReq('DUMBBELLS', ['DUMBBELLS', 'ADJ_BENCH'], 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'db_bench_press', 'bench_press', 'pike_push_up', 'push_up', 'incline_diamond_knee_push_up')],
+  ['overhead_press', prof('BARBELL', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'db_shoulder_press', 'kb_press', 'pike_push_up', 'handstand_push_up')],
   ['lateral_raise', prof('DUMBBELLS', 'LATERAL_RAISE', 'FRONTAL_ABDUCTION', 'pike_push_up', 'db_shoulder_press', 'face_pull', 'plank_shoulder_taps')],
-  ['face_pull', prof('CABLES_MACHINES', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'scapular_australian_pull_up', 'australian_pull_up', 'db_row', 'barbell_row')],
-  ['barbell_row', prof('BARBELL_RACK', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'kb_row', 'seated_cable_row', 'australian_pull_up', 'pull_up')],
-  ['lat_pulldown', prof('CABLES_MACHINES', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'pull_up', 'chin_up', 'negative_pull_up', 'australian_pull_up', 'db_row')],
-  ['seated_cable_row', prof('CABLES_MACHINES', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'barbell_row', 'kb_row', 'australian_pull_up')],
-  ['deadlift', prof('BARBELL_RACK', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'kb_deadlift', 'kb_swing', 'hip_thrust', 'hip_bridge')],
-  ['romanian_deadlift', prof('BARBELL_RACK', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'kb_deadlift', 'deadlift', 'kb_swing', 'hip_thrust', 'nordic_curl', 'hip_bridge')],
-  ['back_squat', prof('BARBELL_RACK', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'goblet_squat', 'leg_press', 'bulgarian_split_squat', 'db_lunge', 'squat')],
-  ['leg_press', prof('CABLES_MACHINES', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'back_squat', 'goblet_squat', 'bulgarian_split_squat', 'db_lunge', 'squat')],
-  ['leg_extension', prof('CABLES_MACHINES', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'goblet_squat', 'bulgarian_split_squat', 'squat', 'lunge', 'pistol_squat')],
-  ['leg_curl', prof('CABLES_MACHINES', 'KNEE_FLEXION', 'HAMSTRING_CURL', 'nordic_curl', 'romanian_deadlift', 'kb_deadlift', 'hip_bridge', 'kb_swing')],
-  ['hip_thrust', prof('BARBELL_RACK', 'HIP_HINGE', 'HIP_EXTENSION_SUPINE', 'hip_bridge', 'kb_swing', 'romanian_deadlift', 'kb_deadlift')],
-  ['standing_calf_raise', prof('CABLES_MACHINES', 'ANKLE_FLEXION', 'PLANTAR_FLEXION', 'calf_raise', 'calf_raise_turned_out')],
+  ['face_pull', prof('CABLE_MACHINE', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'scapular_australian_pull_up', 'australian_pull_up', 'db_row', 'barbell_row')],
+  ['barbell_row', prof('BARBELL', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'kb_row', 'seated_cable_row', 'australian_pull_up', 'pull_up')],
+  ['lat_pulldown', prof('LAT_PULLDOWN', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'pull_up', 'chin_up', 'negative_pull_up', 'australian_pull_up', 'db_row')],
+  ['seated_cable_row', prof('SEATED_ROW_MACHINE', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'barbell_row', 'kb_row', 'australian_pull_up')],
+  ['deadlift', prof('BARBELL', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'kb_deadlift', 'kb_swing', 'hip_thrust', 'hip_bridge')],
+  ['romanian_deadlift', prof('BARBELL', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'kb_deadlift', 'deadlift', 'kb_swing', 'hip_thrust', 'nordic_curl', 'hip_bridge')],
+  ['back_squat', profReq('BARBELL', ['BARBELL', 'SQUAT_RACK'], 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'goblet_squat', 'leg_press', 'bulgarian_split_squat', 'db_lunge', 'squat')],
+  ['leg_press', prof('LEG_PRESS', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'back_squat', 'goblet_squat', 'bulgarian_split_squat', 'db_lunge', 'squat')],
+  ['leg_extension', prof('LEG_EXTENSION', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'goblet_squat', 'bulgarian_split_squat', 'squat', 'lunge', 'pistol_squat')],
+  ['leg_curl', prof('LEG_CURL', 'KNEE_FLEXION', 'HAMSTRING_CURL', 'nordic_curl', 'romanian_deadlift', 'kb_deadlift', 'hip_bridge', 'kb_swing')],
+  ['hip_thrust', profReq('BARBELL', ['BARBELL', 'FLAT_BENCH'], 'HIP_HINGE', 'HIP_EXTENSION_SUPINE', 'hip_bridge', 'kb_swing', 'romanian_deadlift', 'kb_deadlift')],
+  ['standing_calf_raise', prof('CALF_MACHINE', 'ANKLE_FLEXION', 'PLANTAR_FLEXION', 'calf_raise', 'calf_raise_turned_out')],
   ['bicep_curl', prof('DUMBBELLS', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'hammer_curl', 'chin_up', 'australian_chin_up')],
   ['hammer_curl', prof('DUMBBELLS', 'ELBOW_FLEXION', 'SAGITTAL_NEUTRAL', 'bicep_curl', 'chin_up', 'australian_chin_up', 'pull_up')],
-  ['tricep_pushdown', prof('CABLES_MACHINES', 'ELBOW_EXTENSION', 'SAGITTAL_TRICEP', 'skull_crusher', 'diamond_push_up', 'dip', 'bent_leg_bench_dip')],
-  ['skull_crusher', prof('BARBELL_RACK', 'ELBOW_EXTENSION', 'SAGITTAL_TRICEP', 'tricep_pushdown', 'diamond_push_up', 'dip', 'bent_leg_bench_dip')],
+  ['tricep_pushdown', prof('CABLE_MACHINE', 'ELBOW_EXTENSION', 'SAGITTAL_TRICEP', 'skull_crusher', 'diamond_push_up', 'dip', 'bent_leg_bench_dip')],
+  ['skull_crusher', profReq('BARBELL', ['BARBELL', 'FLAT_BENCH'], 'ELBOW_EXTENSION', 'SAGITTAL_TRICEP', 'tricep_pushdown', 'diamond_push_up', 'dip', 'bent_leg_bench_dip')],
   ['shrug', prof('DUMBBELLS', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'farmers_carry', 'face_pull', 'scapular_australian_pull_up')],
-  ['cable_crunch', prof('CABLES_MACHINES', 'CORE_FLEXION_ROTATION', 'SPINAL_FLEXION', 'crunch', 'hanging_knee_raise', 'hanging_leg_raise', 'hollow_hold')],
+  ['cable_crunch', prof('CABLE_MACHINE', 'CORE_FLEXION_ROTATION', 'SPINAL_FLEXION', 'crunch', 'hanging_knee_raise', 'hanging_leg_raise', 'hollow_hold')],
   ['tibialis_raise', prof('BODYWEIGHT', 'ANKLE_FLEXION', 'DORSI_FLEXION', 'band_dorsiflexion', 'heel_walk', 'calf_raise')],
   ['heel_walk', prof('BODYWEIGHT', 'ANKLE_FLEXION', 'DORSI_FLEXION', 'tibialis_raise', 'band_dorsiflexion')],
   ['band_dorsiflexion', prof('BAND', 'ANKLE_FLEXION', 'DORSI_FLEXION', 'tibialis_raise', 'heel_walk')],
 
   // Adductors, obliques and forearms
-  ['copenhagen_plank_short', prof('DIP_BARS_OR_BENCH', 'HIP_ADDUCTION', 'ISOMETRIC_PLANK', 'copenhagen_plank_long', 'side_plank', 'side_lying_hip_adduction')],
-  ['copenhagen_plank_long', prof('DIP_BARS_OR_BENCH', 'HIP_ADDUCTION', 'ISOMETRIC_PLANK', 'copenhagen_plank_short', 'side_plank', 'side_lying_hip_adduction')],
+  ['copenhagen_plank_short', prof('FLAT_BENCH', 'HIP_ADDUCTION', 'ISOMETRIC_PLANK', 'copenhagen_plank_long', 'side_plank', 'side_lying_hip_adduction')],
+  ['copenhagen_plank_long', prof('FLAT_BENCH', 'HIP_ADDUCTION', 'ISOMETRIC_PLANK', 'copenhagen_plank_short', 'side_plank', 'side_lying_hip_adduction')],
   ['side_lying_hip_adduction', prof('BODYWEIGHT', 'HIP_ADDUCTION', 'FRONTAL_ADDUCTION', 'band_hip_adduction', 'cossack_squat', 'copenhagen_plank_short')],
   ['cossack_squat', prof('BODYWEIGHT', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'lunge', 'side_lying_hip_adduction', 'bulgarian_split_squat')],
   ['band_hip_adduction', prof('BAND', 'HIP_ADDUCTION', 'FRONTAL_ADDUCTION', 'side_lying_hip_adduction', 'cossack_squat')],
@@ -306,57 +476,57 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
   ['kb_row', prof('KETTLEBELL', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'barbell_row', 'australian_pull_up', 'seated_cable_row')],
   ['turkish_get_up', prof('KETTLEBELL', 'CARRY_CONDITIONING', 'LOCOMOTION', 'plank_shoulder_taps', 'db_shoulder_press', 'plank')],
   ['farmers_carry', prof('DUMBBELLS', 'CARRY_CONDITIONING', 'LOCOMOTION', 'dead_hang', 'shrug', 'plank')],
-  ['db_bench_press', prof('DUMBBELLS', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'bench_press', 'push_up', 'weighted_push_up', 'incline_db_press', 'dip')],
+  ['db_bench_press', profReq('DUMBBELLS', ['DUMBBELLS', 'FLAT_BENCH'], 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'bench_press', 'push_up', 'weighted_push_up', 'incline_db_press', 'dip')],
   ['db_shoulder_press', prof('DUMBBELLS', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'overhead_press', 'kb_press', 'pike_push_up', 'handstand_push_up')],
   ['db_row', prof('DUMBBELLS', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'barbell_row', 'kb_row', 'australian_pull_up', 'seated_cable_row', 'pull_up')],
   ['db_lunge', prof('DUMBBELLS', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'bulgarian_split_squat', 'lunge', 'goblet_squat', 'back_squat')],
   ['russian_twist', prof('BODYWEIGHT', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'crunch', 'plank_shoulder_taps', 'hanging_knee_raise')],
 
   // More strength moves
-  ['seated_leg_curl', prof('CABLES_MACHINES', 'KNEE_FLEXION', 'HAMSTRING_CURL', 'leg_curl', 'nordic_curl', 'romanian_deadlift')],
+  ['seated_leg_curl', prof('LEG_CURL', 'KNEE_FLEXION', 'HAMSTRING_CURL', 'leg_curl', 'nordic_curl', 'romanian_deadlift')],
   ['single_leg_rdl', prof('DUMBBELLS', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'db_romanian_deadlift', 'kb_deadlift')],
   ['db_romanian_deadlift', prof('DUMBBELLS', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'kb_deadlift', 'single_leg_rdl', 'hip_bridge')],
-  ['good_morning', prof('BARBELL_RACK', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'db_romanian_deadlift', 'back_extension')],
+  ['good_morning', profReq('BARBELL', ['BARBELL', 'SQUAT_RACK'], 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'db_romanian_deadlift', 'back_extension')],
   ['band_leg_curl', prof('BAND', 'KNEE_FLEXION', 'HAMSTRING_CURL', 'leg_curl', 'nordic_curl', 'hip_bridge')],
-  ['barbell_curl', prof('BARBELL_RACK', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'cable_curl', 'preacher_curl', 'chin_up')],
-  ['incline_db_curl', prof('DUMBBELLS', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'concentration_curl', 'hammer_curl')],
+  ['barbell_curl', prof('BARBELL', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'cable_curl', 'preacher_curl', 'chin_up')],
+  ['incline_db_curl', profReq('DUMBBELLS', ['DUMBBELLS', 'ADJ_BENCH'], 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'concentration_curl', 'hammer_curl')],
   ['concentration_curl', prof('DUMBBELLS', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'incline_db_curl', 'preacher_curl')],
-  ['preacher_curl', prof('CABLES_MACHINES', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'cable_curl', 'barbell_curl', 'bicep_curl')],
-  ['cable_curl', prof('CABLES_MACHINES', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'barbell_curl', 'band_curl')],
+  ['preacher_curl', prof('PREACHER_CURL_MACHINE', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'cable_curl', 'barbell_curl', 'bicep_curl')],
+  ['cable_curl', prof('CABLE_MACHINE', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'barbell_curl', 'band_curl')],
   ['band_curl', prof('BAND', 'ELBOW_FLEXION', 'SAGITTAL_SUPINATED', 'bicep_curl', 'cable_curl', 'australian_chin_up')],
-  ['seated_calf_raise', prof('CABLES_MACHINES', 'ANKLE_FLEXION', 'PLANTAR_FLEXION', 'standing_calf_raise', 'db_calf_raise', 'calf_raise')],
+  ['seated_calf_raise', prof('CALF_MACHINE', 'ANKLE_FLEXION', 'PLANTAR_FLEXION', 'standing_calf_raise', 'db_calf_raise', 'calf_raise')],
   ['single_leg_calf_raise', prof('BODYWEIGHT', 'ANKLE_FLEXION', 'PLANTAR_FLEXION', 'calf_raise', 'db_calf_raise', 'standing_calf_raise')],
   ['db_calf_raise', prof('DUMBBELLS', 'ANKLE_FLEXION', 'PLANTAR_FLEXION', 'standing_calf_raise', 'calf_raise', 'single_leg_calf_raise')],
-  ['back_extension', prof('DIP_BARS_OR_BENCH', 'HIP_HINGE', 'HIP_EXTENSION_SUPINE', 'superman_hold', 'hip_bridge', 'good_morning')],
+  ['back_extension', prof('ROMAN_CHAIR', 'HIP_HINGE', 'HIP_EXTENSION_SUPINE', 'superman_hold', 'hip_bridge', 'good_morning')],
   ['bird_dog', prof('BODYWEIGHT', 'CORE_ANTI_EXTENSION', 'ISOMETRIC_PLANK', 'superman_hold', 'plank', 'back_extension')],
-  ['cable_pull_through', prof('CABLES_MACHINES', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'kb_swing', 'romanian_deadlift', 'hip_thrust')],
-  ['pallof_press', prof('CABLES_MACHINES', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'cable_woodchop', 'side_plank', 'russian_twist')],
-  ['cable_woodchop', prof('CABLES_MACHINES', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'pallof_press', 'russian_twist', 'bicycle_crunch')],
+  ['cable_pull_through', prof('CABLE_MACHINE', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'kb_swing', 'romanian_deadlift', 'hip_thrust')],
+  ['pallof_press', prof('CABLE_MACHINE', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'cable_woodchop', 'side_plank', 'russian_twist')],
+  ['cable_woodchop', prof('CABLE_MACHINE', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'pallof_press', 'russian_twist', 'bicycle_crunch')],
   ['db_side_bend', prof('DUMBBELLS', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'cable_woodchop', 'russian_twist', 'side_plank')],
   ['mountain_climber', prof('BODYWEIGHT', 'CARRY_CONDITIONING', 'LOCOMOTION', 'burpee', 'plank_shoulder_taps', 'jumping_jacks')],
-  ['cable_fly', prof('CABLES_MACHINES', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'pec_deck', 'db_bench_press', 'push_up')],
-  ['pec_deck', prof('CABLES_MACHINES', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'cable_fly', 'chest_press_machine', 'push_up')],
-  ['chest_press_machine', prof('CABLES_MACHINES', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'db_bench_press', 'bench_press', 'push_up')],
-  ['shoulder_press_machine', prof('CABLES_MACHINES', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'db_shoulder_press', 'overhead_press', 'pike_push_up')],
-  ['cable_lateral_raise', prof('CABLES_MACHINES', 'LATERAL_RAISE', 'FRONTAL_ABDUCTION', 'lateral_raise', 'face_pull', 'db_shoulder_press')],
-  ['reverse_pec_deck', prof('CABLES_MACHINES', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'face_pull', 'band_pull_apart', 'seated_cable_row')],
-  ['straight_arm_pulldown', prof('CABLES_MACHINES', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'lat_pulldown', 'pull_up', 'negative_pull_up')],
-  ['overhead_cable_triceps_extension', prof('CABLES_MACHINES', 'ELBOW_EXTENSION', 'SAGITTAL_TRICEP', 'tricep_pushdown', 'skull_crusher', 'diamond_push_up')],
+  ['cable_fly', prof('CABLE_MACHINE', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'pec_deck', 'db_bench_press', 'push_up')],
+  ['pec_deck', prof('PEC_DECK', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'cable_fly', 'chest_press_machine', 'push_up')],
+  ['chest_press_machine', prof('CHEST_PRESS_MACHINE', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'db_bench_press', 'bench_press', 'push_up')],
+  ['shoulder_press_machine', prof('SHOULDER_PRESS_MACHINE', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'db_shoulder_press', 'overhead_press', 'pike_push_up')],
+  ['cable_lateral_raise', prof('CABLE_MACHINE', 'LATERAL_RAISE', 'FRONTAL_ABDUCTION', 'lateral_raise', 'face_pull', 'db_shoulder_press')],
+  ['reverse_pec_deck', prof('PEC_DECK', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'face_pull', 'band_pull_apart', 'seated_cable_row')],
+  ['straight_arm_pulldown', prof('CABLE_MACHINE', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'lat_pulldown', 'pull_up', 'negative_pull_up')],
+  ['overhead_cable_triceps_extension', prof('CABLE_MACHINE', 'ELBOW_EXTENSION', 'SAGITTAL_TRICEP', 'tricep_pushdown', 'skull_crusher', 'diamond_push_up')],
   ['band_pull_apart', prof('BAND', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'face_pull', 'reverse_pec_deck', 'scapular_australian_pull_up')],
   ['band_row', prof('BAND', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'seated_cable_row', 'db_row', 'australian_pull_up')],
   ['band_chest_press', prof('BAND', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'push_up', 'db_bench_press', 'chest_press_machine')],
   ['kb_sumo_deadlift', prof('KETTLEBELL', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'kb_deadlift', 'kb_swing', 'romanian_deadlift')],
   ['kb_halo', prof('KETTLEBELL', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'kb_press', 'db_shoulder_press', 'face_pull')],
   ['kb_windmill', prof('KETTLEBELL', 'CORE_FLEXION_ROTATION', 'ROTATIONAL', 'turkish_get_up', 'russian_twist', 'side_plank')],
-  ['smith_squat', prof('CABLES_MACHINES', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'back_squat', 'leg_press', 'hack_squat', 'goblet_squat')],
-  ['smith_bench_press', prof('CABLES_MACHINES', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'bench_press', 'chest_press_machine', 'db_bench_press')],
-  ['smith_incline_press', prof('CABLES_MACHINES', 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'incline_bench_press', 'incline_db_press', 'smith_bench_press')],
-  ['smith_overhead_press', prof('CABLES_MACHINES', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'overhead_press', 'shoulder_press_machine', 'db_shoulder_press')],
-  ['smith_row', prof('CABLES_MACHINES', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'barbell_row', 'seated_cable_row', 'chest_supported_row')],
-  ['smith_romanian_deadlift', prof('CABLES_MACHINES', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'db_romanian_deadlift', 'cable_pull_through')],
+  ['smith_squat', prof('SMITH_MACHINE', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'back_squat', 'leg_press', 'hack_squat', 'goblet_squat')],
+  ['smith_bench_press', profReq('SMITH_MACHINE', ['SMITH_MACHINE', 'FLAT_BENCH'], 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'bench_press', 'chest_press_machine', 'db_bench_press')],
+  ['smith_incline_press', profReq('SMITH_MACHINE', ['SMITH_MACHINE', 'ADJ_BENCH'], 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'incline_bench_press', 'incline_db_press', 'smith_bench_press')],
+  ['smith_overhead_press', prof('SMITH_MACHINE', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'overhead_press', 'shoulder_press_machine', 'db_shoulder_press')],
+  ['smith_row', prof('SMITH_MACHINE', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'barbell_row', 'seated_cable_row', 'chest_supported_row')],
+  ['smith_romanian_deadlift', prof('SMITH_MACHINE', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'romanian_deadlift', 'db_romanian_deadlift', 'cable_pull_through')],
   ['scapular_pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'dead_hang', 'negative_pull_up', 'band_assisted_pull_up')],
   ['flexed_arm_hang', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_SUPINATED', 'negative_pull_up', 'dead_hang', 'band_assisted_pull_up')],
-  ['band_assisted_pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'negative_pull_up', 'pull_up', 'lat_pulldown')],
+  ['band_assisted_pull_up', profReq('PULL_UP_BAR', ['PULL_UP_BAR', 'BAND'], 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'negative_pull_up', 'pull_up', 'lat_pulldown')],
   ['neutral_grip_pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_SUPINATED', 'chin_up', 'pull_up', 'lat_pulldown')],
   ['wide_grip_pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'pull_up', 'lat_pulldown', 'neutral_grip_pull_up')],
   ['archer_pull_up', prof('PULL_UP_BAR', 'VERTICAL_PULL', 'OVERHEAD_PRONATED', 'weighted_pull_up', 'wide_grip_pull_up', 'pull_up')],
@@ -364,21 +534,21 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
   ['incline_push_up', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'DECLINE_DOWNWARD', 'knee_push_up', 'push_up', 'wide_knee_push_up')],
   ['decline_push_up', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'push_up', 'pike_push_up', 'weighted_push_up')],
   ['archer_push_up', prof('BODYWEIGHT', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'weighted_push_up', 'pseudo_planche_push_up', 'decline_push_up')],
-  ['single_arm_cable_row', prof('CABLES_MACHINES', 'HORIZONTAL_PULL', 'MID_ROW_SUPINATED', 'seated_cable_row', 'db_row', 'chest_supported_row')],
-  ['cable_rear_delt_fly', prof('CABLES_MACHINES', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'reverse_pec_deck', 'face_pull', 'rear_delt_db_fly')],
-  ['cable_crossover_high_to_low', prof('CABLES_MACHINES', 'HORIZONTAL_PUSH', 'DECLINE_DOWNWARD', 'cable_fly', 'pec_deck', 'db_fly')],
-  ['cable_crossover_low_to_high', prof('CABLES_MACHINES', 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'cable_fly', 'incline_db_press', 'db_fly')],
-  ['cable_glute_kickback', prof('CABLES_MACHINES', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'hip_thrust', 'cable_pull_through', 'single_leg_hip_thrust')],
+  ['single_arm_cable_row', prof('SEATED_ROW_MACHINE', 'HORIZONTAL_PULL', 'MID_ROW_SUPINATED', 'seated_cable_row', 'db_row', 'chest_supported_row')],
+  ['cable_rear_delt_fly', prof('CABLE_MACHINE', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'reverse_pec_deck', 'face_pull', 'rear_delt_db_fly')],
+  ['cable_crossover_high_to_low', prof('CABLE_MACHINE', 'HORIZONTAL_PUSH', 'DECLINE_DOWNWARD', 'cable_fly', 'pec_deck', 'db_fly')],
+  ['cable_crossover_low_to_high', prof('CABLE_MACHINE', 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'cable_fly', 'incline_db_press', 'db_fly')],
+  ['cable_glute_kickback', prof('CABLE_MACHINE', 'HIP_HINGE', 'HIP_HINGE_STANDING', 'hip_thrust', 'cable_pull_through', 'single_leg_hip_thrust')],
   ['step_up', prof('BODYWEIGHT', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'lunge', 'reverse_lunge', 'bulgarian_split_squat')],
   ['reverse_lunge', prof('BODYWEIGHT', 'SQUAT_UNILATERAL', 'KNEE_DOMINANT_SPLIT', 'lunge', 'step_up', 'bulgarian_split_squat')],
   ['single_leg_hip_thrust', prof('BODYWEIGHT', 'HIP_HINGE', 'HIP_EXTENSION_SUPINE', 'hip_thrust', 'hip_bridge', 'cable_glute_kickback')],
   ['single_arm_db_press', prof('DUMBBELLS', 'VERTICAL_PUSH', 'OVERHEAD_VERTICAL', 'db_shoulder_press', 'kb_press', 'overhead_press')],
-  ['single_arm_lat_pulldown', prof('CABLES_MACHINES', 'VERTICAL_PULL', 'OVERHEAD_SUPINATED', 'lat_pulldown', 'straight_arm_pulldown', 'neutral_grip_pull_up')],
-  ['incline_bench_press', prof('BARBELL_RACK', 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'incline_db_press', 'smith_incline_press', 'bench_press')],
-  ['front_squat', prof('BARBELL_RACK', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'back_squat', 'goblet_squat', 'hack_squat')],
-  ['hack_squat', prof('CABLES_MACHINES', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'leg_press', 'back_squat', 'smith_squat')],
-  ['chest_supported_row', prof('DUMBBELLS', 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'seated_cable_row', 'barbell_row')],
-  ['db_fly', prof('DUMBBELLS', 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'cable_fly', 'pec_deck', 'cable_crossover_high_to_low')],
+  ['single_arm_lat_pulldown', prof('LAT_PULLDOWN', 'VERTICAL_PULL', 'OVERHEAD_SUPINATED', 'lat_pulldown', 'straight_arm_pulldown', 'neutral_grip_pull_up')],
+  ['incline_bench_press', profReq('BARBELL', ['BARBELL', 'ADJ_BENCH'], 'HORIZONTAL_PUSH', 'INCLINE_UPWARD', 'incline_db_press', 'smith_incline_press', 'bench_press')],
+  ['front_squat', profReq('BARBELL', ['BARBELL', 'SQUAT_RACK'], 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'back_squat', 'goblet_squat', 'hack_squat')],
+  ['hack_squat', prof('HACK_SQUAT', 'SQUAT_BILATERAL', 'KNEE_DOMINANT_BILATERAL', 'leg_press', 'back_squat', 'smith_squat')],
+  ['chest_supported_row', profReq('DUMBBELLS', ['DUMBBELLS', 'ADJ_BENCH'], 'HORIZONTAL_PULL', 'MID_ROW_PRONATED', 'db_row', 'seated_cable_row', 'barbell_row')],
+  ['db_fly', profReq('DUMBBELLS', ['DUMBBELLS', 'FLAT_BENCH'], 'HORIZONTAL_PUSH', 'FLAT_HORIZONTAL', 'cable_fly', 'pec_deck', 'cable_crossover_high_to_low')],
   ['rear_delt_db_fly', prof('DUMBBELLS', 'UPPER_BACK_PULL', 'HIGH_EXTERNAL_ROTATION', 'reverse_pec_deck', 'cable_rear_delt_fly', 'band_pull_apart', 'face_pull')],
   ['quad_stretch', prof('BODYWEIGHT', 'MOBILITY', 'STRETCH', 'hip_flexor_stretch', 'shin_stretch')],
   ['hamstring_stretch', prof('BODYWEIGHT', 'MOBILITY', 'STRETCH', 'calf_stretch', 'figure_four_stretch')],
@@ -407,13 +577,28 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
   const lower = (ex.id + ' ' + ex.name).toLowerCase()
   const has = (...parts: string[]) => parts.some((p) => lower.includes(p))
   const eq: Equipment =
-    has('cable', 'machine', 'pulldown', 'leg_press', 'pushdown') ? 'CABLES_MACHINES'
-    : has('barbell', 'bench_press', 'back_squat', 'deadlift') ? 'BARBELL_RACK'
+    has('smith') ? 'SMITH_MACHINE'
+    : has('pulldown') && !has('straight') ? 'LAT_PULLDOWN'
+    : has('seated') && has('row') ? 'SEATED_ROW_MACHINE'
+    : has('chest_press', 'chest press') ? 'CHEST_PRESS_MACHINE'
+    : has('shoulder_press', 'shoulder press') ? 'SHOULDER_PRESS_MACHINE'
+    : has('pec_deck', 'pec deck') ? 'PEC_DECK'
+    : has('preacher') ? 'PREACHER_CURL_MACHINE'
+    : has('leg_press', 'leg press') ? 'LEG_PRESS'
+    : has('hack_squat', 'hack squat') ? 'HACK_SQUAT'
+    : has('leg_extension', 'leg extension') ? 'LEG_EXTENSION'
+    : has('leg_curl', 'leg curl') ? 'LEG_CURL'
+    : has('calf') && has('machine', 'standing_calf', 'seated_calf') ? 'CALF_MACHINE'
+    : has('cable', 'machine', 'pushdown') ? 'CABLE_MACHINE'
+    : has('barbell', 'bench_press', 'back_squat', 'deadlift') ? 'BARBELL'
     : has('kb_', 'kettlebell') ? 'KETTLEBELL'
     : has('db_', 'dumbbell', 'curl', 'lateral') ? 'DUMBBELLS'
     : has('pull_up', 'chin_up', 'hang', 'lever', 'muscle_up') ? 'PULL_UP_BAR'
     : has('band', 'resistance') ? 'BAND'
-    : has('dip', 'australian', 'row') ? 'DIP_BARS_OR_BENCH'
+    : has('australian') ? 'LOW_BAR'
+    : has('dip') ? 'DIP_STATION'
+    : has('bench', 'split') ? 'FLAT_BENCH'
+    : has('row') ? 'SEATED_ROW_MACHINE'
     : ex.kind === 'WEIGHTED' ? 'DUMBBELLS'
     : 'BODYWEIGHT'
   const main = ex.primary[0]
@@ -457,7 +642,7 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     HIP_ADDUCTION: 'FRONTAL_ADDUCTION',
     MOBILITY: 'STRETCH',
   }
-  return { equipment: eq, pattern, angle: angle[pattern], preferredSwaps: [] }
+  return { equipment: eq, pattern, angle: angle[pattern], preferredSwaps: [], requires: [eq] }
 }
 
 const SYNERGISTIC: ReadonlyArray<readonly [MovementPattern, MovementPattern]> = [
@@ -494,7 +679,8 @@ export function rankSubstitutes(
   userEquipment: ReadonlySet<Equipment> = allEquipment(),
 ): SwapCandidate[] {
   const src = profileFor(source)
-  const effective = new Set(userEquipment.size === 0 ? EQUIPMENT : userEquipment)
+  const exp = expandLegacyEquipment(userEquipment)
+  const effective = new Set<Equipment>(exp.size === 0 ? ALL_ACTIVE_EQUIPMENT : exp)
   effective.add('BODYWEIGHT')
   const sourceIsStretch = STRETCH_IDS.has(source.id)
   const ranked = library
@@ -513,7 +699,7 @@ export function rankSubstitutes(
         exercise: candidate,
         profile: cand,
         score: patternPts + anglePts + primaryPts + secondaryPts + kindPts + curatedBonus,
-        matchesUserEquipment: effective.has(cand.equipment),
+        matchesUserEquipment: profileFits(cand, effective),
       }
     })
   const good = (c: SwapCandidate) => (c.matchesUserEquipment && c.score >= 45 ? 1 : 0)
@@ -566,9 +752,9 @@ export function adaptPlanToEquipment<D extends { days: PlanDraftDay[] }>(
   dropUnfit = false,
 ): [D, number] {
   if (userEquipment.size === 0) return [draft, 0]
-  const allowed = new Set(userEquipment)
+  const allowed = expandLegacyEquipment(userEquipment)
   allowed.add('BODYWEIGHT')
-  if (EQUIPMENT.every((e) => allowed.has(e))) return [draft, 0]
+  if (ALL_ACTIVE_EQUIPMENT.every((e) => allowed.has(e))) return [draft, 0]
   const allExercises = [...library.values()]
   let swaps = 0
   const days = draft.days.map((day) => {
@@ -576,7 +762,7 @@ export function adaptPlanToEquipment<D extends { days: PlanDraftDay[] }>(
     const usedInDay = new Set(day.items.map((it) => it.exerciseId))
     const items = day.items.flatMap((item) => {
       const ex = library.get(item.exerciseId) ?? fallbackExercise(item)
-      if (allowed.has(profileFor(ex).equipment)) return [item]
+      if (profileFits(profileFor(ex), allowed)) return [item]
       // Only a real match (at least a related pattern or shared muscles): with none, keep the original rather than
       // turning a curl into a push-up or a burpee (audit 2026-10-24).
       const doable = rankSubstitutes(ex, allExercises, allowed).filter((c) => c.matchesUserEquipment && c.score >= MIN_SWAP_SCORE)

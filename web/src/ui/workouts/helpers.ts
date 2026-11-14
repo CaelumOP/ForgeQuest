@@ -2,7 +2,7 @@ import { plural, t } from '../../i18n'
 import type { ExerciseRow, PlanItemRow } from '../../data/db'
 import { isWebUrl } from '../../data/workouts'
 import { formatWeight, type WeightUnit } from '../../domain/units'
-import { profileFor, type Equipment } from '../../domain/exercise-swap-engine'
+import { expandLegacyEquipment, profileFits, profileFor, type Equipment } from '../../domain/exercise-swap-engine'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 
 const AR_DAYS = ['اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد']
@@ -56,17 +56,29 @@ export function prescription(item: PlanItemRow, kind: ExerciseKind | undefined, 
 export const REST_TITLES = ['Rest day']
 export const isRestTitle = (title: string): boolean => REST_TITLES.includes(title) || title === t('today_rest_day')
 
-export type PickerFilter = { query: string; muscle: Muscle | null; equipment: ReadonlySet<Equipment>; excludeIds?: ReadonlySet<string>; focusMuscle?: Muscle }
+export type PickerFilter = {
+  query: string
+  muscle: Muscle | null
+  equipment: ReadonlySet<Equipment>
+  selectedEquipment?: Equipment | null
+  excludeIds?: ReadonlySet<string>
+  focusMuscle?: Muscle
+}
 
 /** Library rows for the picker: filtered, then primary-muscle matches first, then by name. */
 export function filterExercises(library: readonly ExerciseRow[], f: PickerFilter): ExerciseRow[] {
   const q = f.query.trim().toLowerCase()
+  const allowed = expandLegacyEquipment(f.equipment)
+  const picked = f.selectedEquipment ?? null
   return library
-    .filter((ex) =>
-      f.equipment.has(profileFor(ex).equipment) &&
-      (!q || ex.name.toLowerCase().includes(q)) &&
-      (f.muscle == null || ex.primary.includes(f.muscle) || ex.secondary.includes(f.muscle)) &&
-      !f.excludeIds?.has(ex.id))
+    .filter((ex) => {
+      const prof = profileFor(ex)
+      const eqOk = picked ? picked === prof.equipment || Boolean(prof.requires?.includes(picked)) : profileFits(prof, allowed)
+      return eqOk &&
+        (!q || ex.name.toLowerCase().includes(q)) &&
+        (f.muscle == null || ex.primary.includes(f.muscle) || ex.secondary.includes(f.muscle)) &&
+        !f.excludeIds?.has(ex.id)
+    })
     .sort((a, b) =>
       Number(f.muscle != null && !a.primary.includes(f.muscle)) - Number(f.muscle != null && !b.primary.includes(f.muscle)) ||
       Number(f.focusMuscle != null && !a.primary.includes(f.focusMuscle)) - Number(f.focusMuscle != null && !b.primary.includes(f.focusMuscle)) ||

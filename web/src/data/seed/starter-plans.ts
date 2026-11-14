@@ -116,7 +116,7 @@ export const HEMO_FOUNDATION: PlanDraft = {
 /** Simple full-body plan: Monday, Wednesday, Friday. */
 export const FULL_BODY_BEGINNER: PlanDraft = {
   name: 'Full body · 3 days · bodyweight',
-  description: 'Simple bodyweight plan: Monday, Wednesday, Friday. Needs little or no equipment.',
+  description: 'Simple bodyweight plan: Monday, Wednesday, Friday. Bodyweight only; the rows need a low bar or a sturdy table.',
   days: [
     {
       dayOfWeek: 1,

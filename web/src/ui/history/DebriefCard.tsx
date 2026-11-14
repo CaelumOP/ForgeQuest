@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
-import { canDebrief, askCoachAboutWorkout } from '../../data/coach-chat'
 import { debriefLines } from '../../data/debrief-text'
 import { useSettings, weightUnit } from '../../data/settings'
 import { useLibrary, useWorkoutDebrief } from '../../data/workouts'
 import { formatWeight } from '../../domain/units'
 import type { WorkoutScoreResult } from '../../domain/workout-score'
-import { Button, haptics, reducedMotion } from '../kit'
+import { haptics, reducedMotion } from '../kit'
 import { scoreNote, scoreReasons, scoreTone } from './helpers'
 import './history.css'
 
@@ -49,7 +48,7 @@ function useCountUp(target: number | null, celebrate: boolean): { shown: number 
   return { shown, landed }
 }
 
-export function DebriefCard({ sessionId, score, onAsked, celebrate = false }: { sessionId: number; score?: WorkoutScoreResult | null; onAsked?: () => void; celebrate?: boolean }) {
+export function DebriefCard({ sessionId, score, celebrate = false }: { sessionId: number; score?: WorkoutScoreResult | null; onAsked?: () => void; celebrate?: boolean }) {
   const settings = useSettings()
   const library = useLibrary()
   const debrief = useWorkoutDebrief(sessionId)
@@ -70,7 +69,6 @@ export function DebriefCard({ sessionId, score, onAsked, celebrate = false }: { 
     return landed ? { class: 'hs-deb-rise', style: { animationDelay: `${i * 70}ms` } } : { class: 'hs-deb-wait' }
   }
   const cls = (base: string, r: { class?: string }) => (r.class ? `${base} ${r.class}` : base)
-  const ask = () => { void askCoachAboutWorkout(sessionId).then((ok) => { if (ok) { onAsked?.(); location.hash = '#/coach' } }) }
   return (
     <div class="hs-deb-card">
       <div class="hs-deb-head">
@@ -100,7 +98,6 @@ export function DebriefCard({ sessionId, score, onAsked, celebrate = false }: { 
           {lines.footnote && <p class="hs-deb-foot">{lines.footnote}</p>}
         </>
       )}
-      {canDebrief(settings) && <Button variant="tonal" onClick={ask}>{t('debrief_ask_coach')}</Button>}
     </div>
   )
 }

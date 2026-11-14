@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../data/settings'
-import { parseEquipmentSet } from '../../domain/exercise-swap-engine'
-import { addNote, applyGoal, removeNote, stepWeekly, summary, toggleEquipment } from './helpers'
+import { parseEquipmentSet, TRAINING_PLACE_INFO } from '../../domain/exercise-swap-engine'
+import { addNote, applyGoal, equipmentSummary, gearCustomizeSummary, impliedFatPct, removeNote, stepWeekly, summary, toggleEquipment } from './helpers'
 
 describe('profile helpers', () => {
   it('summary skips blanks', () => expect(summary('a', null, ' ', 'b', false)).toBe('a · b'))
@@ -29,5 +29,15 @@ describe('profile helpers', () => {
     expect(next.goalSetDay).toBe(20000)
     expect(next.proteinPerKg).toBe(2)
     expect(applyGoal(i, 'MAINTAIN', 1)).toBe(settings)
+  })
+  it('equipmentSummary and gearCustomizeSummary match training places and custom gear', () => {
+    expect(equipmentSummary(new Set())).toBe('Equipment not set')
+    expect(equipmentSummary(new Set(TRAINING_PLACE_INFO.GYM.equipment))).toBe('Gym')
+    expect(gearCustomizeSummary(new Set(TRAINING_PLACE_INFO.HOME.equipment))).toBe('Customize gear · Home gym (10 items)')
+    expect(gearCustomizeSummary(parseEquipmentSet('DUMBBELLS,PULL_UP_BAR'))).toBe('Customize gear · Custom (2 items)')
+  })
+  it('impliedFatPct computes remaining calorie percentage or null', () => {
+    expect(impliedFatPct({ kcalGoal: 2000, proteinGoal: 150, carbsGoal: 225 })).toBe(25)
+    expect(impliedFatPct({ kcalGoal: 0, proteinGoal: 150, carbsGoal: 225 })).toBeNull()
   })
 })

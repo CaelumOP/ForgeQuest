@@ -1,6 +1,13 @@
 // What the person told the plan builder, saved (as JSON under the `plan_builder_answers` setting) so a rebuild starts
 // from the same answers. Mirrors PlanInput without the exercise library. Not part of backups. Android: PlanAnswers.kt.
-import { EQUIPMENT, presetEquipment, type Equipment } from './exercise-swap-engine'
+import {
+  EQUIPMENT_META,
+  expandLegacyEquipment,
+  isEquipment,
+  parseEquipmentSet,
+  presetEquipment,
+  type Equipment,
+} from './exercise-swap-engine'
 import { isInjury, type Injury } from './injury'
 import { isMuscle, type Muscle } from './muscle'
 import {
@@ -53,7 +60,8 @@ export function defaultPlanAnswers(): PlanAnswers {
 export function planAnswersToInput(answers: Partial<PlanAnswers> = {}, offset = 0): Required<PlanInput> {
   const base = defaultPlanAnswers()
   const days = new Set<number>(answers.days ?? base.days)
-  const equipment = new Set<Equipment>([...(answers.equipment ?? base.equipment), 'BODYWEIGHT'])
+  const equipment = expandLegacyEquipment(answers.equipment ?? base.equipment)
+  equipment.add('BODYWEIGHT')
   const rawMinutesByDay = answers.minutesByDay ?? base.minutesByDay
   const entries: [number, number][] =
     rawMinutesByDay instanceof Map
@@ -87,7 +95,11 @@ export { planAnswersToInput as toInput }
 const isIn = <T extends string>(list: readonly T[], v: unknown): v is T =>
   typeof v === 'string' && (list as readonly string[]).includes(v)
 
-const isEquipment = (v: unknown): v is Equipment => isIn(EQUIPMENT, v)
+const normalizeEquipment = (eq: Iterable<Equipment>): Equipment[] => {
+  const expanded = expandLegacyEquipment(eq)
+  expanded.add('BODYWEIGHT')
+  return [...expanded].filter((e) => !EQUIPMENT_META[e].legacy)
+}
 
 export function encodePlanAnswers(answers: PlanAnswers): string {
   const minutesByDayObj: Record<string, number> = {}
@@ -98,7 +110,7 @@ export function encodePlanAnswers(answers: PlanAnswers): string {
     goal: answers.goal,
     days: [...answers.days],
     minutes: answers.minutes,
-    equipment: [...answers.equipment],
+    equipment: normalizeEquipment(answers.equipment),
     experience: answers.experience,
     injuries: [...answers.injuries],
     avoidIds: [...answers.avoidIds],
@@ -139,8 +151,16 @@ export function decodePlanAnswers(raw: string | null | undefined): PlanAnswers |
       d.minutes = Math.trunc(obj.minutes)
     }
     if (obj.equipment !== undefined) {
-      if (!Array.isArray(obj.equipment) || !obj.equipment.every(isEquipment)) return null
-      d.equipment = new Set(obj.equipment)
+      if (Array.isArray(obj.equipment)) {
+        if (!obj.equipment.every(isEquipment)) return null
+        d.equipment = new Set(normalizeEquipment(obj.equipment))
+      } else if (typeof obj.equipment === 'string') {
+        d.equipment = parseEquipmentSet(obj.equipment)
+      } else {
+        return null
+      }
+    } else if (typeof obj.equipmentPreset === 'string' || typeof obj.preset === 'string') {
+      d.equipment = parseEquipmentSet(String(obj.equipmentPreset ?? obj.preset))
     }
     if (obj.injuries !== undefined) {
       if (!Array.isArray(obj.injuries) || !obj.injuries.every((x): x is Injury => typeof x === 'string' && isInjury(x))) return null

@@ -108,7 +108,10 @@ object PlanBuilder {
         val tags = linkedSetOf<WhyTag>()
     }
 
-    private val LOAD_EQUIPMENT = setOf(Equipment.DUMBBELLS, Equipment.KETTLEBELL, Equipment.BARBELL_RACK, Equipment.CABLES_MACHINES)
+    private val LOAD_EQUIPMENT = (
+        setOf(Equipment.DUMBBELLS, Equipment.KETTLEBELL, Equipment.BARBELL) +
+            Equipment.selectableEntries.filter { it.group == EquipmentGroup.UPPER_MACHINES || it.group == EquipmentGroup.LOWER_MACHINES }
+        ).toSet()
     private val PUSH_PATTERNS = setOf(MP.HORIZONTAL_PUSH, MP.DIP_PUSH, MP.VERTICAL_PUSH)
     private val PULL_PATTERNS = setOf(MP.VERTICAL_PULL, MP.HORIZONTAL_PULL, MP.UPPER_BACK_PULL)
 
@@ -182,8 +185,8 @@ object PlanBuilder {
     }
 
     private class Builder(private val input: PlanInput, library: List<ExerciseEntity>) {
-        private val allowedEq = input.equipment + Equipment.BODYWEIGHT
-        private val loadEquip = input.equipment.any { it in LOAD_EQUIPMENT }
+        private val allowedEq = expandLegacyEquipment(input.equipment) + Equipment.BODYWEIGHT
+        private val loadEquip = allowedEq.any { it in LOAD_EQUIPMENT }
         private val lib = library.distinctBy { it.id }.sortedBy { it.id }
         private val profiles = lib.associate { it.id to ExerciseSwapEngine.profileFor(it) }
         private val focus = input.focus.sortedBy { it.ordinal }.take(3).toSet()
@@ -191,7 +194,7 @@ object PlanBuilder {
 
         private fun prof(e: ExerciseEntity) = profiles.getValue(e.id)
 
-        private val equipOk = lib.filter { prof(it).equipment in allowedEq && it.id !in input.avoidIds }
+        private val equipOk = lib.filter { prof(it).fits(allowedEq) && it.id !in input.avoidIds }
         private val eligible = equipOk.filter { it.id !in ExerciseCatalog.STRETCH_IDS && !blocked(it, prof(it), input.injuries) }
         private val stretches = equipOk.filter { it.id in ExerciseCatalog.STRETCH_IDS && !blocked(it, prof(it), input.injuries) }
 

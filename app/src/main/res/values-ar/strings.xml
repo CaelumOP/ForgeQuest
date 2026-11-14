@@ -290,7 +290,7 @@
     <string name="map_fully_recovered">%1$s · تعافت تمامًا</string>
     <string name="map_recovering_detail">%1$s · تعافت %2$d%% · تستعد بعد %3$d س</string>
     <string name="map_all_fresh_tap">كل العضلات مستعدة. اضغط على عضلة لعرض التفاصيل.</string>
-    <string name="map_tap_hint">اضغط على عضلة لعرض التفاصيل</string>
+    <string name="map_tap_hint">اضغط على عضلة لتحديدها، ثم على «اعرض التمارين». ومع TalkBack، افتح تمارين أي عضلة من قائمة الإجراءات.</string>
     <string name="map_just_trained">مُرِّنت للتو</string>
     <string name="map_recovering">في طور التعافي</string>
     <string name="map_almost_ready">تكاد تستعد</string>
@@ -562,7 +562,7 @@
     <string name="backup_restore_failed">تعذّر استرجاع هذه النسخة.</string>
     <string name="backup_share_subject">نسخة احتياطية من ForgeQuest</string>
     <string name="backup_share_title">حفظ نسختك الاحتياطية</string>
-    <string name="profile_setup_title">تفعيل المدرب وتصوير الوجبات</string>
+    <string name="profile_setup_title">تفعيل تحليل صور الوجبات</string>
     <string name="profile_setup_body">الصق مفتاح Gemini مجانيًا؛ يستغرق ذلك دقيقة تقريبًا.</string>
     <string name="profile_add_key">إضافة المفتاح</string>
     <string name="profile_default_name">الرياضي</string>
@@ -576,9 +576,6 @@
     <string name="action_see_all">عرض الكل</string>
     <string name="profile_daily_protein">البروتين اليومي</string>
     <string name="profile_daily_calories">السعرات اليومية</string>
-    <string name="profile_workouts_per_week">التمارين في الأسبوع</string>
-    <string name="profile_from_plan">من خطتك</string>
-    <string name="profile_streak_explain">تحتسب سلسلتك الأسبوعية الأسابيع التي تبلغ فيها هذا العدد.</string>
     <string name="profile_ai_key">مفتاح Gemini</string>
     <string name="profile_key_not_set">غير مضاف · المدرب وتصوير الوجبات والخطط متوقفة</string>
     <string name="profile_key_connected">متصل · يشغّل المدرب وتصوير الوجبات والخطط</string>
@@ -610,9 +607,6 @@
     <string name="profile_exercise_library">مكتبة التمارين</string>
     <string name="workouts_library">المكتبة</string>
     <string name="cd_open_food">فتح الطعام</string>
-    <string name="profile_hand_size">مقاس اليد (اختياري)</string>
-    <string name="profile_hand_value">الطول %1$s سم · الكف %2$s سم</string>
-    <string name="profile_hand_hint">يساعد على تقدير الكميات حين تظهر يدك في الصورة</string>
     <string name="body_male">ذكر</string>
     <string name="body_female">أنثى</string>
     <string name="profile_your_data_hint">احفظ ملفًا لديك، أو انقل كل بياناتك إلى هاتف جديد. لا يتضمن الملف الصور ولا مفتاح Gemini.</string>
@@ -638,10 +632,6 @@
     <string name="action_remove">حذف</string>
     <string name="notes_dialog_title">معلومة ينبغي أن يعرفها المدرب</string>
     <string name="notes_dialog_body">معلومة واحدة في كل ملاحظة، مثل: «ركبتي اليسرى تؤلمني في القرفصاء العميقة» أو «لا أملك إلا عقلة وحلقات».</string>
-    <string name="hand_dialog_title">مقاس اليد</string>
-    <string name="hand_dialog_body">قِس من خط المعصم إلى طرف الإصبع الوسطى، ثم عرض الكف.</string>
-    <string name="hand_length">الطول</string>
-    <string name="hand_palm">عرض الكف</string>
     <string name="restore_title">الاسترجاع من %1$s؟</string>
     <string name="restore_body">ستُستبدل كل البيانات على هذا الهاتف، وتُحفظ نسخة منها. للتراجع: الملف الشخصي ← النسخ الاحتياطي ← التراجع عن آخر استرجاع.</string>
     <string name="badge_unlocked_detail">مفتوحة. %1$s.</string>
@@ -825,6 +815,7 @@
     <string name="detail_link_body">الصق رابط يوتيوب لهذا التمرين، أو اتركه فارغًا للبحث في يوتيوب.</string>
     <string name="plan_switched_to">تحوّلت الخطة إلى %1$s</string>
     <string name="plan_reading">جارٍ قراءة خطتك…</string>
+    <string name="plan_paste_unreadable">تعذّر العثور على خطة في هذا النص. انسخ إجابة الـ Gem كاملة، ثم الصقها مرة أخرى.</string>
     <string name="plan_workout">تمرين</string>
     <string name="plan_switched">تحوّلت إلى %1$s</string>
     <string name="plan_days_swapped">تبادل %1$s و%2$s مكانيهما</string>
@@ -844,7 +835,6 @@
     <string name="plan_rest_seconds">راحة %1$d ث</string>
     <string name="plan_add_to_day">إضافة إلى %1$s</string>
     <string name="plan_ready_made_title">خطط جاهزة</string>
-    <string name="plan_ready_made_link">أو اختر خطة جاهزة</string>
     <string name="plan_previous_tap">اضغط على إحداها لتعود خطتك.</string>
     <string name="plan_src_coach">من المدرب</string>
     <string name="plan_src_docs">من Google Docs</string>
@@ -987,13 +977,10 @@
     <string name="food_g_carbs">%1$d غ كربوهيدرات</string>
     <string name="profile_track_carbs">تتبّع الكربوهيدرات</string>
     <string name="profile_daily_carbs">الكربوهيدرات اليومية</string>
-    <string name="profile_carbs_suggested">المقترح %1$d غ: السعرات المتبقية بعد البروتين وحصة دهون %2$d%%</string>
     <string name="profile_about_you">عنك</string>
     <string name="profile_about_you_hint">يحدد السعرات المقترحة وشكل الجسم في خريطة العضلات</string>
     <string name="profile_daily_targets">الأهداف اليومية</string>
-    <string name="goals_protein_suggested">المقترح %1$d غ بمعدل %2$s غ لكل كيلوغرام من وزنك</string>
     <string name="profile_backup_file">ملف النسخة الاحتياطية</string>
-    <string name="profile_protein_per_kg">البروتين لكل كيلوغرام</string>
     <string name="unit_g_per_kg">غ/كغ</string>
     <string name="profile_fat_share">حصة الدهون من السعرات</string>
     <string name="hc_test_title">فحص Health Connect</string>
@@ -1382,10 +1369,7 @@
     <string name="debrief_open">ملخص التمرين</string>
     <!-- الملف الشخصي: فئات الإعدادات القابلة للطي -->
     <string name="settings_section_settings">الإعدادات</string>
-    <string name="settings_group_body">الجسم والصحة</string>
-    <string name="settings_group_goals">الأهداف والتغذية</string>
-    <string name="settings_group_training">التدريب</string>
-    <string name="settings_group_coach">متقدم: الذكاء الاصطناعي</string>
+    <string name="settings_group_coach">Gemini</string>
     <string name="settings_group_app">التطبيق والمظهر</string>
     <string name="settings_group_backup">النسخ الاحتياطي والمزامنة</string>
     <string name="settings_group_about">حول التطبيق</string>
@@ -1393,7 +1377,6 @@
     <string name="summary_body_not_set">لم يُحدَّد الطول والعمر بعد</string>
     <string name="summary_fitbit_on">Fitbit متصل</string>
     <string name="summary_fitbit_off">Fitbit غير مفعّل</string>
-    <string name="summary_per_week">%1$d أيام تمرين أسبوعيًا</string>
     <string name="summary_reminder_at">تذكير %1$s</string>
     <string name="summary_reminder_off">دون تذكير</string>
     <string name="summary_equipment_unset">لم تُحدَّد المعدات</string>
@@ -1405,15 +1388,22 @@
     <string name="summary_drive_none">Drive متصل · لا توجد نسخة بعد</string>
     <!-- الملف الشخصي: اختيار المعدات -->
     <string name="equipment_title">معدات التدريب</string>
-    <string name="equipment_hint">لا يقترح المدرب ومبدّل التمارين إلا ما يمكنك أداؤه بهذه المعدات.</string>
-    <string name="equipment_step_setup">اختر بيئة تدريبك</string>
-    <string name="equipment_step_setup_hint">اختر الأقرب إلى المكان الذي تتدرب فيه.</string>
-    <string name="equipment_step_items">عدّل العناصر منفردة</string>
-    <string name="equipment_step_items_hint">حدّد ما تملكه، وألغِ تحديد ما لا تملكه.</string>
-    <string name="equipment_custom">مزيج مخصّص</string>
-    <string name="equipment_custom_hint">اختيارك الخاص من العناصر أدناه</string>
-    <string name="equipment_no_items">لا تحتاج إلى معدات</string>
-    <string name="equipment_always">مشمول دائمًا</string>
+    <string name="equipment_hint">لا يقترح مبدّل التمارين وقائمة التمارين إلا ما يمكنك أداؤه بهذه المعدات.</string>
+    <string name="equipment_customize">تخصيص المعدات</string>
+    <string name="equipment_customize_row">تخصيص المعدات · %1$s (%2$s)</string>
+    <string name="equipment_select_all">الكل</string>
+    <string name="equipment_custom">مخصّص</string>
+    <string name="equipment_no_items">وزن الجسم فقط</string>
+    <string name="equipment_always">تمارين وزن الجسم مشمولة دائمًا</string>
+    <plurals name="equipment_item_count">
+        <item quantity="zero">وزن الجسم فقط</item>
+        <item quantity="one">أداة واحدة</item>
+        <item quantity="two">أداتان</item>
+        <item quantity="few">%1$d أدوات</item>
+        <item quantity="many">%1$d أداة</item>
+        <item quantity="other">%1$d أداة</item>
+    </plurals>
+    <string name="equipment_group_count">%1$d/%2$d</string>
     <!-- 2.8.0 Fitbit readiness -->
     <string name="ready_reconnect_body">أُوقِف وصول التطبيق إلى بيانات Fitbit في Health Connect. أعِد الربط لترى جاهزيتك.</string>
     <string name="ready_reconnect">إعادة الربط</string>
@@ -1477,9 +1467,8 @@
     <string name="cd_edit">تعديل</string>
     <string name="picker_my_equipment">معداتي</string>
     <string name="picker_best_swaps">أفضل البدائل المطابقة حركيًا</string>
-    <string name="profile_body_fat_optional" formatted="false">نسبة الدهون % (اختياري)</string>
     <string name="onb_available_equipment">معدات التدريب المتوفرة لديك</string>
-    <string name="onb_equipment_hint">اختر ما يتوفر لديك في أغلب الأيام، ويمكنك إضافة المزيد لاحقًا من الملف الشخصي ← التدريب.</string>
+    <string name="onb_equipment_hint">اختر ما يتوفر لديك في أغلب الأيام، ويمكنك تخصيص الأدوات متى شئت من خطتك.</string>
     <string name="live_tag_easy">سهل · RIR 3+</string>
     <string name="live_tag_solid">متوازن · RIR 1-2</string>
     <string name="live_tag_max">أقصى جهد · RIR 0</string>
@@ -1624,7 +1613,7 @@
     <string name="target_nudge_make">اجعله %1$d</string>
     <string name="target_nudge_keep">أبقِ على %1$d</string>
     <string name="ai_key_needed_coach">مفتاح Gemini المجاني يشغّل مدربك الذكي.</string>
-    <string name="ai_toggle_title">متقدم: المدرب الذكي (بمفتاحك الخاص)</string>
+    <string name="ai_toggle_title">متقدم: تحليل صور الوجبات بالذكاء الاصطناعي (بمفتاحك الخاص)</string>
     <string name="ai_toggle_body">عند الإيقاف يعمل التطبيق كاملًا دون ذكاء اصطناعي.</string>
     <string name="coach_today_recovery_title">التعافي</string>
     <string name="coach_fresh">جاهز: %1$s</string>
@@ -1683,16 +1672,20 @@
     <string name="barcode_unnamed">منتج %1$s</string>
     <string name="profile_credits_data">بيانات الأطعمة: Open Food Facts (ODbL)، والهيئة العامة للغذاء والدواء، وUSDA.</string>
     <string name="pb_title">ابنِ خطتي</string>
-    <string name="pb_quick_hint">أربع إجابات سريعة. يمكنك تغيير أي شيء بعد ذلك.</string>
     <string name="pb_goal">الهدف</string>
     <string name="pb_goal_strength">القوة</string>
+    <string name="pb_goal_strength_desc">أوزان ثقيلة · 4–6 تكرار · راحة 2.5 د</string>
     <string name="pb_goal_muscle">بناء العضلات</string>
+    <string name="pb_goal_muscle_desc">تضخيم عضلي · 8–12 تكرار · راحة 90 ث</string>
     <string name="pb_goal_fat">خسارة الدهون</string>
+    <string name="pb_goal_fat_desc">تمارين دائرية · 12–15 تكرار · راحة 45 ث</string>
     <string name="pb_goal_endurance">التحمّل</string>
+    <string name="pb_goal_endurance_desc">لياقة عالية · 15–20 تكرار · راحة 30 ث</string>
     <string name="pb_goal_general">اللياقة العامة</string>
+    <string name="pb_goal_general_desc">توازن شامل · 8–12 تكرار · راحة 75 ث</string>
     <string name="pb_days">أيام التمرين في الأسبوع</string>
     <string name="pb_minutes">دقائق كل جلسة</string>
-    <string name="pb_equipment">مكان التمرين</string>
+    <string name="pb_equipment">أين تتدرّب؟</string>
     <string name="pb_build">ابنِ خطتي</string>
     <string name="pb_building">جارٍ بناء خطتك…</string>
     <string name="pb_fit_me">اجعلها تناسبني تمامًا</string>
@@ -1701,7 +1694,6 @@
     <string name="pb_row_you">أنت</string>
     <string name="pb_row_body">الجسم</string>
     <string name="pb_row_schedule">الجدول</string>
-    <string name="pb_row_gear">المعدات</string>
     <string name="pb_row_style">الأسلوب</string>
     <string name="pb_row_avoid">التجنّب</string>
     <string name="pb_exp_new">مبتدئ</string>
@@ -1766,8 +1758,6 @@
     <string name="pb_plan_name">خطة %1$s</string>
     <string name="pb_progression">التدرّج: عند بلوغ الحد الأعلى من التكرارات في كل المجموعات، زد الحمل أو التكرارات. كل رابع أسبوع، خفّض المجموعات للنصف.</string>
     <string name="pb_entry_info">أجب عن بضعة أسئلة لتحصل على خطة</string>
-    <string name="pb_rebuild">أعد بناء خطتي</string>
-    <string name="pb_rebuild_hint">أجب عن أسئلة قليلة من جديد</string>
     <!-- Insight engine (domain/Insights.kt): one sentence per kind and phrasing, mapped in ui/EnumLabels.kt -->
     <plurals name="insight_first_round_reps_1">
         <item quantity="zero">أول مجموعة لك في %1$s بعدد %2$d تكرارات.</item>
@@ -2116,7 +2106,7 @@
     <string name="settings_ai_gemini_title">استخدم تطبيق Gemini (الأفضل)</string>
     <string name="settings_ai_gemini_body">مجاني ويعطي أفضل النتائج. انسخ الطلب، واسأل Gemini في تطبيقه، ثم الصق ردّه هنا.</string>
     <string name="settings_ai_key_title">مفتاح الواجهة البرمجية (أساسي)</string>
-    <string name="settings_ai_key_body">الواجهة المجانية أساسية: تكفي لتقدير الوجبات سريعًا وللمحادثة، لكن تطبيق Gemini يقدّم أكثر.</string>
+    <string name="settings_ai_key_body">الواجهة المجانية أساسية: تكفي لتقدير الوجبات من صورها سريعًا، لكن تطبيق Gemini يقدّم أكثر.</string>
     <string name="progress_insights_title">ما يستحق الانتباه</string>
     <string name="call_steady_short_nights2">قصُر نومك ليلتين متتاليتين. تمرّن واترك المجموعات الإضافية.</string>
     <string name="call_ease_short_sleep2">نمت %1$s فقط. أبقِ الجلسة كما هي وخفّف الوزن.</string>
@@ -2183,4 +2173,25 @@
     <string name="insight_muscle_top_1">أكثر عملك في الأسابيع الأربعة الأخيرة كان من نصيب %1$s. عدد المجموعات: %2$d.</string>
     <string name="insight_muscle_top_2">%1$s في الصدارة خلال الأسابيع الأربعة الأخيرة. عدد المجموعات: %2$d.</string>
     <string name="insight_muscle_top_3">حصيلة أربعة أسابيع: %1$s في المقدمة. عدد المجموعات: %2$d.</string>
+    <string name="settings_group_you">أنت وأهدافك</string>
+    <string name="settings_group_health">‏Fitbit والصحة</string>
+    <string name="summary_protein">%1$d غ بروتين</string>
+    <string name="you_current_weight">الوزن الحالي</string>
+    <string name="you_weight_from_log">من سجل وزنك</string>
+    <string name="you_targets_hint">ما تسعى إلى تناوله كل يوم. تتبع الأرقام المقترحة بياناتك وهدفك.</string>
+    <string name="you_protein_ratio">%1$s غ لكل كيلوغرام من وزنك</string>
+    <string name="you_protein_tap">اضغط للتعديل</string>
+    <string name="you_protein_dialog_body">اختر عدد الغرامات لكل كيلوغرام من وزنك، فتُحسب الغرامات اليومية تلقائيًا. ويمكنك أيضًا تحديد الغرامات بنفسك.</string>
+    <string name="you_protein_no_weight">سجّل وزنك ليُحسب البروتين بالغرامات لكل كيلوغرام. وإلى ذلك الحين، حدّد الغرامات بنفسك.</string>
+    <string name="you_protein_slider_state">%1$s غ لكل كيلوغرام</string>
+    <string name="you_protein_grams">الغرامات في اليوم</string>
+    <string name="you_body_fat">نسبة الدهون</string>
+    <string name="you_carbs_ratio">مع %1$d%% من السعرات من الدهون</string>
+    <string name="you_carbs_dialog_body">تملأ الكربوهيدرات السعرات المتبقية بعد البروتين والدهون. اختر نسبة سعراتك التي تأتي من الدهون، فتُحسب الغرامات اليومية تلقائيًا. ويمكنك أيضًا تحديد الغرامات بنفسك.</string>
+    <string name="cd_expanded">مفتوحة</string>
+    <string name="cd_collapsed">مطوية</string>
+    <string name="you_advanced">خيارات متقدمة</string>
+    <string name="you_advanced_hint">نسبة الدهون في الجسم إن كنت تعرفها</string>
+    <string name="you_advanced_bodyfat">نسبة الدهون %1$s%%</string>
+    <string name="plan_equipment_hint">تتبعها التمارين والبدائل</string>
 </resources>

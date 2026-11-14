@@ -3,7 +3,7 @@ import { getLang, t, type Lang } from '../../i18n'
 import { configuredEquipment, type Settings } from '../../data/settings'
 import type { ExerciseEntity, PlanDraft, PlanDraftItem } from '../../domain/entities'
 import {
-  EQUIPMENT_PRESETS, PRESET_INFO, encodePreset, presetEquipment,
+  EQUIPMENT_PRESETS, PRESET_INFO, encodeEquipmentSet, expandLegacyEquipment, matchTrainingPlace, presetEquipment,
   type Equipment, type EquipmentPreset,
 } from '../../domain/exercise-swap-engine'
 import { MUSCLES, type Muscle } from '../../domain/muscle'
@@ -29,6 +29,16 @@ export function goalKey(g: TrainGoal): string {
     case 'FAT_LOSS': return 'pb_goal_fat'
     case 'ENDURANCE': return 'pb_goal_endurance'
     case 'GENERAL': return 'pb_goal_general'
+  }
+}
+
+export function goalDescKey(g: TrainGoal): string {
+  switch (g) {
+    case 'STRENGTH': return 'pb_goal_strength_desc'
+    case 'MUSCLE': return 'pb_goal_muscle_desc'
+    case 'FAT_LOSS': return 'pb_goal_fat_desc'
+    case 'ENDURANCE': return 'pb_goal_endurance_desc'
+    case 'GENERAL': return 'pb_goal_general_desc'
   }
 }
 
@@ -115,11 +125,9 @@ export function activeEquipmentPreset(equipment: ReadonlySet<Equipment>): Equipm
   return null
 }
 
-/** Preset encoding if `equipment` matches one, else the comma-joined names (always with BODYWEIGHT). */
+/** Comma-joined active equipment encoding (always includes BODYWEIGHT). */
 export function equipmentSetting(equipment: ReadonlySet<Equipment>): string {
-  const all = new Set<Equipment>([...equipment, 'BODYWEIGHT'])
-  const preset = activeEquipmentPreset(all)
-  return preset ? encodePreset(preset) : [...all].join(',')
+  return encodeEquipmentSet(equipment)
 }
 
 /** "Home gym" out of "Home gym (barbell, dumbbells, bar)" (Android EquipmentPreset.shortLabel). */
@@ -172,8 +180,9 @@ export function initialAnswers(s: Settings): PlanAnswers {
   if (saved) return saved
   const eq = configuredEquipment(s)
   const defaults = defaultPlanAnswers()
-  return eq.size > 0
-    ? { ...defaults, equipment: new Set<Equipment>([...eq, 'BODYWEIGHT']) }
+  const clean = expandLegacyEquipment(eq)
+  return clean.size > 0
+    ? { ...defaults, equipment: new Set<Equipment>([...clean, 'BODYWEIGHT']) }
     : defaults
 }
 
@@ -205,7 +214,8 @@ export function rowSummaries(
     ? [...a.days].sort((x, y) => x - y).map((d) => dayShort(d, lang)).join(sep)
     : auto
 
-  const gearCustom = activeEquipmentPreset(a.equipment) == null
+  const gearClean = expandLegacyEquipment(a.equipment)
+  const gearCustom = activeEquipmentPreset(gearClean) == null && matchTrainingPlace(gearClean) == null
   const gear = gearCustom ? tr('pb_custom') : auto
 
   const styleCustom =

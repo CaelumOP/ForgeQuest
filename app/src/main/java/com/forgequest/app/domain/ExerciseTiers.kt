@@ -66,13 +66,13 @@ object ExerciseTiers {
     fun harderVersion(ex: ExerciseEntity, library: List<ExerciseEntity>, equipment: Set<Equipment>): ExerciseEntity? {
         if (ex.kind != ExerciseKind.REPS) return null
         val tier = of(ex) ?: return null
-        val allowed = equipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
+        val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
         val byId = library.associateBy { it.id }
-        NEXT_IN_TIER[ex.id]?.let { id -> byId[id]?.takeIf { ExerciseSwapEngine.profileFor(it).equipment in allowed }?.let { return it } }
+        NEXT_IN_TIER[ex.id]?.let { id -> byId[id]?.takeIf { ExerciseSwapEngine.profileFor(it).fits(allowed) }?.let { return it } }
         if (tier == Tier.ADVANCED) return null
         val up = Tier.entries[tier.ordinal + 1]
         val pattern = ExerciseSwapEngine.profileFor(ex).pattern
-        val fits = library.filter { it.id != ex.id && it.kind == ExerciseKind.REPS && ExerciseSwapEngine.profileFor(it).equipment in allowed }
+        val fits = library.filter { it.id != ex.id && it.kind == ExerciseKind.REPS && ExerciseSwapEngine.profileFor(it).fits(allowed) }
         fun pick(p: MovementPattern?, t: Tier) = p?.let { pat ->
             fits.filter { of(it) == t && ExerciseSwapEngine.profileFor(it).pattern == pat }
                 // Closest muscles first, so a chest push-up steps up to a chest move, not a shoulder one.

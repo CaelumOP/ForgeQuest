@@ -1,7 +1,7 @@
 // Difficulty of the built-in exercises (docs/plans/exercise-tiers.md) and the "ready for a harder version" ladder for
 // bodyweight rep moves. Custom exercises have no tier. Android: ExerciseTiers.kt.
 import type { ExerciseEntity } from './entities'
-import { EQUIPMENT, profileFor, type Equipment, type MovementPattern } from './exercise-swap-engine'
+import { ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, profileFits, profileFor, type Equipment, type MovementPattern } from './exercise-swap-engine'
 import type { PastSet } from './progression'
 
 /** How hard a movement is to learn and its leverage, not the load (the person picks the weight). */
@@ -60,14 +60,15 @@ export function harderVersion(ex: ExerciseEntity, library: ExerciseEntity[], equ
   if (ex.kind !== 'REPS') return null
   const tier = tierOf(ex)
   if (!tier) return null
-  const allowed = new Set<Equipment>(equipment.size ? [...equipment, 'BODYWEIGHT'] : EQUIPMENT)
+  const exp = expandLegacyEquipment(equipment)
+  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : ALL_ACTIVE_EQUIPMENT)
   const nextId = NEXT_IN_TIER[ex.id]
   const named = nextId ? library.find((e) => e.id === nextId) : undefined
-  if (named && allowed.has(profileFor(named).equipment)) return named
+  if (named && profileFits(profileFor(named), allowed)) return named
   if (tier === 'ADVANCED') return null
   const up = TIERS[TIERS.indexOf(tier) + 1]
   const pattern = profileFor(ex).pattern
-  const fits = library.filter((e) => e.id !== ex.id && e.kind === 'REPS' && allowed.has(profileFor(e).equipment))
+  const fits = library.filter((e) => e.id !== ex.id && e.kind === 'REPS' && profileFits(profileFor(e), allowed))
   const pick = (p: MovementPattern | undefined, t: Tier): ExerciseEntity | null => {
     if (!p) return null
     // Closest muscles first, so a chest push-up steps up to a chest move, then the shorter (simpler) name.

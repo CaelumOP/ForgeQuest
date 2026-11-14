@@ -36,14 +36,14 @@ describe('coach mark tour state', () => {
     }
   })
 
-  it('ends the tour when all five steps have been seen', () => {
+  it('ends the tour when all four steps have been seen', () => {
     const store = memoryStore()
-    for (const id of COACH_STEPS.slice(0, 4)) {
+    for (const id of COACH_STEPS.slice(0, 3)) {
       stepSeen(id, store)
       expect(allSeen(store)).toBe(false)
       expect(tourSeen(store)).toBe(false)
     }
-    stepSeen(COACH_STEPS[4], store)
+    stepSeen(COACH_STEPS[3], store)
     expect(allSeen(store)).toBe(true)
     expect(tourSeen(store)).toBe(true)
     expect(store.data.get(TOUR_SEEN_KEY)).toBe('1')

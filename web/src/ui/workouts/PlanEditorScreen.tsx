@@ -2,17 +2,18 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t, useLang, intlLocale } from '../../i18n'
 import type { ExerciseRow, PlanDayRow, PlanItemRow, PlanRow } from '../../data/db'
 import { useProgress } from '../../data/progress'
-import { configuredEquipment, weightUnit } from '../../data/settings'
+import { configuredEquipment, updateSettings, weightUnit } from '../../data/settings'
 import {
   activatePlan, addCustomExercise, addPlanItem, applyPlan, deletePlan, deletePlanItem, movePlanItem, restorePlanItem,
   swapPlanDays, swapPlanItem, updatePlanDay, updatePlanItem, useAllPlans, useLibrary, type PlanDayWithItems,
 } from '../../data/workouts'
 import { localizePlan, STARTER_PLANS, type PlanDraft } from '../../data/seed/starter-plans'
-import { adaptPlanToEquipment, EQUIPMENT, type Equipment } from '../../domain/exercise-swap-engine'
+import { ALL_ACTIVE_EQUIPMENT, adaptPlanToEquipment, expandLegacyEquipment, type Equipment } from '../../domain/exercise-swap-engine'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 import { fromKg, loadStep, toKg, unitLabel, type WeightUnit } from '../../domain/units'
 import { Button, Card, CoachMark, Dialog, EmptyState, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
+import { PlanEquipmentRow } from '../profile/GearSheet'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
 import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, EditIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
@@ -77,6 +78,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
     const draft = pending
     setPending(null)
     await applyPlan(draft, pendingSource.current)
+    await updateSettings((cur) => ({ ...cur, weeklyTargetOverride: 0 }))
     toast(t('plan_switched_to', draft.name))
   }
 
@@ -91,7 +93,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
         <Card>
           <div class="wk-live">
             <div class="wk-grow"><div class="wk-t">{t('workouts_web_not_current', viewed.name)}</div></div>
-            <Button onClick={async () => { await activatePlan(viewed.id!); toast(t('plan_switched', viewed.name)); location.hash = '#/plan' }}>{t('workouts_web_activate')}</Button>
+            <Button onClick={async () => { await activatePlan(viewed.id!); await updateSettings((cur) => ({ ...cur, weeklyTargetOverride: 0 })); toast(t('plan_switched', viewed.name)); location.hash = '#/plan' }}>{t('workouts_web_activate')}</Button>
           </div>
         </Card>
       )}
@@ -192,6 +194,8 @@ export function PlanEditorScreen({ param }: { param?: string }) {
         </Card>
       )}
 
+      <PlanEquipmentRow equipment={equipment} onSave={(encoded) => updateSettings((cur) => ({ ...cur, equipment: encoded }))} />
+
       <ExercisePicker
         open={panel === 'picker' && !!day} title={t('plan_add_to_day', dayName(selected, lang))} library={library}
         userEquipment={equipment} onClose={() => setPanel(null)}
@@ -231,7 +235,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
       />
       <PreviousSheet
         open={panel === 'previous'} onClose={() => setPanel(null)} plans={allPlans}
-        onActivate={async (p) => { setPanel(null); await activatePlan(p.id!); toast(t('plan_switched', p.name)) }}
+        onActivate={async (p) => { setPanel(null); await activatePlan(p.id!); await updateSettings((cur) => ({ ...cur, weeklyTargetOverride: 0 })); toast(t('plan_switched', p.name)) }}
         onDelete={async (p) => { await deletePlan(p.id!); toast(t('lib_deleted', p.name)) }}
       />
       {panel === 'move' && day && plan && (
@@ -460,8 +464,8 @@ export function PlanPreviewSheet({ draft, exercises, userEquipment, onApply, onC
 }) {
   const lang = useLang()
   if (!draft) return null
-  const eq = userEquipment ?? new Set<Equipment>()
-  const limited = eq.size > 0 && eq.size < EQUIPMENT.length
+  const eq = expandLegacyEquipment(userEquipment ?? new Set<Equipment>())
+  const limited = eq.size > 0 && !ALL_ACTIVE_EQUIPMENT.every((e) => eq.has(e))
   const [adapted, count] = limited && onAdapt ? adaptPlanToEquipment(draft, exercises, eq) : [draft, 0]
   return (
     <Sheet open onClose={onClose} title={draft.name}>

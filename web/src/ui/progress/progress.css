@@ -71,7 +71,10 @@ html[dir='rtl'] .pg-spark { transform: scaleX(-1); }
 .bm-svg { display: block; block-size: 100%; max-block-size: 300px; inline-size: auto; max-inline-size: calc(50% - 6px); aspect-ratio: 1 / 2; }
 .bm-neutral { fill: var(--card-high); }
 .bm-muscle { transition: fill var(--dur-medium) var(--ease-standard); cursor: pointer; }
+.bm-muscle.selected { stroke: var(--text); stroke-width: 1.8px; vector-effect: non-scaling-stroke; }
 .bm-outline { fill: none; stroke: var(--body-outline); stroke-width: 1.2px; pointer-events: none; }
+.bm-slot { inline-size: 100%; min-block-size: 48px; display: flex; align-items: center; justify-content: center; flex: none; }
+.bm-pill { min-block-size: 44px; padding-inline: 16px; padding-block: 8px; border: 0; border-radius: var(--r-full); background: var(--teal-track); color: var(--teal); font: inherit; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .bm-legend { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-evenly; gap: 6px; inline-size: 100%; margin: 0; padding: 0; list-style: none; flex: none; }
 .bm-legend li { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; line-height: 15px; color: var(--text-2); white-space: nowrap; }
 .bm-legend .pg-dot { inline-size: 8px; block-size: 8px; }

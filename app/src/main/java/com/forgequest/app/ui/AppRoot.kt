@@ -82,7 +82,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.forgequest.app.AppContainer
 import com.forgequest.app.container
-import com.forgequest.app.ui.coach.CoachScreen
 import com.forgequest.app.ui.food.FoodScreen
 import com.forgequest.app.ui.food.ScanScreen
 import com.forgequest.app.ui.history.HistoryScreen
@@ -103,7 +102,6 @@ object Routes {
     const val HOME = "home"
     const val WORKOUTS = "workouts"
     const val FOOD = "food"
-    const val COACH = "coach"
     const val PROFILE = "profile"
     const val LIVE = "live"
     const val PLAN = "plan?day={day}&paste={paste}&templates={templates}"
@@ -249,7 +247,6 @@ private fun MainScaffold() {
                 composable(Routes.HOME) { HomeScreen(nav) }
                 composable(Routes.WORKOUTS) { WorkoutsScreen(nav) }
                 composable(Routes.FOOD) { FoodScreen(nav) }
-                composable(Routes.COACH) { CoachScreen(nav) }
                 composable(Routes.PROFILE) { ProfileScreen(nav) }
                 composable(Routes.LIVE, enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None }) { LiveWorkoutScreen(nav) }
                 composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 }, navArgument("paste") { type = NavType.BoolType; defaultValue = false }, navArgument("templates") { type = NavType.BoolType; defaultValue = false })) { entry ->

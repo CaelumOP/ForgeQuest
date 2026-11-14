@@ -95,7 +95,7 @@ export function ChipGroup<T extends string>(p: ChipGroupProps<T>) {
 
 export type SegmentedOption<T extends string> = { value: T; label: string; sub?: string; disabled?: boolean }
 export type SegmentedProps<T extends string> = {
-  options: SegmentedOption<T>[]; value: T; onChange: (v: T) => void; label: string; accent?: ChipProps['accent']
+  options: SegmentedOption<T>[]; value: T | null; onChange: (v: T) => void; label: string; accent?: ChipProps['accent']
 }
 /** Equal-width options in one row that always fit (no sideways scroll); an optional second line under each label. */
 export function Segmented<T extends string>({ options, value, onChange, label, accent = 'teal' }: SegmentedProps<T>) {

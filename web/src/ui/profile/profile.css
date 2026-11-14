@@ -60,6 +60,16 @@
 .pf-bullet { color: var(--purple); inline-size: 16px; }
 .pf-x { color: var(--text-2); font-size: 20px; }
 
+.pf-div { border: 0; border-block-start: 1px solid var(--divider); margin-block: 8px; inline-size: 100%; }
+.pf-target { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 52px; padding: 6px 0; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.pf-target-val { font-size: 16px; font-weight: 600; color: var(--teal); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pf-target-edit { color: var(--teal); display: inline-flex; flex: none; }
+.pf-adv { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 48px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.pf-tdialog { display: flex; flex-direction: column; gap: 12px; }
+.pf-tdialog .kit-stepper { inline-size: 100%; justify-content: space-between; }
+.pf-slider { inline-size: 100%; min-block-size: 36px; accent-color: var(--teal); cursor: pointer; margin: 0; }
+.pf-tdialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding-block-start: 4px; }
+
 /* Large text (see styles.css): a settings group's summary wraps in full; titles and subtitles already wrap and the
    controls stay full width below them. */
 @media (max-width: 300px) {

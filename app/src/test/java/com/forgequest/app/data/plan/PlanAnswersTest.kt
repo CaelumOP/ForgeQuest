@@ -46,4 +46,27 @@ class PlanAnswersTest {
         val plan = PlanBuilder.build(PlanAnswers().toInput(), ExerciseCatalog.all)
         assertEquals(3, plan.draft.days.size)
     }
+
+    @Test fun legacyEquipmentJsonExpandsAndStripsLegacyOnDecodeAndEncode() {
+        val decoded = PlanAnswers.decode("""{"goal":"STRENGTH","equipment":["BARBELL_RACK","DIP_BARS_OR_BENCH"]}""")
+        assertNotNull(decoded)
+        assertEquals(
+            setOf(
+                Equipment.BODYWEIGHT,
+                Equipment.BARBELL,
+                Equipment.SQUAT_RACK,
+                Equipment.FLAT_BENCH,
+                Equipment.ADJ_BENCH,
+                Equipment.DIP_STATION,
+                Equipment.LOW_BAR,
+                Equipment.ROMAN_CHAIR,
+            ),
+            decoded!!.equipment,
+        )
+        assertTrue(decoded.equipment.none { it.legacy })
+
+        val reencoded = PlanAnswers(equipment = setOf(Equipment.BARBELL_RACK)).encode()
+        org.junit.Assert.assertFalse(reencoded.contains("BARBELL_RACK"))
+        assertTrue(reencoded.contains("SQUAT_RACK"))
+    }
 }

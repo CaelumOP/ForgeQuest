@@ -409,7 +409,8 @@ private fun statusText(status: HomeStatus, dayTitle: String, s: ProgressSnapshot
     if (status == HomeStatus.IN_PROGRESS) return day
     val left = Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein)
     val food = if (left <= 0) stringResource(R.string.home_status_protein_met) else stringResource(R.string.home_status_protein_left, left)
-    return day + " · " + food
+    // No-break spaces: if the line is too long, "127 g protein to go" moves down whole instead of leaving "go" alone.
+    return day + "\u00A0· " + food.replace(' ', '\u00A0')
 }
 
 @Composable
@@ -433,7 +434,14 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(4.dp))
-            Text(statusText(status, dayTitle, s), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // On two lines the day and the protein stand on their own lines, without a dot left hanging at the end of the first.
+            val line = statusText(status, dayTitle, s)
+            var wrapped by androidx.compose.runtime.remember(line) { androidx.compose.runtime.mutableStateOf(false) }
+            Text(
+                if (wrapped) line.replace("\u00A0· ", "\n") else line,
+                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                onTextLayout = { if (it.lineCount > 1) wrapped = true },
+            )
         }
         // The rank letter alone meant nothing to new people; the level under it says what the ring is.
         if (showRank) Column(Modifier.clip(ForgeShape.Sm).clickable(onClickLabel = stringResource(R.string.cd_open_profile), role = Role.Button, onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {

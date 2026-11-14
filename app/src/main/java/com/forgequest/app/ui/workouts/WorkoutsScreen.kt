@@ -80,6 +80,7 @@ import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.MuscleExercises
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeightUnit
@@ -243,6 +244,7 @@ fun WorkoutsScreen(nav: NavHostController) {
                 isRest = isRest,
                 fallbackScroll = fallbackScroll,
                 onSeeExercises = { muscleSheet = it },
+                exerciseCount = { m -> MuscleExercises.list(m, library, planIds, equipment).size },
                 modifier = heroMod,
             )
 
@@ -345,6 +347,7 @@ private fun RecoveryHeroCard(
     isRest: Boolean,
     fallbackScroll: Boolean,
     onSeeExercises: (Muscle) -> Unit,
+    exerciseCount: (Muscle) -> Int,
     modifier: Modifier = Modifier,
 ) {
     val c = Fit.colors
@@ -409,6 +412,7 @@ private fun RecoveryHeroCard(
             modifier = mapMod,
             fallbackScroll = fallbackScroll,
             onSeeExercises = onSeeExercises,
+            exerciseCount = exerciseCount,
         )
     }
 }

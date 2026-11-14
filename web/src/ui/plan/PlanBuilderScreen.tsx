@@ -6,23 +6,21 @@ import { loadSettings, updateSettings } from '../../data/settings'
 import { applyPlan, useLibrary } from '../../data/workouts'
 import type { ExerciseEntity, PlanDraftDay } from '../../domain/entities'
 import {
-  EQUIPMENT, EQUIPMENT_LABEL, EQUIPMENT_PRESETS, presetEquipment, type Equipment,
-} from '../../domain/exercise-swap-engine'
-import {
   CARDIOS, EXPERIENCES, INJURIES, PlanBuilder, REP_PREFS, REST_PREFS, TRAIN_GOALS,
   defaultPlanAnswers, encodePlanAnswers, planAnswersToInput, spreadDays,
-  type BuiltPlan, type Cardio, type Experience, type PlanAnswers, type RepPref, type RestPref,
+  type BuiltPlan, type Cardio, type Experience, type PlanAnswers, type RepPref, type RestPref, type TrainGoal,
 } from '../../domain/plan-builder'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
-import { Button, Card, Chip, IconButton, Segmented, Stepper, toast } from '../kit'
+import { Button, Card, Chip, IconButton, Segmented, Stepper, haptics, toast } from '../kit'
 import { goBack } from '../nav'
+import { GearCustomizeRow, GearSheet, TrainingPlaceSelector } from '../profile/GearSheet'
 import { ExercisePicker } from '../workouts/ExercisePicker'
 import { SwapIcon } from '../workouts/glyphs'
 import { dayName, dayShort, muscleLabel } from '../workouts/helpers'
 import {
   DAY_COUNT_OPTIONS, FOCUS_MUSCLES, MINUTE_OPTIONS,
-  activeEquipmentPreset, cardioKey, dayFocusKey, equipmentSetting, experienceKey, goalKey,
-  initialAnswers, injuryKey, localizeBuiltPlan, presetShortLabel, repPrefKey, restPrefKey,
+  cardioKey, dayFocusKey, equipmentSetting, experienceKey, goalDescKey, goalKey,
+  initialAnswers, injuryKey, localizeBuiltPlan, repPrefKey, restPrefKey,
   rowSummaries, scheme, swapBuiltPlanItem, whyTagKey,
 } from './helpers'
 import './plan-builder.css'
@@ -95,6 +93,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
         ...s,
         equipment: equipmentSetting(answers.equipment),
         planBuilderAnswers: encodePlanAnswers(answers),
+        weeklyTargetOverride: 0,
       }))
       toast(t('pb_saved'))
       goBack()
@@ -108,15 +107,6 @@ export function PlanBuilderScreen(_: { param?: string }) {
       <header class="pb-head">
         {review != null && <h1 class="pb-title">{t('pb_review_title')}</h1>}
         <p class="pb-sub">{t(review == null ? 'pb_quick_hint' : 'pb_review_hint')}</p>
-        {review == null && (
-          <button
-            type="button"
-            class="pb-ready-link"
-            onClick={() => location.replace('#/plan/templates')}
-          >
-            {t('plan_ready_made_link')}
-          </button>
-        )}
       </header>
 
       {review == null ? (
@@ -172,6 +162,46 @@ export function PlanBuilderScreen(_: { param?: string }) {
   )
 }
 
+const GOAL_PATHS: Record<TrainGoal, string> = {
+  STRENGTH: 'M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z',
+  MUSCLE: 'M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z',
+  FAT_LOSS: 'M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67z',
+  ENDURANCE: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
+  GENERAL: 'M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10 10-4.49 10-10S17.51 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+}
+
+function TrainGoalSelector({ selected, onSelect }: { selected: TrainGoal; onSelect: (g: TrainGoal) => void }) {
+  return (
+    <div class="pb-goals" role="radiogroup" aria-label={t('pb_goal')}>
+      {TRAIN_GOALS.map((g) => {
+        const on = selected === g
+        return (
+          <button
+            key={g}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            class={`pb-goal-row${on ? ' on' : ''}`}
+            onClick={() => {
+              haptics.lightTick()
+              onSelect(g)
+            }}
+          >
+            <span class="pb-goal-ic" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d={GOAL_PATHS[g]} /></svg>
+            </span>
+            <span class="pb-goal-text">
+              <span class="pb-goal-title">{t(goalKey(g))}</span>
+              <span class="pb-goal-desc">{t(goalDescKey(g))}</span>
+            </span>
+            <span class="pb-goal-radio" aria-hidden="true" />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function QuickCard({
   a, lang, change,
 }: {
@@ -180,22 +210,13 @@ function QuickCard({
   change: (fn: (a: PlanAnswers) => PlanAnswers) => void
 }) {
   const nf = useMemo(() => new Intl.NumberFormat(intlLocale(lang)), [lang])
-  const activePreset = activeEquipmentPreset(a.equipment)
+  const [gearOpen, setGearOpen] = useState(false)
 
   return (
     <Card>
       <div class="pb-stack">
         <h2 class="pb-label">{t('pb_goal')}</h2>
-        <div class="pb-chips" role="group" aria-label={t('pb_goal')}>
-          {TRAIN_GOALS.map((g) => (
-            <Chip
-              key={g}
-              label={t(goalKey(g))}
-              selected={a.goal === g}
-              onClick={() => change((it) => ({ ...it, goal: g }))}
-            />
-          ))}
-        </div>
+        <TrainGoalSelector selected={a.goal} onSelect={(g) => change((it) => ({ ...it, goal: g }))} />
 
         <h2 class="pb-label">{t('pb_days')}</h2>
         <Segmented
@@ -214,17 +235,15 @@ function QuickCard({
         />
 
         <h2 class="pb-label">{t('pb_equipment')}</h2>
-        <div class="pb-chips" role="group" aria-label={t('pb_equipment')}>
-          {EQUIPMENT_PRESETS.map((preset) => (
-            <Chip
-              key={preset}
-              label={presetShortLabel(preset, lang)}
-              selected={activePreset === preset}
-              onClick={() => change((it) => ({ ...it, equipment: presetEquipment(preset) }))}
-            />
-          ))}
-        </div>
+        <TrainingPlaceSelector equipment={a.equipment} onPick={(_, next) => change((it) => ({ ...it, equipment: next }))} />
+        <GearCustomizeRow equipment={a.equipment} onOpen={() => setGearOpen(true)} />
       </div>
+      <GearSheet
+        open={gearOpen}
+        equipment={a.equipment}
+        onUpdate={(next) => change((it) => ({ ...it, equipment: next }))}
+        onClose={() => setGearOpen(false)}
+      />
     </Card>
   )
 }
@@ -270,10 +289,6 @@ function FitMeSection({
 
           <DeepRow title={t('pb_row_schedule')} summary={sums.schedule} open={open === 'schedule'} onToggle={() => onToggle('schedule')}>
             <ScheduleRow a={a} lang={lang} editDay={editDay} onEditDay={onEditDay} change={change} />
-          </DeepRow>
-
-          <DeepRow title={t('pb_row_gear')} summary={sums.gear} open={open === 'gear'} onToggle={() => onToggle('gear')}>
-            <GearRow a={a} lang={lang} change={change} />
           </DeepRow>
 
           <DeepRow title={t('pb_row_style')} summary={sums.style} open={open === 'style'} onToggle={() => onToggle('style')}>
@@ -466,40 +481,6 @@ function ScheduleRow({
         </>
       )}
     </>
-  )
-}
-
-function GearRow({
-  a, lang, change,
-}: {
-  a: PlanAnswers
-  lang: Lang
-  change: (fn: (a: PlanAnswers) => PlanAnswers) => void
-}) {
-  const ar = lang === 'ar'
-  return (
-    <div class="pb-chips" role="group" aria-label={t('pb_row_gear')}>
-      {EQUIPMENT.filter((e) => e !== 'BODYWEIGHT').map((eq: Equipment) => {
-        const selected = a.equipment.has(eq)
-        return (
-          <Chip
-            key={eq}
-            label={EQUIPMENT_LABEL[eq][ar ? 'ar' : 'en']}
-            selected={selected}
-            onClick={() => change((it) => {
-              const next = new Set(it.equipment)
-              if (selected) {
-                next.delete(eq)
-              } else {
-                next.add(eq)
-                next.add('BODYWEIGHT')
-              }
-              return { ...it, equipment: next }
-            })}
-          />
-        )
-      })}
-    </div>
   )
 }
 

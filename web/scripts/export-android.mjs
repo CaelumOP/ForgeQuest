@@ -1,6 +1,6 @@
 // Converts Android string resources into flat JSON for the web app.
 // Run: npm run export:android   (plain Node ESM, no dependencies)
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, copyFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -135,14 +135,14 @@ const skipAr = new Set(ar.nonTranslatable);
 const arStrings = Object.fromEntries(Object.entries(ar.strings).filter(([k]) => !skipAr.has(k)));
 
 mkdirSync(join(outDir, 'prompts'), { recursive: true });
-// Keep keys the web still uses after Android dropped them: Android wins on shared keys, web-only keys survive.
-const existing = (f) => { try { return JSON.parse(readFileSync(join(outDir, f), 'utf8')); } catch { return {}; } };
-writeFileSync(join(outDir, 'en.json'), JSON.stringify(sortKeys({ ...existing('en.json'), ...en.strings }), null, 2) + '\n');
-writeFileSync(join(outDir, 'ar.json'), JSON.stringify(sortKeys({ ...existing('ar.json'), ...arStrings }), null, 2) + '\n');
+writeFileSync(join(outDir, 'en.json'), JSON.stringify(sortKeys(en.strings), null, 2) + '\n');
+writeFileSync(join(outDir, 'ar.json'), JSON.stringify(sortKeys(arStrings), null, 2) + '\n');
 
+const promptsDir = join(outDir, 'prompts');
+for (const old of readdirSync(promptsDir).filter((f) => f.endsWith('.txt'))) unlinkSync(join(promptsDir, old));
 const rawDir = join(resDir, 'raw');
 const prompts = readdirSync(rawDir).filter((f) => f.endsWith('.txt'));
-for (const f of prompts) copyFileSync(join(rawDir, f), join(outDir, 'prompts', f));
+for (const f of prompts) copyFileSync(join(rawDir, f), join(promptsDir, f));
 
 const enKeys = Object.keys(en.strings);
 const arKeys = Object.keys(arStrings);

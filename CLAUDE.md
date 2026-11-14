@@ -27,18 +27,19 @@ Paths are under `app/src/main/java/com/forgequest/app/`. Open these first; grep 
 
 | Domain | Files |
 |---|---|
-| Workouts & live session | `ui/workouts/LiveWorkoutScreen.kt` (screen + group cards), `LiveWorkoutSets.kt` (set row, tick, effort, note dialog, PR tag), `LiveWorkoutTimers.kt` (hold overlay, rest bar), `data/notify/RestAlert.kt` + `RestAlarms.kt` (rest-over alert and its alarm), `WorkoutCompleteScreen.kt` (finish screen, debrief card), `ui/workouts/LiveWorkoutViewModel.kt`, `ui/workouts/PlanEditorScreen.kt`, `data/WorkoutRepository.kt`, `domain/ExerciseSwapEngine.kt`, `domain/VariationCycle.kt` (variation for a stalled lift), `domain/WorkoutScore.kt`, `domain/WorkoutDebriefMath.kt` |
+| Workouts & live session | `ui/workouts/LiveWorkoutScreen.kt` (screen + group cards), `LiveWorkoutSets.kt` (set row, tick, effort, note dialog, PR tag), `LiveWorkoutTimers.kt` (hold overlay, rest bar), `data/notify/RestAlert.kt` + `RestAlarms.kt` (rest-over alert and its alarm), `WorkoutCompleteScreen.kt` (finish screen, debrief card), `ui/workouts/LiveWorkoutViewModel.kt`, `ui/workouts/PlanEditorScreen.kt`, `ui/workouts/PlanEquipmentRow.kt`, `data/WorkoutRepository.kt`, `domain/ExerciseSwapEngine.kt`, `domain/VariationCycle.kt` (variation for a stalled lift), `domain/WorkoutScore.kt`, `domain/WorkoutDebriefMath.kt` |
 | Nutrition & meal scan | `ui/food/FoodScreen.kt`, `ui/food/FoodViewModel.kt`, `ui/food/ScanScreen.kt`, `ShareMealActivity.kt` (package root), `data/FoodRepository.kt`, `data/bridge/MealInbox.kt`, `domain/Nutrition.kt`, `domain/CalorieCheck.kt` |
-| AI coach, Gemini bridge | `ui/coach/CoachScreen.kt`, `data/CoachRepository.kt` (chat, plans), `data/CoachPromptBuilder.kt` (system prompt, progress summary), `data/ai/GeminiClient.kt`, `data/bridge/GeminiBridge.kt`, `ui/components/SkillPrompts.kt` (the copyable Gem skills, `res/raw` + `res/raw-ar`) |
+| AI client & Gem prompts | `data/ai/GeminiClient.kt`, `ui/components/SkillPrompts.kt` (the copyable Gem skills, `res/raw` + `res/raw-ar`) |
 | Home, Health Connect & readiness | `ui/home/HomeScreen.kt`, `ui/home/HomeViewModel.kt`, `ui/home/ReadinessCard.kt`, `ui/home/ReadinessDetailScreen.kt`, `data/health/HealthRepository.kt`, `domain/Readiness.kt`, `domain/ReadinessText.kt` (which sentence, which wording) |
 | Backup & Drive sync | `data/backup/BackupRepository.kt`, `data/drive/DriveSync.kt`, `data/drive/DriveSyncWorker.kt` |
 | Database | `data/db/AppDatabase.kt` (schema version 10; never bump without a migration), `data/db/Entities.kt`, `data/db/Daos.kt` |
-| Settings & profile | `ui/profile/ProfileScreen.kt` (screen, dialogs), `SettingsGroups.kt` (one composable per settings group: body, goals, training, coach, app, backup, about), `ProfileViewModel.kt` (shared by Profile, Settings and Badges), `SettingsViewModel.kt` (settings actions, Drive, backup, updates), `SettingsComponents.kt` (settings rows, badge chip), `EquipmentCard.kt` |
+| Settings & profile | `ui/profile/ProfileScreen.kt` (screen, dialogs), `SettingsScreen.kt`, `YouSettingsGroup.kt` (you + goals + health), `SettingsGroups.kt` (app, coach/Gemini, backup, about), `ProfileViewModel.kt` (shared by Profile, Settings and Badges), `SettingsViewModel.kt` (settings actions, Drive, backup, updates), `SettingsComponents.kt` (settings rows, badge chip, update row), `EquipmentCard.kt` (`GearSheet`, `TrainingPlaceSelector`) |
 
 Files over 400 lines: read with `offset`/`limit` after a `grep -n "fun \|class "` skeleton.
 
-## Gemini helper
-The `gemini` subagent (`.claude/agents/gemini.md`) sends read-only tasks to Gemini via Antigravity CLI (`agy -p`), on the user's Google AI Pro plan.
-- Use it for big reads and summaries (many files, long logs, Gradle output), broad searches, research, and second-opinion reviews. Also when the user says "ask Gemini".
-- Keep edits, final decisions and verification with Claude; treat Gemini's answer as input to check, not fact.
+## Gemini helpers (default workers)
+Work goes to Gemini via Antigravity CLI (`agy`), on the user's Google AI Pro plan (global agents in `~/.claude/agents/`):
+- `gemini-offloader` for reading, searches, summaries, Gradle output, research and reviews. Also when the user says "ask Gemini".
+- `gemini-builder` for code edits from a brief in `.claude/scratch/<task>-brief.md`.
+- Final decisions and verification stay with Claude; treat Gemini's answer as input to check, not fact.
 - Never set up a Gemini or Google API key, Vertex AI, or anything billed per use.

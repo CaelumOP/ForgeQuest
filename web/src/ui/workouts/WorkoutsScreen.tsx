@@ -17,6 +17,7 @@ import {
 import { BodyMap } from '../progress/BodyMap'
 import type { Equipment } from '../../domain/exercise-swap-engine'
 import type { Muscle } from '../../domain/muscle'
+import { muscleExercises } from '../../domain/muscle-exercises'
 import { MuscleSheet } from './MuscleSheet'
 import './workouts.css'
 
@@ -31,6 +32,7 @@ export function WorkoutsScreen(_: { param?: string }) {
   const [selected, setSelected] = useState(today)
   const [starting, setStarting] = useState(false)
   const [dayDetailsOpen, setDayDetailsOpen] = useState(false)
+  const [selectedMuscle, setSelectedMuscle] = useState<Muscle | null>(null)
   const [muscle, setMuscle] = useState<Muscle | null>(null)
   const figuresRef = useRef<HTMLDivElement>(null)
 
@@ -125,7 +127,13 @@ export function WorkoutsScreen(_: { param?: string }) {
         <BodyMap
           recovery={s.recovery}
           bodyType={s.settings.bodyType}
-          onSeeExercises={setMuscle}
+          selected={selectedMuscle}
+          onSelect={setSelectedMuscle}
+          exerciseCount={(m) => {
+            const res = muscleExercises(m, library, planIds, equipment, false)
+            return res.inPlan.length + res.others.length
+          }}
+          onSeeExercises={(m) => { setSelectedMuscle(null); setMuscle(m) }}
           figuresRef={figuresRef}
         />
       </Card>

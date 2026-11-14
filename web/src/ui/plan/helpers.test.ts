@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { DEFAULT_SETTINGS, loadSettings, toBackupSettings, updateSettings } from '../../data/settings'
-import { encodePreset, presetEquipment, type Equipment } from '../../domain/exercise-swap-engine'
+import { encodeEquipmentSet, presetEquipment, type Equipment } from '../../domain/exercise-swap-engine'
 import {
   PlanBuilder, defaultPlanAnswers, encodePlanAnswers, planAnswersToInput,
 } from '../../domain/plan-builder'
@@ -19,9 +19,9 @@ describe('plan builder helpers', () => {
     expect(scheme({ sets: 2, repsMin: null, repsMax: null, seconds: null }, 's')).toBe('2×')
   })
 
-  it('maps equipment sets to preset encodings or custom comma-separated lists with BODYWEIGHT', () => {
+  it('maps equipment sets to expanded active item encodings with BODYWEIGHT', () => {
     expect(activeEquipmentPreset(presetEquipment('CALISTHENICS_PARK'))).toBe('CALISTHENICS_PARK')
-    expect(equipmentSetting(presetEquipment('FULL_GYM'))).toBe(encodePreset('FULL_GYM'))
+    expect(equipmentSetting(presetEquipment('FULL_GYM'))).toBe(encodeEquipmentSet(presetEquipment('FULL_GYM')))
     const custom = new Set<Equipment>(['DUMBBELLS', 'BAND'])
     expect(activeEquipmentPreset(custom)).toBeNull()
     expect(equipmentSetting(custom)).toBe('DUMBBELLS,BAND,BODYWEIGHT')

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { ExerciseEntity, PlanDraftDay, PlanDraftItem, PlanItemEntity } from './entities'
 import {
-  adaptPlanToEquipment, inferEquipmentFromText, presetEquipment, profileFor, rankSubstitutes, translatePlanItem,
+  ALL_ACTIVE_EQUIPMENT, EQUIPMENT_META, adaptPlanToEquipment, expandLegacyEquipment,
+  inferEquipmentFromText, matchTrainingPlace, parseEquipmentSet, presetEquipment,
+  profileFits, profileFor, rankSubstitutes, TRAINING_PLACE_INFO, translatePlanItem,
   type Equipment,
 } from './exercise-swap-engine'
+import { decodePlanAnswers, encodePlanAnswers, defaultPlanAnswers } from './plan-answers'
 import type { ExerciseKind } from './muscle'
 import { EXERCISE_CATALOG } from '../data/seed/exercise-catalog'
 
@@ -38,9 +41,46 @@ describe('ExerciseSwapEngineTest', () => {
     expect(inferEquipmentFromText('عندي بار عقلة في البيت')).toEqual(set('PULL_UP_BAR', 'BODYWEIGHT'))
     expect(inferEquipmentFromText('عندي دمبل، ما عندي كيتل بيل')).toEqual(set('DUMBBELLS', 'BODYWEIGHT'))
     expect(inferEquipmentFromText('ما عندي كيتل بيل ولكن عندي دمبل')).toEqual(set('DUMBBELLS', 'BODYWEIGHT'))
-    expect(inferEquipmentFromText("I don't have dumbbells, but I have a barbell")).toEqual(set('BARBELL_RACK', 'BODYWEIGHT'))
+    expect(inferEquipmentFromText("I don't have dumbbells, but I have a barbell")).toEqual(set('BARBELL', 'BODYWEIGHT'))
     expect(inferEquipmentFromText('بدون معدات')).toEqual(set('BODYWEIGHT'))
     expect(inferEquipmentFromText('ما عندي أجهزة')).toBeNull()
+  })
+
+  it('expands legacy tokens cleanly and respects compound requirements', () => {
+    const parsed = parseEquipmentSet('BARBELL_RACK,DIP_BARS_OR_BENCH,CABLES_MACHINES')
+    expect([...parsed].every((e) => !EQUIPMENT_META[e].legacy)).toBe(true)
+    expect(parsed.has('BARBELL')).toBe(true)
+    expect(parsed.has('SQUAT_RACK')).toBe(true)
+    expect(parsed.has('DIP_STATION')).toBe(true)
+    expect(parsed.has('LAT_PULLDOWN')).toBe(true)
+
+    const benchPress = profileFor(LIBRARY.get('bench_press')!)
+    expect(profileFits(benchPress, set('BARBELL'))).toBe(false)
+    expect(profileFits(benchPress, set('BARBELL', 'FLAT_BENCH'))).toBe(true)
+    expect(profileFits(benchPress, set('BARBELL', 'ADJ_BENCH'))).toBe(true)
+
+    const inclineDb = profileFor(LIBRARY.get('incline_db_press')!)
+    expect(profileFits(inclineDb, set('DUMBBELLS', 'FLAT_BENCH'))).toBe(false)
+    expect(profileFits(inclineDb, set('DUMBBELLS', 'ADJ_BENCH'))).toBe(true)
+  })
+
+  it('matches training places and expands legacy plan answers JSON', () => {
+    expect(matchTrainingPlace(TRAINING_PLACE_INFO.GYM.equipment)).toBe('GYM')
+    expect(matchTrainingPlace(TRAINING_PLACE_INFO.HOME.equipment)).toBe('HOME')
+    expect(matchTrainingPlace(set('BODYWEIGHT'))).toBe('NONE')
+    expect(matchTrainingPlace(set('BODYWEIGHT', 'DUMBBELLS'))).toBeNull()
+
+    const decoded = decodePlanAnswers('{"goal":"STRENGTH","equipment":["BARBELL_RACK","DIP_BARS_OR_BENCH"]}')
+    expect(decoded).not.toBeNull()
+    expect(decoded!.equipment.has('BARBELL')).toBe(true)
+    expect(decoded!.equipment.has('SQUAT_RACK')).toBe(true)
+    expect(decoded!.equipment.has('DIP_STATION')).toBe(true)
+    expect(decoded!.equipment.has('BODYWEIGHT')).toBe(true)
+    expect([...decoded!.equipment].some((e) => EQUIPMENT_META[e].legacy)).toBe(false)
+
+    const dirty = { ...defaultPlanAnswers(), equipment: expandLegacyEquipment(['BARBELL_RACK', 'BARBELL_RACK' as Equipment]) }
+    const reencoded = encodePlanAnswers(dirty)
+    expect(reencoded).not.toContain('BARBELL_RACK')
   })
 })
 
@@ -49,10 +89,10 @@ describe('web additions', () => {
   it('reads three English and three Arabic sentences', () => {
     expect(inferEquipmentFromText('I have a pull-up bar and dumbbells')).toEqual(set('PULL_UP_BAR', 'DUMBBELLS', 'BODYWEIGHT'))
     expect(inferEquipmentFromText('No equipment, just me')).toEqual(set('BODYWEIGHT'))
-    expect(inferEquipmentFromText('I train at a commercial gym')?.size).toBe(8)
+    expect(inferEquipmentFromText('I train at a commercial gym')?.size).toBe(ALL_ACTIVE_EQUIPMENT.length)
     expect(inferEquipmentFromText('عندي بار عقلة')).toEqual(set('PULL_UP_BAR', 'BODYWEIGHT'))
     expect(inferEquipmentFromText('ما عندي دمبل لكن عندي عقلة')).toEqual(set('PULL_UP_BAR', 'BODYWEIGHT'))
-    expect(inferEquipmentFromText('أتمرن في النادي')?.size).toBe(8)
+    expect(inferEquipmentFromText('أتمرن في النادي')?.size).toBe(ALL_ACTIVE_EQUIPMENT.length)
   })
 
   // Audit #7: swaps, plan adaptation (plateau case is in trends.test.ts).

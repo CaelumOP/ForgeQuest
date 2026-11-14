@@ -6,24 +6,21 @@ import { useState } from 'preact/hooks'
 import { getLang, plural, setLang, t, useLang, type Lang, intlLocale } from '../../i18n'
 import { setTheme, useTheme, type Theme } from '../theme'
 import { updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
-import { getProgressSnapshot, logWeight, useProgress, type ProgressSnapshot } from '../../data/progress'
+import { logWeight, useProgress, type ProgressSnapshot } from '../../data/progress'
 import { trainingDays } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
 import {
-  ageFromBirthYear, allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, GAIN_PACE, GAIN_PACES, MAX_SAFE_KCAL, MIN_PROTEIN_PER_KG, MIN_SAFE_KCAL,
+  ageFromBirthYear, allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, GAIN_PACE, GAIN_PACES, MAX_SAFE_KCAL, MIN_FAT_SHARE_PCT, MIN_PROTEIN_PER_KG, MIN_SAFE_KCAL,
   NUTRITION_GOALS, weightTrendNote, type CutPace, type DayActivity, type GainPace, type NutritionGoal,
 } from '../../domain/nutrition'
 import { calorieInputs, floorFor, setTarget } from '../../data/calories'
-import {
-  EQUIPMENT, EQUIPMENT_LABEL, EQUIPMENT_PRESETS, PRESET_INFO, encodePreset, presetFromEncoded, parseEquipmentSet,
-  type Equipment, type EquipmentPreset,
-} from '../../domain/exercise-swap-engine'
 import { bodyStep, fromKg, toKg, unitLabel } from '../../domain/units'
 import { BADGES, BADGES_BY_ID } from '../../domain/badges'
+import { EditIcon } from '../icons'
 import { Button, Card, ChipGroup, LineChart, ListRow, NumberField, Ring, SectionHeader, Segmented, Sheet, Stat, Stepper, TextField, toast } from '../kit'
 import {
-  addNote, applyNutrition, carbsFor, hasBodyStats, kcalFor, noteLines, proteinFor, removeNote, stepWeekly, summary, type NutritionPatch,
-  toggleEquipment, trainingDaysFor,
+  addNote, applyNutrition, carbsFor, hasBodyStats, impliedFatPct, kcalFor, noteLines, proteinFor, removeNote, summary, type NutritionPatch,
+  trainingDaysFor,
 } from './helpers'
 import { BackupSection, backupSummary } from './BackupSection'
 import './profile.css'
@@ -53,10 +50,12 @@ const Chevron = () => (
 )
 
 const OPEN_KEY = 'fq.profile.open'
+const LEGACY_GROUP_MAP: Record<string, string> = { body: 'you', goals: 'you', training: 'app' }
 function loadOpen(): string[] {
   try {
     const v = JSON.parse(localStorage.getItem(OPEN_KEY) ?? '[]')
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+    if (!Array.isArray(v)) return []
+    return [...new Set(v.filter((x): x is string => typeof x === 'string').map((x) => LEGACY_GROUP_MAP[x] ?? x))]
   } catch { return [] }
 }
 function saveOpen(ids: string[]) {
@@ -64,9 +63,6 @@ function saveOpen(ids: string[]) {
 }
 
 const set = (patch: Partial<Settings>) => updateSettings((s) => ({ ...s, ...patch }))
-
-/** Finished weeks keep the target they had: the snapshot locks them (saveWeekTargets) before the change lands. */
-const lockThenSet = async (patch: Partial<Settings>) => { await getProgressSnapshot(); await set(patch) }
 
 function Group({ id, accent, icon, title, sum, open, onToggle, children }: {
   id: string; accent: Accent; icon: string; title: string; sum: string; open: boolean; onToggle: () => void; children: ComponentChildren
@@ -152,6 +148,93 @@ function KeyField({ title, value, status, onSave, onRemove, body, link }: {
   )
 }
 
+function TargetRow({ title, sub, grams, onClick }: { title: string; sub: string; grams: number; onClick: () => void }) {
+  return (
+    <button type="button" class="pf-target" onClick={onClick}>
+      <span class="pf-grow">
+        <span class="pf-t">{title}</span>
+        <span class="pf-s">{sub}</span>
+      </span>
+      <span class="pf-target-val">{`${grams} ${t('unit_g')}`}</span>
+      <span class="pf-target-edit" aria-hidden="true"><EditIcon size={18} /></span>
+    </button>
+  )
+}
+
+function TargetDialog({
+  title, body, ratio, displayRatio, range, stepSize, formatRatio, gramsFor, grams: initGrams, gramsStep, gramsMin, gramsMax, onClose, onSave,
+}: {
+  title: string
+  body: string
+  ratio: number | null
+  displayRatio?: number | null
+  range: [number, number]
+  stepSize: number
+  formatRatio: (r: number) => string
+  gramsFor: (r: number) => number
+  grams: number
+  gramsStep: number
+  gramsMin: number
+  gramsMax: number
+  onClose: () => void
+  onSave: (ratio: number | null, grams: number) => void
+}) {
+  const [r, setR] = useState(ratio ?? range[0])
+  const [g, setG] = useState(initGrams)
+  const [moved, setMoved] = useState(false)
+  const shownRatio = moved || displayRatio == null ? r : displayRatio
+  const ratioLabel = formatRatio(shownRatio)
+
+  return (
+    <Sheet open onClose={onClose} title={title}>
+      <div class="pf-tdialog">
+        <p class="pf-s" style={{ margin: 0 }}>{body}</p>
+        {ratio != null && (
+          <>
+            <span class="pf-h3">{ratioLabel}</span>
+            <input
+              type="range"
+              class="pf-slider"
+              min={range[0]}
+              max={range[1]}
+              step={stepSize}
+              value={r}
+              aria-label={ratioLabel}
+              aria-valuetext={ratioLabel}
+              onInput={(e) => {
+                const raw = Number((e.currentTarget as HTMLInputElement).value)
+                const snapped = Math.min(
+                  range[1],
+                  Math.max(range[0], Math.round(((Math.round((raw - range[0]) / stepSize) * stepSize + range[0]) * 10)) / 10),
+                )
+                if (snapped !== r) {
+                  setR(snapped)
+                  setG(gramsFor(snapped))
+                  setMoved(true)
+                }
+              }}
+            />
+          </>
+        )}
+        <span class="pf-h3">{t('you_protein_grams')}</span>
+        <Stepper
+          label={t('you_protein_grams')}
+          value={g}
+          step={gramsStep}
+          min={gramsMin}
+          max={gramsMax}
+          format={(n) => `${Math.round(n)} ${t('unit_g')}`}
+          onChange={(v) => setG(Math.round(v))}
+        />
+        <div class="pf-tdialog-actions">
+          <Button variant="text" onClick={onClose}>{t('action_cancel')}</Button>
+          <Button onClick={() => onSave(ratio != null && moved ? r : null, g)}>{t('action_save')}</Button>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
+
 export function ProfileScreen() {
   const settings = useSettings()
   const snap = useProgress()
@@ -159,6 +242,8 @@ export function ProfileScreen() {
   const theme = useTheme()
   const [openIds, setOpenIds] = useState<string[]>(loadOpen)
   const [weightOpen, setWeightOpen] = useState(false)
+  const [editingTarget, setEditingTarget] = useState<'PROTEIN' | 'CARBS' | null>(null)
+  const [advOpen, setAdvOpen] = useState(false)
   const [note, setNote] = useState('')
   const toggle = (id: string) => {
     const next = openIds.includes(id) ? openIds.filter((x) => x !== id) : [...openIds, id]
@@ -175,14 +260,9 @@ export function ProfileScreen() {
   const latestKg = snap?.latestWeight ?? null
   const gi = { settings: s, latestKg, age, planDays }
   const unit = weightUnit(s)
-  const configured = parseEquipmentSet(s.equipment)
-  const preset = presetFromEncoded(s.equipment)
   const bodySet = s.heightCm > 0 && age > 0
-  const weekly = s.weeklyTargetOverride === 0 ? planDays : s.weeklyTargetOverride
   const num = (n: number) => n.toLocaleString(intlLocale(lang))
   const goalLabel = (g: NutritionGoal) => t(g === 'CUT' ? 'goal_cut' : g === 'GAIN' ? 'goal_gain' : 'goal_maintain')
-  const presetLabel = (p: EquipmentPreset) => (ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn)
-  const eqLabel = (e: Equipment) => EQUIPMENT_LABEL[e][ar ? 'ar' : 'en']
   const themeLabel = (v: string) => t(v === 'light' ? 'theme_light' : v === 'dark' ? 'theme_dark' : 'theme_system')
 
   const changeTheme = (v: Theme) => { setTheme(v); void set({ theme: v }) }
@@ -194,9 +274,9 @@ export function ProfileScreen() {
   const fastBlocked = latestKg != null && allowedCutPace('AGGRESSIVE', latestKg, s.heightCm, age, s.bodyType === 'MALE', s.bodyFatPct) !== 'AGGRESSIVE'
   const paceAmount = (kg: number) => `${(Math.round(fromKg(unit, kg) * 10) / 10).toFixed(1)} ${unitLabel(unit, ar)}`
   const trend = weightTrendNote(s.nutritionGoal, s.goalSetDay, (snap?.weights ?? []).map((w) => [w.epochDay, w.kg] as const), todayEpochDay(), s.cutPace, s.gainPace, s.bodyType === 'FEMALE')
-  const suggestedProt = latestKg == null ? null : proteinFor(gi, Math.max(s.proteinPerKg, MIN_PROTEIN_PER_KG))
-  const fat = Math.max(s.fatSharePct, 20)
-  const suggestedCarb = carbsFor(gi, s.kcalGoal, s.proteinGoal)
+  const fat = Math.max(s.fatSharePct, MIN_FAT_SHARE_PCT)
+  const proteinSub = latestKg != null && latestKg > 0 ? t('you_protein_ratio', (s.proteinGoal / latestKg).toFixed(1)) : t('you_protein_tap')
+  const carbsSub = t('you_carbs_ratio', impliedFatPct(s) ?? fat)
   const notes = noteLines(s.coachNotes)
 
   return (
@@ -243,8 +323,33 @@ export function ProfileScreen() {
 
       <SectionHeader title={t('settings_section_settings')} />
 
-      <Group id="body" accent="teal" icon="body" title={t('settings_group_body')} open={isOpen('body')} onToggle={() => toggle('body')}
-        sum={bodySet ? summary(t(s.bodyType === 'FEMALE' ? 'body_female' : 'body_male'), `${s.heightCm} ${t('unit_cm')}`, `${age} ${t('unit_years')}`, dayLabel) : t('summary_body_not_set')}>
+      <Group id="app" accent="teal" icon="app" title={t('settings_group_app')} open={isOpen('app')} onToggle={() => toggle('app')}
+        sum={summary(themeLabel(theme), lang === 'ar' ? 'العربية' : 'English', unitLabel(unit, ar), s.justLog ? t('just_log_title') : null)}>
+        <Card>
+          <CardTitle icon="app" accent="teal" title={t('profile_appearance')} />
+          <span class="pf-t">{t('profile_theme')}</span>
+          <ChipGroup label={t('profile_theme')} accent="teal" value={theme} onChange={changeTheme}
+            options={(['system', 'light', 'dark'] as Theme[]).map((v) => ({ value: v, label: themeLabel(v) }))} />
+          <span class="pf-t">{t('profile_language')}</span>
+          <ChipGroup label={t('profile_language')} accent="teal" value={lang} onChange={(v: Lang) => setLang(v)}
+            options={[{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }]} />
+          <span class="pf-t">{t('profile_weights')}</span>
+          <ChipGroup label={t('profile_weights')} accent="teal" value={unit} onChange={(v) => void set({ unit: v === 'LB' ? 'lb' : 'kg' })}
+            options={[{ value: 'KG', label: t('unit_kilograms') }, { value: 'LB', label: t('unit_pounds') }]} />
+        </Card>
+        <Card>
+          <Switch icon="checklist" label={t('just_log_title')} hint={t('just_log_subtitle')} on={s.justLog} onChange={(v) => void set({ justLog: v })} />
+        </Card>
+        <Card>
+          <Switch label={t('profile_vibration')} hint={t('profile_vibration_hint')} on={s.hapticsEnabled} onChange={(v) => void set({ hapticsEnabled: v })} />
+        </Card>
+        <Card padded={false}>
+          <ListRow title={t('pb_rebuild')} subtitle={t('pb_rebuild_hint')} icon={<span class="pf-ic pf-teal"><Glyph name="tune" /></span>} href="#/plan-builder" />
+        </Card>
+      </Group>
+
+      <Group id="you" accent="teal" icon="goals" title={t('settings_group_you')} open={isOpen('you')} onToggle={() => toggle('you')}
+        sum={summary(!bodySet ? t('summary_body_not_set') : null, goalLabel(s.nutritionGoal), `${num(s.kcalGoal)} ${t('unit_kcal')}`, t('summary_protein', s.proteinGoal))}>
         <Card>
           <CardTitle icon="body" accent="teal" title={t('profile_about_you')} hint={t('profile_about_you_hint')} />
           <ChipGroup label={t('profile_about_you')} accent="teal" value={s.bodyType} onChange={(v) => void set({ bodyType: v })}
@@ -255,16 +360,13 @@ export function ProfileScreen() {
           <Setting label={t('profile_age')}>
             <Stepper label={t('profile_age')} value={age > 0 ? age : 25} min={10} max={100} onChange={(v) => void set({ birthYear: thisYear - v })} format={(n) => age > 0 ? `${n} ${t('unit_years')}` : `– ${t('unit_years')}`} />
           </Setting>
-          <Setting label={t('profile_body_fat_optional')}>
-            <Stepper label={t('profile_body_fat_optional')} value={s.bodyFatPct} min={0} max={55} step={0.5} onChange={(v) => void set({ bodyFatPct: v < 4 ? 0 : v })} format={(n) => `${n.toFixed(1)}%`} />
-          </Setting>
-          <p class="pf-s">{t('pf_web_bodyfat_hint')}</p>
           <span class="pf-t">{t('pf_web_day_title')}</span>
           <Segmented label={t('day_web_title')} accent="teal" value={s.dayActivity} onChange={(d: DayActivity) => nutrition({ dayActivity: d })}
             options={DAY_ACTIVITIES.map((d) => ({ value: d, label: t(`day_web_${d.toLowerCase()}`) }))} />
           <p class="pf-s">{t(`day_web_${s.dayActivity.toLowerCase()}_desc`)}</p>
           {!bodySet && <p class="pf-s pf-warn">{t('profile_body_not_set')}</p>}
         </Card>
+
         <Card>
           <CardTitle icon="body" accent="teal" title={t('profile_hand_size')} hint={s.handLengthCm > 0 ? t('profile_hand_value', s.handLengthCm.toFixed(1), s.palmWidthCm.toFixed(1)) : t('profile_hand_hint')} />
           <div class="pf-two">
@@ -272,13 +374,9 @@ export function ProfileScreen() {
             <NumberField label={t('hand_palm')} unit={t('unit_cm')} decimal min={3} max={20} value={s.palmWidthCm > 0 ? s.palmWidthCm : null} onChange={(v) => void set({ palmWidthCm: v ?? 0 })} />
           </div>
         </Card>
-      </Group>
 
-      <Group id="goals" accent="teal" icon="goals" title={t('settings_group_goals')} open={isOpen('goals')} onToggle={() => toggle('goals')}
-        sum={summary(goalLabel(s.nutritionGoal), `${num(s.kcalGoal)} ${t('unit_kcal')}`, `${s.proteinGoal} ${t('unit_g')}`, t('summary_per_week', weekly))}>
         <Card>
-          <CardTitle icon="goals" accent="teal" title={t('profile_daily_targets')} />
-          <span class="pf-t">{t('goal_title')}</span>
+          <CardTitle icon="goals" accent="teal" title={t('goal_title')} />
           <ChipGroup label={t('goal_title')} accent="teal" value={s.nutritionGoal} onChange={(g) => nutrition({ nutritionGoal: g })}
             options={NUTRITION_GOALS.map((g) => ({ value: g, label: goalLabel(g) }))} />
           {s.nutritionGoal !== 'MAINTAIN' && <span class="pf-t">{t('pace_web_title')}</span>}
@@ -299,6 +397,10 @@ export function ProfileScreen() {
               }))} />
           )}
           {trend && <p class="pf-s pf-warn">{t(trend === 'CUT_TOO_FAST' ? 'goal_trend_cut_fast' : trend === 'GAIN_STALLED' ? 'goal_trend_gain_stalled' : trend === 'GAIN_TOO_FAST' ? 'goal_trend_gain_fast' : 'goal_trend_diet_break')}</p>}
+        </Card>
+
+        <Card>
+          <CardTitle icon="goals" accent="teal" title={t('profile_daily_targets')} hint={t('you_targets_hint')} />
           <Setting label={t('profile_daily_calories')}>
             <Stepper label={t('profile_daily_calories')} value={s.kcalGoal} min={floor} max={MAX_SAFE_KCAL} step={50} onChange={(v) => void setTarget(v, latestKg, todayEpochDay())} format={(n) => `${num(n)} ${t('unit_kcal')}`} />
           </Setting>
@@ -309,65 +411,36 @@ export function ProfileScreen() {
             {suggestedKcal != null && hasBodyStats(s, age) && suggestedKcal !== s.kcalGoal && <Button variant="tonal" onClick={() => void setTarget(suggestedKcal, latestKg, todayEpochDay())}>{t('goals_use')}</Button>}
           </div>
           {s.kcalGoal <= floor && <p class="pf-s">{t('pf_web_floor_hint', num(floor))}</p>}
-          <Setting label={t('profile_daily_protein')}>
-            <Stepper label={t('profile_daily_protein')} value={s.proteinGoal} min={60} max={400} step={5} onChange={(v) => void set({ proteinGoal: v })} format={(n) => `${n} ${t('unit_g')}`} />
-          </Setting>
-          <Setting label={t('profile_protein_per_kg')}>
-            <Stepper label={t('profile_protein_per_kg')} value={Math.max(s.proteinPerKg, MIN_PROTEIN_PER_KG)} min={MIN_PROTEIN_PER_KG} max={2.5} step={0.1} onChange={(v) => void set({ proteinPerKg: v })} format={(n) => `${n.toFixed(1)} ${t('unit_g_per_kg')}`} />
-          </Setting>
-          {suggestedProt != null && suggestedProt !== s.proteinGoal && (
-            <div class="pf-setting">
-              <span class="pf-s pf-grow">{t('goals_protein_suggested', suggestedProt, Math.max(s.proteinPerKg, MIN_PROTEIN_PER_KG).toFixed(1))}</span>
-              <Button variant="tonal" onClick={() => void set({ proteinGoal: suggestedProt })}>{t('goals_use')}</Button>
-            </div>
-          )}
+          <hr class="pf-div" />
+          <TargetRow title={t('profile_daily_protein')} sub={proteinSub} grams={s.proteinGoal} onClick={() => setEditingTarget('PROTEIN')} />
+          <hr class="pf-div" />
           <Switch label={t('profile_track_carbs')} on={s.trackCarbs} onChange={(v) => void set({ trackCarbs: v })} />
           {s.trackCarbs && (
+            <TargetRow title={t('profile_daily_carbs')} sub={carbsSub} grams={s.carbsGoal} onClick={() => setEditingTarget('CARBS')} />
+          )}
+        </Card>
+
+        <Card>
+          <button type="button" class="pf-adv" aria-expanded={advOpen} onClick={() => setAdvOpen(!advOpen)}>
+            <span class="pf-grow">
+              <span class="pf-h3 pf-block">{t('you_advanced')}</span>
+              <span class="pf-s">{s.bodyFatPct > 0 ? t('you_advanced_bodyfat', s.bodyFatPct.toFixed(1)) : t('you_advanced_hint')}</span>
+            </span>
+            <span class={advOpen ? 'pf-chevwrap pf-up' : 'pf-chevwrap'}><Chevron /></span>
+          </button>
+          {advOpen && (
             <>
-              <Setting label={t('profile_daily_carbs')}>
-                <Stepper label={t('profile_daily_carbs')} value={s.carbsGoal} min={20} max={800} step={10} onChange={(v) => void set({ carbsGoal: v })} format={(n) => `${n} ${t('unit_g')}`} />
+              <Setting label={t('you_body_fat')}>
+                <Stepper label={t('you_body_fat')} value={s.bodyFatPct} min={0} max={55} step={0.5} onChange={(v) => void set({ bodyFatPct: v < 4 ? 0 : v })} format={(n) => `${n.toFixed(1)}%`} />
               </Setting>
-              <Setting label={t('profile_fat_share')}>
-                <Stepper label={t('profile_fat_share')} value={fat} min={20} max={40} step={5} onChange={(v) => void set({ fatSharePct: v })} format={(n) => `${n}%`} />
-              </Setting>
-              {suggestedCarb > 0 && suggestedCarb !== s.carbsGoal && (
-                <div class="pf-setting">
-                  <span class="pf-s pf-grow">{t('profile_carbs_suggested', suggestedCarb, fat)}</span>
-                  <Button variant="tonal" onClick={() => void set({ carbsGoal: suggestedCarb })}>{t('goals_use')}</Button>
-                </div>
-              )}
+              <p class="pf-s">{t('profile_bodyfat_hint')}</p>
             </>
           )}
-          <Setting label={t('profile_workouts_per_week')} hint={s.weeklyTargetOverride === 0 ? t('profile_from_plan') : undefined}>
-            <Stepper label={t('profile_workouts_per_week')} value={weekly} min={1} max={7}
-              onChange={(v) => void lockThenSet({ weeklyTargetOverride: stepWeekly(weekly, v > weekly ? 1 : -1, planDays) })} />
-          </Setting>
-          {!s.justLog && <p class="pf-s">{t('profile_streak_explain')}</p>}
         </Card>
       </Group>
 
-      <Group id="training" accent="teal" icon="training" title={t('settings_group_training')} open={isOpen('training')} onToggle={() => toggle('training')}
-        sum={preset ? presetLabel(preset) : configured.size === 0 ? t('summary_equipment_unset') : t('equipment_custom')}>
-        <Card>
-          <CardTitle icon="training" accent="teal" title={t('equipment_title')} hint={t('equipment_hint')} />
-          <span class="pf-t">{t('equipment_step_setup')}</span>
-          <ChipGroup label={t('equipment_step_setup')} value={preset} onChange={(p) => void set({ equipment: encodePreset(p) })}
-            options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: presetLabel(p) }))} />
-          <span class="pf-t">{t('equipment_step_items')}</span>
-          <span class="pf-s">{preset == null && configured.size > 0 ? t('equipment_custom_hint') : t('equipment_step_items_hint')}</span>
-          <ChipGroup multiple label={t('equipment_step_items')} value={EQUIPMENT.filter((e) => configured.has(e))}
-            onChange={(next) => { const added = EQUIPMENT.find((e) => next.includes(e) && !configured.has(e)); const removed = EQUIPMENT.find((e) => !next.includes(e) && configured.has(e)); const item = added ?? removed; if (item) void set({ equipment: toggleEquipment(configured, item) }) }}
-            options={EQUIPMENT.map((e) => ({ value: e, label: eqLabel(e) }))} />
-        </Card>
-        <Card padded={false}>
-          <ListRow title={t('pb_rebuild')} subtitle={t('pb_rebuild_hint')} icon={<span class="pf-ic pf-teal"><Glyph name="tune" /></span>} href="#/plan-builder" />
-        </Card>
-        <Card>
-          <Switch icon="checklist" label={t('just_log_title')} hint={t('just_log_subtitle')} on={s.justLog} onChange={(v) => void set({ justLog: v })} />
-        </Card>
-        <Card>
-          <Switch label={t('profile_vibration')} hint={t('profile_vibration_hint')} on={s.hapticsEnabled} onChange={(v) => void set({ hapticsEnabled: v })} />
-        </Card>
+      <Group id="backup" accent="teal" icon="backup" title={t('settings_group_backup')} open={isOpen('backup')} onToggle={() => toggle('backup')} sum={backupSummary(s)}>
+        <BackupSection s={s} Title={({ title, hint }) => <CardTitle icon="backup" accent="teal" title={title} hint={hint} />} />
       </Group>
 
       <Group id="coach" accent="teal" icon="coach" title={t('settings_group_coach')} open={isOpen('coach')} onToggle={() => toggle('coach')}
@@ -398,31 +471,68 @@ export function ProfileScreen() {
         </Card>
       </Group>
 
-      <Group id="app" accent="teal" icon="app" title={t('settings_group_app')} open={isOpen('app')} onToggle={() => toggle('app')}
-        sum={summary(themeLabel(theme), lang === 'ar' ? 'العربية' : 'English', unitLabel(unit, ar))}>
-        <Card>
-          <CardTitle icon="app" accent="teal" title={t('profile_appearance')} />
-          <span class="pf-t">{t('profile_theme')}</span>
-          <ChipGroup label={t('profile_theme')} accent="teal" value={theme} onChange={changeTheme}
-            options={(['system', 'light', 'dark'] as Theme[]).map((v) => ({ value: v, label: themeLabel(v) }))} />
-          <span class="pf-t">{t('profile_language')}</span>
-          <ChipGroup label={t('profile_language')} accent="teal" value={lang} onChange={(v: Lang) => setLang(v)}
-            options={[{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }]} />
-          <span class="pf-t">{t('profile_weights')}</span>
-          <ChipGroup label={t('profile_weights')} accent="teal" value={unit} onChange={(v) => void set({ unit: v === 'LB' ? 'lb' : 'kg' })}
-            options={[{ value: 'KG', label: t('unit_kilograms') }, { value: 'LB', label: t('unit_pounds') }]} />
-        </Card>
-      </Group>
-
-      <Group id="backup" accent="teal" icon="backup" title={t('settings_group_backup')} open={isOpen('backup')} onToggle={() => toggle('backup')} sum={backupSummary(s)}>
-        <BackupSection s={s} Title={({ title, hint }) => <CardTitle icon="backup" accent="teal" title={title} hint={hint} />} />
-      </Group>
-
       <Group id="about" accent="text" icon="about" title={t('settings_group_about')} open={isOpen('about')} onToggle={() => toggle('about')} sum={t('profile_credits')}>
         <Card padded={false}><ListRow title={t('settings_group_about')} subtitle={t('profile_credits_body')} icon={<Glyph name="about" />} href="#/about" /></Card>
       </Group>
 
       <WeightSheet latest={latestKg} s={s} open={weightOpen} onClose={() => setWeightOpen(false)} />
+      {editingTarget === 'PROTEIN' && (() => {
+        const hasKg = latestKg != null && latestKg > 0
+        const initRatio = hasKg ? Math.min(2.5, Math.max(MIN_PROTEIN_PER_KG, Math.round((s.proteinGoal / latestKg!) * 10) / 10)) : null
+        return (
+          <TargetDialog
+            key="protein"
+            title={t('profile_daily_protein')}
+            body={t(hasKg ? 'you_protein_dialog_body' : 'you_protein_no_weight')}
+            ratio={initRatio}
+            range={[MIN_PROTEIN_PER_KG, 2.5]}
+            stepSize={0.1}
+            formatRatio={(r) => t('you_protein_slider_state', r.toFixed(1))}
+            gramsFor={(r) => proteinFor(gi, r) ?? s.proteinGoal}
+            grams={s.proteinGoal}
+            gramsStep={5}
+            gramsMin={60}
+            gramsMax={400}
+            onClose={() => setEditingTarget(null)}
+            onSave={(r, g) => {
+              void set({
+                proteinGoal: Math.max(60, g),
+                ...(r != null ? { proteinPerKg: Math.min(2.5, Math.max(MIN_PROTEIN_PER_KG, Math.round(r * 10) / 10)) } : {}),
+              })
+              setEditingTarget(null)
+            }}
+          />
+        )
+      })()}
+      {editingTarget === 'CARBS' && (() => {
+        const rawRatio = Math.min(45, Math.max(MIN_FAT_SHARE_PCT, impliedFatPct(s) ?? s.fatSharePct))
+        const snapped = Math.min(45, Math.max(MIN_FAT_SHARE_PCT, Math.round(rawRatio / 5) * 5))
+        return (
+          <TargetDialog
+            key="carbs"
+            title={t('profile_daily_carbs')}
+            body={t('you_carbs_dialog_body')}
+            ratio={snapped}
+            displayRatio={rawRatio}
+            range={[MIN_FAT_SHARE_PCT, 45]}
+            stepSize={5}
+            formatRatio={(r) => t('you_carbs_ratio', Math.round(r))}
+            gramsFor={(r) => carbsFor({ ...gi, settings: { ...s, fatSharePct: Math.round(r) } }, s.kcalGoal, s.proteinGoal)}
+            grams={s.carbsGoal}
+            gramsStep={10}
+            gramsMin={20}
+            gramsMax={800}
+            onClose={() => setEditingTarget(null)}
+            onSave={(r, g) => {
+              void set({
+                carbsGoal: Math.min(800, Math.max(20, g)),
+                ...(r != null ? { fatSharePct: Math.min(45, Math.max(MIN_FAT_SHARE_PCT, Math.round(r))) } : {}),
+              })
+              setEditingTarget(null)
+            }}
+          />
+        )
+      })()}
     </div>
   )
 }

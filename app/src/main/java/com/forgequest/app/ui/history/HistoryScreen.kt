@@ -129,7 +129,6 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
 
     /** The debrief sheet: which workout it is open for. */
     val debriefFor = MutableStateFlow<Long?>(null)
-    val canDebrief get() = app.coach.canDebrief()
 
     fun openDebrief(session: SessionEntity) { debriefFor.value = session.id }
 
@@ -165,18 +164,9 @@ fun HistoryScreen(nav: NavHostController) {
     val snackbar = LocalSnackbar.current
     UndoSnackbarEffect(vm.undo, SnackbarDuration.Long)
     val debriefFor by vm.debriefFor.collectAsState()
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val names = remember(s.exercises) { s.exercises.mapValues { it.value.name } }
     s.sessions.firstOrNull { it.id == debriefFor }?.let { ses ->
-        // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
-        val askCoach: (() -> Unit)? = if (vm.canDebrief) fun() {
-            scope.launch {
-                vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(ses.id)
-                vm.debriefFor.value = null
-                nav.navigate(Routes.COACH)
-            }
-        } else null
-        DebriefSheet(vm, ses, names, unit, askCoach)
+        DebriefSheet(vm, ses, names, unit)
     }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
@@ -251,7 +241,7 @@ fun HistoryScreen(nav: NavHostController) {
 /** The journal's debrief for one workout, calculated from its numbers; it changes when a set is edited. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Map<String, String>, unit: WeightUnit, onAskCoach: (() -> Unit)?) {
+private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Map<String, String>, unit: WeightUnit) {
     val c = Fit.colors
     val debrief by vm.debrief.collectAsState()
     val score = vm.scores.collectAsState().value[session.id]
@@ -267,7 +257,7 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Ma
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
             )
             Spacer(Modifier.height(12.dp))
-            com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit, onAskCoach)
+            com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -408,7 +398,6 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     val unit by vm.unit.collectAsState()
     val score by vm.score.collectAsState()
     val debrief by vm.debrief.collectAsState()
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val names = remember(exercises) { exercises.mapValues { it.value.name } }
     val c = Fit.colors
     var menu by remember { mutableStateOf(false) }
@@ -443,16 +432,12 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 }
             }
         }
-        // One tap: the Coach tab opens and sends the workout's facts and the calculated debrief by itself.
-        val askCoach: (() -> Unit)? = if (vm.app.coach.canDebrief()) fun() {
-            scope.launch { vm.app.coach.pendingMessage.value = vm.app.coach.debriefChatMessage(sessionId); nav.navigate(Routes.COACH) }
-        } else null
         LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap)) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             if (debrief != null || score != null) {
-                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit, askCoach) }
+                item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit) }
             }
             items(groups, key = { it.first().itemPosition }) { group ->
                 val ex = exercises[group.first().exerciseId]

@@ -26,15 +26,6 @@ class ShareMealActivity : ComponentActivity() {
     }
 
     private suspend fun handle(text: String?) {
-        if (text != null && text.contains(com.forgequest.app.data.bridge.BridgeFormat.HEADER)) {
-            container.bridge.applyText(text)
-            toast(getString(R.string.paste_gemini_done))
-            startActivity(
-                Intent(this, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            )
-            return
-        }
         val meal = text?.let { MealFormat.parseOne(it) } ?: return toast(getString(R.string.meals_share_wrong))
         val inbox = container.meals
         if (inbox.offer(meal) == MealInbox.Offer.ALREADY_LOGGED) return toast(getString(R.string.meals_already_logged))

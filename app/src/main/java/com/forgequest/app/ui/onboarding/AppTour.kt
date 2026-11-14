@@ -41,7 +41,7 @@ object TourPrefs {
 
 /**
  * The first-visit tour: one tip per main tab, shown next to the one button that matters there, the first time that tab
- * is opened (Home: start the workout; Workouts: change plan; Food: search and log; Coach: ask), plus the set tick inside
+ * is opened (Home: start the workout; Workouts: change plan; Food: search and log), plus the set tick inside
  * a workout. Optional things, such as the Fitbit readiness row, get no tip. The tips themselves are drawn by
  * `CoachMarkBox`; this object only knows which ones make up the tour and when it is over.
  */
@@ -49,9 +49,8 @@ object AppTour {
     const val HOME = "coach_home"
     const val WORKOUTS = "coach_plan"
     const val FOOD = "coach_food"
-    const val COACH = "coach_ask"
     const val SET_TICK = "coach_tick"
-    private val steps = listOf(HOME, WORKOUTS, FOOD, COACH, SET_TICK)
+    private val steps = listOf(HOME, WORKOUTS, FOOD, SET_TICK)
     private const val PREFS = "ui_prefs"
 
     /** Called after a tip was shown: once every step has been seen, the tour is marked finished for good. */

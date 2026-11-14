@@ -3,7 +3,10 @@
 // produced so applying the draft never creates custom exercises. Android: PlanBuilder.kt.
 import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity, PlanDraft, PlanDraftDay, PlanDraftItem } from './entities'
-import { profileFor, type BiomechanicalProfile, type Equipment, type MovementPattern } from './exercise-swap-engine'
+import {
+  EQUIPMENT_META, expandLegacyEquipment, profileFits, profileFor, SELECTABLE_EQUIPMENT,
+  type BiomechanicalProfile, type Equipment, type MovementPattern,
+} from './exercise-swap-engine'
 import { tierOf as rawTierOf, TIERS, type Tier } from './exercise-tiers'
 import { blocked, INJURIES, isInjury, type Injury } from './injury'
 import { MUSCLES, type Muscle } from './muscle'
@@ -141,7 +144,13 @@ type DayBuild = {
   tags: Set<WhyTag>
 }
 
-const LOAD_EQUIPMENT = new Set<Equipment>(['DUMBBELLS', 'KETTLEBELL', 'BARBELL_RACK', 'CABLES_MACHINES'])
+const LOAD_EQUIPMENT = new Set<Equipment>([
+  'DUMBBELLS', 'KETTLEBELL', 'BARBELL',
+  ...SELECTABLE_EQUIPMENT.filter((e) => {
+    const g = EQUIPMENT_META[e].group
+    return g === 'UPPER_MACHINES' || g === 'LOWER_MACHINES'
+  }),
+])
 const PUSH_PATTERNS = new Set<MovementPattern>(['HORIZONTAL_PUSH', 'DIP_PUSH', 'VERTICAL_PUSH'])
 const PULL_PATTERNS = new Set<MovementPattern>(['VERTICAL_PULL', 'HORIZONTAL_PULL', 'UPPER_BACK_PULL'])
 
@@ -293,8 +302,8 @@ class Builder {
     this.rest = input.rest ?? 'AUTO'
     this.offset = input.offset ?? 0
 
-    this.allowedEq = new Set<Equipment>([...eq, 'BODYWEIGHT'])
-    this.loadEquip = [...eq].some((e) => LOAD_EQUIPMENT.has(e))
+    this.allowedEq = new Set<Equipment>([...expandLegacyEquipment(eq), 'BODYWEIGHT'])
+    this.loadEquip = [...this.allowedEq].some((e) => LOAD_EQUIPMENT.has(e))
 
     const seen = new Set<string>()
     const distinct: ExerciseEntity[] = []
@@ -309,7 +318,7 @@ class Builder {
       this.profiles.set(ex.id, profileFor(ex))
     }
 
-    this.equipOk = this.lib.filter((e) => this.allowedEq.has(this.prof(e).equipment) && !this.avoidIds.has(e.id))
+    this.equipOk = this.lib.filter((e) => profileFits(this.prof(e), this.allowedEq) && !this.avoidIds.has(e.id))
     this.eligible = this.equipOk.filter((e) => !STRETCH_IDS.has(e.id) && !blocked(e, this.prof(e), this.injuries))
     this.stretches = this.equipOk.filter((e) => STRETCH_IDS.has(e.id) && !blocked(e, this.prof(e), this.injuries))
 

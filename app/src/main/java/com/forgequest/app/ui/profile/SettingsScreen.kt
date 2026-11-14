@@ -35,7 +35,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,10 +62,9 @@ import kotlinx.coroutines.launch
 
 /** Group ids in list order, with the title each page shows. */
 private val groupTitles = listOf(
-    "body" to R.string.settings_group_body,
-    "goals" to R.string.settings_group_goals,
-    "training" to R.string.settings_group_training,
     "app" to R.string.settings_group_app,
+    "you" to R.string.settings_group_you,
+    "health" to R.string.settings_group_health,
     "backup" to R.string.settings_group_backup,
     "coach" to R.string.settings_group_coach,
     "about" to R.string.settings_group_about,
@@ -74,7 +72,7 @@ private val groupTitles = listOf(
 
 /**
  * The settings list (groupId null), or one group's page. The Drive, import, Health Connect and key dialogs live
- * here because the backup, body and coach groups need them.
+ * here because the backup, health and coach groups need them.
  */
 @Composable
 fun SettingsScreen(nav: NavHostController, groupId: String?) {
@@ -93,8 +91,6 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     val context = LocalContext.current
     val c = Fit.colors
     var keyDialog by remember { mutableStateOf(false) }
-    var handDialog by remember { mutableStateOf(false) }
-    var notesDialog by remember { mutableStateOf(false) }
 
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         vm.onConsentResult(r.resultCode == Activity.RESULT_OK, r.data)
@@ -127,9 +123,8 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
 
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
-    val configuredEq = s.settings.configuredEquipment
-    val settings = s.settings
-    val id = groupId?.takeIf { g -> groupTitles.any { it.first == g } }
+    // Old group ids still land somewhere sensible: body/goals moved to "you"; training settings split to the plan editor and "app".
+    val id = when (groupId) { "body", "goals" -> "you"; "training" -> "app"; else -> groupId }?.takeIf { g -> groupTitles.any { it.first == g } }
     val onGroup: (String) -> Unit = { nav.navigate(Routes.settingsGroup(it)) }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
@@ -147,32 +142,15 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
             CompositionLocalProvider(LocalGroupMode provides if (id == null) GroupMode.Row else GroupMode.Page) {
                 // Language and theme are what people look for first, so "App and appearance" leads the list.
                 if (id == null || id == "app") AppSettingsGroup(vm, s, onGroup)
-                if (id == null || id == "body") BodySettingsGroup(
-                    vm, s, onGroup, probe, { startHealthCheck() }, healthAccess,
-                    onOpenHandDialog = { handDialog = true },
-                )
-                if (id == null || id == "goals") GoalsSettingsGroup(vm, s, onGroup)
-                if (id == null || id == "training") TrainingSettingsGroup(vm, s, nav, onGroup)
+                if (id == null || id == "you") YouSettingsGroup(vm, s, onGroup)
+                if (id == null || id == "health") HealthSettingsGroup(vm, s, onGroup, probe, { startHealthCheck() }, healthAccess)
                 if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher)
                 if (id == null || id == "coach") CoachSettingsGroup(
                     vm, nav, s, apiKey, aiOn, onGroup,
                     onOpenKeyDialog = { keyDialog = true },
-                    onOpenNotesDialog = { notesDialog = true },
                 )
                 if (id == null || id == "about") AboutSettingsGroup(vm, onGroup)
             }
-        val latest by vm.update.collectAsState()
-        latest?.let { v ->
-            AlertDialog(
-                onDismissRequest = { vm.update.value = null },
-                containerColor = c.card,
-                title = { Text(stringResource(R.string.update_available, v.versionName), color = c.textPrimary) },
-                // What's new shows once, after the update installs (WhatsNewDialog), not here as well.
-                text = { Text(stringResource(R.string.update_notes_after), color = c.textSecondary) },
-                confirmButton = { TextButton(onClick = vm::installUpdate) { Text(stringResource(R.string.update_now), color = c.teal) } },
-                dismissButton = { TextButton(onClick = { vm.update.value = null }) { Text(stringResource(R.string.update_later), color = c.textSecondary) } },
-            )
-        }
             Spacer(Modifier.height(20.dp))
         }
     }
@@ -206,53 +184,6 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
                 Row {
                     if (apiKey.isNotBlank()) TextButton(onClick = { keyDialog = false; vm.saveKey("") }) { Text(stringResource(R.string.action_remove), color = c.coral) }
                     TextButton(onClick = { keyDialog = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) }
-                }
-            },
-        )
-    }
-
-    if (notesDialog) {
-        var note by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { notesDialog = false },
-            containerColor = c.card,
-            title = { Text(stringResource(R.string.notes_dialog_title), color = c.textPrimary) },
-            text = {
-                Column {
-                    Text(stringResource(R.string.notes_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = note, onValueChange = { note = it.take(160) }, singleLine = true, shape = ForgeShape.Md,
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = { TextButton(onClick = { vm.addNote(note); notesDialog = false }, enabled = note.isNotBlank()) { Text(stringResource(R.string.action_save), color = c.teal) } },
-            dismissButton = { TextButton(onClick = { notesDialog = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
-        )
-    }
-
-    if (handDialog) {
-        var length by remember { mutableFloatStateOf(if (settings.handLengthCm > 0f) settings.handLengthCm else 18.5f) }
-        var palm by remember { mutableFloatStateOf(if (settings.palmWidthCm > 0f) settings.palmWidthCm else 8.5f) }
-        AlertDialog(
-            onDismissRequest = { handDialog = false },
-            containerColor = c.card,
-            title = { Text(stringResource(R.string.hand_dialog_title), color = c.textPrimary) },
-            text = {
-                Column {
-                    Text(stringResource(R.string.hand_dialog_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(12.dp))
-                    SettingStepper(stringResource(R.string.hand_length), length, { length = it }, step = 0.5f, min = 10f, max = 28f, unit = stringResource(R.string.unit_cm), decimals = 1)
-                    SettingStepper(stringResource(R.string.hand_palm), palm, { palm = it }, step = 0.5f, min = 5f, max = 14f, unit = stringResource(R.string.unit_cm), decimals = 1)
-                }
-            },
-            confirmButton = { TextButton(onClick = { vm.setHand(length, palm); handDialog = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
-            dismissButton = {
-                Row {
-                    if (settings.handLengthCm > 0f) TextButton(onClick = { vm.setHand(0f, 0f); handDialog = false }) { Text(stringResource(R.string.action_clear), color = c.coral) }
-                    TextButton(onClick = { handDialog = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) }
                 }
             },
         )

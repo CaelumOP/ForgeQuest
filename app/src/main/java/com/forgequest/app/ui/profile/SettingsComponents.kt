@@ -4,12 +4,7 @@ import com.forgequest.app.ui.theme.ForgeShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.rounded.CheckBox
-import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.RadioButtonChecked
-import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -177,33 +174,60 @@ internal fun SettingsGroup(
     Spacer(Modifier.height(12.dp))
 }
 
-/** One full-width option row with a radio circle or a checkbox; the whole row is the touch target. */
+/**
+ * "Check for updates", first on the settings list and on Profile. When Home's update check already knows of a newer
+ * build, the row says which version is waiting and shows a dot.
+ */
 @Composable
-internal fun ChoiceRow(title: String, subtitle: String?, selected: Boolean, radio: Boolean, onClick: (() -> Unit)?) {
+internal fun UpdateCheckRow(vm: SettingsViewModel) {
     val c = Fit.colors
-    val shape = ForgeShape.Sm
-    val base = Modifier.fillMaxWidth().padding(vertical = 2.dp).clip(shape).background(if (selected) c.tealTrack else androidx.compose.ui.graphics.Color.Transparent)
-    val touch = when {
-        onClick == null -> base
-        radio -> base.selectable(selected, role = Role.RadioButton, onClick = onClick)
-        else -> base.toggleable(selected, role = Role.Checkbox) { onClick() }
-    }
-    Row(touch.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            when {
-                radio && selected -> Icons.Rounded.RadioButtonChecked
-                radio -> Icons.Rounded.RadioButtonUnchecked
-                selected -> Icons.Rounded.CheckBox
-                else -> Icons.Rounded.CheckBoxOutlineBlank
-            },
-            contentDescription = null,
-            tint = if (selected) c.teal else c.textSecondary,
-            modifier = Modifier.size(22.dp).alpha(if (onClick == null && !radio) 0.6f else 1f),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    val notice = vm.app.updateNotice
+    androidx.compose.runtime.LaunchedEffect(Unit) { notice.refresh() }
+    val waiting by notice.banner.collectAsState()
+    val newer = waiting?.latest?.versionName
+    FitCard(onClick = { vm.checkUpdate() }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                IconCircle(Icons.Rounded.SystemUpdate, c.teal, c.tealTrack)
+                if (newer != null) Box(Modifier.align(Alignment.TopEnd).size(10.dp).clip(CircleShape).background(c.coral))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.update_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(
+                    if (newer != null) stringResource(R.string.update_available, newer)
+                    else stringResource(R.string.update_hint, com.forgequest.app.BuildConfig.VERSION_NAME),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (newer != null) c.teal else c.textSecondary,
+                )
+            }
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
         }
+    }
+}
+
+/** The update dialogs for the Check for updates row on Profile: "version X is available", the progress dialog and the result message. */
+@Composable
+internal fun UpdateCheckDialogs(vm: SettingsViewModel) {
+    val c = Fit.colors
+    val latest by vm.update.collectAsState()
+    latest?.let { v ->
+        AlertDialog(
+            onDismissRequest = { vm.update.value = null },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.update_available, v.versionName), color = c.textPrimary) },
+            // What's new shows once, after the update installs (WhatsNewDialog), not here as well.
+            text = { Text(stringResource(R.string.update_notes_after), color = c.textSecondary) },
+            confirmButton = { TextButton(onClick = vm::installUpdate) { Text(stringResource(R.string.update_now), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { vm.update.value = null }) { Text(stringResource(R.string.update_later), color = c.textSecondary) } },
+        )
+    }
+    val busy by vm.busy.collectAsState()
+    val message by vm.message.collectAsState()
+    val snackbar = com.forgequest.app.ui.LocalSnackbar.current
+    androidx.compose.runtime.LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
+    busy?.let {
+        AlertDialog(onDismissRequest = {}, containerColor = c.card, confirmButton = {}, title = { Text(it, color = c.textPrimary) },
+            text = { androidx.compose.material3.LinearProgressIndicator(color = c.teal, trackColor = c.tealTrack, modifier = Modifier.fillMaxWidth()) })
     }
 }

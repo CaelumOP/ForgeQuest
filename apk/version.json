@@ -1,6 +1,6 @@
 {
-  "versionCode": 38,
-  "versionName": "3.4.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.4.0/ForgeQuest-v3.4.0.apk",
-  "notes": "• Build my plan: answer a few questions and get a weekly plan that fits your goal, days, time and equipment.\n• Workouts fits on one screen, with the muscle map in front.\n• Readiness now takes a very short night seriously: after only a few hours of sleep it calls a rest day.\n• Meal scan prompt: text-only meals, restaurant menu values and Saudi dishes.\n• Buttons are easier to hit and to understand: bigger steppers and ticks, an Undo for coach memory notes, a Paste button for plans, and your own exercises open their history."
+  "versionCode": 39,
+  "versionName": "3.5.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v3.5.0/ForgeQuest-v3.5.0.apk",
+  "notes": "• Pick the exact equipment you have: Gym, Home, or Bodyweight presets with a grouped customization sheet covering dumbbells, barbells, cables, machines, benches, and bands.\n• Plan builder & editor: choose your training goal with clearer descriptions, customize gear inline, and tap a muscle twice in Workouts to browse exercises for it.\n• Settings simplified: Body, Nutrition targets, and Health Connect now live together in \"You and your goals\" with interactive protein and carb target sliders.\n• AI coaching is now streamlined through Gemini App prompts and skills, removing the redundant in-app coach chat."
 }

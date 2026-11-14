@@ -62,6 +62,7 @@ internal fun summary(vararg parts: String?) = parts.filterNotNull().filter { it.
 @Composable
 fun ProfileScreen(nav: NavHostController) {
     val vm = sharedProfileViewModel(nav)
+    val updates = com.forgequest.app.ui.appViewModel { SettingsViewModel(it, vm.snapshot) }
     val snap by vm.snapshot.collectAsState()
     val apiKey by vm.apiKey.collectAsState()
     val aiOn by vm.aiOn.collectAsState()
@@ -160,17 +161,6 @@ fun ProfileScreen(nav: NavHostController) {
         }
         if (!justLog) Spacer(Modifier.height(12.dp))
 
-        // The coach chat is a pushed screen, one tap away here once AI is set up. Weight is logged from Home.
-        if (com.forgequest.app.data.prefs.chatIsTab(aiOn, apiKey)) FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.COACH) }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconCircle(Icons.Rounded.AutoAwesome, c.teal, c.tealTrack)
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.tab_coach), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
-            }
-        }
-        if (com.forgequest.app.data.prefs.chatIsTab(aiOn, apiKey)) Spacer(Modifier.height(12.dp))
-
         // Settings live on their own screen: a list, then one page per group.
         FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.SETTINGS) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -180,8 +170,11 @@ fun ProfileScreen(nav: NavHostController) {
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
             }
         }
+        Spacer(Modifier.height(12.dp))
+        UpdateCheckRow(updates)
         Spacer(Modifier.height(20.dp))
     }
+    UpdateCheckDialogs(updates)
 
 
 }

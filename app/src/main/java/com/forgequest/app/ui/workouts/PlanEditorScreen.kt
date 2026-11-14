@@ -146,22 +146,16 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         pending.value = null
         viewModelScope.launch {
             app.workouts.applyPlan(draft, source)
+            // A new plan sets the week: its training days become the weekly target.
+            app.settings.update { it.copy(weeklyTargetOverride = 0) }
             message.value = app.str(R.string.plan_switched_to, draft.name)
         }
     }
 
+    /** Only the Gem's plan block is read: with the in-app coach gone, there is no AI fallback for free text. */
     fun parsePasted(text: String) {
         PlanJson.parsePasted(text)?.let { pending.value = it; return }
-        busy.value = app.str(R.string.plan_reading)
-        viewModelScope.launch {
-            try {
-                pending.value = app.coach.parsePlanText(text)
-            } catch (e: AiError) {
-                message.value = e.userMessage
-            } finally {
-                busy.value = null
-            }
-        }
+        message.value = app.str(R.string.plan_paste_unreadable)
     }
 
     fun updateItem(item: PlanItemEntity) = viewModelScope.launch { app.workouts.updatePlanItem(item) }
@@ -181,7 +175,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         app.workouts.updatePlanDay(day.copy(isRest = rest, title = if (rest) app.str(R.string.today_rest_day) else if (day.title == app.str(R.string.today_rest_day) || day.title == "Rest day") app.str(R.string.plan_workout) else day.title))
     }
     val allPlans: StateFlow<List<PlanEntity>> = app.workouts.allPlans.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    fun activate(plan: PlanEntity) = viewModelScope.launch { app.workouts.activatePlan(plan.id); message.value = app.str(R.string.plan_switched, plan.name) }
+    fun activate(plan: PlanEntity) = viewModelScope.launch { app.workouts.activatePlan(plan.id); app.settings.update { it.copy(weeklyTargetOverride = 0) }; message.value = app.str(R.string.plan_switched, plan.name) }
     fun deletePlan(plan: PlanEntity) = viewModelScope.launch { app.workouts.deletePlan(plan.id); message.value = app.str(R.string.lib_deleted, plan.name) }
     fun move(item: PlanItemEntity, delta: Int) = viewModelScope.launch { app.workouts.movePlanItem(item, delta) }
     /** From the item sheet: save what was edited there, then move, in that order. */
@@ -192,6 +186,10 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     fun swapDays(planId: Long, a: Int, b: Int) = viewModelScope.launch {
         app.workouts.swapPlanDays(planId, a, b)
         message.value = app.str(R.string.plan_days_swapped, Dates.dayName(a), Dates.dayName(b))
+    }
+    fun setEquipment(encoded: String) = viewModelScope.launch { app.settings.update { it.copy(equipment = encoded) } }
+    fun toggleEquipment(eq: Equipment, current: Set<Equipment>) = viewModelScope.launch {
+        com.forgequest.app.ui.profile.toggledEquipment(eq, current)?.let { e -> app.settings.update { it.copy(equipment = e) } }
     }
     fun rename(day: PlanDayEntity, title: String) = viewModelScope.launch { app.workouts.updatePlanDay(day.copy(title = title)) }
     fun createExercise(name: String, kind: ExerciseKind, muscle: Muscle, dayId: Long) = viewModelScope.launch {
@@ -397,6 +395,11 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     Spacer(Modifier.height(8.dp))
                     TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = true }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }
+            }
+            Spacer(Modifier.height(24.dp))
+            // What the plan is built around; shown with or without a plan.
+            PlanEquipmentRow(s.settings) { next ->
+                vm.setEquipment(com.forgequest.app.ui.profile.encodeEquipmentSet(next))
             }
             Spacer(Modifier.height(24.dp))
             Spacer(Modifier.navigationBarsPadding())
@@ -716,7 +719,7 @@ private fun EditorRow(label: String, value: Float, onChange: (Float) -> Unit, st
     }
 }
 
-/** Shows a whole proposed week before it replaces the current plan. Used by the plan editor and coach. */
+/** Shows a whole proposed week before it replaces the current plan. Used by the plan editor. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanPreviewSheet(
@@ -729,8 +732,9 @@ fun PlanPreviewSheet(
 ) {
     val c = Fit.colors
     val incompatibleCount = remember(draft, exercises, userEquipment) {
-        if (userEquipment.isEmpty() || userEquipment.containsAll(Equipment.entries)) 0
-        else ExerciseSwapEngine.adaptPlanToEquipment(draft, exercises, userEquipment).second
+        val clean = com.forgequest.app.domain.expandLegacyEquipment(userEquipment)
+        if (clean.isEmpty() || clean.containsAll(Equipment.allActive)) 0
+        else ExerciseSwapEngine.adaptPlanToEquipment(draft, exercises, clean).second
     }
 
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {

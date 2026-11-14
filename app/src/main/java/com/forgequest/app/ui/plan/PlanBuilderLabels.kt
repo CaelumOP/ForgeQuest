@@ -22,6 +22,15 @@ internal fun TrainGoal.pbRes(): Int = when (this) {
 }
 
 @StringRes
+internal fun TrainGoal.descRes(): Int = when (this) {
+    TrainGoal.STRENGTH -> R.string.pb_goal_strength_desc
+    TrainGoal.MUSCLE -> R.string.pb_goal_muscle_desc
+    TrainGoal.FAT_LOSS -> R.string.pb_goal_fat_desc
+    TrainGoal.ENDURANCE -> R.string.pb_goal_endurance_desc
+    TrainGoal.GENERAL -> R.string.pb_goal_general_desc
+}
+
+@StringRes
 internal fun Experience.pbRes(): Int = when (this) {
     Experience.NEW -> R.string.pb_exp_new
     Experience.SOME -> R.string.pb_exp_some

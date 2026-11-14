@@ -7,6 +7,7 @@ import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.StarterPlans
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -167,27 +168,6 @@ class BidiTest {
     }
 }
 
-class PlanIntentTest {
-    @Test
-    fun onlyRequestsToMakeOrChangeAPlanCount() {
-        assertTrue(PlanIntent.matches("Build me a 4-day plan"))
-        assertTrue(PlanIntent.matches("Can you change my routine so legs are on Friday?"))
-        assertTrue(PlanIntent.matches("اعمل لي خطة تمارين 3 أيام"))
-        assertFalse(PlanIntent.matches("Can you explain how to do a dip?"))
-        assertFalse(PlanIntent.matches("How is my plan going?"))
-        assertFalse(PlanIntent.matches("I planned to rest tomorrow"))
-        assertFalse(PlanIntent.matches("كيف أتحسن في العقلة؟"))
-    }
-
-    @Test
-    fun editsNamingADayOrPlanExerciseCount() {
-        assertTrue(PlanIntent.matches("My shoulder hurts on dips, can we swap them on Tuesday?"))
-        assertTrue(PlanIntent.matches("Add more pull-ups please", listOf("Pull-ups", "dips")))
-        assertTrue(PlanIntent.matches("استبدل تمرين الضغط يوم الثلاثاء"))
-        assertFalse(PlanIntent.matches("Should I add salt to my eggs?", listOf("dips")))
-    }
-}
-
 class CoachMemoryTest {
     @Test
     fun extractsAndStripsMemoryLines() {
@@ -211,5 +191,27 @@ class CoachMemoryTest {
         assertEquals("Here's your week.", PlanJson.stripPartial(streaming))
         val done = "Here's your week.\n\n```json\n{\"name\": \"P\", \"days\": [{\"dayOfWeek\": 1, \"title\": \"A\"}]}\n```\nMEMORY: Likes short sessions"
         assertEquals("Here's your week.", PlanJson.stripPartial(done))
+    }
+}
+
+class MealFormatTest {
+    @Test
+    fun textOnlyMealReplyWithArabicNames() {
+        val raw = """
+            ```json
+            {"mealId": "m8p4qz1b", "date": "2026-11-11", "time": "14:15", "dish": "مندي دجاج", "place": "الرومانسية", "items": [{"name": "نصف دجاجة مندي (لحم صافي)", "grams": 195, "kcal": 448, "protein": 47, "carbs": 0, "fat": 29}, {"name": "أرز مندي", "grams": 280, "kcal": 490, "protein": 8.4, "carbs": 84, "fat": 13.5}], "handVisible": false, "confidence": "high", "note": "تقدير نصي بدون صورة؛ خُصم نحو 35% لوزن العظم."}
+            ```
+        """.trimIndent()
+        val meal = com.forgequest.app.data.bridge.MealFormat.parseOne(raw)
+        assertNotNull(meal)
+        assertFalse(meal!!.handVisible)
+        assertEquals("مندي دجاج", meal.dish)
+        assertEquals("الرومانسية", meal.place)
+        assertEquals(2, meal.items.size)
+        assertEquals("نصف دجاجة مندي (لحم صافي)", meal.items[0].name)
+        assertEquals(938, meal.kcal)
+        val scan = meal.toScan()
+        assertFalse(scan.handVisible)
+        assertEquals("أرز مندي", scan.items[1].name)
     }
 }

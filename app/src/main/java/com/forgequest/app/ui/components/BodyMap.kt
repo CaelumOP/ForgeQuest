@@ -4,6 +4,18 @@ import android.content.Context
 import android.graphics.Region
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,8 +45,10 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.data.prefs.BodyType
@@ -124,7 +138,8 @@ fun recoverySummaryDescription(recovery: Map<Muscle, MuscleRecovery>): String {
 
 /**
  * Front and back figures side by side, centred (front on the left and back on the right in every language),
- * with the four-dot recovery legend on one line underneath. Tapping a muscle opens its details sheet.
+ * with the four-dot recovery legend on one line underneath. Tapping a muscle highlights it (with a small buzz) and swaps
+ * the legend for a pill that opens its exercises; tapping it again, or empty space, clears the selection.
  */
 @Composable
 fun MuscleRecoveryMap(
@@ -132,11 +147,25 @@ fun MuscleRecoveryMap(
     bodyType: BodyType,
     modifier: Modifier = Modifier,
     fallbackScroll: Boolean = false,
-    onSeeExercises: (Muscle) -> Unit = {},
+    onSeeExercises: ((Muscle) -> Unit)? = null,
+    exerciseCount: (Muscle) -> Int = { 0 },
 ) {
     val context = LocalContext.current
     val art by produceState<BodyArt?>(null, bodyType) { value = BodyArtLoader.load(context, bodyType) }
     val summary = recoverySummaryDescription(recovery)
+    var selected by rememberSaveable { mutableStateOf<Muscle?>(null) }
+    val haptic = LocalHapticFeedback.current
+    val onTap: ((Muscle?) -> Unit)? = onSeeExercises?.let {
+        { m: Muscle? ->
+            val next = if (m == selected) null else m
+            if (next != null) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            selected = next
+        }
+    }
+    // TalkBack can't pick a muscle by touch, so each muscle is an action on the map that opens its exercises directly.
+    val muscleActions = if (onSeeExercises == null) emptyList() else Muscle.entries.map { m ->
+        CustomAccessibilityAction(m.localLabel()) { onSeeExercises(m); true }
+    }
 
     Column(
         modifier.fillMaxWidth(),
@@ -151,7 +180,10 @@ fun MuscleRecoveryMap(
         // Front on the left and back on the right in every language: it's a picture of a body, not a reading order.
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
             Row(
-                rowMod.clearAndSetSemantics { contentDescription = summary },
+                rowMod.clearAndSetSemantics {
+                    contentDescription = summary
+                    if (muscleActions.isNotEmpty()) customActions = muscleActions
+                },
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -160,15 +192,33 @@ fun MuscleRecoveryMap(
                     // second was squeezed into what was left, so the back came out smaller than the front.
                     Box(Modifier.weight(1f, fill = false).widthIn(max = 150.dp).fillMaxHeight().heightIn(max = 300.dp)) {
                         if (view != null) {
-                            BodyFigure(view, recovery, selected = null, onTap = onSeeExercises)
+                            BodyFigure(view, recovery, selected = selected, onTap = onTap)
                         }
                     }
                 }
             }
         }
         Spacer(Modifier.height(4.dp))
-        MapLegend()
+        // One slot for the legend or the pill, a touch target tall, so the map does not jump when a muscle is picked.
+        Box(Modifier.fillMaxWidth().heightIn(min = 52.dp), contentAlignment = Alignment.Center) {
+            val pick = selected
+            if (pick != null && onSeeExercises != null) {
+                SeeExercisesPill(pick, remember(pick, exerciseCount) { exerciseCount(pick) }) { onSeeExercises(pick) }
+            } else {
+                MapLegend()
+            }
+        }
     }
+}
+
+/** The app's quiet secondary button (the map's card already has Start as its main teal action). */
+@Composable
+private fun SeeExercisesPill(muscle: Muscle, count: Int, onClick: () -> Unit) {
+    TonalPill(
+        stringResource(R.string.muscle_see_exercises, muscle.localLabel(), count),
+        onClick = onClick,
+        icon = Icons.Rounded.FitnessCenter,
+    )
 }
 
 /** Wraps onto a second line at large text sizes instead of running off the card. */
@@ -188,12 +238,18 @@ private fun MapLegend() {
     }
 }
 
+private const val PICK_TINT = 0.3f
+
 @Composable
-private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, selected: Muscle?, onTap: ((Muscle) -> Unit)?) {
+private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, selected: Muscle?, onTap: ((Muscle?) -> Unit)?) {
     val c = Fit.colors
-    // Animated colors per muscle so the map "cools down" smoothly when data changes.
+    // Animated colors per muscle so the map "cools down" smoothly when data changes, and the picked muscle
+    // fades into a solid accent fill instead of getting an outline.
     val colors = Muscle.entries.associateWith { m ->
-        animateColorAsState(recoveryColor(recovery[m]?.fatigue ?: 0f, c), label = m.slug).value
+        val own = recoveryColor(recovery[m]?.fatigue ?: 0f, c)
+        // A tint, not a takeover: the picked muscle keeps the map's soft look and just leans teal.
+        val target = if (m == selected) androidx.compose.ui.graphics.lerp(c.tealTrack, c.teal, PICK_TINT) else own
+        animateColorAsState(target, label = m.slug).value
     }
     val bodyNeutral = if (c.isDark) Color(0xFF2A2C2F) else Color(0xFFE6EAF0)
 
@@ -217,7 +273,7 @@ private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, se
                         val pad = 24
                         x in (b.left - pad)..(b.right + pad) && y in (b.top - pad)..(b.bottom + pad)
                     }
-                hit?.muscle?.let(onTap)
+                onTap(hit?.muscle)
             }
         }
     }
@@ -237,11 +293,6 @@ private fun BodyFigure(view: BodyView, recovery: Map<Muscle, MuscleRecovery>, se
                 drawPath(part.path, color)
             }
             view.outline?.let { drawPath(it, c.bodyOutline, style = Stroke(width = 1.2f / scale)) }
-            if (selected != null) {
-                for (part in view.parts) if (part.muscle == selected) {
-                    drawPath(part.path, c.textPrimary, style = Stroke(width = 2f / scale))
-                }
-            }
         }
     }
 }

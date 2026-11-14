@@ -11,5 +11,11 @@
   "workouts_web_link_saved": "تم حفظ الرابط",
   "workouts_web_link_placeholder": "https://www.youtube.com/…",
   "workouts_web_metric": "المقياس",
-  "workouts_web_dismiss": "إغلاق"
+  "workouts_web_dismiss": "إغلاق",
+  "cd_what_is_this": "ما هو {1}؟",
+  "plan_docs_info": "يحمّل خطة من مستند Google «ForgeQuest plan» في Drive، كالذي تكتبه أتمتة Gemini. يفتح الملف الشخصي حيث يُربط Google Drive.",
+  "plan_import_docs": "الاستيراد من Google Docs",
+  "plan_ready_made": "التحوّل إلى خطة جاهزة",
+  "plan_ready_made_info": "خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».",
+  "plan_paste_hint": "من الملاحظات أو رسالة أو Google Doc، ويحوّلها الذكاء الاصطناعي إلى جدولك."
 }

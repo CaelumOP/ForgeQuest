@@ -3,7 +3,7 @@
 // never gets the tips again. Every storage access is guarded for private-browsing / blocked-storage contexts.
 
 export const TOUR_SEEN_KEY = 'fq_tour_seen'
-export const COACH_STEPS = ['coach_home', 'coach_plan', 'coach_food', 'coach_ask', 'coach_tick'] as const
+export const COACH_STEPS = ['coach_home', 'coach_plan', 'coach_food', 'coach_tick'] as const
 export type CoachStep = (typeof COACH_STEPS)[number]
 
 export type CoachStore = Pick<Storage, 'getItem' | 'setItem'>

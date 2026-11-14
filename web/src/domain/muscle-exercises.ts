@@ -1,6 +1,6 @@
 // "Tap a muscle, see its exercises" (docs/plans/muscle-exercises-plan.md). Android: MuscleExercises.kt.
 import type { ExerciseEntity } from './entities'
-import { EQUIPMENT, profileFor, rankSubstitutes, type Equipment } from './exercise-swap-engine'
+import { ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, profileFits, profileFor, rankSubstitutes, type Equipment } from './exercise-swap-engine'
 import { tierOf, TIERS, type Tier } from './exercise-tiers'
 import type { Muscle } from './muscle'
 
@@ -10,10 +10,13 @@ export type MuscleExercise = { exercise: ExerciseEntity; main: boolean; tier: Ti
 export type MuscleExerciseList = { inPlan: MuscleExercise[]; others: MuscleExercise[]; hidden: number }
 
 /**
- * Muscles with too few built-in exercises show with a bigger neighbour, so no list opens nearly empty. Empty since
- * 2.17.0 added exercises for obliques, adductors and tibialis; kept for future muscles.
+ * Muscles with too few built-in exercises show with a bigger neighbour, so no list opens nearly empty.
  */
-export const COMPANIONS: Partial<Record<Muscle, Muscle[]>> = {}
+export const COMPANIONS: Partial<Record<Muscle, Muscle[]>> = {
+  TIBIALIS: ['CALVES'],
+  FOREARMS: ['BICEPS'],
+  TRAPS: ['UPPER_BACK'],
+}
 
 const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
@@ -26,7 +29,8 @@ export function muscleExercises(
   muscle: Muscle, library: ExerciseEntity[], planExerciseIds: Set<string>, equipment: Set<Equipment>, allEquipment = false,
 ): MuscleExerciseList {
   const targets = new Set<Muscle>([muscle, ...(COMPANIONS[muscle] ?? [])])
-  const allowed = new Set<Equipment>(equipment.size ? [...equipment, 'BODYWEIGHT'] : EQUIPMENT)
+  const exp = expandLegacyEquipment(equipment)
+  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : ALL_ACTIVE_EQUIPMENT)
   const tierRank = (t: Tier | null) => (t ? TIERS.indexOf(t) : TIERS.length)
   const rows = library
     .filter((ex) => ex.primary.some((m) => targets.has(m)) || ex.secondary.some((m) => targets.has(m)))
@@ -34,7 +38,7 @@ export function muscleExercises(
     .sort((a, b) => Number(!a.main) - Number(!b.main) || tierRank(a.tier) - tierRank(b.tier) || byName(a.exercise.name, b.exercise.name))
   const inPlan = rows.filter((r) => planExerciseIds.has(r.exercise.id))
   const rest = rows.filter((r) => !planExerciseIds.has(r.exercise.id))
-  const shown = allEquipment ? rest : rest.filter((r) => allowed.has(profileFor(r.exercise).equipment))
+  const shown = allEquipment ? rest : rest.filter((r) => profileFits(profileFor(r.exercise), allowed))
   return { inPlan, others: shown, hidden: rest.length - shown.length }
 }
 

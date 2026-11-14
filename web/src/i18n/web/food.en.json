@@ -10,5 +10,11 @@
   "food_w_day_nav": "Day",
   "food_w_take_photo": "Take a photo",
   "food_w_photo_bad": "Couldn't open that photo. Try another one.",
-  "food_w_scan_privacy": "The photo is sent to Gemini with your own key to estimate the meal. It is not saved on your phone."
+  "food_w_scan_privacy": "The photo is sent to Gemini with your own key to estimate the meal. It is not saved on your phone.",
+  "cd_excluded": "Excluded",
+  "cd_included": "Included",
+  "food_add_a_food": "Add a food",
+  "food_calories_surplus": "Calories · surplus",
+  "food_protein_of_goal": "{1} / {2} g",
+  "label_protein": "Protein"
 }

@@ -40,8 +40,6 @@ class DebugBench : BroadcastReceiver() {
         val pending = goAsync()
         app.appScope.launch {
             try {
-                // `--es send "…"` posts a coach message as if typed (adb can't type Arabic).
-                intent.getStringExtra("send")?.let { app.coach.send(it); return@launch }
                 // `--ez reset true` wipes data and settings like a fresh install but keeps the stored Gemini key.
                 if (intent.getBooleanExtra("reset", false)) {
                     app.db.clearAllTables()
@@ -70,7 +68,8 @@ class DebugBench : BroadcastReceiver() {
         val list = http.newCall(Request.Builder().url("$base/models?pageSize=200").header("x-goog-api-key", key).build()).execute().use { it.body!!.string() }
         val names = json.parseToJsonElement(list).jsonObject["models"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content.removePrefix("models/") }
         Log.i(TAG, "models: ${names.filter { "flash" in it || "pro" in it }}")
-        val system = app.coach.systemPromptForBench(prompt)
+        // The coach chat is gone, so the bench times a short stand-in system prompt.
+        val system = "You are a concise fitness assistant. Answer in the user's language."
         system.lines().forEach { Log.i(TAG, "SYS| $it") }
         if (variantsArg == "dump") return
         val models = modelsArg?.split(",") ?: listOf(app.settings.current().fastModel)

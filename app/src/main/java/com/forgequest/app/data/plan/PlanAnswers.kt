@@ -11,6 +11,7 @@ import com.forgequest.app.domain.PlanInput
 import com.forgequest.app.domain.RepPref
 import com.forgequest.app.domain.RestPref
 import com.forgequest.app.domain.TrainGoal
+import com.forgequest.app.domain.expandLegacyEquipment
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -40,19 +41,25 @@ data class PlanAnswers(
     val rest: RestPref = RestPref.AUTO,
 ) {
     fun toInput() = PlanInput(
-        goal = goal, days = days, minutes = minutes, equipment = equipment + Equipment.BODYWEIGHT, experience = experience,
+        goal = goal, days = days, minutes = minutes, equipment = expandLegacyEquipment(equipment) + Equipment.BODYWEIGHT, experience = experience,
         injuries = injuries, avoidIds = avoidIds, pushUpMax = pushUpMax, pullUpMax = pullUpMax, focus = focus,
         minutesByDay = minutesByDay.filterKeys { it in days }, cardio = cardio, warmUp = warmUp, coolDown = coolDown,
         holdsOk = holdsOk, reps = reps, rest = rest,
     )
 
-    fun encode(): String = json.encodeToString(this)
+    fun encode(): String = json.encodeToString(
+        copy(equipment = (expandLegacyEquipment(equipment) + Equipment.BODYWEIGHT).filterTo(linkedSetOf()) { !it.legacy })
+    )
 
     companion object {
         private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; encodeDefaults = true }
 
         /** Null for nothing saved or text that no longer parses (a changed enum, a damaged file): the screen then starts fresh. */
         fun decode(raw: String?): PlanAnswers? =
-            raw?.takeIf { it.isNotBlank() }?.let { runCatching { json.decodeFromString<PlanAnswers>(it) }.getOrNull() }
+            raw?.takeIf { it.isNotBlank() }?.let {
+                runCatching { json.decodeFromString<PlanAnswers>(it) }.getOrNull()?.let { a ->
+                    a.copy(equipment = (expandLegacyEquipment(a.equipment) + Equipment.BODYWEIGHT).filterTo(linkedSetOf()) { !it.legacy })
+                }
+            }
     }
 }

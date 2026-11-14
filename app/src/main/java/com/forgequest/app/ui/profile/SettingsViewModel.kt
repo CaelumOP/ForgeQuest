@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.profile
 
+import kotlin.math.roundToInt
 import com.forgequest.app.ui.components.UndoState
 import android.content.Intent
 import android.net.Uri
@@ -19,7 +20,6 @@ import com.forgequest.app.data.drive.DriveError
 import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.CalorieUi
@@ -53,26 +53,6 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
                 heightCm = heightCm ?: it.heightCm,
                 birthYear = birthYear ?: it.birthYear,
                 bodyFatPct = bodyFatPct ?: it.bodyFatPct,
-            )
-        }
-    }
-
-    fun setEquipment(encoded: String) = viewModelScope.launch {
-        app.settings.update { it.copy(equipment = encoded) }
-    }
-
-    fun toggleEquipmentItem(eq: Equipment, current: Set<Equipment>) = viewModelScope.launch {
-        if (eq == Equipment.BODYWEIGHT) return@launch
-        val base = current.ifEmpty { setOf(Equipment.BODYWEIGHT) }
-        val updated = (if (eq in base) base - eq else base + eq) + Equipment.BODYWEIGHT
-        app.settings.update { it.copy(equipment = updated.joinToString(",") { e -> e.name }) }
-    }
-
-    fun setRatios(perKg: Float? = null, fatPct: Int? = null) = viewModelScope.launch {
-        app.settings.update {
-            it.copy(
-                proteinPerKg = (perKg ?: it.proteinPerKg).coerceIn(Nutrition.MIN_PROTEIN_PER_KG, 2.5f),
-                fatSharePct = (fatPct ?: it.fatSharePct).coerceIn(Nutrition.MIN_FAT_SHARE_PCT, 45),
             )
         }
     }
@@ -126,25 +106,27 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         app.settings.update { it.copy(trackCarbs = track ?: it.trackCarbs, carbsGoal = goal ?: it.carbsGoal) }
     }
 
-    fun updateGoals(protein: Int? = null, weekly: Int? = null) = viewModelScope.launch {
+    /** The carbs target in grams, and the fat share it was worked out from (null: keep the share), in one write. */
+    fun setCarbsTarget(fatPct: Int?, grams: Int) = viewModelScope.launch {
         app.settings.update { s ->
             s.copy(
-                proteinGoal = (protein ?: s.proteinGoal).coerceAtLeast(60),
-                weeklyTargetOverride = weekly ?: s.weeklyTargetOverride,
+                carbsGoal = grams.coerceIn(20, 800),
+                fatSharePct = fatPct?.coerceIn(Nutrition.MIN_FAT_SHARE_PCT, 45) ?: s.fatSharePct,
             )
         }
     }
 
-    fun addNote(note: String) = viewModelScope.launch { app.coach.setNotes(app.settings.current().coachNotes + "\n" + note.trim()) }
-    val undo = UndoState(viewModelScope)
-
-    fun removeNote(note: String) = viewModelScope.launch {
-        val before = app.settings.current().coachNotes
-        app.coach.setNotes(before.lines().filter { it.trim() != note.trim() }.joinToString("\n"))
-        // Undo puts the whole list back as it was, so the note returns to its old place.
-        val short = note.trim().let { if (it.length > 32) it.take(32).trimEnd() + "…" else it }
-        undo.offer(app.str(R.string.food_removed, short)) { app.coach.setNotes(before) }
+    /** The protein target in grams, and the g per kg it was worked out from (null: keep the ratio), in one write. */
+    fun setProtein(perKg: Float?, grams: Int) = viewModelScope.launch {
+        app.settings.update { s ->
+            s.copy(
+                proteinGoal = grams.coerceAtLeast(60),
+                proteinPerKg = perKg?.let { (it * 10f).roundToInt() / 10f }?.coerceIn(Nutrition.MIN_PROTEIN_PER_KG, 2.5f) ?: s.proteinPerKg,
+            )
+        }
     }
+
+    val undo = UndoState(viewModelScope)
 
     fun setReminder(hour: Int) = viewModelScope.launch {
         app.settings.update { it.copy(reminderHour = hour) }
@@ -159,7 +141,6 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
-    fun setHand(length: Float, palm: Float) = viewModelScope.launch { app.settings.update { it.copy(handLengthCm = length, palmWidthCm = palm) } }
 
     val aiOn: StateFlow<Boolean> = app.settings.aiOn
     fun setAiEnabled(on: Boolean) = viewModelScope.launch { app.settings.setAiEnabled(on) }

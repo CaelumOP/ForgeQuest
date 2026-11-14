@@ -21,7 +21,4 @@ object SkillPrompts {
         }
         return raw(context, R.raw.food_gem_prompt).replace(Regex("MY HAND:[^\n]*\n"), hand)
     }
-
-    /** The coach skill: how to read the app's data message and the reply format "Paste reply" accepts. */
-    fun coach(context: Context): String = raw(context, R.raw.coach_skill)
 }

@@ -60,13 +60,13 @@ object VariationCycle {
         val profile = ExerciseSwapEngine.profileFor(source)
         val core = CorePattern.of(profile.pattern) ?: return null
         val tier = ExerciseTiers.of(source)
-        val allowed = equipment.ifEmpty { Equipment.entries.toSet() } + Equipment.BODYWEIGHT
+        val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
         fun curated(id: String) = profile.preferredSwaps.indexOf(id).let { if (it < 0) Int.MAX_VALUE else it }
         return library.asSequence()
             .filter { it.id != source.id && it.id !in ExerciseCatalog.STRETCH_IDS && it.id !in ISOLATION && it.id !in planIds && it.id !in recentlyCycled }
             .filter { it.kind == source.kind }
             .map { it to ExerciseSwapEngine.profileFor(it) }
-            .filter { (_, p) -> p.pattern in core.patterns && p.equipment in allowed }
+            .filter { (_, p) -> p.pattern in core.patterns && p.fits(allowed) }
             .filter { (ex, _) ->
                 val other = ExerciseTiers.of(ex)
                 tier == null || other == null || kotlin.math.abs(other.ordinal - tier.ordinal) <= 1
