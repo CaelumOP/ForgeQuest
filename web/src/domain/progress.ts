@@ -33,7 +33,7 @@ export type WeeklyStreak = {
   best: number
   doneThisWeek: number
   targetThisWeek: number
-  /** Monday..Sunday */
+  /** Sunday..Saturday */
   days: DayState[]
   weekProgress: number
   /** The week you joined, when no planned workouts were left in it. */
@@ -49,7 +49,7 @@ export function fullTarget(plannedTrainingDays: ReadonlySet<number>, targetOverr
  * A week counts when the number of workout days reaches the target. Rest days never hurt.
  * The first week is prorated from [startEpochDay] so joining on a Thursday is fair.
  * The current week never breaks the streak while it's still in progress.
- * [lockedTargets]: targets saved for finished weeks (Monday epoch day to days); a plan change never rewrites them.
+ * [lockedTargets]: targets saved for finished weeks (Sunday epoch day to days); a plan change never rewrites them.
  */
 export function computeStreak(
   workoutDays: ReadonlySet<number>,
@@ -113,7 +113,7 @@ export function computeStreak(
 
   const days = Array.from({ length: 7 }, (_, offset): DayState => {
     const day = thisWeek + offset
-    const planned = plannedTrainingDays.has(offset + 1)
+    const planned = plannedTrainingDays.has(dayOfWeek(day))
     if (workoutDays.has(day)) return 'DONE'
     if (excusedDays.has(day) && day <= today) return 'EXCUSED'
     if (day === today && planned) return 'TODAY_PLANNED'

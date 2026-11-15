@@ -444,10 +444,9 @@ export function ProfileScreen() {
       </Group>
 
       <Group id="coach" accent="teal" icon="coach" title={t('settings_group_coach')} open={isOpen('coach')} onToggle={() => toggle('coach')}
-        sum={summary(t(s.apiKey ? 'summary_gemini_on' : 'summary_gemini_off'), t(s.groqKey ? 'summary_groq_on' : 'summary_groq_off'))}>
+        sum={summary(t(s.apiKey ? 'summary_gemini_on' : 'summary_gemini_off'))}>
         <KeyField title={t('profile_ai_key')} value={s.apiKey} status={t(s.apiKey ? 'profile_key_connected' : 'profile_key_not_set')} body={`${t('profile_web_key_body')} ${t('key_dialog_privacy')}`}
           link="https://aistudio.google.com/apikey" onSave={(k) => set({ apiKey: k })} onRemove={() => set({ apiKey: '' })} />
-        <KeyField title={t('groq_key_title')} value={s.groqKey} status={t(s.groqKey ? 'groq_key_on' : 'groq_key_off')} onSave={(k) => set({ groqKey: k })} onRemove={() => set({ groqKey: '' })} />
         <Card>
           <span class="pf-h3">{t('coach_model_header')}</span>
           <ChipGroup label={t('coach_model_header')} accent="teal" value={s.coachModel} onChange={(v) => void set({ coachModel: v })}

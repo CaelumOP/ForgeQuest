@@ -297,7 +297,7 @@ fun PlanBuilderScreen(nav: NavHostController) {
                 if (review.draft.days.isEmpty()) {
                     FitCard { Text(stringResource(R.string.pb_empty), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary) }
                 }
-                review.draft.days.sortedBy { it.dayOfWeek }.forEach { day ->
+                review.draft.days.sortedBy { Dates.weekOrder.indexOf(it.dayOfWeek) }.forEach { day ->
                     ReviewDay(day, review, onSwap = { index -> vm.swap(day.dayOfWeek, index) })
                 }
             }
@@ -434,7 +434,7 @@ private fun TrainGoalSelector(
                             stringResource(g.descRes()),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (on) c.teal else c.textSecondary,
-                            maxLines = 1,
+                            maxLines = if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f) 2 else 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -486,7 +486,7 @@ private fun FitMeSection(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) 
             val scheduleCustom = a.days != PlanBuilder.spreadDays(a.days.size) || a.minutesByDay.isNotEmpty()
             DeepRow(
                 stringResource(R.string.pb_row_schedule),
-                if (scheduleCustom) a.days.sorted().joinToString(sep) { Dates.dayShort(it) } else auto,
+                if (scheduleCustom) a.days.sortedBy { Dates.weekOrder.indexOf(it) }.joinToString(sep) { Dates.dayShort(it) } else auto,
                 open == "schedule", { toggle("schedule") },
             ) { ScheduleRow(a, change) }
 
@@ -583,7 +583,7 @@ private fun ScheduleRow(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -
     var editDay by rememberSaveable { mutableIntStateOf(0) }
     Text(stringResource(R.string.pb_schedule_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        (1..7).forEach { dow ->
+        Dates.weekOrder.forEach { dow ->
             val sel = dow in a.days
             Box(
                 Modifier.weight(1f).heightIn(min = 48.dp).clip(ForgeShape.Sm).background(if (sel) c.teal else c.cardHigh)

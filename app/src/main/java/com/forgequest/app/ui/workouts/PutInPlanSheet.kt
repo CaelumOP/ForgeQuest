@@ -70,7 +70,7 @@ fun PutInPlanSheet(
                     Text(stringResource(R.string.plan_put_in_pick_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     Spacer(Modifier.height(8.dp))
                 }
-                items(plan.days.sortedBy { it.day.dayOfWeek }, key = { it.day.id }) { d ->
+                items(plan.days.sortedBy { Dates.weekOrder.indexOf(it.day.dayOfWeek) }, key = { it.day.id }) { d ->
                     val workout = !d.day.isRest && d.items.isNotEmpty()
                     val subtitle = listOfNotNull(
                         if (workout) d.day.title else stringResource(R.string.today_rest_day),

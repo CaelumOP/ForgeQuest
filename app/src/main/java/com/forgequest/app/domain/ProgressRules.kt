@@ -11,11 +11,14 @@ import kotlin.math.min
 object Dates {
     fun today(): Long = LocalDate.now().toEpochDay()
 
-    /** Monday of the week containing [epochDay]. */
-    fun weekStart(epochDay: Long): Long = epochDay - (LocalDate.ofEpochDay(epochDay).dayOfWeek.value - 1)
+    /** Sunday of the week containing [epochDay]. */
+    fun weekStart(epochDay: Long): Long = epochDay - (LocalDate.ofEpochDay(epochDay).dayOfWeek.value % 7)
 
-    /** 1 = Monday .. 7 = Sunday */
+    /** 1 = Monday .. 7 = Sunday (ISO day-of-week). */
     fun dayOfWeek(epochDay: Long): Int = LocalDate.ofEpochDay(epochDay).dayOfWeek.value
+
+    /** Display order for a week strip or picker: Sunday first, then Monday..Saturday. */
+    val weekOrder: List<Int> = listOf(7, 1, 2, 3, 4, 5, 6)
 
     fun todayDayOfWeek(): Int = LocalDate.now().dayOfWeek.value
 
@@ -53,7 +56,7 @@ data class WeeklyStreak(
     val best: Int,
     val doneThisWeek: Int,
     val targetThisWeek: Int,
-    /** Monday..Sunday */
+    /** Sunday..Saturday */
     val days: List<DayState>,
 ) {
     val weekProgress: Float get() = if (targetThisWeek <= 0) (if (doneThisWeek > 0) 1f else 0f) else min(1f, doneThisWeek.toFloat() / targetThisWeek)
@@ -78,7 +81,7 @@ object StreakCalculator {
         startEpochDay: Long,
         today: Long,
         excusedDays: Set<Long> = emptySet(),
-        /** Targets saved for finished weeks (Monday epoch day to days); a plan change never rewrites them. */
+        /** Targets saved for finished weeks (Sunday epoch day to days); a plan change never rewrites them. */
         lockedTargets: Map<Long, Int> = emptyMap(),
     ): WeeklyStreak {
         val fullTarget = fullTarget(plannedTrainingDays, targetOverride)
@@ -132,7 +135,7 @@ object StreakCalculator {
 
         val days = (0..6).map { offset ->
             val day = thisWeek + offset
-            val dow = offset + 1
+            val dow = Dates.dayOfWeek(day)
             val planned = dow in plannedTrainingDays
             when {
                 day in workoutDays -> DayState.DONE

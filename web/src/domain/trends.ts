@@ -113,7 +113,7 @@ export function movingAverage(points: readonly TrendPoint[], window = 7): TrendP
 
 export type DayCell = 'FUTURE' | 'REST' | 'DONE' | 'RECORD'
 
-/** 7 rows (Mon..Sun) × [weeks] columns (oldest first) for the consistency heatmap. */
+/** 7 rows (Sun..Sat) × [weeks] columns (oldest first) for the consistency heatmap. */
 export function consistencyGrid(workoutDays: ReadonlySet<number>, recordDays: ReadonlySet<number>, weeks: number, today: number): DayCell[][] {
   const starts = weekStarts(weeks, today)
   return Array.from({ length: 7 }, (_, row) =>

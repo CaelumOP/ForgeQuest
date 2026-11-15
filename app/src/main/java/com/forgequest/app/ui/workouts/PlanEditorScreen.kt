@@ -257,20 +257,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     }
                 }
             } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    (1..7).forEach { dow ->
-                        val sel = dow == selectedDay
-                        Box(
-                            Modifier.weight(1f).clip(ForgeShape.Sm).background(if (sel) c.teal else c.card)
-                                .selectable(selected = sel, role = Role.Tab) { selectedDay = dow }
-                                .semantics { contentDescription = Dates.dayName(dow) }
-                                .heightIn(min = 48.dp).padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(Dates.dayShort(dow), style = MaterialTheme.typography.labelMedium, color = if (sel) c.onTeal else c.textSecondary, maxLines = 1, softWrap = false)
-                        }
-                    }
-                }
+                EditorDayStrip(selectedDay = selectedDay, onSelect = { selectedDay = it })
                 Spacer(Modifier.height(12.dp))
             }
             if (day != null) {
@@ -540,7 +527,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                 Column {
                     Text(stringResource(R.string.plan_move_body), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
-                    (1..7).filter { it != selectedDay }.forEach { dow ->
+                    Dates.weekOrder.filter { it != selectedDay }.forEach { dow ->
                         val target = s.plan.day(dow)
                         Row(
                             Modifier.fillMaxWidth().clip(ForgeShape.Sm).clickable { vm.swapDays(s.plan.plan.id, selectedDay, dow); moveDay = false; selectedDay = dow }.heightIn(min = 48.dp).padding(vertical = 10.dp, horizontal = 8.dp),
@@ -745,14 +732,15 @@ fun PlanPreviewSheet(
                 Text(draft.description, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             Spacer(Modifier.height(12.dp))
-            draft.days.sortedBy { it.dayOfWeek }.forEach { d ->
+            draft.days.sortedBy { Dates.weekOrder.indexOf(it.dayOfWeek) }.forEach { d ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     Text(Dates.dayShort(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                         if (!d.isRest && d.items.isNotEmpty()) {
+                            val sep = stringResource(R.string.list_separator)
                             Text(
-                                d.items.joinToString(", ") { exercises[it.exerciseId]?.name ?: it.name ?: it.exerciseId },
+                                d.items.joinToString(sep) { exercises[it.exerciseId]?.name ?: it.name ?: it.exerciseId },
                                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                             )
                         }
@@ -774,5 +762,42 @@ fun PlanPreviewSheet(
             Spacer(Modifier.height(12.dp))
             PillButton(stringResource(R.string.plan_use_this), onClick = onApply, modifier = Modifier.fillMaxWidth())
         }
+    }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun EditorDayStrip(selectedDay: Int, onSelect: (Int) -> Unit) {
+    val c = Fit.colors
+    val chips: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
+        Dates.weekOrder.forEach { dow ->
+            val sel = dow == selectedDay
+            Box(
+                Modifier.weight(1f).clip(ForgeShape.Sm).background(if (sel) c.teal else c.card)
+                    .selectable(selected = sel, role = Role.Tab) { onSelect(dow) }
+                    .semantics { contentDescription = Dates.dayName(dow) }
+                    .heightIn(min = 48.dp).padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    Dates.dayShort(dow),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (sel) c.onTeal else c.textSecondary,
+                    maxLines = 2,
+                    softWrap = true,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        }
+    }
+    if (com.forgequest.app.ui.components.reflowText()) {
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            maxItemsInEachRow = 4,
+        ) { chips() }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { chips() }
     }
 }

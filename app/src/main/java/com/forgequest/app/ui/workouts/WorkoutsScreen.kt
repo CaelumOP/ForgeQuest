@@ -210,22 +210,37 @@ fun WorkoutsScreen(nav: NavHostController) {
             .padding(bottom = 12.dp)
 
         Column(colMod, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
+            val titleContent: @Composable (Modifier) -> Unit = { m ->
+                Column(m) {
                     Text(stringResource(R.string.workouts_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
                     Text(
                         plan?.plan?.name ?: stringResource(R.string.today_no_plan),
                         style = MaterialTheme.typography.bodyMedium,
                         color = c.textSecondary,
-                        maxLines = 1,
+                        maxLines = if (fallbackScroll) 2 else 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            val headerActions: @Composable () -> Unit = {
                 // Labelled, so past workouts and the editor are found without guessing what an icon means.
                 HeaderAction(Icons.AutoMirrored.Rounded.MenuBook, stringResource(R.string.workouts_library)) { nav.navigate(Routes.LIBRARY) }
                 HeaderAction(Icons.Rounded.History, stringResource(R.string.cd_workout_history)) { nav.navigate(Routes.HISTORY) }
                 if (plan != null) {
                     HeaderAction(Icons.Rounded.Edit, stringResource(R.string.cd_edit_plan)) { nav.navigate(Routes.plan(selectedDay)) }
+                }
+            }
+            if (fallbackScroll) {
+                Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    titleContent(Modifier.fillMaxWidth())
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        headerActions()
+                    }
+                }
+            } else {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    titleContent(Modifier.weight(1f))
+                    headerActions()
                 }
             }
 
@@ -385,6 +400,7 @@ private fun RecoveryHeroCard(
                     color = c.teal,
                     maxLines = 1,
                     softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     titleText,
@@ -441,7 +457,7 @@ private fun ExerciseGlanceCard(
         padding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().height(22.dp),
+            Modifier.fillMaxWidth().heightIn(min = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -474,7 +490,7 @@ private fun ExerciseGlanceCard(
                 val leftIdx = r * 2
                 val rightIdx = leftIdx + 1
                 Row(
-                    Modifier.fillMaxWidth().height(ROW_HEIGHT_2COL.dp),
+                    Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT_2COL.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     if (leftIdx < cellsCount) {
@@ -518,12 +534,12 @@ private fun GlanceCellTwoCol(
 ) {
     val c = Fit.colors
     val showDivider = index >= 2
-    Column(modifier.height(ROW_HEIGHT_2COL.dp)) {
+    Column(modifier.heightIn(min = ROW_HEIGHT_2COL.dp)) {
         if (showDivider) {
             Box(Modifier.fillMaxWidth().height(1.dp).background(c.divider))
         }
         Column(
-            Modifier.fillMaxSize(),
+            Modifier.fillMaxWidth().heightIn(min = (ROW_HEIGHT_2COL - if (showDivider) 1 else 0).dp),
             verticalArrangement = Arrangement.Center,
         ) {
             if (index < visibleItems.size) {
@@ -580,7 +596,7 @@ private fun RestDayCard(
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                 color = c.textSecondary,
                 textAlign = TextAlign.Center,
-                maxLines = if (fallbackScroll) 2 else 1,
+                maxLines = if (fallbackScroll) 4 else 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Box(
@@ -686,7 +702,7 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, doneToday: Boo
     // Seven chips share the width. From 1.35x text they wrap to two rows (four and three) so the full day names,
     // Arabic ones too, never turn into "الث…".
     val chips: @Composable RowScope.() -> Unit = {
-        (1..7).forEach { dow ->
+        Dates.weekOrder.forEach { dow ->
             val isSel = dow == selected
             val rest = days.firstOrNull { it.day.dayOfWeek == dow }?.day?.isRest ?: true
             Column(
@@ -700,8 +716,9 @@ private fun DayStrip(days: List<PlanDayWithItems>, selected: Int, doneToday: Boo
                     Dates.dayShort(dow),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (isSel) c.onTeal else if (dow == today) c.teal else c.textSecondary,
-                    maxLines = 1,
-                    softWrap = false,
+                    maxLines = 2,
+                    softWrap = true,
+                    textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(8.dp))
                 if (doneToday && dow == today && !rest) {

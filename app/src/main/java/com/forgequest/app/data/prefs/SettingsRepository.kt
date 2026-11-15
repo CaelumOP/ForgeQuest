@@ -327,15 +327,34 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    // --- Weekly streak targets of finished weeks, keyed by Monday's epoch day. Restore clears them. ---
+    // --- Weekly streak targets of finished weeks, keyed by Sunday's epoch day. Restore clears them. ---
 
     private val streakPrefs = context.getSharedPreferences("streak_targets", Context.MODE_PRIVATE)
 
-    fun weekTargets(): Map<Long, Int> =
-        streakPrefs.all.mapNotNull { (week, target) -> week.toLongOrNull()?.let { w -> (target as? Int)?.let { w to it } } }.toMap()
+    private fun ensureSundayWeekTargets() {
+        if (streakPrefs.getBoolean(SUNDAY_WEEKS_KEY, false)) return
+        val (shifted, _) = migrateWeekTargetEntries(streakPrefs.all)
+        streakPrefs.edit().apply {
+            clear()
+            putBoolean(SUNDAY_WEEKS_KEY, true)
+            shifted.forEach { (week, target) -> putInt(week.toString(), target) }
+        }.apply()
+    }
 
-    fun saveWeekTargets(targets: Map<Long, Int>) =
-        streakPrefs.edit().apply { targets.forEach { (week, target) -> putInt(week.toString(), target) } }.apply()
+    fun weekTargets(): Map<Long, Int> {
+        ensureSundayWeekTargets()
+        return streakPrefs.all.mapNotNull { (week, target) ->
+            week.toLongOrNull()?.let { w -> (target as? Int)?.let { w to it } }
+        }.toMap()
+    }
+
+    fun saveWeekTargets(targets: Map<Long, Int>) {
+        ensureSundayWeekTargets()
+        streakPrefs.edit().apply {
+            putBoolean(SUNDAY_WEEKS_KEY, true)
+            targets.forEach { (week, target) -> putInt(week.toString(), target) }
+        }.apply()
+    }
 
     fun clearWeekTargets() = streakPrefs.edit().clear().apply()
 
@@ -428,4 +447,24 @@ class SettingsRepository(private val context: Context) {
     private companion object {
         const val ALIAS = "forgequest_gemini_key"
     }
+}
+
+internal const val SUNDAY_WEEKS_KEY = "sunday_weeks_v1"
+
+/**
+ * Pure one-time migration helper for weekly targets: shifts persisted Monday week-start
+ * epoch-day keys back by 1 day to Sunday. Skips non-numeric keys (such as [SUNDAY_WEEKS_KEY])
+ * and leaves entries unchanged once [SUNDAY_WEEKS_KEY] is true.
+ */
+internal fun migrateWeekTargetEntries(raw: Map<String, *>): Pair<Map<Long, Int>, Boolean> {
+    if (raw[SUNDAY_WEEKS_KEY] == true) {
+        val current = raw.mapNotNull { (week, target) ->
+            week.toLongOrNull()?.let { w -> (target as? Int)?.let { w to it } }
+        }.toMap()
+        return current to false
+    }
+    val shifted = raw.mapNotNull { (week, target) ->
+        week.toLongOrNull()?.let { w -> (target as? Int)?.let { (w - 1L) to it } }
+    }.toMap()
+    return shifted to true
 }

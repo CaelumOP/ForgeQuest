@@ -2,7 +2,7 @@
 // stored rows with the domain functions. Past weeks' streak targets are locked in kv 'weekTargets' the first
 // time they are seen, so a later plan change never rewrites a finished week.
 import { db, putDayNote, putWeight, type BadgeRow, type ExerciseRow, type SessionRow, type SetRow, type WeightRow } from './db';
-import { loadSettings, saveWeekTargets, weekTargets, type Settings } from './settings';
+import { loadSettings, migrateWeekTargets, saveWeekTargets, weekTargets, type Settings } from './settings';
 import { getActivePlan, trainingDays, type ActivePlan } from './workouts';
 import { useEffect } from 'preact/hooks';
 import { useLive } from './live';
@@ -65,6 +65,7 @@ export async function getProgressSnapshot(now = Date.now(), save = true): Promis
   const planned = plan ? trainingDays(plan) : new Set<number>();
 
   // Lock each finished week's target the first time it is seen.
+  if (save) await migrateWeekTargets();
   let locked = await weekTargets();
   if (plan || settings.weeklyTargetOverride > 0) {
     const fresh = weeksToLock(locked, fullTarget(planned, settings.weeklyTargetOverride), start, today);

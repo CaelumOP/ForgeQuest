@@ -2,14 +2,17 @@
 
 const MS_PER_DAY = 86_400_000
 
-/** 1 = Monday .. 7 = Sunday */
+/** Display order for a week strip or picker: Sunday first, then Monday..Saturday. */
+export const WEEK_ORDER: readonly number[] = [7, 1, 2, 3, 4, 5, 6]
+
+/** 1 = Monday .. 7 = Sunday (ISO day-of-week). */
 export function dayOfWeek(epochDay: number): number {
   return ((((epochDay + 3) % 7) + 7) % 7) + 1
 }
 
-/** Monday of the week containing [epochDay]. */
+/** Sunday of the week containing [epochDay]. */
 export function weekStart(epochDay: number): number {
-  return epochDay - (dayOfWeek(epochDay) - 1)
+  return epochDay - (dayOfWeek(epochDay) % 7)
 }
 
 /** Epoch day of a calendar date (month 1..12). */

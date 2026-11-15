@@ -94,10 +94,10 @@ describe('progress', () => {
     expect(await db.plans.count()).toBe(0);
 
     const today = todayEpochDay();
-    const lastWeekMon = weekStart(today) - 7;
-    await finishedOn(lastWeekMon);
-    await finishedOn(lastWeekMon + 2);
-    await finishedOn(lastWeekMon + 4);
+    const lastWeekSun = weekStart(today) - 7;
+    await finishedOn(lastWeekSun);
+    await finishedOn(lastWeekSun + 2);
+    await finishedOn(lastWeekSun + 4);
     await finishedOn(today);
 
     const snap = await getProgressSnapshot();
@@ -108,6 +108,6 @@ describe('progress', () => {
     expect(snap.streak.doneThisWeek).toBe(1);
     expect(snap.streak.targetThisWeek).toBe(3);
     expect(snap.streak.weeks).toBe(1);
-    expect((await weekTargets()).get(lastWeekMon)).toBe(3);
+    expect((await weekTargets()).get(lastWeekSun)).toBe(3);
   });
 });

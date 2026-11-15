@@ -76,9 +76,9 @@
         <item quantity="many">%1$d أسبوعًا</item>
         <item quantity="other">%1$d أسبوع</item>
     </plurals>
-    <string name="streak_first_week">يبدأ أول أسبوع كامل لك يوم الاثنين</string>
+    <string name="streak_first_week">يبدأ أول أسبوع كامل لك يوم الأحد</string>
     <string name="streak_head_start">بداية مبكرة</string>
-    <string name="streak_head_start_body">يبدأ أول أسبوع كامل لك يوم الاثنين، وهذا التمرين يُحتسب في سلسلتك مسبقًا.</string>
+    <string name="streak_head_start_body">يبدأ أول أسبوع كامل لك يوم الأحد، وهذا التمرين يُحتسب في سلسلتك مسبقًا.</string>
     <string name="streak_hit_to_start">حقّق هدفك الأسبوعي لتبدأ سلسلتك</string>
     <plurals name="streak_best">
         <item quantity="zero">الأفضل: 0 أسابيع</item>

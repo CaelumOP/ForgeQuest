@@ -24,10 +24,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -149,8 +152,8 @@ fun HistoryScreen(nav: NavHostController) {
     val setsBySession = s.doneSets.groupBy { it.sessionId }
     val unit by vm.unit.collectAsState()
     val scores by vm.scores.collectAsState()
-    // Weeks start on Monday, like the streak and weekly target (Dates.weekStart), so a journal week's count matches them.
-    val firstDay = java.time.DayOfWeek.MONDAY
+    // Weeks start on Sunday, like the streak and weekly target (Dates.weekStart), so a journal week's count matches them.
+    val firstDay = java.time.DayOfWeek.SUNDAY
     val weeks = remember(s.sessions) {
         s.sessions.sortedByDescending { it.startedAt }
             .groupBy { LocalDate.ofEpochDay(it.epochDay).with(java.time.temporal.TemporalAdjusters.previousOrSame(firstDay)) }
@@ -188,7 +191,7 @@ fun HistoryScreen(nav: NavHostController) {
             }
             return
         }
-        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             weeks.entries.forEachIndexed { index, (week, sessions) ->
                 val expanded = open[week] ?: (index == 0)
                 item(key = "w$week") {
@@ -432,7 +435,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                 }
             }
         }
-        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap)) {
+        LazyColumn(contentPadding = PaddingValues(start = ForgeSpace.Gutter, end = ForgeSpace.Gutter, top = 8.dp, bottom = 32.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap)) {
             item {
                 Text(stringResource(R.string.hist_edit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }

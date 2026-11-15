@@ -35,7 +35,7 @@
 .pf-ghead:active { background: var(--card-high); }
 .pf-gtext { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
 .pf-gtitle { font-size: 16px; font-weight: 500; }
-.pf-gsum { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-gsum { font-size: 13px; color: var(--text-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; }
 .pf-chevwrap { display: inline-flex; color: var(--text-2); transition: transform var(--dur-short) var(--ease-standard); }
 .pf-up { transform: rotate(180deg); }
 .pf-gbody { display: flex; flex-direction: column; gap: 12px; }
@@ -67,11 +67,11 @@
 .pf-adv { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 48px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
 .pf-tdialog { display: flex; flex-direction: column; gap: 12px; }
 .pf-tdialog .kit-stepper { inline-size: 100%; justify-content: space-between; }
-.pf-slider { inline-size: 100%; min-block-size: 36px; accent-color: var(--teal); cursor: pointer; margin: 0; }
+.pf-slider { inline-size: 100%; min-block-size: 44px; accent-color: var(--teal); cursor: pointer; margin: 0; }
 .pf-tdialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding-block-start: 4px; }
 
 /* Large text (see styles.css): a settings group's summary wraps in full; titles and subtitles already wrap and the
    controls stay full width below them. */
 @media (max-width: 300px) {
-  .pf-gsum { white-space: normal; }
+  .pf-gsum { -webkit-line-clamp: unset; }
 }

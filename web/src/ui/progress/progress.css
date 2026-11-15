@@ -55,13 +55,13 @@ html[dir='rtl'] .pg-spark { transform: scaleX(-1); }
 
 /* Badges */
 .bd-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-block-start: 10px; }
-.bd { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 2px; min-block-size: 44px; background: none; border: 0; border-radius: var(--r-md); font: inherit; cursor: pointer; }
+.bd { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 2px; min-block-size: 44px; background: none; border: 0; border-radius: var(--r-md); font: inherit; cursor: pointer; }
 .bd-circle { position: relative; display: flex; align-items: center; justify-content: center; inline-size: 52px; block-size: 52px; border-radius: var(--r-full); background: var(--card-high); color: var(--text-2); }
 .bd-circle svg { opacity: .4; }
 .bd.on .bd-circle { background: var(--gold-track); color: var(--gold); }
 .bd.on .bd-circle svg { opacity: 1; }
 .bd-new { position: absolute; inset-block-start: 0; inset-inline-end: 0; inline-size: 12px; block-size: 12px; border-radius: var(--r-full); background: var(--coral); }
-.bd-title { font-size: 11px; line-height: 14px; text-align: center; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bd-title { font-size: 11px; line-height: 14px; text-align: center; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bd.on .bd-title { color: var(--text); }
 .bd-ok { display: flex; justify-content: flex-end; }
 

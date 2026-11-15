@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact'
+import { listSep } from '../../i18n'
 import { ForwardChevron } from '../icons'
 
 const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ')
@@ -67,7 +68,7 @@ export function Chip({ label, selected = false, onClick, role = 'button', accent
   return (
     <button type="button" class={cx('kit-chip', `kit-accent-${accent}`, selected && 'kit-chip-on')} onClick={onClick} {...aria}>
       {label}
-      {srDetail && <span class="kit-sr">{`, ${srDetail}`}</span>}
+      {srDetail && <span class="kit-sr">{`${listSep()}${srDetail}`}</span>}
     </button>
   )
 }

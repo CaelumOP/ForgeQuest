@@ -454,9 +454,9 @@ private class InsightContext(val input: InsightInput, val today: Long) {
         return listOf(Slot.Exercise(id), Slot.Cue(id, (today % 3).toInt()))
     }
 
-    /** From Friday on: the muscle furthest under half of its weekly sets, when something was trained this week. */
+    /** From Friday on (Fri/Sat in a Sun..Sat week): the muscle furthest under half of its weekly sets, when something was trained this week. */
     private fun muscleWeek(): List<Slot>? {
-        if (Dates.dayOfWeek(today) < 5) return null
+        if (Dates.dayOfWeek(today) !in 5..6) return null
         val weekStart = Dates.weekStart(today)
         val counts = HashMap<Muscle, Int>()
         var total = 0

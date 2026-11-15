@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
 import type { ExerciseRow, PlanItemRow } from '../../data/db'
 import type { ActivePlan, PlanDayWithItems } from '../../data/workouts'
+import { WEEK_ORDER } from '../../domain/dates'
 import { replaceOrder } from '../../domain/muscle-exercises'
 import { Button, IconButton, Sheet } from '../kit'
 import { BackChevron, ForwardChevron } from '../icons'
@@ -29,7 +30,7 @@ export function PutInPlanSheet({ ex, plan, library, onReplace, onAdd, onClose }:
     return (
       <Sheet open onClose={onClose} title={t('plan_put_in_title', ex.name)}>
         <p class="wk-s">{t('plan_put_in_pick_day')}</p>
-        {[...plan.days].sort((a, b) => a.day.dayOfWeek - b.day.dayOfWeek).map((d) => {
+        {[...plan.days].sort((a, b) => WEEK_ORDER.indexOf(a.day.dayOfWeek) - WEEK_ORDER.indexOf(b.day.dayOfWeek)).map((d) => {
           const workout = !d.day.isRest && d.items.length > 0
           const subtitle = [workout ? d.day.title : t('today_rest_day'), d.items.some((i) => i.exerciseId === ex.id) ? t('plan_put_in_already') : null].filter(Boolean).join(' · ')
           return (

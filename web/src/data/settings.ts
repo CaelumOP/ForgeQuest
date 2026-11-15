@@ -188,25 +188,56 @@ export function fromBackupSettings(b: BackupSettings, s: Settings): Settings {
 
 // ---------------------------------------------------------------- Weekly streak targets of finished weeks
 
-/** Saved targets by Monday's epoch day. A restore clears them. */
-export async function weekTargets(): Promise<Map<number, number>> {
-  const raw = (await db.kv.get(WEEK_TARGETS_KEY))?.value;
+/**
+ * Pure one-time migration helper for stored weekTargets: shifts Monday-keyed
+ * epoch-day entries back by 1 day to Sunday. Keeps already-migrated records
+ * (`sundayWeeks: true`) untouched.
+ */
+export function shiftWeekTargetsRecord(raw: unknown): { targets: Map<number, number>; migrated: boolean } {
   const map = new Map<number, number>();
-  if (typeof raw === 'object' && raw !== null) {
-    for (const [week, target] of Object.entries(raw)) {
-      const w = Number(week);
-      if (Number.isInteger(w) && typeof target === 'number') map.set(w, target);
+  if (typeof raw !== 'object' || raw === null) return { targets: map, migrated: false };
+  const record = raw as Record<string, unknown>;
+  const alreadySunday = record.sundayWeeks === true;
+  for (const [week, target] of Object.entries(record)) {
+    const w = Number(week);
+    if (Number.isInteger(w) && typeof target === 'number') {
+      map.set(alreadySunday ? w : w - 1, target);
     }
   }
-  return map;
+  return { targets: map, migrated: !alreadySunday };
+}
+
+/**
+ * One-time idempotent migration for persisted `'weekTargets'`: shifts old
+ * Monday-keyed entries to Sunday and stores `sundayWeeks: true`.
+ */
+export async function migrateWeekTargets(): Promise<boolean> {
+  return db.transaction('rw', db.kv, async () => {
+    const raw = (await db.kv.get(WEEK_TARGETS_KEY))?.value;
+    if (typeof raw !== 'object' || raw === null) {
+      await db.kv.put({ key: WEEK_TARGETS_KEY, value: { sundayWeeks: true } });
+      return false;
+    }
+    const { targets, migrated } = shiftWeekTargetsRecord(raw);
+    if (!migrated) return false;
+    await db.kv.put({ key: WEEK_TARGETS_KEY, value: { ...Object.fromEntries(targets), sundayWeeks: true } });
+    return true;
+  });
+}
+
+/** Saved targets by Sunday's epoch day. A restore clears them. */
+export async function weekTargets(): Promise<Map<number, number>> {
+  const raw = (await db.kv.get(WEEK_TARGETS_KEY))?.value;
+  return shiftWeekTargetsRecord(raw).targets;
 }
 
 /** Adds (or overwrites) the given weeks; other saved weeks stay. */
 export function saveWeekTargets(targets: ReadonlyMap<number, number>): Promise<void> {
   return db.transaction('rw', db.kv, async () => {
-    const merged = Object.fromEntries(await weekTargets());
+    const raw = (await db.kv.get(WEEK_TARGETS_KEY))?.value;
+    const merged = Object.fromEntries(shiftWeekTargetsRecord(raw).targets);
     for (const [w, t] of targets) merged[w] = t;
-    await db.kv.put({ key: WEEK_TARGETS_KEY, value: merged });
+    await db.kv.put({ key: WEEK_TARGETS_KEY, value: { ...merged, sundayWeeks: true } });
   });
 }
 

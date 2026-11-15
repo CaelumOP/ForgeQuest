@@ -35,7 +35,7 @@
 .wk-day-head { display: flex; align-items: center; gap: 8px; }
 .wk-day-head .wk-grow { display: flex; flex-direction: column; align-items: flex-start; }
 .wk-linkbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; display: inline-flex; align-items: center; gap: 4px; min-block-size: 44px; cursor: pointer; text-align: start; }
-.wk-linkbtn.small { color: var(--text-2); font-size: 14px; font-weight: 500; min-block-size: 32px; }
+.wk-linkbtn.small { color: var(--text-2); font-size: 14px; font-weight: 500; min-block-size: 44px; }
 .wk-linkbtn.title { font-size: 18px; font-weight: 500; }
 .wk-switch { appearance: none; -webkit-appearance: none; position: relative; inline-size: 52px; block-size: 32px; border-radius: var(--r-full); background: var(--card-high); border: 2px solid var(--text-2); flex: none; cursor: pointer; margin: 6px 0; transition: background-color var(--dur-short) var(--ease-standard); }
 .wk-switch::after { content: ''; position: absolute; inset-block-start: 50%; inset-inline-start: 4px; inline-size: 16px; block-size: 16px; margin-block-start: -8px; border-radius: var(--r-full); background: var(--text-2); transition: inset-inline-start var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard); }
@@ -204,7 +204,7 @@ div.wk-choice-main { cursor: default; }
   font-size: 13px;
   line-height: 26px;
   color: var(--text-2);
-  white-space: nowrap;
+  white-space: normal;
   flex: none;
 }
 
@@ -217,10 +217,11 @@ div.wk-choice-main { cursor: default; }
 
 .wk-lh {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  block-size: 20px;
+  min-block-size: 20px;
   font-size: 12px;
   color: var(--text-2);
   flex: none;
@@ -246,14 +247,13 @@ html[dir='rtl'] .wk-lh-chev {
 }
 
 .wk-rows {
-  block-size: calc(var(--wk-rows, 2) * 46px);
-  overflow: hidden;
+  min-block-size: calc(var(--wk-rows, 2) * 46px);
 }
 
 .wk-r {
   display: flex;
   align-items: center;
-  block-size: 46px;
+  min-block-size: 46px;
   gap: 10px;
   border-block-start: 1px solid var(--divider);
   flex: none;
@@ -293,7 +293,7 @@ html[dir='rtl'] .wk-lh-chev {
   align-content: start;
 }
 .wk-two .wk-r {
-  block-size: 46px;
+  min-block-size: 46px;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
@@ -350,6 +350,7 @@ html[dir='rtl'] .wk-lh-chev {
 
 .wk-go {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   flex: none;
@@ -360,12 +361,14 @@ html[dir='rtl'] .wk-lh-chev {
 }
 
 .wk-go-main {
-  flex: 1;
+  flex: 1 1 auto;
   min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 .wk-go-quick {
   flex: none;
+  max-inline-size: 100%;
   padding-inline: 18px;
 }
 

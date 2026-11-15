@@ -1725,9 +1725,9 @@
     "other": "Best: {1} weeks"
   },
   "streak_done_of_target": "{1} of {2} this week",
-  "streak_first_week": "Your first full week starts Monday",
+  "streak_first_week": "Your first full week starts Sunday",
   "streak_head_start": "Head start",
-  "streak_head_start_body": "Your first full week starts Monday. This workout already counts toward your streak.",
+  "streak_head_start_body": "Your first full week starts Sunday. This workout already counts toward your streak.",
   "streak_hit_to_start": "Hit your weekly target to start a streak",
   "streak_more_to_go": {
     "one": "{1} more to keep it going",

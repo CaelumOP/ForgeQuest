@@ -461,7 +461,16 @@
   position: sticky;
   inset-block-end: calc(16px + env(safe-area-inset-bottom));
   z-index: 2;
-  box-shadow: 0 0 0 8px var(--bg);
+}
+.pb-cta::before {
+  content: '';
+  position: absolute;
+  inset-inline: -16px;
+  inset-block-start: -8px;
+  inset-block-end: calc(-16px - env(safe-area-inset-bottom));
+  background: var(--bg);
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* Room under the last control, so at the end of the page the sticky button rests below it, not on it. */

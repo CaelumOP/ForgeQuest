@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { intlLocale, t, useLang, type Lang } from '../../i18n'
 import { loadSettings, updateSettings } from '../../data/settings'
 import { applyPlan, useLibrary } from '../../data/workouts'
+import { WEEK_ORDER } from '../../domain/dates'
 import type { ExerciseEntity, PlanDraftDay } from '../../domain/entities'
 import {
   CARDIOS, EXPERIENCES, INJURIES, PlanBuilder, REP_PREFS, REST_PREFS, TRAIN_GOALS,
@@ -106,7 +107,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
     <div class="content pb">
       <header class="pb-head">
         {review != null && <h1 class="pb-title">{t('pb_review_title')}</h1>}
-        <p class="pb-sub">{t(review == null ? 'pb_quick_hint' : 'pb_review_hint')}</p>
+        <p class="pb-sub">{t(review == null ? 'pb_entry_info' : 'pb_review_hint')}</p>
       </header>
 
       {review == null ? (
@@ -421,7 +422,7 @@ function ScheduleRow({
     <>
       <p class="pb-hint">{t('pb_schedule_hint')}</p>
       <div class="pb-days" role="group" aria-label={t('pb_row_schedule')}>
-        {[1, 2, 3, 4, 5, 6, 7].map((dow) => {
+        {WEEK_ORDER.map((dow) => {
           const inPlan = a.days.has(dow)
           const editing = editDay === dow && inPlan
           return (
@@ -604,7 +605,7 @@ function ReviewSection({
   onChange: () => void
 }) {
   const days = useMemo(
-    () => [...review.draft.days].sort((a, b) => a.dayOfWeek - b.dayOfWeek),
+    () => [...review.draft.days].sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek)),
     [review],
   )
 

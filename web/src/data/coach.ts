@@ -14,6 +14,7 @@ import { unitCode, weightNumber, type WeightUnit } from '../domain/units';
 import type { WorkoutScoreResult } from '../domain/workout-score';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { BADGES, BADGES_BY_ID } from '../domain/badges';
+import { WEEK_ORDER } from '../domain/dates';
 
 // ---------------------------------------------------------------- Types
 
@@ -616,11 +617,11 @@ export function progressSummary(snap: ProgressSnapshot, today: number, readiness
   if (wt === 'DIET_BREAK_DUE') out += '- Diet break due: this cut has run its planned weeks; suggest 1-2 weeks at maintenance calories\n';
 
   const st = snap.streak;
-  const missed = st.days.map((d, i) => (d === 'MISSED' ? dayLong(i + 1) : null)).filter((x): x is string => x != null);
-  const upcoming = st.days.map((d, i) => (d === 'UPCOMING' ? dayLong(i + 1) : null)).filter((x): x is string => x != null);
+  const missed = st.days.map((d, i) => (d === 'MISSED' ? dayLong(WEEK_ORDER[i]) : null)).filter((x): x is string => x != null);
+  const upcoming = st.days.map((d, i) => (d === 'UPCOMING' ? dayLong(WEEK_ORDER[i]) : null)).filter((x): x is string => x != null);
   out += `- Level ${snap.level.level} (rank ${snap.level.rank.letter}, ${snap.level.rank.title}); weekly streak ${st.weeks} (best ${st.best})\n`;
   out += st.targetThisWeek === 0
-    ? `- This week: ${st.doneThisWeek} workouts done; they started mid-week, so the weekly target starts next Monday`
+    ? `- This week: ${st.doneThisWeek} workouts done; they started mid-week, so the weekly target starts next Sunday`
     : `- This week: ${st.doneThisWeek} of ${st.targetThisWeek} workouts done`;
   if (missed.length) out += `; missed planned days: ${missed.join(', ')}`;
   if (upcoming.length) out += `; still to come: ${upcoming.join(', ')}`;
@@ -633,7 +634,7 @@ export function progressSummary(snap: ProgressSnapshot, today: number, readiness
 
   if (snap.plan) {
     out += `- Current plan: ${snap.plan.plan.name} (source: ${snap.plan.plan.source})\n`;
-    for (const d of [...snap.plan.days].sort((a, b) => a.day.dayOfWeek - b.day.dayOfWeek)) {
+    for (const d of [...snap.plan.days].sort((a, b) => WEEK_ORDER.indexOf(a.day.dayOfWeek) - WEEK_ORDER.indexOf(b.day.dayOfWeek))) {
       if (d.day.isRest) { out += `  ${dayShort(d.day.dayOfWeek)}: rest\n`; continue; }
       const names = [...d.items].sort((a, b) => a.position - b.position).map((i) => {
         const e = ex.get(i.exerciseId);

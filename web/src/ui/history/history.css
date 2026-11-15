@@ -13,7 +13,7 @@
 .hs-day { margin: 6px 0 0; padding-inline-start: 8px; font-size: 14px; font-weight: 500; color: var(--text-2); }
 .hs-sess { display: flex; flex-direction: column; gap: 2px; padding-inline-start: 8px; }
 .hs-srow { display: flex; align-items: center; gap: 16px; width: 100%; text-align: start; min-height: 48px; }
-.hs-date { flex: none; width: 48px; height: 48px; border-radius: var(--r-sm); background: var(--teal-track); color: var(--teal); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.hs-date { flex: none; inline-size: 48px; block-size: auto; min-block-size: 48px; border-radius: var(--r-sm); background: var(--teal-track); color: var(--teal); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .hs-date b { font-size: 16px; line-height: 1.1; }
 .hs-date span { font-size: 11px; }
 .hs-stext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }

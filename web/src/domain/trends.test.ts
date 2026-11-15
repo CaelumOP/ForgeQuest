@@ -6,9 +6,10 @@ import {
   thenNow, trainingLoad, weeklyCounts, type TrendPoint,
 } from './trends'
 
-// 2026-10-14 is a Wednesday; its week starts Monday 2026-10-12.
+// 2026-10-14 is a Wednesday; its week starts Sunday 2026-10-11.
 const today = epochDayOf(2026, 10, 14)
-const monday = weekStart(today)
+const sunday = weekStart(today)
+const monday = sunday + 1 // 2026-10-12: the fatigue audit below is checked on a Monday morning
 
 const set = (session: number, reps: number, pr = false, exerciseId = 'pull_up'): SetEntity => ({
   id: 0, sessionId: session, exerciseId, itemPosition: 0, block: 'Main', circuit: false, setIndex: 0, targetLabel: '',
@@ -20,7 +21,7 @@ const pt = (epochDay: number, value: number): TrendPoint => ({ epochDay, value, 
 
 describe('TrendsTest', () => {
   it('weeklyCountsEndWithTheCurrentWeek', () => {
-    const days = new Set([monday, monday + 2, monday - 7, monday - 20])
+    const days = new Set([sunday, sunday + 2, sunday - 7, sunday - 20])
     expect(weeklyCounts(days, 3, today)).toEqual([0, 1, 2])
     expect(weeklyCounts(days, 4, today)).toEqual([1, 0, 1, 2])
   })
@@ -43,10 +44,10 @@ describe('TrendsTest', () => {
   })
 
   it('consistencyGridRowsAreWeekdaysAndFutureIsMarked', () => {
-    const grid = consistencyGrid(new Set([monday, monday - 7]), new Set([monday - 7]), 2, today)
+    const grid = consistencyGrid(new Set([sunday, sunday - 7]), new Set([sunday - 7]), 2, today)
     expect(grid.length).toBe(7)
     expect(grid[0]).toEqual(['RECORD', 'DONE'])
-    expect(grid[6][1]).toBe('FUTURE') // Sunday of this week hasn't happened
+    expect(grid[6][1]).toBe('FUTURE') // Saturday of this week hasn't happened
     expect(grid[1][1]).toBe('REST')
   })
 
@@ -64,7 +65,7 @@ describe('TrendsTest', () => {
   })
 
   it('proteinDaysAndPercent', () => {
-    const nutrition: [number, number][] = [[monday, 150], [monday + 1, 90], [monday - 7, 160]]
+    const nutrition: [number, number][] = [[sunday, 150], [sunday + 1, 90], [sunday - 7, 160]]
     expect(proteinDaysPerWeek(nutrition, 140, 2, today)).toEqual([1, 1])
     expect(percentChange(6, 9)).toBe(50)
     expect(percentChange(0, 3)).toBeNull()

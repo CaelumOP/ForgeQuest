@@ -63,9 +63,9 @@
         <item quantity="one">%1$d week</item>
         <item quantity="other">%1$d weeks</item>
     </plurals>
-    <string name="streak_first_week">Your first full week starts Monday</string>
+    <string name="streak_first_week">Your first full week starts Sunday</string>
     <string name="streak_head_start">Head start</string>
-    <string name="streak_head_start_body">Your first full week starts Monday. This workout already counts toward your streak.</string>
+    <string name="streak_head_start_body">Your first full week starts Sunday. This workout already counts toward your streak.</string>
     <string name="streak_hit_to_start">Hit your weekly target to start a streak</string>
     <plurals name="streak_best">
         <item quantity="one">Best: %1$d week</item>

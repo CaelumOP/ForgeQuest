@@ -13,7 +13,8 @@ class StreakCalculatorTest {
     private val hemoDays = setOf(1, 2, 3, 5, 6)
     private fun day(y: Int, m: Int, d: Int) = LocalDate.of(y, m, d).toEpochDay()
 
-    // 2026-10-05 is a Monday.
+    // 2026-10-04 is a Sunday; 2026-10-05 is a Monday.
+    private val sun1 = day(2026, 10, 4)
     private val mon1 = day(2026, 10, 5)
 
     @Test
@@ -23,7 +24,7 @@ class StreakCalculatorTest {
         val done = (0..1).flatMap { w -> listOf(0, 2, 4).map { mon1 + 7 * w + it } }.toSet()
         val today = mon1 + 14
         val locked = StreakCalculator.weeksToLock(emptyMap(), StreakCalculator.fullTarget(threeDays, 0), mon1, today)
-        assertEquals(mapOf(mon1 to 3, mon1 + 7 to 3), locked)
+        assertEquals(mapOf(sun1 to 3, sun1 + 7 to 3), locked)
         // Judged by the new plan, both past weeks would count as missed.
         assertEquals(0, StreakCalculator.compute(done, hemoDays, 0, mon1, today).weeks)
         val s = StreakCalculator.compute(done, hemoDays, 0, mon1, today, lockedTargets = locked)
@@ -54,16 +55,18 @@ class StreakCalculatorTest {
     fun restDaysNeverCountAsMissed() {
         val today = mon1 + 3 // Thursday, a rest day in Hemo's plan
         val s = StreakCalculator.compute(setOf(mon1, mon1 + 1, mon1 + 2), hemoDays, 0, mon1, today)
-        assertEquals(DayState.REST, s.days[3])
-        assertEquals(DayState.DONE, s.days[0])
-        assertEquals(DayState.UPCOMING, s.days[4])
+        // Strip is Sun..Sat: [0]=Sun (before startEpochDay), [1]=Mon, [4]=Thu, [5]=Fri.
+        assertEquals(DayState.OFF, s.days[0])
+        assertEquals(DayState.REST, s.days[4])
+        assertEquals(DayState.DONE, s.days[1])
+        assertEquals(DayState.UPCOMING, s.days[5])
     }
 
     @Test
     fun joiningMidWeekIsProrated() {
         val thursday = mon1 + 3
         // Only Fri + Sat remain, so 2 workouts complete the first week.
-        val s = StreakCalculator.compute(setOf(mon1 + 4, mon1 + 5), hemoDays, 0, thursday, mon1 + 6)
+        val s = StreakCalculator.compute(setOf(mon1 + 4, mon1 + 5), hemoDays, 0, thursday, mon1 + 5)
         assertEquals(2, s.targetThisWeek)
         assertTrue(s.hitThisWeek)
         assertEquals(1, s.weeks)
@@ -71,28 +74,45 @@ class StreakCalculatorTest {
 
     @Test
     fun joiningAfterTheLastPlannedDayGivesAFreeWeek() {
-        val sunday = mon1 + 6
-        val s = StreakCalculator.compute(emptySet(), hemoDays, 0, sunday, sunday)
+        val mwf = setOf(1, 3, 5)
+        val saturday = mon1 + 5
+        val s = StreakCalculator.compute(emptySet(), mwf, 0, saturday, saturday)
         assertTrue(s.freeWeek)
         assertEquals(0, s.weeks)
         // ...and the free week neither breaks nor counts toward the next one.
-        val nextWeek = (1..7).map { sunday + it }.filter { Dates.dayOfWeek(it) in hemoDays }.toSet()
-        val later = StreakCalculator.compute(nextWeek, hemoDays, 0, sunday, sunday + 7)
+        val nextWeek = (1..7).map { saturday + it }.filter { Dates.dayOfWeek(it) in mwf }.toSet()
+        val later = StreakCalculator.compute(nextWeek, mwf, 0, saturday, saturday + 7)
         assertEquals(1, later.weeks)
     }
 
     @Test
     fun aWorkoutInTheFreeWeekStillCounts() {
-        val sunday = mon1 + 6
-        val s = StreakCalculator.compute(setOf(sunday), hemoDays, 0, sunday, sunday)
+        val mwf = setOf(1, 3, 5)
+        val saturday = mon1 + 5
+        val s = StreakCalculator.compute(setOf(saturday), mwf, 0, saturday, saturday)
         assertFalse(s.freeWeek)
         assertTrue(s.hitThisWeek)
         assertEquals(1, s.weeks)
     }
 
     @Test
+    fun sundayToSaturdayWeekCountsAsOneStreakWeek() {
+        val planDays = setOf(7, 2, 4) // Sun, Tue, Thu
+        val done = setOf(sun1, sun1 + 2, sun1 + 4)
+        val sat = sun1 + 6
+        val inWeek = StreakCalculator.compute(done, planDays, 0, sun1, sat)
+        assertEquals(3, inWeek.doneThisWeek)
+        assertTrue(inWeek.hitThisWeek)
+        assertEquals(DayState.DONE, inWeek.days[0]) // Sunday at index 0
+        // Next Sunday begins a fresh week and banks week 1 in the streak.
+        val nextWeek = StreakCalculator.compute(done, planDays, 0, sun1, sun1 + 7)
+        assertEquals(1, nextWeek.weeks)
+        assertEquals(0, nextWeek.doneThisWeek)
+    }
+
+    @Test
     fun overrideTargetWins() {
-        val s = StreakCalculator.compute(setOf(mon1, mon1 + 2, mon1 + 4), hemoDays, 3, mon1, mon1 + 6)
+        val s = StreakCalculator.compute(setOf(mon1, mon1 + 2, mon1 + 4), hemoDays, 3, mon1, mon1 + 5)
         assertEquals(3, s.targetThisWeek)
         assertTrue(s.hitThisWeek)
     }
@@ -105,7 +125,7 @@ class StreakCalculatorTest {
         assertEquals(3, oneDone.targetThisWeek)
         assertFalse(oneDone.hitThisWeek)
 
-        val threeDone = StreakCalculator.compute(setOf(mon1 + 2, mon1 + 4, mon1 + 6), emptySet(), 3, mon1 + 2, mon1 + 6)
+        val threeDone = StreakCalculator.compute(setOf(mon1 + 2, mon1 + 4, mon1 + 5), emptySet(), 3, mon1 + 2, mon1 + 5)
         assertEquals(3, threeDone.doneThisWeek)
         assertEquals(3, threeDone.targetThisWeek)
         assertTrue(threeDone.hitThisWeek)
@@ -333,10 +353,10 @@ class ExcusedDaysTest {
     fun excusedPlannedDayLowersTheTargetAndShowsAsExcused() {
         // Wednesday sick, four other planned days done: the week still counts.
         val done = setOf(mon1, mon1 + 1, mon1 + 4, mon1 + 5)
-        val s = StreakCalculator.compute(done, hemoDays, 0, mon1, mon1 + 6, excusedDays = setOf(mon1 + 2))
+        val s = StreakCalculator.compute(done, hemoDays, 0, mon1, mon1 + 5, excusedDays = setOf(mon1 + 2))
         assertEquals(4, s.targetThisWeek)
         assertTrue(s.hitThisWeek)
-        assertEquals(DayState.EXCUSED, s.days[2])
+        assertEquals(DayState.EXCUSED, s.days[3])
     }
 
     @Test

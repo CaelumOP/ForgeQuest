@@ -259,9 +259,14 @@ fun HomeScreen(nav: NavHostController) {
     // with the readiness row, which then drops the streak hint), gaps 12: about 776 of 780 with readiness. Spare height is shared between the flexible gaps, which keeps today's workout at the bottom by the
     // thumb. When there is no spare height (large text, small phones, extra cards) the page scrolls; nothing is clipped.
     BoxWithConstraints(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
-        val fit = homeFit(maxHeight.value, androidx.compose.ui.platform.LocalDensity.current.fontScale, extras)
+        val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+        val fallbackScroll = maxHeight < 568.dp || fontScale > 1.3f
+        val fit = homeFit(maxHeight.value, fontScale, extras)
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight).padding(horizontal = ForgeSpace.Gutter),
+            Modifier.fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .let { if (fallbackScroll) it.padding(bottom = ForgeSpace.Sm) else it.heightIn(min = maxHeight) }
+                .padding(horizontal = ForgeSpace.Gutter),
         ) {
             // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
             Box(Modifier.fillMaxWidth()) {
@@ -277,9 +282,9 @@ fun HomeScreen(nav: NavHostController) {
             }
             whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
             CrashCard(Modifier.padding(top = ForgeSpace.Xs))
-            FlexGap()
+            FlexGap(weighted = !fallbackScroll)
             Hero(s, fit, onFood = { nav.goToTab(Routes.FOOD) }, onWeight = { weightSheet = true })
-            FlexGap()
+            FlexGap(weighted = !fallbackScroll)
 
             // This month's line rides at the foot of the streak card; in "just log" mode it gets a slim card of its own.
             val monthRow: (@Composable () -> Unit)? = if (s.sessions.isEmpty()) null else {
@@ -300,7 +305,7 @@ fun HomeScreen(nav: NavHostController) {
             }
 
             // Everything above is for reading. What asks for a tap sits below, with today's workout last, by the thumb.
-            Spacer(Modifier.weight(1f))
+            if (fallbackScroll) Spacer(Modifier.height(ForgeSpace.Sm)) else Spacer(Modifier.weight(1f))
             if (!justLog) ReadinessCard(
                 health, enabled = s.settings.healthEnabled, refreshing = refreshing, note = refreshNote,
                 onRefresh = vm.refreshWatch::tap, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
@@ -375,9 +380,9 @@ internal fun homeFit(heightDp: Float, fontScale: Float, extras: Int): HomeFit {
 
 /** A gap between Home's sections: 12 dp at least, plus an equal share of whatever height is spare. */
 @Composable
-private fun ColumnScope.FlexGap() {
+private fun ColumnScope.FlexGap(weighted: Boolean = true) {
     Spacer(Modifier.height(ForgeSpace.Sm))
-    Spacer(Modifier.weight(1f))
+    if (weighted) Spacer(Modifier.weight(1f))
 }
 
 /** What the day is about, for the one calm line under the greeting. */
@@ -643,6 +648,8 @@ private fun StreakCard(
         Row(Modifier.fillMaxWidth()) {
             val today = Dates.today()
             val weekStart = Dates.weekStart(today)
+            val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+            val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales.let { if (it.isEmpty) java.util.Locale.getDefault() else it[0] }
             streak.days.forEachIndexed { i, state ->
                 val day = weekStart + i
                 // Today and the last 3 days can be excused (sick, travel...) with a tap; workouts can't.
@@ -658,7 +665,17 @@ private fun StreakCard(
                         DayCircle(state, size = 28.dp)
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                    val dow = Dates.weekOrder[i]
+                    val dayLabel = if (largeText) java.time.DayOfWeek.of(dow).getDisplayName(java.time.format.TextStyle.NARROW, locale) else Dates.dayShort(dow)
+                    Text(
+                        dayLabel,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        maxLines = 1,
+                        softWrap = false,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = c.textSecondary,
+                    )
                 }
             }
         }
