@@ -47,7 +47,7 @@ export interface Snapshot extends SnapshotInput {
 
 export interface Me {
   id: string;
-  code: string;
+  username: string | null;
   name: string;
   photoUrl: string | null;
   sharePhoto: boolean;
@@ -57,6 +57,7 @@ export interface Me {
 
 export interface Person {
   id: string;
+  username: string | null;
   name: string;
   photoUrl: string | null;
 }
@@ -68,6 +69,7 @@ export interface Friend extends Person {
 export interface NudgeView {
   fromId: string;
   name: string;
+  username: string | null;
   day: number;
 }
 
@@ -75,6 +77,7 @@ export interface UserRow {
   id: string;
   sub: string;
   code: string;
+  username: string | null;
   name: string;
   google_photo: string | null;
   share_photo: number;
@@ -106,7 +109,7 @@ export function toMe(u: UserRow): Me {
   const sharePhoto = u.share_photo === 1;
   return {
     id: u.id,
-    code: u.code,
+    username: u.username,
     name: u.name,
     photoUrl: sharePhoto ? u.google_photo : null,
     sharePhoto,
@@ -118,6 +121,7 @@ export function toMe(u: UserRow): Me {
 export function toPerson(u: UserRow): Person {
   return {
     id: u.id,
+    username: u.username,
     name: u.name,
     photoUrl: u.share_photo === 1 ? u.google_photo : null,
   };

@@ -92,6 +92,7 @@ export class MemStore implements Store {
       id,
       sub: input.sub,
       code,
+      username: null,
       name: "",
       google_photo: input.googlePhoto,
       share_photo: 1,
@@ -132,10 +133,14 @@ export class MemStore implements Store {
 
   async updateProfile(
     userId: string,
-    input: { name: string; sharePhoto: boolean; sharePrs: boolean },
-  ): Promise<UserRow | null> {
+    input: { name: string; username: string; sharePhoto: boolean; sharePrs: boolean },
+  ): Promise<UserRow | null | "taken"> {
     const user = this.users.get(userId);
     if (!user) return null;
+    for (const u of this.users.values()) {
+      if (u.id !== userId && u.username === input.username) return "taken";
+    }
+    user.username = input.username;
     user.name = input.name;
     user.share_photo = input.sharePhoto ? 1 : 0;
     user.share_prs = input.sharePrs ? 1 : 0;
@@ -144,18 +149,6 @@ export class MemStore implements Store {
       const snap = this.snapshots.get(userId);
       if (snap) snap.prs = null;
     }
-    return { ...user };
-  }
-
-  async rotateInviteCode(userId: string, generateCode: () => string): Promise<UserRow | null> {
-    const user = this.users.get(userId);
-    if (!user) return null;
-    const usedCodes = new Set(Array.from(this.users.values(), (u) => u.code));
-    let code = generateCode();
-    while (usedCodes.has(code)) {
-      code = generateCode();
-    }
-    user.code = code;
     return { ...user };
   }
 
@@ -239,16 +232,16 @@ export class MemStore implements Store {
     for (const n of unseenNudges) {
       const from = this.users.get(n.from_id);
       if (!from) continue;
-      nudges.push({ fromId: n.from_id, name: from.name, day: n.day });
+      nudges.push({ fromId: n.from_id, name: from.name, username: from.username, day: n.day });
       n.seen = 1;
     }
 
     return { friends, incoming, outgoing, nudges };
   }
 
-  async findUserByCode(code: string): Promise<UserRow | null> {
+  async findJoinedUserByUsername(username: string): Promise<UserRow | null> {
     for (const u of this.users.values()) {
-      if (u.code === code) return { ...u };
+      if (u.username === username && u.joined === 1) return { ...u };
     }
     return null;
   }

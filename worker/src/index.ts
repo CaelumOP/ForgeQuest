@@ -14,7 +14,6 @@ import {
   handleDeleteMe,
   handleGetMe,
   handlePutMe,
-  handleRotateCode,
 } from "./routes/me";
 import { handleNudge } from "./routes/nudges";
 import { handleDeletePush, handlePutPush } from "./routes/push";
@@ -102,9 +101,6 @@ async function dispatch(ctx: AppContext): Promise<unknown> {
   }
   if (method === "DELETE" && path === "/v1/me") {
     return await handleDeleteMe(ctx, user);
-  }
-  if (method === "POST" && path === "/v1/me/code") {
-    return await handleRotateCode(ctx, user);
   }
   if (method === "PUT" && path === "/v1/snapshot") {
     return await handlePutSnapshot(ctx, user);

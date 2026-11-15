@@ -1,6 +1,5 @@
-import { generateInviteCode } from "../auth";
 import { AppContext } from "../context";
-import { enforceWriteRateLimit } from "../rate";
+import { assertNotInviteLocked, enforceWriteRateLimit, recordInviteFailure } from "../rate";
 import { HttpError, Me, toMe, UserRow } from "../types";
 import { readJsonObject, validateProfile } from "../validate";
 
@@ -12,22 +11,26 @@ export async function handlePutMe(ctx: AppContext, user: UserRow): Promise<Me> {
   await enforceWriteRateLimit(ctx.store, user.id, ctx.nowSec);
   const body = await readJsonObject(ctx.request);
   const profile = validateProfile(body);
-  const updated = await ctx.store.updateProfile(user.id, profile);
-  if (!updated) {
-    throw new HttpError(401, "unauthorized");
+  const username = profile.username ?? user.username;
+  if (!username) {
+    // First join must pick a username.
+    throw new HttpError(400, "bad_username");
   }
-  return toMe(updated);
-}
-
-export async function handleRotateCode(ctx: AppContext, user: UserRow): Promise<Me> {
-  await enforceWriteRateLimit(ctx.store, user.id, ctx.nowSec);
-  const updated = await ctx.store.rotateInviteCode(user.id, () => {
-    let code = generateInviteCode();
-    while (code === user.code) {
-      code = generateInviteCode();
-    }
-    return code;
+  const changingUsername = username !== user.username;
+  if (changingUsername) {
+    // A 409 username_taken reveals that a name exists, so it shares the invite-failure budget.
+    await assertNotInviteLocked(ctx.store, user.id, ctx.nowSec);
+  }
+  const updated = await ctx.store.updateProfile(user.id, {
+    name: profile.name,
+    username,
+    sharePhoto: profile.sharePhoto,
+    sharePrs: profile.sharePrs,
   });
+  if (updated === "taken") {
+    await recordInviteFailure(ctx.store, user.id, ctx.nowSec);
+    throw new HttpError(409, "username_taken");
+  }
   if (!updated) {
     throw new HttpError(401, "unauthorized");
   }

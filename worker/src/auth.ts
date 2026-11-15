@@ -98,6 +98,23 @@ function parseMaxAge(cacheControl: string | null): number {
   return match ? Number(match[1]) : 300;
 }
 
+const INLINE_JWKS_PREFIX = "data:application/json,";
+const E2E_AUD = "forgequest-e2e";
+const E2E_ISSUERS = "https://e2e.forgequest.invalid";
+
+/**
+ * Staging-only: the e2e Worker carries its test JWKS inline as a data: URL. Allowed ONLY when the audience and issuer
+ * are the e2e values, so a production config (Google aud + Google issuers) can never accept test tokens.
+ */
+function assertJwksAllowed(env: Env): void {
+  if (
+    env.GOOGLE_JWKS_URL.startsWith(INLINE_JWKS_PREFIX) &&
+    (env.GOOGLE_AUD !== E2E_AUD || env.GOOGLE_ISSUERS !== E2E_ISSUERS)
+  ) {
+    throw new HttpError(401, "invalid_token");
+  }
+}
+
 async function getJwksKey(
   jwksUrl: string,
   kid: string,
@@ -114,7 +131,11 @@ async function getJwksKey(
     }
   }
 
-  const res = await fetchFn(jwksUrl);
+  const res = jwksUrl.startsWith(INLINE_JWKS_PREFIX)
+    ? new Response(decodeURIComponent(jwksUrl.slice(INLINE_JWKS_PREFIX.length)), {
+        headers: { "cache-control": "max-age=86400" },
+      })
+    : await fetchFn(jwksUrl);
   if (!res.ok) {
     throw new HttpError(502, "jwks_fetch_failed");
   }
@@ -223,6 +244,7 @@ export async function verifyGoogleIdToken(
   }
 
   const sigBuf = base64UrlDecode(parts[2]);
+  assertJwksAllowed(env);
   const key = await getJwksKey(env.GOOGLE_JWKS_URL, header.kid, nowMs, fetchFn);
   if (!key) {
     throw new HttpError(401, "invalid_token");

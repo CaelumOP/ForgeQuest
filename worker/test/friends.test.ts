@@ -151,7 +151,7 @@ describe("ForgeQuest Friends Worker", () => {
     if (name) {
       const put = await req("PUT", "/v1/me", {
         token: auth.json.session,
-        body: { name, sharePhoto: true, sharePrs: true },
+        body: { name, username: sub, sharePhoto: true, sharePrs: true },
       });
       expect(put.status).toBe(200);
       me = put.json;
@@ -180,7 +180,8 @@ describe("ForgeQuest Friends Worker", () => {
         sharePrs: true,
         joined: false,
       });
-      expect(r1.json.user.code).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/);
+      expect(r1.json.user.username).toBeNull();
+      expect(r1.json.user.code).toBeUndefined();
       expect(jwksFetches).toBe(1);
 
       // Second auth within Cache-Control max-age reuses cached JWKS
@@ -235,6 +236,34 @@ describe("ForgeQuest Friends Worker", () => {
       expect(
         (await req("POST", "/v1/auth/google", { body: { idToken: unknownKid } })).status,
       ).toBe(401);
+    });
+
+    it("accepts an inline data: JWKS only with the e2e audience and issuer", async () => {
+      const nowSec = Math.floor(nowMs / 1000);
+      env.GOOGLE_JWKS_URL = `data:application/json,${encodeURIComponent(JSON.stringify(jwksPayload))}`;
+      // Production aud/issuers + inline JWKS -> refused even with a correctly signed token
+      const prodToken = await signIdToken({ sub: "x1", iss: "https://accounts.google.com", aud: AUD, exp: nowSec + 3600 });
+      const refused = await req("POST", "/v1/auth/google", { body: { idToken: prodToken } });
+      expect(refused.status).toBe(401);
+      expect(refused.json).toEqual({ error: "invalid_token" });
+
+      env.GOOGLE_AUD = "forgequest-e2e";
+      env.GOOGLE_ISSUERS = "https://e2e.forgequest.invalid";
+      const e2eToken = await signIdToken({ sub: "x1", iss: "https://e2e.forgequest.invalid", aud: "forgequest-e2e", exp: nowSec + 3600 });
+      const ok = await req("POST", "/v1/auth/google", { body: { idToken: e2eToken } });
+      expect(ok.status).toBe(200);
+      expect(jwksFetches).toBe(0);
+      // A real Google token shape is refused on the e2e config
+      expect((await req("POST", "/v1/auth/google", { body: { idToken: prodToken } })).status).toBe(401);
+    });
+
+    it("keys IPv6 auth limits by /64", async () => {
+      const { rateIpKey } = await import("../src/rate");
+      expect(rateIpKey("203.0.113.9")).toBe("203.0.113.9");
+      expect(rateIpKey("2001:db8:0:12:aaaa:bbbb:cccc:1")).toBe("2001:db8:0:12::/64");
+      expect(rateIpKey("2001:DB8:0:12::1")).toBe("2001:db8:0:12::/64");
+      expect(rateIpKey("2001:db8::1")).toBe("2001:db8:0:0::/64");
+      expect(rateIpKey("::1")).toBe("0:0:0:0::/64");
     });
 
     it("rate limits auth at 20 per hour per IP", async () => {
@@ -329,7 +358,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Join with valid profile and upload snapshot with PRs
       const joined = await req("PUT", "/v1/me", {
         token: alice.session,
-        body: { name: "  Alice  ", sharePhoto: true, sharePrs: true },
+        body: { name: "  Alice  ", username: "alice", sharePhoto: true, sharePrs: true },
       });
       expect(joined.status).toBe(200);
       expect(joined.json.name).toBe("Alice");
@@ -378,26 +407,96 @@ describe("ForgeQuest Friends Worker", () => {
       expect(snapWhileOff.status).toBe(200);
       expect(store.snapshots.get(alice.user.id)?.prs).toBeNull();
 
-      // Rotate code invalidates old code
-      const oldCode = alice.user.code;
-      const rotated = await req("POST", "/v1/me/code", { token: alice.session });
-      expect(rotated.status).toBe(200);
-      expect(rotated.json.code).not.toBe(oldCode);
+      // The old code route is gone and the code never leaves the server
+      expect((await req("POST", "/v1/me/code", { token: alice.session })).status).toBe(404);
+      expect(alice.user.code).toBeUndefined();
+      expect(joined.json.username).toBe("alice");
+      expect(joined.json.code).toBeUndefined();
 
       const bob = await loginUser("bob", "Bob");
-      const oldTry = await req("POST", "/v1/invites", {
-        token: bob.session,
-        body: { code: oldCode },
-      });
-      expect(oldTry.status).toBe(404);
-      expect(oldTry.json).toEqual({ error: "code_not_found" });
-
       const newTry = await req("POST", "/v1/invites", {
         token: bob.session,
-        body: { code: rotated.json.code },
+        body: { username: "@ALICE" },
       });
       expect(newTry.status).toBe(200);
       expect(newTry.json).toEqual({ status: "sent" });
+      // Old {code} bodies are rejected outright
+      const oldBody = await req("POST", "/v1/invites", { token: bob.session, body: { code: "ABC234" } });
+      expect(oldBody.status).toBe(400);
+      expect(oldBody.json).toEqual({ error: "bad_request" });
+    });
+
+    it("validates usernames, keeps them unique, and counts taken names as failed lookups", async () => {
+      const nowSec = Math.floor(nowMs / 1000);
+      const idToken = await signIdToken({ sub: "eve", iss: "https://accounts.google.com", aud: AUD, exp: nowSec + 3600 });
+      const auth = await req("POST", "/v1/auth/google", { body: { idToken }, ip: "eve" });
+      const eve = auth.json.session as string;
+      const put = (body: Record<string, unknown>) =>
+        req("PUT", "/v1/me", { token: eve, body: { name: "Eve", sharePhoto: true, sharePrs: true, ...body } });
+
+      // First join needs a username
+      expect((await put({})).json).toEqual({ error: "bad_username" });
+      expect((await req("GET", "/v1/me", { token: eve })).json.joined).toBe(false);
+      const bad: unknown[] = [
+        "ab", "a".repeat(21), "has space", "dash-name", "دايت", ".lead", "trail.", "two..dots", "admin",
+        "Support", "forgequest_team", "\u212Aelvin", 42, null,
+      ];
+      for (const username of bad) {
+        const r = await put({ username });
+        expect(r.status, String(username)).toBe(400);
+        expect(r.json).toEqual({ error: "bad_username" });
+      }
+      const ok = await put({ username: "  @Eve.Fit_99 " });
+      expect(ok.status).toBe(200);
+      expect(ok.json).toMatchObject({ username: "eve.fit_99", joined: true });
+      // Omitted username keeps the current one; the same name again is fine
+      expect((await put({ name: "Eve 2" })).json.username).toBe("eve.fit_99");
+      expect((await put({ username: "EVE.FIT_99" })).status).toBe(200);
+
+      // Taken (case-insensitive) -> 409, and every taken answer costs a try
+      await loginUser("alice", "Alice");
+      for (let i = 0; i < 5; i++) {
+        const r = await put({ username: "ALICE" });
+        expect(r.status).toBe(409);
+        expect(r.json).toEqual({ error: "username_taken" });
+      }
+      const locked = await put({ username: "free_name" });
+      expect(locked.status).toBe(429);
+      expect(locked.json).toEqual({ error: "too_many_tries" });
+      // Profile edits that keep the username still work while locked
+      expect((await put({ name: "Eve 3" })).status).toBe(200);
+      nowMs += 15 * 60 * 1000;
+      expect((await put({ username: "free_name" })).json.username).toBe("free_name");
+      // The old name is free again
+      const bob = await loginUser("bob", "Bob");
+      const take = await req("PUT", "/v1/me", {
+        token: bob.session,
+        body: { name: "Bob", username: "eve.fit_99", sharePhoto: true, sharePrs: true },
+      });
+      expect(take.json.username).toBe("eve.fit_99");
+    });
+
+    it("hides unjoined users, refuses invites from them, and treats bad names as misses", async () => {
+      const alice = await loginUser("alice", "Alice");
+      const nowSec = Math.floor(nowMs / 1000);
+      const idToken = await signIdToken({ sub: "ghost", iss: "https://accounts.google.com", aud: AUD, exp: nowSec + 3600 });
+      const ghost = (await req("POST", "/v1/auth/google", { body: { idToken }, ip: "ghost" })).json.session as string;
+
+      const fromGhost = await req("POST", "/v1/invites", { token: ghost, body: { username: "alice" } });
+      expect(fromGhost.status).toBe(409);
+      expect(fromGhost.json).toEqual({ error: "not_joined" });
+      const acceptGhost = await req("POST", `/v1/invites/${alice.user.id}/accept`, { token: ghost });
+      expect(acceptGhost.json).toEqual({ error: "not_joined" });
+
+      for (const username of ["admin", "x", "no such"]) {
+        const r = await req("POST", "/v1/invites", { token: alice.session, body: { username } });
+        expect(r.status).toBe(404);
+        expect(r.json).toEqual({ error: "username_not_found" });
+      }
+      const self = await req("POST", "/v1/invites", { token: alice.session, body: { username: "Alice" } });
+      expect(self.json).toEqual({ error: "self" });
+      const missing = await req("POST", "/v1/invites", { token: alice.session, body: {} });
+      expect(missing.json).toEqual({ error: "bad_request" });
     });
 
     it("rejects invalid snapshots (non-Sunday weekStart, out of range score, bad prs)", async () => {
@@ -464,7 +563,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Self invite -> 409 self
       const selfRes = await req("POST", "/v1/invites", {
         token: alice.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
       expect(selfRes.status).toBe(409);
       expect(selfRes.json).toEqual({ error: "self" });
@@ -472,14 +571,14 @@ describe("ForgeQuest Friends Worker", () => {
       // Mutual auto-accept: Alice invites Bob, then Bob invites Alice
       const inv1 = await req("POST", "/v1/invites", {
         token: alice.session,
-        body: { code: bob.user.code },
+        body: { username: bob.user.username },
       });
       expect(inv1.status).toBe(200);
       expect(inv1.json).toEqual({ status: "sent" });
 
       const inv2 = await req("POST", "/v1/invites", {
         token: bob.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
       expect(inv2.status).toBe(200);
       expect(inv2.json).toEqual({ status: "accepted" });
@@ -492,7 +591,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Already friends -> 409 already_friends
       const dupInv = await req("POST", "/v1/invites", {
         token: alice.session,
-        body: { code: bob.user.code },
+        body: { username: bob.user.username },
       });
       expect(dupInv.status).toBe(409);
       expect(dupInv.json).toEqual({ error: "already_friends" });
@@ -500,7 +599,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Accept flow: Carol invites Alice, Alice accepts
       await req("POST", "/v1/invites", {
         token: carol.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
       const accept = await req("POST", `/v1/invites/${carol.user.id}/accept`, {
         token: alice.session,
@@ -518,7 +617,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Decline flow
       await req("POST", "/v1/invites", {
         token: carol.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
       const dec = await req("POST", `/v1/invites/${carol.user.id}/decline`, {
         token: alice.session,
@@ -535,10 +634,10 @@ describe("ForgeQuest Friends Worker", () => {
 
       const blockedInvite = await req("POST", "/v1/invites", {
         token: bob.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
       expect(blockedInvite.status).toBe(404);
-      expect(blockedInvite.json).toEqual({ error: "code_not_found" });
+      expect(blockedInvite.json).toEqual({ error: "username_not_found" });
 
       // Unblock restores ability to invite
       const unblk = await req("DELETE", `/v1/blocks/${bob.user.id}`, {
@@ -547,7 +646,7 @@ describe("ForgeQuest Friends Worker", () => {
       expect(unblk.status).toBe(200);
       const afterUnblock = await req("POST", "/v1/invites", {
         token: bob.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
       expect(afterUnblock.status).toBe(200);
       expect(afterUnblock.json).toEqual({ status: "sent" });
@@ -560,16 +659,16 @@ describe("ForgeQuest Friends Worker", () => {
       for (let i = 0; i < 5; i++) {
         const res = await req("POST", "/v1/invites", {
           token: alice.session,
-          body: { code: "NOPE22" },
+          body: { username: "nope22" },
         });
         expect(res.status).toBe(404);
-        expect(res.json).toEqual({ error: "code_not_found" });
+        expect(res.json).toEqual({ error: "username_not_found" });
       }
 
       // 6th attempt even with a valid code is blocked by too_many_tries
       const locked = await req("POST", "/v1/invites", {
         token: alice.session,
-        body: { code: bob.user.code },
+        body: { username: bob.user.username },
       });
       expect(locked.status).toBe(429);
       expect(locked.json).toEqual({ error: "too_many_tries" });
@@ -578,7 +677,7 @@ describe("ForgeQuest Friends Worker", () => {
       nowMs += 15 * 60 * 1000;
       const ok = await req("POST", "/v1/invites", {
         token: alice.session,
-        body: { code: bob.user.code },
+        body: { username: bob.user.username },
       });
       expect(ok.status).toBe(200);
       expect(ok.json).toEqual({ status: "sent" });
@@ -592,7 +691,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Carol invites Alice before Alice hits cap
       await req("POST", "/v1/invites", {
         token: carol.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
 
       // Fill Alice to 50 friends
@@ -606,7 +705,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Alice cannot send invite -> limit_reached
       const sendCap = await req("POST", "/v1/invites", {
         token: alice.session,
-        body: { code: bob.user.code },
+        body: { username: bob.user.username },
       });
       expect(sendCap.status).toBe(409);
       expect(sendCap.json).toEqual({ error: "limit_reached" });
@@ -614,7 +713,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Bob cannot invite Alice -> limit_reached
       const recvCap = await req("POST", "/v1/invites", {
         token: bob.session,
-        body: { code: alice.user.code },
+        body: { username: alice.user.username },
       });
       expect(recvCap.status).toBe(409);
       expect(recvCap.json).toEqual({ error: "limit_reached" });
@@ -642,9 +741,9 @@ describe("ForgeQuest Friends Worker", () => {
       expect(nonFriend.json).toEqual({ error: "not_friends" });
 
       // Befriend Alice & Bob, Alice & Carol
-      await req("POST", "/v1/invites", { token: alice.session, body: { code: bob.user.code } });
+      await req("POST", "/v1/invites", { token: alice.session, body: { username: bob.user.username } });
       await req("POST", `/v1/invites/${alice.user.id}/accept`, { token: bob.session });
-      await req("POST", "/v1/invites", { token: alice.session, body: { code: carol.user.code } });
+      await req("POST", "/v1/invites", { token: alice.session, body: { username: carol.user.username } });
       await req("POST", `/v1/invites/${alice.user.id}/accept`, { token: carol.session });
 
       // Without FCM_SA -> stored only, pushed: false
@@ -661,7 +760,7 @@ describe("ForgeQuest Friends Worker", () => {
       const f1 = await req("GET", "/v1/friends", { token: bob.session });
       expect(f1.status).toBe(200);
       expect(f1.json.nudges).toEqual([
-        { fromId: alice.user.id, name: "Alice", day: riyadhEpochDay(nowMs) },
+        { fromId: alice.user.id, name: "Alice", username: "alice", day: riyadhEpochDay(nowMs) },
       ]);
       const f2 = await req("GET", "/v1/friends", { token: bob.session });
       expect(f2.json.nudges).toEqual([]);
@@ -762,14 +861,14 @@ describe("ForgeQuest Friends Worker", () => {
       });
 
       // Friend with Bob + nudges both ways
-      await req("POST", "/v1/invites", { token: alice.session, body: { code: bob.user.code } });
+      await req("POST", "/v1/invites", { token: alice.session, body: { username: bob.user.username } });
       await req("POST", `/v1/invites/${alice.user.id}/accept`, { token: bob.session });
       await req("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
       await req("POST", `/v1/nudges/${alice.user.id}`, { token: bob.session });
 
       // Outgoing request to Carol + incoming request from Dave + block
-      await req("POST", "/v1/invites", { token: alice.session, body: { code: carol.user.code } });
-      await req("POST", "/v1/invites", { token: dave.session, body: { code: alice.user.code } });
+      await req("POST", "/v1/invites", { token: alice.session, body: { username: carol.user.username } });
+      await req("POST", "/v1/invites", { token: dave.session, body: { username: alice.user.username } });
       await req("POST", `/v1/blocks/${dave.user.id}`, { token: alice.session });
 
       const del = await req("DELETE", "/v1/me", { token: alice.session });

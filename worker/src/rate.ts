@@ -23,12 +23,24 @@ export async function enforceRateLimit(
   }
 }
 
+/** IPv6 clients usually own a whole /64, so the auth limit keys IPv6 by that prefix (IPv4 by address). */
+export function rateIpKey(ip: string): string {
+  if (!ip.includes(":")) return ip;
+  const [head, tail = ""] = ip.toLowerCase().split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const groups = ip.includes("::")
+    ? [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right]
+    : left;
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":") + "::/64";
+}
+
 export async function enforceAuthRateLimit(
   store: Store,
   ip: string,
   nowSec: number,
 ): Promise<void> {
-  await enforceRateLimit(store, `auth:${ip}`, HOUR_SEC, 20, nowSec, "rate_limited");
+  await enforceRateLimit(store, `auth:${rateIpKey(ip)}`, HOUR_SEC, 20, nowSec, "rate_limited");
 }
 
 export async function enforceWriteRateLimit(

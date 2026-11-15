@@ -12,7 +12,7 @@ export interface FriendsViewData {
   friends: Array<{ user: UserRow; snapshot: SnapshotRow | null }>;
   incoming: UserRow[];
   outgoing: UserRow[];
-  nudges: Array<{ fromId: string; name: string; day: number }>;
+  nudges: Array<{ fromId: string; name: string; username: string | null; day: number }>;
 }
 
 export type AcceptResult =
@@ -40,15 +40,14 @@ export interface Store {
 
   updateProfile(
     userId: string,
-    input: { name: string; sharePhoto: boolean; sharePrs: boolean },
-  ): Promise<UserRow | null>;
-  rotateInviteCode(userId: string, generateCode: () => string): Promise<UserRow | null>;
+    input: { name: string; username: string; sharePhoto: boolean; sharePrs: boolean },
+  ): Promise<UserRow | null | "taken">;
   deleteUserCascade(userId: string): Promise<void>;
 
   upsertSnapshot(userId: string, snapshot: SnapshotInput, nowSec: number): Promise<void>;
 
   getFriendsView(userId: string): Promise<FriendsViewData>;
-  findUserByCode(code: string): Promise<UserRow | null>;
+  findJoinedUserByUsername(username: string): Promise<UserRow | null>;
   isBlockedEitherWay(a: string, b: string): Promise<boolean>;
   areFriends(a: string, b: string): Promise<boolean>;
   hasRequest(fromId: string, toId: string): Promise<boolean>;
@@ -73,7 +72,7 @@ export interface Store {
 }
 
 const USER_COLS =
-  "id, sub, code, name, google_photo, share_photo, share_prs, joined, created_at";
+  "id, sub, code, username, name, google_photo, share_photo, share_prs, joined, created_at";
 
 function isUniqueError(err: unknown): boolean {
   return err instanceof Error && err.message.toLowerCase().includes("unique");
@@ -142,6 +141,7 @@ export class D1Store implements Store {
           id,
           sub: input.sub,
           code,
+          username: null,
           name: "",
           google_photo: input.googlePhoto,
           share_photo: 1,
@@ -183,7 +183,7 @@ export class D1Store implements Store {
     const row = await this.db
       .prepare(
         `SELECT s.token_hash, s.user_id, s.expires_at,
-                u.id AS u_id, u.sub AS u_sub, u.code AS u_code, u.name AS u_name,
+                u.id AS u_id, u.sub AS u_sub, u.code AS u_code, u.username AS u_username, u.name AS u_name,
                 u.google_photo AS u_google_photo, u.share_photo AS u_share_photo,
                 u.share_prs AS u_share_prs, u.joined AS u_joined, u.created_at AS u_created_at
          FROM sessions s
@@ -198,6 +198,7 @@ export class D1Store implements Store {
         u_id: string;
         u_sub: string;
         u_code: string;
+        u_username: string | null;
         u_name: string;
         u_google_photo: string | null;
         u_share_photo: number;
@@ -216,6 +217,7 @@ export class D1Store implements Store {
         id: row.u_id,
         sub: row.u_sub,
         code: row.u_code,
+        username: row.u_username,
         name: row.u_name,
         google_photo: row.u_google_photo,
         share_photo: row.u_share_photo,
@@ -242,48 +244,34 @@ export class D1Store implements Store {
 
   async updateProfile(
     userId: string,
-    input: { name: string; sharePhoto: boolean; sharePrs: boolean },
-  ): Promise<UserRow | null> {
+    input: { name: string; username: string; sharePhoto: boolean; sharePrs: boolean },
+  ): Promise<UserRow | null | "taken"> {
     const sp = input.sharePhoto ? 1 : 0;
     const sprs = input.sharePrs ? 1 : 0;
     const updateStmt = this.db
       .prepare(
-        "UPDATE users SET name = ?1, share_photo = ?2, share_prs = ?3, joined = 1 WHERE id = ?4",
+        "UPDATE users SET name = ?1, username = ?2, share_photo = ?3, share_prs = ?4, joined = 1 WHERE id = ?5",
       )
-      .bind(input.name, sp, sprs, userId);
+      .bind(input.name, input.username, sp, sprs, userId);
 
-    if (!input.sharePrs) {
-      await this.db.batch([
-        updateStmt,
-        this.db.prepare("UPDATE snapshots SET prs = NULL WHERE user_id = ?1").bind(userId),
-      ]);
-    } else {
-      await updateStmt.run();
+    try {
+      if (!input.sharePrs) {
+        await this.db.batch([
+          updateStmt,
+          this.db.prepare("UPDATE snapshots SET prs = NULL WHERE user_id = ?1").bind(userId),
+        ]);
+      } else {
+        await updateStmt.run();
+      }
+    } catch (err) {
+      if (isUniqueError(err)) return "taken";
+      throw err;
     }
 
     return await this.db
       .prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?1`)
       .bind(userId)
       .first<UserRow>();
-  }
-
-  async rotateInviteCode(userId: string, generateCode: () => string): Promise<UserRow | null> {
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const code = generateCode();
-      try {
-        await this.db
-          .prepare("UPDATE users SET code = ?1 WHERE id = ?2")
-          .bind(code, userId)
-          .run();
-        return await this.db
-          .prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?1`)
-          .bind(userId)
-          .first<UserRow>();
-      } catch (err) {
-        if (!isUniqueError(err)) throw err;
-      }
-    }
-    throw new Error("failed to rotate invite code");
   }
 
   async deleteUserCascade(userId: string): Promise<void> {
@@ -346,7 +334,7 @@ export class D1Store implements Store {
     const results = await this.db.batch([
       this.db
         .prepare(
-          `SELECT u.id, u.sub, u.code, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at,
+          `SELECT u.id, u.sub, u.code, u.username, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at,
                   s.week_start AS s_week_start, s.done AS s_done, s.due AS s_due, s.score AS s_score,
                   s.badge AS s_badge, s.streak_weeks AS s_streak_weeks, s.protein_days AS s_protein_days,
                   s.prs AS s_prs, s.updated_at AS s_updated_at
@@ -358,7 +346,7 @@ export class D1Store implements Store {
         .bind(userId),
       this.db
         .prepare(
-          `SELECT u.id, u.sub, u.code, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at
+          `SELECT u.id, u.sub, u.code, u.username, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at
            FROM requests r
            JOIN users u ON u.id = r.from_id
            WHERE r.to_id = ?1
@@ -367,7 +355,7 @@ export class D1Store implements Store {
         .bind(userId),
       this.db
         .prepare(
-          `SELECT u.id, u.sub, u.code, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at
+          `SELECT u.id, u.sub, u.code, u.username, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at
            FROM requests r
            JOIN users u ON u.id = r.to_id
            WHERE r.from_id = ?1
@@ -376,7 +364,7 @@ export class D1Store implements Store {
         .bind(userId),
       this.db
         .prepare(
-          `SELECT n.from_id, u.name, n.day
+          `SELECT n.from_id, u.name, u.username, n.day
            FROM nudges n
            JOIN users u ON u.id = n.from_id
            WHERE n.to_id = ?1 AND n.seen = 0
@@ -403,6 +391,7 @@ export class D1Store implements Store {
         id: r.id,
         sub: r.sub,
         code: r.code,
+        username: r.username,
         name: r.name,
         google_photo: r.google_photo,
         share_photo: r.share_photo,
@@ -433,6 +422,7 @@ export class D1Store implements Store {
     const nudgeRows = (results[3].results ?? []) as Array<{
       from_id: string;
       name: string;
+      username: string | null;
       day: number;
     }>;
 
@@ -450,14 +440,14 @@ export class D1Store implements Store {
       friends,
       incoming,
       outgoing,
-      nudges: nudgeRows.map((n) => ({ fromId: n.from_id, name: n.name, day: n.day })),
+      nudges: nudgeRows.map((n) => ({ fromId: n.from_id, name: n.name, username: n.username, day: n.day })),
     };
   }
 
-  async findUserByCode(code: string): Promise<UserRow | null> {
+  async findJoinedUserByUsername(username: string): Promise<UserRow | null> {
     return await this.db
-      .prepare(`SELECT ${USER_COLS} FROM users WHERE code = ?1`)
-      .bind(code)
+      .prepare(`SELECT ${USER_COLS} FROM users WHERE username = ?1 AND joined = 1`)
+      .bind(username)
       .first<UserRow>();
   }
 

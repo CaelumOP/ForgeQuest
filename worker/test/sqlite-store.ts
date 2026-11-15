@@ -66,7 +66,9 @@ export class SqliteStore extends D1Store {
 
   constructor() {
     const raw = new DatabaseSync(":memory:");
-    raw.exec(readFileSync(new URL("../migrations/0001_init.sql", import.meta.url), "utf8"));
+    for (const m of ["0001_init.sql", "0002_username.sql"]) {
+      raw.exec(readFileSync(new URL(`../migrations/${m}`, import.meta.url), "utf8"));
+    }
     super(new ShimD1(raw) as unknown as D1Database);
     this.raw = raw;
   }

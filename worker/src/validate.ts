@@ -26,10 +26,32 @@ export async function readJsonObject(request: Request): Promise<Record<string, u
   return parsed;
 }
 
+const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
+  "admin", "administrator", "root", "system", "support", "help", "forgequest", "forge", "official",
+  "staff", "moderator", "mod", "team", "null", "undefined", "me", "you", "friends", "api", "www",
+]);
+
+/**
+ * Normalises a username: trim, drop one leading "@", check ASCII `[A-Za-z0-9_.]{3,20}` BEFORE lowercasing
+ * (toLowerCase maps some non-ASCII letters, e.g. the Kelvin sign, into a-z), then lowercase. Rejects leading/trailing
+ * dots, "..", reserved names and anything starting with "forgequest". Returns null when invalid.
+ */
+export function normalizeUsername(raw: string): string | null {
+  let v = raw.trim();
+  if (v.startsWith("@")) v = v.slice(1);
+  if (!/^[A-Za-z0-9_.]{3,20}$/.test(v)) return null;
+  v = v.toLowerCase();
+  if (v.startsWith(".") || v.endsWith(".") || v.includes("..")) return null;
+  if (RESERVED_USERNAMES.has(v) || v.startsWith("forgequest")) return null;
+  return v;
+}
+
 export function validateProfile(body: Record<string, unknown>): {
   name: string;
   sharePhoto: boolean;
   sharePrs: boolean;
+  /** Normalised username when the body carries one; undefined when omitted. */
+  username: string | undefined;
 } {
   if (
     typeof body.name !== "string" ||
@@ -47,10 +69,19 @@ export function validateProfile(body: Record<string, unknown>): {
   ) {
     throw new HttpError(400, "bad_profile");
   }
+  let username: string | undefined;
+  if (body.username !== undefined) {
+    const normalized = typeof body.username === "string" ? normalizeUsername(body.username) : null;
+    if (normalized === null) {
+      throw new HttpError(400, "bad_username");
+    }
+    username = normalized;
+  }
   return {
     name,
     sharePhoto: body.sharePhoto,
     sharePrs: body.sharePrs,
+    username,
   };
 }
 
