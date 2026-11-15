@@ -5,9 +5,9 @@
 **A calm, smart workout companion for Android.**
 
 Train on a plan that fits your equipment, log every set, watch your muscles recover,<br>
-track protein and calories, and ask an AI coach, all without an account.
+track protein and calories, and train alongside friends. No account needed; Friends is an optional Google sign-in.
 
-[![Version](https://img.shields.io/badge/version-2.8.1-5CD6C0?style=flat-square)](apk/version.json)
+[![Version](https://img.shields.io/badge/version-4.0.0-5CD6C0?style=flat-square)](apk/version.json)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#install)
 [![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](app)
 [![Languages](https://img.shields.io/badge/languages-English%20%C2%B7%20%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9-8AB4F8?style=flat-square)](#data-and-privacy)
@@ -108,6 +108,9 @@ Read the [privacy policy](PRIVACY.md) for exactly what leaves the phone and when
 3. Follow the short setup: your name, weight and goals, a starting plan, and an optional free AI key.
 
 ForgeQuest needs Android 8.0 or newer. From 2.6.0 on, the app tells you when an update is ready.
+
+Prefer automatic updates? Add `https://github.com/CaelumOP/ForgeQuest` in [Obtainium](https://github.com/ImranR98/Obtainium):
+it picks up each GitHub release (4.0.0 and later) on its own.
 
 To turn on the AI features, open [aistudio.google.com/apikey](https://aistudio.google.com/apikey), create a free
 key and paste it in **Profile → AI key**.
