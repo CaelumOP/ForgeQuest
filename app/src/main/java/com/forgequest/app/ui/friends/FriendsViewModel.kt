@@ -46,10 +46,8 @@ class FriendsViewModel(val app: AppContainer) : ViewModel() {
 
     fun signIn(activity: Activity) = runBusy { app.friends.signIn(activity) }
 
-    fun join(name: String, sharePhoto: Boolean, sharePrs: Boolean) =
-        runBusy { app.friends.join(name, sharePhoto, sharePrs) }
-
-    fun rotateCode() = runBusy { app.friends.rotateCode() }
+    fun join(name: String, username: String, sharePhoto: Boolean, sharePrs: Boolean) =
+        runBusy { app.friends.join(name, sharePhoto, sharePrs, username) }
 
     fun accept(id: String) = runBusy { app.friends.accept(id) }
 
@@ -59,7 +57,7 @@ class FriendsViewModel(val app: AppContainer) : ViewModel() {
 
     fun block(id: String) = runBusy { app.friends.block(id) }
 
-    suspend fun invite(code: String): String? = withBusy { app.friends.invite(code) }
+    suspend fun invite(username: String): String? = withBusy { app.friends.invite(username) }
 
     suspend fun nudge(id: String): String? = withBusy { app.friends.nudge(id) }
 

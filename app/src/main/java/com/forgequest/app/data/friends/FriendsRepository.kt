@@ -18,7 +18,6 @@ import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Locale
 import kotlin.math.roundToLong
 
 data class FriendsUiData(
@@ -87,14 +86,18 @@ class FriendsRepository(
         }
     }
 
-    /** Joins Friends or updates share settings; [api.putMe] runs immediately so disabling a toggle nulls the column on the server. */
-    suspend fun join(name: String, sharePhoto: Boolean, sharePrs: Boolean): Boolean {
+    /**
+     * Joins Friends or updates the profile; [api.putMe] runs immediately so disabling a toggle nulls the column on the server.
+     * [username] (raw input) is required on first join; null keeps the current one.
+     */
+    suspend fun join(name: String, sharePhoto: Boolean, sharePrs: Boolean, username: String? = null): Boolean {
         if (!signedIn || isDemo) return false
         val cleanName = name.trim().take(40)
         if (cleanName.isEmpty()) return false
+        val cleanUsername = username?.let { Usernames.normalize(it) ?: run { _error.value = "bad_username"; return false } }
         return try {
             val updated = syncMutex.withLock {
-                val updatedMe = api.putMe(cleanName, sharePhoto, sharePrs)
+                val updatedMe = api.putMe(cleanName, sharePhoto, sharePrs, cleanUsername)
                 saveMe(updatedMe)
                 // If share toggles changed while cached view is displayed, reflect it immediately too.
                 _state.value?.let { cur ->
@@ -180,9 +183,9 @@ class FriendsRepository(
         }
     }
 
-    suspend fun invite(code: String): String? {
-        val clean = code.trim().uppercase(Locale.ROOT)
-        if (clean.isEmpty()) return "invalid_code"
+    /** Sends a friend request by username. Returns null on success, else the error code (bad syntax never hits the server). */
+    suspend fun invite(username: String): String? {
+        val clean = Usernames.normalize(username) ?: return "bad_username".also { _error.value = it }
         if (isDemo) return null
         return try {
             api.invite(clean)
@@ -204,22 +207,12 @@ class FriendsRepository(
 
     suspend fun block(id: String) = runAction { api.block(id) }
 
-    suspend fun rotateCode() {
-        if (isDemo) return
-        try {
-            val updated = api.rotateCode()
-            saveMe(updated)
-            _state.value?.let { cur ->
-                val updatedView = cur.view.copy(me = updated)
-                cache.save(updatedView)
-                _state.value = cur.copy(view = updatedView)
-            }
-            _error.value = null
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: FriendsException) {
-            _error.value = e.code
-        }
+    /** Changes the username in Settings, keeping name and share toggles. */
+    suspend fun changeUsername(raw: String): Boolean {
+        val me = _state.value?.view?.me ?: _me.value ?: return false
+        val clean = Usernames.normalize(raw) ?: run { _error.value = "bad_username"; return false }
+        if (clean == me.username) return true
+        return join(me.name, me.sharePhoto, me.sharePrs, clean)
     }
 
     /**
@@ -461,7 +454,7 @@ class FriendsRepository(
         val weekStart = Dates.weekStart(today)
         val me = Me(
             id = "demo_me",
-            code = "FQ7K9M",
+            username = "tariq",
             name = "Tariq",
             photoUrl = null,
             sharePhoto = true,
@@ -482,6 +475,7 @@ class FriendsRepository(
             Friend(
                 id = "demo_1",
                 name = "Omar",
+                username = "omar",
                 snapshot = Snapshot(
                     weekStart = weekStart,
                     done = 4,
@@ -496,6 +490,7 @@ class FriendsRepository(
             Friend(
                 id = "demo_2",
                 name = "Lina",
+                username = "lina",
                 snapshot = Snapshot(
                     weekStart = weekStart,
                     done = 3,
@@ -510,6 +505,7 @@ class FriendsRepository(
             Friend(
                 id = "demo_3",
                 name = "Zaid",
+                username = "zaid",
                 snapshot = Snapshot(
                     weekStart = weekStart,
                     done = 2,
@@ -524,6 +520,7 @@ class FriendsRepository(
             Friend(
                 id = "demo_4",
                 name = "Sami",
+                username = "sami",
                 snapshot = Snapshot(
                     weekStart = weekStart,
                     done = 1,
@@ -538,6 +535,7 @@ class FriendsRepository(
             Friend(
                 id = "demo_5",
                 name = "Noor",
+                username = "noor",
                 snapshot = Snapshot(
                     weekStart = weekStart - 7L,
                     done = 3,
@@ -554,9 +552,9 @@ class FriendsRepository(
             today = today,
             weekStart = weekStart,
             friends = friends,
-            incoming = listOf(Person(id = "demo_in_1", name = "Karim")),
-            outgoing = listOf(Person(id = "demo_out_1", name = "Maya")),
-            nudges = listOf(Nudge(fromId = "demo_1", name = "Omar", day = today)),
+            incoming = listOf(Person(id = "demo_in_1", username = "karim", name = "Karim")),
+            outgoing = listOf(Person(id = "demo_out_1", username = "maya", name = "Maya")),
+            nudges = listOf(Nudge(fromId = "demo_1", name = "Omar", username = "omar", day = today)),
         )
         return FriendsUiData(
             view = view,

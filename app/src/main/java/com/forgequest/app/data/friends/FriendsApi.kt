@@ -38,16 +38,16 @@ class FriendsApi(
 
     suspend fun me(): Me = get("/v1/me", Me.serializer())
 
-    suspend fun putMe(name: String, sharePhoto: Boolean, sharePrs: Boolean): Me {
+    /** PUT /v1/me. [username] is required on first join; null keeps the current one. */
+    suspend fun putMe(name: String, sharePhoto: Boolean, sharePrs: Boolean, username: String? = null): Me {
         val body = buildJsonObject {
             put("name", name)
             put("sharePhoto", sharePhoto)
             put("sharePrs", sharePrs)
+            if (username != null) put("username", username)
         }
         return put("/v1/me", body, Me.serializer())
     }
-
-    suspend fun rotateCode(): Me = post("/v1/me/code", null, Me.serializer())
 
     suspend fun putSnapshot(snapshot: Snapshot) {
         val payload = JsonObject(json.encodeToJsonElement(Snapshot.serializer(), snapshot).jsonObject - "updatedAt")
@@ -56,8 +56,8 @@ class FriendsApi(
 
     suspend fun friends(): FriendsView = get("/v1/friends", FriendsView.serializer())
 
-    suspend fun invite(code: String): InviteResult =
-        post("/v1/invites", buildJsonObject { put("code", code) }, InviteResult.serializer())
+    suspend fun invite(username: String): InviteResult =
+        post("/v1/invites", buildJsonObject { put("username", username) }, InviteResult.serializer())
 
     suspend fun accept(fromId: String) {
         call("POST", "/v1/invites/${enc(fromId)}/accept", EMPTY_BODY, auth = true)

@@ -345,6 +345,10 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         app.friends.join(name, sharePhoto, sharePrs)
     }
 
+    fun changeFriendsUsername(raw: String) = viewModelScope.launch {
+        if (app.friends.changeUsername(raw)) message.value = app.str(R.string.settings_friends_username_saved)
+    }
+
     fun signOutFriends() = viewModelScope.launch {
         app.friends.signOut()
         message.value = app.str(R.string.settings_friends_signed_out)

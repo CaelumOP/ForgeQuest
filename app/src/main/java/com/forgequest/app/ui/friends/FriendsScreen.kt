@@ -35,7 +35,6 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
@@ -75,10 +74,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.forgequest.app.R
 import com.forgequest.app.data.friends.FriendsUiData
@@ -104,14 +103,8 @@ import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.NumberFont
 import com.forgequest.app.ui.theme.tabular
+import com.forgequest.app.data.friends.Usernames
 import kotlinx.coroutines.launch
-import java.util.Locale
-
-private val INVITE_ALPHABET = setOf(
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'M', 'N',
-    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    '2', '3', '4', '5', '6', '7', '8', '9',
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,10 +214,7 @@ fun FriendsScreen() {
                         InviteHeaderCard(
                             me = data.view.me,
                             busy = busy,
-                            onRotateCode = vm::rotateCode,
-                            onSendInvite = { code ->
-                                vm.invite(code)
-                            },
+                            onSendInvite = { username -> vm.invite(username) },
                         )
                     }
 
@@ -341,10 +331,11 @@ private fun SignedOutCard(busy: Boolean, onSignIn: () -> Unit) {
 private fun JoinFormCard(
     suggestedName: String,
     busy: Boolean,
-    onJoin: (String, Boolean, Boolean) -> Unit,
+    onJoin: (String, String, Boolean, Boolean) -> Unit,
 ) {
     val c = Fit.colors
     var name by rememberSaveable { mutableStateOf("") }
+    var username by rememberSaveable { mutableStateOf("") }
     var nameEdited by rememberSaveable { mutableStateOf(false) }
     var sharePhoto by rememberSaveable { mutableStateOf(true) }
     var sharePrs by rememberSaveable { mutableStateOf(true) }
@@ -355,7 +346,7 @@ private fun JoinFormCard(
         }
     }
 
-    val valid = name.trim().length in 1..40
+    val valid = name.trim().length in 1..40 && Usernames.normalize(username) != null
 
     FitCard {
         Text(
@@ -395,6 +386,8 @@ private fun JoinFormCard(
             ),
             modifier = Modifier.fillMaxWidth(),
         )
+        Spacer(Modifier.height(8.dp))
+        UsernameField(value = username, onValueChange = { username = it }, enabled = !busy)
         Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier
@@ -430,7 +423,7 @@ private fun JoinFormCard(
         }
         Spacer(Modifier.height(14.dp))
         Button(
-            onClick = { onJoin(name.trim(), sharePhoto, sharePrs) },
+            onClick = { onJoin(name.trim(), username, sharePhoto, sharePrs) },
             enabled = valid && !busy,
             shape = ForgeShape.Full,
             colors = ButtonDefaults.buttonColors(
@@ -454,24 +447,25 @@ private fun JoinFormCard(
 private fun InviteHeaderCard(
     me: Me,
     busy: Boolean,
-    onRotateCode: () -> Unit,
     onSendInvite: suspend (String) -> String?,
 ) {
     val c = Fit.colors
     val context = LocalContext.current
     val clipboard = rememberTextClipboard()
     val scope = rememberCoroutineScope()
-    val copiedMsg = stringResource(R.string.friends_code_copied)
-    val shareMsg = stringResource(R.string.friends_share_message, me.code)
+    val handle = "@${me.username.orEmpty()}"
+    val copiedMsg = stringResource(R.string.friends_username_copied)
+    val shareMsg = stringResource(R.string.friends_share_message, me.username.orEmpty(), Usernames.SHARE_URL)
     val sentMsg = stringResource(R.string.friends_invite_sent)
-    var codeInput by rememberSaveable { mutableStateOf("") }
+    var nameInput by rememberSaveable { mutableStateOf("") }
+    val canSend = Usernames.normalize(nameInput) != null && !busy
 
     fun submitInvite() {
-        if (codeInput.length != 6 || busy) return
+        if (!canSend) return
         scope.launch {
-            val err = onSendInvite(codeInput)
+            val err = onSendInvite(nameInput)
             if (err == null) {
-                codeInput = ""
+                nameInput = ""
                 context.toast(sentMsg)
             }
         }
@@ -485,13 +479,11 @@ private fun InviteHeaderCard(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = me.code,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontFamily = NumberFont,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-            ).tabular(),
+            text = handle,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             color = c.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         Spacer(Modifier.height(10.dp))
         FlowRow(
@@ -502,7 +494,7 @@ private fun InviteHeaderCard(
                 text = stringResource(R.string.friends_copy_code),
                 icon = Icons.Rounded.ContentCopy,
                 onClick = {
-                    clipboard.copy(me.code)
+                    clipboard.copy(handle)
                     context.toast(copiedMsg)
                 },
             )
@@ -511,20 +503,6 @@ private fun InviteHeaderCard(
                 icon = Icons.Rounded.Share,
                 onClick = { shareInviteText(context, shareMsg) },
             )
-            TextButton(
-                onClick = onRotateCode,
-                enabled = !busy,
-                modifier = Modifier.defaultMinSize(minHeight = 40.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Refresh,
-                    contentDescription = null,
-                    tint = c.teal,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(stringResource(R.string.friends_new_code), color = c.teal)
-            }
         }
 
         Spacer(Modifier.height(14.dp))
@@ -537,15 +515,15 @@ private fun InviteHeaderCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedTextField(
-                value = codeInput,
-                onValueChange = { raw ->
-                    codeInput = raw.uppercase(Locale.ROOT).filter { it in INVITE_ALPHABET }.take(6)
-                },
+                value = nameInput,
+                onValueChange = { raw -> nameInput = raw.filterNot { it.isWhitespace() }.take(Usernames.MAX_INPUT) },
                 label = { Text(stringResource(R.string.friends_add_label)) },
                 placeholder = { Text(stringResource(R.string.friends_add_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Characters,
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    keyboardType = KeyboardType.Ascii,
                     imeAction = ImeAction.Send,
                 ),
                 keyboardActions = KeyboardActions(onSend = { submitInvite() }),
@@ -563,12 +541,12 @@ private fun InviteHeaderCard(
             )
             TextButton(
                 onClick = { submitInvite() },
-                enabled = codeInput.length == 6 && !busy,
+                enabled = canSend,
                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
             ) {
                 Text(
                     text = stringResource(R.string.friends_add_button),
-                    color = if (codeInput.length == 6 && !busy) c.teal else c.textSecondary,
+                    color = if (canSend) c.teal else c.textSecondary,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -620,14 +598,16 @@ private fun IncomingRequestCard(
         ) {
             FriendAvatar(person.name, person.photoUrl, size = 40.dp)
             Spacer(Modifier.width(12.dp))
-            Text(
-                text = person.name,
-                style = MaterialTheme.typography.titleSmall,
-                color = c.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = person.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = c.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                person.username?.let { HandleText(it) }
+            }
         }
         Spacer(Modifier.height(10.dp))
         FlowRow(
@@ -826,13 +806,16 @@ private fun OutgoingRow(person: Person) {
         ) {
             FriendAvatar(person.name, person.photoUrl, size = 32.dp)
             Spacer(Modifier.width(10.dp))
-            Text(
-                text = person.name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column {
+                Text(
+                    text = person.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = c.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                person.username?.let { HandleText(it) }
+            }
         }
     }
 }
@@ -1059,6 +1042,54 @@ private fun FriendDetailSheet(
             },
         )
     }
+}
+
+/** "@name" under a display name; forced LTR so the @ stays in front in Arabic. */
+@Composable
+private fun HandleText(username: String) {
+    Text(
+        text = "\u2066@$username\u2069",
+        style = MaterialTheme.typography.bodySmall,
+        color = Fit.colors.textSecondary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+/** Username input with live format check (same rules as the Worker); shared by Join and Settings. */
+@Composable
+fun UsernameField(value: String, onValueChange: (String) -> Unit, enabled: Boolean, modifier: Modifier = Modifier) {
+    val c = Fit.colors
+    val invalid = value.isNotBlank() && Usernames.normalize(value) == null
+    OutlinedTextField(
+        value = value,
+        onValueChange = { raw -> onValueChange(raw.filterNot { it.isWhitespace() }.take(Usernames.MAX_INPUT)) },
+        label = { Text(stringResource(R.string.friends_username_label)) },
+        placeholder = { Text("@") },
+        supportingText = {
+            Text(stringResource(if (invalid) R.string.friends_username_rules else R.string.friends_username_hint))
+        },
+        isError = invalid,
+        enabled = enabled,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.None,
+            autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Ascii,
+            imeAction = ImeAction.Done,
+        ),
+        shape = ForgeShape.Md,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = c.teal,
+            unfocusedBorderColor = c.divider,
+            focusedTextColor = c.textPrimary,
+            unfocusedTextColor = c.textPrimary,
+            cursorColor = c.teal,
+            focusedLabelColor = c.teal,
+            unfocusedLabelColor = c.textSecondary,
+        ),
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 private fun shareInviteText(context: Context, text: String) {

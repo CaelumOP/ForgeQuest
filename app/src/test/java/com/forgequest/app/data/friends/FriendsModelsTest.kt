@@ -17,7 +17,7 @@ class FriendsModelsTest {
             {
               "me": {
                 "id": "u1",
-                "code": "ABC234",
+                "username": "tariq_99",
                 "name": "Tariq",
                 "photoUrl": "https://example.com/u1.jpg",
                 "sharePhoto": true,
@@ -66,7 +66,7 @@ class FriendsModelsTest {
 
         val view = json.decodeFromString(FriendsView.serializer(), payload)
         assertEquals("u1", view.me.id)
-        assertEquals("ABC234", view.me.code)
+        assertEquals("tariq_99", view.me.username)
         assertTrue(view.me.joined)
         assertEquals(20500L, view.today)
         assertEquals(20497L, view.weekStart)
@@ -90,9 +90,9 @@ class FriendsModelsTest {
         assertEquals("Zaid", zaid.name)
         assertNull(zaid.snapshot)
 
-        assertEquals(listOf(Person("u4", "Noor", null)), view.incoming)
-        assertEquals(listOf(Person("u5", "Sami", "https://example.com/u5.jpg")), view.outgoing)
-        assertEquals(listOf(Nudge("u2", "Omar", 20500L)), view.nudges)
+        assertEquals(listOf(Person("u4", name = "Noor", photoUrl = null)), view.incoming)
+        assertEquals(listOf(Person("u5", name = "Sami", photoUrl = "https://example.com/u5.jpg")), view.outgoing)
+        assertEquals(listOf(Nudge("u2", "Omar", day = 20500L)), view.nudges)
     }
 
     @Test
@@ -102,7 +102,7 @@ class FriendsModelsTest {
               "session": "tok_abc123",
               "user": {
                 "id": "u1",
-                "code": "XYZ789",
+                "username": null,
                 "name": "",
                 "photoUrl": null,
                 "sharePhoto": true,
@@ -115,7 +115,7 @@ class FriendsModelsTest {
         val auth = json.decodeFromString(AuthResponse.serializer(), payload)
         assertEquals("tok_abc123", auth.session)
         assertEquals("u1", auth.user.id)
-        assertEquals("XYZ789", auth.user.code)
+        assertEquals(null, auth.user.username)
         assertNull(auth.user.photoUrl)
         assertTrue(auth.user.sharePhoto)
         assertFalse(auth.user.sharePrs)

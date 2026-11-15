@@ -15,7 +15,7 @@ class FriendsLeaderboardTest {
     private val weekStart = 20_000L
     private val me = Me(
         id = "me",
-        code = "FQ2345",
+        username = "tariq",
         name = "Tariq",
         photoUrl = null,
         sharePhoto = true,
@@ -46,9 +46,9 @@ class FriendsLeaderboardTest {
             today = weekStart + 3,
             weekStart = weekStart,
             friends = listOf(
-                Friend("f_stale", "Noor", snapshot = snap(week = weekStart - 7, score = 95, badge = ForgeScore.SLACKING, prs = listOf(Pr("Squat", 100.0, 5)))),
-                Friend("f_missing", "Karim", snapshot = null),
-                Friend("f_current", "Omar", snapshot = snap(week = weekStart, score = 70, badge = ForgeScore.SLACKING)),
+                Friend("f_stale", name = "Noor", snapshot = snap(week = weekStart - 7, score = 95, badge = ForgeScore.SLACKING, prs = listOf(Pr("Squat", 100.0, 5)))),
+                Friend("f_missing", name = "Karim", snapshot = null),
+                Friend("f_current", name = "Omar", snapshot = snap(week = weekStart, score = 70, badge = ForgeScore.SLACKING)),
             ),
         )
 
@@ -79,9 +79,9 @@ class FriendsLeaderboardTest {
             today = weekStart + 2,
             weekStart = weekStart,
             friends = listOf(
-                Friend("f1", "Zaid", snapshot = snap(score = 85, badge = ForgeScore.ON_TRACK)),
-                Friend("f2", "lina", snapshot = snap(score = 85, badge = ForgeScore.REST)),
-                Friend("f3", "Adam", snapshot = snap(score = 100, badge = ForgeScore.TRAINED)),
+                Friend("f1", name = "Zaid", snapshot = snap(score = 85, badge = ForgeScore.ON_TRACK)),
+                Friend("f2", name = "lina", snapshot = snap(score = 85, badge = ForgeScore.REST)),
+                Friend("f3", name = "Adam", snapshot = snap(score = 100, badge = ForgeScore.TRAINED)),
             ),
         )
 
@@ -98,8 +98,8 @@ class FriendsLeaderboardTest {
             today = weekStart + 1,
             weekStart = weekStart,
             friends = listOf(
-                Friend("me", "Tariq", snapshot = snap(score = 100, badge = ForgeScore.TRAINED)),
-                Friend("f1", "Omar", snapshot = snap(score = 60, badge = ForgeScore.ON_TRACK)),
+                Friend("me", name = "Tariq", snapshot = snap(score = 100, badge = ForgeScore.TRAINED)),
+                Friend("f1", name = "Omar", snapshot = snap(score = 60, badge = ForgeScore.ON_TRACK)),
             ),
         )
 

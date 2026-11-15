@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Me(
     val id: String,
-    val code: String,
+    /** Unique lowercase handle (contract v2); null until the user has joined. */
+    val username: String? = null,
     val name: String,
     val photoUrl: String? = null,
     val sharePhoto: Boolean,
@@ -18,6 +19,7 @@ data class Me(
 @Serializable
 data class Person(
     val id: String,
+    val username: String? = null,
     val name: String,
     val photoUrl: String? = null,
 )
@@ -48,6 +50,7 @@ data class Snapshot(
 @Serializable
 data class Friend(
     val id: String,
+    val username: String? = null,
     val name: String,
     val photoUrl: String? = null,
     val snapshot: Snapshot? = null,
@@ -58,6 +61,7 @@ data class Friend(
 data class Nudge(
     val fromId: String,
     val name: String,
+    val username: String? = null,
     val day: Long,
 )
 

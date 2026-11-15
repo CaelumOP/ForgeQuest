@@ -425,6 +425,21 @@ internal fun FriendsSettingsGroup(
                 )
             } else {
                 if (joined && me != null) {
+                    var usernameInput by rememberSaveable(me.username) { mutableStateOf(me.username.orEmpty()) }
+                    val normalized = com.forgequest.app.data.friends.Usernames.normalize(usernameInput)
+                    com.forgequest.app.ui.friends.UsernameField(
+                        value = usernameInput,
+                        onValueChange = { usernameInput = it },
+                        enabled = true,
+                    )
+                    androidx.compose.material3.TextButton(
+                        onClick = { vm.changeFriendsUsername(usernameInput) },
+                        enabled = normalized != null && normalized != me.username,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.settings_friends_username_save))
+                    }
+                    androidx.compose.material3.HorizontalDivider(color = c.divider)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
