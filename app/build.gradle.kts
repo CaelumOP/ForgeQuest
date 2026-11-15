@@ -29,6 +29,8 @@ android {
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"
         buildConfigField("String", "GEMINI_BASE", "\"$geminiBase\"")
         manifestPlaceholders["cleartext"] = geminiBase.startsWith("http://").toString()
+        val friendsBase = (project.findProperty("friendsBase") as String?) ?: "https://forgequest-friends.forgequest-worker.workers.dev"
+        buildConfigField("String", "FRIENDS_BASE", "\"$friendsBase\"")
     }
 
     signingConfigs {
