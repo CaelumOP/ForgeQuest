@@ -58,6 +58,8 @@ data class WeeklyStreak(
     val targetThisWeek: Int,
     /** Sunday..Saturday */
     val days: List<DayState>,
+    /** Last week's final result for the shared friend streak ("hit", "free", "miss"); null before the first week. */
+    val lastWeekState: String? = null,
 ) {
     val weekProgress: Float get() = if (targetThisWeek <= 0) (if (doneThisWeek > 0) 1f else 0f) else min(1f, doneThisWeek.toFloat() / targetThisWeek)
 
@@ -147,7 +149,14 @@ object StreakCalculator {
                 else -> DayState.REST
             }
         }
-        return WeeklyStreak(streak, max(best, streak), doneThisWeek, targetThisWeek, days)
+        val lastWeek = thisWeek - 7
+        val lastWeekState = when {
+            lastWeek < firstWeek -> null
+            hit(lastWeek) -> "hit"
+            free(lastWeek) -> "free"
+            else -> "miss"
+        }
+        return WeeklyStreak(streak, max(best, streak), doneThisWeek, targetThisWeek, days, lastWeekState)
     }
 
     fun fullTarget(plannedTrainingDays: Set<Int>, targetOverride: Int): Int =

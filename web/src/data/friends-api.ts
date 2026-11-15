@@ -138,6 +138,8 @@ export const friendsApi = {
         streakWeeks: s.streakWeeks,
         proteinDays: s.proteinDays,
         prs: s.prs,
+        ...(s.weekState ? { weekState: s.weekState } : {}),
+        ...(s.lastWeekState ? { lastWeekState: s.lastWeekState } : {}),
       },
     }),
 

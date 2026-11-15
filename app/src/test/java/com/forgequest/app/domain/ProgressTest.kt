@@ -388,4 +388,14 @@ class ExcusedDaysTest {
         assertFalse(Nudges.welcomeBack(fri, setOf(mon1), mapOf(mon1 + 1 to DayTag.TRAVEL, mon1 + 2 to DayTag.TRAVEL), hemoDays, mon1))
         assertFalse(Nudges.welcomeBack(mon1 + 1, setOf(mon1), emptyMap(), hemoDays, mon1))
     }
+
+    @Test
+    fun lastWeekStateReportsHitFreeMissOrNullForTheSharedStreak() {
+        // Target 3, no plan, joined Monday of week 1 (same cases as web progress.test.ts).
+        assertEquals(null, StreakCalculator.compute(setOf(mon1), emptySet(), 3, mon1, mon1 + 2).lastWeekState)
+        assertEquals("hit", StreakCalculator.compute(setOf(mon1, mon1 + 1, mon1 + 2), emptySet(), 3, mon1, mon1 + 9).lastWeekState)
+        assertEquals("miss", StreakCalculator.compute(setOf(mon1), emptySet(), 3, mon1, mon1 + 9).lastWeekState)
+        val excused = (0..5).map { mon1 + it }.toSet()
+        assertEquals("free", StreakCalculator.compute(emptySet(), setOf(1, 2, 3, 4, 5, 6), 0, mon1 - 1, mon1 + 9, excused).lastWeekState)
+    }
 }

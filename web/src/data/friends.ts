@@ -164,15 +164,16 @@ function buildDemoView(now = Date.now()): CachedView {
     friends: [
       {
         ...person('omar', 'Omar'),
-        snapshot: snap(100, 'trained', 9, 6, [
+        snapshot: { ...snap(100, 'trained', 9, 6, [
           { exercise: 'Barbell Bench Press', kg: 100, reps: 5 },
           { exercise: 'Deadlift', kg: 160, reps: 3 },
-        ]),
+        ]), weekState: 'hit' },
+        sharedStreak: 6,
       },
-      { ...person('lina', 'Lina'), snapshot: snap(92, 'on_track', 4, 5, [{ exercise: 'Romanian Deadlift', kg: 85, reps: 8 }]) },
-      { ...person('zaid', 'Zaid'), snapshot: snap(75, 'rest', 3, 4, [{ exercise: 'Overhead Press', kg: 55, reps: 6 }]) },
-      { ...person('sami', 'Sami'), snapshot: snap(45, 'slacking', 1, 2, null) },
-      { ...person('noor', 'Noor'), snapshot: snap(100, 'trained', 5, 3, null, ws - 7) },
+      { ...person('lina', 'Lina'), snapshot: { ...snap(92, 'on_track', 4, 5, [{ exercise: 'Romanian Deadlift', kg: 85, reps: 8 }]), weekState: 'open' }, sharedStreak: 4 },
+      { ...person('zaid', 'Zaid'), snapshot: { ...snap(75, 'rest', 3, 4, [{ exercise: 'Overhead Press', kg: 55, reps: 6 }]), weekState: 'open' }, sharedStreak: 2 },
+      { ...person('sami', 'Sami'), snapshot: { ...snap(45, 'slacking', 1, 2, null), weekState: 'open' }, sharedStreak: 0 },
+      { ...person('noor', 'Noor'), snapshot: { ...snap(100, 'trained', 5, 3, null, ws - 7), weekState: null }, sharedStreak: 0 },
     ],
     incoming: [person('karim', 'Karim')],
     outgoing: [person('maya', 'Maya')],
@@ -383,6 +384,8 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
     streakWeeks: Math.min(520, Math.max(0, progress.streak.weeks)),
     proteinDays: week.proteinDays,
     prs,
+    weekState: progress.streak.hitThisWeek ? 'hit' : progress.streak.freeWeek ? 'free' : 'open',
+    ...(progress.streak.lastWeekState ? { lastWeekState: progress.streak.lastWeekState } : {}),
   }
 }
 
@@ -396,6 +399,8 @@ async function hashSnapshot(s: Snapshot): Promise<string> {
     streakWeeks: s.streakWeeks,
     proteinDays: s.proteinDays,
     prs: s.prs,
+    weekState: s.weekState ?? null,
+    lastWeekState: s.lastWeekState ?? null,
   })
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical))

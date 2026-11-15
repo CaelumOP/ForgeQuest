@@ -446,6 +446,12 @@ class FriendsRepository(
             streakWeeks = snap.streak.weeks,
             proteinDays = week.proteinDays,
             prs = prs,
+            weekState = when {
+                snap.streak.hitThisWeek -> "hit"
+                snap.streak.freeWeek -> "free"
+                else -> "open"
+            },
+            lastWeekState = snap.streak.lastWeekState,
         )
     }
 
@@ -485,7 +491,9 @@ class FriendsRepository(
                     streakWeeks = 9,
                     proteinDays = 6,
                     prs = listOf(Pr("Barbell Back Squat", 120.0, 5), Pr("Overhead Press", 60.0, 6)),
+                    weekState = "hit",
                 ),
+                sharedStreak = 6,
             ),
             Friend(
                 id = "demo_2",
@@ -500,7 +508,9 @@ class FriendsRepository(
                     streakWeeks = 4,
                     proteinDays = 5,
                     prs = listOf(Pr("Romanian Deadlift", 85.0, 8)),
+                    weekState = "open",
                 ),
+                sharedStreak = 4,
             ),
             Friend(
                 id = "demo_3",
@@ -515,7 +525,9 @@ class FriendsRepository(
                     streakWeeks = 3,
                     proteinDays = 4,
                     prs = emptyList(),
+                    weekState = "open",
                 ),
+                sharedStreak = 2,
             ),
             Friend(
                 id = "demo_4",
@@ -530,7 +542,9 @@ class FriendsRepository(
                     streakWeeks = 1,
                     proteinDays = 2,
                     prs = null,
+                    weekState = "open",
                 ),
+                sharedStreak = 0,
             ),
             Friend(
                 id = "demo_5",

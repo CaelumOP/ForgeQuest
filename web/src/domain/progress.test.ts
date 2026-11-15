@@ -119,6 +119,20 @@ describe('StreakCalculatorTest', () => {
     expect(threeDone.hitThisWeek).toBe(true)
     expect(threeDone.weeks).toBe(1)
   })
+
+  it('lastWeekStateReportsHitFreeMissOrNullForTheSharedStreak', () => {
+    // Target 3, no plan. Joined Monday of week 1 (mon1).
+    const firstWeek = computeStreak(days(mon1), new Set(), 3, mon1, mon1 + 2)
+    expect(firstWeek.lastWeekState).toBeNull()
+    const hitLast = computeStreak(days(mon1, mon1 + 1, mon1 + 2), new Set(), 3, mon1, mon1 + 9)
+    expect(hitLast.lastWeekState).toBe('hit')
+    const missLast = computeStreak(days(mon1), new Set(), 3, mon1, mon1 + 9)
+    expect(missLast.lastWeekState).toBe('miss')
+    // Every planned day of last week excused (sick) and no workout -> free.
+    const excused = new Set([mon1, mon1 + 1, mon1 + 2, mon1 + 3, mon1 + 4, mon1 + 5])
+    const freeLast = computeStreak(new Set(), new Set([1, 2, 3, 4, 5, 6]), 0, mon1 - 1, mon1 + 9, excused)
+    expect(freeLast.lastWeekState).toBe('free')
+  })
 })
 
 describe('XpTest', () => {

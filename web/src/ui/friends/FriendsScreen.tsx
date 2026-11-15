@@ -30,6 +30,7 @@ import {
   ShareOutIcon,
 } from '../icons'
 import { Button, Card, Dialog, IconButton, SectionHeader, Sheet, TextField, toast } from '../kit'
+import { Avatar } from './Avatar'
 import './friends.css'
 
 const BADGE_KEYS: Record<FriendBadge, string> = {
@@ -40,24 +41,6 @@ const BADGE_KEYS: Record<FriendBadge, string> = {
   not_synced: 'friends_badge_not_synced',
 }
 
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[1][0]).toUpperCase()
-}
-
-function Avatar({ person }: { person: Person }) {
-  const [imgFailed, setImgFailed] = useState(false)
-  useEffect(() => { setImgFailed(false) }, [person.photoUrl])
-  return (
-    <span class="fr-avatar" aria-hidden="true">
-      {person.photoUrl && !imgFailed
-        ? <img src={person.photoUrl} alt="" referrerPolicy="no-referrer" onError={() => setImgFailed(true)} />
-        : initialsFor(person.name)}
-    </span>
-  )
-}
 
 function PersonName({ person, grow }: { person: Person; grow?: boolean }) {
   return (

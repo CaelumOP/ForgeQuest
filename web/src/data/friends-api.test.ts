@@ -70,6 +70,16 @@ describe('friendsApi (contract v2 routes)', () => {
     })
   })
 
+  it('PUT /v1/snapshot sends v3 week states only when present', async () => {
+    const mockFetch = vi.fn().mockImplementation(empty(200))
+    vi.stubGlobal('fetch', mockFetch)
+    const base = { weekStart: 20772, done: 3, due: 3, score: 100, badge: 'trained' as const, streakWeeks: 4, proteinDays: 0, prs: null }
+    await friendsApi.putSnapshot('s', { ...base, weekState: 'hit', lastWeekState: 'miss' })
+    await friendsApi.putSnapshot('s', { ...base, weekState: 'open' })
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ ...base, weekState: 'hit', lastWeekState: 'miss' })
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({ ...base, weekState: 'open' })
+  })
+
   it('POST /v1/invites {username}; error field becomes FriendsError.code', async () => {
     const mockFetch = vi.fn().mockImplementation(json({ error: 'username_not_found' }, 404))
     vi.stubGlobal('fetch', mockFetch)

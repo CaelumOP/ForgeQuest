@@ -873,6 +873,8 @@
   "home_status_rest": "يوم راحة",
   "home_status_train": "{1} اليوم",
   "home_weight_unit": "الوزن ({1})",
+  "home_with_friends": "مع الأصدقاء",
+  "home_with_friends_empty": "أنجزا هدف الأسبوع معًا لتبدأ سلسلتكما",
   "insight_anniversary_1": {
     "zero": "منذ أول تمرين لك: {1} أشهر.",
     "one": "منذ أول تمرين لك: شهر واحد.",

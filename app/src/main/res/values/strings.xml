@@ -1953,4 +1953,6 @@
     <string name="settings_friends_delete_confirm">Delete</string>
     <string name="settings_friends_signed_out">Signed out of Friends</string>
     <string name="settings_friends_deleted">Friends account deleted</string>
+    <string name="home_with_friends">With friends</string>
+    <string name="home_with_friends_empty">Hit your week together to start a streak</string>
 </resources>

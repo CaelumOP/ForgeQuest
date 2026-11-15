@@ -762,7 +762,7 @@ private fun BadgeChip(badge: FriendBadge) {
 }
 
 @Composable
-private fun FriendAvatar(name: String, photoUrl: String?, size: Dp) {
+internal fun FriendAvatar(name: String, photoUrl: String?, size: Dp) {
     val c = Fit.colors
     val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     Box(

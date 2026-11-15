@@ -73,3 +73,13 @@ button.home-day { cursor: pointer; }
   .home-stats { flex-wrap: wrap; row-gap: 8px; }
   .home-stats > * { flex: 1 0 50%; }
 }
+
+/* Shared friend streaks: one line inside the streak card. */
+.home-friends { display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 44px; margin-block-start: 12px; padding: 0; background: none; border: 0; border-block-start: 1px solid var(--divider); padding-block-start: 8px; font: inherit; color: var(--text-2); cursor: pointer; text-align: start; border-radius: 0; }
+.home-friends-label { font-size: 12px; flex: none; }
+.home-friends-chips { display: flex; gap: 10px; min-inline-size: 0; overflow: hidden; flex: 1; justify-content: flex-end; }
+/* Phones: the top 3 fit on one line; the Friends tab has everyone. */
+@media (max-width: 440px) { .home-friends-chip:nth-child(n+4) { display: none; } }
+.home-friends-chip { display: inline-flex; align-items: center; gap: 2px; flex: none; color: var(--gold); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.home-friends-chip .fr-avatar { margin-inline-end: 2px; }
+.home-friends-empty { font-size: 12px; flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; }

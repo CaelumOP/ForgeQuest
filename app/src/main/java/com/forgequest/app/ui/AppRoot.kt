@@ -127,12 +127,12 @@ object Routes {
 
 private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector)
 
-/** The bar is always Home, Food, Workouts, Friends, Progress (Workouts in the centre). Coach and Profile are pushed screens. */
+/** The bar is always Home, Friends, Workouts, Food, Progress (Workouts in the centre). Coach and Profile are pushed screens. */
 private fun tabsFor() = listOf(
     Tab(Routes.HOME, R.string.tab_home, Icons.Outlined.Home, Icons.Rounded.Home),
-    Tab(Routes.FOOD, R.string.tab_food, Icons.Outlined.Restaurant, Icons.Rounded.Restaurant),
-    Tab(Routes.WORKOUTS, R.string.tab_workouts, Icons.Outlined.FitnessCenter, Icons.Rounded.FitnessCenter),
     Tab(Routes.FRIENDS, R.string.tab_friends, Icons.Outlined.Group, Icons.Rounded.Group),
+    Tab(Routes.WORKOUTS, R.string.tab_workouts, Icons.Outlined.FitnessCenter, Icons.Rounded.FitnessCenter),
+    Tab(Routes.FOOD, R.string.tab_food, Icons.Outlined.Restaurant, Icons.Rounded.Restaurant),
     Tab(Routes.PROGRESS, R.string.tab_progress, Icons.AutoMirrored.Outlined.ShowChart, Icons.AutoMirrored.Rounded.ShowChart),
 )
 

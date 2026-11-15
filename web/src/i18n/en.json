@@ -786,6 +786,8 @@
   "home_status_rest": "Rest day",
   "home_status_train": "{1} today",
   "home_weight_unit": "Weight ({1})",
+  "home_with_friends": "With friends",
+  "home_with_friends_empty": "Hit your week together to start a streak",
   "insight_anniversary_1": {
     "one": "It has been {1} month since your first workout.",
     "other": "It has been {1} months since your first workout."

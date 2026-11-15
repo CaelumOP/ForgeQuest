@@ -16,6 +16,8 @@ import {
 import { canExcuse, greetingKey } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { RaadEgg } from './RaadEgg'
+import { useFriends } from '../../data/friends'
+import { Avatar } from '../friends/Avatar'
 import { CalorieCard } from './CalorieCard'
 import { FoodTargetsCard, TargetNudge } from './SetupCards'
 import './home.css'
@@ -262,8 +264,39 @@ function Streak({ s, onDay }: { s: ProgressSnapshot; onDay: (d: number) => void 
             : <span key={i} class="home-day">{inner}</span>
         })}
       </div>
+      <FriendStreaks />
       <TargetNudge s={s} today={today} />
     </Card>
+  )
+}
+
+/** One line inside the streak card: shared streaks with up to 5 friends. Hidden until joined with at least one friend. */
+function FriendStreaks() {
+  const f = useFriends()
+  const friends = f.status === 'joined' ? f.view?.friends ?? [] : []
+  if (friends.length === 0) return null
+  const top = [...friends]
+    .sort((a, b) => (b.sharedStreak ?? 0) - (a.sharedStreak ?? 0) || a.name.localeCompare(b.name))
+    .slice(0, 5)
+  const any = top.some((x) => (x.sharedStreak ?? 0) > 0)
+  const label = any
+    ? `${t('home_with_friends')}: ${top.map((x) => `${x.name} ${plural('streak_weeks', x.sharedStreak ?? 0)}`).join(', ')}`
+    : t('home_with_friends_empty')
+  return (
+    <button type="button" class="home-friends" aria-label={label} onClick={() => go('#/friends')}>
+      <span class="home-friends-label">{t('home_with_friends')}</span>
+      {any
+        ? <span class="home-friends-chips" aria-hidden="true">
+            {top.map((x) => (
+              <span key={x.id} class="home-friends-chip">
+                <Avatar person={x} small />
+                <FireIcon size={14} />
+                <bdi>{nf().format(x.sharedStreak ?? 0)}</bdi>
+              </span>
+            ))}
+          </span>
+        : <span class="home-friends-empty" aria-hidden="true">{t('home_with_friends_empty')}</span>}
+    </button>
   )
 }
 

@@ -43,6 +43,10 @@ data class Snapshot(
     val streakWeeks: Int,
     val proteinDays: Int,
     val prs: List<Pr>? = null,
+    /** v3: this week's state ("hit", "free", "open"). On reads: the friend's current-week state, or null. */
+    val weekState: String? = null,
+    /** v3, upload only: last week's final state ("hit", "free", "miss"); null for a brand-new user. */
+    val lastWeekState: String? = null,
     val updatedAt: Long = 0,
 )
 
@@ -54,6 +58,8 @@ data class Friend(
     val name: String,
     val photoUrl: String? = null,
     val snapshot: Snapshot? = null,
+    /** v3: consecutive weeks you and this friend both hit, computed by the server. */
+    val sharedStreak: Int = 0,
 )
 
 /** Unseen nudge delivered via GET /v1/friends. */

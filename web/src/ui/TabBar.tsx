@@ -3,9 +3,9 @@ import { TabIcon, type TabIconName } from './icons'
 
 export const tabs: { route: string; label: string; icon: TabIconName }[] = [
   { route: '/', label: 'tab_home', icon: 'home' },
-  { route: '/food', label: 'tab_food', icon: 'restaurant' },
-  { route: '/workouts', label: 'tab_workouts', icon: 'fitness' },
   { route: '/friends', label: 'tab_friends', icon: 'group' },
+  { route: '/workouts', label: 'tab_workouts', icon: 'fitness' },
+  { route: '/food', label: 'tab_food', icon: 'restaurant' },
   { route: '/progress', label: 'tab_progress', icon: 'chart' },
 ]
 

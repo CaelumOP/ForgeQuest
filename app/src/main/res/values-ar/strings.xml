@@ -2264,4 +2264,6 @@
     <string name="settings_friends_delete_confirm">حذف</string>
     <string name="settings_friends_signed_out">تم تسجيل الخروج من الأصدقاء</string>
     <string name="settings_friends_deleted">تم حذف حساب الأصدقاء</string>
+    <string name="home_with_friends">مع الأصدقاء</string>
+    <string name="home_with_friends_empty">أنجزا هدف الأسبوع معًا لتبدأ سلسلتكما</string>
 </resources>

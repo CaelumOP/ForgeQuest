@@ -39,6 +39,8 @@ export type WeeklyStreak = {
   /** The week you joined, when no planned workouts were left in it. */
   freeWeek: boolean
   hitThisWeek: boolean
+  /** Last week's final result for the shared friend streak; null when last week is before the first week. */
+  lastWeekState: 'hit' | 'free' | 'miss' | null
 }
 
 export function fullTarget(plannedTrainingDays: ReadonlySet<number>, targetOverride: number): number {
@@ -132,6 +134,7 @@ export function computeStreak(
     weekProgress: targetThisWeek <= 0 ? (doneThisWeek > 0 ? 1 : 0) : Math.min(1, f(doneThisWeek / targetThisWeek)),
     freeWeek: targetThisWeek === 0 && doneThisWeek === 0,
     hitThisWeek: targetThisWeek === 0 ? doneThisWeek > 0 : doneThisWeek >= targetThisWeek,
+    lastWeekState: thisWeek - 7 < firstWeek ? null : hit(thisWeek - 7) ? 'hit' : free(thisWeek - 7) ? 'free' : 'miss',
   }
 }
 

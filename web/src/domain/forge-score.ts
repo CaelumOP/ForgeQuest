@@ -36,10 +36,15 @@ export interface Snapshot {
   streakWeeks: number
   proteinDays: number
   prs: Pr[] | null
+  /** v3: this week's state ("open" while in progress). On reads: the friend's current-week state or null. */
+  weekState?: 'hit' | 'free' | 'open' | null
+  /** v3, upload only: last week's final state; omitted for a brand-new user. */
+  lastWeekState?: 'hit' | 'free' | 'miss' | null
   updatedAt?: number
 }
 
-export type Friend = Person & { snapshot: Snapshot | null }
+/** sharedStreak (v3): consecutive weeks you and this friend both hit, computed by the server. */
+export type Friend = Person & { snapshot: Snapshot | null; sharedStreak?: number }
 
 export interface LeaderboardEntry {
   person: Person

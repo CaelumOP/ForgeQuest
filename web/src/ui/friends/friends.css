@@ -198,6 +198,8 @@ html[dir='rtl'] .fr-switch-on .fr-knob {
   flex: none;
 }
 
+.fr-avatar.sm { inline-size: 24px; block-size: 24px; font-size: 10px; }
+
 .fr-avatar img {
   inline-size: 100%;
   block-size: 100%;

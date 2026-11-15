@@ -252,7 +252,9 @@ fun HomeScreen(nav: NavHostController) {
     val hasCalorieCard = remember(s, health) { com.forgequest.app.ui.CalorieUi.card(s, health) } != null
     // Readiness only shows once a Fitbit is connected, so it counts as an extra too.
     val readinessShown = healthOn || (!justLog && s.settings.healthEnabled && health != HealthState.Unavailable && health != HealthState.Loading)
-    val extras = listOf(readinessShown, unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs).count { it }
+    val friends by vm.friends.collectAsState()
+    val friendsShown = !justLog && friends.isNotEmpty()
+    val extras = listOf(readinessShown, unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs, friendsShown).count { it }
 
     // One screen, no scrolling, at normal text on a common phone (about 412 x 919 dp: 780 dp between the status bar and
     // the tab bar). Height budget in dp: header 80, rings 210 + stats 54, streak + month 161, today's workout 154 (+57
@@ -294,6 +296,7 @@ fun HomeScreen(nav: NavHostController) {
                 StreakCard(
                     s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY && !readinessInCard,
                     nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge, footer = monthRow,
+                    friendsRow = if (friendsShown) { { FriendStreakRow(friends, onOpen = { nav.goToTab(Routes.FRIENDS) }) } } else null,
                 )
                 Spacer(Modifier.height(ForgeSpace.Sm))
             } else if (monthRow != null) {
@@ -602,6 +605,7 @@ private fun MonthRow(s: ProgressSnapshot, onOpen: () -> Unit) {
 private fun StreakCard(
     streak: WeeklyStreak, onDayClick: (Long) -> Unit, showHint: Boolean,
     nudge: Int? = null, keepTarget: Int = 0, onNudge: (Int?) -> Unit = {}, footer: (@Composable () -> Unit)? = null,
+    friendsRow: (@Composable () -> Unit)? = null,
 ) {
     val c = Fit.colors
     // One line (flame ring, weeks, this week's count), the optional hint, the week's days, then the footer row.
@@ -689,10 +693,47 @@ private fun StreakCard(
                 PillButton(stringResource(R.string.target_nudge_make, nudge), onClick = { onNudge(nudge) })
             }
         }
+        friendsRow?.let {
+            Spacer(Modifier.height(ForgeSpace.Xxs))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(c.divider))
+            it()
+        }
         footer?.let {
             Spacer(Modifier.height(ForgeSpace.Xs))
             Box(Modifier.fillMaxWidth().height(1.dp).background(c.divider))
             it()
+        }
+    }
+}
+
+/** One line: shared streaks with up to 5 friends (most weeks first); a tap opens Friends. */
+@Composable
+private fun FriendStreakRow(friends: List<com.forgequest.app.data.friends.Friend>, onOpen: () -> Unit) {
+    val c = Fit.colors
+    val top = remember(friends) { friends.sortedWith(compareByDescending<com.forgequest.app.data.friends.Friend> { it.sharedStreak }.thenBy { it.name }).take(5) }
+    val any = top.any { it.sharedStreak > 0 }
+    val label = stringResource(R.string.home_with_friends)
+    val empty = stringResource(R.string.home_with_friends_empty)
+    val res = androidx.compose.ui.platform.LocalContext.current.resources
+    val spoken = if (!any) "$label: $empty" else "$label: " + top.joinToString(", ") { "${it.name} " + res.getQuantityString(R.plurals.streak_weeks, it.sharedStreak, it.sharedStreak) }
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onOpen).semantics(mergeDescendants = true) { contentDescription = spoken },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary, maxLines = 1)
+        Spacer(Modifier.width(ForgeSpace.Xs))
+        if (any) {
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(ForgeSpace.Xs, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                top.forEach { f ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.forgequest.app.ui.friends.FriendAvatar(f.name, f.photoUrl, 24.dp)
+                        Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = c.gold, modifier = Modifier.size(14.dp))
+                        Text(f.sharedStreak.toString(), style = MaterialTheme.typography.labelMedium, color = c.gold, maxLines = 1)
+                    }
+                }
+            }
+        } else {
+            Text(empty, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.weight(1f))
         }
     }
 }
