@@ -27,6 +27,10 @@ export class MemStore implements Store {
   readonly sessions = new Map<string, SessionRow>();
   readonly snapshots = new Map<string, SnapshotRow>();
   readonly friends = new Map<string, Set<string>>();
+  /** "a->b" -> friends.created_at (seconds), both directions. */
+  readonly friendsSince = new Map<string, number>();
+  /** "user|weekStart" -> state */
+  readonly weekStates = new Map<string, { user_id: string; week_start: number; state: string }>();
   readonly requests = new Map<string, { from_id: string; to_id: string; created_at: number }>();
   readonly blocks = new Set<string>();
   readonly nudges = new Map<string, MemNudge>();
@@ -157,6 +161,9 @@ export class MemStore implements Store {
       if (s.user_id === userId) this.sessions.delete(k);
     }
     this.snapshots.delete(userId);
+    for (const [k, w] of this.weekStates) {
+      if (w.user_id === userId) this.weekStates.delete(k);
+    }
     this.friends.delete(userId);
     for (const set of this.friends.values()) {
       set.delete(userId);
@@ -192,6 +199,10 @@ export class MemStore implements Store {
       prs: s.prs === null ? null : JSON.stringify(s.prs),
       updated_at: nowSec,
     });
+    const put = (weekStart: number, state: string) =>
+      this.weekStates.set(`${userId}|${weekStart}`, { user_id: userId, week_start: weekStart, state });
+    if (s.weekState) put(s.weekStart, s.weekState);
+    if (s.lastWeekState) put(s.weekStart - 7, s.lastWeekState);
   }
 
   async getFriendsView(userId: string): Promise<FriendsViewData> {
@@ -204,6 +215,7 @@ export class MemStore implements Store {
       friends.push({
         user: { ...user },
         snapshot: snap ? { ...snap } : null,
+        friendsSince: this.friendsSince.get(`${userId}->${fid}`) ?? 0,
       });
     }
 
@@ -236,7 +248,11 @@ export class MemStore implements Store {
       n.seen = 1;
     }
 
-    return { friends, incoming, outgoing, nudges };
+    const ids = new Set([userId, ...friendIds]);
+    const weekStates = Array.from(this.weekStates.values())
+      .filter((w) => ids.has(w.user_id))
+      .map((w) => ({ ...w }));
+    return { friends, weekStates, incoming, outgoing, nudges };
   }
 
   async findJoinedUserByUsername(username: string): Promise<UserRow | null> {
@@ -276,7 +292,7 @@ export class MemStore implements Store {
     nowSec: number;
     cap: number;
   }): Promise<AcceptResult> {
-    const { userA, userB, cap } = params;
+    const { userA, userB, cap, nowSec } = params;
     if (await this.areFriends(userA, userB)) {
       await this.declineRequestsBetween(userA, userB);
       return "already_friends";
@@ -294,6 +310,8 @@ export class MemStore implements Store {
     if (!this.friends.has(userB)) this.friends.set(userB, new Set());
     this.friends.get(userA)!.add(userB);
     this.friends.get(userB)!.add(userA);
+    this.friendsSince.set(`${userA}->${userB}`, nowSec);
+    this.friendsSince.set(`${userB}->${userA}`, nowSec);
     this.requests.delete(this.reqKey(userA, userB));
     this.requests.delete(this.reqKey(userB, userA));
     return "accepted";

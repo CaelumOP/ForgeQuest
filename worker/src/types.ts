@@ -39,10 +39,16 @@ export interface SnapshotInput {
   streakWeeks: number;
   proteinDays: number;
   prs: PrItem[] | null;
+  /** This week's result (shared streak); omitted by older builds. */
+  weekState?: "hit" | "free" | "open";
+  /** Last week's final result, so a late sync still records it. */
+  lastWeekState?: "hit" | "free" | "miss";
 }
 
-export interface Snapshot extends SnapshotInput {
+export interface Snapshot extends Omit<SnapshotInput, "weekState" | "lastWeekState"> {
   updatedAt: number;
+  /** The friend's state for the server's current week; null when unknown or their snapshot is from an older week. */
+  weekState: "hit" | "free" | "open" | null;
 }
 
 export interface Me {
@@ -64,6 +70,8 @@ export interface Person {
 
 export interface Friend extends Person {
   snapshot: Snapshot | null;
+  /** Consecutive weeks both of you hit your target since you became friends (see src/streak.ts). */
+  sharedStreak: number;
 }
 
 export interface NudgeView {
@@ -127,7 +135,11 @@ export function toPerson(u: UserRow): Person {
   };
 }
 
-export function toSnapshot(row: SnapshotRow, sharePrs: boolean): Snapshot {
+export function toSnapshot(
+  row: SnapshotRow,
+  sharePrs: boolean,
+  weekState: Snapshot["weekState"] = null,
+): Snapshot {
   let prs: PrItem[] | null = null;
   if (sharePrs && row.prs !== null) {
     try {
@@ -149,5 +161,6 @@ export function toSnapshot(row: SnapshotRow, sharePrs: boolean): Snapshot {
     proteinDays: row.protein_days,
     prs,
     updatedAt: row.updated_at,
+    weekState,
   };
 }

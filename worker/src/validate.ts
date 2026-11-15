@@ -89,7 +89,7 @@ export function validateSnapshot(
   body: Record<string, unknown>,
   todayEpochDay: number,
 ): SnapshotInput {
-  const { weekStart, done, due, score, badge, streakWeeks, proteinDays, prs } = body;
+  const { weekStart, done, due, score, badge, streakWeeks, proteinDays, prs, weekState, lastWeekState } = body;
   if (
     !isIntInRange(weekStart, -100_000, 1_000_000) ||
     !isSunday(weekStart) ||
@@ -100,7 +100,10 @@ export function validateSnapshot(
     typeof badge !== "string" ||
     !BADGES.has(badge) ||
     !isIntInRange(streakWeeks, 0, 520) ||
-    !isIntInRange(proteinDays, 0, 7)
+    !isIntInRange(proteinDays, 0, 7) ||
+    // Optional; Android sends explicit nulls.
+    !(weekState === undefined || weekState === null || weekState === "hit" || weekState === "free" || weekState === "open") ||
+    !(lastWeekState === undefined || lastWeekState === null || lastWeekState === "hit" || lastWeekState === "free" || lastWeekState === "miss")
   ) {
     throw new HttpError(400, "bad_snapshot");
   }
@@ -145,6 +148,8 @@ export function validateSnapshot(
     streakWeeks,
     proteinDays,
     prs: validatedPrs,
+    ...(typeof weekState === "string" ? { weekState: weekState as SnapshotInput["weekState"] } : {}),
+    ...(typeof lastWeekState === "string" ? { lastWeekState: lastWeekState as SnapshotInput["lastWeekState"] } : {}),
   };
 }
 

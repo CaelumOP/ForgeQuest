@@ -8,8 +8,17 @@ import {
 
 export const MAX_PUSH_TOKENS = 5;
 
+export interface WeekStateRow {
+  user_id: string;
+  week_start: number;
+  state: string;
+}
+
 export interface FriendsViewData {
-  friends: Array<{ user: UserRow; snapshot: SnapshotRow | null }>;
+  /** friendsSince = friends.created_at (unix seconds). */
+  friends: Array<{ user: UserRow; snapshot: SnapshotRow | null; friendsSince: number }>;
+  /** week_states rows of the caller and all of their friends (shared streaks). */
+  weekStates: WeekStateRow[];
   incoming: UserRow[];
   outgoing: UserRow[];
   nudges: Array<{ fromId: string; name: string; username: string | null; day: number }>;
@@ -278,6 +287,7 @@ export class D1Store implements Store {
     await this.db.batch([
       this.db.prepare("DELETE FROM sessions WHERE user_id = ?1").bind(userId),
       this.db.prepare("DELETE FROM snapshots WHERE user_id = ?1").bind(userId),
+      this.db.prepare("DELETE FROM week_states WHERE user_id = ?1").bind(userId),
       this.db
         .prepare("DELETE FROM friends WHERE user_id = ?1 OR friend_id = ?1")
         .bind(userId),
@@ -300,7 +310,7 @@ export class D1Store implements Store {
 
   async upsertSnapshot(userId: string, s: SnapshotInput, nowSec: number): Promise<void> {
     const prsJson = s.prs === null ? null : JSON.stringify(s.prs);
-    await this.db
+    const snapshotStmt = this.db
       .prepare(
         `INSERT INTO snapshots (user_id, week_start, done, due, score, badge, streak_weeks, protein_days, prs, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
@@ -326,8 +336,18 @@ export class D1Store implements Store {
         s.proteinDays,
         prsJson,
         nowSec,
-      )
-      .run();
+      );
+    const weekStmt = (weekStart: number, state: string) =>
+      this.db
+        .prepare(
+          `INSERT INTO week_states (user_id, week_start, state, updated_at) VALUES (?1, ?2, ?3, ?4)
+           ON CONFLICT(user_id, week_start) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`,
+        )
+        .bind(userId, weekStart, state, nowSec);
+    const stmts = [snapshotStmt];
+    if (s.weekState) stmts.push(weekStmt(s.weekStart, s.weekState));
+    if (s.lastWeekState) stmts.push(weekStmt(s.weekStart - 7, s.lastWeekState));
+    await this.db.batch(stmts);
   }
 
   async getFriendsView(userId: string): Promise<FriendsViewData> {
@@ -337,7 +357,7 @@ export class D1Store implements Store {
           `SELECT u.id, u.sub, u.code, u.username, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at,
                   s.week_start AS s_week_start, s.done AS s_done, s.due AS s_due, s.score AS s_score,
                   s.badge AS s_badge, s.streak_weeks AS s_streak_weeks, s.protein_days AS s_protein_days,
-                  s.prs AS s_prs, s.updated_at AS s_updated_at
+                  s.prs AS s_prs, s.updated_at AS s_updated_at, f.created_at AS f_created_at
            FROM friends f
            JOIN users u ON u.id = f.friend_id
            LEFT JOIN snapshots s ON s.user_id = f.friend_id
@@ -371,6 +391,12 @@ export class D1Store implements Store {
            ORDER BY n.day DESC, n.created_at DESC`,
         )
         .bind(userId),
+      this.db
+        .prepare(
+          `SELECT user_id, week_start, state FROM week_states
+           WHERE user_id = ?1 OR user_id IN (SELECT friend_id FROM friends WHERE user_id = ?1)`,
+        )
+        .bind(userId),
     ]);
 
     type FriendJoinRow = UserRow & {
@@ -383,6 +409,7 @@ export class D1Store implements Store {
       s_protein_days: number | null;
       s_prs: string | null;
       s_updated_at: number | null;
+      f_created_at: number;
     };
 
     const friendRows = (results[0].results ?? []) as FriendJoinRow[];
@@ -414,7 +441,7 @@ export class D1Store implements Store {
               updated_at: r.s_updated_at!,
             }
           : null;
-      return { user, snapshot };
+      return { user, snapshot, friendsSince: r.f_created_at };
     });
 
     const incoming = (results[1].results ?? []) as UserRow[];
@@ -438,6 +465,7 @@ export class D1Store implements Store {
 
     return {
       friends,
+      weekStates: (results[4].results ?? []) as WeekStateRow[],
       incoming,
       outgoing,
       nudges: nudgeRows.map((n) => ({ fromId: n.from_id, name: n.name, username: n.username, day: n.day })),

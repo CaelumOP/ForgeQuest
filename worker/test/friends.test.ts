@@ -834,6 +834,76 @@ describe("ForgeQuest Friends Worker", () => {
     });
   });
 
+  describe("Shared streak (week states)", () => {
+    const DAY = 86400000;
+    const snap = (weekStart: number, extra: Record<string, unknown> = {}) => ({
+      weekStart,
+      done: 2,
+      due: 2,
+      score: 100,
+      badge: "trained",
+      streakWeeks: 1,
+      proteinDays: 0,
+      prs: null,
+      ...extra,
+    });
+
+    it("accepts optional and null week states, rejects bad values", async () => {
+      const alice = await loginUser("alice", "Alice");
+      const ws = sundayWeekStart(riyadhEpochDay(nowMs));
+      for (const extra of [{}, { weekState: null, lastWeekState: null }, { weekState: "free", lastWeekState: "miss" }]) {
+        const ok = await req("PUT", "/v1/snapshot", { token: alice.session, body: snap(ws, extra) });
+        expect(ok.status).toBe(200);
+      }
+      for (const extra of [{ weekState: "miss" }, { lastWeekState: "open" }, { weekState: 1 }, { lastWeekState: "HIT" }]) {
+        const bad = await req("PUT", "/v1/snapshot", { token: alice.session, body: snap(ws, extra) });
+        expect(bad.status).toBe(400);
+        expect(bad.json).toEqual({ error: "bad_snapshot" });
+      }
+    });
+
+    it("counts weeks both hit since the friendship began, with Sunday grace and a null weekState for stale snapshots", async () => {
+      nowMs = BASE_MS - 14 * DAY; // Sunday two weeks ago
+      const alice = await loginUser("alice", "Alice");
+      const bob = await loginUser("bob", "Bob");
+      const carol = await loginUser("carol", "Carol");
+      await req("POST", "/v1/invites", { token: alice.session, body: { username: "bob" } });
+      expect((await req("POST", `/v1/invites/${alice.user.id}/accept`, { token: bob.session })).status).toBe(200);
+      await req("POST", "/v1/invites", { token: alice.session, body: { username: "carol" } });
+      expect((await req("POST", `/v1/invites/${alice.user.id}/accept`, { token: carol.session })).status).toBe(200);
+
+      nowMs = BASE_MS - 7 * DAY; // last Sunday: report that week (open) and the week before (hit)
+      let ws = sundayWeekStart(riyadhEpochDay(nowMs));
+      for (const s of [alice.session, bob.session]) {
+        const r = await req("PUT", "/v1/snapshot", { token: s, body: snap(ws, { weekState: "hit", lastWeekState: "hit" }) });
+        expect(r.status).toBe(200);
+      }
+      const r2 = await req("PUT", "/v1/snapshot", { token: carol.session, body: snap(ws, { weekState: "open" }) });
+      expect(r2.status).toBe(200);
+
+      nowMs = BASE_MS; // today (Sunday): both already hit this week
+      ws = sundayWeekStart(riyadhEpochDay(nowMs));
+      for (const s of [alice.session, bob.session]) {
+        await req("PUT", "/v1/snapshot", { token: s, body: snap(ws, { weekState: "hit", lastWeekState: "hit" }) });
+      }
+
+      const view = await req("GET", "/v1/friends", { token: alice.session });
+      expect(view.status).toBe(200);
+      const byName = Object.fromEntries(view.json.friends.map((f: any) => [f.username, f]));
+      expect(byName.bob.sharedStreak).toBe(3);
+      expect(byName.bob.snapshot.weekState).toBe("hit");
+      // Carol never synced this week: stale snapshot, null weekState, no shared streak.
+      expect(byName.carol.snapshot.weekState).toBeNull();
+      expect(byName.carol.sharedStreak).toBe(0);
+
+      // Tuesday: last week is final; Carol's stale "open" still does not count.
+      nowMs = BASE_MS + 2 * DAY;
+      const later = await req("GET", "/v1/friends", { token: bob.session });
+      const alice4bob = later.json.friends.find((f: any) => f.username === "alice");
+      expect(alice4bob.sharedStreak).toBe(3);
+    });
+  });
+
   describe("DELETE /v1/me cascade wipe", () => {
     it("wipes user and every row referencing them across all tables", async () => {
       const alice = await loginUser("alice", "Alice");
@@ -853,6 +923,8 @@ describe("ForgeQuest Friends Worker", () => {
           streakWeeks: 1,
           proteinDays: 2,
           prs: null,
+          weekState: "hit",
+          lastWeekState: "miss",
         },
       });
       await req("PUT", "/v1/push", {
@@ -891,6 +963,7 @@ describe("ForgeQuest Friends Worker", () => {
           Array.from(store.nudges.values()).some((n) => n.from_id === aid || n.to_id === aid),
         ).toBe(false);
         expect(Array.from(store.pushTokens.values()).some((p) => p.user_id === aid)).toBe(false);
+        expect(Array.from(store.weekStates.values()).some((w) => w.user_id === aid)).toBe(false);
       }
 
       // Session is immediately invalid

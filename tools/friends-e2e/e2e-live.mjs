@@ -327,6 +327,31 @@ async function main() {
     check("back on: photo + PRs visible again", row2?.photoUrl?.startsWith("https://") && row2?.snapshot?.prs?.length === 1, JSON.stringify(row2));
   });
 
+  await group("week states + shared streak (contract v3)", async () => {
+    const { a, b } = users;
+    const ws = sundayOf(riyadhToday());
+    const row = async (viewer, id) => (await call("GET", "/v1/friends", { token: viewer.session })).json?.friends?.find((f) => f.id === id);
+    const stale = await row(a, b.id);
+    check("stale snapshot -> weekState null", stale?.snapshot && stale.snapshot.weekState === null, JSON.stringify(stale?.snapshot));
+    check("sharedStreak is a number", typeof stale?.sharedStreak === "number", JSON.stringify(stale));
+    for (const [name, extra] of [["weekState miss", { weekState: "miss" }], ["lastWeekState open", { lastWeekState: "open" }], ["weekState number", { weekState: 2 }]]) {
+      expectRes(`bad ${name}`, await call("PUT", "/v1/snapshot", { token: a.session, body: snap(ws, extra) }), 400, "bad_snapshot");
+    }
+    expectRes("nulls accepted", await call("PUT", "/v1/snapshot", { token: a.session, body: snap(ws, { weekState: null, lastWeekState: null }) }), 200);
+    expectRes("a hit", await call("PUT", "/v1/snapshot", { token: a.session, body: snap(ws, { weekState: "hit", lastWeekState: "miss" }) }), 200);
+    expectRes("b open", await call("PUT", "/v1/snapshot", { token: b.session, body: snap(ws, { weekState: "open" }) }), 200);
+    const r1 = await row(a, b.id);
+    check("friend weekState open", r1?.snapshot?.weekState === "open", JSON.stringify(r1?.snapshot));
+    check("one side open -> streak 0", r1?.sharedStreak === 0, String(r1?.sharedStreak));
+    expectRes("b hit", await call("PUT", "/v1/snapshot", { token: b.session, body: snap(ws, { weekState: "hit" }) }), 200);
+    const r2 = await row(a, b.id);
+    const r3 = await row(b, a.id);
+    check("both hit this week -> streak 1 (a's view)", r2?.sharedStreak === 1, String(r2?.sharedStreak));
+    check("symmetric (b's view)", r3?.sharedStreak === 1 && r3?.snapshot?.weekState === "hit", JSON.stringify(r3));
+    const rows = sql(`SELECT week_start, state FROM week_states WHERE user_id = '${a.id}' ORDER BY week_start`);
+    check("D1 week_states rows for a (last week miss, this week hit)", rows.length === 2 && rows[0].state === "miss" && rows[1].state === "hit" && rows[1].week_start === ws, JSON.stringify(rows));
+  });
+
   await group("nudges (one per pair per day)", async () => {
     const { a, b, c } = users;
     const n1 = await call("POST", `/v1/nudges/${b.id}`, { token: a.session });
@@ -478,6 +503,7 @@ function rowsFor(id) {
     `SELECT COUNT(*) AS n FROM blocks WHERE blocker = '${id}' OR blocked = '${id}'`,
     `SELECT COUNT(*) AS n FROM nudges WHERE from_id = '${id}' OR to_id = '${id}'`,
     `SELECT COUNT(*) AS n FROM push_tokens WHERE user_id = '${id}'`,
+    `SELECT COUNT(*) AS n FROM week_states WHERE user_id = '${id}'`,
   ];
   return q.reduce((sum, one) => sum + (sql(one)[0]?.n ?? 0), 0);
 }

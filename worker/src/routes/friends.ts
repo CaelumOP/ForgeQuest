@@ -4,6 +4,7 @@ import {
   enforceWriteRateLimit,
   recordInviteFailure,
 } from "../rate";
+import { sharedStreak, WEEK_STATES, WeekState } from "../streak";
 import { riyadhEpochDay, sundayWeekStart } from "../time";
 import {
   Friend,
@@ -35,14 +36,28 @@ export async function handleGetFriends(
   const today = riyadhEpochDay(ctx.nowMs);
   const weekStart = sundayWeekStart(today);
   const view = await ctx.store.getFriendsView(user.id);
+  const statesByUser = new Map<string, Map<number, WeekState>>();
+  for (const w of view.weekStates) {
+    if (!WEEK_STATES.has(w.state)) continue;
+    let m = statesByUser.get(w.user_id);
+    if (!m) statesByUser.set(w.user_id, (m = new Map()));
+    m.set(w.week_start, w.state as WeekState);
+  }
+  const mine = statesByUser.get(user.id) ?? new Map<number, WeekState>();
   return {
     me: toMe(user),
     today,
     weekStart,
-    friends: view.friends.map(({ user: friend, snapshot }) => ({
-      ...toPerson(friend),
-      snapshot: snapshot ? toSnapshot(snapshot, friend.share_prs === 1) : null,
-    })),
+    friends: view.friends.map(({ user: friend, snapshot, friendsSince }) => {
+      const theirs = statesByUser.get(friend.id) ?? new Map<number, WeekState>();
+      const current = snapshot && snapshot.week_start === weekStart ? theirs.get(weekStart) : undefined;
+      const weekState = current === "hit" || current === "free" || current === "open" ? current : null;
+      return {
+        ...toPerson(friend),
+        snapshot: snapshot ? toSnapshot(snapshot, friend.share_prs === 1, weekState) : null,
+        sharedStreak: sharedStreak({ friendsSinceSec: friendsSince, today, mine, theirs }),
+      };
+    }),
     incoming: view.incoming.map(toPerson),
     outgoing: view.outgoing.map(toPerson),
     nudges: view.nudges,

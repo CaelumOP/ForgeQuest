@@ -66,7 +66,7 @@ export class SqliteStore extends D1Store {
 
   constructor() {
     const raw = new DatabaseSync(":memory:");
-    for (const m of ["0001_init.sql", "0002_username.sql"]) {
+    for (const m of ["0001_init.sql", "0002_username.sql", "0003_week_states.sql"]) {
       raw.exec(readFileSync(new URL(`../migrations/${m}`, import.meta.url), "utf8"));
     }
     super(new ShimD1(raw) as unknown as D1Database);
@@ -98,6 +98,7 @@ export class SqliteStore extends D1Store {
       "SELECT COUNT(*) AS c FROM blocks WHERE blocker = ?1 OR blocked = ?1",
       "SELECT COUNT(*) AS c FROM nudges WHERE from_id = ?1 OR to_id = ?1",
       "SELECT COUNT(*) AS c FROM push_tokens WHERE user_id = ?1",
+      "SELECT COUNT(*) AS c FROM week_states WHERE user_id = ?1",
     ];
     return q.reduce((n, sql) => n + Number((this.raw.prepare(sql).get(userId) as { c: number }).c), 0);
   }
