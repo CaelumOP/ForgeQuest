@@ -75,3 +75,4 @@
 @media (max-width: 300px) {
   .pf-gsum { -webkit-line-clamp: unset; }
 }
+.pf-username { display: flex; flex-direction: column; gap: 4px; margin-block-end: 8px; }

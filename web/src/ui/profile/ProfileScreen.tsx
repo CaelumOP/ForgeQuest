@@ -23,6 +23,8 @@ import {
   trainingDaysFor,
 } from './helpers'
 import { BackupSection, backupSummary } from './BackupSection'
+import { FriendsSection, friendsSummary } from './FriendsSection'
+import { useFriends } from '../../data/friends'
 import './profile.css'
 
 
@@ -36,6 +38,7 @@ const ICONS: Record<string, string> = {
   app: 'M12 3a9 9 0 000 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.3-.5-.8-.5-1.2 0-1.1.9-2 2-2h2.4c2.8 0 5-2.2 5-5 0-4.4-4.5-7.5-10.4-7.5z',
   backup: 'M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z',
   about: 'M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+  friends: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
   weight: 'M12 3a4 4 0 00-4 4h8a4 4 0 00-4-4zM5 9l-2 12h18L19 9z',
   chart: 'M3.5 18.5l6-6 4 4L22 6.92 20.59 5.5l-7.09 8-4-4L2 17z',
   checklist: 'M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z',
@@ -238,6 +241,7 @@ function TargetDialog({
 export function ProfileScreen() {
   const settings = useSettings()
   const snap = useProgress()
+  const friendsState = useFriends()
   const lang = useLang()
   const theme = useTheme()
   const [openIds, setOpenIds] = useState<string[]>(loadOpen)
@@ -437,6 +441,10 @@ export function ProfileScreen() {
             </>
           )}
         </Card>
+      </Group>
+
+      <Group id="friends" accent="blue" icon="friends" title={t('settings_group_friends')} open={isOpen('friends')} onToggle={() => toggle('friends')} sum={friendsSummary(friendsState)}>
+        <FriendsSection Title={({ title, hint }) => <CardTitle icon="friends" accent="blue" title={title} hint={hint} />} />
       </Group>
 
       <Group id="backup" accent="teal" icon="backup" title={t('settings_group_backup')} open={isOpen('backup')} onToggle={() => toggle('backup')} sum={backupSummary(s)}>
