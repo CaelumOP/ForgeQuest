@@ -1,0 +1,34 @@
+name = "forgequest-friends"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "forgequest"
+database_id = "bcf73d2f-28c8-4aca-bee9-941f2965f59b"
+migrations_dir = "migrations"
+
+[vars]
+GOOGLE_AUD = "787186946908-ctsif69lokfk6i609727696lm44avo57.apps.googleusercontent.com"
+GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_ISSUERS = "accounts.google.com,https://accounts.google.com"
+ALLOWED_ORIGINS = "https://caelumop.github.io,http://localhost:5173"
+
+# Staging Worker for the live end-to-end suite (tools/friends-e2e). Own D1, test-only audience/issuer and an inline
+# PUBLIC test key; auth.ts accepts an inline JWKS only with exactly this aud + issuer, so production cannot.
+[env.staging]
+name = "forgequest-friends-staging"
+workers_dev = true
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "forgequest-staging"
+database_id = "e19c585b-4278-48b4-9e80-111923fae7de"
+migrations_dir = "migrations"
+
+[env.staging.vars]
+GOOGLE_AUD = "forgequest-e2e"
+GOOGLE_ISSUERS = "https://e2e.forgequest.invalid"
+GOOGLE_JWKS_URL = "data:application/json,%7B%22keys%22%3A%5B%7B%22kty%22%3A%22RSA%22%2C%22n%22%3A%22tCBHWN60ynPRg9fV7BDGNubISoEJzZZBEJ0Zu_P0Oe4qQRfWeI6ndaLcsyplDK5g2IyENQN0RVuZKbtbtFCcRPxNVeQwqSDXXpZd3hTBi6Z-5qL_oosDJ7dweOyI4cC5rJJlej_JJ8tBtbYZX5a2HZHFhvoJ4h5w1KnirWah2iLo9_RszulnA1gSJjy5UgdVNa-21JE9Fyeml7fBKFFWW9lNxLBd4S75NaFK4t0AEEppOnT_-_u_xNcTH_A7wjwVSE1u6pQavBf_luN6j3GIsDlWPEjnmag_SXxfgt5HPQfLG7QF4VUSkha4ZvJwhZtBWkA6rlCb6znlWnNLGc6XJQ%22%2C%22e%22%3A%22AQAB%22%2C%22kid%22%3A%22fq-e2e-1%22%2C%22alg%22%3A%22RS256%22%2C%22use%22%3A%22sig%22%7D%5D%7D"
+ALLOWED_ORIGINS = "https://caelumop.github.io,http://localhost:5173,http://localhost:5174,http://localhost:5175"

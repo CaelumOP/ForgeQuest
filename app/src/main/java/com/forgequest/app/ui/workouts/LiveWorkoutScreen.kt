@@ -487,7 +487,7 @@ internal fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutV
     FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.weight(1f).clip(ForgeShape.Sm).clickable { expanded = !expanded }.padding(vertical = 8.dp),
+                Modifier.weight(1f).clip(ForgeShape.Sm).clickable { expanded = !expanded }.padding(horizontal = 4.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -544,7 +544,7 @@ internal fun StraightCard(
     // A set added or removed grows or shrinks the card smoothly instead of jumping.
     FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onDetail)) {
+            Column(Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onDetail).padding(horizontal = 4.dp)) {
                 Text(ex?.name ?: g.sets.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 val target = g.sets.first().targetLabel
                 Text(if (target.isNotBlank()) stringResource(R.string.live_target, g.sets.size, target) else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

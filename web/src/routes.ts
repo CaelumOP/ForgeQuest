@@ -5,6 +5,7 @@ import { KitGallery } from './dev/KitGallery'
 import { ViewportCheck } from './dev/ViewportCheck'
 import { FoodScreen } from './ui/food/FoodScreen'
 import { ScanScreen } from './ui/food/ScanScreen'
+import { FriendsScreen } from './ui/friends/FriendsScreen'
 import { HistoryScreen } from './ui/history/HistoryScreen'
 import { SessionScreen } from './ui/history/SessionScreen'
 import { HomeScreen } from './ui/home/HomeScreen'
@@ -28,6 +29,7 @@ export const routes: Record<string, Route> = {
   '/': { title: 'tab_home', Screen: HomeScreen, tab: true },
   '/workouts': { title: 'tab_workouts', Screen: WorkoutsScreen, tab: true },
   '/food': { title: 'tab_food', Screen: FoodScreen, tab: true },
+  '/friends': { title: 'tab_friends', Screen: FriendsScreen, tab: true },
   '/profile': { title: 'tab_profile', Screen: ProfileScreen },
   '/live': { title: 'tab_workouts', Screen: LiveWorkoutScreen, bare: true },
   '/plan': { title: 'tab_workouts', Screen: PlanEditorScreen },

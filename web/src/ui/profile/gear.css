@@ -60,9 +60,11 @@
 .gear-row-text {
   flex: 1;
   min-inline-size: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .gear-row-chev {

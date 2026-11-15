@@ -252,16 +252,23 @@ fun HomeScreen(nav: NavHostController) {
     val hasCalorieCard = remember(s, health) { com.forgequest.app.ui.CalorieUi.card(s, health) } != null
     // Readiness only shows once a Fitbit is connected, so it counts as an extra too.
     val readinessShown = healthOn || (!justLog && s.settings.healthEnabled && health != HealthState.Unavailable && health != HealthState.Loading)
-    val extras = listOf(readinessShown, unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs).count { it }
+    val friends by vm.friends.collectAsState()
+    val friendsShown = !justLog && friends.isNotEmpty()
+    val extras = listOf(readinessShown, unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs, friendsShown).count { it }
 
     // One screen, no scrolling, at normal text on a common phone (about 412 x 919 dp: 780 dp between the status bar and
     // the tab bar). Height budget in dp: header 80, rings 210 + stats 54, streak + month 161, today's workout 154 (+57
     // with the readiness row, which then drops the streak hint), gaps 12: about 776 of 780 with readiness. Spare height is shared between the flexible gaps, which keeps today's workout at the bottom by the
     // thumb. When there is no spare height (large text, small phones, extra cards) the page scrolls; nothing is clipped.
     BoxWithConstraints(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
-        val fit = homeFit(maxHeight.value, androidx.compose.ui.platform.LocalDensity.current.fontScale, extras)
+        val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+        val fallbackScroll = maxHeight < 568.dp || fontScale > 1.3f
+        val fit = homeFit(maxHeight.value, fontScale, extras)
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight).padding(horizontal = ForgeSpace.Gutter),
+            Modifier.fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .let { if (fallbackScroll) it.padding(bottom = ForgeSpace.Sm) else it.heightIn(min = maxHeight) }
+                .padding(horizontal = ForgeSpace.Gutter),
         ) {
             // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
             Box(Modifier.fillMaxWidth()) {
@@ -277,9 +284,9 @@ fun HomeScreen(nav: NavHostController) {
             }
             whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
             CrashCard(Modifier.padding(top = ForgeSpace.Xs))
-            FlexGap()
+            FlexGap(weighted = !fallbackScroll)
             Hero(s, fit, onFood = { nav.goToTab(Routes.FOOD) }, onWeight = { weightSheet = true })
-            FlexGap()
+            FlexGap(weighted = !fallbackScroll)
 
             // This month's line rides at the foot of the streak card; in "just log" mode it gets a slim card of its own.
             val monthRow: (@Composable () -> Unit)? = if (s.sessions.isEmpty()) null else {
@@ -289,6 +296,7 @@ fun HomeScreen(nav: NavHostController) {
                 StreakCard(
                     s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY && !readinessInCard,
                     nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge, footer = monthRow,
+                    friendsRow = if (friendsShown) { { FriendStreakRow(friends, onOpen = { nav.goToTab(Routes.FRIENDS) }) } } else null,
                 )
                 Spacer(Modifier.height(ForgeSpace.Sm))
             } else if (monthRow != null) {
@@ -300,7 +308,7 @@ fun HomeScreen(nav: NavHostController) {
             }
 
             // Everything above is for reading. What asks for a tap sits below, with today's workout last, by the thumb.
-            Spacer(Modifier.weight(1f))
+            if (fallbackScroll) Spacer(Modifier.height(ForgeSpace.Sm)) else Spacer(Modifier.weight(1f))
             if (!justLog) ReadinessCard(
                 health, enabled = s.settings.healthEnabled, refreshing = refreshing, note = refreshNote,
                 onRefresh = vm.refreshWatch::tap, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
@@ -375,9 +383,9 @@ internal fun homeFit(heightDp: Float, fontScale: Float, extras: Int): HomeFit {
 
 /** A gap between Home's sections: 12 dp at least, plus an equal share of whatever height is spare. */
 @Composable
-private fun ColumnScope.FlexGap() {
+private fun ColumnScope.FlexGap(weighted: Boolean = true) {
     Spacer(Modifier.height(ForgeSpace.Sm))
-    Spacer(Modifier.weight(1f))
+    if (weighted) Spacer(Modifier.weight(1f))
 }
 
 /** What the day is about, for the one calm line under the greeting. */
@@ -597,6 +605,7 @@ private fun MonthRow(s: ProgressSnapshot, onOpen: () -> Unit) {
 private fun StreakCard(
     streak: WeeklyStreak, onDayClick: (Long) -> Unit, showHint: Boolean,
     nudge: Int? = null, keepTarget: Int = 0, onNudge: (Int?) -> Unit = {}, footer: (@Composable () -> Unit)? = null,
+    friendsRow: (@Composable () -> Unit)? = null,
 ) {
     val c = Fit.colors
     // One line (flame ring, weeks, this week's count), the optional hint, the week's days, then the footer row.
@@ -643,6 +652,8 @@ private fun StreakCard(
         Row(Modifier.fillMaxWidth()) {
             val today = Dates.today()
             val weekStart = Dates.weekStart(today)
+            val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+            val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales.let { if (it.isEmpty) java.util.Locale.getDefault() else it[0] }
             streak.days.forEachIndexed { i, state ->
                 val day = weekStart + i
                 // Today and the last 3 days can be excused (sick, travel...) with a tap; workouts can't.
@@ -658,7 +669,17 @@ private fun StreakCard(
                         DayCircle(state, size = 28.dp)
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text(Dates.dayShort(i + 1), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                    val dow = Dates.weekOrder[i]
+                    val dayLabel = if (largeText) java.time.DayOfWeek.of(dow).getDisplayName(java.time.format.TextStyle.NARROW, locale) else Dates.dayShort(dow)
+                    Text(
+                        dayLabel,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        maxLines = 1,
+                        softWrap = false,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = c.textSecondary,
+                    )
                 }
             }
         }
@@ -672,10 +693,47 @@ private fun StreakCard(
                 PillButton(stringResource(R.string.target_nudge_make, nudge), onClick = { onNudge(nudge) })
             }
         }
+        friendsRow?.let {
+            Spacer(Modifier.height(ForgeSpace.Xxs))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(c.divider))
+            it()
+        }
         footer?.let {
             Spacer(Modifier.height(ForgeSpace.Xs))
             Box(Modifier.fillMaxWidth().height(1.dp).background(c.divider))
             it()
+        }
+    }
+}
+
+/** One line: shared streaks with up to 5 friends (most weeks first); a tap opens Friends. */
+@Composable
+private fun FriendStreakRow(friends: List<com.forgequest.app.data.friends.Friend>, onOpen: () -> Unit) {
+    val c = Fit.colors
+    val top = remember(friends) { friends.sortedWith(compareByDescending<com.forgequest.app.data.friends.Friend> { it.sharedStreak }.thenBy { it.name }).take(5) }
+    val any = top.any { it.sharedStreak > 0 }
+    val label = stringResource(R.string.home_with_friends)
+    val empty = stringResource(R.string.home_with_friends_empty)
+    val res = androidx.compose.ui.platform.LocalContext.current.resources
+    val spoken = if (!any) "$label: $empty" else "$label: " + top.joinToString(", ") { "${it.name} " + res.getQuantityString(R.plurals.streak_weeks, it.sharedStreak, it.sharedStreak) }
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onOpen).semantics(mergeDescendants = true) { contentDescription = spoken },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary, maxLines = 1)
+        Spacer(Modifier.width(ForgeSpace.Xs))
+        if (any) {
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(ForgeSpace.Xs, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                top.forEach { f ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.forgequest.app.ui.friends.FriendAvatar(f.name, f.photoUrl, 24.dp)
+                        Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = c.gold, modifier = Modifier.size(14.dp))
+                        Text(f.sharedStreak.toString(), style = MaterialTheme.typography.labelMedium, color = c.gold, maxLines = 1)
+                    }
+                }
+            }
+        } else {
+            Text(empty, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.weight(1f))
         }
     }
 }

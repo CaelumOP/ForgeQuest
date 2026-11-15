@@ -155,7 +155,7 @@ fun ProgressScreen(nav: NavHostController) {
 
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
                 Text(stringResource(R.string.progress_subtitle), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
@@ -465,8 +465,9 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
         }.getOrDefault(emptyList())
     }
     val (fresh, recovering) = com.forgequest.app.domain.recoverySplit(s.recovery)
-    val freshText = fresh.map { it.localLabel() }.joinToString(", ")
-    val recoveringText = recovering.map { it.localLabel() }.joinToString(", ")
+    val sep = stringResource(R.string.list_separator)
+    val freshText = fresh.map { it.localLabel() }.joinToString(sep)
+    val recoveringText = recovering.map { it.localLabel() }.joinToString(sep)
     val today = Dates.today()
     val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 1, today).lastOrNull() ?: 0
     val weekSets = Trends.weeklySets(s.doneSets, s.sessions.associate { it.id to it.epochDay }, 1, today).lastOrNull() ?: 0

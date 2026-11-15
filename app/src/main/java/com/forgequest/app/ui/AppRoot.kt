@@ -40,7 +40,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Home
@@ -102,6 +104,7 @@ object Routes {
     const val HOME = "home"
     const val WORKOUTS = "workouts"
     const val FOOD = "food"
+    const val FRIENDS = "friends"
     const val PROFILE = "profile"
     const val LIVE = "live"
     const val PLAN = "plan?day={day}&paste={paste}&templates={templates}"
@@ -124,9 +127,10 @@ object Routes {
 
 private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector)
 
-/** The bar is always Home, Workouts, Food, Progress. Coach and Profile are pushed screens. */
+/** The bar is always Home, Friends, Workouts, Food, Progress (Workouts in the centre). Coach and Profile are pushed screens. */
 private fun tabsFor() = listOf(
     Tab(Routes.HOME, R.string.tab_home, Icons.Outlined.Home, Icons.Rounded.Home),
+    Tab(Routes.FRIENDS, R.string.tab_friends, Icons.Outlined.Group, Icons.Rounded.Group),
     Tab(Routes.WORKOUTS, R.string.tab_workouts, Icons.Outlined.FitnessCenter, Icons.Rounded.FitnessCenter),
     Tab(Routes.FOOD, R.string.tab_food, Icons.Outlined.Restaurant, Icons.Rounded.Restaurant),
     Tab(Routes.PROGRESS, R.string.tab_progress, Icons.AutoMirrored.Outlined.ShowChart, Icons.AutoMirrored.Rounded.ShowChart),
@@ -247,6 +251,7 @@ private fun MainScaffold() {
                 composable(Routes.HOME) { HomeScreen(nav) }
                 composable(Routes.WORKOUTS) { WorkoutsScreen(nav) }
                 composable(Routes.FOOD) { FoodScreen(nav) }
+                composable(Routes.FRIENDS) { com.forgequest.app.ui.friends.FriendsScreen(nav) }
                 composable(Routes.PROFILE) { ProfileScreen(nav) }
                 composable(Routes.LIVE, enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None }) { LiveWorkoutScreen(nav) }
                 composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 }, navArgument("paste") { type = NavType.BoolType; defaultValue = false }, navArgument("templates") { type = NavType.BoolType; defaultValue = false })) { entry ->

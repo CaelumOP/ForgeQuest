@@ -22,13 +22,15 @@ android {
         applicationId = "com.forgequest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 39
-        versionName = "3.5.0"
+        versionCode = 40
+        versionName = "4.0.0"
 
         // QA only: `-PgeminiBase=http://10.0.2.2:8765/v1beta` points a build at a local test server.
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"
         buildConfigField("String", "GEMINI_BASE", "\"$geminiBase\"")
         manifestPlaceholders["cleartext"] = geminiBase.startsWith("http://").toString()
+        val friendsBase = (project.findProperty("friendsBase") as String?) ?: "https://forgequest-friends.forgequest-worker.workers.dev"
+        buildConfigField("String", "FRIENDS_BASE", "\"$friendsBase\"")
     }
 
     signingConfigs {
@@ -131,6 +133,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation("androidx.credentials:credentials:1.5.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")

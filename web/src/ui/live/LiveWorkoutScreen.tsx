@@ -13,6 +13,7 @@ import { recordScore } from '../../domain/progress'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
 import { autoBackup } from '../../data/drive'
+import { syncFriendsQuietly } from '../../data/friends'
 import { blockLabel, openFormVideo } from '../workouts/helpers'
 import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
@@ -30,10 +31,13 @@ import { WorkoutSummary } from './WorkoutSummary'
 import './live.css'
 
 /**
- * After finishSession: the backup runs in the background. The debrief on the summary is calculated when the card opens.
+ * After finishSession: the backup and quiet Friends sync run in the background. The debrief on the summary is calculated when the card opens.
  * The per-set effort chips (Easy, OK, Hard, Pain) are ported in SetRowView.
  */
-export function onWorkoutFinished(_sessionId: number, _result: FinishResult): void { void autoBackup('workout') }
+export function onWorkoutFinished(_sessionId: number, _result: FinishResult): void {
+  void autoBackup('workout')
+  void syncFriendsQuietly()
+}
 
 const FOCUS_KEY = 'fq.live.focus'
 const store = (): Storage | null => { try { return sessionStorage } catch { return null } }

@@ -4,8 +4,8 @@ import fixtureText from './fixtures/android-backup.json?raw';
 import { db } from './db';
 import { applyBackup, decodeBackup } from './backup';
 import {
-  DEFAULT_SETTINGS, clearWeekTargets, fromBackupSettings, loadSettings, saveWeekTargets, toBackupSettings,
-  updateSettings, weekTargets,
+  DEFAULT_SETTINGS, clearWeekTargets, fromBackupSettings, loadSettings, migrateWeekTargets, saveWeekTargets,
+  shiftWeekTargetsRecord, toBackupSettings, updateSettings, weekTargets,
 } from './settings';
 
 beforeEach(async () => {
@@ -69,5 +69,31 @@ describe('settings', () => {
     expect([...(await weekTargets())]).toEqual([[100, 3], [107, 4]]);
     await clearWeekTargets();
     expect((await weekTargets()).size).toBe(0);
+  });
+
+  it('migrates Monday weekTargets keys to Sunday once and only once', async () => {
+    await db.kv.put({ key: 'weekTargets', value: { 20500: 3, 20507: 4 } });
+
+    // Read-only weekTargets() shifts old rows on the fly for live queries.
+    expect([...(await weekTargets())]).toEqual([[20499, 3], [20506, 4]]);
+
+    // First persisted migration shifts once and marks sundayWeeks: true.
+    expect(await migrateWeekTargets()).toBe(true);
+    expect(await migrateWeekTargets()).toBe(false);
+    expect((await db.kv.get('weekTargets'))?.value).toEqual({ 20499: 3, 20506: 4, sundayWeeks: true });
+    expect([...(await weekTargets())]).toEqual([[20499, 3], [20506, 4]]);
+
+    // Saving a new Sunday week preserves migrated keys without re-shifting them.
+    await saveWeekTargets(new Map([[20513, 5]]));
+    expect([...(await weekTargets())]).toEqual([[20499, 3], [20506, 4], [20513, 5]]);
+
+    expect(shiftWeekTargetsRecord({ 20500: 3, sundayWeeks: false })).toEqual({
+      targets: new Map([[20499, 3]]),
+      migrated: true,
+    });
+    expect(shiftWeekTargetsRecord({ 20499: 3, sundayWeeks: true })).toEqual({
+      targets: new Map([[20499, 3]]),
+      migrated: false,
+    });
   });
 });

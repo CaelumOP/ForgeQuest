@@ -31,7 +31,7 @@ data class FatigueAndPlateauReport(
 /** Everything the Progress screen shows, computed from sessions, sets, weights and meals. Pure, so it's unit-tested. */
 object Trends {
 
-    /** Workouts per ISO week, oldest first, for the [weeks] weeks ending with the current one. */
+    /** Workouts per week (Sunday..Saturday), oldest first, for the [weeks] weeks ending with the current one. */
     fun weeklyCounts(workoutDays: Collection<Long>, weeks: Int, today: Long): List<Int> {
         val thisWeek = Dates.weekStart(today)
         val starts = (weeks - 1 downTo 0).map { thisWeek - 7L * it }
@@ -95,7 +95,7 @@ object Trends {
 
     enum class DayCell { FUTURE, REST, DONE, RECORD }
 
-    /** 7 rows (Mon..Sun) × [weeks] columns (oldest first) for the consistency heatmap. */
+    /** 7 rows (Sun..Sat) × [weeks] columns (oldest first) for the consistency heatmap. */
     fun consistencyGrid(workoutDays: Set<Long>, recordDays: Set<Long>, weeks: Int, today: Long): List<List<DayCell>> {
         val thisWeek = Dates.weekStart(today)
         return (0 until 7).map { row ->

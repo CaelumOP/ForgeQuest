@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayOfWeek, epochDayOf } from './dates'
+import { dayOfWeek, epochDayOf, weekStart } from './dates'
 import type { ExerciseEntity, SetEntity } from './entities'
 import type { Muscle } from './muscle'
 import {
@@ -9,7 +9,8 @@ import {
 
 // Hemo foundation: Mon, Tue, Wed, Fri, Sat
 const hemoDays = new Set([1, 2, 3, 5, 6])
-// 2026-10-05 is a Monday.
+// 2026-10-04 is a Sunday; 2026-10-05 is a Monday.
+const sun1 = epochDayOf(2026, 10, 4)
 const mon1 = epochDayOf(2026, 10, 5)
 const days = (...d: number[]) => new Set(d)
 
@@ -20,7 +21,7 @@ describe('StreakCalculatorTest', () => {
     const done = new Set([0, 1].flatMap((w) => [0, 2, 4].map((d) => mon1 + 7 * w + d)))
     const today = mon1 + 14
     const locked = weeksToLock(new Map(), fullTarget(threeDays, 0), mon1, today)
-    expect(locked).toEqual(new Map([[mon1, 3], [mon1 + 7, 3]]))
+    expect(locked).toEqual(new Map([[sun1, 3], [sun1 + 7, 3]]))
     // Judged by the new plan, both past weeks would count as missed.
     expect(computeStreak(done, hemoDays, 0, mon1, today).weeks).toBe(0)
     const s = computeStreak(done, hemoDays, 0, mon1, today, undefined, locked)
@@ -49,41 +50,58 @@ describe('StreakCalculatorTest', () => {
   it('restDaysNeverCountAsMissed', () => {
     const today = mon1 + 3 // Thursday, a rest day in Hemo's plan
     const s = computeStreak(days(mon1, mon1 + 1, mon1 + 2), hemoDays, 0, mon1, today)
-    expect(s.days[3]).toBe('REST')
-    expect(s.days[0]).toBe('DONE')
-    expect(s.days[4]).toBe('UPCOMING')
+    // Strip is Sun..Sat: [0]=Sun (before startEpochDay), [1]=Mon, [4]=Thu, [5]=Fri.
+    expect(s.days[0]).toBe('OFF')
+    expect(s.days[4]).toBe('REST')
+    expect(s.days[1]).toBe('DONE')
+    expect(s.days[5]).toBe('UPCOMING')
   })
 
   it('joiningMidWeekIsProrated', () => {
     const thursday = mon1 + 3
     // Only Fri + Sat remain, so 2 workouts complete the first week.
-    const s = computeStreak(days(mon1 + 4, mon1 + 5), hemoDays, 0, thursday, mon1 + 6)
+    const s = computeStreak(days(mon1 + 4, mon1 + 5), hemoDays, 0, thursday, mon1 + 5)
     expect(s.targetThisWeek).toBe(2)
     expect(s.hitThisWeek).toBe(true)
     expect(s.weeks).toBe(1)
   })
 
   it('joiningAfterTheLastPlannedDayGivesAFreeWeek', () => {
-    const sunday = mon1 + 6
-    const s = computeStreak(new Set(), hemoDays, 0, sunday, sunday)
+    const mwf = days(1, 3, 5)
+    const saturday = mon1 + 5
+    const s = computeStreak(new Set(), mwf, 0, saturday, saturday)
     expect(s.freeWeek).toBe(true)
     expect(s.weeks).toBe(0)
     // ...and the free week neither breaks nor counts toward the next one.
-    const nextWeek = new Set([1, 2, 3, 4, 5, 6, 7].map((i) => sunday + i).filter((d) => hemoDays.has(dayOfWeek(d))))
-    const later = computeStreak(nextWeek, hemoDays, 0, sunday, sunday + 7)
+    const nextWeek = new Set([1, 2, 3, 4, 5, 6, 7].map((i) => saturday + i).filter((d) => mwf.has(dayOfWeek(d))))
+    const later = computeStreak(nextWeek, mwf, 0, saturday, saturday + 7)
     expect(later.weeks).toBe(1)
   })
 
   it('aWorkoutInTheFreeWeekStillCounts', () => {
-    const sunday = mon1 + 6
-    const s = computeStreak(days(sunday), hemoDays, 0, sunday, sunday)
+    const mwf = days(1, 3, 5)
+    const saturday = mon1 + 5
+    const s = computeStreak(days(saturday), mwf, 0, saturday, saturday)
     expect(s.freeWeek).toBe(false)
     expect(s.hitThisWeek).toBe(true)
     expect(s.weeks).toBe(1)
   })
 
+  it('sundayToSaturdayWeekCountsAsOneStreakWeek', () => {
+    const planDays = days(7, 2, 4) // Sun, Tue, Thu
+    const done = days(sun1, sun1 + 2, sun1 + 4)
+    const inWeek = computeStreak(done, planDays, 0, sun1, sun1 + 6)
+    expect(inWeek.doneThisWeek).toBe(3)
+    expect(inWeek.hitThisWeek).toBe(true)
+    expect(inWeek.days[0]).toBe('DONE')
+    // Next Sunday starts a new week and banks week 1 in the streak.
+    const nextWeek = computeStreak(done, planDays, 0, sun1, sun1 + 7)
+    expect(nextWeek.weeks).toBe(1)
+    expect(nextWeek.doneThisWeek).toBe(0)
+  })
+
   it('overrideTargetWins', () => {
-    const s = computeStreak(days(mon1, mon1 + 2, mon1 + 4), hemoDays, 3, mon1, mon1 + 6)
+    const s = computeStreak(days(mon1, mon1 + 2, mon1 + 4), hemoDays, 3, mon1, mon1 + 5)
     expect(s.targetThisWeek).toBe(3)
     expect(s.hitThisWeek).toBe(true)
   })
@@ -95,11 +113,25 @@ describe('StreakCalculatorTest', () => {
     expect(oneDone.targetThisWeek).toBe(3)
     expect(oneDone.hitThisWeek).toBe(false)
 
-    const threeDone = computeStreak(days(mon1 + 2, mon1 + 4, mon1 + 6), new Set(), 3, mon1 + 2, mon1 + 6)
+    const threeDone = computeStreak(days(mon1 + 2, mon1 + 4, mon1 + 5), new Set(), 3, mon1 + 2, mon1 + 5)
     expect(threeDone.doneThisWeek).toBe(3)
     expect(threeDone.targetThisWeek).toBe(3)
     expect(threeDone.hitThisWeek).toBe(true)
     expect(threeDone.weeks).toBe(1)
+  })
+
+  it('lastWeekStateReportsHitFreeMissOrNullForTheSharedStreak', () => {
+    // Target 3, no plan. Joined Monday of week 1 (mon1).
+    const firstWeek = computeStreak(days(mon1), new Set(), 3, mon1, mon1 + 2)
+    expect(firstWeek.lastWeekState).toBeNull()
+    const hitLast = computeStreak(days(mon1, mon1 + 1, mon1 + 2), new Set(), 3, mon1, mon1 + 9)
+    expect(hitLast.lastWeekState).toBe('hit')
+    const missLast = computeStreak(days(mon1), new Set(), 3, mon1, mon1 + 9)
+    expect(missLast.lastWeekState).toBe('miss')
+    // Every planned day of last week excused (sick) and no workout -> free.
+    const excused = new Set([mon1, mon1 + 1, mon1 + 2, mon1 + 3, mon1 + 4, mon1 + 5])
+    const freeLast = computeStreak(new Set(), new Set([1, 2, 3, 4, 5, 6]), 0, mon1 - 1, mon1 + 9, excused)
+    expect(freeLast.lastWeekState).toBe('free')
   })
 })
 
@@ -223,10 +255,10 @@ describe('ExcusedDaysTest', () => {
   it('excusedPlannedDayLowersTheTargetAndShowsAsExcused', () => {
     // Wednesday sick, four other planned days done: the week still counts.
     const done = days(mon1, mon1 + 1, mon1 + 4, mon1 + 5)
-    const s = computeStreak(done, hemoDays, 0, mon1, mon1 + 6, days(mon1 + 2))
+    const s = computeStreak(done, hemoDays, 0, mon1, mon1 + 5, days(mon1 + 2))
     expect(s.targetThisWeek).toBe(4)
     expect(s.hitThisWeek).toBe(true)
-    expect(s.days[2]).toBe('EXCUSED')
+    expect(s.days[3]).toBe('EXCUSED')
   })
 
   it('fullyExcusedWeekNeitherCountsNorBreaks', () => {
@@ -271,9 +303,12 @@ describe('web additions', () => {
     expect(effectiveSetEffort(set('صعب', 'OK'), pushUp)).toBe(1)
   })
 
-  it('weeks start on Monday', () => {
+  it('weeks start on Sunday', () => {
     expect(dayOfWeek(mon1)).toBe(1)
+    expect(dayOfWeek(sun1)).toBe(7)
     expect(dayOfWeek(0)).toBe(4) // 1970-01-01 was a Thursday
+    expect(weekStart(sun1)).toBe(sun1)
+    expect(weekStart(mon1)).toBe(sun1)
   })
 })
 

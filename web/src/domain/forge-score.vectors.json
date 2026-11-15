@@ -1,0 +1,23 @@
+{
+  "note": "Shared Forge Score vectors (Kotlin ForgeScore + web forge-score.ts). Epoch days: 20772 = Sunday 2026-11-15. scheduled = ISO weekdays 1=Mon..7=Sun.",
+  "cases": [
+    { "name": "sunday, nothing yet, sunday scheduled", "today": 20772, "scheduled": [7, 2, 4], "trained": [], "protein": [],
+      "expect": { "weekStart": 20772, "done": 0, "due": 0, "score": 100, "badge": "on_track", "proteinDays": 0 } },
+    { "name": "wed after a done monday", "today": 20775, "scheduled": [1, 3, 5], "trained": [20773], "protein": [],
+      "expect": { "weekStart": 20772, "done": 1, "due": 1, "score": 100, "badge": "on_track", "proteinDays": 0 } },
+    { "name": "wed, missed monday", "today": 20775, "scheduled": [1, 3, 5], "trained": [], "protein": [],
+      "expect": { "weekStart": 20772, "done": 0, "due": 1, "score": 0, "badge": "slacking", "proteinDays": 0 } },
+    { "name": "trained today counts as due", "today": 20775, "scheduled": [1, 3, 5], "trained": [20775], "protein": [],
+      "expect": { "weekStart": 20772, "done": 1, "due": 2, "score": 50, "badge": "trained", "proteinDays": 0 } },
+    { "name": "thursday off-day is rest", "today": 20776, "scheduled": [1, 3, 5], "trained": [20773], "protein": [],
+      "expect": { "weekStart": 20772, "done": 1, "due": 2, "score": 50, "badge": "rest", "proteinDays": 0 } },
+    { "name": "no plan, extra workouts, last week ignored", "today": 20778, "scheduled": [], "trained": [20771, 20774, 20776], "protein": [],
+      "expect": { "weekStart": 20772, "done": 2, "due": 2, "score": 100, "badge": "rest", "proteinDays": 0 } },
+    { "name": "rounds 2/3 up to 67, on track", "today": 20776, "scheduled": [1, 2, 3, 4], "trained": [20773, 20774], "protein": [],
+      "expect": { "weekStart": 20772, "done": 2, "due": 3, "score": 67, "badge": "on_track", "proteinDays": 0 } },
+    { "name": "40 percent is slacking", "today": 20778, "scheduled": [1, 2, 3, 4, 5, 6], "trained": [20773, 20774], "protein": [],
+      "expect": { "weekStart": 20772, "done": 2, "due": 5, "score": 40, "badge": "slacking", "proteinDays": 0 } },
+    { "name": "protein days only this week", "today": 20774, "scheduled": [2], "trained": [], "protein": [20771, 20772, 20774],
+      "expect": { "weekStart": 20772, "done": 0, "due": 0, "score": 100, "badge": "on_track", "proteinDays": 2 } }
+  ]
+}

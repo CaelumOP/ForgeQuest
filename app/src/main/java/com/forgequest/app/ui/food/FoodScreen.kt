@@ -178,7 +178,19 @@ fun FoodScreen(nav: NavHostController) {
     val newestMeals = remember(meals) { meals.asReversed() }
     val catalogResults by vm.catalogResults.collectAsState()
     val isToday = day == Dates.today()
-    LaunchedEffect(Unit) { vm.onShown() }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        vm.onShown()
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val zone = ZoneId.systemDefault()
+            val nextMidnight = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val waitMs = (nextMidnight - System.currentTimeMillis() + 1_000L).coerceAtLeast(1_000L)
+            kotlinx.coroutines.delay(waitMs)
+            vm.onShown()
+        }
+    }
 
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
     UndoSnackbarEffect(vm.undo)
@@ -693,7 +705,11 @@ private fun QuickLogSheet(initial: FoodCategory, recent: List<MealEntity>, carbs
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(12.dp))
-            SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
+            SegmentedTabs(
+                FoodCategory.entries.map { it.localLabel() },
+                FoodCategory.entries.indexOf(category),
+                { category = FoodCategory.entries[it] },
+            )
             Spacer(Modifier.height(16.dp))
             PillButton(
                 stringResource(R.string.food_log_it),
@@ -913,7 +929,11 @@ private fun FoodEditorSheet(food: FoodEntity, places: List<String>, carbsOn: Boo
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(serving, { serving = it.take(32) }, label = { Text(stringResource(R.string.food_serving_hint)) }, singleLine = true, shape = ForgeShape.Md, colors = fieldColors, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            SegmentedTabs(FoodCategory.entries.map { it.localLabel() }, FoodCategory.entries.indexOf(category), { category = FoodCategory.entries[it] })
+            SegmentedTabs(
+                FoodCategory.entries.map { it.localLabel() },
+                FoodCategory.entries.indexOf(category),
+                { category = FoodCategory.entries[it] },
+            )
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.food_pin_top), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                 FitSwitch(pinned, { pinned = it })
@@ -960,6 +980,7 @@ private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forg
     // What the guess was based on, so a wrong match ("2 scrambled eggs" read as a bigger meal) is easy to spot.
     var basis by remember { mutableStateOf<String?>(null) }
     val fallback = stringResource(R.string.scan_err_unreadable)
+    val sep = stringResource(R.string.list_separator)
     TextButton(
         onClick = {
             busy = true
@@ -967,7 +988,7 @@ private fun EstimateButton(name: String, estimate: (suspend (String) -> com.forg
             scope.launch {
                 runCatching { estimate(name.trim()) }
                     .onSuccess { scan ->
-                        basis = scan.items.joinToString(", ") { if (it.grams > 0) "${it.name} (${it.grams} g)" else it.name }
+                        basis = scan.items.joinToString(sep) { if (it.grams > 0) "${it.name} (${it.grams} g)" else it.name }
                         fun num(v: Float) = (kotlin.math.round(v * 10) / 10).toString().removeSuffix(".0")
                         onResult(scan.items.sumOf { it.kcal }, num(scan.items.map { it.protein }.sum()), num(scan.items.map { it.carbs }.sum()))
                     }

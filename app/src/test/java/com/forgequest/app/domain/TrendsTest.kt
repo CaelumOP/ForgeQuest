@@ -8,16 +8,16 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class TrendsTest {
-    // 2026-10-14 is a Wednesday; its week starts Monday 2026-10-12.
+    // 2026-10-14 is a Wednesday; its week starts Sunday 2026-10-11.
     private val today = java.time.LocalDate.of(2026, 10, 14).toEpochDay()
-    private val monday = Dates.weekStart(today)
+    private val sunday = Dates.weekStart(today)
 
     private fun set(session: Long, reps: Int, pr: Boolean = false) =
         SetEntity(sessionId = session, exerciseId = "pull_up", itemPosition = 0, block = "Main", circuit = false, setIndex = 0, targetLabel = "", reps = reps, done = true, isPr = pr)
 
     @Test
     fun weeklyCountsEndWithTheCurrentWeek() {
-        val days = setOf(monday, monday + 2, monday - 7, monday - 20)
+        val days = setOf(sunday, sunday + 2, sunday - 7, sunday - 20)
         assertEquals(listOf(0, 1, 2), Trends.weeklyCounts(days, 3, today))
         assertEquals(listOf(1, 0, 1, 2), Trends.weeklyCounts(days, 4, today))
     }
@@ -46,10 +46,10 @@ class TrendsTest {
 
     @Test
     fun consistencyGridRowsAreWeekdaysAndFutureIsMarked() {
-        val grid = Trends.consistencyGrid(setOf(monday, monday - 7), setOf(monday - 7), weeks = 2, today = today)
+        val grid = Trends.consistencyGrid(setOf(sunday, sunday - 7), setOf(sunday - 7), weeks = 2, today = today)
         assertEquals(7, grid.size)
         assertEquals(listOf(Trends.DayCell.RECORD, Trends.DayCell.DONE), grid[0])
-        assertEquals(Trends.DayCell.FUTURE, grid[6][1]) // Sunday of this week hasn't happened
+        assertEquals(Trends.DayCell.FUTURE, grid[6][1]) // Saturday of this week hasn't happened
         assertEquals(Trends.DayCell.REST, grid[1][1])
     }
 
@@ -71,7 +71,7 @@ class TrendsTest {
 
     @Test
     fun proteinDaysAndPercent() {
-        val nutrition = listOf(monday to 150f, monday + 1 to 90f, monday - 7 to 160f)
+        val nutrition = listOf(sunday to 150f, sunday + 1 to 90f, sunday - 7 to 160f)
         assertEquals(listOf(1, 1), Trends.proteinDaysPerWeek(nutrition, 140, 2, today))
         assertEquals(50, Trends.percentChange(6f, 9f))
         assertNull(Trends.percentChange(0f, 3f))

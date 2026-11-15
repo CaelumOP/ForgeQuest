@@ -5,7 +5,7 @@ import type { ExerciseRow } from '../../data/db'
 import { useProgress } from '../../data/progress'
 import { configuredEquipment, weightUnit } from '../../data/settings'
 import { startSession, useOpenSession, type PlanDayWithItems } from '../../data/workouts'
-import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { dayOfWeek, todayEpochDay, WEEK_ORDER } from '../../domain/dates'
 import type { SetEntity } from '../../domain/entities'
 import { bestSetSeries } from '../../domain/trends'
 import type { WeightUnit } from '../../domain/units'
@@ -99,7 +99,7 @@ export function WorkoutsScreen(_: { param?: string }) {
 
       {plan && (
         <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
-          {[1, 2, 3, 4, 5, 6, 7].map((dow) => {
+          {WEEK_ORDER.map((dow) => {
             const rest = plan.days.find((d) => d.day.dayOfWeek === dow)?.day.isRest ?? true
             const sel = dow === selected
             return (

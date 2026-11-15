@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -89,7 +90,7 @@ fun BadgesScreen(nav: NavHostController) {
                 }
                 Spacer(Modifier.height(12.dp))
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.navigationBarsPadding().height(20.dp))
         }
     }
 }

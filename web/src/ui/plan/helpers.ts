@@ -1,6 +1,7 @@
 // Pure helpers and string-key mappings for PlanBuilderScreen (mirrors PlanBuilderLabels.kt, PlanLocalize.kt, PlanBuilderScreen.kt).
 import { getLang, t, type Lang } from '../../i18n'
 import { configuredEquipment, type Settings } from '../../data/settings'
+import { WEEK_ORDER } from '../../domain/dates'
 import type { ExerciseEntity, PlanDraft, PlanDraftItem } from '../../domain/entities'
 import {
   EQUIPMENT_PRESETS, PRESET_INFO, encodeEquipmentSet, expandLegacyEquipment, matchTrainingPlace, presetEquipment,
@@ -211,7 +212,7 @@ export function rowSummaries(
 
   const scheduleCustom = !sameSet(a.days, spreadDays(a.days.size)) || a.minutesByDay.size > 0
   const schedule = scheduleCustom
-    ? [...a.days].sort((x, y) => x - y).map((d) => dayShort(d, lang)).join(sep)
+    ? [...a.days].sort((x, y) => WEEK_ORDER.indexOf(x) - WEEK_ORDER.indexOf(y)).map((d) => dayShort(d, lang)).join(sep)
     : auto
 
   const gearClean = expandLegacyEquipment(a.equipment)

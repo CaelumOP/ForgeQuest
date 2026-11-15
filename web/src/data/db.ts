@@ -6,7 +6,8 @@ import type {
   ExerciseEntity, PlanItemEntity, ReadinessDayEntity, SessionEntity, SetEntity,
 } from '../domain/entities';
 
-export type FoodCategory = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACKS' | 'DRINKS';
+export const FOOD_CATEGORIES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACKS', 'DRINKS'] as const;
+export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 
 // Auto-generated ids are optional on rows that are not saved yet (Room uses 0 for that).
 
@@ -28,6 +29,8 @@ export interface FoodRow {
   place?: string;
   /** What it's made of, each part on or off; when set, kcal/protein/carbs are the "on" parts' totals. */
   parts?: FoodPart[];
+  /** EAN/UPC digits from a barcode scan, preserved across backup round-trips. */
+  barcode?: string;
 }
 /** One part of a saved food (the bread, the chicken, the ketchup). Unticked parts stay, switched off, for next time. */
 export interface FoodPart { name: string; grams: number; kcal: number; protein: number; carbs: number; on: boolean }

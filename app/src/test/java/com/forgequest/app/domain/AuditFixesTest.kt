@@ -76,7 +76,7 @@ class AuditFixesTest {
     }
 
     // Two lifts done the same way Mon/Wed/Fri for five weeks; checked on a Monday morning before training.
-    private val monday = Dates.weekStart(LocalDate.of(2026, 10, 14).toEpochDay())
+    private val monday = LocalDate.of(2026, 10, 12).toEpochDay()
     private val sessions = (0 until 5).flatMap { w -> listOf(0, 2, 4).map { d -> monday - 35 + 7 * w + d } }
         .mapIndexed { i, d -> SessionEntity(id = i + 1L, planDayId = null, title = "A", epochDay = d, startedAt = 0L) }
     private fun lift(session: Long, id: String, block: String = "Main", kg: Float? = 60f, reps: Int? = 8, sec: Int? = null) =

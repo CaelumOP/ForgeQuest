@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import fixtureText from './fixtures/android-backup.json?raw';
 import { db, putSession, putSet } from './db';
 import {
-  applyBackup, buildBackup, decodeBackup, encodeBackup, listSafetyCopies, DEFAULT_BACKUP_SETTINGS,
+  applyBackup, BackupUnreadableError, buildBackup, decodeBackup, encodeBackup, listSafetyCopies,
+  DEFAULT_BACKUP_SETTINGS,
 } from './backup';
-import { loadSettings } from './settings';
+import { loadSettings, weekTargets } from './settings';
 
 const fixture = () => JSON.parse(fixtureText) as Record<string, unknown>;
 const withoutCreatedAt = (o: Record<string, unknown>) => {
@@ -153,5 +154,82 @@ describe('backup', () => {
     const b = await putSet(base);
     expect(a).toBeGreaterThan(0);
     expect(b).toBe(a + 1);
+  });
+
+  it('imports and re-exports food barcodes from Android backups', async () => {
+    const f = fixture() as { foods: Record<string, unknown>[] };
+    f.foods[0].barcode = '6281007012345';
+    const settings = await applyBackup(decodeBackup(JSON.stringify(f)));
+    expect((await db.foods.get(1))?.barcode).toBe('6281007012345');
+    const out = await buildBackup(settings);
+    expect(out.foods[0].barcode).toBe('6281007012345');
+    expect(JSON.parse(encodeBackup(out)).foods[0].barcode).toBe('6281007012345');
+  });
+
+  it('restores Sunday weekTargets without double-shifting and preserves weekTargets on export', async () => {
+    const f = fixture();
+    f.weekTargets = { '20000': 4, '20007': 5, bad: 3, '20014': 9, '20021': 2.5 };
+    f.weekStart = 'sunday';
+    const decoded = decodeBackup(JSON.stringify(f));
+    expect(decoded.weekTargets).toEqual({ '20000': 4, '20007': 5 });
+
+    const settings = await applyBackup(decoded);
+    const kvRow = await db.kv.get('weekTargets');
+    expect(kvRow?.value).toEqual({ '20000': 4, '20007': 5, sundayWeeks: true });
+    expect(await weekTargets()).toEqual(new Map([[20000, 4], [20007, 5]]));
+
+    const exported = await buildBackup(settings);
+    expect(exported.weekTargets).toEqual({ '20000': 4, '20007': 5 });
+    expect(exported.weekStart).toBe('sunday');
+  });
+
+  it('shifts legacy weekTargets keys by -1 when weekStart is missing', async () => {
+    const f = fixture();
+    f.weekTargets = { '20001': 4, '20008': 6 };
+    delete f.weekStart;
+    await applyBackup(decodeBackup(JSON.stringify(f)));
+    expect(await weekTargets()).toEqual(new Map([[20000, 4], [20007, 6]]));
+    expect((await db.kv.get('weekTargets'))?.value).toEqual({ '20000': 4, '20007': 6, sundayWeeks: true });
+  });
+
+  it('writes { sundayWeeks: true } when restoring a backup without weekTargets', async () => {
+    await db.kv.put({ key: 'weekTargets', value: { '20000': 3, sundayWeeks: true } });
+    const f = fixture();
+    delete f.weekTargets;
+    delete f.weekStart;
+    await applyBackup(decodeBackup(JSON.stringify(f)));
+    expect((await db.kv.get('weekTargets'))?.value).toEqual({ sundayWeeks: true });
+    expect(await weekTargets()).toEqual(new Map());
+  });
+
+  it('rejects wrong primitive types and invalid enums without touching existing data', async () => {
+    const seed = decodeBackup(fixtureText);
+    await applyBackup(seed);
+    await db.kv.put({ key: 'weekTargets', value: { '20000': 4, sundayWeeks: true } });
+
+    const badStartedAt = fixture() as { sessions: Record<string, unknown>[] };
+    badStartedAt.sessions[0].startedAt = 'x';
+    expect(() => decodeBackup(JSON.stringify(badStartedAt))).toThrow(BackupUnreadableError);
+    await expect(applyBackup(badStartedAt as never)).rejects.toThrow(BackupUnreadableError);
+
+    const badKcal = fixture() as { foods: Record<string, unknown>[] };
+    badKcal.foods[0].kcal = '100';
+    expect(() => decodeBackup(JSON.stringify(badKcal))).toThrow(BackupUnreadableError);
+
+    const badEnum = fixture() as { exercises: Record<string, unknown>[] };
+    badEnum.exercises[0].kind = 'CARDIO';
+    expect(() => decodeBackup(JSON.stringify(badEnum))).toThrow(BackupUnreadableError);
+
+    expect(await db.sessions.count()).toBe(2);
+    expect(await db.foods.count()).toBe(1);
+    expect(await weekTargets()).toEqual(new Map([[20000, 4]]));
+  });
+
+  it('keeps a safety copy when only plans exist on the device', async () => {
+    await db.plans.add({ name: 'PPL', description: '', source: 'manual', active: true, createdAt: 1760000000000 });
+    await applyBackup(decodeBackup(fixtureText));
+    const copies = await listSafetyCopies();
+    expect(copies).toHaveLength(1);
+    expect(decodeBackup(copies[0].json).plans).toHaveLength(1);
   });
 });

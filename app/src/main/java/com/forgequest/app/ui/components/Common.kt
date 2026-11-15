@@ -286,43 +286,69 @@ fun SegmentedTabs(
 ) {
     val c = Fit.colors
     val tall = subs.isNotEmpty() || wrap
-    // At large text sizes five equal slices can't hold their labels, so the row scrolls sideways with each label whole.
     val reflow = reflowText()
-    val scrolling = !tall && options.size >= 4 && reflow
-    // Tall segments share one height, so a one-line option is as tall as a wrapped one.
-    Row(
-        modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(if (tall) ForgeShape.Lg else ForgeShape.Full).background(c.cardHigh)
-            .then(if (scrolling) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier).padding(4.dp),
-    ) {
-        options.forEachIndexed { i, label ->
-            val isSel = i == selected
-            val off = i in disabled
-            Box(
-                (if (scrolling) Modifier else Modifier.weight(1f)).fillMaxHeight().clip(if (tall) ForgeShape.Md else ForgeShape.Full).background(if (isSel) c.teal else Color.Transparent)
-                    .selectable(selected = isSel, enabled = !off, role = Role.Tab) { onSelect(i) }
-                    .alpha(if (off) 0.4f else 1f).padding(vertical = 9.dp, horizontal = if (scrolling) 14.dp else 4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (tall) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(label, style = MaterialTheme.typography.labelMedium, color = if (isSel) c.onTeal else c.textPrimary, maxLines = 2, textAlign = TextAlign.Center)
-                        subs.getOrNull(i)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = if (isSel) c.onTeal else c.textSecondary, maxLines = 1, textAlign = TextAlign.Center) }
-                    }
-                } else Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelMedium
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth(), propagateMinConstraints = true) {
+        val scrolling = if (!tall && reflow && options.isNotEmpty() && constraints.hasBoundedWidth) {
+            with(density) {
+                val sliceWidthPx = ((maxWidth - 8.dp) / options.size - 8.dp).toPx()
+                options.indices.any { i ->
+                    val dotPx = if (i in dots) 8.dp.toPx() else 0f
+                    val availPx = (sliceWidthPx - dotPx).toInt().coerceAtLeast(1)
+                    val label = options[i]
+                    val fitsMultiLine = !measurer.measure(
                         label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isSel) c.onTeal else c.textPrimary,
-                        // At large text the labels wrap to two lines instead of being cut short.
-                        maxLines = if (reflow && !scrolling) 2 else 1,
-                        softWrap = reflow && !scrolling,
-                        textAlign = TextAlign.Center,
-                        overflow = if (reflow && !scrolling) TextOverflow.Clip else TextOverflow.Ellipsis,
-                        modifier = if (scrolling) Modifier else Modifier.weight(1f, fill = false),
-                    )
-                    if (i in dots) {
-                        Spacer(Modifier.width(3.dp))
-                        Box(Modifier.size(5.dp).clip(CircleShape).background(if (isSel) c.onTeal else c.teal))
+                        style = labelStyle,
+                        maxLines = 2,
+                        softWrap = true,
+                        constraints = androidx.compose.ui.unit.Constraints(maxWidth = availPx),
+                    ).hasVisualOverflow
+                    val wordsFit = label.split(' ').all { word ->
+                        measurer.measure(word, style = labelStyle, maxLines = 1, softWrap = false).size.width <= availPx
+                    }
+                    !(fitsMultiLine && wordsFit)
+                }
+            }
+        } else {
+            false
+        }
+        // Tall segments share one height, so a one-line option is as tall as a wrapped one.
+        Row(
+            Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(if (tall) ForgeShape.Lg else ForgeShape.Full).background(c.cardHigh)
+                .then(if (scrolling) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier).padding(4.dp),
+        ) {
+            options.forEachIndexed { i, label ->
+                val isSel = i == selected
+                val off = i in disabled
+                Box(
+                    (if (scrolling) Modifier else Modifier.weight(1f)).fillMaxHeight().clip(if (tall) ForgeShape.Md else ForgeShape.Full).background(if (isSel) c.teal else Color.Transparent)
+                        .selectable(selected = isSel, enabled = !off, role = Role.Tab) { onSelect(i) }
+                        .alpha(if (off) 0.4f else 1f).padding(vertical = 9.dp, horizontal = if (scrolling) 14.dp else 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (tall) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(label, style = MaterialTheme.typography.labelMedium, color = if (isSel) c.onTeal else c.textPrimary, maxLines = 2, textAlign = TextAlign.Center)
+                            subs.getOrNull(i)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = if (isSel) c.onTeal else c.textSecondary, maxLines = 1, textAlign = TextAlign.Center) }
+                        }
+                    } else Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isSel) c.onTeal else c.textPrimary,
+                            // At large text the labels wrap to two lines instead of being cut short.
+                            maxLines = if (reflow && !scrolling) 2 else 1,
+                            softWrap = reflow && !scrolling,
+                            textAlign = TextAlign.Center,
+                            overflow = if (reflow && !scrolling) TextOverflow.Clip else TextOverflow.Ellipsis,
+                            modifier = if (scrolling) Modifier else Modifier.weight(1f, fill = false),
+                        )
+                        if (i in dots) {
+                            Spacer(Modifier.width(3.dp))
+                            Box(Modifier.size(5.dp).clip(CircleShape).background(if (isSel) c.onTeal else c.teal))
+                        }
                     }
                 }
             }

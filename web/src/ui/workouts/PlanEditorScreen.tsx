@@ -9,7 +9,7 @@ import {
 } from '../../data/workouts'
 import { localizePlan, STARTER_PLANS, type PlanDraft } from '../../data/seed/starter-plans'
 import { ALL_ACTIVE_EQUIPMENT, adaptPlanToEquipment, expandLegacyEquipment, type Equipment } from '../../domain/exercise-swap-engine'
-import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { dayOfWeek, todayEpochDay, WEEK_ORDER } from '../../domain/dates'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 import { fromKg, loadStep, toKg, unitLabel, type WeightUnit } from '../../domain/units'
 import { Button, Card, CoachMark, Dialog, EmptyState, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
@@ -111,7 +111,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
         </Card>
       ) : (
         <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>
-          {[1, 2, 3, 4, 5, 6, 7].map((dow) => (
+          {WEEK_ORDER.map((dow) => (
             <button key={dow} type="button" role="tab" class="wk-day" aria-selected={dow === selected} aria-label={dayName(dow, lang)} onClick={() => setSelected(dow)}>
               <span>{dayShort(dow, lang)}</span>
             </button>
@@ -429,7 +429,7 @@ function MoveDaySheet({ selected, days, lang, onClose, onPick }: { selected: num
   return (
     <Sheet open onClose={onClose} title={t('plan_move_title', dayName(selected, lang))}>
       <p class="wk-s">{t('plan_move_body')}</p>
-      {[1, 2, 3, 4, 5, 6, 7].filter((d) => d !== selected).map((dow) => {
+      {WEEK_ORDER.filter((d) => d !== selected).map((dow) => {
         const target = days.find((x) => x.day.dayOfWeek === dow)
         return (
           <button key={dow} type="button" class="wk-prow" onClick={() => onPick(dow)}>
@@ -471,7 +471,7 @@ export function PlanPreviewSheet({ draft, exercises, userEquipment, onApply, onC
     <Sheet open onClose={onClose} title={draft.name}>
       {draft.description.trim() && <p class="wk-s">{draft.description}</p>}
       <div>
-        {[...draft.days].sort((a, b) => a.dayOfWeek - b.dayOfWeek).map((d) => {
+        {[...draft.days].sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek)).map((d) => {
           const rest = d.isRest || d.items.length === 0
           return (
             <div class="wk-preview-day" key={d.dayOfWeek}>

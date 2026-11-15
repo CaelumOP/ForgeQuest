@@ -256,7 +256,8 @@ function FoodEditorSheet({ food, places, carbsOn, onSave, onDelete, onClose }: {
 export function FoodScreen(_: { param?: string }) {
   const s = useSettings()
   const foods = useFoods()
-  const [day, setDay] = useState(todayEpochDay())
+  const [today, setToday] = useState(todayEpochDay)
+  const [day, setDay] = useState(today)
   const [followToday, setFollowToday] = useState(true)
   const [cat, setCat] = useState<FoodCategory>(categoryForNow())
   /** foodId → how much and the meal it's logged under, for foods ticked but not yet logged. */
@@ -269,10 +270,25 @@ export function FoodScreen(_: { param?: string }) {
   const [quick, setQuick] = useState(false)
   const [undo, setUndo] = useState<{ text: string; meal: MealRow } | null>(null)
   const meals = useMealsOn(day)
-  const today = todayEpochDay()
   const isToday = day === today
 
-  // A tab left open overnight moves on to the new day while the person is on "today".
+  // A tab left open overnight or brought back to the front moves on to the new day while the person is on "today".
+  useEffect(() => {
+    const syncToday = () => setToday(todayEpochDay())
+    const onVisible = () => { if (document.visibilityState === 'visible') syncToday() }
+    document.addEventListener('visibilitychange', onVisible)
+    let timer: ReturnType<typeof setTimeout>
+    const scheduleMidnight = () => {
+      const now = new Date()
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1)
+      timer = setTimeout(() => { syncToday(); scheduleMidnight() }, Math.max(1000, next.getTime() - now.getTime()))
+    }
+    scheduleMidnight()
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      clearTimeout(timer)
+    }
+  }, [])
   useEffect(() => { if (followToday && day !== today) setDay(today) }, [today, followToday, day])
   useEffect(() => {
     if (!undo) return

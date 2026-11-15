@@ -2,12 +2,16 @@
 // ignoreUnknownKeys = true and encodeDefaults = true): fields in Kotlin declaration order, every
 // default written out, enums as their names, nullable fields as null.
 import {
-  db, type BadgeRow, type ChatRow, type DayNoteRow, type ExerciseRow, type FoodRow, type MealRow,
+  db, FOOD_CATEGORIES, type BadgeRow, type ChatRow, type DayNoteRow, type ExerciseRow, type FoodRow, type MealRow,
   type PlanDayRow, type PlanItemRow, type PlanRow, type ReadinessDayRow, type SessionRow, type SetRow,
   type WeightRow,
 } from './db';
-import { fromBackupSettings, loadSettings, toBackupSettings, updateSettings } from './settings';
+import { fromBackupSettings, loadSettings, toBackupSettings, updateSettings, weekTargets } from './settings';
 import { SCANNED_NO_PHOTO } from './food';
+import { EXERCISE_KINDS, MUSCLES } from '../domain/muscle';
+import { CUT_PACES, DAY_ACTIVITIES, GAIN_PACES, NUTRITION_GOALS } from '../domain/nutrition';
+import { DAY_TAGS } from '../domain/progress';
+import { SET_EFFORTS } from '../domain/effort';
 
 const currentBackupSettings = async (): Promise<BackupSettings> => toBackupSettings(await loadSettings());
 
@@ -50,6 +54,8 @@ export interface BackupFile {
   settings: BackupSettings | null;
   dayNotes: DayNoteRow[];
   readinessDays: ReadinessDayRow[];
+  weekTargets?: Record<string, number>;
+  weekStart?: string;
 }
 
 export class BackupUnreadableError extends Error {
@@ -79,7 +85,7 @@ const SPECS = {
   },
   foods: {
     id: 0, name: REQ, category: REQ, kcal: REQ, protein: REQ, serving: '', carbs: 0, photoPath: null,
-    pinned: false, createdAt: REQ, place: '', parts: [],
+    pinned: false, createdAt: REQ, place: '', parts: [], barcode: '',
   },
   meals: {
     id: 0, epochDay: REQ, loggedAt: REQ, name: REQ, category: REQ, kcal: REQ, protein: REQ, quantity: 1,
@@ -102,18 +108,86 @@ const REQUIRED_LISTS: ListKey[] = [
   'exercises', 'plans', 'planDays', 'planItems', 'sessions', 'sets', 'foods', 'meals', 'weights', 'chat', 'badges',
 ];
 
+type ValueKind = 'number' | 'string' | 'boolean' | 'array';
+type Section = ListKey | 'settings';
+
+const NULL_STRINGS = new Set(['videoUrl', 'photoPath', 'planJson']);
+const REQ_TYPES: Record<string, ValueKind> = {
+  id: 'string', name: 'string', kind: 'string', source: 'string', title: 'string', exerciseId: 'string',
+  block: 'string', targetLabel: 'string', category: 'string', role: 'string', text: 'string', tag: 'string',
+  active: 'boolean', isRest: 'boolean', circuit: 'boolean', feltGreat: 'boolean',
+  primary: 'array', secondary: 'array',
+  createdAt: 'number', planId: 'number', dayOfWeek: 'number', dayId: 'number', position: 'number', sets: 'number',
+  planDayId: 'number', epochDay: 'number', startedAt: 'number', sessionId: 'number', itemPosition: 'number',
+  setIndex: 'number', kcal: 'number', protein: 'number', loggedAt: 'number', kg: 'number', unlockedAt: 'number',
+  updatedAt: 'number', recovery: 'number', sleepPerf: 'number', sleepMin: 'number', strain: 'number',
+  hrv: 'number', rhr: 'number',
+};
+const ENUMS: Partial<Record<Section, Record<string, readonly string[]>>> = {
+  exercises: { kind: EXERCISE_KINDS, primary: MUSCLES, secondary: MUSCLES },
+  sets: { effort: ['', ...SET_EFFORTS] },
+  foods: { category: FOOD_CATEGORIES },
+  meals: { category: FOOD_CATEGORIES },
+  dayNotes: { tag: DAY_TAGS },
+  settings: {
+    bodyType: ['MALE', 'FEMALE'], nutritionGoal: NUTRITION_GOALS, dayActivity: DAY_ACTIVITIES,
+    cutPace: CUT_PACES, gainPace: GAIN_PACES,
+  },
+};
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+function expectedKind(def: unknown, key: string): ValueKind | null {
+  if (def === REQ) return REQ_TYPES[key] ?? null;
+  if (def === null) return NULL_STRINGS.has(key) ? 'string' : 'number';
+  if (Array.isArray(def)) return 'array';
+  const t = typeof def;
+  return t === 'number' || t === 'string' || t === 'boolean' ? t : null;
+}
+
+function validateValue(section: Section, key: string, def: unknown, v: unknown, where: string): void {
+  const allowNull = def === null || (section === 'sessions' && key === 'planDayId');
+  if (v === null) {
+    if (!allowNull) throw new BackupUnreadableError(`${where}.${key} must not be null`);
+    return;
+  }
+  const kind = expectedKind(def, key);
+  if (kind === 'number' && (typeof v !== 'number' || !Number.isFinite(v))) {
+    throw new BackupUnreadableError(`${where}.${key} must be a number`);
+  } else if (kind === 'string' && typeof v !== 'string') {
+    throw new BackupUnreadableError(`${where}.${key} must be a string`);
+  } else if (kind === 'boolean' && typeof v !== 'boolean') {
+    throw new BackupUnreadableError(`${where}.${key} must be a boolean`);
+  } else if (kind === 'array' && !Array.isArray(v)) {
+    throw new BackupUnreadableError(`${where}.${key} must be a list`);
+  }
+  const allowed = ENUMS[section]?.[key];
+  if (allowed) {
+    if (Array.isArray(v)) {
+      if (v.some((item) => typeof item !== 'string' || !allowed.includes(item))) {
+        throw new BackupUnreadableError(`${where}.${key} has invalid value`);
+      }
+    } else if (typeof v !== 'string' || !allowed.includes(v)) {
+      throw new BackupUnreadableError(`${where}.${key} has invalid value`);
+    }
+  }
+  if (section === 'foods' && key === 'parts' && Array.isArray(v) && v.some((p) => !isObj(p))) {
+    throw new BackupUnreadableError(`${where}.parts must contain objects`);
+  }
+}
+
 /** Copies `src` into a new object in spec order: known keys only, defaults filled in. */
-function shape(spec: Spec, src: unknown, where: string): Record<string, unknown> {
+function shape(spec: Spec, src: unknown, where: string, section: Section): Record<string, unknown> {
   if (!isObj(src)) throw new BackupUnreadableError(`${where} is not an object`);
   const out: Record<string, unknown> = {};
   for (const [key, def] of Object.entries(spec)) {
-    const v = src[key];
+    // Android's barcode is a non-null String, so a stray null is written back as "" rather than rejected.
+    const v = key === 'barcode' && src[key] === null ? '' : src[key];
     if (v === undefined) {
       if (def === REQ) throw new BackupUnreadableError(`${where}.${key} is missing`);
       out[key] = Array.isArray(def) ? [] : def; // a fresh list per row, never one shared array
     } else {
+      validateValue(section, key, def, v, where);
       out[key] = v;
     }
   }
@@ -126,19 +200,40 @@ function shapeList<K extends ListKey>(key: K, src: unknown): unknown[] {
     return [];
   }
   if (!Array.isArray(src)) throw new BackupUnreadableError(`${key} is not a list`);
-  return src.map((row, i) => shape(SPECS[key], row, `${key}[${i}]`));
+  return src.map((row, i) => shape(SPECS[key], row, `${key}[${i}]`, key));
+}
+
+function parseWeekTargets(raw: unknown): Record<string, number> | undefined {
+  if (raw == null) return undefined;
+  if (!isObj(raw)) throw new BackupUnreadableError('weekTargets is not an object');
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (/^-?\d+$/.test(k) && typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 7) {
+      out[k] = v;
+    }
+  }
+  return out;
 }
 
 function shapeFile(src: unknown): BackupFile {
   if (!isObj(src)) throw new BackupUnreadableError('not an object');
-  if (typeof src.createdAt !== 'number') throw new BackupUnreadableError('createdAt is missing');
+  if (typeof src.createdAt !== 'number' || !Number.isFinite(src.createdAt)) {
+    throw new BackupUnreadableError('createdAt is missing');
+  }
+  if (src.version !== undefined && (typeof src.version !== 'number' || !Number.isFinite(src.version))) {
+    throw new BackupUnreadableError('version must be a number');
+  }
+  if (src.weekStart != null && typeof src.weekStart !== 'string') {
+    throw new BackupUnreadableError('weekStart must be a string');
+  }
   const lists = {} as Record<ListKey, unknown[]>;
   for (const key of Object.keys(SPECS) as ListKey[]) lists[key] = shapeList(key, src[key]);
   const settings = src.settings == null
     ? null
-    : (shape(DEFAULT_BACKUP_SETTINGS, src.settings, 'settings') as unknown as BackupSettings);
+    : (shape(DEFAULT_BACKUP_SETTINGS, src.settings, 'settings', 'settings') as unknown as BackupSettings);
+  const targets = parseWeekTargets(src.weekTargets);
   // Built key by key so the JSON keeps Kotlin's declaration order.
-  return {
+  const out: BackupFile = {
     version: typeof src.version === 'number' ? src.version : 2,
     createdAt: src.createdAt,
     exercises: lists.exercises as ExerciseRow[],
@@ -156,6 +251,9 @@ function shapeFile(src: unknown): BackupFile {
     dayNotes: lists.dayNotes as DayNoteRow[],
     readinessDays: lists.readinessDays as ReadinessDayRow[],
   };
+  if (targets !== undefined) out.weekTargets = targets;
+  if (typeof src.weekStart === 'string') out.weekStart = src.weekStart;
+  return out;
 }
 
 // ---------------------------------------------------------------- Build / encode / decode
@@ -166,16 +264,21 @@ const TABLES = [
 ] as const;
 
 async function readAll(settings: BackupSettings | null): Promise<BackupFile> {
-  const rows = await Promise.all(TABLES.map((t) => db.table(t).toArray()));
+  const [rows, targets] = await Promise.all([
+    Promise.all(TABLES.map((t) => db.table(t).toArray())),
+    weekTargets(),
+  ]);
   const raw: Record<string, unknown> = { version: 2, createdAt: Date.now(), settings };
   TABLES.forEach((t, i) => { raw[t] = rows[i]; });
+  raw.weekTargets = Object.fromEntries([...targets].map(([k, v]) => [String(k), v]));
+  raw.weekStart = 'sunday';
   return shapeFile(raw);
 }
 
 /** Everything on this device plus `settings` (default: the saved settings, never the AI keys), as a version 2 backup. */
 export async function buildBackup(settings?: BackupSettings | null): Promise<BackupFile> {
   const s = settings === undefined ? await currentBackupSettings() : settings;
-  return db.transaction('r', TABLES, () => readAll(s));
+  return db.transaction('r', [...TABLES, 'kv'], () => readAll(s));
 }
 
 export function encodeBackup(file: BackupFile): string {
@@ -207,13 +310,26 @@ export function backupCounts(file: BackupFile) {
 
 const KEEP_SAFETY_COPIES = 3;
 
+function restoredWeekTargetsRecord(file: BackupFile): Record<string, number | boolean> {
+  const next: Record<string, number | boolean> = { sundayWeeks: true };
+  if (!file.weekTargets) return next;
+  const shift = file.weekStart === 'sunday' ? 0 : -1;
+  for (const [k, v] of Object.entries(file.weekTargets)) {
+    const key = Number(k);
+    if (Number.isInteger(key) && Number.isInteger(v) && v >= 1 && v <= 7) {
+      next[String(key + shift)] = v;
+    }
+  }
+  return next;
+}
+
 /**
  * Replaces everything on this device with `file`, in one transaction. First keeps a safety copy of
- * what is here now (latest 3), unless there are no sessions, meals or weights. Photos are dropped
- * (the web never stores them); readiness history stays when the file has none. The file's settings
- * are saved through settings.ts (keys untouched) and the locked weekly streak targets are cleared, so
- * they are locked again from the restored history (decision 11). Returns the file's settings (null
- * when it has none, e.g. a v1 file).
+ * what is here now (latest 3), unless sessions, meals, weights, plans and foods are all empty.
+ * Photos are dropped (the web never stores them); readiness history stays when the file has none.
+ * The file's settings are saved through settings.ts (keys untouched) and weekly streak targets are
+ * restored from `file.weekTargets` (or cleared while keeping `sundayWeeks: true`). Returns the
+ * file's settings (null when it has none, e.g. a v1 file).
  */
 export async function applyBackup(
   file: BackupFile,
@@ -223,7 +339,10 @@ export async function applyBackup(
   const before = currentSettings === undefined ? await currentBackupSettings() : currentSettings;
   await db.transaction('rw', [...TABLES, 'safetyCopies', 'kv'], async () => {
     const current = await readAll(before);
-    if (current.sessions.length || current.meals.length || current.weights.length) {
+    if (
+      current.sessions.length || current.meals.length || current.weights.length ||
+      current.plans.length || current.foods.length
+    ) {
       await db.safetyCopies.add({ createdAt: current.createdAt, json: encodeBackup(current) });
       const all = await db.safetyCopies.orderBy('createdAt').reverse().primaryKeys();
       if (all.length > KEEP_SAFETY_COPIES) await db.safetyCopies.bulkDelete(all.slice(KEEP_SAFETY_COPIES));
@@ -239,7 +358,7 @@ export async function applyBackup(
       await db.table(t).clear();
       await db.table(t).bulkAdd(rows[t]);
     }
-    await db.kv.delete('weekTargets');
+    await db.kv.put({ key: 'weekTargets', value: restoredWeekTargetsRecord(f) });
   });
   const restored = f.settings;
   if (restored) await updateSettings((s) => fromBackupSettings(restored, s));

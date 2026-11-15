@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lock
@@ -53,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import com.forgequest.app.data.friends.findActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -370,5 +372,170 @@ internal fun AboutSettingsGroup(
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/@HemoCalisthenics")))
             }, icon = Icons.AutoMirrored.Rounded.OpenInNew)
         }
+    }
+}
+
+@Composable
+internal fun FriendsSettingsGroup(
+    vm: SettingsViewModel,
+    toggleGroup: (String) -> Unit,
+) {
+    val c = Fit.colors
+    val context = LocalContext.current
+    val signedIn = vm.friendsSignedIn.collectAsState().value
+    val uiData = vm.friendsState.collectAsState().value
+    val me = uiData?.view?.me ?: vm.friendsMe.collectAsState().value
+    val error = vm.friendsError.collectAsState().value
+    val joined = uiData != null || me?.joined == true
+    val confirmDelete = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    val statusText = when {
+        !signedIn -> stringResource(R.string.settings_friends_status_signed_out)
+        joined && me != null -> stringResource(R.string.settings_friends_status_signed_in, me.name)
+        else -> stringResource(R.string.settings_friends_status_pending)
+    }
+
+    SettingsGroup(
+        Icons.Rounded.Group,
+        c.teal,
+        c.tealTrack,
+        stringResource(R.string.settings_group_friends),
+        statusText,
+        onToggle = { toggleGroup("friends") },
+    ) {
+        FitCard {
+            Text(
+                text = statusText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textSecondary,
+            )
+            if (error != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.friends_error_line, error),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.textSecondary,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            if (!signedIn) {
+                TonalPill(
+                    text = stringResource(R.string.settings_friends_sign_in),
+                    onClick = { context.findActivity()?.let(vm::signInFriends) },
+                )
+            } else {
+                if (joined && me != null) {
+                    var usernameInput by rememberSaveable(me.username) { mutableStateOf(me.username.orEmpty()) }
+                    val normalized = com.forgequest.app.data.friends.Usernames.normalize(usernameInput)
+                    com.forgequest.app.ui.friends.UsernameField(
+                        value = usernameInput,
+                        onValueChange = { usernameInput = it },
+                        enabled = true,
+                    )
+                    androidx.compose.material3.TextButton(
+                        onClick = { vm.changeFriendsUsername(usernameInput) },
+                        enabled = normalized != null && normalized != me.username,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.settings_friends_username_save))
+                    }
+                    androidx.compose.material3.HorizontalDivider(color = c.divider)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(me.sharePhoto, role = androidx.compose.ui.semantics.Role.Switch) {
+                                vm.setFriendsShare(sharePhoto = it, sharePrs = me.sharePrs)
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_friends_share_photo),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        com.forgequest.app.ui.components.FitSwitch(me.sharePhoto, null)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(me.sharePrs, role = androidx.compose.ui.semantics.Role.Switch) {
+                                vm.setFriendsShare(sharePhoto = me.sharePhoto, sharePrs = it)
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_friends_share_prs),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        com.forgequest.app.ui.components.FitSwitch(me.sharePrs, null)
+                    }
+                    androidx.compose.material3.HorizontalDivider(color = c.divider)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = vm::signOutFriends)
+                        .heightIn(min = 48.dp)
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_friends_sign_out),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = c.textPrimary,
+                    )
+                }
+                if (joined) {
+                    androidx.compose.material3.HorizontalDivider(color = c.divider)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(role = androidx.compose.ui.semantics.Role.Button) { confirmDelete.value = true }
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_friends_delete_account),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = c.coral,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (confirmDelete.value) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmDelete.value = false },
+            containerColor = c.card,
+            title = {
+                Text(stringResource(R.string.settings_friends_delete_title), color = c.textPrimary)
+            },
+            text = {
+                Text(stringResource(R.string.settings_friends_delete_body), color = c.textSecondary)
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    confirmDelete.value = false
+                    vm.deleteFriendsAccount()
+                }) {
+                    Text(stringResource(R.string.settings_friends_delete_confirm), color = c.coral)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmDelete.value = false }) {
+                    Text(stringResource(R.string.friends_cancel), color = c.textSecondary)
+                }
+            },
+        )
     }
 }

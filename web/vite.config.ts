@@ -6,10 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 const csp = [
   "default-src 'self'",
   "script-src 'self' https://accounts.google.com/gsi/client",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
   "img-src 'self' blob: data: https://*.googleusercontent.com",
   "font-src 'self'",
-  "connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://raw.githubusercontent.com",
+  "connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://raw.githubusercontent.com https://forgequest-friends.forgequest-worker.workers.dev",
   "frame-src https://accounts.google.com",
   "object-src 'none'",
   "base-uri 'self'",

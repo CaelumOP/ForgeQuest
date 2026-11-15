@@ -9,6 +9,7 @@ import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.domain.DayTag
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
 import com.forgequest.app.data.health.HealthState
 import com.forgequest.app.data.health.RefreshWatch
 import com.forgequest.app.data.health.showsYesterday
@@ -19,6 +20,10 @@ import kotlinx.coroutines.launch
 class HomeViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val openSession: StateFlow<SessionEntity?> = app.workouts.openSession.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    /** Friends for the shared-streak line in the streak card; empty unless joined (the cache, no network here). */
+    val friends: StateFlow<List<com.forgequest.app.data.friends.Friend>> = app.friends.state
+        .map { d -> if (d?.view?.me?.joined == true) d.view.friends else emptyList() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         // Load the food list quietly, so the first food search isn't empty while it loads.

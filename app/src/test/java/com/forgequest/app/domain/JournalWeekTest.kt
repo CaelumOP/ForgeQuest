@@ -7,16 +7,15 @@ import java.time.LocalDate
 
 class JournalWeekTest {
     @Test
-    fun sundayWorkoutLandsInTheWeekThatStartedOnMonday() {
+    fun sundayStartsItsOwnWeekAndSaturdayLandsSixDaysLaterInThatWeek() {
         val sunday = LocalDate.of(2026, 10, 11)
-        val monday = LocalDate.of(2026, 10, 5)
+        val monday = LocalDate.of(2026, 10, 12)
+        val saturday = LocalDate.of(2026, 10, 17)
         assertEquals(DayOfWeek.SUNDAY, sunday.dayOfWeek)
-        assertEquals(monday.toEpochDay(), Dates.weekStart(sunday.toEpochDay()))
-    }
-
-    @Test
-    fun mondayStartsItsOwnWeek() {
-        val monday = LocalDate.of(2026, 10, 12).toEpochDay()
-        assertEquals(monday, Dates.weekStart(monday))
+        assertEquals(DayOfWeek.SATURDAY, saturday.dayOfWeek)
+        assertEquals(sunday.toEpochDay(), Dates.weekStart(sunday.toEpochDay()))
+        assertEquals(sunday.toEpochDay(), Dates.weekStart(monday.toEpochDay()))
+        assertEquals(sunday.toEpochDay(), Dates.weekStart(saturday.toEpochDay()))
+        assertEquals(saturday.toEpochDay() - 6, Dates.weekStart(saturday.toEpochDay()))
     }
 }
