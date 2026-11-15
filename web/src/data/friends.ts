@@ -268,6 +268,8 @@ export async function ensureFriendsLoaded(): Promise<void> {
           leaderboard: [],
           nudgedToday: nudgedSetForToday(auth),
         })
+        // Session but no usable cache (cleared, or written by an older build): ask the server whether we already joined.
+        void resumeFromServer(auth)
       } else {
         setState({ loading: false, status: 'signed_out' })
       }
@@ -276,6 +278,26 @@ export async function ensureFriendsLoaded(): Promise<void> {
     }
   })()
   await loadPromise
+}
+
+async function resumeFromServer(auth: FriendsAuth): Promise<void> {
+  try {
+    const me = await friendsApi.getMe(auth.sessionToken)
+    if (state.auth?.sessionToken !== auth.sessionToken || state.status !== 'needs_join') return
+    if (me.joined && me.username) {
+      const view = placeholderView(me)
+      await saveCache(view)
+      setState({ status: 'joined', view, leaderboard: computeBoard(view) })
+      await refreshFriends(true)
+    } else if (!auth.suggestedName && me.name) {
+      const next = { ...auth, suggestedName: me.name }
+      await saveAuth(next)
+      setState({ auth: next })
+    }
+  } catch (err) {
+    // Offline: stay on Join; an expired session drops back to signed out.
+    if (err instanceof FriendsError && err.status === 401) await clearLocalSession()
+  }
 }
 
 export function useFriends(): FriendsState {

@@ -132,7 +132,7 @@ html[dir='rtl'] .fr-switch-on .fr-knob {
 .fr-code-val {
   font-size: 24px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -157,7 +157,7 @@ html[dir='rtl'] .fr-switch-on .fr-knob {
 }
 
 .fr-add-field { flex: 1; min-inline-size: 0; }
-.fr-code-input { text-transform: uppercase; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; }
+.fr-code-input { text-transform: none; }
 
 .fr-err {
   margin: 0;
