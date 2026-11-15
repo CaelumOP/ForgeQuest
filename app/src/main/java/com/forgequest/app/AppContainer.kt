@@ -42,6 +42,7 @@ class AppContainer(context: Context) {
     val friendsSession = com.forgequest.app.data.friends.FriendsSession(context)
     val friendsCache = com.forgequest.app.data.friends.FriendsCache(context)
     val friendsApi = com.forgequest.app.data.friends.FriendsApi(http, { BuildConfig.FRIENDS_BASE }, friendsSession::session)
+    val friends = com.forgequest.app.data.friends.FriendsRepository(appContext, friendsApi, friendsSession, friendsCache, progress)
     val updates = com.forgequest.app.data.update.UpdateChecker(context, http)
     val updateNotice = com.forgequest.app.data.update.UpdateNotice(context, updates, appScope)
     val meals = com.forgequest.app.data.bridge.MealInbox(context, db, drive)

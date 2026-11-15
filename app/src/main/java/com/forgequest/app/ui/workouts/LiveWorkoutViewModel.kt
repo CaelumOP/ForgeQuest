@@ -520,6 +520,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 }
                 // The strong haptic is for a record or a milestone only.
                 if (bigDay) app.haptics.celebrate()
+                app.appScope.launch { app.friends.syncQuietly() }
                 summary.value = WorkoutSummary(
                     title = result.sessionTitle,
                     doneSets = result.doneSets,

@@ -65,6 +65,7 @@ private val groupTitles = listOf(
     "app" to R.string.settings_group_app,
     "you" to R.string.settings_group_you,
     "health" to R.string.settings_group_health,
+    "friends" to R.string.settings_group_friends,
     "backup" to R.string.settings_group_backup,
     "coach" to R.string.settings_group_coach,
     "about" to R.string.settings_group_about,
@@ -144,6 +145,7 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
                 if (id == null || id == "app") AppSettingsGroup(vm, s, onGroup)
                 if (id == null || id == "you") YouSettingsGroup(vm, s, onGroup)
                 if (id == null || id == "health") HealthSettingsGroup(vm, s, onGroup, probe, { startHealthCheck() }, healthAccess)
+                if (id == null || id == "friends") FriendsSettingsGroup(vm, onGroup)
                 if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher)
                 if (id == null || id == "coach") CoachSettingsGroup(
                     vm, nav, s, apiKey, aiOn, onGroup,

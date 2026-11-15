@@ -330,4 +330,31 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     }
 
     fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "") } }
+
+    val friendsState = app.friends.state
+    val friendsSignedIn = app.friends.signedInState
+    val friendsMe = app.friends.me
+    val friendsError = app.friends.error
+
+    fun signInFriends(activity: android.app.Activity) = viewModelScope.launch {
+        app.friends.signIn(activity)
+    }
+
+    fun setFriendsShare(sharePhoto: Boolean, sharePrs: Boolean) = viewModelScope.launch {
+        val name = friendsState.value?.view?.me?.name ?: friendsMe.value?.name ?: return@launch
+        app.friends.join(name, sharePhoto, sharePrs)
+    }
+
+    fun signOutFriends() = viewModelScope.launch {
+        app.friends.signOut()
+        message.value = app.str(R.string.settings_friends_signed_out)
+    }
+
+    fun deleteFriendsAccount() = viewModelScope.launch {
+        if (app.friends.deleteAccount()) {
+            message.value = app.str(R.string.settings_friends_deleted)
+        } else {
+            app.friends.error.value?.let { message.value = app.str(R.string.friends_error_line, it) }
+        }
+    }
 }

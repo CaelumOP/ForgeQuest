@@ -33,3 +33,6 @@
 # ML Kit / Firebase components create their registrars by reflection (no-arg constructor).
 # R8 full mode drops the constructor under the libraries' own "-keep class" rule, so the barcode scanner crashed.
 -keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }
+
+# Google ID credential parsing via Credential Manager.
+-keep class com.google.android.libraries.identity.googleid.** { *; }
