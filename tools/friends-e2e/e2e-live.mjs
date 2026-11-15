@@ -5,6 +5,7 @@
 //
 //   node tools/friends-e2e/e2e-live.mjs                 # full suite, prints a pass/fail table, exit 1 on any failure
 //   node tools/friends-e2e/e2e-live.mjs mint <sub> <username> <name>   # print a session for client checks (joins the user)
+//   node tools/friends-e2e/e2e-live.mjs mint <sub> --no-join            # session for a fresh, unjoined user (Join screen checks)
 //
 // Needs the private test key at D:\Claude\secrets\fq-e2e-key.json (or FQ_E2E_KEY) and wrangler (worker/node_modules)
 // for SQL checks/seeding on the staging D1.
@@ -144,7 +145,7 @@ async function main() {
     const [, , , sub, username, name] = process.argv;
     const res = await call("POST", "/v1/auth/google", { body: { idToken: idToken(sub) } });
     if (res.status !== 200) throw new Error(JSON.stringify(res.json));
-    if (!res.json.user.joined) {
+    if (!res.json.user.joined && username !== "--no-join") {
       const j = await call("PUT", "/v1/me", {
         token: res.json.session,
         body: { name, username, sharePhoto: true, sharePrs: true },
