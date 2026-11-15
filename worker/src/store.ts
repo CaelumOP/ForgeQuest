@@ -6,6 +6,8 @@ import {
   UserRow,
 } from "./types";
 
+export const MAX_PUSH_TOKENS = 5;
+
 export interface FriendsViewData {
   friends: Array<{ user: UserRow; snapshot: SnapshotRow | null }>;
   incoming: UserRow[];
@@ -638,6 +640,14 @@ export class D1Store implements Store {
            updated_at = excluded.updated_at`,
       )
       .bind(token, userId, platform, nowSec)
+      .run();
+    // Each nudge sends one FCM request per token: keep only the newest MAX_PUSH_TOKENS per user.
+    await this.db
+      .prepare(
+        `DELETE FROM push_tokens WHERE user_id = ?1 AND token NOT IN (
+           SELECT token FROM push_tokens WHERE user_id = ?1 ORDER BY updated_at DESC, token LIMIT ?2)`,
+      )
+      .bind(userId, MAX_PUSH_TOKENS)
       .run();
   }
 

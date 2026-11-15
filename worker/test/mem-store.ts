@@ -1,4 +1,4 @@
-import { AcceptResult, FriendsViewData, Store } from "../src/store";
+import { AcceptResult, FriendsViewData, MAX_PUSH_TOKENS, Store } from "../src/store";
 import {
   PushPlatform,
   SessionRow,
@@ -350,6 +350,10 @@ export class MemStore implements Store {
       platform,
       updated_at: nowSec,
     });
+    const mine = Array.from(this.pushTokens.values())
+      .filter((p) => p.user_id === userId)
+      .sort((a, b) => b.updated_at - a.updated_at || a.token.localeCompare(b.token));
+    for (const old of mine.slice(MAX_PUSH_TOKENS)) this.pushTokens.delete(old.token);
   }
 
   async deletePushTokenForUser(token: string, userId: string): Promise<void> {

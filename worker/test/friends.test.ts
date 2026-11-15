@@ -5,6 +5,9 @@ import { handleRequest } from "../src/index";
 import { riyadhEpochDay, sundayWeekStart } from "../src/time";
 import { Env, FetchFn } from "../src/types";
 import { MemStore } from "./mem-store";
+import { SqliteStore } from "./sqlite-store";
+
+const USE_SQLITE = process.env.FQ_STORE === "sqlite";
 
 const AUD = "787186946908-ctsif69lokfk6i609727696lm44avo57.apps.googleusercontent.com";
 const JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
@@ -74,7 +77,7 @@ describe("ForgeQuest Friends Worker", () => {
   beforeEach(() => {
     clearJwksCache();
     clearFcmTokenCache();
-    store = new MemStore();
+    store = (USE_SQLITE ? new SqliteStore() : new MemStore()) as unknown as MemStore;
     nowMs = BASE_MS;
     jwksFetches = 0;
     env = {
@@ -722,6 +725,13 @@ describe("ForgeQuest Friends Worker", () => {
       });
       expect(delPush.status).toBe(200);
       expect(await store.getPushTokens(carol.user.id)).toEqual([]);
+
+      // At most 5 tokens per user: the oldest are dropped as new devices register
+      for (let i = 0; i < 7; i++) {
+        nowMs += 1000;
+        await req("PUT", "/v1/push", { token: carol.session, body: { token: `t${i}`, platform: "android" } });
+      }
+      expect((await store.getPushTokens(carol.user.id)).sort()).toEqual(["t2", "t3", "t4", "t5", "t6"]);
     });
   });
 
@@ -766,19 +776,23 @@ describe("ForgeQuest Friends Worker", () => {
       expect(del.status).toBe(200);
 
       const aid = alice.user.id;
-      expect(store.users.has(aid)).toBe(false);
-      expect(store.snapshots.has(aid)).toBe(false);
-      expect(Array.from(store.sessions.values()).some((s) => s.user_id === aid)).toBe(false);
-      expect(store.friends.has(aid)).toBe(false);
-      expect(store.friends.get(bob.user.id)?.has(aid) ?? false).toBe(false);
-      expect(
-        Array.from(store.requests.values()).some((r) => r.from_id === aid || r.to_id === aid),
-      ).toBe(false);
-      expect(Array.from(store.blocks).some((b) => b.includes(aid))).toBe(false);
-      expect(
-        Array.from(store.nudges.values()).some((n) => n.from_id === aid || n.to_id === aid),
-      ).toBe(false);
-      expect(Array.from(store.pushTokens.values()).some((p) => p.user_id === aid)).toBe(false);
+      if (USE_SQLITE) {
+        expect((store as unknown as SqliteStore).rowsReferencing(aid)).toBe(0);
+      } else {
+        expect(store.users.has(aid)).toBe(false);
+        expect(store.snapshots.has(aid)).toBe(false);
+        expect(Array.from(store.sessions.values()).some((s) => s.user_id === aid)).toBe(false);
+        expect(store.friends.has(aid)).toBe(false);
+        expect(store.friends.get(bob.user.id)?.has(aid) ?? false).toBe(false);
+        expect(
+          Array.from(store.requests.values()).some((r) => r.from_id === aid || r.to_id === aid),
+        ).toBe(false);
+        expect(Array.from(store.blocks).some((b) => b.includes(aid))).toBe(false);
+        expect(
+          Array.from(store.nudges.values()).some((n) => n.from_id === aid || n.to_id === aid),
+        ).toBe(false);
+        expect(Array.from(store.pushTokens.values()).some((p) => p.user_id === aid)).toBe(false);
+      }
 
       // Session is immediately invalid
       const after = await req("GET", "/v1/me", { token: alice.session });
