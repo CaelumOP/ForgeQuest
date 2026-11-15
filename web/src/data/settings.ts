@@ -242,5 +242,5 @@ export function saveWeekTargets(targets: ReadonlyMap<number, number>): Promise<v
 }
 
 export async function clearWeekTargets(): Promise<void> {
-  await db.kv.delete(WEEK_TARGETS_KEY);
+  await db.kv.put({ key: WEEK_TARGETS_KEY, value: { sundayWeeks: true } });
 }

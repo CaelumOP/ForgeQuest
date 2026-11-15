@@ -157,6 +157,10 @@ data class BackupFile(
     val dayNotes: List<DayNoteEntity> = emptyList(),
     /** Fitbit readiness history and "I feel great" taps; backups before 2.8.0 have none. */
     val readinessDays: List<ReadinessDayEntity> = emptyList(),
+    /** Locked weekly streak targets (Sunday epoch day string -> days); older backups have none. */
+    val weekTargets: Map<String, Int>? = null,
+    /** Week-start convention of [weekTargets]; "sunday" for 4.0+, absent/other means Monday keys. */
+    val weekStart: String? = null,
 ) {
     /** One line a person can read before deciding to restore. */
     fun summary(): String {
@@ -186,19 +190,25 @@ class BackupRepository(
     private val settings: SettingsRepository,
     private val workouts: WorkoutRepository,
 ) {
-    val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    val json = backupJson
 
     suspend fun build(): BackupFile = withContext(Dispatchers.IO) {
         val b = db.backup()
-        BackupFile(
-            createdAt = System.currentTimeMillis(),
-            exercises = b.exercises(), plans = b.plans(), planDays = b.planDays(), planItems = b.planItems(),
-            sessions = b.sessions(), sets = b.sets(), foods = b.foods(), meals = b.meals(), weights = b.weights(),
-            chat = b.chat(), badges = b.badges(),
-            settings = BackupSettings.from(settings.current()),
-            dayNotes = b.dayNotes(),
-            readinessDays = b.readinessDays(),
-        )
+        val currentSettings = BackupSettings.from(settings.current())
+        val targets = settings.weekTargets().mapKeys { it.key.toString() }
+        db.withTransaction {
+            BackupFile(
+                createdAt = System.currentTimeMillis(),
+                exercises = b.exercises(), plans = b.plans(), planDays = b.planDays(), planItems = b.planItems(),
+                sessions = b.sessions(), sets = b.sets(), foods = b.foods(), meals = b.meals(), weights = b.weights(),
+                chat = b.chat(), badges = b.badges(),
+                settings = currentSettings,
+                dayNotes = b.dayNotes(),
+                readinessDays = b.readinessDays(),
+                weekTargets = targets,
+                weekStart = "sunday",
+            )
+        }
     }
 
     fun encode(file: BackupFile): String = json.encodeToString(BackupFile.serializer(), file)
@@ -220,8 +230,8 @@ class BackupRepository(
             )
         }
         file.settings?.let { restored -> settings.update { restored.applyTo(it) } }
-        // The restored history has its own weeks; they are locked again from it on the next build.
-        settings.clearWeekTargets()
+        val targets = restoredWeekTargets(file)
+        if (targets != null) settings.replaceWeekTargets(targets) else settings.clearWeekTargets()
         workouts.seedLibrary()
     }
 
@@ -232,13 +242,26 @@ class BackupRepository(
     /** Keeps the three most recent pre-restore copies so an accidental restore can be undone by importing one. */
     private suspend fun saveSafetyCopy() {
         val current = build()
-        if (current.sessions.isEmpty() && current.meals.isEmpty() && current.weights.isEmpty()) return
-        val stamp = Instant.ofEpochMilli(current.createdAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm"))
-        File(safetyDir, "before-restore_$stamp.json").writeText(encode(current))
-        safetyDir.listFiles().orEmpty().sortedByDescending { it.lastModified() }.drop(3).forEach { it.delete() }
+        if (current.sessions.isEmpty() && current.meals.isEmpty() && current.weights.isEmpty() && current.plans.isEmpty() && current.foods.isEmpty()) return
+        val stamp = Instant.ofEpochMilli(current.createdAt).atZone(ZoneId.systemDefault()).format(SAFETY_STAMP)
+        val dir = safetyDir
+        val name = uniqueSafetyName(dir.list().orEmpty().toSet(), stamp)
+        val target = File(dir, name)
+        val tmp = File(dir, "$name.tmp")
+        try {
+            tmp.writeText(encode(current))
+            if (!tmp.renameTo(target)) {
+                tmp.copyTo(target, overwrite = true)
+            }
+        } finally {
+            tmp.delete()
+        }
+        safetyCopies().drop(3).forEach { it.delete() }
     }
 
-    fun safetyCopies(): List<File> = safetyDir.listFiles().orEmpty().sortedByDescending { it.lastModified() }
+    fun safetyCopies(): List<File> = safetyDir.listFiles().orEmpty()
+        .filter { it.isFile && it.name.endsWith(".json") }
+        .sortedWith(compareByDescending<File> { it.lastModified() }.thenByDescending { it.name })
 
     /** Writes today's backup to the cache and returns a shareable content URI. */
     suspend fun exportForSharing(): Uri = withContext(Dispatchers.IO) {
@@ -265,4 +288,38 @@ class BackupRepository(
     }
 
     suspend fun read(file: File): BackupFile = withContext(Dispatchers.IO) { decode(file.readText()) }
+}
+
+internal val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+private val SAFETY_STAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss-SSS")
+
+/**
+ * Picks a unique pre-restore safety copy filename for [stamp], appending `_2`, `_3`, ... on same-millisecond
+ * collisions with [existingNames].
+ */
+internal fun uniqueSafetyName(existingNames: Set<String>, stamp: String): String {
+    val base = "before-restore_$stamp"
+    val first = "$base.json"
+    if (first !in existingNames) return first
+    var n = 2
+    while ("${base}_$n.json" in existingNames) n++
+    return "${base}_$n.json"
+}
+
+/**
+ * Restores locked weekly streak targets from [file], or returns null when the backup has none
+ * (so callers clear local targets and re-lock from history). Pre-4.0 backups without
+ * `weekStart == "sunday"` had Monday-keyed epoch days and are shifted back 1 day to Sunday.
+ */
+internal fun restoredWeekTargets(file: BackupFile): Map<Long, Int>? {
+    val raw = file.weekTargets ?: return null
+    val shift = if (file.weekStart == "sunday") 0L else -1L
+    val out = LinkedHashMap<Long, Int>(raw.size)
+    for ((key, target) in raw) {
+        val day = key.toLongOrNull() ?: continue
+        if (target !in 1..7) continue
+        out[day + shift] = target
+    }
+    return out
 }

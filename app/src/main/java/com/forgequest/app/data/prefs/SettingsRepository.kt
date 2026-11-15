@@ -356,7 +356,15 @@ class SettingsRepository(private val context: Context) {
         }.apply()
     }
 
-    fun clearWeekTargets() = streakPrefs.edit().clear().apply()
+    fun replaceWeekTargets(targets: Map<Long, Int>) {
+        streakPrefs.edit().apply {
+            clear()
+            putBoolean(SUNDAY_WEEKS_KEY, true)
+            targets.forEach { (week, target) -> putInt(week.toString(), target) }
+        }.apply()
+    }
+
+    fun clearWeekTargets() = replaceWeekTargets(emptyMap())
 
     // --- Gemini API key: encrypted with a hardware-backed Keystore key, kept out of cloud backups. ---
 

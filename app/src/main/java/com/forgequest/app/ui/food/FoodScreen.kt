@@ -178,7 +178,19 @@ fun FoodScreen(nav: NavHostController) {
     val newestMeals = remember(meals) { meals.asReversed() }
     val catalogResults by vm.catalogResults.collectAsState()
     val isToday = day == Dates.today()
-    LaunchedEffect(Unit) { vm.onShown() }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        vm.onShown()
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val zone = ZoneId.systemDefault()
+            val nextMidnight = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val waitMs = (nextMidnight - System.currentTimeMillis() + 1_000L).coerceAtLeast(1_000L)
+            kotlinx.coroutines.delay(waitMs)
+            vm.onShown()
+        }
+    }
 
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
     UndoSnackbarEffect(vm.undo)
