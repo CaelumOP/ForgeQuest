@@ -102,7 +102,7 @@
 
 /* Search, restaurants and parts (food library) */
 .food-search { display: flex; align-items: center; gap: 8px; min-block-size: 48px; padding-inline: 16px 4px; border-radius: var(--r-full); background: var(--card); border: 1px solid var(--divider); color: var(--text-2); }
-.food-search:focus-within { border-color: var(--teal); outline: 2px solid var(--teal); outline-offset: 2px; }
+.food-search:focus-within { border-color: var(--teal); }
 .food-search-input { flex: 1; min-inline-size: 0; min-block-size: 44px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--text); outline: none; -webkit-appearance: none; appearance: none; }
 .food-search-input:focus-visible { outline: none; }
 .food-search-input::-webkit-search-cancel-button { display: none; }

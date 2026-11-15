@@ -155,7 +155,7 @@ fun ProgressScreen(nav: NavHostController) {
 
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
                 Text(stringResource(R.string.progress_subtitle), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
