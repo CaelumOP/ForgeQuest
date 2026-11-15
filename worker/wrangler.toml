@@ -1,0 +1,16 @@
+name = "forgequest-friends"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "forgequest"
+database_id = "bcf73d2f-28c8-4aca-bee9-941f2965f59b"
+migrations_dir = "migrations"
+
+[vars]
+GOOGLE_AUD = "787186946908-ctsif69lokfk6i609727696lm44avo57.apps.googleusercontent.com"
+GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_ISSUERS = "accounts.google.com,https://accounts.google.com"
+ALLOWED_ORIGINS = "https://caelumop.github.io,http://localhost:5173"
