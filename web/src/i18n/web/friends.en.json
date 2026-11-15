@@ -36,7 +36,7 @@
   "friends_stat_protein": "{1}d protein",
   "friends_badge_trained": "Trained",
   "friends_badge_on_track": "On track",
-  "friends_badge_slacking": "Slacking",
+  "friends_badge_slacking": "Behind",
   "friends_badge_rest": "Rest day",
   "friends_badge_not_synced": "Not synced this week",
   "friends_prs_title": "This week's PRs",
@@ -73,5 +73,48 @@
   "settings_friends_delete_body": "This wipes your profile, friend list, and weekly snapshots from the server. Your workouts and meals on this phone stay untouched.",
   "settings_friends_delete_confirm": "Delete",
   "settings_friends_signed_out": "Signed out of Friends",
-  "settings_friends_deleted": "Friends account deleted"
+  "settings_friends_deleted": "Friends account deleted",
+  "friends_add_title": "Add a friend",
+  "friends_settings": "Friends settings",
+  "friends_days_left": {
+    "one": "{1} day left",
+    "other": "{1} days left"
+  },
+  "friends_last_day": "Last day",
+  "friends_your_rank": "You're #{1} of {2}",
+  "friends_done_count": {
+    "one": "{1} workout",
+    "other": "{1} workouts"
+  },
+  "friends_together": {
+    "one": "{1} week together",
+    "other": "{1} weeks together"
+  },
+  "friends_together_sub": "Weeks you both hit your target",
+  "friends_together_start": "Hit this week together to start a streak",
+  "friends_week_done": "{1}: done",
+  "friends_week_free": "{1}: free week",
+  "friends_week_not_yet": "{1}: not yet",
+  "friends_nudge_name": "Nudge {1}",
+  "friends_nudged_name": "Nudged {1} today",
+  "friends_score_label": "Forge Score",
+  "friends_their_streak": "{1}'s streak",
+  "friends_protein_label": "Protein goal hit",
+  "friends_weeks": {
+    "one": "{1} week",
+    "other": "{1} weeks"
+  },
+  "friends_days": {
+    "one": "{1} day",
+    "other": "{1} days"
+  },
+  "friends_invites_waiting": {
+    "one": "{1} invite waiting",
+    "other": "{1} invites waiting"
+  },
+  "friends_cancel_invite": "Cancel invite to {1}",
+  "friends_wants_friends": "wants to be friends",
+  "friends_empty_title": "Training is easier with friends",
+  "friends_share_username": "Share your username",
+  "friends_you": "You"
 }

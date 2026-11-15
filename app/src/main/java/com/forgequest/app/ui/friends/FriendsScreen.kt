@@ -2,7 +2,6 @@ package com.forgequest.app.ui.friends
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -35,7 +33,6 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -63,7 +60,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -93,7 +89,6 @@ import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MorphLoader
-import com.forgequest.app.ui.components.SectionTitle
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.rememberFullSheetState
 import com.forgequest.app.ui.components.rememberTextClipboard
@@ -104,11 +99,21 @@ import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.NumberFont
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.data.friends.Usernames
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.semantics.contentDescription
+import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FriendsScreen() {
+fun FriendsScreen(nav: NavHostController) {
     val vm = appViewModel { FriendsViewModel(it) }
     val uiData by vm.state.collectAsState()
     val signedIn by vm.signedIn.collectAsState()
@@ -122,7 +127,12 @@ fun FriendsScreen() {
     val c = Fit.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var selectedFriend by remember { mutableStateOf<LeaderboardEntry?>(null) }
+    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var addOpen by rememberSaveable { mutableStateOf(false) }
+    var outOpen by rememberSaveable { mutableStateOf(false) }
+    var dismissedNudges by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val sentMsg = stringResource(R.string.friends_nudge_sent)
+    val nudge: (String) -> Unit = { id -> scope.launch { if (vm.nudge(id) == null) context.toast(sentMsg) } }
 
     LaunchedEffect(signedIn) {
         if (signedIn || vm.isDemo) vm.refresh()
@@ -152,14 +162,25 @@ fun FriendsScreen() {
             verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap),
         ) {
             item {
-                Text(
-                    text = stringResource(R.string.friends_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = c.textPrimary,
-                    modifier = Modifier
-                        .padding(top = 12.dp)
-                        .semantics { heading() },
-                )
+                // Title with Add and Settings beside it; refresh is pull-to-refresh.
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.friends_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = c.textPrimary,
+                        modifier = Modifier.weight(1f).semantics { heading() },
+                    )
+                    if (showJoined) {
+                        IconButton(onClick = { addOpen = true }, modifier = Modifier.size(48.dp)) {
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.PersonAdd, contentDescription = stringResource(R.string.friends_add_title), tint = c.teal)
+                            }
+                        }
+                        IconButton(onClick = { nav.navigate("settings/friends") }, modifier = Modifier.size(48.dp)) {
+                            Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.friends_settings), tint = c.textSecondary)
+                        }
+                    }
+                }
             }
 
             error?.let { code ->
@@ -202,7 +223,7 @@ fun FriendsScreen() {
                                     .padding(vertical = 24.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                MorphLoader(com.forgequest.app.ui.theme.Fit.colors.teal, Modifier.size(32.dp))
+                                MorphLoader(c.teal, Modifier.size(32.dp))
                             }
                         }
                     }
@@ -210,57 +231,68 @@ fun FriendsScreen() {
 
                 showJoined -> {
                     val data = uiData!!
-                    item {
-                        InviteHeaderCard(
-                            me = data.view.me,
+                    val nudges = data.view.nudges.filter { "${it.fromId}_${it.day}" !in dismissedNudges }
+                    items(nudges, key = { "nudge_${it.fromId}_${it.day}" }) { n ->
+                        NudgeBanner(n, onDismiss = { dismissedNudges = dismissedNudges + "${n.fromId}_${n.day}" })
+                    }
+                    items(data.view.incoming, key = { "in_${it.id}" }) { person ->
+                        IncomingRequestCard(
+                            person = person,
                             busy = busy,
-                            onSendInvite = { username -> vm.invite(username) },
-                        )
-                    }
-
-                    if (data.view.nudges.isNotEmpty()) {
-                        items(data.view.nudges, key = { "nudge_${it.fromId}_${it.day}" }) { nudge ->
-                            NudgeBanner(nudge)
-                        }
-                    }
-
-                    if (data.view.incoming.isNotEmpty()) {
-                        item { SectionTitle(stringResource(R.string.friends_incoming_title)) }
-                        items(data.view.incoming, key = { "in_${it.id}" }) { person ->
-                            IncomingRequestCard(
-                                person = person,
-                                busy = busy,
-                                onAccept = { vm.accept(person.id) },
-                                onDecline = { vm.decline(person.id) },
-                            )
-                        }
-                    }
-
-                    item { SectionTitle(stringResource(R.string.friends_board_title)) }
-
-                    itemsIndexed(data.leaderboard, key = { _, e -> "lb_${e.id}_${e.isMe}" }) { index, entry ->
-                        LeaderboardRow(
-                            rank = index + 1,
-                            entry = entry,
-                            onClick = if (entry.isMe) null else ({ selectedFriend = entry }),
+                            onAccept = { vm.accept(person.id) },
+                            onDecline = { vm.decline(person.id) },
                         )
                     }
 
                     if (data.view.friends.isEmpty()) {
+                        item { EmptyFriends(data.view.me, busy, onSendInvite = { vm.invite(it) }) }
+                    } else {
+                        item { WeekLine(data) }
                         item {
-                            Text(
-                                text = stringResource(R.string.friends_empty_board),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = c.textSecondary,
-                                modifier = Modifier.padding(horizontal = 4.dp),
-                            )
+                            FitCard(padding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                                data.leaderboard.forEachIndexed { index, entry ->
+                                    if (index > 0 && !entry.isMe && !data.leaderboard[index - 1].isMe) HorizontalDivider(color = c.divider)
+                                    LeaderboardRow(
+                                        rank = index + 1,
+                                        entry = entry,
+                                        nudged = entry.id in nudgedToday,
+                                        busy = busy,
+                                        onOpen = { selectedId = entry.id },
+                                        onNudge = { nudge(entry.id) },
+                                    )
+                                }
+                            }
                         }
                     }
 
                     if (data.view.outgoing.isNotEmpty()) {
-                        item { SectionTitle(stringResource(R.string.friends_outgoing_title)) }
-                        items(data.view.outgoing, key = { "out_${it.id}" }) { person ->
-                            OutgoingRow(person)
+                        item {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    .clip(ForgeShape.Sm)
+                                    .clickable(role = Role.Button) { outOpen = !outOpen }
+                                    .padding(horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    pluralStringResource(R.plurals.friends_invites_waiting, data.view.outgoing.size, data.view.outgoing.size),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = c.textSecondary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Icon(
+                                    if (outOpen) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                    contentDescription = null,
+                                    tint = c.textSecondary,
+                                )
+                            }
+                        }
+                        if (outOpen) {
+                            items(data.view.outgoing, key = { "out_${it.id}" }) { person ->
+                                OutgoingRow(person, busy, onCancel = { vm.decline(person.id) })
+                            }
                         }
                     }
                 }
@@ -268,24 +300,278 @@ fun FriendsScreen() {
         }
     }
 
-    selectedFriend?.let { entry ->
+    if (addOpen && uiData != null) {
+        ModalBottomSheet(
+            onDismissRequest = { addOpen = false },
+            sheetState = rememberFullSheetState(),
+            containerColor = c.card,
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = ForgeSpace.Gutter)
+                    .padding(bottom = 20.dp),
+            ) {
+                Text(
+                    stringResource(R.string.friends_add_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = c.textPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp).semantics { heading() },
+                )
+                InviteHeaderCard(
+                    me = uiData!!.view.me,
+                    busy = busy,
+                    onSendInvite = { username -> vm.invite(username).also { if (it == null) addOpen = false } },
+                )
+            }
+        }
+    }
+
+    val selected = selectedId?.let { id -> uiData?.leaderboard?.firstOrNull { it.id == id && !it.isMe } }
+    selected?.let { entry ->
         val unit = WeightUnit.fromCodeOrLabel(settings?.unit ?: WeightUnit.KG.code)
+        val mine = uiData?.mySnapshot
+        val myWeekState = mine?.takeIf { s -> s.weekStart >= (uiData?.view?.weekStart ?: 0L) }?.weekState
         FriendDetailSheet(
             entry = entry,
+            myWeekState = myWeekState,
             unit = unit,
             nudgedToday = entry.id in nudgedToday,
             busy = busy,
             onNudge = { vm.nudge(entry.id) },
             onRemove = {
-                selectedFriend = null
+                selectedId = null
                 scope.launch { vm.remove(entry.id) }
             },
             onBlock = {
-                selectedFriend = null
+                selectedId = null
                 scope.launch { vm.block(entry.id) }
             },
-            onDismiss = { selectedFriend = null },
+            onDismiss = { selectedId = null },
         )
+    }
+}
+
+/** "This week · 3 days left" and "You're #2 of 5": one line of text, no card. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WeekLine(data: FriendsUiData) {
+    val c = Fit.colors
+    val today = maxOf(data.view.today, com.forgequest.app.domain.Dates.today())
+    val daysLeft = (data.view.weekStart + 6 - today).coerceAtLeast(0L).toInt()
+    val rank = data.leaderboard.indexOfFirst { it.isMe } + 1
+    FlowRow(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Row {
+            Text(stringResource(R.string.friends_board_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            Text(
+                " · " + if (daysLeft == 0) stringResource(R.string.friends_last_day) else pluralStringResource(R.plurals.friends_days_left, daysLeft, daysLeft),
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textSecondary,
+            )
+        }
+        if (rank > 0) {
+            Text(
+                stringResource(R.string.friends_your_rank, rank, data.leaderboard.size),
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textSecondary,
+            )
+        }
+    }
+}
+
+/** No friends yet: one encouraging line, then your username to share and the add field. */
+@Composable
+private fun EmptyFriends(me: Me, busy: Boolean, onSendInvite: suspend (String) -> String?) {
+    val c = Fit.colors
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        IconCircle(Icons.Rounded.Group, c.teal, c.tealTrack, size = 56.dp)
+        Spacer(Modifier.height(12.dp))
+        Text(stringResource(R.string.friends_empty_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.friends_empty_board),
+            style = MaterialTheme.typography.bodyMedium,
+            color = c.textSecondary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+        InviteHeaderCard(me = me, busy = busy, onSendInvite = onSendInvite)
+    }
+}
+
+@Composable
+private fun NudgeBanner(nudge: Nudge, onDismiss: () -> Unit) {
+    val c = Fit.colors
+    FitCard(padding = PaddingValues(start = ForgeSpace.CardPaddingCompact, end = 4.dp, top = 4.dp, bottom = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(32.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = stringResource(R.string.friends_nudged_you, nudge.name),
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = c.textSecondary)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun IncomingRequestCard(
+    person: Person,
+    busy: Boolean,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    val c = Fit.colors
+    FitCard(padding = PaddingValues(horizontal = ForgeSpace.CardPaddingCompact, vertical = 12.dp)) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(Modifier.weight(1f).defaultMinSize(minWidth = 180.dp), verticalAlignment = Alignment.CenterVertically) {
+                FriendAvatar(person.name, person.photoUrl, size = 40.dp)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(person.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                    Row {
+                        person.username?.let { HandleText(it) }
+                        Text(" " + stringResource(R.string.friends_wants_friends), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onDecline, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.friends_decline), color = c.textSecondary)
+                }
+                Button(
+                    onClick = onAccept,
+                    enabled = !busy,
+                    shape = ForgeShape.Full,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.friends_accept), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+private val FriendBadge.labelRes: Int
+    get() = when (this) {
+        FriendBadge.TRAINED -> R.string.friends_badge_trained
+        FriendBadge.ON_TRACK -> R.string.friends_badge_on_track
+        FriendBadge.SLACKING -> R.string.friends_badge_slacking
+        FriendBadge.REST -> R.string.friends_badge_rest
+        FriendBadge.NOT_SYNCED -> R.string.friends_badge_not_synced
+    }
+
+/**
+ * One board row: rank, avatar, name (+ gold flame with the shared streak), status line, score, then the nudge bell as a
+ * SIBLING button (never nested in the row's own click target). Rows without a bell keep its space so scores line up.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LeaderboardRow(
+    rank: Int,
+    entry: LeaderboardEntry,
+    nudged: Boolean,
+    busy: Boolean,
+    onOpen: () -> Unit,
+    onNudge: () -> Unit,
+) {
+    val c = Fit.colors
+    val statusWord = stringResource(entry.badge.labelRes)
+    val status = if (entry.syncedThisWeek) "$statusWord · " + pluralStringResource(R.plurals.friends_done_count, entry.done, entry.done) else statusWord
+    val name = if (entry.isMe) stringResource(R.string.friends_you) else entry.name
+    val together = if (entry.sharedStreak > 0) pluralStringResource(R.plurals.friends_together, entry.sharedStreak, entry.sharedStreak) else null
+    val scoreText = if (entry.syncedThisWeek) entry.score.toString() else "–"
+    val spoken = listOfNotNull("$rank. $name", together, status, scoreText).joinToString(", ")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .let { if (entry.isMe) it.clip(ForgeShape.Sm).background(c.cardHigh).border(1.5.dp, c.teal, ForgeShape.Sm) else it },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier
+                .weight(1f)
+                .heightIn(min = 64.dp)
+                .clip(ForgeShape.Sm)
+                .let { if (!entry.isMe) it.clickable(role = Role.Button, onClick = onOpen) else it }
+                .semantics(mergeDescendants = true) { contentDescription = spoken }
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (entry.syncedThisWeek) rank.toString() else "–",
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = NumberFont).tabular(),
+                color = if (entry.isMe) c.teal else c.textSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.defaultMinSize(minWidth = 20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            FriendAvatar(entry.name, entry.photoUrl, size = 40.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                    Text(name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                    if (entry.sharedStreak > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = c.gold, modifier = Modifier.size(14.dp))
+                            Text(
+                                entry.sharedStreak.toString(),
+                                style = MaterialTheme.typography.labelMedium.copy(fontFamily = NumberFont).tabular(),
+                                color = c.gold,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(status, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = scoreText,
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = NumberFont, fontWeight = FontWeight.SemiBold).tabular(),
+                color = if (entry.syncedThisWeek) c.textPrimary else c.textSecondary,
+            )
+        }
+        val canNudge = !entry.isMe && entry.weekState != "hit"
+        when {
+            !canNudge -> Spacer(Modifier.width(48.dp))
+            nudged -> {
+                val label = stringResource(R.string.friends_nudged_name, entry.name)
+                Box(Modifier.size(48.dp).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+                }
+            }
+            else -> IconButton(onClick = onNudge, enabled = !busy, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Rounded.NotificationsActive,
+                    contentDescription = stringResource(R.string.friends_nudge_name, entry.name),
+                    tint = c.teal,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
     }
 }
 
@@ -555,213 +841,6 @@ private fun InviteHeaderCard(
 }
 
 @Composable
-private fun NudgeBanner(nudge: Nudge) {
-    val c = Fit.colors
-    Surface(
-        shape = ForgeShape.Md,
-        color = c.tealTrack,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = ForgeSpace.CardPaddingCompact, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.NotificationsActive,
-                contentDescription = null,
-                tint = c.teal,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = stringResource(R.string.friends_nudged_you, nudge.name),
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.textPrimary,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun IncomingRequestCard(
-    person: Person,
-    busy: Boolean,
-    onAccept: () -> Unit,
-    onDecline: () -> Unit,
-) {
-    val c = Fit.colors
-    FitCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FriendAvatar(person.name, person.photoUrl, size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = person.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = c.textPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                person.username?.let { HandleText(it) }
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Button(
-                onClick = onAccept,
-                enabled = !busy,
-                shape = ForgeShape.Full,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                modifier = Modifier.heightIn(min = 40.dp),
-            ) {
-                Text(stringResource(R.string.friends_accept), style = MaterialTheme.typography.labelLarge)
-            }
-            TextButton(
-                onClick = onDecline,
-                enabled = !busy,
-                modifier = Modifier.heightIn(min = 40.dp),
-            ) {
-                Text(stringResource(R.string.friends_decline), color = c.textSecondary)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun LeaderboardRow(
-    rank: Int,
-    entry: LeaderboardEntry,
-    onClick: (() -> Unit)?,
-) {
-    val c = Fit.colors
-    Surface(
-        shape = ForgeShape.Lg,
-        color = if (entry.isMe) c.cardHigh else c.card,
-        border = if (entry.isMe) BorderStroke(1.dp, c.teal.copy(alpha = 0.55f)) else null,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ForgeShape.Lg)
-            .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ForgeSpace.CardPaddingCompact, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = rank.toString(),
-                style = MaterialTheme.typography.titleMedium.copy(fontFamily = NumberFont).tabular(),
-                color = if (entry.isMe) c.teal else c.textSecondary,
-                modifier = Modifier.defaultMinSize(minWidth = 22.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            FriendAvatar(entry.name, entry.photoUrl, size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = if (entry.isMe) {
-                        "${entry.name} · ${stringResource(R.string.friends_me_tag)}"
-                    } else {
-                        entry.name
-                    },
-                    style = MaterialTheme.typography.titleSmall,
-                    color = c.textPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    itemVerticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BadgeChip(entry.badge)
-                    if (entry.syncedThisWeek) {
-                        StatMini(
-                            icon = Icons.Rounded.LocalFireDepartment,
-                            tint = c.gold,
-                            text = stringResource(R.string.friends_stat_streak, entry.streakWeeks),
-                        )
-                        StatMini(
-                            icon = Icons.Rounded.Restaurant,
-                            tint = c.teal,
-                            text = stringResource(R.string.friends_stat_protein, entry.proteinDays),
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = entry.score.toString(),
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = NumberFont,
-                    fontWeight = FontWeight.SemiBold,
-                ).tabular(),
-                color = if (entry.syncedThisWeek) c.textPrimary else c.textSecondary,
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatMini(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    tint: Color,
-    text: String,
-) {
-    val c = Fit.colors
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(14.dp),
-        )
-        Spacer(Modifier.width(3.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = NumberFont).tabular(),
-            color = c.textSecondary,
-        )
-    }
-}
-
-@Composable
-private fun BadgeChip(badge: FriendBadge) {
-    val c = Fit.colors
-    val (labelRes, fg, bg) = when (badge) {
-        FriendBadge.TRAINED -> Triple(R.string.friends_badge_trained, c.teal, c.tealTrack)
-        FriendBadge.ON_TRACK -> Triple(R.string.friends_badge_on_track, c.blue, c.blueTrack)
-        FriendBadge.SLACKING -> Triple(R.string.friends_badge_slacking, c.gold, c.gold.copy(alpha = 0.14f))
-        FriendBadge.REST -> Triple(R.string.friends_badge_rest, c.textSecondary, c.divider.copy(alpha = 0.55f))
-        FriendBadge.NOT_SYNCED -> Triple(R.string.friends_badge_not_synced, c.textSecondary, c.background)
-    }
-    Surface(
-        shape = ForgeShape.Full,
-        color = bg,
-    ) {
-        Text(
-            text = stringResource(labelRes),
-            style = MaterialTheme.typography.labelSmall,
-            color = fg,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-        )
-    }
-}
-
-@Composable
 internal fun FriendAvatar(name: String, photoUrl: String?, size: Dp) {
     val c = Fit.colors
     val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
@@ -791,32 +870,39 @@ internal fun FriendAvatar(name: String, photoUrl: String?, size: Dp) {
 }
 
 @Composable
-private fun OutgoingRow(person: Person) {
+private fun OutgoingRow(person: Person, busy: Boolean, onCancel: () -> Unit) {
     val c = Fit.colors
-    Surface(
-        shape = ForgeShape.Md,
-        color = c.card,
-        modifier = Modifier.fillMaxWidth(),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ForgeSpace.CardPaddingCompact, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FriendAvatar(person.name, person.photoUrl, size = 32.dp)
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(
-                    text = person.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = c.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                person.username?.let { HandleText(it) }
-            }
+        FriendAvatar(person.name, person.photoUrl, size = 32.dp)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(person.name, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            person.username?.let { HandleText(it) }
         }
+        IconButton(onClick = onCancel, enabled = !busy, modifier = Modifier.size(48.dp)) {
+            Icon(
+                Icons.Rounded.Close,
+                contentDescription = stringResource(R.string.friends_cancel_invite, person.name),
+                tint = c.textSecondary,
+            )
+        }
+    }
+}
+
+/** "You: done" / "free week" / "not yet" for the shared-streak week line. */
+@Composable
+private fun weekLine(name: String, state: String?): String {
+    // First-strong isolate: a Latin name at the start of an Arabic line would otherwise pull the colon to the wrong side.
+    val n = "\u2068$name\u2069"
+    return when (state) {
+        "hit" -> stringResource(R.string.friends_week_done, n)
+        "free" -> stringResource(R.string.friends_week_free, n)
+        else -> stringResource(R.string.friends_week_not_yet, n)
     }
 }
 
@@ -824,6 +910,7 @@ private fun OutgoingRow(person: Person) {
 @Composable
 private fun FriendDetailSheet(
     entry: LeaderboardEntry,
+    myWeekState: String?,
     unit: WeightUnit,
     nudgedToday: Boolean,
     busy: Boolean,
@@ -836,11 +923,10 @@ private fun FriendDetailSheet(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val sentMsg = stringResource(R.string.friends_nudge_sent)
-    val alreadyMsg = stringResource(R.string.friends_nudged_today)
     var confirmRemove by remember { mutableStateOf(false) }
     var confirmBlock by remember { mutableStateOf(false) }
     var alreadyNudgedNote by remember(entry.id) { mutableStateOf(false) }
-    val nudgeDisabled = nudgedToday || alreadyNudgedNote || busy
+    val nudged = nudgedToday || alreadyNudgedNote
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -853,52 +939,82 @@ private fun FriendDetailSheet(
                 .navigationBarsPadding()
                 .padding(horizontal = ForgeSpace.Gutter)
                 .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                FriendAvatar(entry.name, entry.photoUrl, size = 48.dp)
+                FriendAvatar(entry.name, entry.photoUrl, size = 56.dp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        text = entry.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = c.textPrimary,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        BadgeChip(entry.badge)
-                        if (entry.syncedThisWeek) {
-                            StatMini(
-                                icon = Icons.Rounded.LocalFireDepartment,
-                                tint = c.gold,
-                                text = stringResource(R.string.friends_stat_streak, entry.streakWeeks),
-                            )
-                            StatMini(
-                                icon = Icons.Rounded.Restaurant,
-                                tint = c.teal,
-                                text = stringResource(R.string.friends_stat_protein, entry.proteinDays),
-                            )
-                        }
+                    Text(entry.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                    entry.username?.let { HandleText(it) }
+                }
+            }
+
+            // Shared streak: the one thing this sheet is about.
+            Surface(shape = ForgeShape.Md, color = c.goldTrack, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = c.gold, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (entry.sharedStreak > 0) {
+                                pluralStringResource(R.plurals.friends_together, entry.sharedStreak, entry.sharedStreak)
+                            } else {
+                                stringResource(R.string.friends_together_start)
+                            },
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = c.gold,
+                        )
+                    }
+                    if (entry.sharedStreak > 0) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(stringResource(R.string.friends_together_sub), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        WeekState(weekLine(stringResource(R.string.friends_you), myWeekState), myWeekState == "hit")
+                        WeekState(weekLine(entry.name, entry.weekState), entry.weekState == "hit")
                     }
                 }
+            }
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        when (onNudge()) {
+                            null -> context.toast(sentMsg)
+                            "already_nudged" -> alreadyNudgedNote = true
+                        }
+                    }
+                },
+                enabled = !nudged && !busy,
+                shape = ForgeShape.Full,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
+            ) {
                 Text(
-                    text = entry.score.toString(),
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontFamily = NumberFont,
-                        fontWeight = FontWeight.SemiBold,
-                    ).tabular(),
-                    color = if (entry.syncedThisWeek) c.textPrimary else c.textSecondary,
+                    text = if (nudged) stringResource(R.string.friends_nudged_today) else stringResource(R.string.friends_nudge_name, entry.name),
+                    style = MaterialTheme.typography.labelLarge,
                 )
             }
 
-            HorizontalDivider(color = c.divider)
+            Column {
+                KeyValue(stringResource(R.string.friends_score_label), if (entry.syncedThisWeek) entry.score.toString() else "–")
+                KeyValue(stringResource(entry.badge.labelRes), pluralStringResource(R.plurals.friends_done_count, entry.done, entry.done))
+                if (entry.syncedThisWeek) {
+                    KeyValue(stringResource(R.string.friends_their_streak, entry.name), pluralStringResource(R.plurals.friends_weeks, entry.streakWeeks, entry.streakWeeks))
+                    KeyValue(stringResource(R.string.friends_protein_label), pluralStringResource(R.plurals.friends_days, entry.proteinDays, entry.proteinDays))
+                }
+            }
 
             Text(
                 text = stringResource(R.string.friends_prs_title),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.titleSmall,
                 color = c.textPrimary,
             )
             if (entry.prs.isEmpty()) {
@@ -918,8 +1034,6 @@ private fun FriendDetailSheet(
                                 text = pr.exercise,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = c.textPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
                             Spacer(Modifier.width(8.dp))
@@ -931,68 +1045,21 @@ private fun FriendDetailSheet(
                             Text(
                                 text = prVal,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontFamily = NumberFont).tabular(),
-                                color = c.teal,
+                                color = c.textPrimary,
                             )
                         }
                     }
                 }
             }
 
-            Button(
-                onClick = {
-                    scope.launch {
-                        val code = onNudge()
-                        when (code) {
-                            null -> context.toast(sentMsg)
-                            "already_nudged" -> alreadyNudgedNote = true
-                        }
-                    }
-                },
-                enabled = !nudgeDisabled,
-                shape = ForgeShape.Full,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp),
-            ) {
-                Text(
-                    text = stringResource(
-                        if (nudgedToday || alreadyNudgedNote) R.string.friends_nudged_today else R.string.friends_nudge,
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-            if (alreadyNudgedNote) {
-                Text(
-                    text = alreadyMsg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = c.textSecondary,
-                )
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                TextButton(
-                    onClick = { confirmRemove = true },
-                    enabled = !busy,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 48.dp),
-                ) {
+                TextButton(onClick = { confirmRemove = true }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.friends_remove), color = c.textSecondary)
                 }
-                TextButton(
-                    onClick = { confirmBlock = true },
-                    enabled = !busy,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 48.dp),
-                ) {
+                TextButton(onClick = { confirmBlock = true }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.friends_block), color = c.coral)
                 }
             }
@@ -1041,6 +1108,29 @@ private fun FriendDetailSheet(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun WeekState(text: String, done: Boolean) {
+    val c = Fit.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (done) {
+            Icon(Icons.Rounded.Check, contentDescription = null, tint = c.textPrimary, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+        }
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = if (done) c.textPrimary else c.textSecondary)
+    }
+}
+
+@Composable
+private fun KeyValue(key: String, value: String) {
+    val c = Fit.colors
+    HorizontalDivider(color = c.divider)
+    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(key, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(12.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold).tabular(), color = c.textPrimary)
     }
 }
 

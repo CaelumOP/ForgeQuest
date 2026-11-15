@@ -36,7 +36,7 @@
   "friends_stat_protein": "{1}ي بروتين",
   "friends_badge_trained": "تمرّن",
   "friends_badge_on_track": "على المسار",
-  "friends_badge_slacking": "متكاسل",
+  "friends_badge_slacking": "متأخر",
   "friends_badge_rest": "يوم راحة",
   "friends_badge_not_synced": "لم يزامن هذا الأسبوع",
   "friends_prs_title": "الأرقام القياسية هذا الأسبوع",
@@ -77,5 +77,71 @@
   "settings_friends_delete_body": "سيؤدي هذا إلى مسح ملفك الشخصي وقائمة أصدقائك وملخصاتك الأسبوعية من الخادم. تبقى تمارينك ووجباتك على هذا الهاتف كما هي.",
   "settings_friends_delete_confirm": "حذف",
   "settings_friends_signed_out": "تم تسجيل الخروج من الأصدقاء",
-  "settings_friends_deleted": "تم حذف حساب الأصدقاء"
+  "settings_friends_deleted": "تم حذف حساب الأصدقاء",
+  "friends_add_title": "إضافة صديق",
+  "friends_settings": "إعدادات الأصدقاء",
+  "friends_days_left": {
+    "zero": "لا أيام متبقية",
+    "one": "يوم واحد متبقٍ",
+    "two": "يومان متبقيان",
+    "few": "{1} أيام متبقية",
+    "many": "{1} يومًا متبقيًا",
+    "other": "{1} يوم متبقٍ"
+  },
+  "friends_last_day": "اليوم الأخير",
+  "friends_your_rank": "ترتيبك {1} من {2}",
+  "friends_done_count": {
+    "zero": "لا تمارين",
+    "one": "تمرين واحد",
+    "two": "تمرينان",
+    "few": "{1} تمارين",
+    "many": "{1} تمرينًا",
+    "other": "{1} تمرين"
+  },
+  "friends_together": {
+    "zero": "لا أسابيع معًا بعد",
+    "one": "أسبوع واحد معًا",
+    "two": "أسبوعان معًا",
+    "few": "{1} أسابيع معًا",
+    "many": "{1} أسبوعًا معًا",
+    "other": "{1} أسبوع معًا"
+  },
+  "friends_together_sub": "الأسابيع التي أنجز فيها كلاكما هدفه",
+  "friends_together_start": "أنجزا هدف هذا الأسبوع معًا لتبدأ سلسلتكما",
+  "friends_week_done": "{1}: أنجز",
+  "friends_week_free": "{1}: أسبوع حر",
+  "friends_week_not_yet": "{1}: لم ينجز بعد",
+  "friends_nudge_name": "نبّه {1}",
+  "friends_nudged_name": "نبّهت {1} اليوم",
+  "friends_score_label": "نقاط فورج",
+  "friends_their_streak": "سلسلة {1}",
+  "friends_protein_label": "أيام تحقيق هدف البروتين",
+  "friends_weeks": {
+    "zero": "لا أسابيع",
+    "one": "أسبوع واحد",
+    "two": "أسبوعان",
+    "few": "{1} أسابيع",
+    "many": "{1} أسبوعًا",
+    "other": "{1} أسبوع"
+  },
+  "friends_days": {
+    "zero": "لا أيام",
+    "one": "يوم واحد",
+    "two": "يومان",
+    "few": "{1} أيام",
+    "many": "{1} يومًا",
+    "other": "{1} يوم"
+  },
+  "friends_invites_waiting": {
+    "one": "دعوة واحدة بانتظار الرد",
+    "two": "دعوتان بانتظار الرد",
+    "few": "{1} دعوات بانتظار الرد",
+    "many": "{1} دعوة بانتظار الرد",
+    "other": "{1} دعوة بانتظار الرد"
+  },
+  "friends_cancel_invite": "إلغاء الدعوة إلى {1}",
+  "friends_wants_friends": "يريد أن يكون صديقك",
+  "friends_empty_title": "التمرين أسهل مع الأصدقاء",
+  "friends_share_username": "شارك اسم المستخدم",
+  "friends_you": "أنت"
 }

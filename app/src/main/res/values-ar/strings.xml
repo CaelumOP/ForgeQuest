@@ -2231,7 +2231,7 @@
     <string name="friends_stat_protein">%1$dي بروتين</string>
     <string name="friends_badge_trained">تمرّن</string>
     <string name="friends_badge_on_track">على المسار</string>
-    <string name="friends_badge_slacking">متكاسل</string>
+    <string name="friends_badge_slacking">متأخر</string>
     <string name="friends_badge_rest">يوم راحة</string>
     <string name="friends_badge_not_synced">لم يزامن هذا الأسبوع</string>
     <string name="friends_prs_title">الأرقام القياسية هذا الأسبوع</string>
@@ -2266,4 +2266,70 @@
     <string name="settings_friends_deleted">تم حذف حساب الأصدقاء</string>
     <string name="home_with_friends">مع الأصدقاء</string>
     <string name="home_with_friends_empty">أنجزا هدف الأسبوع معًا لتبدأ سلسلتكما</string>
+    <string name="friends_add_title">إضافة صديق</string>
+    <string name="friends_settings">إعدادات الأصدقاء</string>
+    <string name="friends_last_day">اليوم الأخير</string>
+    <string name="friends_your_rank">ترتيبك %1$d من %2$d</string>
+    <string name="friends_together_sub">الأسابيع التي أنجز فيها كلاكما هدفه</string>
+    <string name="friends_together_start">أنجزا هدف هذا الأسبوع معًا لتبدأ سلسلتكما</string>
+    <string name="friends_week_done">%1$s: أنجز</string>
+    <string name="friends_week_free">%1$s: أسبوع حر</string>
+    <string name="friends_week_not_yet">%1$s: لم ينجز بعد</string>
+    <string name="friends_nudge_name">نبّه %1$s</string>
+    <string name="friends_nudged_name">نبّهت %1$s اليوم</string>
+    <string name="friends_score_label">نقاط فورج</string>
+    <string name="friends_their_streak">سلسلة %1$s</string>
+    <string name="friends_protein_label">أيام تحقيق هدف البروتين</string>
+    <string name="friends_cancel_invite">إلغاء الدعوة إلى %1$s</string>
+    <string name="friends_wants_friends">يريد أن يكون صديقك</string>
+    <string name="friends_empty_title">التمرين أسهل مع الأصدقاء</string>
+    <string name="friends_you">أنت</string>
+    <string name="friends_refresh">تحديث</string>
+    <plurals name="friends_days_left">
+        <item quantity="zero">لا أيام متبقية</item>
+        <item quantity="one">يوم واحد متبقٍ</item>
+        <item quantity="two">يومان متبقيان</item>
+        <item quantity="few">%1$d أيام متبقية</item>
+        <item quantity="many">%1$d يومًا متبقيًا</item>
+        <item quantity="other">%1$d يوم متبقٍ</item>
+    </plurals>
+    <plurals name="friends_done_count">
+        <item quantity="zero">لا تمارين</item>
+        <item quantity="one">تمرين واحد</item>
+        <item quantity="two">تمرينان</item>
+        <item quantity="few">%1$d تمارين</item>
+        <item quantity="many">%1$d تمرينًا</item>
+        <item quantity="other">%1$d تمرين</item>
+    </plurals>
+    <plurals name="friends_together">
+        <item quantity="zero">لا أسابيع معًا بعد</item>
+        <item quantity="one">أسبوع واحد معًا</item>
+        <item quantity="two">أسبوعان معًا</item>
+        <item quantity="few">%1$d أسابيع معًا</item>
+        <item quantity="many">%1$d أسبوعًا معًا</item>
+        <item quantity="other">%1$d أسبوع معًا</item>
+    </plurals>
+    <plurals name="friends_weeks">
+        <item quantity="zero">لا أسابيع</item>
+        <item quantity="one">أسبوع واحد</item>
+        <item quantity="two">أسبوعان</item>
+        <item quantity="few">%1$d أسابيع</item>
+        <item quantity="many">%1$d أسبوعًا</item>
+        <item quantity="other">%1$d أسبوع</item>
+    </plurals>
+    <plurals name="friends_days">
+        <item quantity="zero">لا أيام</item>
+        <item quantity="one">يوم واحد</item>
+        <item quantity="two">يومان</item>
+        <item quantity="few">%1$d أيام</item>
+        <item quantity="many">%1$d يومًا</item>
+        <item quantity="other">%1$d يوم</item>
+    </plurals>
+    <plurals name="friends_invites_waiting">
+        <item quantity="one">دعوة واحدة بانتظار الرد</item>
+        <item quantity="two">دعوتان بانتظار الرد</item>
+        <item quantity="few">%1$d دعوات بانتظار الرد</item>
+        <item quantity="many">%1$d دعوة بانتظار الرد</item>
+        <item quantity="other">%1$d دعوة بانتظار الرد</item>
+    </plurals>
 </resources>

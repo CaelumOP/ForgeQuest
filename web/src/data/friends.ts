@@ -157,10 +157,10 @@ function buildDemoView(now = Date.now()): CachedView {
     me: { id: 'demo_me', username: 'tariq', name: 'Tariq', photoUrl: null, sharePhoto: true, sharePrs: true, joined: true },
     today,
     weekStart: ws,
-    mySnapshot: snap(86, 'trained', 6, 5, [
+    mySnapshot: { ...snap(86, 'trained', 6, 5, [
       { exercise: 'Barbell Bench Press', kg: 90, reps: 5 },
       { exercise: 'Back Squat', kg: 120, reps: 5 },
-    ]),
+    ]), weekState: 'hit' },
     friends: [
       {
         ...person('omar', 'Omar'),

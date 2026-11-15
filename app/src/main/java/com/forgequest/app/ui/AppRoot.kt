@@ -251,7 +251,7 @@ private fun MainScaffold() {
                 composable(Routes.HOME) { HomeScreen(nav) }
                 composable(Routes.WORKOUTS) { WorkoutsScreen(nav) }
                 composable(Routes.FOOD) { FoodScreen(nav) }
-                composable(Routes.FRIENDS) { com.forgequest.app.ui.friends.FriendsScreen() }
+                composable(Routes.FRIENDS) { com.forgequest.app.ui.friends.FriendsScreen(nav) }
                 composable(Routes.PROFILE) { ProfileScreen(nav) }
                 composable(Routes.LIVE, enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None }) { LiveWorkoutScreen(nav) }
                 composable(Routes.PLAN, arguments = listOf(navArgument("day") { type = NavType.IntType; defaultValue = 0 }, navArgument("paste") { type = NavType.BoolType; defaultValue = false }, navArgument("templates") { type = NavType.BoolType; defaultValue = false })) { entry ->

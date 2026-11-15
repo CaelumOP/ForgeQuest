@@ -1920,7 +1920,7 @@
     <string name="friends_stat_protein">%1$dd protein</string>
     <string name="friends_badge_trained">Trained</string>
     <string name="friends_badge_on_track">On track</string>
-    <string name="friends_badge_slacking">Slacking</string>
+    <string name="friends_badge_slacking">Behind</string>
     <string name="friends_badge_rest">Rest day</string>
     <string name="friends_badge_not_synced">Not synced this week</string>
     <string name="friends_prs_title">This week\'s PRs</string>
@@ -1955,4 +1955,47 @@
     <string name="settings_friends_deleted">Friends account deleted</string>
     <string name="home_with_friends">With friends</string>
     <string name="home_with_friends_empty">Hit your week together to start a streak</string>
+    <string name="friends_add_title">Add a friend</string>
+    <string name="friends_settings">Friends settings</string>
+    <string name="friends_last_day">Last day</string>
+    <string name="friends_your_rank">You\'re #%1$d of %2$d</string>
+    <string name="friends_together_sub">Weeks you both hit your target</string>
+    <string name="friends_together_start">Hit this week together to start a streak</string>
+    <string name="friends_week_done">%1$s: done</string>
+    <string name="friends_week_free">%1$s: free week</string>
+    <string name="friends_week_not_yet">%1$s: not yet</string>
+    <string name="friends_nudge_name">Nudge %1$s</string>
+    <string name="friends_nudged_name">Nudged %1$s today</string>
+    <string name="friends_score_label">Forge Score</string>
+    <string name="friends_their_streak">%1$s\'s streak</string>
+    <string name="friends_protein_label">Protein goal hit</string>
+    <string name="friends_cancel_invite">Cancel invite to %1$s</string>
+    <string name="friends_wants_friends">wants to be friends</string>
+    <string name="friends_empty_title">Training is easier with friends</string>
+    <string name="friends_you">You</string>
+    <string name="friends_refresh">Refresh</string>
+    <plurals name="friends_days_left">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+    <plurals name="friends_done_count">
+        <item quantity="one">%1$d workout</item>
+        <item quantity="other">%1$d workouts</item>
+    </plurals>
+    <plurals name="friends_together">
+        <item quantity="one">%1$d week together</item>
+        <item quantity="other">%1$d weeks together</item>
+    </plurals>
+    <plurals name="friends_weeks">
+        <item quantity="one">%1$d week</item>
+        <item quantity="other">%1$d weeks</item>
+    </plurals>
+    <plurals name="friends_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="friends_invites_waiting">
+        <item quantity="one">%1$d invite waiting</item>
+        <item quantity="other">%1$d invites waiting</item>
+    </plurals>
 </resources>

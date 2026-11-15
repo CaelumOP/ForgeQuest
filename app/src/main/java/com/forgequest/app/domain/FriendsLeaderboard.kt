@@ -36,6 +36,11 @@ data class LeaderboardEntry(
     val streakWeeks: Int,
     val prs: List<Pr>,
     val syncedThisWeek: Boolean,
+    /** This week's state for the shared-streak line ("hit", "free", "open"); null when unknown. */
+    val weekState: String? = null,
+    /** Weeks you and this friend both hit (0 for me). */
+    val sharedStreak: Int = 0,
+    val username: String? = null,
 )
 
 object FriendsLeaderboard {
@@ -50,7 +55,7 @@ object FriendsLeaderboard {
         val entries = buildList {
             for (f in view.friends) {
                 if (f.id == view.me.id) continue
-                add(toEntry(f.id, f.name, f.photoUrl, isMe = false, snapshot = f.snapshot, weekStart = view.weekStart))
+                add(toEntry(f.id, f.name, f.photoUrl, isMe = false, snapshot = f.snapshot, weekStart = view.weekStart).copy(sharedStreak = f.sharedStreak, username = f.username))
             }
             add(
                 toEntry(
@@ -110,6 +115,7 @@ object FriendsLeaderboard {
                 streakWeeks = snapshot.streakWeeks,
                 prs = snapshot.prs.orEmpty(),
                 syncedThisWeek = true,
+                weekState = snapshot.weekState,
             )
         }
     }

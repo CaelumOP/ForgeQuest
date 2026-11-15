@@ -18,18 +18,22 @@ import {
 } from '../../data/friends'
 import { useSettings, weightUnit } from '../../data/settings'
 import { normalizeUsername, type FriendBadge, type LeaderboardEntry, type Person } from '../../domain/forge-score'
+import { todayEpochDay } from '../../domain/dates'
 import { formatWeight } from '../../domain/units'
 import {
   BellIcon,
+  CheckIcon,
   CloseIcon,
   CopyIcon,
+  ExpandMoreIcon,
   FlameIcon,
   GroupIcon,
+  PersonAddIcon,
   RefreshIcon,
-  RestaurantIcon,
+  SettingsIcon,
   ShareOutIcon,
 } from '../icons'
-import { Button, Card, Dialog, IconButton, SectionHeader, Sheet, TextField, toast } from '../kit'
+import { Button, Card, Dialog, IconButton, Sheet, TextField, toast } from '../kit'
 import { Avatar } from './Avatar'
 import './friends.css'
 
@@ -141,14 +145,109 @@ async function copyText(text: string): Promise<boolean> {
   return false
 }
 
+/** Opens Profile with its Friends group expanded (name, username, share toggles, sign out, delete). */
+function openFriendsSettings() {
+  try {
+    const key = 'fq.profile.open'
+    const open = JSON.parse(localStorage.getItem(key) ?? '[]')
+    const ids = Array.isArray(open) ? open : []
+    if (!ids.includes('friends')) localStorage.setItem(key, JSON.stringify([...ids, 'friends']))
+  } catch { /* the group just opens closed */ }
+  location.hash = '#/profile'
+}
+
+/** "Name: done" / "free week" / "not yet" for the shared-streak week line. */
+function weekLine(rawName: string, state: LeaderboardEntry['weekState']): string {
+  // First-strong isolate: a Latin name at the start of an Arabic line would otherwise pull the colon to the wrong side.
+  const name = `\u2068${rawName}\u2069`
+  if (state === 'hit') return t('friends_week_done', name)
+  if (state === 'free') return t('friends_week_free', name)
+  return t('friends_week_not_yet', name)
+}
+
+function statusLine(entry: LeaderboardEntry): string {
+  const word = t(BADGE_KEYS[entry.badge])
+  return entry.syncedThisWeek ? `${word} · ${plural('friends_done_count', entry.done)}` : word
+}
+
+/** Your @username with Copy/Share, then the add-by-username field. Used in the Add sheet and the empty state. */
+function AddFriend({ username, busy, onDone }: { username: string; busy: boolean; onDone?: () => void }) {
+  const [nameInput, setNameInput] = useState('')
+  const addInputId = useId()
+
+  const handleCopy = async () => {
+    if (await copyText(`@${username}`)) toast(t('friends_username_copied'))
+  }
+  const handleShare = async () => {
+    const text = shareText(username)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ text })
+        return
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return
+      }
+    }
+    if (await copyText(text)) toast(t('friends_share_copied'))
+  }
+  const handleInvite = async (e?: Event) => {
+    e?.preventDefault()
+    if (normalizeUsername(nameInput) === null) return
+    const res = await inviteFriend(nameInput)
+    if (res.ok) {
+      setNameInput('')
+      toast(t(res.data.status === 'accepted' ? 'friends_invite_accepted' : 'friends_invite_sent'))
+      onDone?.()
+    }
+  }
+
+  return (
+    <div class="fr-addbox">
+      <div class="fr-code-head">
+        <span class="fr-code-label">{t('friends_your_code')}</span>
+        <span class="fr-code-val" dir="ltr">@{username}</span>
+      </div>
+      <div class="fr-code-actions">
+        <Button variant="tonal" icon={<CopyIcon size={18} />} onClick={() => void handleCopy()}>{t('friends_copy_code')}</Button>
+        <Button variant="filled" icon={<ShareOutIcon size={18} />} onClick={() => void handleShare()}>{t('friends_share_code')}</Button>
+      </div>
+      <form class="fr-add-row" onSubmit={(e) => void handleInvite(e)}>
+        <div class="fr-add-field">
+          <label class="kit-label" for={addInputId}>{t('friends_add_label')}</label>
+          <input
+            id={addInputId}
+            type="text"
+            class="kit-input fr-code-input"
+            dir="ltr"
+            maxLength={21}
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck={false}
+            placeholder={t('friends_add_hint')}
+            value={nameInput}
+            disabled={busy}
+            onInput={(e) => {
+              clearFriendsError()
+              setNameInput((e.target as HTMLInputElement).value)
+            }}
+          />
+        </div>
+        <Button type="submit" variant="tonal" disabled={normalizeUsername(nameInput) === null || busy}>
+          {t('friends_add_button')}
+        </Button>
+      </form>
+    </div>
+  )
+}
+
 export function FriendsScreen() {
   useLang()
   const state = useFriends()
   const settings = useSettings()
-  const [nameInput, setNameInput] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [outOpen, setOutOpen] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{ kind: 'remove' | 'block'; person: Person } | null>(null)
-  const addInputId = useId()
 
   useEffect(() => {
     if (state.status === 'joined' && !state.demoMode) {
@@ -162,33 +261,17 @@ export function FriendsScreen() {
 
   const ar = getLang() === 'ar'
   const unit = weightUnit(settings)
-
-  const handleCopy = async (username: string) => {
-    if (await copyText(`@${username}`)) toast(t('friends_username_copied'))
+  const nudge = async (p: Person) => {
+    const res = await nudgeFriend(p.id)
+    if (res.ok) toast(t('friends_nudge_sent'))
   }
 
-  const handleShare = async (username: string) => {
-    const text = shareText(username)
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ text })
-        return
-      } catch (err) {
-        if ((err as { name?: string })?.name === 'AbortError') return
-      }
-    }
-    if (await copyText(text)) toast(t('friends_share_copied'))
-  }
-
-  const handleInvite = async (e?: Event) => {
-    e?.preventDefault()
-    if (normalizeUsername(nameInput) === null) return
-    const res = await inviteFriend(nameInput)
-    if (res.ok) {
-      setNameInput('')
-      toast(t(res.data.status === 'accepted' ? 'friends_invite_accepted' : 'friends_invite_sent'))
-    }
-  }
+  // Week line: days left in this Sunday week, and my place on the board.
+  const today = view ? Math.max(view.today, todayEpochDay()) : 0
+  const daysLeft = view ? Math.max(0, view.weekStart + 6 - today) : 0
+  const myRank = state.leaderboard.findIndex((e) => e.isMe) + 1
+  const mine = view?.mySnapshot
+  const myWeekState = mine && view && mine.weekStart >= view.weekStart ? mine.weekState ?? null : null
 
   return (
     <div class="content fr">
@@ -204,178 +287,122 @@ export function FriendsScreen() {
 
       {!state.loading && state.status === 'joined' && view && (
         <>
+          <div class="fr-actions">
+            <IconButton label={t('friends_add_title')} tone="tonal" onClick={() => setAddOpen(true)}><PersonAddIcon /></IconButton>
+            <IconButton label={t('friends_refresh')} disabled={state.busy} onClick={() => void refreshFriends(false)}><RefreshIcon /></IconButton>
+            <IconButton label={t('friends_settings')} onClick={openFriendsSettings}><SettingsIcon /></IconButton>
+          </div>
+
           {view.nudges
             .filter((n) => !state.dismissedNudgeIds.has(nudgeKey(n)))
             .map((n) => (
-              <div key={nudgeKey(n)} class="fr-nudge-banner" role="status">
-                <span class="fr-nudge-ic" aria-hidden="true"><BellIcon size={20} /></span>
-                <span class="fr-nudge-text">{t('friends_nudged_you', n.name)}</span>
+              <div key={nudgeKey(n)} class="fr-banner" role="status">
+                <span class="fr-banner-ic" aria-hidden="true"><BellIcon size={18} /></span>
+                <span class="fr-grow">{t('friends_nudged_you', n.name)}</span>
                 <IconButton label={t('cd_close')} onClick={() => dismissFriendsNudge(nudgeKey(n))}>
                   <CloseIcon size={20} />
                 </IconButton>
               </div>
             ))}
 
-          <Card>
-            <div class="fr-code-head">
-              <div>
-                <span class="fr-code-label">{t('friends_your_code')}</span>
-                <span class="fr-code-val" dir="ltr">@{view.me.username}</span>
-              </div>
+          {view.incoming.map((p) => (
+            <div key={p.id} class="fr-banner fr-req">
+              <Avatar person={p} />
+              <span class="fr-grow fr-req-text">
+                <span class="fr-name">{p.name}</span>
+                <span class="fr-sub">
+                  {p.username && <bdi class="fr-handle" dir="ltr">@{p.username}</bdi>} {t('friends_wants_friends')}
+                </span>
+              </span>
+              <span class="fr-req-actions">
+                <Button variant="text" disabled={state.busy} onClick={() => void declineFriend(p.id)}>{t('friends_decline')}</Button>
+                <Button variant="filled" disabled={state.busy} onClick={() => void acceptFriend(p.id)}>{t('friends_accept')}</Button>
+              </span>
             </div>
-            <div class="fr-code-actions">
-              <Button variant="tonal" icon={<CopyIcon size={18} />} onClick={() => void handleCopy(view.me.username ?? '')}>
-                {t('friends_copy_code')}
-              </Button>
-              <Button variant="tonal" icon={<ShareOutIcon size={18} />} onClick={() => void handleShare(view.me.username ?? '')}>
-                {t('friends_share_code')}
-              </Button>
-            </div>
+          ))}
 
-            <hr class="fr-div" />
+          {state.error && <p class="fr-err" role="alert">{t('friends_error_line', state.error)}</p>}
 
-            <form class="fr-add-row" onSubmit={(e) => void handleInvite(e)}>
-              <div class="fr-add-field">
-                <label class="kit-label" for={addInputId}>{t('friends_add_label')}</label>
-                <input
-                  id={addInputId}
-                  type="text"
-                  class="kit-input fr-code-input"
-                  dir="ltr"
-                  maxLength={21}
-                  autocapitalize="none"
-                  autocorrect="off"
-                  spellcheck={false}
-                  placeholder={t('friends_add_hint')}
-                  value={nameInput}
-                  disabled={state.busy}
-                  onInput={(e) => {
-                    clearFriendsError()
-                    setNameInput((e.target as HTMLInputElement).value)
-                  }}
-                />
-              </div>
-              <Button
-                type="submit"
-                variant="filled"
-                disabled={normalizeUsername(nameInput) === null || state.busy}
-              >
-                {t('friends_add_button')}
-              </Button>
-            </form>
-          </Card>
-
-          {state.error && (
-            <p class="fr-err" role="alert">{t('friends_error_line', state.error)}</p>
-          )}
-
-          {view.incoming.length > 0 && (
+          {view.friends.length === 0 ? (
+            <Card class="fr-empty">
+              <span class="fr-pitch-ic" aria-hidden="true"><GroupIcon size={28} /></span>
+              <h2 class="fr-h2">{t('friends_empty_title')}</h2>
+              <p class="fr-body">{t('friends_empty_board')}</p>
+              <AddFriend username={view.me.username ?? ''} busy={state.busy} />
+            </Card>
+          ) : (
             <>
-              <SectionHeader title={t('friends_incoming_title')} />
-              <div class="fr-list">
-                {view.incoming.map((p) => (
-                  <div key={p.id} class="fr-req-row">
-                    <Avatar person={p} />
-                    <PersonName person={p} grow />
-                    <div class="fr-req-actions">
-                      <Button variant="tonal" disabled={state.busy} onClick={() => void acceptFriend(p.id)}>
-                        {t('friends_accept')}
-                      </Button>
-                      <Button variant="text" disabled={state.busy} onClick={() => void declineFriend(p.id)}>
-                        {t('friends_decline')}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div class="fr-week">
+                <span><b>{t('friends_board_title')}</b> · {daysLeft === 0 ? t('friends_last_day') : plural('friends_days_left', daysLeft)}</span>
+                {myRank > 0 && <span>{t('friends_your_rank', myRank, state.leaderboard.length)}</span>}
               </div>
-            </>
-          )}
-
-          <SectionHeader
-            title={t('friends_board_title')}
-            trailing={
-              <IconButton
-                label={t('friends_refresh')}
-                disabled={state.busy}
-                onClick={() => void refreshFriends(false)}
-              >
-                <RefreshIcon />
-              </IconButton>
-            }
-          />
-
-          <div class="fr-list">
-            {state.leaderboard.map((entry, idx) => {
-              const rowBody = (
-                <>
-                  <span class="fr-rank">{idx + 1}</span>
-                  <Avatar person={entry.person} />
-                  <span class="fr-board-mid">
-                    <span class="fr-name-line">
-                      <span class="fr-name">{entry.person.name}</span>
-                      {entry.isMe && <span class="fr-me-pill">{t('friends_me_tag')}</span>}
-                    </span>
-                    <span class="fr-meta-line">
-                      <span class={`fr-badge fr-badge-${entry.badge}`}>{t(BADGE_KEYS[entry.badge])}</span>
-                      {entry.syncedThisWeek && (
-                        <span class="fr-stats">
-                          <span class="fr-stat">
-                            <FlameIcon size={14} />
-                            <span>{t('friends_stat_streak', entry.streakWeeks)}</span>
-                          </span>
-                          <span class="fr-stat">
-                            <RestaurantIcon size={14} />
-                            <span>{t('friends_stat_protein', entry.proteinDays)}</span>
-                          </span>
+              <Card class="fr-board" padded={false}>
+                {state.leaderboard.map((entry, idx) => {
+                  const nudged = state.nudgedToday.has(entry.person.id)
+                  const canNudge = !entry.isMe && entry.weekState !== 'hit'
+                  const body = (
+                    <>
+                      <span class="fr-rank">{entry.syncedThisWeek ? idx + 1 : '–'}</span>
+                      <Avatar person={entry.person} />
+                      <span class="fr-board-mid">
+                        <span class="fr-name-line">
+                          <span class="fr-name">{entry.isMe ? t('friends_you') : entry.person.name}</span>
+                          {entry.sharedStreak > 0 && (
+                            <span class="fr-flame">
+                              <FlameIcon size={14} />
+                              <span class="fr-sr">{plural('friends_together', entry.sharedStreak)}</span>
+                              <span aria-hidden="true">{entry.sharedStreak}</span>
+                            </span>
+                          )}
                         </span>
+                        <span class="fr-status">{statusLine(entry)}</span>
+                      </span>
+                      <span class={entry.syncedThisWeek ? 'fr-score' : 'fr-score fr-score-stale'}>
+                        {entry.syncedThisWeek ? entry.score : '–'}
+                      </span>
+                    </>
+                  )
+                  return (
+                    <div key={entry.person.id} class={entry.isMe ? 'fr-board-row fr-board-me' : 'fr-board-row'}>
+                      {entry.isMe
+                        ? <div class="fr-row-main">{body}</div>
+                        : <button type="button" class="fr-row-main" onClick={() => setSelectedId(entry.person.id)}>{body}</button>}
+                      {!canNudge ? <span class="fr-bell-slot" aria-hidden="true" /> : (
+                        nudged
+                          ? <span class="fr-bell-done" role="img" aria-label={t('friends_nudged_name', entry.person.name)}><CheckIcon size={20} /></span>
+                          : <IconButton label={t('friends_nudge_name', entry.person.name)} disabled={state.busy} onClick={() => void nudge(entry.person)}><BellIcon size={20} /></IconButton>
                       )}
-                    </span>
-                  </span>
-                  <span class={entry.syncedThisWeek ? 'fr-score' : 'fr-score fr-score-stale'}>
-                    {entry.score}
-                  </span>
-                </>
-              )
-
-              if (entry.isMe) {
-                return (
-                  <div key={entry.person.id} class="fr-board-row fr-board-me">
-                    {rowBody}
-                  </div>
-                )
-              }
-              return (
-                <button
-                  key={entry.person.id}
-                  type="button"
-                  class="fr-board-row"
-                  onClick={() => setSelectedId(entry.person.id)}
-                >
-                  {rowBody}
-                </button>
-              )
-            })}
-          </div>
-
-          {view.friends.length === 0 && (
-            <p class="fr-empty-hint">{t('friends_empty_board')}</p>
+                    </div>
+                  )
+                })}
+              </Card>
+            </>
           )}
 
           {view.outgoing.length > 0 && (
-            <>
-              <SectionHeader title={t('friends_outgoing_title')} />
-              <div class="fr-list">
-                {view.outgoing.map((p) => (
-                  <div key={p.id} class="fr-out-row">
-                    <Avatar person={p} />
-                    <PersonName person={p} />
-                  </div>
-                ))}
-              </div>
-            </>
+            <div class="fr-out">
+              <button type="button" class="fr-out-toggle" aria-expanded={outOpen} onClick={() => setOutOpen(!outOpen)}>
+                <span class="fr-grow">{plural('friends_invites_waiting', view.outgoing.length)}</span>
+                <span class={outOpen ? 'fr-chev fr-chev-open' : 'fr-chev'} aria-hidden="true"><ExpandMoreIcon size={20} /></span>
+              </button>
+              {outOpen && view.outgoing.map((p) => (
+                <div key={p.id} class="fr-out-row">
+                  <Avatar person={p} />
+                  <PersonName person={p} grow />
+                  <IconButton label={t('friends_cancel_invite', p.name)} disabled={state.busy} onClick={() => void declineFriend(p.id)}>
+                    <CloseIcon size={20} />
+                  </IconButton>
+                </div>
+              ))}
+            </div>
           )}
         </>
       )}
+
+      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title={t('friends_add_title')}>
+        {view && <AddFriend username={view.me.username ?? ''} busy={state.busy} onDone={() => setAddOpen(false)} />}
+        {state.error && <p class="fr-err" role="alert">{t('friends_error_line', state.error)}</p>}
+      </Sheet>
 
       <Sheet
         open={selectedEntry !== null}
@@ -384,25 +411,42 @@ export function FriendsScreen() {
       >
         {selectedEntry && (
           <div class="fr-sheet">
-            <div class="fr-sheet-head">
-              <span class={`fr-badge fr-badge-${selectedEntry.badge}`}>{t(BADGE_KEYS[selectedEntry.badge])}</span>
-              <span class={selectedEntry.syncedThisWeek ? 'fr-score' : 'fr-score fr-score-stale'}>
-                {selectedEntry.score}
-              </span>
+            <div class="fr-sheet-who">
+              <Avatar person={selectedEntry.person} />
+              {selectedEntry.person.username && <bdi class="fr-handle" dir="ltr">@{selectedEntry.person.username}</bdi>}
             </div>
 
-            {selectedEntry.syncedThisWeek && (
-              <div class="fr-stats">
-                <span class="fr-stat">
-                  <FlameIcon size={16} />
-                  <span>{t('friends_stat_streak', selectedEntry.streakWeeks)}</span>
-                </span>
-                <span class="fr-stat">
-                  <RestaurantIcon size={16} />
-                  <span>{t('friends_stat_protein', selectedEntry.proteinDays)}</span>
-                </span>
+            <div class="fr-together">
+              <div class="fr-together-big">
+                <FlameIcon size={22} />
+                <span>{selectedEntry.sharedStreak > 0 ? plural('friends_together', selectedEntry.sharedStreak) : t('friends_together_start')}</span>
               </div>
-            )}
+              {selectedEntry.sharedStreak > 0 && <p class="fr-sub">{t('friends_together_sub')}</p>}
+              <div class="fr-together-week">
+                <span class={myWeekState === 'hit' ? 'fr-wk-ok' : undefined}>{myWeekState === 'hit' && <CheckIcon size={16} />}{weekLine(t('friends_you'), myWeekState)}</span>
+                <span class={selectedEntry.weekState === 'hit' ? 'fr-wk-ok' : undefined}>{selectedEntry.weekState === 'hit' && <CheckIcon size={16} />}{weekLine(selectedEntry.person.name, selectedEntry.weekState)}</span>
+              </div>
+            </div>
+
+            <Button
+              variant="filled"
+              block
+              disabled={state.nudgedToday.has(selectedEntry.person.id) || state.busy}
+              onClick={() => void nudge(selectedEntry.person)}
+            >
+              {state.nudgedToday.has(selectedEntry.person.id) ? t('friends_nudged_today') : t('friends_nudge_name', selectedEntry.person.name)}
+            </Button>
+
+            <dl class="fr-kv">
+              <div><dt>{t('friends_score_label')}</dt><dd>{selectedEntry.syncedThisWeek ? selectedEntry.score : '–'}</dd></div>
+              <div><dt>{t(BADGE_KEYS[selectedEntry.badge])}</dt><dd>{plural('friends_done_count', selectedEntry.done)}</dd></div>
+              {selectedEntry.syncedThisWeek && (
+                <>
+                  <div><dt>{t('friends_their_streak', selectedEntry.person.name)}</dt><dd>{plural('friends_weeks', selectedEntry.streakWeeks)}</dd></div>
+                  <div><dt>{t('friends_protein_label')}</dt><dd>{plural('friends_days', selectedEntry.proteinDays)}</dd></div>
+                </>
+              )}
+            </dl>
 
             <h3 class="fr-h3">{t('friends_prs_title')}</h3>
             {selectedEntry.prs.length === 0 ? (
@@ -422,21 +466,10 @@ export function FriendsScreen() {
               </div>
             )}
 
-            <Button
-              variant="tonal"
-              block
-              disabled={state.nudgedToday.has(selectedEntry.person.id) || state.busy}
-              onClick={async () => {
-                const res = await nudgeFriend(selectedEntry.person.id)
-                if (res.ok) toast(t('friends_nudge_sent'))
-              }}
-            >
-              {state.nudgedToday.has(selectedEntry.person.id) ? t('friends_nudged_today') : t('friends_nudge')}
-            </Button>
-
             <div class="fr-sheet-danger">
               <Button
                 variant="text"
+                class="fr-neutral"
                 disabled={state.busy}
                 onClick={() => setConfirmAction({ kind: 'remove', person: selectedEntry.person })}
               >

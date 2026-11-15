@@ -55,6 +55,12 @@ export interface LeaderboardEntry {
   proteinDays: number
   prs: Pr[]
   syncedThisWeek: boolean
+  /** Workout days this week (0 when not synced). */
+  done: number
+  /** This week's state for the shared-streak line; null when unknown. */
+  weekState: 'hit' | 'free' | 'open' | null
+  /** Weeks you and this friend both hit (0 for me). */
+  sharedStreak: number
 }
 
 const RESERVED_USERNAMES = new Set([
@@ -128,10 +134,11 @@ function toLeaderboardEntry(
   isMe: boolean,
   snapshot: Snapshot | null,
   serverWeekStart: number,
+  sharedStreak = 0,
 ): LeaderboardEntry {
   // Contract: a snapshot from an older week shows as neutral "not synced this week", score 0.
   if (snapshot === null || snapshot.weekStart < serverWeekStart) {
-    return { person, isMe, score: 0, badge: 'not_synced', streakWeeks: 0, proteinDays: 0, prs: [], syncedThisWeek: false }
+    return { person, isMe, score: 0, badge: 'not_synced', streakWeeks: 0, proteinDays: 0, prs: [], syncedThisWeek: false, done: 0, weekState: null, sharedStreak }
   }
   return {
     person,
@@ -142,6 +149,9 @@ function toLeaderboardEntry(
     proteinDays: snapshot.proteinDays,
     prs: snapshot.prs ?? [],
     syncedThisWeek: true,
+    done: snapshot.done,
+    weekState: snapshot.weekState ?? null,
+    sharedStreak,
   }
 }
 
@@ -159,7 +169,7 @@ export function buildLeaderboard(
   if (me) entries.push(toLeaderboardEntry(me, true, mySnapshot, serverWeekStart))
   for (const f of friends) {
     const person: Person = { id: f.id, username: f.username, name: f.name, photoUrl: f.photoUrl }
-    entries.push(toLeaderboardEntry(person, false, f.snapshot, serverWeekStart))
+    entries.push(toLeaderboardEntry(person, false, f.snapshot, serverWeekStart, f.sharedStreak ?? 0))
   }
   entries.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score

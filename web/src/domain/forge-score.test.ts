@@ -31,6 +31,20 @@ describe('buildLeaderboard', () => {
     prs: prs ? [{ exercise: 'Bench Press', kg: 80, reps: 5 }] : null,
   })
 
+  it('carries done, weekState and sharedStreak; a stale friend keeps the streak but shows no week', () => {
+    const friends: Friend[] = [
+      { ...p('o', 'Omar'), snapshot: { ...snap(ws, 100, 'trained'), weekState: 'hit' }, sharedStreak: 4 },
+      { ...p('n', 'Noor'), snapshot: { ...snap(ws - 7, 80), weekState: null }, sharedStreak: 2 },
+      { ...p('s', 'Sami'), snapshot: snap(ws, 40) },
+    ]
+    const board = buildLeaderboard(ws, me, snap(ws, 90, 'trained'), friends)
+    const by = Object.fromEntries(board.map((e) => [e.person.id, e]))
+    expect(by.o).toMatchObject({ done: 3, weekState: 'hit', sharedStreak: 4 })
+    expect(by.n).toMatchObject({ syncedThisWeek: false, done: 0, weekState: null, sharedStreak: 2 })
+    expect(by.s).toMatchObject({ weekState: null, sharedStreak: 0 })
+    expect(by.me.sharedStreak).toBe(0)
+  })
+
   it('includes me highlighted and sorts by score desc then name asc', () => {
     const friends: Friend[] = [
       { ...p('z', 'Zaid'), snapshot: snap(ws, 90, 'trained') },
