@@ -466,7 +466,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         if (item == null) return ""
         val reps = when {
             item.repsMin != null && item.repsMax != null && item.repsMax != item.repsMin -> AppText.get(R.string.rx_rep_range, item.repsMin, item.repsMax)
-            item.repsMin != null -> AppText.get(R.string.rx_reps_n, item.repsMin)
+            item.repsMin != null -> AppText.plural(R.plurals.rx_reps, item.repsMin, item.repsMin)
             else -> ""
         }
         return when (kind) {

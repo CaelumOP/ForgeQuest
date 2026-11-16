@@ -353,6 +353,15 @@ fun FoodScreen(nav: NavHostController) {
                             Text(stringResource(R.string.food_none_in_category, category.localLabel()), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                             Spacer(Modifier.height(4.dp))
                             Text(stringResource(R.string.food_empty_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
+                            Spacer(Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (aiOn) {
+                                    TonalPill(stringResource(R.string.food_scan_meal), onClick = { nav.navigate(Routes.SCAN) }, icon = Icons.Rounded.CameraAlt, tint = c.teal)
+                                } else {
+                                    TonalPill(stringResource(R.string.barcode_scan), onClick = { scanningBarcode = true }, icon = Icons.Rounded.QrCodeScanner, tint = c.teal)
+                                }
+                                TonalPill(stringResource(R.string.food_quick_log), onClick = { quickLog = true }, icon = Icons.Rounded.Restaurant)
+                            }
                         }
                     }
                 }

@@ -113,4 +113,13 @@ class FriendsLeaderboardTest {
         assertFalse(meEntry.syncedThisWeek)
         assertEquals(listOf("Omar", "tariq"), board.map { it.name })
     }
+
+    @Test
+    fun effectiveWeekStateMarksHitWhenTargetMet() {
+        assertEquals("hit", FriendsLeaderboard.effectiveWeekState(weekState = null, done = 3, due = 3))
+        assertEquals("hit", FriendsLeaderboard.effectiveWeekState(weekState = "open", done = 4, due = 3))
+        assertEquals("open", FriendsLeaderboard.effectiveWeekState(weekState = "open", done = 2, due = 3))
+        assertEquals("free", FriendsLeaderboard.effectiveWeekState(weekState = "free", done = 0, due = 3))
+        assertEquals(null, FriendsLeaderboard.effectiveWeekState(weekState = null, done = 0, due = 0))
+    }
 }

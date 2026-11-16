@@ -820,7 +820,7 @@
     <string name="progress_tile_est_max">%1$s · estimated max (one rep)</string>
     <string name="progress_tile_weight">Body weight · 7-day avg</string>
     <string name="progress_tile_protein">Protein · days on goal</string>
-    <string name="progress_tile_workouts">Workouts · per week</string>
+    <string name="progress_tile_workouts">Workout days · per week</string>
     <string name="progress_tile_carbs">Carbs · daily average</string>
     <string name="progress_carbs_avg">%1$d / %2$d g</string>
     <string name="progress_of_seven">%1$d of 7</string>
@@ -839,8 +839,8 @@
     <string name="progress_per_week">%1$d / wk</string>
     <string name="progress_all_time">All time</string>
     <plurals name="progress_total_workouts">
-        <item quantity="one">workout</item>
-        <item quantity="other">workouts</item>
+        <item quantity="one">workout day</item>
+        <item quantity="other">workout days</item>
     </plurals>
     <string name="progress_total_reps">reps</string>
     <string name="progress_total_hours">trained</string>
@@ -1027,6 +1027,10 @@
     <string name="journal_volume">%1$s lifted</string>
     <string name="journal_add_note">+ Add a note</string>
     <string name="live_now">Now: %1$s</string>
+    <string name="live_warmup_not_counted">Warm-up · not in set count</string>
+    <string name="live_mark_warmup_done">Mark warm-up done</string>
+    <string name="live_warmup_done">Warm-up done ✓</string>
+    <string name="live_effort_caption">How did that set feel?</string>
     <string name="live_next">Next: %1$s</string>
     <string name="live_exercise_of">Exercise %1$d of %2$d</string>
     <string name="cd_focus_mode">Focus mode</string>
@@ -1313,7 +1317,7 @@
     <string name="cd_deselect">deselect</string>
     <string name="cd_edit">edit</string>
     <string name="picker_my_equipment">My equipment</string>
-    <string name="picker_best_swaps">Best biomechanical matches</string>
+    <string name="picker_best_swaps">Best matches</string>
     <string name="onb_available_equipment">Your available equipment</string>
     <string name="onb_equipment_hint">Pick what you have on most days. You can customize individual items any time in your plan.</string>
     <string name="live_tag_easy">Easy · RIR 3+</string>
@@ -1323,8 +1327,8 @@
     <string name="live_tag_joint">Joint niggle</string>
     <string name="live_tag_joint_note">Joint twinge / pain</string>
     <plurals name="home_month_workouts">
-        <item quantity="one">%1$d workout</item>
-        <item quantity="other">%1$d workouts</item>
+        <item quantity="one">%1$d workout day</item>
+        <item quantity="other">%1$d workout days</item>
     </plurals>
     <plurals name="home_month_records">
         <item quantity="one">%1$d record</item>
@@ -1966,6 +1970,9 @@
     <string name="friends_week_done">%1$s: done</string>
     <string name="friends_week_free">%1$s: free week</string>
     <string name="friends_week_not_yet">%1$s: not yet</string>
+    <string name="friends_week_you_done">You: done</string>
+    <string name="friends_week_you_free">You: free week</string>
+    <string name="friends_week_you_not_yet">You: not yet</string>
     <string name="friends_score_label">Forge Score</string>
     <string name="friends_their_streak">%1$s\'s streak</string>
     <string name="friends_protein_label">Protein goal hit</string>
@@ -1977,7 +1984,7 @@
     <string name="friends_inbox_title">Inbox</string>
     <string name="friends_inbox_badge_cd">Inbox, %1$d new</string>
     <string name="friends_inbox_empty">Nothing here yet</string>
-    <string name="friends_inbox_pings_title">\"Do your workout!\" messages</string>
+    <string name="friends_inbox_pings_title">Go train 💪</string>
     <string name="friends_inbox_ping_line">%1$s: Do your workout! 💪</string>
     <string name="friends_inbox_activity_title">Friend activity</string>
     <string name="friends_inbox_activity_line">%1$s just finished a workout 💪</string>
@@ -1989,14 +1996,14 @@
     <string name="friends_alerts_on">Friend workout alerts</string>
     <string name="friends_share_workouts">Share my workouts with friends</string>
     <string name="friends_share_workouts_sub">Friends see when you finish a workout</string>
-    <string name="friends_pings_on">\"Do your workout\" messages</string>
+    <string name="friends_pings_on">Go train 💪</string>
     <plurals name="friends_days_left">
         <item quantity="one">%1$d day left</item>
         <item quantity="other">%1$d days left</item>
     </plurals>
     <plurals name="friends_done_count">
-        <item quantity="one">%1$d workout</item>
-        <item quantity="other">%1$d workouts</item>
+        <item quantity="one">%1$d workout day</item>
+        <item quantity="other">%1$d workout days</item>
     </plurals>
     <plurals name="friends_together">
         <item quantity="one">%1$d week together</item>

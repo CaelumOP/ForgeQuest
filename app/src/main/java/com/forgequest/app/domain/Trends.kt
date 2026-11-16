@@ -138,7 +138,7 @@ object Trends {
     data class Lifetime(val workouts: Int, val reps: Int, val minutes: Int, val records: Int, val kgLifted: Float)
 
     fun lifetime(sessions: List<SessionEntity>, sets: List<SetEntity>): Lifetime = Lifetime(
-        workouts = sessions.size,
+        workouts = sessions.map { it.epochDay }.distinct().size,
         reps = sets.sumOf { it.reps ?: 0 },
         minutes = sessions.sumOf { s -> s.finishedAt?.let { ((it - s.startedAt) / 60_000).toInt().coerceIn(1, 300) } ?: 0 },
         records = sets.count { it.isPr },

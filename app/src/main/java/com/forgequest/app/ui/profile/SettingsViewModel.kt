@@ -341,12 +341,32 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     }
 
     fun setFriendsShare(sharePhoto: Boolean, sharePrs: Boolean) = viewModelScope.launch {
-        app.friends.join(sharePhoto, sharePrs)
+        val prev = app.friends.me.value
+        if (prev != null) app.friends.applyLocalMe(prev.copy(sharePhoto = sharePhoto, sharePrs = sharePrs))
+        if (!app.friends.join(sharePhoto, sharePrs) && prev != null) {
+            app.friends.applyLocalMe(prev)
+            app.friends.error.value?.let { message.value = app.str(R.string.friends_error_line, it) }
+        }
     }
 
     /** v4 Friends alert switches; null leaves a flag unchanged. */
     fun setFriendsAlerts(alertsOn: Boolean? = null, shareWorkouts: Boolean? = null, pingsOn: Boolean? = null) =
-        viewModelScope.launch { app.friends.setAlertFlags(alertsOn, shareWorkouts, pingsOn) }
+        viewModelScope.launch {
+            val prev = app.friends.me.value
+            if (prev != null) {
+                app.friends.applyLocalMe(
+                    prev.copy(
+                        alertsOn = alertsOn ?: prev.alertsOn,
+                        shareWorkouts = shareWorkouts ?: prev.shareWorkouts,
+                        pingsOn = pingsOn ?: prev.pingsOn,
+                    ),
+                )
+            }
+            if (!app.friends.setAlertFlags(alertsOn, shareWorkouts, pingsOn) && prev != null) {
+                app.friends.applyLocalMe(prev)
+                app.friends.error.value?.let { message.value = app.str(R.string.friends_error_line, it) }
+            }
+        }
 
     fun changeFriendsUsername(raw: String) = viewModelScope.launch {
         if (app.friends.changeUsername(raw)) message.value = app.str(R.string.settings_friends_username_saved)

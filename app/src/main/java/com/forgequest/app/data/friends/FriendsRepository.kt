@@ -107,7 +107,22 @@ class FriendsRepository(
         shareWorkouts: Boolean? = null,
         pingsOn: Boolean? = null,
     ): Boolean {
-        if (!signedIn || isDemo) return false
+        if (isDemo) {
+            val curMe = _state.value?.view?.me ?: _me.value ?: return false
+            val cleanUsername = username?.let { Usernames.normalize(it) ?: run { _error.value = "bad_username"; return false } }
+            val updatedMe = curMe.copy(
+                sharePhoto = sharePhoto,
+                sharePrs = sharePrs,
+                username = cleanUsername ?: curMe.username,
+                alertsOn = alertsOn ?: curMe.alertsOn,
+                shareWorkouts = shareWorkouts ?: curMe.shareWorkouts,
+                pingsOn = pingsOn ?: curMe.pingsOn,
+            )
+            applyLocalMe(updatedMe)
+            _error.value = null
+            return true
+        }
+        if (!signedIn) return false
         val cleanUsername = username?.let { Usernames.normalize(it) ?: run { _error.value = "bad_username"; return false } }
         return try {
             val updated = syncMutex.withLock {
@@ -222,6 +237,18 @@ class FriendsRepository(
     suspend fun remove(id: String) = runAction { api.remove(id) }
 
     suspend fun block(id: String) = runAction { api.block(id) }
+
+    /** Updates in-memory Me (and the cached leaderboard view if loaded) for optimistic toggles or demo mode. */
+    internal fun applyLocalMe(updatedMe: Me) {
+        _me.value = updatedMe
+        _state.value?.let { cur ->
+            val updatedView = cur.view.copy(me = updatedMe)
+            _state.value = cur.copy(
+                view = updatedView,
+                leaderboard = FriendsLeaderboard.build(updatedView, cur.mySnapshot),
+            )
+        }
+    }
 
     /** Changes one of the v4 alert switches in Friends settings, keeping everything else. */
     suspend fun setAlertFlags(alertsOn: Boolean? = null, shareWorkouts: Boolean? = null, pingsOn: Boolean? = null): Boolean {
@@ -582,6 +609,7 @@ class FriendsRepository(
             streakWeeks = 6,
             proteinDays = 5,
             prs = listOf(Pr("Bench Press", 92.5, 5), Pr("Pull-up", 15.0, 8)),
+            weekState = "hit",
         )
         val friends = listOf(
             Friend(

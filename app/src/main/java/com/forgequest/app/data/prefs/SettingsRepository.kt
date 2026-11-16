@@ -46,6 +46,8 @@ data class Settings(
     val bodyType: BodyType = BodyType.MALE,
     val kcalGoal: Int = 2200,
     val proteinGoal: Int = 140,
+    /** True when the user has explicitly saved a calorie or protein target in DataStore. */
+    val foodTargetsSet: Boolean = false,
     /** Planned sessions per week that count as "hit". 0 means: use the plan's training days. */
     val weeklyTargetOverride: Int = 0,
     val handLengthCm: Float = 0f,
@@ -213,6 +215,7 @@ class SettingsRepository(private val context: Context) {
             bodyType = runCatching { BodyType.valueOf(this[K.bodyType] ?: "MALE") }.getOrDefault(BodyType.MALE),
             kcalGoal = (this[K.kcal] ?: 2200).coerceAtLeast(1200),
             proteinGoal = this[K.protein] ?: 140,
+            foodTargetsSet = this[K.kcal] != null || this[K.protein] != null,
             weeklyTargetOverride = this[K.weeklyTarget] ?: 0,
             handLengthCm = this[K.hand] ?: 0f,
             palmWidthCm = this[K.palm] ?: 0f,

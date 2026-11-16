@@ -283,7 +283,7 @@ object StarterPlans {
         "Legs" to "أرجل",
         "Full rest. Hemo recommends a complete break after day 3." to "راحة تامة؛ يوصي Hemo براحة كاملة بعد اليوم الثالث.",
         "Full body · 3 days · gym" to "الجسم كاملًا · 3 أيام · النادي",
-        "Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session." to "خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة قرفصاء أو انثناء للورك، ثم تمرين دفع وآخر سحب.",
+        "Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session." to "خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة سكوات أو انثناء للورك، ثم تمرين دفع وآخر سحب.",
         "Upper / lower · 4 days · gym" to "علوي / سفلي · 4 أيام · النادي",
         "4-day gym split: upper body on Monday and Thursday, lower body on Tuesday and Friday." to "تقسيم على أربعة أيام في النادي: الجزء العلوي الاثنين والخميس، والجزء السفلي الثلاثاء والجمعة.",
         "Upper / lower · 4 days · dumbbells" to "علوي / سفلي · 4 أيام · دمبل",
@@ -300,6 +300,17 @@ object StarterPlans {
         "Pull + legs" to "سحب وأرجل",
         "Full rest, then repeat the week. Once this feels easy, try a harder variation of each move." to "راحة تامة، ثم كرّر الأسبوع. متى صار هذا سهلًا فجرّب نسخة أصعب من كل تمرين.",
     )
+
+    private val extraArabic = mapOf(
+        "General fitness plan" to "خطة لياقة عامة",
+        "Upper" to "الجزء العلوي",
+        "Lower" to "الجزء السفلي",
+        "Conditioning" to "اللياقة",
+    )
+
+    /** Translates known starter or builder plan/day titles into Arabic when the app runs in Arabic. */
+    fun displayTitle(title: String): String =
+        if (java.util.Locale.getDefault().language == "ar") arabic[title] ?: extraArabic[title] ?: title else title
 
     private fun localize(p: PlanDraft): PlanDraft {
         if (java.util.Locale.getDefault().language != "ar") return p

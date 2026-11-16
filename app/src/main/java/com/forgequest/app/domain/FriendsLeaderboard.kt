@@ -117,8 +117,15 @@ object FriendsLeaderboard {
                 streakWeeks = snapshot.streakWeeks,
                 prs = snapshot.prs.orEmpty(),
                 syncedThisWeek = true,
-                weekState = snapshot.weekState,
+                weekState = effectiveWeekState(snapshot.weekState, snapshot.done, snapshot.due),
             )
         }
+    }
+
+    /** Treats a week where [done] >= [due] (> 0) as "hit", even if the snapshot's weekState was omitted or still "open". */
+    fun effectiveWeekState(weekState: String?, done: Int, due: Int): String? = when {
+        weekState == "hit" || weekState == "free" -> weekState
+        due > 0 && done >= due -> "hit"
+        else -> weekState
     }
 }

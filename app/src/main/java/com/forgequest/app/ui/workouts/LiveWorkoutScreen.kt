@@ -18,6 +18,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -218,6 +220,27 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     // List or focus mode, remembered between workouts.
     val prefs = remember { context.getSharedPreferences("live", android.content.Context.MODE_PRIVATE) }
     var focus by remember { mutableStateOf(prefs.getBoolean("focus", false)) }
+    val expandedWarmups = remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = current.coerceAtLeast(0)) { groups.size.coerceAtLeast(1) }
+    val nowExerciseId = remember(groups, nextSet, focus, pager.currentPage, doneCount, expandedWarmups.toMap()) {
+        if (focus && groups.isNotEmpty()) {
+            val active = groups.getOrNull(pager.currentPage)
+            when (active) {
+                is Group.Straight -> active.sets.firstOrNull()?.exerciseId
+                is Group.Circuit -> nextSet?.takeIf { n -> active.allSets.any { it.id == n.id } }?.exerciseId
+                    ?: active.allSets.firstOrNull { !it.done }?.exerciseId
+                    ?: active.allSets.firstOrNull()?.exerciseId
+                null -> nextSet?.exerciseId
+            }
+        } else if (doneCount > 0) {
+            nextSet?.exerciseId
+        } else {
+            groups.firstOrNull { g ->
+                g.allSets.any { !it.done } &&
+                    !(g is Group.Straight && WorkoutScore.isWarmUp(g.block) && expandedWarmups[g.key] != true)
+            }?.allSets?.firstOrNull { !it.done }?.exerciseId ?: nextSet?.exerciseId
+        }
+    }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     // Follow along: after a tick, bring the exercise of the next set into view.
     var lastDone by remember { mutableStateOf(doneCount) }
@@ -230,12 +253,14 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val effortSet = sets.firstOrNull { it.id == effortSetId && it.done }
     var noteSet by remember { mutableStateOf<com.forgequest.app.data.db.SetEntity?>(null) }
     var menu by remember { mutableStateOf(false) }
-    val bottomPad = (if (rest != null) 260.dp else 160.dp) + (if (effortSet != null) 64.dp else 0.dp)
+    val bottomPad = (if (rest != null) 260.dp else 160.dp) + (if (effortSet != null) 88.dp else 0.dp)
     val cardFor: @Composable (Group, Boolean) -> Unit = { g, forceOpen ->
         GroupCard(g, exercises, vm, forceOpen,
+            warmupExpanded = expandedWarmups[g.key] == true,
+            onToggleWarmup = { expandedWarmups[g.key] = !(expandedWarmups[g.key] == true) },
             onVideo = { openFormVideo(context, it) },
             onSwap = { picker = PickerMode.Swap(it) },
-            onDetail = { nav.navigate(Routes.exercise(it)) })
+            onDetail = { nav.navigate(Routes.exercise(it, fromLive = true)) })
     }
 
     Box(Modifier.fillMaxSize().background(c.background)) {
@@ -247,7 +272,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     Column(Modifier.weight(1f)) {
                         Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(pluralStringResource(R.plurals.live_header, workSets.size, elapsed / 60, elapsed % 60, workDone, workSets.size), style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary)
-                        nextSet?.let { n -> exercises[n.exerciseId]?.let { Text(stringResource(R.string.live_now, it.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
+                        nowExerciseId?.let { exercises[it]?.let { ex -> Text(stringResource(R.string.live_now, ex.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
                     }
                     Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textPrimary) }
@@ -280,7 +305,6 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             }
             if (focus && groups.isNotEmpty()) {
                 // Focus mode: one exercise per page with larger text; moves on by itself when an exercise is finished.
-                val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = current.coerceAtLeast(0)) { groups.size }
                 LaunchedEffect(current) { if (current >= 0 && current != pager.currentPage) pager.animateScrollToPage(current) }
                 Text(
                     stringResource(R.string.live_exercise_of, pager.currentPage + 1, groups.size), style = MaterialTheme.typography.labelLarge, color = c.textSecondary,
@@ -314,10 +338,16 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 val shown = remember { mutableStateOf(effortSet) }
                 if (effortSet != null) shown.value = effortSet
                 shown.value?.let { es ->
-                    Row(Modifier.fillMaxWidth().background(c.background).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        EffortGroup(selected = es.effort, onSelect = { vm.setEffort(es, it) })
-                        if (es.effort == SetEffort.PAIN.name) {
-                            TextButton(onClick = { noteSet = es }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
+                    Column(Modifier.fillMaxWidth().background(c.background).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Text(stringResource(R.string.live_effort_caption), style = MaterialTheme.typography.labelMedium, color = c.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            EffortGroup(selected = es.effort, onSelect = {
+                                vm.setEffort(es, it)
+                                if (it == SetEffort.PAIN) noteSet = es
+                            })
+                            if (es.effort == SetEffort.PAIN.name) {
+                                TextButton(onClick = { noteSet = es }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
+                            }
                         }
                     }
                 }
@@ -442,6 +472,8 @@ internal fun GroupCard(
     exercises: Map<String, ExerciseEntity>,
     vm: LiveWorkoutViewModel,
     forceOpen: Boolean,
+    warmupExpanded: Boolean = false,
+    onToggleWarmup: () -> Unit = {},
     onVideo: (ExerciseEntity?) -> Unit,
     onSwap: (Int) -> Unit,
     onDetail: (String) -> Unit,
@@ -451,7 +483,13 @@ internal fun GroupCard(
     val allDone = all.isNotEmpty() && all.all { it.done }
     var open by remember(allDone) { mutableStateOf(!allDone) }
     if (g is Group.Straight && WorkoutScore.isWarmUp(g.block)) {
-        WarmupCard(g, exercises[g.sets.first().exerciseId], vm)
+        WarmupCard(
+            g, exercises[g.sets.first().exerciseId], vm,
+            expanded = forceOpen || warmupExpanded,
+            onToggleExpand = onToggleWarmup,
+            onSwap = { onSwap(g.position) },
+            onDetail = { onDetail(g.sets.first().exerciseId) },
+        )
         return
     }
     if (!open && !forceOpen) {
@@ -477,11 +515,19 @@ internal fun GroupCard(
 }
 
 /** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutViewModel) {
+internal fun WarmupCard(
+    g: Group.Straight,
+    ex: ExerciseEntity?,
+    vm: LiveWorkoutViewModel,
+    expanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onSwap: () -> Unit,
+    onDetail: () -> Unit,
+) {
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
-    var expanded by remember { mutableStateOf(false) }
     val first = g.sets.first()
     val doneCount = g.sets.count { it.done }
     val allDone = doneCount == g.sets.size
@@ -489,17 +535,32 @@ internal fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutV
     FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.weight(1f).clip(ForgeShape.Sm).clickable { expanded = !expanded }.padding(horizontal = 4.dp, vertical = 8.dp),
+                Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onToggleExpand).padding(horizontal = 4.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("${ex?.name ?: first.exerciseId} · ${g.sets.size} × $each", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.live_warmup_not_counted), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                     if (doneCount > 0 && !allDone) Text("$doneCount/${g.sets.size}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(8.dp))
             SetTick(allDone, pr = false) { vm.toggleAll(g.sets) }
+        }
+        FlowRow(
+            Modifier.padding(start = 4.dp, top = 4.dp, end = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            TonalPill(stringResource(R.string.cues_title), onClick = onDetail, icon = Icons.Rounded.Info, tint = c.teal)
+            TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
+            TonalPill(
+                stringResource(if (allDone) R.string.live_warmup_done else R.string.live_mark_warmup_done),
+                onClick = { vm.toggleAll(g.sets) },
+                icon = Icons.Rounded.Check,
+                tint = if (allDone) c.teal else c.textPrimary,
+            )
         }
         if (expanded) {
             Spacer(Modifier.height(4.dp))
@@ -513,9 +574,16 @@ internal fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutV
 /** "12 reps · 10 kg" or "30 s", for the next-up lines. */
 @Composable
 internal fun setSummary(set: SetEntity, kind: ExerciseKind, unit: com.forgequest.app.domain.WeightUnit): String {
-    val main = if (kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, set.seconds ?: 0) else stringResource(R.string.rx_reps_n, set.reps ?: 0)
+    val reps = set.reps ?: 0
+    val main = if (kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, set.seconds ?: 0) else pluralStringResource(R.plurals.rx_reps, reps, reps)
     val kg = set.weightKg
     return if (kg != null && (kg > 0f || kind == ExerciseKind.WEIGHTED)) "$main · ${unit.format(kg)}" else main
+}
+
+internal fun localizeTargetLabel(raw: String, repsWord: String): String = when {
+    raw.endsWith(" reps") -> raw.removeSuffix("reps") + repsWord
+    raw.endsWith(" rep") -> raw.removeSuffix("rep") + repsWord
+    else -> raw
 }
 
 private fun whyRes(r: Progression.Reason) = when (r) {
@@ -548,7 +616,7 @@ internal fun StraightCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onDetail).padding(horizontal = 4.dp)) {
                 Text(ex?.name ?: g.sets.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                val target = g.sets.first().targetLabel
+                val target = localizeTargetLabel(g.sets.first().targetLabel, stringResource(R.string.rx_reps_only))
                 Text(if (target.isNotBlank()) stringResource(R.string.live_target, g.sets.size, target) else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 reasons[g.sets.first().exerciseId]?.let { Text(stringResource(whyRes(it)), style = MaterialTheme.typography.labelSmall, color = c.textSecondary) }
                 exerciseCues(g.sets.first().exerciseId)?.let { Text(stringResource(it.first), style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis) }

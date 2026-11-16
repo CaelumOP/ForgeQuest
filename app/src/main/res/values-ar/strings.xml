@@ -192,10 +192,10 @@
     <string name="badge_str_bench_1_desc">ارفع في ضغط البنش وزن جسمك، أو 60 كغ إن لم يكن وزنك مسجلاً</string>
     <string name="badge_str_bench_2_title">ضغط الصدر بمرة ونصف</string>
     <string name="badge_str_bench_2_desc">ارفع في ضغط البنش مرة ونصفاً من وزن جسمك، أو 100 كغ إن لم يكن وزنك مسجلاً</string>
-    <string name="badge_str_squat_1_title">القرفصاء بوزن الجسم</string>
-    <string name="badge_str_squat_1_desc">أدِّ القرفصاء الخلفية بوزن جسمك، أو 60 كغ إن لم يكن وزنك مسجلاً</string>
-    <string name="badge_str_squat_2_title">القرفصاء بمرة ونصف</string>
-    <string name="badge_str_squat_2_desc">أدِّ القرفصاء الخلفية بمرة ونصف من وزن جسمك، أو 100 كغ إن لم يكن وزنك مسجلاً</string>
+    <string name="badge_str_squat_1_title">السكوات بوزن الجسم</string>
+    <string name="badge_str_squat_1_desc">أدِّ السكوات الخلفية بوزن جسمك، أو 60 كغ إن لم يكن وزنك مسجلاً</string>
+    <string name="badge_str_squat_2_title">السكوات بمرة ونصف</string>
+    <string name="badge_str_squat_2_desc">أدِّ السكوات الخلفية بمرة ونصف من وزن جسمك، أو 100 كغ إن لم يكن وزنك مسجلاً</string>
     <string name="badge_str_deadlift_1_title">الرفعة الميتة بوزن الجسم</string>
     <string name="badge_str_deadlift_1_desc">ارفع في الرفعة الميتة وزن جسمك، أو 60 كغ إن لم يكن وزنك مسجلاً</string>
     <string name="badge_str_deadlift_2_title">الرفعة الميتة بمرة ونصف</string>
@@ -631,7 +631,7 @@
     <string name="key_paste_new">لصق مفتاح جديد</string>
     <string name="action_remove">حذف</string>
     <string name="notes_dialog_title">معلومة ينبغي أن يعرفها المدرب</string>
-    <string name="notes_dialog_body">معلومة واحدة في كل ملاحظة، مثل: «ركبتي اليسرى تؤلمني في القرفصاء العميقة» أو «لا أملك إلا عقلة وحلقات».</string>
+    <string name="notes_dialog_body">معلومة واحدة في كل ملاحظة، مثل: «ركبتي اليسرى تؤلمني في السكوات العميقة» أو «لا أملك إلا عقلة وحلقات».</string>
     <string name="restore_title">الاسترجاع من %1$s؟</string>
     <string name="restore_body">ستُستبدل كل البيانات على هذا الهاتف، وتُحفظ نسخة منها. للتراجع: الملف الشخصي ← النسخ الاحتياطي ← التراجع عن آخر استرجاع.</string>
     <string name="badge_unlocked_detail">مفتوحة. %1$s.</string>
@@ -929,7 +929,7 @@
     <string name="progress_tile_est_max">%1$s · الحد الأقصى التقديري (تكرار واحد)</string>
     <string name="progress_tile_weight">الوزن · متوسط 7 أيام</string>
     <string name="progress_tile_protein">البروتين · أيام على الهدف</string>
-    <string name="progress_tile_workouts">التمارين · أسبوعيًا</string>
+    <string name="progress_tile_workouts">أيام التمرين · أسبوعيًا</string>
     <string name="progress_tile_carbs">الكربوهيدرات · المعدل اليومي</string>
     <string name="progress_carbs_avg">⁦%1$d / %2$d⁩ غ</string>
     <string name="progress_of_seven">%1$d من 7</string>
@@ -948,12 +948,12 @@
     <string name="progress_per_week">%1$d / أسبوع</string>
     <string name="progress_all_time">منذ البداية</string>
     <plurals name="progress_total_workouts">
-        <item quantity="zero">تمارين</item>
-        <item quantity="one">تمرين</item>
-        <item quantity="two">تمرينان</item>
-        <item quantity="few">تمارين</item>
-        <item quantity="many">تمرينًا</item>
-        <item quantity="other">تمرين</item>
+        <item quantity="zero">أيام تمرين</item>
+        <item quantity="one">يوم تمرين</item>
+        <item quantity="two">يوما تمرين</item>
+        <item quantity="few">أيام تمرين</item>
+        <item quantity="many">يومَ تمرين</item>
+        <item quantity="other">يوم تمرين</item>
     </plurals>
     <string name="progress_total_reps">التكرارات</string>
     <string name="progress_total_hours">ساعات التدريب</string>
@@ -1140,6 +1140,10 @@
     <string name="journal_volume">رُفع %1$s</string>
     <string name="journal_add_note">+ أضف ملاحظة</string>
     <string name="live_now">الآن: %1$s</string>
+    <string name="live_warmup_not_counted">إحماء · لا يُحتسب ضمن المجموعات</string>
+    <string name="live_mark_warmup_done">تحديد الإحماء كمنجز</string>
+    <string name="live_warmup_done">تم الإحماء ✓</string>
+    <string name="live_effort_caption">كيف كانت هذه المجموعة؟</string>
     <string name="live_next">التالي: %1$s</string>
     <string name="live_exercise_of">التمرين %1$d من %2$d</string>
     <string name="cd_focus_mode">وضع التركيز</string>
@@ -1472,7 +1476,7 @@
     <string name="cd_deselect">إلغاء التحديد</string>
     <string name="cd_edit">تعديل</string>
     <string name="picker_my_equipment">معداتي</string>
-    <string name="picker_best_swaps">أفضل البدائل المطابقة حركيًا</string>
+    <string name="picker_best_swaps">أفضل البدائل</string>
     <string name="onb_available_equipment">معدات التدريب المتوفرة لديك</string>
     <string name="onb_equipment_hint">اختر ما يتوفر لديك في أغلب الأيام، ويمكنك تخصيص الأدوات متى شئت من خطتك.</string>
     <string name="live_tag_easy">سهل · RIR 3+</string>
@@ -1482,12 +1486,12 @@
     <string name="live_tag_joint">انزعاج مفصل</string>
     <string name="live_tag_joint_note">ألم خفيف / انزعاج</string>
     <plurals name="home_month_workouts">
-        <item quantity="zero">لا تمارين</item>
-        <item quantity="one">تمرين واحد</item>
-        <item quantity="two">تمرينان</item>
-        <item quantity="few">%1$d تمارين</item>
-        <item quantity="many">%1$d تمرينًا</item>
-        <item quantity="other">%1$d تمرين</item>
+        <item quantity="zero">لا أيام تمرين</item>
+        <item quantity="one">يوم تمرين واحد</item>
+        <item quantity="two">يوما تمرين</item>
+        <item quantity="few">%1$d أيام تمرين</item>
+        <item quantity="many">%1$d يومَ تمرين</item>
+        <item quantity="other">%1$d يوم تمرين</item>
     </plurals>
     <plurals name="home_month_records">
         <item quantity="zero">لا أرقام قياسية</item>
@@ -2212,8 +2216,8 @@
     <string name="friends_username_label">اسم المستخدم</string>
     <string name="friends_username_hint">من 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو _ أو .</string>
     <string name="friends_username_rules">استخدم من 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو _ أو . (دون نقطة في البداية أو النهاية)</string>
-    <string name="friends_share_photo">إظهار صورتي في Google</string>
-    <string name="friends_share_prs">مشاركة أرقامي القياسية</string>
+    <string name="friends_share_photo">إظهار صورتك في Google</string>
+    <string name="friends_share_prs">مشاركة أرقامك القياسية</string>
     <string name="friends_join_button">انضمام</string>
     <string name="friends_your_code">اسم المستخدم</string>
     <string name="friends_copy_code">نسخ</string>
@@ -2234,7 +2238,7 @@
     <string name="friends_stat_protein">%1$dي بروتين</string>
     <string name="friends_badge_trained">تمرّن</string>
     <string name="friends_badge_on_track">على المسار</string>
-    <string name="friends_badge_slacking">متأخر</string>
+    <string name="friends_badge_slacking">دون الهدف</string>
     <string name="friends_badge_rest">يوم راحة</string>
     <string name="friends_badge_not_synced">لم يزامن هذا الأسبوع</string>
     <string name="friends_prs_title">الأرقام القياسية هذا الأسبوع</string>
@@ -2255,8 +2259,8 @@
     <string name="settings_friends_status_pending">تم تسجيل الدخول — أكمل الإعداد في تبويب الأصدقاء</string>
     <string name="settings_friends_status_signed_out">غير مسجّل الدخول</string>
     <string name="settings_friends_sign_in">تسجيل الدخول بحساب Google</string>
-    <string name="settings_friends_share_photo">إظهار صورتي في Google</string>
-    <string name="settings_friends_share_prs">مشاركة أرقامي القياسية</string>
+    <string name="settings_friends_share_photo">إظهار صورتك في Google</string>
+    <string name="settings_friends_share_prs">مشاركة أرقامك القياسية</string>
     <string name="settings_friends_username_save">حفظ اسم المستخدم</string>
     <string name="settings_friends_username_saved">حُفظ اسم المستخدم</string>
     <string name="settings_friends_sign_out">تسجيل الخروج من الأصدقاء</string>
@@ -2277,6 +2281,9 @@
     <string name="friends_week_done">%1$s: أنجز</string>
     <string name="friends_week_free">%1$s: أسبوع حر</string>
     <string name="friends_week_not_yet">%1$s: لم ينجز بعد</string>
+    <string name="friends_week_you_done">أنت: أنجزت</string>
+    <string name="friends_week_you_free">أنت: أسبوع حر</string>
+    <string name="friends_week_you_not_yet">أنت: لم تنجزه بعد</string>
     <string name="friends_score_label">نقاط فورج</string>
     <string name="friends_their_streak">سلسلة %1$s</string>
     <string name="friends_protein_label">أيام تحقيق هدف البروتين</string>
@@ -2310,12 +2317,12 @@
         <item quantity="other">%1$d يوم متبقٍ</item>
     </plurals>
     <plurals name="friends_done_count">
-        <item quantity="zero">لا تمارين</item>
-        <item quantity="one">تمرين واحد</item>
-        <item quantity="two">تمرينان</item>
-        <item quantity="few">%1$d تمارين</item>
-        <item quantity="many">%1$d تمرينًا</item>
-        <item quantity="other">%1$d تمرين</item>
+        <item quantity="zero">لا أيام تمرين</item>
+        <item quantity="one">يوم تمرين واحد</item>
+        <item quantity="two">يوما تمرين</item>
+        <item quantity="few">%1$d أيام تمرين</item>
+        <item quantity="many">%1$d يومَ تمرين</item>
+        <item quantity="other">%1$d يوم تمرين</item>
     </plurals>
     <plurals name="friends_together">
         <item quantity="zero">لا أسابيع معًا بعد</item>

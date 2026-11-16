@@ -109,7 +109,7 @@ object Routes {
     const val LIVE = "live"
     const val PLAN = "plan?day={day}&paste={paste}&templates={templates}"
     const val SCAN = "scan"
-    const val EXERCISE = "exercise/{id}"
+    const val EXERCISE = "exercise/{id}?fromLive={fromLive}"
     const val HISTORY = "history"
     const val SESSION = "session/{id}"
     const val BADGES = "badges"
@@ -119,7 +119,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val SETTINGS_GROUP = "settings/{id}"
     fun settingsGroup(id: String) = "settings/$id"
-    fun exercise(id: String) = "exercise/$id"
+    fun exercise(id: String, fromLive: Boolean = false) = "exercise/$id?fromLive=$fromLive"
     fun session(id: Long) = "session/$id"
     /** The plan editor, opened on [day] (1 = Monday) or on today. */
     fun plan(day: Int = 0, paste: Boolean = false, templates: Boolean = false) = "plan?day=$day&paste=$paste&templates=$templates"
@@ -262,8 +262,8 @@ private fun MainScaffold() {
                 }
                 composable(Routes.PLAN_BUILDER) { com.forgequest.app.ui.plan.PlanBuilderScreen(nav) }
                 composable(Routes.SCAN) { ScanScreen(nav) }
-                composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
-                    ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty())
+                composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType }, navArgument("fromLive") { type = NavType.BoolType; defaultValue = false })) { entry ->
+                    ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty(), entry.arguments?.getBoolean("fromLive") ?: false)
                 }
                 composable(Routes.HISTORY) { HistoryScreen(nav) }
                 composable(Routes.BADGES) { BadgesScreen(nav) }

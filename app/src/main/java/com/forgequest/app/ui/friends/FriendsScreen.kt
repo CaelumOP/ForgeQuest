@@ -532,7 +532,8 @@ fun FriendsScreen(nav: NavHostController) {
     selected?.let { entry ->
         val unit = WeightUnit.fromCodeOrLabel(settings?.unit ?: WeightUnit.KG.code)
         val mine = uiData?.mySnapshot
-        val myWeekState = mine?.takeIf { s -> s.weekStart >= (uiData?.view?.weekStart ?: 0L) }?.weekState
+        val myWeekState = mine?.takeIf { s -> s.weekStart >= (uiData?.view?.weekStart ?: 0L) }
+            ?.let { s -> com.forgequest.app.domain.FriendsLeaderboard.effectiveWeekState(s.weekState, s.done, s.due) }
         FriendDetailSheet(
             entry = entry,
             myWeekState = myWeekState,
@@ -1208,7 +1209,14 @@ private fun OutgoingRow(person: Person, busy: Boolean, onCancel: () -> Unit) {
 
 /** "You: done" / "free week" / "not yet" for the shared-streak week line. */
 @Composable
-private fun weekLine(name: String, state: String?): String {
+private fun weekLine(name: String, state: String?, isMe: Boolean = false): String {
+    if (isMe) {
+        return when (state) {
+            "hit" -> stringResource(R.string.friends_week_you_done)
+            "free" -> stringResource(R.string.friends_week_you_free)
+            else -> stringResource(R.string.friends_week_you_not_yet)
+        }
+    }
     // LTR isolate (not first-strong): an all-digit username has no strong letter, so it must be forced LTR.
     val n = Usernames.ltr(name)
     return when (state) {
@@ -1288,7 +1296,7 @@ private fun FriendDetailSheet(
                     }
                     Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        WeekState(weekLine(stringResource(R.string.friends_you), myWeekState), myWeekState == "hit")
+                        WeekState(weekLine(stringResource(R.string.friends_you), myWeekState, isMe = true), myWeekState == "hit")
                         WeekState(weekLine(entry.name, entry.weekState), entry.weekState == "hit")
                     }
                 }

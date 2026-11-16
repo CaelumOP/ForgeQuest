@@ -30,10 +30,11 @@ object AppLocale {
 
     fun wrap(base: Context): Context {
         val chosen = current(base)
-        val wanted = if (chosen == SYSTEM) base.resources.configuration.locales[0] else Locale.forLanguageTag(chosen)
+        val systemLocale = android.content.res.Resources.getSystem().configuration.locales[0]
+        val wanted = if (chosen == SYSTEM) systemLocale else Locale.forLanguageTag(chosen)
         val fixed = withLatinDigits(wanted) ?: wanted
-        if (chosen == SYSTEM && fixed == wanted) return base
         Locale.setDefault(fixed)
+        if (chosen == SYSTEM && fixed == wanted && base.resources.configuration.locales[0] == fixed) return base
         val config = Configuration(base.resources.configuration).apply { setLocale(fixed) }
         return base.createConfigurationContext(config)
     }

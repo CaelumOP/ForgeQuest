@@ -122,7 +122,7 @@ private fun metricsFor(kind: ExerciseKind, wu: WeightUnit): List<Metric> = when 
 }
 
 @Composable
-fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
+fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: Boolean = false) {
     val vm = appViewModel { ExerciseDetailViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val c = Fit.colors
@@ -173,7 +173,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String) {
                 Spacer(Modifier.height(12.dp))
                 TierBadge(it)
             }
-            if (ex != null && s.plan != null) {
+            if (!fromLive && ex != null && s.plan != null) {
                 Spacer(Modifier.height(12.dp))
                 TonalPill(stringResource(R.string.swap_into_plan), onClick = { putInPlan = true }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.SwapHoriz, tint = c.teal)
             }

@@ -241,7 +241,7 @@ fun HomeScreen(nav: NavHostController) {
     // Worked out before the layout, so the fit can count what is showing today.
     val unseen = if (justLog) emptyList() else s.badges.filter { !it.seen }.mapNotNull { Badges.byId[it.id] }
     // After the first finished workout, the body and food-goal questions that used to sit in onboarding.
-    val needsFoodSetup = s.settings.heightCm <= 0f && s.sessions.isNotEmpty()
+    val needsFoodSetup = !s.settings.foodTargetsSet && s.settings.heightCm <= 0f && s.sessions.isNotEmpty()
     val weeklyTarget = StreakCalculator.fullTarget(s.plan?.trainingDays ?: emptySet(), s.settings.weeklyTargetOverride)
     val todayDay = Dates.today()
     val nudge = remember(s.sessions, weeklyTarget, s.settings.onboarded, s.settings.targetNudgeAnswered, todayDay) {
@@ -278,7 +278,7 @@ fun HomeScreen(nav: NavHostController) {
                         hasOpen = open != null, noPlan = today == null, isRest = today?.day?.isRest == true,
                         done = s.workoutDoneToday, excused = s.excusedToday != null,
                     ),
-                    dayTitle = today?.day?.title.orEmpty(),
+                    dayTitle = com.forgequest.app.data.seed.StarterPlans.displayTitle(today?.day?.title.orEmpty()),
                 )
                 UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
             }
@@ -579,7 +579,7 @@ private fun MonthRow(s: ProgressSnapshot, onOpen: () -> Unit) {
     val c = Fit.colors
     val today = Dates.today()
     val weekly = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 8, today)
-    val monthWorkouts = s.sessions.count { it.epochDay > today - 30 }
+    val monthWorkouts = s.sessions.asSequence().filter { it.epochDay > today - 30 }.map { it.epochDay }.distinct().count()
     val sessionDays = s.sessions.associate { it.id to it.epochDay }
     val monthRecords = s.doneSets.count { it.isPr && (sessionDays[it.sessionId] ?: 0L) > today - 30 }
     Row(

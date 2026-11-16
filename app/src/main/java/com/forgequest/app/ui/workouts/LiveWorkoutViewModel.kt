@@ -172,6 +172,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 rest.value?.let { r ->
                     if (currentMillis >= r.endsAt) {
                         rest.value = null
+                        effortSetId.value = null
                         now.value = currentMillis
                         app.restAlert.fire(r.nextExercise)
                     }
@@ -285,6 +286,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     fun skipRest() {
         rest.value = null
+        effortSetId.value = null
         app.notifier.cancelRest()
         app.restAlert.cancel()
     }
@@ -374,6 +376,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** Tapping the chosen chip again clears it back to "not tapped" (counts as OK). */
     fun setEffort(set: SetEntity, effort: SetEffort) = viewModelScope.launch {
         app.haptics.tick()
+        effortSetId.value = null
         repo.updateSet(set.copy(effort = if (set.effort == effort.name) "" else effort.name))
     }
 
