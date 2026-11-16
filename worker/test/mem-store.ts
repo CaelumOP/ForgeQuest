@@ -1,4 +1,13 @@
-import { AcceptResult, FriendsViewData, MAX_PUSH_TOKENS, Store } from "../src/store";
+import {
+  AcceptResult,
+  ActivityTarget,
+  FriendsViewData,
+  FriendsViewOptions,
+  MAX_PUSH_TOKENS,
+  ProfileUpdate,
+  Store,
+  WorkoutEventInput,
+} from "../src/store";
 import {
   PushPlatform,
   SessionRow,
@@ -13,6 +22,7 @@ export interface MemNudge {
   day: number;
   created_at: number;
   seen: number;
+  seen_v4: number;
 }
 
 export interface MemPushToken {
@@ -36,6 +46,12 @@ export class MemStore implements Store {
   readonly nudges = new Map<string, MemNudge>();
   readonly pushTokens = new Map<string, MemPushToken>();
   readonly rates = new Map<string, { count: number; windowStart: number }>();
+  /** "user->muted" */
+  readonly mutes = new Set<string>();
+  /** "user|day|done_count" -> row */
+  readonly workoutEvents = new Map<string, { user_id: string; day: number; done_count: number; created_at: number }>();
+  /** "from->to@day" */
+  readonly activityPush = new Set<string>();
 
   private reqKey(fromId: string, toId: string): string {
     return `${fromId}->${toId}`;
@@ -97,12 +113,14 @@ export class MemStore implements Store {
       sub: input.sub,
       code,
       username: null,
-      name: "",
       google_photo: input.googlePhoto,
       share_photo: 1,
       share_prs: 1,
       joined: 0,
       created_at: input.nowSec,
+      alerts_on: 1,
+      share_workouts: 1,
+      pings_on: 1,
     };
     this.users.set(id, row);
     return { ...row };
@@ -137,7 +155,7 @@ export class MemStore implements Store {
 
   async updateProfile(
     userId: string,
-    input: { name: string; username: string; sharePhoto: boolean; sharePrs: boolean },
+    input: ProfileUpdate,
   ): Promise<UserRow | null | "taken"> {
     const user = this.users.get(userId);
     if (!user) return null;
@@ -145,13 +163,18 @@ export class MemStore implements Store {
       if (u.id !== userId && u.username === input.username) return "taken";
     }
     user.username = input.username;
-    user.name = input.name;
     user.share_photo = input.sharePhoto ? 1 : 0;
     user.share_prs = input.sharePrs ? 1 : 0;
+    user.alerts_on = input.alertsOn ? 1 : 0;
+    user.share_workouts = input.shareWorkouts ? 1 : 0;
+    user.pings_on = input.pingsOn ? 1 : 0;
     user.joined = 1;
     if (!input.sharePrs) {
       const snap = this.snapshots.get(userId);
       if (snap) snap.prs = null;
+    }
+    if (!input.shareWorkouts) {
+      for (const [k, w] of this.workoutEvents) if (w.user_id === userId) this.workoutEvents.delete(k);
     }
     return { ...user };
   }
@@ -181,12 +204,38 @@ export class MemStore implements Store {
     for (const [k, p] of this.pushTokens) {
       if (p.user_id === userId) this.pushTokens.delete(k);
     }
+    for (const k of this.mutes) {
+      const [a, b] = k.split("->");
+      if (a === userId || b === userId) this.mutes.delete(k);
+    }
+    for (const [k, w] of this.workoutEvents) if (w.user_id === userId) this.workoutEvents.delete(k);
+    for (const k of this.activityPush) {
+      const [a, rest] = k.split("->");
+      if (a === userId || rest.split("@")[0] === userId) this.activityPush.delete(k);
+    }
     this.users.delete(userId);
     this.rates.delete(`write:${userId}`);
     this.rates.delete(`invite_fail:${userId}`);
   }
 
-  async upsertSnapshot(userId: string, s: SnapshotInput, nowSec: number): Promise<void> {
+  async upsertSnapshot(
+    userId: string,
+    s: SnapshotInput,
+    nowSec: number,
+    event?: WorkoutEventInput,
+  ): Promise<boolean> {
+    let recorded = false;
+    const stored = this.snapshots.get(userId);
+    if (event && event.shareWorkouts && stored) {
+      const newer =
+        (stored.week_start === s.weekStart && s.done > stored.done) ||
+        (s.weekStart > stored.week_start && s.done >= 1);
+      const k = `${userId}|${event.day}|${s.done}`;
+      if (newer && !this.workoutEvents.has(k)) {
+        this.workoutEvents.set(k, { user_id: userId, day: event.day, done_count: s.done, created_at: nowSec });
+        recorded = true;
+      }
+    }
     this.snapshots.set(userId, {
       user_id: userId,
       week_start: s.weekStart,
@@ -203,9 +252,10 @@ export class MemStore implements Store {
       this.weekStates.set(`${userId}|${weekStart}`, { user_id: userId, week_start: weekStart, state });
     if (s.weekState) put(s.weekStart, s.weekState);
     if (s.lastWeekState) put(s.weekStart - 7, s.lastWeekState);
+    return recorded;
   }
 
-  async getFriendsView(userId: string): Promise<FriendsViewData> {
+  async getFriendsView(userId: string, opts: FriendsViewOptions): Promise<FriendsViewData> {
     const friendIds = this.friends.get(userId) ?? new Set<string>();
     const friends: FriendsViewData["friends"] = [];
     for (const fid of friendIds) {
@@ -244,15 +294,48 @@ export class MemStore implements Store {
     for (const n of unseenNudges) {
       const from = this.users.get(n.from_id);
       if (!from) continue;
-      nudges.push({ fromId: n.from_id, name: from.name, username: from.username, day: n.day });
-      n.seen = 1;
+      nudges.push({ fromId: n.from_id, name: from.username ?? "", username: from.username, day: n.day });
+      if (!opts.v4) {
+        n.seen = 1;
+        n.seen_v4 = 1;
+      }
     }
 
     const ids = new Set([userId, ...friendIds]);
     const weekStates = Array.from(this.weekStates.values())
       .filter((w) => ids.has(w.user_id))
       .map((w) => ({ ...w }));
-    return { friends, weekStates, incoming, outgoing, nudges };
+    const mutedIds: string[] = [];
+    for (const k of this.mutes) {
+      const [a, b] = k.split("->");
+      if (a === userId) mutedIds.push(b);
+    }
+    let inbox: FriendsViewData["inbox"];
+    if (opts.v4) {
+      const pings = Array.from(this.nudges.values())
+        .filter((n) => n.to_id === userId && n.day >= opts.pingsSinceDay && friendIds.has(n.from_id))
+        .sort((a, b) => b.created_at - a.created_at)
+        .slice(0, 100)
+        .map((n) => ({
+          fromId: n.from_id,
+          username: this.users.get(n.from_id)?.username ?? null,
+          day: n.day,
+          createdAt: n.created_at,
+          seen: n.seen_v4 === 1,
+        }));
+      const activity = Array.from(this.workoutEvents.values())
+        .filter(
+          (w) =>
+            w.created_at >= opts.activitySinceSec &&
+            friendIds.has(w.user_id) &&
+            this.users.get(w.user_id)?.share_workouts === 1,
+        )
+        .sort((a, b) => b.created_at - a.created_at)
+        .slice(0, 100)
+        .map((w) => ({ userId: w.user_id, username: this.users.get(w.user_id)?.username ?? null, at: w.created_at }));
+      inbox = { pings, activity };
+    }
+    return { friends, weekStates, incoming, outgoing, nudges, mutedIds, inbox };
   }
 
   async findJoinedUserByUsername(username: string): Promise<UserRow | null> {
@@ -325,6 +408,8 @@ export class MemStore implements Store {
   async removeFriendship(a: string, b: string): Promise<void> {
     this.friends.get(a)?.delete(b);
     this.friends.get(b)?.delete(a);
+    this.mutes.delete(`${a}->${b}`);
+    this.mutes.delete(`${b}->${a}`);
   }
 
   async blockUser(blocker: string, blocked: string): Promise<void> {
@@ -345,7 +430,7 @@ export class MemStore implements Store {
   ): Promise<boolean> {
     const k = this.nudgeKey(fromId, toId, day);
     if (this.nudges.has(k)) return false;
-    this.nudges.set(k, { from_id: fromId, to_id: toId, day, created_at: nowSec, seen: 0 });
+    this.nudges.set(k, { from_id: fromId, to_id: toId, day, created_at: nowSec, seen: 0, seen_v4: 0 });
     return true;
   }
 
@@ -386,5 +471,53 @@ export class MemStore implements Store {
     for (const t of tokens) {
       this.pushTokens.delete(t);
     }
+  }
+
+  async markInboxSeen(userId: string): Promise<void> {
+    for (const n of this.nudges.values()) {
+      if (n.to_id === userId && n.seen_v4 === 0) {
+        n.seen = 1;
+        n.seen_v4 = 1;
+      }
+    }
+  }
+
+  async setMute(userId: string, mutedId: string, muted: boolean): Promise<void> {
+    if (muted) this.mutes.add(`${userId}->${mutedId}`);
+    else this.mutes.delete(`${userId}->${mutedId}`);
+  }
+
+  async getUserById(userId: string): Promise<UserRow | null> {
+    const u = this.users.get(userId);
+    return u ? { ...u } : null;
+  }
+
+  async getActivityTargets(senderId: string, day: number): Promise<ActivityTarget[]> {
+    const out: ActivityTarget[] = [];
+    const ids = Array.from(this.friends.get(senderId) ?? []).sort(
+      (a, b) =>
+        (this.friendsSince.get(`${senderId}->${a}`) ?? 0) - (this.friendsSince.get(`${senderId}->${b}`) ?? 0) ||
+        a.localeCompare(b),
+    );
+    for (const fid of ids) {
+      const u = this.users.get(fid);
+      if (!u || u.alerts_on !== 1) continue;
+      if (this.mutes.has(`${fid}->${senderId}`)) continue;
+      if (await this.isBlockedEitherWay(senderId, fid)) continue;
+      if (this.activityPush.has(`${senderId}->${fid}@${day}`)) continue;
+      const tokens = Array.from(this.pushTokens.values())
+        .filter((p) => p.user_id === fid)
+        .sort((a, b) => b.updated_at - a.updated_at)
+        .map((p) => p.token);
+      if (tokens.length > 0) out.push({ userId: fid, tokens });
+    }
+    return out.slice(0, 50);
+  }
+
+  async claimActivityPush(fromId: string, toId: string, day: number): Promise<boolean> {
+    const k = `${fromId}->${toId}@${day}`;
+    if (this.activityPush.has(k)) return false;
+    this.activityPush.add(k);
+    return true;
   }
 }

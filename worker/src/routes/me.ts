@@ -22,10 +22,13 @@ export async function handlePutMe(ctx: AppContext, user: UserRow): Promise<Me> {
     await assertNotInviteLocked(ctx.store, user.id, ctx.nowSec);
   }
   const updated = await ctx.store.updateProfile(user.id, {
-    name: profile.name,
     username,
     sharePhoto: profile.sharePhoto,
     sharePrs: profile.sharePrs,
+    // Omitted v4 switches keep their stored value (4.0 clients never send them).
+    alertsOn: profile.alertsOn ?? user.alerts_on === 1,
+    shareWorkouts: profile.shareWorkouts ?? user.share_workouts === 1,
+    pingsOn: profile.pingsOn ?? user.pings_on === 1,
   });
   if (updated === "taken") {
     await recordInviteFailure(ctx.store, user.id, ctx.nowSec);

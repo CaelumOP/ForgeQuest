@@ -22,6 +22,42 @@ export interface FriendsViewData {
   incoming: UserRow[];
   outgoing: UserRow[];
   nudges: Array<{ fromId: string; name: string; username: string | null; day: number }>;
+  /** Friend ids whose workout alerts the caller muted. */
+  mutedIds: string[];
+  /** Only for v4 reads. */
+  inbox?: {
+    pings: Array<{ fromId: string; username: string | null; day: number; createdAt: number; seen: boolean }>;
+    activity: Array<{ userId: string; username: string | null; at: number }>;
+  };
+}
+
+export interface FriendsViewOptions {
+  /** v4 clients: build the inbox and do NOT mark pings seen. */
+  v4: boolean;
+  /** Inbox pings from this Riyadh day on (last 7 days). */
+  pingsSinceDay: number;
+  /** Inbox activity from this unix second on (last 48 h). */
+  activitySinceSec: number;
+}
+
+/** A workout event to record with a snapshot (decided in SQL against the stored snapshot). */
+export interface WorkoutEventInput {
+  day: number;
+  shareWorkouts: boolean;
+}
+
+export interface ActivityTarget {
+  userId: string;
+  tokens: string[];
+}
+
+export interface ProfileUpdate {
+  username: string;
+  sharePhoto: boolean;
+  sharePrs: boolean;
+  alertsOn: boolean;
+  shareWorkouts: boolean;
+  pingsOn: boolean;
 }
 
 export type AcceptResult =
@@ -47,15 +83,25 @@ export interface Store {
   extendSession(tokenHash: string, expiresAt: number): Promise<void>;
   deleteSession(tokenHash: string): Promise<void>;
 
-  updateProfile(
-    userId: string,
-    input: { name: string; username: string; sharePhoto: boolean; sharePrs: boolean },
-  ): Promise<UserRow | null | "taken">;
+  updateProfile(userId: string, input: ProfileUpdate): Promise<UserRow | null | "taken">;
   deleteUserCascade(userId: string): Promise<void>;
 
-  upsertSnapshot(userId: string, snapshot: SnapshotInput, nowSec: number): Promise<void>;
+  /** Returns true when [event] was given and a NEW workout event row was recorded. */
+  upsertSnapshot(
+    userId: string,
+    snapshot: SnapshotInput,
+    nowSec: number,
+    event?: WorkoutEventInput,
+  ): Promise<boolean>;
 
-  getFriendsView(userId: string): Promise<FriendsViewData>;
+  getFriendsView(userId: string, opts: FriendsViewOptions): Promise<FriendsViewData>;
+  markInboxSeen(userId: string): Promise<void>;
+  setMute(userId: string, mutedId: string, muted: boolean): Promise<void>;
+  getUserById(userId: string): Promise<UserRow | null>;
+  /** Friends of [senderId] who want activity pushes from them today and have tokens (max 50). */
+  getActivityTargets(senderId: string, day: number): Promise<ActivityTarget[]>;
+  /** Takes the one activity push slot for (from, to, day); false when already used. */
+  claimActivityPush(fromId: string, toId: string, day: number): Promise<boolean>;
   findJoinedUserByUsername(username: string): Promise<UserRow | null>;
   isBlockedEitherWay(a: string, b: string): Promise<boolean>;
   areFriends(a: string, b: string): Promise<boolean>;
@@ -81,7 +127,10 @@ export interface Store {
 }
 
 const USER_COLS =
-  "id, sub, code, username, name, google_photo, share_photo, share_prs, joined, created_at";
+  "id, sub, code, username, google_photo, share_photo, share_prs, joined, created_at, alerts_on, share_workouts, pings_on";
+const U_COLS = USER_COLS.split(", ")
+  .map((c) => `u.${c}`)
+  .join(", ");
 
 function isUniqueError(err: unknown): boolean {
   return err instanceof Error && err.message.toLowerCase().includes("unique");
@@ -141,8 +190,8 @@ export class D1Store implements Store {
       try {
         await this.db
           .prepare(
-            `INSERT INTO users (id, sub, code, name, google_photo, share_photo, share_prs, joined, created_at)
-             VALUES (?1, ?2, ?3, '', ?4, 1, 1, 0, ?5)`,
+            `INSERT INTO users (id, sub, code, google_photo, share_photo, share_prs, joined, created_at)
+             VALUES (?1, ?2, ?3, ?4, 1, 1, 0, ?5)`,
           )
           .bind(id, input.sub, code, input.googlePhoto, input.nowSec)
           .run();
@@ -151,12 +200,14 @@ export class D1Store implements Store {
           sub: input.sub,
           code,
           username: null,
-          name: "",
           google_photo: input.googlePhoto,
           share_photo: 1,
           share_prs: 1,
           joined: 0,
           created_at: input.nowSec,
+          alerts_on: 1,
+          share_workouts: 1,
+          pings_on: 1,
         };
       } catch (err) {
         if (!isUniqueError(err)) throw err;
@@ -191,49 +242,18 @@ export class D1Store implements Store {
   ): Promise<{ session: SessionRow; user: UserRow } | null> {
     const row = await this.db
       .prepare(
-        `SELECT s.token_hash, s.user_id, s.expires_at,
-                u.id AS u_id, u.sub AS u_sub, u.code AS u_code, u.username AS u_username, u.name AS u_name,
-                u.google_photo AS u_google_photo, u.share_photo AS u_share_photo,
-                u.share_prs AS u_share_prs, u.joined AS u_joined, u.created_at AS u_created_at
+        `SELECT s.token_hash AS s_token_hash, s.user_id AS s_user_id, s.expires_at AS s_expires_at, ${U_COLS}
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          WHERE s.token_hash = ?1`,
       )
       .bind(tokenHash)
-      .first<{
-        token_hash: string;
-        user_id: string;
-        expires_at: number;
-        u_id: string;
-        u_sub: string;
-        u_code: string;
-        u_username: string | null;
-        u_name: string;
-        u_google_photo: string | null;
-        u_share_photo: number;
-        u_share_prs: number;
-        u_joined: number;
-        u_created_at: number;
-      }>();
+      .first<UserRow & { s_token_hash: string; s_user_id: string; s_expires_at: number }>();
     if (!row) return null;
+    const { s_token_hash, s_user_id, s_expires_at, ...user } = row;
     return {
-      session: {
-        token_hash: row.token_hash,
-        user_id: row.user_id,
-        expires_at: row.expires_at,
-      },
-      user: {
-        id: row.u_id,
-        sub: row.u_sub,
-        code: row.u_code,
-        username: row.u_username,
-        name: row.u_name,
-        google_photo: row.u_google_photo,
-        share_photo: row.u_share_photo,
-        share_prs: row.u_share_prs,
-        joined: row.u_joined,
-        created_at: row.u_created_at,
-      },
+      session: { token_hash: s_token_hash, user_id: s_user_id, expires_at: s_expires_at },
+      user,
     };
   }
 
@@ -251,27 +271,33 @@ export class D1Store implements Store {
       .run();
   }
 
-  async updateProfile(
-    userId: string,
-    input: { name: string; username: string; sharePhoto: boolean; sharePrs: boolean },
-  ): Promise<UserRow | null | "taken"> {
-    const sp = input.sharePhoto ? 1 : 0;
-    const sprs = input.sharePrs ? 1 : 0;
-    const updateStmt = this.db
-      .prepare(
-        "UPDATE users SET name = ?1, username = ?2, share_photo = ?3, share_prs = ?4, joined = 1 WHERE id = ?5",
-      )
-      .bind(input.name, input.username, sp, sprs, userId);
+  async updateProfile(userId: string, input: ProfileUpdate): Promise<UserRow | null | "taken"> {
+    const b = (v: boolean) => (v ? 1 : 0);
+    const stmts = [
+      this.db
+        .prepare(
+          `UPDATE users SET username = ?1, share_photo = ?2, share_prs = ?3, alerts_on = ?4, share_workouts = ?5,
+             pings_on = ?6, joined = 1 WHERE id = ?7`,
+        )
+        .bind(
+          input.username,
+          b(input.sharePhoto),
+          b(input.sharePrs),
+          b(input.alertsOn),
+          b(input.shareWorkouts),
+          b(input.pingsOn),
+          userId,
+        ),
+    ];
+    if (!input.sharePrs) {
+      stmts.push(this.db.prepare("UPDATE snapshots SET prs = NULL WHERE user_id = ?1").bind(userId));
+    }
+    if (!input.shareWorkouts) {
+      stmts.push(this.db.prepare("DELETE FROM workout_events WHERE user_id = ?1").bind(userId));
+    }
 
     try {
-      if (!input.sharePrs) {
-        await this.db.batch([
-          updateStmt,
-          this.db.prepare("UPDATE snapshots SET prs = NULL WHERE user_id = ?1").bind(userId),
-        ]);
-      } else {
-        await updateStmt.run();
-      }
+      await this.db.batch(stmts);
     } catch (err) {
       if (isUniqueError(err)) return "taken";
       throw err;
@@ -301,6 +327,9 @@ export class D1Store implements Store {
         .prepare("DELETE FROM nudges WHERE from_id = ?1 OR to_id = ?1")
         .bind(userId),
       this.db.prepare("DELETE FROM push_tokens WHERE user_id = ?1").bind(userId),
+      this.db.prepare("DELETE FROM mutes WHERE user_id = ?1 OR muted_id = ?1").bind(userId),
+      this.db.prepare("DELETE FROM workout_events WHERE user_id = ?1").bind(userId),
+      this.db.prepare("DELETE FROM activity_push WHERE from_id = ?1 OR to_id = ?1").bind(userId),
       this.db.prepare("DELETE FROM users WHERE id = ?1").bind(userId),
       this.db
         .prepare("DELETE FROM rate WHERE key = ?1 OR key = ?2")
@@ -308,7 +337,12 @@ export class D1Store implements Store {
     ]);
   }
 
-  async upsertSnapshot(userId: string, s: SnapshotInput, nowSec: number): Promise<void> {
+  async upsertSnapshot(
+    userId: string,
+    s: SnapshotInput,
+    nowSec: number,
+    event?: WorkoutEventInput,
+  ): Promise<boolean> {
     const prsJson = s.prs === null ? null : JSON.stringify(s.prs);
     const snapshotStmt = this.db
       .prepare(
@@ -344,17 +378,33 @@ export class D1Store implements Store {
            ON CONFLICT(user_id, week_start) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`,
         )
         .bind(userId, weekStart, state, nowSec);
-    const stmts = [snapshotStmt];
+    const stmts: D1PreparedStatement[] = [];
+    if (event) {
+      // FIRST in the batch: it compares against the snapshot stored BEFORE this upsert. Never on the first snapshot
+      // or an older week; (user, day, done_count) is the key, so the same count is never recorded twice.
+      stmts.push(
+        this.db
+          .prepare(
+            `INSERT OR IGNORE INTO workout_events (user_id, day, done_count, created_at)
+             SELECT ?1, ?2, ?6, ?3 FROM snapshots s
+             WHERE s.user_id = ?1 AND ?4 = 1
+               AND ((s.week_start = ?5 AND ?6 > s.done) OR (?5 > s.week_start AND ?6 >= 1))`,
+          )
+          .bind(userId, event.day, nowSec, event.shareWorkouts ? 1 : 0, s.weekStart, s.done),
+      );
+    }
+    stmts.push(snapshotStmt);
     if (s.weekState) stmts.push(weekStmt(s.weekStart, s.weekState));
     if (s.lastWeekState) stmts.push(weekStmt(s.weekStart - 7, s.lastWeekState));
-    await this.db.batch(stmts);
+    const res = await this.db.batch(stmts);
+    return event !== undefined && (res[0].meta?.changes ?? 0) > 0;
   }
 
-  async getFriendsView(userId: string): Promise<FriendsViewData> {
+  async getFriendsView(userId: string, opts: FriendsViewOptions): Promise<FriendsViewData> {
     const results = await this.db.batch([
       this.db
         .prepare(
-          `SELECT u.id, u.sub, u.code, u.username, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at,
+          `SELECT ${U_COLS},
                   s.week_start AS s_week_start, s.done AS s_done, s.due AS s_due, s.score AS s_score,
                   s.badge AS s_badge, s.streak_weeks AS s_streak_weeks, s.protein_days AS s_protein_days,
                   s.prs AS s_prs, s.updated_at AS s_updated_at, f.created_at AS f_created_at
@@ -366,7 +416,7 @@ export class D1Store implements Store {
         .bind(userId),
       this.db
         .prepare(
-          `SELECT u.id, u.sub, u.code, u.username, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at
+          `SELECT ${U_COLS}
            FROM requests r
            JOIN users u ON u.id = r.from_id
            WHERE r.to_id = ?1
@@ -375,7 +425,7 @@ export class D1Store implements Store {
         .bind(userId),
       this.db
         .prepare(
-          `SELECT u.id, u.sub, u.code, u.username, u.name, u.google_photo, u.share_photo, u.share_prs, u.joined, u.created_at
+          `SELECT ${U_COLS}
            FROM requests r
            JOIN users u ON u.id = r.to_id
            WHERE r.from_id = ?1
@@ -384,7 +434,7 @@ export class D1Store implements Store {
         .bind(userId),
       this.db
         .prepare(
-          `SELECT n.from_id, u.name, u.username, n.day
+          `SELECT n.from_id, u.username, n.day
            FROM nudges n
            JOIN users u ON u.id = n.from_id
            WHERE n.to_id = ?1 AND n.seen = 0
@@ -397,6 +447,30 @@ export class D1Store implements Store {
            WHERE user_id = ?1 OR user_id IN (SELECT friend_id FROM friends WHERE user_id = ?1)`,
         )
         .bind(userId),
+      this.db.prepare("SELECT muted_id FROM mutes WHERE user_id = ?1").bind(userId),
+      // v4 inbox, limited to CURRENT friends.
+      this.db
+        .prepare(
+          `SELECT n.from_id, u.username, n.day, n.created_at, n.seen_v4
+           FROM nudges n
+           JOIN users u ON u.id = n.from_id
+           JOIN friends f ON f.user_id = ?1 AND f.friend_id = n.from_id
+           WHERE n.to_id = ?1 AND n.day >= ?2
+           ORDER BY n.created_at DESC
+           LIMIT 100`,
+        )
+        .bind(userId, opts.pingsSinceDay),
+      this.db
+        .prepare(
+          `SELECT w.user_id, u.username, w.created_at
+           FROM workout_events w
+           JOIN users u ON u.id = w.user_id
+           JOIN friends f ON f.user_id = ?1 AND f.friend_id = w.user_id
+           WHERE w.created_at >= ?2 AND u.share_workouts = 1
+           ORDER BY w.created_at DESC
+           LIMIT 100`,
+        )
+        .bind(userId, opts.activitySinceSec),
     ]);
 
     type FriendJoinRow = UserRow & {
@@ -419,12 +493,14 @@ export class D1Store implements Store {
         sub: r.sub,
         code: r.code,
         username: r.username,
-        name: r.name,
         google_photo: r.google_photo,
         share_photo: r.share_photo,
         share_prs: r.share_prs,
         joined: r.joined,
         created_at: r.created_at,
+        alerts_on: r.alerts_on,
+        share_workouts: r.share_workouts,
+        pings_on: r.pings_on,
       };
       const snapshot: SnapshotRow | null =
         r.s_week_start !== null
@@ -448,27 +524,60 @@ export class D1Store implements Store {
     const outgoing = (results[2].results ?? []) as UserRow[];
     const nudgeRows = (results[3].results ?? []) as Array<{
       from_id: string;
-      name: string;
       username: string | null;
       day: number;
     }>;
 
-    if (nudgeRows.length > 0) {
+    // Legacy (4.0) clients: unseen nudges are shown once, then marked seen for both client generations.
+    if (!opts.v4 && nudgeRows.length > 0) {
       await this.db.batch(
         nudgeRows.map((n) =>
           this.db
-            .prepare("UPDATE nudges SET seen = 1 WHERE from_id = ?1 AND to_id = ?2 AND day = ?3")
+            .prepare(
+              "UPDATE nudges SET seen = 1, seen_v4 = 1 WHERE from_id = ?1 AND to_id = ?2 AND day = ?3",
+            )
             .bind(n.from_id, userId, n.day),
         ),
       );
     }
+
+    const pingRows = (results[6].results ?? []) as Array<{
+      from_id: string;
+      username: string | null;
+      day: number;
+      created_at: number;
+      seen_v4: number;
+    }>;
+    const activityRows = (results[7].results ?? []) as Array<{
+      user_id: string;
+      username: string | null;
+      created_at: number;
+    }>;
 
     return {
       friends,
       weekStates: (results[4].results ?? []) as WeekStateRow[],
       incoming,
       outgoing,
-      nudges: nudgeRows.map((n) => ({ fromId: n.from_id, name: n.name, username: n.username, day: n.day })),
+      nudges: nudgeRows.map((n) => ({
+        fromId: n.from_id,
+        name: n.username ?? "",
+        username: n.username,
+        day: n.day,
+      })),
+      mutedIds: ((results[5].results ?? []) as Array<{ muted_id: string }>).map((r) => r.muted_id),
+      inbox: opts.v4
+        ? {
+            pings: pingRows.map((n) => ({
+              fromId: n.from_id,
+              username: n.username,
+              day: n.day,
+              createdAt: n.created_at,
+              seen: n.seen_v4 === 1,
+            })),
+            activity: activityRows.map((a) => ({ userId: a.user_id, username: a.username, at: a.created_at })),
+          }
+        : undefined,
     };
   }
 
@@ -595,12 +704,20 @@ export class D1Store implements Store {
   }
 
   async removeFriendship(a: string, b: string): Promise<void> {
-    await this.db
-      .prepare(
-        "DELETE FROM friends WHERE (user_id = ?1 AND friend_id = ?2) OR (user_id = ?2 AND friend_id = ?1)",
-      )
-      .bind(a, b)
-      .run();
+    await this.db.batch([
+      this.db
+        .prepare(
+          "DELETE FROM friends WHERE (user_id = ?1 AND friend_id = ?2) OR (user_id = ?2 AND friend_id = ?1)",
+        )
+        .bind(a, b),
+      this.mutesBetween(a, b),
+    ]);
+  }
+
+  private mutesBetween(a: string, b: string): D1PreparedStatement {
+    return this.db
+      .prepare("DELETE FROM mutes WHERE (user_id = ?1 AND muted_id = ?2) OR (user_id = ?2 AND muted_id = ?1)")
+      .bind(a, b);
   }
 
   async blockUser(blocker: string, blocked: string): Promise<void> {
@@ -618,6 +735,7 @@ export class D1Store implements Store {
       this.db
         .prepare("INSERT OR IGNORE INTO blocks (blocker, blocked) VALUES (?1, ?2)")
         .bind(blocker, blocked),
+      this.mutesBetween(blocker, blocked),
     ]);
   }
 
@@ -691,5 +809,68 @@ export class D1Store implements Store {
         this.db.prepare("DELETE FROM push_tokens WHERE token = ?1").bind(t),
       ),
     );
+  }
+
+  async markInboxSeen(userId: string): Promise<void> {
+    await this.db
+      .prepare("UPDATE nudges SET seen = 1, seen_v4 = 1 WHERE to_id = ?1 AND seen_v4 = 0")
+      .bind(userId)
+      .run();
+  }
+
+  async setMute(userId: string, mutedId: string, muted: boolean): Promise<void> {
+    await this.db
+      .prepare(
+        muted
+          ? "INSERT OR IGNORE INTO mutes (user_id, muted_id) VALUES (?1, ?2)"
+          : "DELETE FROM mutes WHERE user_id = ?1 AND muted_id = ?2",
+      )
+      .bind(userId, mutedId)
+      .run();
+  }
+
+  async getUserById(userId: string): Promise<UserRow | null> {
+    return await this.db
+      .prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?1`)
+      .bind(userId)
+      .first<UserRow>();
+  }
+
+  async getActivityTargets(senderId: string, day: number): Promise<ActivityTarget[]> {
+    const res = await this.db
+      .prepare(
+        `SELECT f.friend_id AS user_id, p.token
+         FROM friends f
+         JOIN users u ON u.id = f.friend_id
+         JOIN push_tokens p ON p.user_id = f.friend_id
+         WHERE f.user_id = ?1
+           AND u.alerts_on = 1
+           AND NOT EXISTS (SELECT 1 FROM mutes m WHERE m.user_id = f.friend_id AND m.muted_id = ?1)
+           AND NOT EXISTS (
+             SELECT 1 FROM blocks b
+             WHERE (b.blocker = ?1 AND b.blocked = f.friend_id) OR (b.blocker = f.friend_id AND b.blocked = ?1)
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM activity_push a WHERE a.from_id = ?1 AND a.to_id = f.friend_id AND a.day = ?2
+           )
+         ORDER BY f.created_at, f.friend_id, p.updated_at DESC`,
+      )
+      .bind(senderId, day)
+      .all<{ user_id: string; token: string }>();
+    const byUser = new Map<string, string[]>();
+    for (const r of res.results ?? []) {
+      let list = byUser.get(r.user_id);
+      if (!list) byUser.set(r.user_id, (list = []));
+      list.push(r.token);
+    }
+    return Array.from(byUser, ([userId, tokens]) => ({ userId, tokens })).slice(0, 50);
+  }
+
+  async claimActivityPush(fromId: string, toId: string, day: number): Promise<boolean> {
+    const res = await this.db
+      .prepare("INSERT OR IGNORE INTO activity_push (from_id, to_id, day) VALUES (?1, ?2, ?3)")
+      .bind(fromId, toId, day)
+      .run();
+    return (res.meta?.changes ?? 0) > 0;
   }
 }

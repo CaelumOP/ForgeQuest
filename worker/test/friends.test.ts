@@ -1,8 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { base64UrlEncode, clearJwksCache, toArrayBuffer } from "../src/auth";
-import { clearFcmTokenCache } from "../src/fcm";
+import { clearFcmTokenCache, MAX_FCM_SENDS } from "../src/fcm";
 import { handleRequest } from "../src/index";
-import { riyadhEpochDay, sundayWeekStart } from "../src/time";
+import { isQuietHours, riyadhEpochDay, sundayWeekStart } from "../src/time";
 import { Env, FetchFn } from "../src/types";
 import { MemStore } from "./mem-store";
 import { SqliteStore } from "./sqlite-store";
@@ -339,20 +339,18 @@ describe("ForgeQuest Friends Worker", () => {
       expect(notJoined.status).toBe(409);
       expect(notJoined.json).toEqual({ error: "not_joined" });
 
-      // Bad names rejected
-      for (const badName of [
-        "",
-        "   ",
-        "x".repeat(41),
-        "visit https://spam.com",
-        "http://evil.io",
-        "check www.foo.bar",
+      // 4.1: `name` is ignored (one name = the username); a 4.0 client sending any name never gets a 400 for it.
+      // Missing sharePhoto/sharePrs or non-boolean v4 switches are still bad_profile.
+      for (const body of [
+        { name: "x", sharePrs: true },
+        { name: "x", sharePhoto: "yes", sharePrs: true },
+        { username: "alice", sharePhoto: true, sharePrs: true, alertsOn: "on" },
+        { username: "alice", sharePhoto: true, sharePrs: true, pingsOn: 1 },
+        { username: "alice", sharePhoto: true, sharePrs: true, shareWorkouts: null },
       ]) {
-        const bad = await req("PUT", "/v1/me", {
-          token: alice.session,
-          body: { name: badName, sharePhoto: true, sharePrs: true },
-        });
-        expect(bad.status).toBe(400);
+        const bad = await req("PUT", "/v1/me", { token: alice.session, body });
+        expect(bad.status, JSON.stringify(body)).toBe(400);
+        expect(bad.json).toEqual({ error: "bad_profile" });
       }
 
       // Join with valid profile and upload snapshot with PRs
@@ -361,8 +359,9 @@ describe("ForgeQuest Friends Worker", () => {
         body: { name: "  Alice  ", username: "alice", sharePhoto: true, sharePrs: true },
       });
       expect(joined.status).toBe(200);
-      expect(joined.json.name).toBe("Alice");
+      expect(joined.json.name).toBe("alice");
       expect(joined.json.joined).toBe(true);
+      expect(joined.json).toMatchObject({ alertsOn: true, shareWorkouts: true, pingsOn: true });
 
       const snapRes = await req("PUT", "/v1/snapshot", {
         token: alice.session,
@@ -760,7 +759,7 @@ describe("ForgeQuest Friends Worker", () => {
       const f1 = await req("GET", "/v1/friends", { token: bob.session });
       expect(f1.status).toBe(200);
       expect(f1.json.nudges).toEqual([
-        { fromId: alice.user.id, name: "Alice", username: "alice", day: riyadhEpochDay(nowMs) },
+        { fromId: alice.user.id, name: "alice", username: "alice", day: riyadhEpochDay(nowMs) },
       ]);
       const f2 = await req("GET", "/v1/friends", { token: bob.session });
       expect(f2.json.nudges).toEqual([]);
@@ -805,16 +804,17 @@ describe("ForgeQuest Friends Worker", () => {
       expect(nFcm.json).toEqual({ pushed: true });
       expect(oauthCalls).toBe(1);
       expect(fcmBodies.length).toBe(2);
-      expect(fcmBodies[0].message.data).toEqual({ type: "nudge", fromName: "Alice" });
+      expect(fcmBodies[0].message.data).toEqual({ type: "ping", fromId: alice.user.id, name: "alice" });
+      expect(fcmBodies[0].message.notification).toBeUndefined();
       // Dead token pruned, live token kept
       expect(await store.getPushTokens(carol.user.id)).toEqual(["live-token"]);
 
-      // Next Riyadh day (advance 12 hours past midnight Riyadh) -> nudge allowed again
-      nowMs += 12 * 3600 * 1000;
+      // Next Riyadh day at 09:00 (outside quiet hours) -> nudge allowed again
+      nowMs += 18 * 3600 * 1000;
       const nNextDay = await req("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session });
       expect(nNextDay.status).toBe(200);
       expect(nNextDay.json).toEqual({ pushed: true });
-      // 12 h later the cached 1 h OAuth token has expired -> exactly one refresh
+      // 18 h later the cached 1 h OAuth token has expired -> exactly one refresh
       expect(oauthCalls).toBe(2);
 
       // DELETE /push removes token
@@ -831,6 +831,266 @@ describe("ForgeQuest Friends Worker", () => {
         await req("PUT", "/v1/push", { token: carol.session, body: { token: `t${i}`, platform: "android" } });
       }
       expect((await store.getPushTokens(carol.user.id)).sort()).toEqual(["t2", "t3", "t4", "t5", "t6"]);
+    });
+  });
+
+  describe("v4: inbox, mutes, workout alerts, quiet hours", () => {
+    const HOUR = 3600 * 1000;
+    // BASE_MS is Sunday 15:00 Riyadh. Riyadh midnight of that day:
+    const RIYADH_MIDNIGHT = BASE_MS - 15 * HOUR;
+    const at = (h: number, m = 0) => RIYADH_MIDNIGHT + h * HOUR + m * 60 * 1000;
+
+    let pending: Promise<unknown>[];
+    let fcmBodies: any[];
+
+    beforeEach(() => {
+      pending = [];
+      fcmBodies = [];
+      env.FCM_SA = fcmSaJson;
+      const base = customFetch;
+      customFetch = async (url, init) => {
+        if (url === "https://oauth2.googleapis.com/token") {
+          return new Response(JSON.stringify({ access_token: "a", expires_in: 3600 }), { status: 200 });
+        }
+        if (url === "https://fcm.googleapis.com/v1/projects/fq-test/messages:send") {
+          fcmBodies.push(JSON.parse(init?.body ?? "{}"));
+          return new Response(JSON.stringify({ name: "msg/1" }), { status: 200 });
+        }
+        return base(url, init);
+      };
+    });
+
+    async function call(method: string, path: string, opts: { body?: unknown; token?: string } = {}) {
+      const headers: Record<string, string> = {};
+      if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
+      if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+      const res = await handleRequest(
+        new Request(`https://forgequest-friends.test${path}`, {
+          method,
+          headers,
+          body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        }),
+        env,
+        { store, nowMs: () => nowMs, fetchFn: customFetch, waitUntil: (p) => void pending.push(p) },
+      );
+      const text = await res.text();
+      return { status: res.status, json: text ? JSON.parse(text) : null };
+    }
+
+    async function settle() {
+      const ps = pending;
+      pending = [];
+      await Promise.all(ps);
+    }
+
+    async function befriend(a: { session: string; user: any }, b: { session: string; user: any }) {
+      await call("POST", "/v1/invites", { token: a.session, body: { username: b.user.username } });
+      const r = await call("POST", `/v1/invites/${a.user.id}/accept`, { token: b.session });
+      expect(r.status).toBe(200);
+    }
+
+    function snapBody(done: number, weekStart = sundayWeekStart(riyadhEpochDay(nowMs))) {
+      return { weekStart, done, due: 4, score: 50, badge: "on_track", streakWeeks: 1, proteinDays: 0, prs: null };
+    }
+
+    async function putSnap(u: { session: string }, done: number, weekStart?: number) {
+      const r = await call("PUT", "/v1/snapshot", { token: u.session, body: snapBody(done, weekStart) });
+      expect(r.status).toBe(200);
+      await settle();
+    }
+
+    const activityTo = (token: string) =>
+      fcmBodies.filter((b) => b.message.token === token && b.message.data.type === "activity");
+
+    async function trio() {
+      const alice = await loginUser("alice", "x");
+      const bob = await loginUser("bob", "x");
+      const carol = await loginUser("carol", "x");
+      await befriend(alice, bob);
+      await befriend(alice, carol);
+      await call("PUT", "/v1/push", { token: bob.session, body: { token: "bob-t", platform: "android" } });
+      await call("PUT", "/v1/push", { token: carol.session, body: { token: "carol-t", platform: "web" } });
+      return { alice, bob, carol };
+    }
+
+    it("isQuietHours edges: 21:59 and 07:00 push, 22:00 and 06:59 do not", async () => {
+      for (const [h, m, quiet] of [
+        [21, 59, false],
+        [22, 0, true],
+        [6, 59, true],
+        [7, 0, false],
+      ] as const) {
+        expect(isQuietHours(at(h, m)), `${h}:${m}`).toBe(quiet);
+      }
+    });
+
+    it("fans out one activity push per friend per day, never on the first snapshot, skips quiet hours without burning the slot", async () => {
+      nowMs = at(8);
+      const { alice } = await trio();
+      // First snapshot ever: no event, no push.
+      await putSnap(alice, 1);
+      expect(fcmBodies).toEqual([]);
+      // Same count again: nothing.
+      await putSnap(alice, 1);
+      expect(fcmBodies).toEqual([]);
+
+      // Quiet hours (22:00): no push, and the daily slot is not burned.
+      nowMs = at(22);
+      await putSnap(alice, 2);
+      expect(fcmBodies).toEqual([]);
+
+      // Next day 07:00: an older week or a lower count (history edited down) never sends and never takes the slot.
+      nowMs = at(24 + 7);
+      await putSnap(alice, 1);
+      await putSnap(alice, 5, sundayWeekStart(riyadhEpochDay(nowMs)) - 7);
+      expect(fcmBodies).toEqual([]);
+      await putSnap(alice, 3);
+      expect(activityTo("bob-t")).toHaveLength(1);
+      expect(activityTo("carol-t")).toHaveLength(1);
+      expect(activityTo("bob-t")[0].message.data).toEqual({ type: "activity", fromId: alice.user.id, name: "alice" });
+
+      // Another workout the same day: once per pair per day.
+      nowMs = at(24 + 12);
+      await putSnap(alice, 4);
+      expect(activityTo("bob-t")).toHaveLength(1);
+
+      // A newer week with done >= 1 sends.
+      nowMs = at(7 * 24 + 9);
+      await putSnap(alice, 1, sundayWeekStart(riyadhEpochDay(nowMs)));
+      expect(activityTo("bob-t")).toHaveLength(2);
+    });
+
+    it("respects mute, alerts off, share off, blocks, and a missing FCM key", async () => {
+      nowMs = at(9);
+      const { alice, bob, carol } = await trio();
+      await putSnap(alice, 1);
+
+      // Mute must be friends: 404 otherwise.
+      const dave = await loginUser("dave", "x");
+      expect((await call("PUT", `/v1/mutes/${dave.user.id}`, { token: bob.session })).status).toBe(404);
+      expect((await call("PUT", `/v1/mutes/${alice.user.id}`, { token: bob.session })).status).toBe(200);
+      // Carol turns workout alerts off.
+      const off = await call("PUT", "/v1/me", {
+        token: carol.session,
+        body: { sharePhoto: true, sharePrs: true, alertsOn: false },
+      });
+      expect(off.json).toMatchObject({ alertsOn: false, shareWorkouts: true, pingsOn: true, username: "carol" });
+
+      await putSnap(alice, 2);
+      expect(activityTo("bob-t")).toHaveLength(0);
+      expect(activityTo("carol-t")).toHaveLength(0);
+
+      // Muted friend shows muted: true; activity still listed in Bob's inbox.
+      const view = await call("GET", "/v1/friends?v=4", { token: bob.session });
+      expect(view.json.friends.find((f: any) => f.id === alice.user.id).muted).toBe(true);
+      expect(view.json.inbox.activity).toEqual([
+        expect.objectContaining({ userId: alice.user.id, name: "alice", username: "alice" }),
+      ]);
+
+      // Unmute: next day Bob gets it again.
+      expect((await call("DELETE", `/v1/mutes/${alice.user.id}`, { token: bob.session })).status).toBe(200);
+      nowMs = at(24 + 9);
+      await putSnap(alice, 3);
+      expect(activityTo("bob-t")).toHaveLength(1);
+
+      // Alice stops sharing: her events are deleted and no more pushes.
+      await call("PUT", "/v1/me", { token: alice.session, body: { sharePhoto: true, sharePrs: true, shareWorkouts: false } });
+      const hidden = await call("GET", "/v1/friends?v=4", { token: bob.session });
+      expect(hidden.json.inbox.activity).toEqual([]);
+      nowMs = at(48 + 9);
+      await putSnap(alice, 4);
+      expect(activityTo("bob-t")).toHaveLength(1);
+
+      // Missing FCM key: nothing is sent, nothing breaks.
+      await call("PUT", "/v1/me", { token: alice.session, body: { sharePhoto: true, sharePrs: true, shareWorkouts: true } });
+      delete env.FCM_SA;
+      nowMs = at(72 + 9);
+      await putSnap(alice, 5);
+      expect(activityTo("bob-t")).toHaveLength(1);
+      // Block: Bob never gets alerts from Alice again (no longer friends either).
+      env.FCM_SA = fcmSaJson;
+      await call("POST", `/v1/blocks/${alice.user.id}`, { token: bob.session });
+      nowMs = at(96 + 9);
+      await putSnap(alice, 6);
+      expect(activityTo("bob-t")).toHaveLength(1);
+      expect(activityTo("carol-t")).toHaveLength(0);
+    });
+
+    it("caps fan-out at MAX_FCM_SENDS FCM requests", async () => {
+      nowMs = at(9);
+      const alice = await loginUser("alice", "x");
+      for (let i = 0; i < 45; i++) {
+        const f = await loginUser(`friend${i}`, "x");
+        await befriend(alice, f);
+        await call("PUT", "/v1/push", { token: f.session, body: { token: `ft${i}`, platform: "android" } });
+      }
+      await putSnap(alice, 1);
+      await putSnap(alice, 2);
+      expect(fcmBodies.length).toBe(MAX_FCM_SENDS);
+    });
+
+    it("v4 GET keeps pings unseen until POST /inbox/seen; legacy GET marks both; pings_off stores without pushing", async () => {
+      nowMs = at(10);
+      const { alice, bob, carol } = await trio();
+      expect((await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session })).json).toEqual({ pushed: true });
+
+      const v1 = await call("GET", "/v1/friends?v=4", { token: bob.session });
+      expect(v1.json.inbox.pings).toEqual([
+        { fromId: alice.user.id, name: "alice", username: "alice", day: riyadhEpochDay(nowMs), createdAt: Math.floor(nowMs / 1000), seen: false },
+      ]);
+      // v4 read did not mark: still unseen for both v4 and legacy.
+      const v2 = await call("GET", "/v1/friends?v=4", { token: bob.session });
+      expect(v2.json.inbox.pings[0].seen).toBe(false);
+      expect(v2.json.nudges).toHaveLength(1);
+      expect((await call("POST", "/v1/inbox/seen", { token: bob.session })).status).toBe(200);
+      const v3 = await call("GET", "/v1/friends?v=4", { token: bob.session });
+      expect(v3.json.inbox.pings[0].seen).toBe(true);
+      expect(v3.json.nudges).toEqual([]);
+
+      // Legacy read (no ?v=4) has no inbox and marks seen for v4 too.
+      expect((await call("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session })).status).toBe(200);
+      const legacy = await call("GET", "/v1/friends", { token: carol.session });
+      expect(legacy.json.inbox).toBeUndefined();
+      expect(legacy.json.nudges).toHaveLength(1);
+      const after = await call("GET", "/v1/friends?v=4", { token: carol.session });
+      expect(after.json.inbox.pings[0].seen).toBe(true);
+
+      // Bob turns "Do your workout" messages off: next day the ping is stored, the sender still sees 200, no push.
+      await call("PUT", "/v1/me", { token: bob.session, body: { sharePhoto: true, sharePrs: true, pingsOn: false } });
+      nowMs = at(24 + 10);
+      const before = fcmBodies.length;
+      const quietPing = await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
+      expect(quietPing.status).toBe(200);
+      expect(quietPing.json).toEqual({ pushed: false });
+      expect(fcmBodies.length).toBe(before);
+      expect((await call("GET", "/v1/friends?v=4", { token: bob.session })).json.inbox.pings).toHaveLength(2);
+
+      // Quiet hours: stored, not pushed.
+      nowMs = at(48 + 23);
+      const night = await call("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session });
+      expect(night.json).toEqual({ pushed: false });
+      expect(fcmBodies.length).toBe(before);
+
+      // Unfriended senders vanish from the inbox.
+      await call("DELETE", `/v1/friends/${alice.user.id}`, { token: bob.session });
+      expect((await call("GET", "/v1/friends?v=4", { token: bob.session })).json.inbox.pings).toEqual([]);
+    });
+
+    it("DELETE /me clears mutes, workout events and activity slots", async () => {
+      nowMs = at(9);
+      const { alice, bob } = await trio();
+      await call("PUT", `/v1/mutes/${alice.user.id}`, { token: bob.session });
+      await call("PUT", `/v1/mutes/${bob.user.id}`, { token: alice.session });
+      await putSnap(alice, 1);
+      await putSnap(alice, 2);
+      expect((await call("DELETE", "/v1/me", { token: alice.session })).status).toBe(200);
+      if (store instanceof MemStore) {
+        expect([...store.mutes]).toEqual([]);
+        expect(store.workoutEvents.size).toBe(0);
+        expect([...store.activityPush].filter((k) => k.includes(alice.user.id))).toEqual([]);
+      } else {
+        expect((store as unknown as SqliteStore).rowsReferencing(alice.user.id)).toBe(0);
+      }
     });
   });
 

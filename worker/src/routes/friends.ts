@@ -9,6 +9,7 @@ import { riyadhEpochDay, sundayWeekStart } from "../time";
 import {
   Friend,
   HttpError,
+  Inbox,
   Me,
   NudgeView,
   Person,
@@ -32,10 +33,17 @@ export async function handleGetFriends(
   incoming: Person[];
   outgoing: Person[];
   nudges: NudgeView[];
+  inbox?: Inbox;
 }> {
   const today = riyadhEpochDay(ctx.nowMs);
   const weekStart = sundayWeekStart(today);
-  const view = await ctx.store.getFriendsView(user.id);
+  const v4 = new URL(ctx.request.url).searchParams.get("v") === "4";
+  const view = await ctx.store.getFriendsView(user.id, {
+    v4,
+    pingsSinceDay: today - 6,
+    activitySinceSec: ctx.nowSec - 48 * 60 * 60,
+  });
+  const muted = new Set(view.mutedIds);
   const statesByUser = new Map<string, Map<number, WeekState>>();
   for (const w of view.weekStates) {
     if (!WEEK_STATES.has(w.state)) continue;
@@ -56,11 +64,20 @@ export async function handleGetFriends(
         ...toPerson(friend),
         snapshot: snapshot ? toSnapshot(snapshot, friend.share_prs === 1, weekState) : null,
         sharedStreak: sharedStreak({ friendsSinceSec: friendsSince, today, mine, theirs }),
+        muted: muted.has(friend.id),
       };
     }),
     incoming: view.incoming.map(toPerson),
     outgoing: view.outgoing.map(toPerson),
     nudges: view.nudges,
+    ...(view.inbox
+      ? {
+          inbox: {
+            pings: view.inbox.pings.map((p) => ({ ...p, name: p.username ?? "" })),
+            activity: view.inbox.activity.map((a) => ({ ...a, name: a.username ?? "" })),
+          },
+        }
+      : {}),
   };
 }
 

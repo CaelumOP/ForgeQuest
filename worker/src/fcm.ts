@@ -125,15 +125,24 @@ async function getAccessToken(
   return body.access_token;
 }
 
-export async function sendNudgePush(params: {
+/** Upper bound on FCM send requests per Worker invocation (Workers free plan allows 50 subrequests in total). */
+export const MAX_FCM_SENDS = 40;
+
+export type PushData = { type: "ping" | "activity"; fromId: string; name: string };
+
+/**
+ * Sends a DATA-ONLY message to each token (the app formats the text in the receiver's language).
+ * Tokens FCM reports as gone are deleted. Returns true when at least one send succeeded.
+ */
+export async function sendPush(params: {
   fcmSaRaw: string | undefined;
   tokens: string[];
-  fromName: string;
+  data: PushData;
   store: Store;
   nowSec: number;
   fetchFn: FetchFn;
 }): Promise<boolean> {
-  const { fcmSaRaw, tokens, fromName, store, nowSec, fetchFn } = params;
+  const { fcmSaRaw, tokens, data, store, nowSec, fetchFn } = params;
   if (!fcmSaRaw || tokens.length === 0) return false;
 
   const sa = parseServiceAccount(fcmSaRaw);
@@ -155,7 +164,7 @@ export async function sendNudgePush(params: {
   const deadTokens: string[] = [];
   let sentCount = 0;
 
-  for (const token of tokens) {
+  for (const token of tokens.slice(0, MAX_FCM_SENDS)) {
     try {
       const res = await fetchFn(sendUrl, {
         method: "POST",
@@ -166,7 +175,7 @@ export async function sendNudgePush(params: {
         body: JSON.stringify({
           message: {
             token,
-            data: { type: "nudge", fromName },
+            data,
             android: { priority: "high" },
             webpush: { headers: { Urgency: "high" } },
           },

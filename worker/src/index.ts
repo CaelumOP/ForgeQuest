@@ -15,7 +15,8 @@ import {
   handleGetMe,
   handlePutMe,
 } from "./routes/me";
-import { handleNudge } from "./routes/nudges";
+import { handleInboxSeen, handleNudge } from "./routes/nudges";
+import { handleSetMute } from "./routes/mutes";
 import { handleDeletePush, handlePutPush } from "./routes/push";
 import { handlePutSnapshot } from "./routes/snapshot";
 import { D1Store, Store } from "./store";
@@ -25,6 +26,8 @@ export interface HandlerDeps {
   store?: Store;
   nowMs?: () => number;
   fetchFn?: FetchFn;
+  /** Tests collect these promises and await them; production passes ExecutionContext.waitUntil. */
+  waitUntil?: (p: Promise<unknown>) => void;
 }
 
 function buildCorsHeaders(
@@ -117,6 +120,9 @@ async function dispatch(ctx: AppContext): Promise<unknown> {
   if (method === "DELETE" && path === "/v1/push") {
     return await handleDeletePush(ctx, user);
   }
+  if (method === "POST" && path === "/v1/inbox/seen") {
+    return await handleInboxSeen(ctx, user);
+  }
 
   let m = path.match(/^\/v1\/invites\/([^/]+)\/accept$/);
   if (m && method === "POST") {
@@ -139,6 +145,11 @@ async function dispatch(ctx: AppContext): Promise<unknown> {
   }
   if (m && method === "DELETE") {
     return await handleUnblockUser(ctx, user, decodeSegment(m[1]));
+  }
+
+  m = path.match(/^\/v1\/mutes\/([^/]+)$/);
+  if (m && (method === "PUT" || method === "DELETE")) {
+    return await handleSetMute(ctx, user, decodeSegment(m[1]), method === "PUT");
   }
 
   m = path.match(/^\/v1\/nudges\/([^/]+)$/);
@@ -169,6 +180,7 @@ export async function handleRequest(
       nowSec: Math.floor(nowMs / 1000),
       fetchFn: deps.fetchFn ?? ((input, init) => fetch(input, init)),
       ip: getClientIp(request),
+      waitUntil: deps.waitUntil ?? ((p) => void p.catch(() => {})),
     };
     const result = await dispatch(ctx);
     return jsonResponse(200, result, cors);
@@ -182,7 +194,14 @@ export async function handleRequest(
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
-    return await handleRequest(request, env);
+  async fetch(request, env, ctx): Promise<Response> {
+    return await handleRequest(request, env, {
+      waitUntil: (p) =>
+        ctx.waitUntil(
+          p.catch((err) => {
+            console.error("Background task failed", err);
+          }),
+        ),
+    });
   },
 } satisfies ExportedHandler<Env>;

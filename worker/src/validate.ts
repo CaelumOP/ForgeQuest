@@ -2,8 +2,6 @@ import { isSunday } from "./time";
 import { Badge, HttpError, PrItem, PushPlatform, SnapshotInput } from "./types";
 
 const BADGES: ReadonlySet<string> = new Set<Badge>(["trained", "on_track", "slacking", "rest"]);
-const URL_PATTERN = /https?:\/\/|www\./i;
-const CONTROL_CHARS = /[\x00-\x1F\x7F]/;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v);
@@ -47,28 +45,27 @@ export function normalizeUsername(raw: string): string | null {
 }
 
 export function validateProfile(body: Record<string, unknown>): {
-  name: string;
   sharePhoto: boolean;
   sharePrs: boolean;
   /** Normalised username when the body carries one; undefined when omitted. */
   username: string | undefined;
+  /** v4 switches: undefined when omitted (keep the stored value). */
+  alertsOn: boolean | undefined;
+  shareWorkouts: boolean | undefined;
+  pingsOn: boolean | undefined;
 } {
-  if (
-    typeof body.name !== "string" ||
-    typeof body.sharePhoto !== "boolean" ||
-    typeof body.sharePrs !== "boolean"
-  ) {
+  // 4.1 keeps one name only (the username): `name` from 4.0 clients is accepted and ignored, never a 400.
+  if (typeof body.sharePhoto !== "boolean" || typeof body.sharePrs !== "boolean") {
     throw new HttpError(400, "bad_profile");
   }
-  const name = body.name.trim();
-  if (
-    name.length < 1 ||
-    name.length > 40 ||
-    URL_PATTERN.test(name) ||
-    CONTROL_CHARS.test(name)
-  ) {
-    throw new HttpError(400, "bad_profile");
-  }
+  const optionalFlag = (v: unknown): boolean | undefined => {
+    if (v === undefined) return undefined;
+    if (typeof v !== "boolean") throw new HttpError(400, "bad_profile");
+    return v;
+  };
+  const alertsOn = optionalFlag(body.alertsOn);
+  const shareWorkouts = optionalFlag(body.shareWorkouts);
+  const pingsOn = optionalFlag(body.pingsOn);
   let username: string | undefined;
   if (body.username !== undefined) {
     const normalized = typeof body.username === "string" ? normalizeUsername(body.username) : null;
@@ -78,10 +75,12 @@ export function validateProfile(body: Record<string, unknown>): {
     username = normalized;
   }
   return {
-    name,
     sharePhoto: body.sharePhoto,
     sharePrs: body.sharePrs,
     username,
+    alertsOn,
+    shareWorkouts,
+    pingsOn,
   };
 }
 

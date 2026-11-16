@@ -16,3 +16,10 @@ export function sundayWeekStart(epochDay: number): number {
   const daysSinceSunday = (((epochDay - 3) % 7) + 7) % 7;
   return epochDay - daysSinceSunday;
 }
+
+/** Quiet hours for pushes: 22:00 (inclusive) to 07:00 (exclusive), Riyadh time, for every user. */
+export function isQuietHours(nowMs: number): boolean {
+  const msIntoDay = (((nowMs + RIYADH_OFFSET_MS) % DAY_MS) + DAY_MS) % DAY_MS;
+  const hour = Math.floor(msIntoDay / (60 * 60 * 1000));
+  return hour >= 22 || hour < 7;
+}

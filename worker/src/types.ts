@@ -59,6 +59,12 @@ export interface Me {
   sharePhoto: boolean;
   sharePrs: boolean;
   joined: boolean;
+  /** v4: push me when a friend finishes a workout. */
+  alertsOn: boolean;
+  /** v4: friends may see (and be pushed) when I finish a workout. */
+  shareWorkouts: boolean;
+  /** v4: push me "Do your workout!" messages. */
+  pingsOn: boolean;
 }
 
 export interface Person {
@@ -72,6 +78,8 @@ export interface Friend extends Person {
   snapshot: Snapshot | null;
   /** Consecutive weeks both of you hit your target since you became friends (see src/streak.ts). */
   sharedStreak: number;
+  /** v4: I muted this friend's workout alerts. */
+  muted: boolean;
 }
 
 export interface NudgeView {
@@ -81,17 +89,40 @@ export interface NudgeView {
   day: number;
 }
 
+export interface InboxPing {
+  fromId: string;
+  name: string;
+  username: string | null;
+  day: number;
+  createdAt: number;
+  seen: boolean;
+}
+
+export interface InboxActivity {
+  userId: string;
+  name: string;
+  username: string | null;
+  at: number;
+}
+
+export interface Inbox {
+  pings: InboxPing[];
+  activity: InboxActivity[];
+}
+
 export interface UserRow {
   id: string;
   sub: string;
   code: string;
   username: string | null;
-  name: string;
   google_photo: string | null;
   share_photo: number;
   share_prs: number;
   joined: number;
   created_at: number;
+  alerts_on: number;
+  share_workouts: number;
+  pings_on: number;
 }
 
 export interface SessionRow {
@@ -118,11 +149,15 @@ export function toMe(u: UserRow): Me {
   return {
     id: u.id,
     username: u.username,
-    name: u.name,
+    // One name only (4.1): `name` stays in the payload for 4.0 clients and always equals the username.
+    name: u.username ?? "",
     photoUrl: sharePhoto ? u.google_photo : null,
     sharePhoto,
     sharePrs: u.share_prs === 1,
     joined: u.joined === 1,
+    alertsOn: u.alerts_on === 1,
+    shareWorkouts: u.share_workouts === 1,
+    pingsOn: u.pings_on === 1,
   };
 }
 
@@ -130,7 +165,7 @@ export function toPerson(u: UserRow): Person {
   return {
     id: u.id,
     username: u.username,
-    name: u.name,
+    name: u.username ?? "",
     photoUrl: u.share_photo === 1 ? u.google_photo : null,
   };
 }
