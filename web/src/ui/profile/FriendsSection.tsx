@@ -19,7 +19,7 @@ import { Button, Card, Dialog, TextField, toast } from '../kit'
 
 export function friendsSummary(st: FriendsState): string {
   if (st.status === 'joined' && st.view) {
-    return t('settings_friends_status_signed_in', shownName(st.view.me))
+    return t('settings_friends_status_signed_in', `⁦${shownName(st.view.me)}⁩`)
   }
   if (st.status === 'needs_join') {
     return t('settings_friends_status_pending')

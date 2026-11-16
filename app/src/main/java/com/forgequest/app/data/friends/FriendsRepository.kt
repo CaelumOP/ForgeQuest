@@ -677,11 +677,11 @@ class FriendsRepository(
             nudges = listOf(Nudge(fromId = "demo_1", name = "omar", username = "omar", day = today)),
             inbox = Inbox(
                 pings = listOf(
-                    InboxPing(fromId = "demo_1", name = "omar", username = "omar", day = today, createdAt = now - 2 * HOUR_MS),
+                    InboxPing(fromId = "demo_1", name = "omar", username = "omar", day = today, createdAt = now / 1000 - 2 * HOUR_S),
                 ),
                 activity = listOf(
-                    InboxActivity(userId = "demo_2", name = "lina", username = "lina", at = now - 3 * HOUR_MS),
-                    InboxActivity(userId = "demo_1", name = "omar", username = "omar", at = now - 26 * HOUR_MS),
+                    InboxActivity(userId = "demo_2", name = "lina", username = "lina", at = now / 1000 - 3 * HOUR_S),
+                    InboxActivity(userId = "demo_1", name = "omar", username = "omar", at = now / 1000 - 26 * HOUR_S),
                 ),
             ),
         )
@@ -703,6 +703,6 @@ class FriendsRepository(
         private const val KEY_LAST_ME = "last_me"
         private const val KEY_NUDGED_DAY = "nudged_day"
         private const val KEY_NUDGED_IDS = "nudged_ids"
-        private const val HOUR_MS = 3_600_000L
+        private const val HOUR_S = 3_600L // inbox times are epoch seconds
     }
 }

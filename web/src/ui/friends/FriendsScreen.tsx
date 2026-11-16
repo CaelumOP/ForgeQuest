@@ -51,8 +51,9 @@ const BADGE_KEYS: Record<FriendBadge, string> = {
 /** Isolates a Latin username inside a plain translated string (including RTL Arabic sentences). */
 const isolateLtr = (s: string): string => `\u2066${s}\u2069`
 
-function relativeTime(epochMs: number, lang: Lang, now = Date.now()): string {
-  const diffSec = Math.round((epochMs - now) / 1000)
+/** Inbox times from the Worker are epoch SECONDS. */
+function relativeTime(epochSec: number, lang: Lang, now = Date.now()): string {
+  const diffSec = Math.round(epochSec - now / 1000)
   const rtf = new Intl.RelativeTimeFormat(intlLocale(lang), { numeric: 'auto' })
   const abs = Math.abs(diffSec)
   if (abs < 60) return rtf.format(diffSec, 'second')

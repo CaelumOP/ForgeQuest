@@ -131,6 +131,7 @@ function withMine(view: FriendsView, mySnapshot: Snapshot | null): CachedView {
 function normalizeMe(me: Me): Me {
   return {
     ...me,
+    name: shownName(me),
     alertsOn: me.alertsOn ?? true,
     shareWorkouts: me.shareWorkouts ?? true,
     pingsOn: me.pingsOn ?? true,
@@ -142,7 +143,7 @@ export function normalizeView(view: CachedView): CachedView {
     ...view,
     me: normalizeMe(view.me),
     friends: Array.isArray(view.friends)
-      ? view.friends.map((f) => ({ ...f, muted: f.muted ?? false }))
+      ? view.friends.map((f) => ({ ...f, name: shownName(f), muted: f.muted ?? false }))
       : [],
     incoming: Array.isArray(view.incoming) ? view.incoming : [],
     outgoing: Array.isArray(view.outgoing) ? view.outgoing : [],
@@ -237,10 +238,10 @@ function buildDemoView(now = Date.now()): CachedView {
     outgoing: [person('maya')],
     nudges: [],
     inbox: {
-      pings: [{ fromId: 'demo_omar', name: 'omar', username: 'omar', day: today, createdAt: now - 15 * 60_000, seen: false }],
+      pings: [{ fromId: 'demo_omar', name: 'omar', username: 'omar', day: today, createdAt: Math.floor(now / 1000) - 15 * 60, seen: false }],
       activity: [
-        { userId: 'demo_omar', name: 'omar', username: 'omar', at: now - 2 * 3600_000 },
-        { userId: 'demo_lina', name: 'lina', username: 'lina', at: now - 5 * 3600_000 },
+        { userId: 'demo_omar', name: 'omar', username: 'omar', at: Math.floor(now / 1000) - 2 * 3600 },
+        { userId: 'demo_lina', name: 'lina', username: 'lina', at: Math.floor(now / 1000) - 5 * 3600 },
       ],
     },
   })

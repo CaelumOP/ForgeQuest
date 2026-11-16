@@ -869,7 +869,7 @@ private fun InboxSheet(
                     val isUnseen = "${ping.fromId}_${ping.day}_${ping.createdAt}" in unseenPingKeys
                     InboxMessageRow(
                         text = stringResource(R.string.friends_inbox_ping_line, Usernames.ltr(ping.shownName)),
-                        timeMs = ping.createdAt,
+                        timeMs = ping.createdAt * 1000L, // Worker sends epoch seconds
                         unseen = isUnseen,
                     )
                 }
@@ -886,7 +886,7 @@ private fun InboxSheet(
                 activity.forEach { act ->
                     InboxMessageRow(
                         text = stringResource(R.string.friends_inbox_activity_line, Usernames.ltr(act.shownName)),
-                        timeMs = act.at,
+                        timeMs = act.at * 1000L,
                         unseen = false,
                     )
                 }
@@ -1209,8 +1209,8 @@ private fun OutgoingRow(person: Person, busy: Boolean, onCancel: () -> Unit) {
 /** "You: done" / "free week" / "not yet" for the shared-streak week line. */
 @Composable
 private fun weekLine(name: String, state: String?): String {
-    // First-strong isolate: a Latin name at the start of an Arabic line would otherwise pull the colon to the wrong side.
-    val n = "\u2068$name\u2069"
+    // LTR isolate (not first-strong): an all-digit username has no strong letter, so it must be forced LTR.
+    val n = Usernames.ltr(name)
     return when (state) {
         "hit" -> stringResource(R.string.friends_week_done, n)
         "free" -> stringResource(R.string.friends_week_free, n)

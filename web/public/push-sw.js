@@ -44,7 +44,7 @@ self.addEventListener('push', (event) => {
     const d = payload?.data ?? payload ?? {}
     const type = d.type === 'activity' ? 'activity' : 'ping'
     const fromId = String(d.fromId || '')
-    const rawName = String(d.name || '')
+    const rawName = String(d.name || 'ForgeQuest')
     const wrappedName = `\u2066${rawName}\u2069`
 
     const dbLang = await readLangFromDb()

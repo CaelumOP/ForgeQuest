@@ -224,7 +224,7 @@ button.fr-row-main { cursor: pointer; }
 button.fr-row-main:active { background: var(--card-high); }
 .fr-board-me {
   position: sticky;
-  bottom: 0;
+  inset-block: 0;
   z-index: 1;
   background: var(--teal-track);
   border-radius: var(--r-sm);
@@ -248,7 +248,7 @@ button.fr-row-main:active { background: var(--card-high); }
 .fr-pill {
   display: inline-flex;
   align-items: center;
-  min-block-size: 36px;
+  min-block-size: 48px;
   padding: 6px 14px;
   border: 0;
   border-radius: var(--r-full);
