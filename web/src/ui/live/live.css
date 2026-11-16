@@ -170,3 +170,11 @@ html[dir='rtl'] .lw-wavebar { transform: scaleX(-1); }
   .lw-set { flex-wrap: wrap; row-gap: 6px; }
   .lw-steps { order: 1; flex: 1 0 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 8px; }
 }
+
+/* How to / Swap: visible on every exercise card (48px targets, teal = interactive). */
+.lw-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 6px; }
+.lw-quickbtn {
+  display: inline-flex; align-items: center; min-block-size: 48px; padding-inline: 16px;
+  border-radius: 999px; border: 0; background: var(--card-high, rgba(127,127,127,.12));
+  color: var(--teal); font: inherit; font-size: .875rem; font-weight: 600; text-decoration: none; cursor: pointer;
+}

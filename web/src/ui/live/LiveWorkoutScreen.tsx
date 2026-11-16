@@ -323,6 +323,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
         void stepUp(sid, oldId, next.id).then(() => toast(t('harder_switched', next.name)))
       }}
       onMenu={(position, swapOnly) => setMenu({ position, swapOnly })}
+      onSwap={(position) => setPicker({ kind: 'swap', position })}
       onAddRound={(positions) => { void (async () => { for (const pos of positions) await addSet(sid, pos) })() }} />
   )
   const shownPage = Math.min(page, Math.max(0, groups.length - 1))
@@ -438,7 +439,7 @@ function setSummary(set: SetRow, kind: ExerciseRow['kind'], unit: WeightUnit): s
 
 type CardProps = {
   g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; prIds: Set<number>; unit: WeightUnit; effortSetId: number | null
-  onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onAddRound: (positions: number[]) => void
+  onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onSwap: (position: number) => void; onAddRound: (positions: number[]) => void
   harder: Map<string, Hint>; onStepUp: (oldId: string, next: ExerciseRow) => void
 }
 
@@ -529,6 +530,11 @@ function GroupCard(p: CardProps) {
               <span class="lw-small">{target ? t('live_target', g.sets.length, target) : ex ? [...ex.primary].map((m) => t('muscle_' + m.toLowerCase())).join(' · ') : ''}</span>
             </a>
             <IconButton label={t('cd_options')} onClick={() => p.onMenu(g.position, false)}><MoreVert /></IconButton>
+          </div>
+          {/* Always visible, not only in the menu: how to do the move, and swap it for another. */}
+          <div class="lw-quick">
+            <a class="lw-quickbtn" href={`#/exercise/${first.exerciseId}`}>{t('cues_title')}</a>
+            <button type="button" class="lw-quickbtn" onClick={() => p.onSwap(g.position)}>{t('live_swap_exercise')}</button>
           </div>
           {ex && <HarderNote ex={ex} hint={p.harder.get(ex.id)} onStepUp={p.onStepUp} />}
           {g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...rowProps(set, null)} />)}

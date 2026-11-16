@@ -35,6 +35,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CenterFocusStrong
@@ -560,6 +562,11 @@ internal fun StraightCard(
                     DropdownMenuItem(text = { Text(stringResource(R.string.live_remove_last_set)) }, onClick = { menu = false; vm.removeLastSet(g.position) })
                 }
             }
+        }
+        // Always visible (not only in the ⋮ menu): how to do the move, and swap it for another.
+        Row(Modifier.padding(start = 4.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TonalPill(stringResource(R.string.cues_title), onClick = onDetail, icon = Icons.Rounded.Info, tint = c.teal)
+            TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
         }
         ex?.let { HarderNote(it, vm) }
         Spacer(Modifier.height(4.dp))
