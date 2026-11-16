@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
 import { debriefLines } from '../../data/debrief-text'
 import { useSettings, weightUnit } from '../../data/settings'
-import { useLibrary, useWorkoutDebrief } from '../../data/workouts'
+import { useLive } from '../../data/live'
+import { allDoneSets, finishedSessions, useLibrary, useWorkoutDebrief } from '../../data/workouts'
+import type { SessionEntity, SetEntity } from '../../domain/entities'
+import { volumeChangeVsLastTime } from '../../domain/volume-change'
 import { formatWeight } from '../../domain/units'
 import type { WorkoutScoreResult } from '../../domain/workout-score'
 import { haptics, reducedMotion } from '../kit'
@@ -52,6 +55,14 @@ export function DebriefCard({ sessionId, score, celebrate = false }: { sessionId
   const settings = useSettings()
   const library = useLibrary()
   const debrief = useWorkoutDebrief(sessionId)
+  const volumeChange = useLive(async () => {
+    const [sessions, doneSets] = await Promise.all([finishedSessions(), allDoneSets()])
+    return volumeChangeVsLastTime(sessionId, sessions as SessionEntity[], doneSets as SetEntity[])
+  }, [sessionId], null)
+  const volumeText = volumeChange == null ? null
+    : volumeChange === 0 ? t('score_volume_same')
+    : volumeChange > 0 ? t('score_volume_up', volumeChange)
+    : t('score_volume_down', Math.abs(volumeChange))
   const lang = getLang()
   const unit = weightUnit(settings)
   const lines = useMemo(() => {
@@ -86,7 +97,7 @@ export function DebriefCard({ sessionId, score, celebrate = false }: { sessionId
         )}
       </div>
       {score && scoreNote(score) && !sameAsHeadline && <p class="hs-deb-body hs-deb-note">{scoreNote(score)}</p>}
-      {score && <p class="hs-deb-body">{scoreReasons(score)}</p>}
+      {score && <p class="hs-deb-body">{[scoreReasons(score), volumeText].filter(Boolean).join(' · ')}</p>}
       {lines && (
         <>
           {/* "Just log" mode drops the motivational headline; the score, reasons and facts stay. */}

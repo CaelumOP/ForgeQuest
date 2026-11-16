@@ -450,7 +450,7 @@ export const STARTER_PLANS_AR: Record<string, string> = {
   'Legs': 'أرجل',
   'Full rest. Hemo recommends a complete break after day 3.': 'راحة تامة؛ يوصي Hemo براحة كاملة بعد اليوم الثالث.',
   'Full body · 3 days · gym': 'الجسم كاملًا · 3 أيام · النادي',
-  'Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session.': 'خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة قرفصاء أو انثناء للورك، ثم تمرين دفع وآخر سحب.',
+  'Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session.': 'خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة سكوات أو انثناء للورك، ثم تمرين دفع وآخر سحب.',
   'Upper / lower · 4 days · gym': 'علوي / سفلي · 4 أيام · النادي',
   '4-day gym split: upper body on Monday and Thursday, lower body on Tuesday and Friday.': 'تقسيم على أربعة أيام في النادي: الجزء العلوي الاثنين والخميس، والجزء السفلي الثلاثاء والجمعة.',
   'Upper / lower · 4 days · dumbbells': 'علوي / سفلي · 4 أيام · دمبل',

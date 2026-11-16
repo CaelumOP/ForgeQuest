@@ -33,7 +33,8 @@ export function PlanEditorScreen({ param }: { param?: string }) {
   const library = useLibrary()
   const allPlans = useAllPlans()
   const openTemplates = param === 'templates'
-  const [selected, setSelected] = useState(() => dayOfWeek(todayEpochDay()))
+  const dayParam = param?.startsWith('day-') ? Number(param.slice(4)) : NaN
+  const [selected, setSelected] = useState(() => (dayParam >= 1 && dayParam <= 7 ? dayParam : dayOfWeek(todayEpochDay())))
   const [panel, setPanel] = useState<Panel>(() => (openTemplates ? 'templates' : null))
   useEffect(() => { if (openTemplates) setPanel('templates') }, [openTemplates])
   const [editing, setEditing] = useState<PlanItemRow | null>(null)
@@ -216,8 +217,8 @@ export function PlanEditorScreen({ param }: { param?: string }) {
           key={editing.id} item={editing} exercise={s.exercises.get(editing.exerciseId)} unit={unit}
           canMoveUp={!!day && day.items.findIndex((i) => i.id === editing.id) > 0}
           canMoveDown={!!day && day.items.findIndex((i) => i.id === editing.id) < day.items.length - 1 && day.items.some((i) => i.id === editing.id)}
-          onMove={(delta) => { movePlanItem(editing, delta); setEditing(null) }}
-          onSwap={() => { setSwapping(editing); setEditing(null) }}
+          onMove={async (draft, delta) => { await updatePlanItem(draft); await movePlanItem(draft, delta); setEditing(null) }}
+          onSwap={async (draft) => { await updatePlanItem(draft); setSwapping(draft); setEditing(null) }}
           onSave={(it) => { updatePlanItem(it); setEditing(null) }}
           onClose={() => setEditing(null)}
         />
@@ -273,7 +274,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
 
 function ItemEditor({ item, exercise, unit, canMoveUp, canMoveDown, onMove, onSwap, onSave, onClose }: {
   item: PlanItemRow; exercise: ExerciseRow | undefined; unit: WeightUnit; canMoveUp: boolean; canMoveDown: boolean
-  onMove: (delta: number) => void; onSwap: () => void; onSave: (i: PlanItemRow) => void; onClose: () => void
+  onMove: (draft: PlanItemRow, delta: number) => void; onSwap: (draft: PlanItemRow) => void; onSave: (i: PlanItemRow) => void; onClose: () => void
 }) {
   const arabic = getLang() === 'ar'
   const [d, setD] = useState(item)
@@ -284,7 +285,7 @@ function ItemEditor({ item, exercise, unit, canMoveUp, canMoveDown, onMove, onSw
   const wUnit = unitLabel(unit, arabic)
   return (
     <Sheet open onClose={onClose} title={exercise?.name ?? item.exerciseId}>
-      <Button variant="tonal" icon={<SwapIcon />} onClick={onSwap}>{t('live_swap_exercise')}</Button>
+      <Button variant="tonal" icon={<SwapIcon />} onClick={() => onSwap(d)}>{t('live_swap_exercise')}</Button>
       <Row label={d.circuit ? t('plan_rounds') : t('live_sets')}>
         <Stepper label={d.circuit ? t('plan_rounds') : t('live_sets')} value={d.sets} min={1} max={10} onChange={(v) => setD({ ...d, sets: v })} />
       </Row>
@@ -331,8 +332,8 @@ function ItemEditor({ item, exercise, unit, canMoveUp, canMoveDown, onMove, onSw
       </div>
       <div class="wk-edit-row">
         <span>{t('plan_order')}</span>
-        <Button variant="tonal" icon={<UpIcon size={18} />} disabled={!canMoveUp} onClick={() => onMove(-1)}>{t('plan_move_up')}</Button>
-        <Button variant="tonal" icon={<DownIcon size={18} />} disabled={!canMoveDown} onClick={() => onMove(1)}>{t('plan_move_down')}</Button>
+        <Button variant="tonal" icon={<UpIcon size={18} />} disabled={!canMoveUp} onClick={() => onMove(d, -1)}>{t('plan_move_up')}</Button>
+        <Button variant="tonal" icon={<DownIcon size={18} />} disabled={!canMoveDown} onClick={() => onMove(d, 1)}>{t('plan_move_down')}</Button>
       </div>
       <Button block onClick={() => onSave(d)}>{t('action_save')}</Button>
     </Sheet>
@@ -378,7 +379,6 @@ function ChangePlanSheet({ open, onClose, hasPrevious, onBuilder, onTemplates, o
       <ChoiceRow icon={<TuneIcon />} title={t('pb_title')} info={t('pb_entry_info')} onClick={onBuilder} />
       <ChoiceRow icon={<ListIcon />} title={t('plan_ready_made')} info={t('plan_ready_made_info')} onClick={onTemplates} />
       {hasPrevious && <ChoiceRow icon={<HistoryIcon />} title={t('plan_previous')} info={t('plan_previous_info')} onClick={onPrevious} />}
-      <ChoiceRow icon={<DocIcon />} title={t('plan_import_docs')} info={t('plan_docs_info')} onClick={() => { location.hash = '#/profile' }} />
     </Sheet>
   )
 }

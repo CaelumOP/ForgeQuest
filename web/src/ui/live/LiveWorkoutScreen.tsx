@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t, useLang } from '../../i18n'
 import type { ExerciseRow, SetRow } from '../../data/db'
-import { configuredEquipment, useSettings, weightUnit } from '../../data/settings'
+import { configuredEquipment, updateSettings, useSettings, weightUnit } from '../../data/settings'
 import {
-  addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishSession, harderHint, recentDoneSets, recentDoneSetsAll, removeSet, stepUp, swapExercise, updateSet,
-  useLibrary, useOpenSession, useSets, type FinishResult,
+  addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishSession, harderHint,
+  progressionReasonFor, recentDoneSets, recentDoneSetsAll, removeSet, stepUp, swapExercise, trainingDays,
+  updateSet, useActivePlan, useLibrary, useOpenSession, useSets, workoutDebrief, type FinishResult,
 } from '../../data/workouts'
-import { weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
-import { isWarmUp } from '../../domain/workout-score'
+import { exerciseCueKeys } from '../../data/seed/exercise-cues'
+import { formatWeight, weightNumber, unitLabel, type WeightUnit } from '../../domain/units'
+import { isDeloadWeek, type ProgressionReason } from '../../domain/progression'
+import { isExtraBlock, pickPrs } from '../../domain/pr-picker'
+import {
+  appendHistoryEntries, appendHistoryOne, dayType, headlineKey,
+  pickHeadlineVariant, scoreTier,
+} from '../../domain/finish-summary'
+import { muscleWeekTargets, pickInsights } from '../../domain/insights'
+import type { PlanItemEntity, SessionEntity, SetEntity } from '../../domain/entities'
 import { Button, Card, Dialog, EmptyState, IconButton, Sheet, ListRow, haptics, toast } from '../kit'
-import { recordScore } from '../../domain/progress'
+import { recordScore, welcomeBack as isWelcomeBack } from '../../domain/progress'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
 import { autoBackup } from '../../data/drive'
@@ -26,7 +35,7 @@ import {
 } from './timers'
 import { evaluateBadges, getProgressSnapshot, markBadgesSeen } from '../../data/progress'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
-import { nextUpDay, workoutMinutes, type WorkoutSummaryData } from './summary'
+import { nextUpDay, workoutMinutes, type PrHeroData, type WorkoutSummaryData } from './summary'
 import { WorkoutSummary } from './WorkoutSummary'
 import './live.css'
 
@@ -70,6 +79,14 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const [summary, setDone] = useState<WorkoutSummaryData | null>(null)
   const [previous, setPrevious] = useState<Map<string, SetRow[]>>(new Map())
   const [harder, setHarder] = useState<Map<string, Hint>>(new Map())
+  const [reasons, setReasons] = useState<Map<string, ProgressionReason>>(new Map())
+  const [newBestId, setNewBestId] = useState<number | null>(null)
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false)
+  const activePlan = useActivePlan()
+  const deloadWeek = !!activePlan && session?.planDayId != null && isDeloadWeek(activePlan.plan.createdAt, todayEpochDay())
+  const editedRef = useRef(new Set<number>())
+  const prBuzzedRef = useRef(new Set<string>())
+  const celebratedRef = useRef(new Set<number>())
   // Best score ever per exercise (finished workouts only), so a set that beats it shows a gold tick.
   const [best, setBest] = useState<Map<string, number>>(new Map())
 
@@ -168,12 +185,27 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     })).then((rows) => { if (live) setBest((m) => new Map([...m, ...rows])) })
     return () => { live = false }
   }, [sets.map((s) => s.exerciseId).join('|'), exercises.size])
-  const prIds = useMemo(() => new Set(sets.filter((s) => {
-    const b = best.get(s.exerciseId)
-    return b != null && Number.isFinite(b) && recordScore(exercises.get(s.exerciseId)?.kind ?? 'REPS', s.reps, s.seconds, s.weightKg, s.exerciseId) > b
-  }).map((s) => s.id!)), [sets, best, exercises])
+  const prIds = useMemo(
+    () => pickPrs(sets, (id) => exercises.get(id)?.kind ?? 'REPS', best),
+    [sets, best, exercises],
+  )
 
-  // A bodyweight move that has become easy offers its harder version (or a slower tempo); checked once per exercise.
+  useEffect(() => {
+    if (!session?.id) return
+    let live = true
+    void getProgressSnapshot().then((snap) => {
+      if (!live) return
+      const days = new Set(snap.sessions.map((x) => x.epochDay))
+      const today = todayEpochDay()
+      const minDay = days.size ? Math.min(...days) : today
+      const planned = snap.plan ? trainingDays(snap.plan) : new Set<number>()
+      setShowWelcomeBack(isWelcomeBack(today, days, snap.dayTags, planned, minDay))
+    })
+    return () => { live = false }
+  }, [session?.id])
+
+  // A bodyweight move that has become easy offers its harder version (or a slower tempo); checked once per exercise,
+  // along with progression "why" reasons.
   const hintChecked = useRef(new Set<string>())
   useEffect(() => {
     if (!session?.id || exercises.size === 0) return
@@ -181,16 +213,26 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     ids.forEach((id) => hintChecked.current.add(id))
     void Promise.all(ids.map(async (id) => {
       const ex = exercises.get(id)
-      const warmup = sets.some((s) => s.exerciseId === id && s.block.toLowerCase() === 'warm-up')
-      return [id, ex ? await harderHint(ex, warmup, session.id!) : undefined] as const
+      const warmup = sets.some((s) => s.exerciseId === id && isExtraBlock(s.block))
+      const hint = ex ? await harderHint(ex, warmup, session.id!) : undefined
+      const first = sets.find((s) => s.exerciseId === id)
+      const planDay = activePlan?.days.find((d) => d.day.id === session.planDayId)
+      const planItem = first ? planDay?.items.find((i) => i.position === first.itemPosition && i.exerciseId === id) ?? null : null
+      const recent = (await recentDoneSets(id)).filter((s) => s.sessionId !== session.id)
+      const reason = await progressionReasonFor(planItem, ex, recent, deloadWeek)
+      return [id, hint, reason] as const
     })).then((rows) => {
-      const ready = rows.filter((r): r is readonly [string, Hint] => r[1] !== undefined)
-      if (ready.length) setHarder((m) => new Map([...m, ...ready]))
+      const ready = rows.filter((r): r is readonly [string, Hint, ProgressionReason | null] => r[1] !== undefined)
+      if (ready.length) setHarder((m) => new Map([...m, ...ready.map(([id, h]) => [id, h] as const)]))
+      const foundReasons = rows.filter((r): r is readonly [string, Hint | undefined, ProgressionReason] => r[2] != null)
+      if (foundReasons.length) setReasons((m) => new Map([...m, ...foundReasons.map(([id, , r]) => [id, r] as const)]))
     })
   }, [sets.map((s) => s.exerciseId).join('|'), session?.id, exercises.size])
 
   const groups = useMemo(() => groupSetsByExercise(sets), [sets])
   const doneCount = sets.filter((s) => s.done).length
+  const workSets = useMemo(() => sets.filter((s) => !isExtraBlock(s.block)), [sets])
+  const workDone = workSets.filter((s) => s.done).length
   const current = currentGroupIndex(groups)
   const nextSet = nextUntickedSet(groups)
   const nameOf = (id: string) => exercises.get(id)?.name ?? id
@@ -226,7 +268,38 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const next = ordered.find((s) => !s.done && s.id !== set.id)
     setRestSaved(startRest(set.restSeconds, Date.now(), next ? nameOf(next.exerciseId) : null))
   }
-  const save = (next: SetRow) => { void updateSet(next).catch(() => toast(t('live_web_save_failed'))) }
+  const announcePr = (set: SetRow) => {
+    const ex = exercises.get(set.exerciseId)
+    if (!ex) return
+    const what = ex.kind === 'WEIGHTED'
+      ? `${set.reps ?? 0} × ${formatWeight(unit, set.weightKg ?? 0, getLang() === 'ar')}`
+      : ex.kind === 'HOLD'
+        ? plural('debrief_n_seconds', set.seconds ?? 0, set.seconds ?? 0)
+        : plural('debrief_n_reps', set.reps ?? 0, set.reps ?? 0)
+    toast(t('live_pr_new', ex.name, what))
+  }
+  const checkBest = (updated: SetRow) => {
+    if (updated.id == null) return
+    const withEdit = setsRef.current.map((s) => (s.id === updated.id ? { ...updated, done: true } : s))
+    const picked = pickPrs(withEdit, (id) => exercises.get(id)?.kind ?? 'REPS', best)
+    if (picked.has(updated.id) && !celebratedRef.current.has(updated.id)) {
+      celebratedRef.current.add(updated.id)
+      if (!prBuzzedRef.current.has(updated.exerciseId)) {
+        prBuzzedRef.current.add(updated.exerciseId)
+        haptics.pr()
+        announcePr(updated)
+      }
+      setNewBestId(updated.id)
+      window.setTimeout(() => setNewBestId((cur) => (cur === updated.id ? null : cur)), 1400)
+    }
+  }
+  const save = (next: SetRow, editedField = false) => {
+    if (editedField && next.id != null) {
+      editedRef.current.add(next.id)
+      checkBest(next)
+    }
+    void updateSet(next).catch(() => toast(t('live_web_save_failed')))
+  }
   /** The warm-up's single tick: marks every set of that exercise done (or all undone), and starts no rest timer. */
   const toggleAll = (group: SetRow[]) => {
     unlockAudio()
@@ -235,14 +308,41 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     if (done) haptics.check(); else haptics.tick()
     group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt: done ? Date.now() : null }) })
   }
+  const carryForward = (set: SetRow) => {
+    for (const next of setsRef.current) {
+      if (next.itemPosition === set.itemPosition && next.exerciseId === set.exerciseId && next.setIndex > set.setIndex && !next.done && next.id != null && !editedRef.current.has(next.id)) {
+        const nextReps = set.reps != null && next.reps != null ? set.reps : next.reps
+        const nextWeight = set.weightKg != null && set.weightKg > 0 ? set.weightKg : next.weightKg
+        if (nextReps !== next.reps || nextWeight !== next.weightKg) {
+          void updateSet({ ...next, reps: nextReps, weightKg: nextWeight }).catch(() => {})
+        }
+      }
+    }
+  }
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
     setEffortSetId(done ? (set.id ?? null) : null)
-    if (!done) haptics.tick(); else if (prIds.has(set.id!)) haptics.pr(); else haptics.check()
+    const withTick = setsRef.current.map((s) => (s.id === set.id ? { ...s, done } : s))
+    const picked = pickPrs(withTick, (id) => exercises.get(id)?.kind ?? 'REPS', best)
+    const freshPr = done && set.id != null && picked.has(set.id) && !prBuzzedRef.current.has(set.exerciseId)
+    if (!done) haptics.tick()
+    else if (freshPr) { prBuzzedRef.current.add(set.exerciseId); haptics.pr(); announcePr(set) }
+    else haptics.check()
     save({ ...set, done, doneAt: done ? Date.now() : null })
+    if (done) carryForward(set)
     if (done && set.restSeconds > 0) startRestFor(set)
     else if (!done) setRestSaved(null)
+  }
+  const easeIn = async () => {
+    setShowWelcomeBack(false)
+    for (const g of groups) {
+      const list = groupSets(g)
+      if (list.length > 2 && list.every((s) => !s.done)) {
+        const last = list.reduce((m, s) => (s.setIndex > m.setIndex ? s : m))
+        if (last.id != null) await removeSet(last.id)
+      }
+    }
   }
   const beginHold = (set: SetRow) => {
     unlockAudio()
@@ -287,13 +387,66 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (badges.length > 0 && !justLog) await markBadgesSeen()
       if (hapticsOn) buzz([60, 40, 120])
       onWorkoutFinished(sid, result)
+      const score = (await allWorkoutScores()).get(sid) ?? null
+      const debrief = await workoutDebrief(sid)
+      const day = todayEpochDay()
+      const history = snap.settings.insightHistory ?? ''
+      let insights = justLog || !score || !debrief ? [] : pickInsights({
+        sessions: snap.sessions.filter((x): x is SessionEntity => x.id != null && x.finishedAt != null),
+        sets: snap.doneSets.filter((x): x is SetEntity => x.id != null),
+        exercises: snap.exercises,
+        streak: snap.streak,
+        muscleWeekTargets: muscleWeekTargets((snap.plan?.days.flatMap((d) => d.items) ?? []).filter((i): i is PlanItemEntity => i.id != null), snap.exercises),
+        focusSessionId: sid,
+      }, history, day)
+      const dType = score && debrief ? dayType(score, debrief, insights) : 'ORDINARY'
+      if (dType === 'ROUGH') insights = []
+      const hVar = debrief ? pickHeadlineVariant(debrief.headline.type, history) : null
+      if (!justLog) {
+        let updated = appendHistoryEntries(history, insights, day)
+        if (debrief && hVar != null && dType !== 'ROUGH') {
+          updated = appendHistoryOne(updated, headlineKey(debrief.headline.type), hVar, day)
+        }
+        if (updated !== history) await updateSettings((cur) => ({ ...cur, insightHistory: updated }))
+      }
+      const prWin = debrief?.wins.find((w) => w.type === 'PR')
+      let prHero: PrHeroData | null = null
+      if (prWin && prWin.type === 'PR') {
+        const kind = snap.exercises.get(prWin.exerciseId)?.kind ?? 'REPS'
+        let oldSet: SetRow | null = null
+        let oldBest = -Infinity
+        for (const x of snap.doneSets) {
+          if (x.exerciseId !== prWin.exerciseId || x.sessionId === sid || isExtraBlock(x.block)) continue
+          const sc = recordScore(kind, x.reps, x.seconds, x.weightKg, prWin.exerciseId)
+          if (sc > oldBest) { oldBest = sc; oldSet = x as SetRow }
+        }
+        prHero = {
+          exerciseId: prWin.exerciseId,
+          kind: prWin.kind === 'WEIGHT' ? 'WEIGHTED' : prWin.kind,
+          weightKg: prWin.weightKg,
+          reps: prWin.reps,
+          seconds: prWin.seconds,
+          oldKg: oldSet?.weightKg != null && oldSet.weightKg > 0 ? oldSet.weightKg : null,
+          oldReps: oldSet?.reps ?? null,
+          oldSeconds: oldSet?.seconds ?? null,
+        }
+      }
+      const exerciseNames = new Map([...snap.exercises.entries()].map(([k, v]) => [k, v.name]))
       setDone({
         sessionId: sid, title: result.sessionTitle, doneSets: result.doneSets, minutes: workoutMinutes(startedAt, result.endedAt),
         prs: result.prs, newBadges: badges, xpGained: snap.level.totalXp - before.totalXp, before, after: snap.level,
         nextUp: nextUpDay(snap.plan?.days ?? [], dayOfWeek(todayEpochDay())),
-        score: (await allWorkoutScores()).get(sid) ?? null,
+        score,
         clippedEndAt: result.clipped ? result.endedAt : null,
         justLog,
+        debrief,
+        exerciseNames,
+        unit: weightUnit(snap.settings),
+        dayType: dType,
+        tier: score ? scoreTier(score) : null,
+        headlineVariant: hVar ?? debrief?.headline.variant ?? null,
+        insights,
+        prHero,
       })
     } catch {
       toast(t('live_web_save_failed'))
@@ -314,10 +467,13 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const swapping = picker?.kind === 'swap' ? exercises.get(sets.find((s) => s.itemPosition === picker.position)?.exerciseId ?? '') : undefined
 
   const elapsed = Math.max(0, Math.floor((now - session.startedAt) / 1000))
-  const header = plural('live_header', sets.length, Math.floor(elapsed / 60), String(elapsed % 60).padStart(2, '0'), doneCount, sets.length)
+  const header = plural('live_header', workSets.length, Math.floor(elapsed / 60), String(elapsed % 60).padStart(2, '0'), workDone, workSets.length)
+  const shownPage = Math.min(page, Math.max(0, groups.length - 1))
+  const focusExId = focus && groups[shownPage] ? groupSets(groups[shownPage])[0]?.exerciseId : null
+  const nowExerciseId = focusExId ?? nextSet?.exerciseId ?? null
   const cardFor = (g: Group, forceOpen: boolean) => (
-    <GroupCard key={g.key} g={g} forceOpen={forceOpen} exercises={exercises} previous={previous} prIds={prIds} unit={unit} effortSetId={effortSetId}
-      onChange={save} onToggle={toggle} onToggleAll={toggleAll} onStartHold={beginHold} harder={harder}
+    <GroupCard key={g.key} g={g} forceOpen={forceOpen} exercises={exercises} previous={previous} prIds={prIds} newBestId={newBestId} reasons={reasons} unit={unit} effortSetId={effortSetId}
+      onChange={save} onToggle={toggle} onToggleAll={toggleAll} onStartHold={beginHold} onDismissEffort={() => setEffortSetId(null)} harder={harder}
       onStepUp={(oldId, next) => {
         setHarder((m) => { const n = new Map(m); n.delete(oldId); return n })
         void stepUp(sid, oldId, next.id).then(() => toast(t('harder_switched', next.name)))
@@ -326,7 +482,6 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       onSwap={(position) => setPicker({ kind: 'swap', position })}
       onAddRound={(positions) => { void (async () => { for (const pos of positions) await addSet(sid, pos) })() }} />
   )
-  const shownPage = Math.min(page, Math.max(0, groups.length - 1))
 
   return (
     <div class="shell lw">
@@ -334,7 +489,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
         <div style={{ inlineSize: `${sets.length ? (doneCount / sets.length) * 100 : 0}%` }} />
       </div>
       <LiveHeader onClose={leave}
-        title={session.title} subtitle={header} now={nextSet ? t('live_now', nameOf(nextSet.exerciseId)) : null}>
+        title={session.title} subtitle={header} now={nowExerciseId ? t('live_now', nameOf(nowExerciseId)) : null}>
         <IconButton label={t(focus ? 'cd_list_mode' : 'cd_focus_mode')} onClick={() => {
           const next = !focus; setFocus(next)
           try { localStorage.setItem(FOCUS_KEY, next ? '1' : '0') } catch { /* not remembered */ }
@@ -343,6 +498,17 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       </LiveHeader>
 
       <div class="scroll lw-body">
+        {deloadWeek && session.planDayId != null && <p class="lw-deload">{t('deload_week_note')}</p>}
+        {showWelcomeBack && doneCount === 0 && (
+          <Card class="lw-welcome">
+            <div class="lw-name">{t('welcome_back_title')}</div>
+            <div class="lw-small">{t('welcome_back_body')}</div>
+            <div class="lw-welcome-actions">
+              <Button variant="tonal" onClick={() => void easeIn()}>{t('welcome_back_ease_in')}</Button>
+              <Button variant="text" onClick={() => setShowWelcomeBack(false)}>{t('welcome_back_full')}</Button>
+            </div>
+          </Card>
+        )}
         {focus && groups.length > 0 ? (
           <div class="lw-focus">
             <div class="lw-pager">
@@ -363,7 +529,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       <div class="lw-dock">
         {flash && !rest && <div class="lw-rest-flash" role="status">{t('live_web_rest_over')}</div>}
         {rest && <RestBar rest={rest} now={now} nextLabel={nextLabel} onAdd={() => addRest(15)}
-          onRemove={() => { if (restLeftNow(rest) > 15) addRest(-15); else setRestSaved(null) }} onSkip={() => setRestSaved(null)} />}
+          onRemove={() => { if (restLeftNow(rest) > 15) addRest(-15); else setRestSaved(null) }} onSkip={() => { setRestSaved(null); setEffortSetId(null) }} />}
         <Button block disabled={doneCount === 0 || finishing} loading={finishing}
           onClick={() => { unlockAudio(); if (sets.some((s) => !s.done)) setConfirmFinish(true); else void doFinish(false) }}>
           {finishing ? t('live_saving') : t('live_finish_workout')}
@@ -372,7 +538,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
 
       {hold && <HoldOverlay hold={hold} now={now} onStop={stopHold} onCancel={() => setHoldSaved(null)} />}
 
-      <FinishSheet open={confirmFinish} left={sets.filter((s) => !s.done).length} onClose={() => setConfirmFinish(false)}
+      <FinishSheet open={confirmFinish} left={sets.filter((s) => !s.done).length} canTickAll={doneCount * 2 >= sets.length} onClose={() => setConfirmFinish(false)}
         onFinish={(all) => { setConfirmFinish(false); void doFinish(all) }} />
       <Dialog open={confirmExit} destructive title={t('live_discard_title')} message={t('live_discard_body')}
         confirmLabel={t('live_discard')} cancelLabel={t('live_keep_going')} onConfirm={() => void doDiscard()} onCancel={() => setConfirmExit(false)} />
@@ -417,13 +583,13 @@ function LiveHeader(p: { onClose: () => void; title?: string; subtitle?: string;
 }
 
 /** Choice when some sets are still unticked: keep going, finish (unticked are dropped), or tick them all and finish. */
-function FinishSheet({ open, left, onClose, onFinish }: { open: boolean; left: number; onClose: () => void; onFinish: (tickAll: boolean) => void }) {
+function FinishSheet({ open, left, canTickAll, onClose, onFinish }: { open: boolean; left: number; canTickAll: boolean; onClose: () => void; onFinish: (tickAll: boolean) => void }) {
   return (
     <Sheet open={open} onClose={onClose} title={plural('live_finish_unticked_title', left, left)}>
       <p class="lw-finish-msg">{plural('live_finish_unticked_body', left, left)}</p>
       <div class="lw-finish-actions">
         <Button block onClick={() => onFinish(false)}>{t('live_finish')}</Button>
-        <Button block variant="text" onClick={() => onFinish(true)}>{t('live_tick_all_finish')}</Button>
+        {canTickAll && <Button block variant="text" onClick={() => onFinish(true)}>{t('live_tick_all_finish')}</Button>}
         <Button block variant="text" onClick={onClose}>{t('live_keep_going')}</Button>
       </div>
     </Sheet>
@@ -432,14 +598,25 @@ function FinishSheet({ open, left, onClose, onFinish }: { open: boolean; left: n
 
 /** "12 reps · 10 kg" or "30 s", for the next-up line. */
 function setSummary(set: SetRow, kind: ExerciseRow['kind'], unit: WeightUnit): string {
-  const main = kind === 'HOLD' ? t('rx_seconds', set.seconds ?? 0) : t('rx_reps_n', set.reps ?? 0)
+  const main = kind === 'HOLD' ? t('rx_seconds', set.seconds ?? 0) : plural('rx_reps_n', set.reps ?? 0, set.reps ?? 0)
   const kg = set.weightKg
   return kg != null && (kg > 0 || kind === 'WEIGHTED') ? `${main} · ${weightNumber(unit, kg)} ${unitLabel(unit, getLang() === 'ar')}` : main
 }
 
+/** Localizes stored English target labels ("8-12 reps", "10 reps", "30 s") for display. */
+function formatTargetLabel(label: string): string {
+  const rangeMatch = /^(\d+)-(\d+)\s+reps$/i.exec(label.trim())
+  if (rangeMatch) return `${rangeMatch[1]}–${rangeMatch[2]} ${t('unit_reps')}`
+  const singleMatch = /^(\d+)\s+reps$/i.exec(label.trim())
+  if (singleMatch) return plural('rx_reps_n', Number(singleMatch[1]), Number(singleMatch[1]))
+  const secMatch = /^(\d+)\s+s$/i.exec(label.trim())
+  if (secMatch) return t('rx_seconds', Number(secMatch[1]))
+  return label
+}
+
 type CardProps = {
-  g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; prIds: Set<number>; unit: WeightUnit; effortSetId: number | null
-  onChange: (s: SetRow) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onMenu: (position: number, swapOnly: boolean) => void; onSwap: (position: number) => void; onAddRound: (positions: number[]) => void
+  g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; prIds: Set<number>; newBestId: number | null; reasons: Map<string, ProgressionReason>; unit: WeightUnit; effortSetId: number | null
+  onChange: (s: SetRow, editedField?: boolean) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onDismissEffort: () => void; onMenu: (position: number, swapOnly: boolean) => void; onSwap: (position: number) => void; onAddRound: (positions: number[]) => void
   harder: Map<string, Hint>; onStepUp: (oldId: string, next: ExerciseRow) => void
 }
 
@@ -460,7 +637,7 @@ function HarderNote({ ex, hint, onStepUp }: { ex: ExerciseRow; hint: Hint | unde
 }
 
 /** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
-function WarmupRow(p: { g: Extract<Group, { kind: 'straight' }>; ex: ExerciseRow | undefined; name: string; rowProps: (set: SetRow, round: number | null) => Omit<SetRowProps, 'label' | 'sublabel'>; onToggleAll: (sets: SetRow[]) => void }) {
+function WarmupRow(p: { g: Extract<Group, { kind: 'straight' }>; ex: ExerciseRow | undefined; name: string; rowProps: (set: SetRow, round: number | null) => Omit<SetRowProps, 'label' | 'sublabel'>; onToggleAll: (sets: SetRow[]) => void; onSwap: (position: number) => void }) {
   const [expanded, setExpanded] = useState(false)
   const { g } = p
   const first = g.sets[0]
@@ -474,11 +651,18 @@ function WarmupRow(p: { g: Extract<Group, { kind: 'straight' }>; ex: ExerciseRow
           <button type="button" class="lw-warm-main" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
             <span class="lw-warm-text">
               <span class="lw-name">{`${p.name} · ${g.sets.length} × ${each}`}</span>
-              {doneCount > 0 && !allDone && <span class="lw-small">{`${doneCount}/${g.sets.length}`}</span>}
+              <span class="lw-warm-note">{t('live_warmup_not_counted')}{doneCount > 0 && !allDone ? ` · ${doneCount}/${g.sets.length}` : ''}</span>
             </span>
             <ExpandMoreIcon size={20} />
           </button>
           <SetTick checked={allDone} onToggle={() => p.onToggleAll(g.sets)} />
+        </div>
+        <div class="lw-warm-foot">
+          <div class="lw-quick">
+            <a class="lw-quickbtn" href={`#/exercise/${encodeURIComponent(first.exerciseId)}/live`}>{t('cues_title')}</a>
+            <button type="button" class="lw-quickbtn" onClick={() => p.onSwap(g.position)}>{t('live_swap_exercise')}</button>
+          </div>
+          {!allDone && <Button variant="text" onClick={() => p.onToggleAll(g.sets)}>{t('live_warmup_done')}</Button>}
         </div>
         {expanded && g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...p.rowProps(set, null)} />)}
       </Card>
@@ -497,11 +681,12 @@ function GroupCard(p: CardProps) {
   const name = (id: string) => exercises.get(id)?.name ?? id
   const rowProps = (set: SetRow, round: number | null) => ({
     set, unit: p.unit, kind: exercises.get(set.exerciseId)?.kind ?? 'REPS', previous: p.previous.get(set.exerciseId)?.[round ?? set.setIndex],
-    pr: prIds(p, set), showEffort: p.effortSetId === set.id, onChange: p.onChange, onToggle: p.onToggle, onStartHold: p.onStartHold,
+    pr: prIds(p, set), flash: set.id != null && p.newBestId === set.id, showEffort: p.effortSetId === set.id,
+    onChange: p.onChange, onToggle: p.onToggle, onStartHold: p.onStartHold, onDismissEffort: p.onDismissEffort,
   })
 
-  if (g.kind === 'straight' && isWarmUp(g.block)) {
-    return <WarmupRow g={g} ex={exercises.get(first.exerciseId)} name={name(first.exerciseId)} rowProps={rowProps} onToggleAll={p.onToggleAll} />
+  if (g.kind === 'straight' && isExtraBlock(g.block)) {
+    return <WarmupRow g={g} ex={exercises.get(first.exerciseId)} name={name(first.exerciseId)} rowProps={rowProps} onToggleAll={p.onToggleAll} onSwap={p.onSwap} />
   }
 
   if (!open && !p.forceOpen) {
@@ -519,21 +704,25 @@ function GroupCard(p: CardProps) {
     )
   }
   if (g.kind === 'straight') {
-    const target = first.targetLabel
+    const target = first.targetLabel ? formatTargetLabel(first.targetLabel) : ''
     const ex = exercises.get(first.exerciseId)
+    const reason = p.reasons.get(first.exerciseId)
+    const firstCueKey = exerciseCueKeys(first.exerciseId)?.[0]
     return (
       <div data-gkey={g.key}>
         <Card>
           <div class="lw-cardhead">
-            <a class="lw-cardtitle" href={`#/exercise/${first.exerciseId}`}>
+            <a class="lw-cardtitle" href={`#/exercise/${encodeURIComponent(first.exerciseId)}/live`}>
               <span class="lw-name">{name(first.exerciseId)}</span>
               <span class="lw-small">{target ? t('live_target', g.sets.length, target) : ex ? [...ex.primary].map((m) => t('muscle_' + m.toLowerCase())).join(' · ') : ''}</span>
+              {reason && <span class="lw-small">{t(`rx_why_${reason.toLowerCase()}`)}</span>}
+              {firstCueKey && <span class="lw-small">{t(firstCueKey)}</span>}
             </a>
             <IconButton label={t('cd_options')} onClick={() => p.onMenu(g.position, false)}><MoreVert /></IconButton>
           </div>
           {/* Always visible, not only in the menu: how to do the move, and swap it for another. */}
           <div class="lw-quick">
-            <a class="lw-quickbtn" href={`#/exercise/${first.exerciseId}`}>{t('cues_title')}</a>
+            <a class="lw-quickbtn" href={`#/exercise/${encodeURIComponent(first.exerciseId)}/live`}>{t('cues_title')}</a>
             <button type="button" class="lw-quickbtn" onClick={() => p.onSwap(g.position)}>{t('live_swap_exercise')}</button>
           </div>
           {ex && <HarderNote ex={ex} hint={p.harder.get(ex.id)} onStepUp={p.onStepUp} />}

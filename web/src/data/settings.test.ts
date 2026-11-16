@@ -4,7 +4,7 @@ import fixtureText from './fixtures/android-backup.json?raw';
 import { db } from './db';
 import { applyBackup, decodeBackup } from './backup';
 import {
-  DEFAULT_SETTINGS, clearWeekTargets, fromBackupSettings, loadSettings, migrateWeekTargets, saveWeekTargets,
+  DEFAULT_SETTINGS, clearWeekTargets, fromBackupSettings, isAiOn, loadSettings, migrateWeekTargets, saveWeekTargets,
   shiftWeekTargetsRecord, toBackupSettings, updateSettings, weekTargets,
 } from './settings';
 
@@ -95,5 +95,14 @@ describe('settings', () => {
       targets: new Map([[20499, 3]]),
       migrated: false,
     });
+  });
+
+  it('resolves isAiOn from aiOptIn or apiKey presence', async () => {
+    expect(isAiOn(DEFAULT_SETTINGS)).toBe(false);
+    expect(isAiOn({ aiOptIn: null, apiKey: 'key' })).toBe(true);
+    expect(isAiOn({ aiOptIn: false, apiKey: 'key' })).toBe(false);
+    expect(isAiOn({ aiOptIn: true, apiKey: '' })).toBe(true);
+    await updateSettings((s) => ({ ...s, aiOptIn: true }));
+    expect((await loadSettings()).aiOptIn).toBe(true);
   });
 });

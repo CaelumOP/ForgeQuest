@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { getLang, t } from '../../i18n'
+import { getLang, plural, t } from '../../i18n'
 import type { SetRow } from '../../data/db'
 import type { ExerciseKind } from '../../domain/muscle'
 import { SET_EFFORTS, parseEffort, type SetEffort } from '../../domain/effort'
@@ -21,10 +21,13 @@ export type SetRowProps = {
   previous?: SetRow
   /** The set's numbers beat the person's best: a done tick turns gold with a star. */
   pr?: boolean
+  /** Briefly flash stepper numbers gold when a new PR is entered. */
+  flash?: boolean
   showEffort: boolean
-  onChange: (next: SetRow) => void
+  onChange: (next: SetRow, editedField?: boolean) => void
   onToggle: (set: SetRow) => void
   onStartHold: (set: SetRow) => void
+  onDismissEffort?: () => void
   onLabelClick?: () => void
 }
 
@@ -71,11 +74,11 @@ export function SetRowView(p: SetRowProps) {
   const [noteOpen, setNoteOpen] = useState(false)
   const timer = useRef<number | undefined>(undefined)
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = undefined } }
-  const save = (patch: Partial<SetRow>) => p.onChange({ ...set, ...patch })
+  const save = (patch: Partial<SetRow>, editedField = false) => p.onChange({ ...set, ...patch }, editedField)
   const effort = parseEffort(set.effort || null)
   const weightStepper = (
     <Stepper label={t('stepper_weight')} value={Math.round(fromKg(unit, set.weightKg ?? 0) * 10) / 10} min={0} max={fromKg(unit, 999)} step={loadStep(unit)}
-      format={(n) => `${Math.round(n * 10) / 10} ${u}`} onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) })} />
+      format={(n) => `${Math.round(n * 10) / 10} ${u}`} onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) }, true)} />
   )
   return (
     <div class="lw-setwrap">
@@ -98,17 +101,17 @@ export function SetRowView(p: SetRowProps) {
           </span>
           {set.note && <span class="lw-note">{set.note}</span>}
         </div>
-        <div class="lw-steps" onPointerDown={(e) => e.stopPropagation()}>
+        <div class={`lw-steps${p.flash ? ' lw-steps-flash' : ''}`} onPointerDown={(e) => e.stopPropagation()}>
           {kind === 'HOLD' && (
             <div class="lw-holdrow">
               {!set.done && <button type="button" class="lw-play" aria-label={t('cd_start_hold')} onClick={() => p.onStartHold(set)}><PlayIcon /></button>}
               <Stepper label={t('stepper_hold_time')} value={set.seconds ?? 0} min={0} max={3600} step={5}
-                format={(n) => `${n} ${t('unit_s')}`} onChange={(v) => save({ seconds: clampField('seconds', v) })} />
+                format={(n) => `${n} ${t('unit_s')}`} onChange={(v) => save({ seconds: clampField('seconds', v) }, true)} />
             </div>
           )}
           {kind !== 'HOLD' && (
             <Stepper label={t('stepper_reps')} value={set.reps ?? 0} min={0} max={999}
-              format={kind === 'WEIGHTED' ? (n) => `${n} ${t('unit_reps')}` : undefined} onChange={(v) => save({ reps: clampField('reps', v) })} />
+              format={kind === 'WEIGHTED' ? (n) => plural('rx_reps_n', n, n) : undefined} onChange={(v) => save({ reps: clampField('reps', v) }, true)} />
           )}
           {(kind === 'WEIGHTED' || set.weightKg != null) && weightStepper}
         </div>
@@ -118,12 +121,16 @@ export function SetRowView(p: SetRowProps) {
       </div>
       {set.done && p.showEffort && (
         <div class="lw-efforts">
+          <div class="lw-effort-head">
+            <span class="lw-effort-cap">{t('live_effort_caption')}</span>
+            <button type="button" class="lw-effort-skip" onClick={() => p.onDismissEffort?.()}>{t('live_effort_skip')}</button>
+          </div>
           {/* One connected group: round outer ends, 6px seams; the chosen effort morphs into a full pill in its colour. */}
           <div class="lw-effort-group" role="radiogroup" aria-label={t('a11y_set_effort')}>
             {SET_EFFORTS.map((e) => (
               <button key={e} type="button" role="radio" aria-checked={set.effort === e}
                 class={`lw-effort-seg kit-accent-${accentOf(e)}${set.effort === e ? ' lw-effort-on' : ''}`}
-                onClick={() => { haptics.tick(); save({ effort: set.effort === e ? '' : e }) }}>{t(EFFORT_KEY[e])}</button>
+                onClick={() => { haptics.tick(); save({ effort: set.effort === e ? '' : e }); p.onDismissEffort?.() }}>{t(EFFORT_KEY[e])}</button>
             ))}
           </div>
           {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}

@@ -47,7 +47,9 @@ describe('seed data mirrors the Android catalog', () => {
   })
 
   it('the Arabic starter map has the same entry count as the Kotlin arabic map', () => {
-    const block = starterPlansKt.slice(starterPlansKt.indexOf('val arabic = mapOf('), starterPlansKt.indexOf('private fun localize'))
+    const start = starterPlansKt.indexOf('val arabic = mapOf(')
+    const endMarkers = [starterPlansKt.indexOf('private val extraArabic', start), starterPlansKt.indexOf('private fun localize', start)].filter((i) => i > start)
+    const block = starterPlansKt.slice(start, Math.min(...endMarkers))
     const kotlinCount = (block.match(/"\s*to\s*"/g) ?? []).length
     expect(Object.keys(STARTER_PLANS_AR).length).toBe(kotlinCount)
   })

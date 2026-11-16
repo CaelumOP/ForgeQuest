@@ -10,6 +10,7 @@ import { effortOf, type SetEffort } from './effort'
 import type { PlanItemEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
 import { fromKg, loadStep, toKg, type WeightUnit } from './units'
+import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 
 const f = Math.fround
 
@@ -17,7 +18,17 @@ const f = Math.fround
 export type PastSet = { reps: number | null; seconds: number | null; weightKg: number | null; effort: SetEffort }
 export type Target = { sets: number; repsMin: number | null; repsMax: number | null; seconds: number | null; weightKg: number | null }
 export type Prefill = { reps: number | null; seconds: number | null; weightKg: number | null }
-export type ProgressionResult = { sets: Prefill[]; holdCeilingReached: boolean }
+export type ProgressionReason = 'LOAD_UP' | 'MORE_REPS' | 'MORE_TIME' | 'ONCE_MORE' | 'SAME' | 'HARD' | 'PAIN' | 'MISSED' | 'LOW_READINESS'
+export type ProgressionResult = { sets: Prefill[]; holdCeilingReached: boolean; reason: ProgressionReason | null }
+
+/** Every 4th week since the plan was made is a lighter one: half the sets, same weights. `createdAt` is ms. */
+export function isDeloadWeek(createdAtMs: number, todayEpochDay: number): boolean {
+  const startDay = Math.floor((createdAtMs - new Date(createdAtMs).getTimezoneOffset() * 60_000) / 86_400_000)
+  return Math.floor(Math.max(0, todayEpochDay - startDay) / 7) % 4 === 3
+}
+
+/** Sets in a lighter week: half, rounded up. */
+export const deloadSets = (sets: number): number => Math.trunc((sets + 1) / 2)
 
 export const HOLD_STEP_SEC = 5
 export const HOLD_CEILING = 1.5
@@ -42,7 +53,7 @@ export function progressionInputs(item: PlanItemLike | null | undefined, exercis
     target: item ? { sets: item.sets, repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds, weightKg: item.weightKg } : null,
     last: past(sessionIds[0]),
     previous: past(sessionIds[1]),
-    warmup: item?.block.toLowerCase() === 'warm-up' || exerciseId === 'jumping_jacks',
+    warmup: item?.block.toLowerCase() === 'warm-up' || item?.block.toLowerCase() === 'cool-down' || exerciseId === 'jumping_jacks' || (exerciseId != null && STRETCH_IDS.has(exerciseId)),
   }
 }
 
@@ -54,8 +65,10 @@ export function nextPrefill(
   unit: WeightUnit,
   lowReadiness: boolean,
   warmup: boolean,
+  deload = false,
 ): ProgressionResult {
-  const count = target?.sets ?? 3
+  const rawCount = target?.sets ?? 3
+  const count = deload ? deloadSets(rawCount) : rawCount
   const repsMin = target?.repsMin ?? 8
   const repsMax = target?.repsMax ?? target?.repsMin ?? 12
   const holdTarget = target?.seconds ?? 30
@@ -66,7 +79,7 @@ export function nextPrefill(
   const strained = pain || last.some((s) => s.effort === 'HARD')
   // "Completed" means every set was done without a hard or painful one; only then may anything go up.
   const completed = !warmup && last.length >= count && !strained
-  const mayProgress = completed && !lowReadiness
+  const mayProgress = completed && !lowReadiness && !deload
 
   const hitTop = (session: readonly PastSet[]) =>
     session.length >= count &&
@@ -114,7 +127,20 @@ export function nextPrefill(
       }
     }
   })
-  return { sets, holdCeilingReached: ceilingReached }
+  const lastTop = sessionWeight(last)
+  const nextTop = sets.reduce((m, s) => Math.max(m, s.weightKg ?? 0), 0)
+  let reason: ProgressionReason | null = null
+  if (!warmup && last.length > 0 && !ceilingReached) {
+    if (strained) reason = pain && nextTop < lastTop - 0.1 ? 'PAIN' : 'HARD'
+    else if (last.length < count) reason = 'MISSED'
+    else if (lowReadiness && completed) reason = 'LOW_READINESS'
+    else if (nextTop > lastTop + 0.1) reason = 'LOAD_UP'
+    else if (kind === 'HOLD' && (sets[0]?.seconds ?? 0) > (last[0]?.seconds ?? 0)) reason = 'MORE_TIME'
+    else if (sets[0]?.reps != null && sets[0].reps > (last[0]?.reps ?? 0)) reason = 'MORE_REPS'
+    else if (kind === 'WEIGHTED' && hitTop(last) && !hasRange) reason = 'ONCE_MORE'
+    else reason = 'SAME'
+  }
+  return { sets, holdCeilingReached: ceilingReached, reason }
 }
 
 /** One load step up in the person's unit, landing on a loadable number (0.25 kg or 2.5 lb). */

@@ -63,6 +63,9 @@ html[dir='rtl'] .pg-spark { transform: scaleX(-1); }
 .bd-new { position: absolute; inset-block-start: 0; inset-inline-end: 0; inline-size: 12px; block-size: 12px; border-radius: var(--r-full); background: var(--coral); }
 .bd-title { font-size: 11px; line-height: 14px; text-align: center; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bd.on .bd-title { color: var(--text); }
+.bd-prog { font-size: 11px; line-height: 14px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.bd-next-bar { inline-size: 100%; block-size: 8px; border-radius: var(--r-full); background: var(--gold-track); overflow: hidden; margin-block: 8px 6px; }
+.bd-next-fill { block-size: 100%; border-radius: var(--r-full); background: var(--gold); }
 .bd-ok { display: flex; justify-content: flex-end; }
 
 /* Body map */

@@ -18,7 +18,7 @@ import { dayTagMap, fullTarget, personalRecords, recordScore, setsForXp, totalXp
 import { debriefForSession, type DebriefResult } from '../domain/debrief';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
-import { nextPrefill, progressionInputs, type PastSet } from '../domain/progression';
+import { isDeloadWeek, nextPrefill, progressionInputs, type PastSet, type ProgressionReason } from '../domain/progression';
 import { isWarmUp, scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
@@ -72,9 +72,19 @@ export async function seedLibrary(lang: 'en' | 'ar' = 'en'): Promise<void> {
   }
   if (toPut.length) await db.exercises.bulkPut(toPut);
 
-  // Starter plan texts follow the language (only rows whose text is exactly a starter text).
+  // Starter plan & plan-builder texts follow the language (only rows whose text is an exact built-in title).
+  const EXTRA_PLAN_AR: Record<string, string> = {
+    'General fitness plan': 'خطة لياقة عامة',
+    'Strength plan': 'خطة قوة',
+    'Muscle building plan': 'خطة بناء العضلات',
+    'Fat loss & fitness plan': 'خطة حرق الدهون واللياقة',
+    'Upper': 'الجزء العلوي',
+    'Lower': 'الجزء السفلي',
+    'Conditioning': 'اللياقة',
+  };
+  const allPairs = [...Object.entries(STARTER_PLANS_AR), ...Object.entries(EXTRA_PLAN_AR)];
   const swap = (s: string) => {
-    for (const [en, a] of Object.entries(STARTER_PLANS_AR)) {
+    for (const [en, a] of allPairs) {
       const [from, to] = arabic ? [en, a] : [a, en];
       if (s === from) return to;
     }
@@ -320,9 +330,11 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
     planDayId: day?.day.id ?? null, title: day?.day.title ?? QUICK_TITLE, epochDay: todayEpochDay(), startedAt: now,
     finishedAt: null, note: '', debrief: '',
   });
+  const activePlan = day ? await getActivePlan() : null;
+  const deload = activePlan ? isDeloadWeek(activePlan.plan.createdAt, todayEpochDay()) : false;
   const sets: SetRow[] = [];
   for (const item of day?.items ?? []) {
-    const built = await buildSetsFor(id, item.position, item, await db.exercises.get(item.exerciseId));
+    const built = await buildSetsFor(id, item.position, item, await db.exercises.get(item.exerciseId), deload);
     sets.push(...(lighter && built.length > 1 ? built.slice(0, -1) : built));
   }
   if (sets.length) await db.sets.bulkAdd(sets);
@@ -330,10 +342,10 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
 }
 
 /** Today's sets for one exercise from its last two finished workouts, through the Progression rules. */
-async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined): Promise<SetRow[]> {
+async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined, deload = false): Promise<SetRow[]> {
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
   const input = progressionInputs(item, ex?.id, ex ? await recentDoneSets(ex.id) : []);
-  const result = nextPrefill(kind, input.target, input.last, input.previous, weightUnit(await loadSettings()), false, input.warmup);
+  const result = nextPrefill(kind, input.target, input.last, input.previous, weightUnit(await loadSettings()), false, input.warmup, deload);
   const base = targetLabel(kind, item);
   const label = result.holdCeilingReached ? [base, HOLD_CEILING_NOTE].filter(Boolean).join(' · ') : base;
   return result.sets.map((p, i): SetRow => ({
@@ -341,6 +353,17 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
     circuit: item?.circuit ?? false, setIndex: i, targetLabel: label, reps: p.reps, seconds: p.seconds, weightKg: p.weightKg,
     done: false, isPr: false, restSeconds: item?.restSeconds ?? 90, note: '', effort: '', doneAt: null,
   }));
+}
+
+export async function progressionReasonFor(
+  item: PlanItemRow | null,
+  ex: ExerciseRow | undefined,
+  recent: SetRow[],
+  deload = false,
+): Promise<ProgressionReason | null> {
+  const kind: ExerciseKind = ex?.kind ?? 'REPS';
+  const input = progressionInputs(item, ex?.id, recent);
+  return nextPrefill(kind, input.target, input.last, input.previous, weightUnit(await loadSettings()), false, input.warmup, deload).reason;
 }
 
 /** The plan's target as short text, e.g. "8-12 reps" or "30 s". Plain English; screens may show their own wording. */

@@ -6,6 +6,7 @@ import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
 import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
+import { isExtraBlock } from '../../domain/volume-change'
 import { formatDay } from '../day-format'
 import { fromKg, unitLabel } from '../../domain/units'
 import type { WeightUnit } from '../../domain/units'
@@ -127,6 +128,7 @@ export function HistoryScreen(_: { param?: string }) {
                   <h3 class="hs-day" key={`d${day}`}>{formatDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                   {list.map((s) => {
                     const ss = bySession.get(s.id!) ?? []
+                    const workingCount = ss.filter((x) => !isExtraBlock(x.block)).length
                     const mins = minutesOf(s)
                     const ex = [...new Set(ss.map((x) => x.exerciseId))].map((id) => names.get(id)).filter((n): n is string => !!n)
                     const prc = ss.filter((x) => x.isPr).length
@@ -138,7 +140,7 @@ export function HistoryScreen(_: { param?: string }) {
                             <span class="hs-date"><b>{formatDay(day, { day: 'numeric' })}</b><span>{dayShort(dayOfWeek(day), getLang())}</span></span>
                             <span class="hs-stext">
                               <span class="hs-sname"><span>{s.title}</span>{prc > 0 && <span><PrTag count={prc} /></span>}</span>
-                              <span class="hs-meta">{[plural('hist_sets', ss.length), mins != null ? t('hist_minutes', mins) : null].filter(Boolean).join(' · ')}</span>
+                              <span class="hs-meta">{[plural('hist_sets', workingCount), mins != null ? t('hist_minutes', mins) : null].filter(Boolean).join(' · ')}</span>
                               {ex.length > 0 && <span class="hs-meta hs-ellip">{ex.slice(0, 4).join(t('list_separator')) + (ex.length > 4 ? ` +${ex.length - 4}` : '')}</span>}
                             </span>
                           </div>

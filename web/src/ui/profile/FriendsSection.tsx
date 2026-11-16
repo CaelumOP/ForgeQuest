@@ -121,7 +121,6 @@ export function FriendsSection({
             class="pf-switchrow"
             role="switch"
             aria-checked={st.view.me.sharePhoto}
-            disabled={st.busy}
             onClick={() => void updateFriendsPreferences({ sharePhoto: !st.view!.me.sharePhoto })}
           >
             <span class="pf-grow"><span class="pf-t">{t('settings_friends_share_photo')}</span></span>
@@ -137,7 +136,6 @@ export function FriendsSection({
             class="pf-switchrow"
             role="switch"
             aria-checked={st.view.me.sharePrs}
-            disabled={st.busy}
             onClick={() => void updateFriendsPreferences({ sharePrs: !st.view!.me.sharePrs })}
           >
             <span class="pf-grow"><span class="pf-t">{t('settings_friends_share_prs')}</span></span>
@@ -153,7 +151,6 @@ export function FriendsSection({
             class="pf-switchrow"
             role="switch"
             aria-checked={st.view.me.alertsOn}
-            disabled={st.busy}
             onClick={() => {
               const next = !st.view!.me.alertsOn
               if (next && pushPermission() === 'default') void requestPush()
@@ -173,7 +170,6 @@ export function FriendsSection({
             class="pf-switchrow"
             role="switch"
             aria-checked={st.view.me.shareWorkouts}
-            disabled={st.busy}
             onClick={() => void updateFriendsAlerts({ shareWorkouts: !st.view!.me.shareWorkouts })}
           >
             <span class="pf-grow">
@@ -192,7 +188,6 @@ export function FriendsSection({
             class="pf-switchrow"
             role="switch"
             aria-checked={st.view.me.pingsOn}
-            disabled={st.busy}
             onClick={() => {
               const next = !st.view!.me.pingsOn
               if (next && pushPermission() === 'default') void requestPush()

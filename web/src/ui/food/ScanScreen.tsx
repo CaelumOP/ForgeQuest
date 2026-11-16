@@ -7,7 +7,8 @@ import { AiError, aiErrorKey } from '../../data/ai'
 import { categoryForNow, logOnce, placesOf, saveMeal, useFoods, withParts } from '../../data/food'
 import type { FoodPart } from '../../data/db'
 import { PlaceField } from './FoodParts'
-import { useSettings } from '../../data/settings'
+import { PasteMealSheet } from './PasteMealSheet'
+import { isAiOn, useSettings } from '../../data/settings'
 import { CameraIcon, CheckIcon, PhotoLibraryIcon } from '../icons'
 import { Button, Card, ChipGroup, NumberField, Sheet, toast } from '../kit'
 import { goBack } from '../nav'
@@ -144,7 +145,8 @@ export function ScanScreen(_: { param?: string }) {
   const camera = useRef<HTMLInputElement>(null)
   const gallery = useRef<HTMLInputElement>(null)
   const runId = useRef(0)
-  const hasKey = s.apiKey.trim() !== ''
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const hasKey = isAiOn(s) && s.apiKey.trim() !== ''
 
   const drop = () => {
     abortRef.current?.abort()
@@ -213,13 +215,17 @@ export function ScanScreen(_: { param?: string }) {
               <p>{t('scan_frame_hint')}</p>
               <Button icon={<CameraIcon size={20} />} onClick={() => camera.current?.click()}>{t('food_w_take_photo')}</Button>
               <Button variant="tonal" icon={<PhotoLibraryIcon size={20} />} onClick={() => gallery.current?.click()}>{t('photo_choose_gallery')}</Button>
+              <Button variant="text" onClick={() => setPasteOpen(true)}>{t('food_paste_meal')}</Button>
               <p>{t('food_w_scan_privacy')}</p>
             </div>
           ) : (
             <Card>
               <div class="scan-nokey">
                 <p>{t('ai_key_needed_food')}</p>
-                <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>
+                <div class="scan-actions">
+                  <Button variant="tonal" onClick={() => setPasteOpen(true)}>{t('food_paste_meal')}</Button>
+                  <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>
+                </div>
               </div>
             </Card>
           ))}
@@ -247,6 +253,7 @@ export function ScanScreen(_: { param?: string }) {
           )}
 
           {state.kind === 'result' && <Result scan={state.scan} carbsOn={s.trackCarbs} onRetake={retake} onLogged={goBack} />}
+          <PasteMealSheet open={pasteOpen} onClose={() => setPasteOpen(false)} onParsed={(scan) => { setPasteOpen(false); setState({ kind: 'result', photo: { url: '', base64: '' }, scan }) }} />
         </div>
       </div>
     </>

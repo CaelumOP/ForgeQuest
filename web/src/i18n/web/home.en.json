@@ -69,5 +69,6 @@
   "onb_key_works": "Key works. AI features are ready.",
   "onb_lets_go": "Let's go",
   "onb_optional": "Optional",
-  "onb_privacy": "Your key stays encrypted on this phone. Meal photos and your training data are sent to Google Gemini under it; free keys let Google use them to improve its models."
+  "onb_privacy": "Your key stays encrypted on this phone. Meal photos and your training data are sent to Google Gemini under it; free keys let Google use them to improve its models.",
+  "today_rest_week": "This week: {1} of {2} workout days. Next: {3}, {4}."
 }

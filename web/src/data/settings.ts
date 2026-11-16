@@ -75,6 +75,12 @@ export interface Settings {
   groqKey: string;
   /** The plan builder's last answers as JSON (see PlanAnswers), so a rebuild starts from them. Not part of backups. */
   planBuilderAnswers: string | null;
+  /** AI master opt-in: null means "auto" (on when apiKey is set). */
+  aiOptIn: boolean | null;
+  /** Swapped-out variations ("exerciseId:epochDay;..."). */
+  cycleHistory: string;
+  /** Recently shown insights ("kind:variant:epochDay;..."). */
+  insightHistory: string;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
@@ -86,7 +92,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true, apiKey: '', groqKey: '',
   dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
   calorieSnoozeUntil: 0, calorieV2Seen: false, targetNudgeAnswered: false, justLog: false,
-  planBuilderAnswers: null,
+  planBuilderAnswers: null, aiOptIn: null, cycleHistory: '', insightHistory: '',
 } satisfies Settings);
 
 const SETTINGS_KEY = 'settings';
@@ -113,8 +119,12 @@ function normalize(raw: unknown): Settings {
     apiKey: s.apiKey.trim(),
     groqKey: s.groqKey.trim(),
     planBuilderAnswers: typeof rawAnswers === 'string' ? rawAnswers : null,
+    aiOptIn: typeof src.aiOptIn === 'boolean' ? src.aiOptIn : null,
   };
 }
+
+export const isAiOn = (s: Pick<Settings, 'aiOptIn' | 'apiKey'>): boolean =>
+  s.aiOptIn ?? s.apiKey.trim().length > 0;
 
 export async function loadSettings(): Promise<Settings> {
   const [raw, pb] = await Promise.all([

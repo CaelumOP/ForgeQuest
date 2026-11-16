@@ -8,7 +8,10 @@ import { DAY_TAGS, type DayState, type DayTag } from '../../domain/progress'
 import { weeklyCounts } from '../../domain/trends'
 import { bodyStep, fromKg, toKg, unitLabel, weightNumber } from '../../domain/units'
 import { BADGES } from '../../domain/badges'
+import type { PlanItemEntity, SessionEntity, SetEntity } from '../../domain/entities'
+import { muscleWeekTargets, pickInsights } from '../../domain/insights'
 import { gramsLeft } from '../../domain/nutrition'
+import { formatInsight } from '../progress/insightText'
 import { Button, Card, Chip, CoachMark, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
@@ -43,6 +46,33 @@ export function HomeScreen(_: { param?: string }) {
     await startSession(todayPlan && !todayPlan.day.isRest ? todayPlan : null)
     go('#/live')
   }
+  const nextTraining = [1, 2, 3, 4, 5, 6, 7]
+    .map((offset) => ((dayOfWeek(today) - 1 + offset) % 7) + 1)
+    .map((dow) => (plan ? planDay(plan, dow) : undefined))
+    .find((d) => d && !d.day.isRest && d.items.length > 0) ?? null
+  const trainAnyway = async () => {
+    await startSession(nextTraining)
+    go('#/live')
+  }
+  const restLine = nextTraining && s.streak.targetThisWeek > 0 && !justLog
+    ? t('today_rest_week', s.streak.doneThisWeek, s.streak.targetThisWeek, nextTraining.day.title,
+      new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', timeZone: 'UTC' }).format(dayDate(today + ((nextTraining.day.dayOfWeek - dayOfWeek(today) + 7) % 7))))
+    : null
+  const doneInsight = s.workoutDoneToday && !justLog
+    ? (() => {
+        const picked = pickInsights({
+          sessions: s.sessions as SessionEntity[], sets: s.doneSets as SetEntity[], exercises: s.exercises, streak: s.streak,
+          muscleWeekTargets: muscleWeekTargets((plan ? plan.days.flatMap((d) => d.items) : []) as PlanItemEntity[], s.exercises),
+        }, s.settings.insightHistory, today, 1)[0]
+        return picked ? formatInsight(picked, s.exercises, weightUnit(s.settings)) : null
+      })()
+    : null
+  const homeStatus = open ? 'IN_PROGRESS'
+    : s.workoutDoneToday ? 'DONE'
+    : s.excusedToday != null ? 'EXCUSED'
+    : !plan || !todayPlan ? 'NO_PLAN'
+    : todayPlan.day.isRest ? 'REST'
+    : 'TRAIN'
 
   // On a training day with the workout still to do (or one in progress, or no plan yet), today's card leads the page.
   const startOnTop = !!open || ((!plan || (!!todayPlan && !todayPlan.day.isRest)) && !s.workoutDoneToday && !s.excusedToday)
@@ -52,19 +82,21 @@ export function HomeScreen(_: { param?: string }) {
       s={s} title={todayPlan?.day.title ?? ''} isRest={!todayPlan || todayPlan.day.isRest} noPlan={!todayPlan}
       noActivePlan={!plan}
       note={todayPlan?.day.note ?? ''}
+      restLine={restLine}
+      doneLine={doneInsight}
       names={[...new Set((todayPlan?.items ?? []).map((i) => s.exercises.get(i.exerciseId)?.name).filter((n): n is string => !!n))]}
-      hasOpen={!!open} onStart={start} onCant={justLog ? undefined : () => setTagDay(today)}
+      hasOpen={!!open} onStart={start} onTrainAnyway={trainAnyway} onCant={justLog ? undefined : () => setTagDay(today)}
     />
   )
 
   return (
     <div class="content home">
-      <Header s={s} showRank={!justLog} />
+      <Header s={s} showRank={!justLog} status={homeStatus} dayTitle={todayPlan?.day.title ?? ''} />
       <Rings s={s} />
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {startOnTop && todayCard}
       {unseen.length > 0 && !justLog && (
-        <Card href="#/profile">
+        <Card href="#/badges">
           <div class="home-row">
             <span class="home-ic" style={{ background: 'var(--gold-track)', color: 'var(--gold)' }}><TrophyIcon /></span>
             <div class="home-grow">
@@ -92,23 +124,45 @@ function badgeTitle(id: string, fallback: string): string {
   return v === key ? fallback : v
 }
 
-function Header({ s, showRank }: { s: ProgressSnapshot; showRank: boolean }) {
+type HomeStatus = 'IN_PROGRESS' | 'TRAIN' | 'DONE' | 'EXCUSED' | 'REST' | 'NO_PLAN'
+
+function statusText(status: HomeStatus, dayTitle: string, s: ProgressSnapshot): string {
+  const day = status === 'IN_PROGRESS' ? t('home_status_in_progress')
+    : status === 'TRAIN' ? t('home_status_train', dayTitle)
+    : status === 'DONE' ? t('home_status_done')
+    : status === 'EXCUSED' ? t('home_status_excused')
+    : status === 'REST' ? t('home_status_rest')
+    : t('home_status_no_plan')
+  if (status === 'IN_PROGRESS') return day
+  const left = gramsLeft(s.settings.proteinGoal, s.today.protein)
+  const food = left <= 0 ? t('home_status_protein_met') : t('home_status_protein_left', left)
+  return `${day}\u00A0· ${food.replace(/ /g, '\u00A0')}`
+}
+
+function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRank: boolean; status: HomeStatus; dayTitle: string }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
   const date = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
   // Arabic has no use for a Latin letter: the level goes in the ring instead (Android RankInfo.mark).
-  const mark = getLang() === 'ar' ? String(s.level.level) : s.level.rank.letter
+  const ar = getLang() === 'ar'
+  const mark = ar ? String(s.level.level) : s.level.rank.letter
+  const rankKey = `rank_${s.level.rank.title.toLowerCase()}`
+  const rankLbl = ar ? (t(rankKey) === rankKey ? s.level.rank.title : t(rankKey)) : t('home_level', s.level.level)
   return (
     <div class="home-head">
       <div class="home-head-text">
-        <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
         <div class="home-date">{date}</div>
+        <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
+        <div class="home-status">{statusText(status, dayTitle, s)}</div>
       </div>
       {showRank && (
-        <a class="home-rank" href="#/profile" aria-label={t('home_web_rank_cd', mark)}>
-          <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
-            <span class="home-rank-letter">{mark}</span>
-          </Ring>
+        <a class="home-rank-wrap" href="#/profile" aria-label={t('home_web_rank_cd', mark)}>
+          <span class="home-rank">
+            <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
+              <span class="home-rank-letter">{mark}</span>
+            </Ring>
+          </span>
+          <span class="home-rank-lvl">{rankLbl}</span>
         </a>
       )}
     </div>
@@ -301,21 +355,21 @@ function FriendStreaks() {
 }
 
 function TodayCard(p: {
-  s: ProgressSnapshot; title: string; isRest: boolean; noPlan: boolean; noActivePlan: boolean; note: string; names: string[]
-  hasOpen: boolean; onStart: () => void
+  s: ProgressSnapshot; title: string; isRest: boolean; noPlan: boolean; noActivePlan: boolean; note: string; restLine?: string | null; doneLine?: string | null; names: string[]
+  hasOpen: boolean; onStart: () => void; onTrainAnyway: () => void
   /** Undefined in "Just log" mode: no streak to excuse a day from. */
   onCant?: () => void
 }) {
   const { s, isRest, noPlan, noActivePlan, hasOpen } = p
   const done = s.workoutDoneToday
   const excused = s.excusedToday
-  const head = hasOpen ? t('today_in_progress') : noPlan ? t('today_no_plan') : isRest ? t('today_rest_day') : p.title
+  const head = hasOpen ? t('today_in_progress') : noPlan ? t('today_no_plan') : isRest && done ? t('today_extra_done') : isRest ? t('today_rest_day') : p.title
   const sub = hasOpen ? t('today_resume_hint')
-    : done ? t('today_done')
+    : done ? (p.doneLine || t('today_done'))
     : excused ? t('today_excused', t(`daytag_${excused.toLowerCase()}`))
     : noActivePlan ? t('pb_entry_info')
     : noPlan ? t('today_no_plan_hint')
-    : isRest ? (p.note.trim() || t('today_rest_hint'))
+    : isRest ? (p.note.trim() || p.restLine || t('today_rest_hint'))
     : plural('today_exercises', p.names.length, p.names.length, p.names.slice(0, 3).join(t('list_separator')))
   const tone = noPlan && !hasOpen ? ['--teal', EditIcon] : isRest && !hasOpen ? ['--blue', MoonIcon] : ['--teal', DumbbellIcon]
   const Icon = tone[1] as typeof EditIcon
@@ -324,7 +378,7 @@ function TodayCard(p: {
     <Card>
       <div class="home-label">{t('today_title')}</div>
       <div class={`home-row home-today${noActivePlan && !hasOpen ? ' home-today-stack' : ''}`}>
-        <a class="home-row home-grow home-plan-link" href={noActivePlan ? '#/plan-builder' : '#/workouts'}>
+        <a class="home-row home-grow home-plan-link" href={done ? '#/history' : noActivePlan ? '#/plan-builder' : '#/workouts'}>
           <span class="home-ic" style={{ background: `var(${colour}-track)`, color: `var(${colour})` }}><Icon /></span>
           <span class="home-grow">
             <span class="home-t home-clip" style={{ display: 'block' }}>{head}</span>
@@ -339,10 +393,13 @@ function TodayCard(p: {
                 : noPlan ? <Button onClick={() => go('#/workouts')}>{t('action_set_up')}</Button>
                 : <Button onClick={p.onStart}>{t('action_start')}</Button>}
             </CoachMark>
-          ) : null}
+          ) : (excused == null ? <Button variant="tonal" onClick={p.onTrainAnyway}>{t('today_train_anyway')}</Button> : null)}
       </div>
       {p.onCant && !isRest && !hasOpen && !done && !excused && (
         <Button variant="text" class="home-cant" onClick={p.onCant}>{t('today_cant_train')}</Button>
+      )}
+      {done && !hasOpen && (
+        <Button variant="text" class="home-cant" onClick={isRest ? p.onTrainAnyway : p.onStart}>{t('today_train_again')}</Button>
       )}
     </Card>
   )

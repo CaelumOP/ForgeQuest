@@ -4,6 +4,7 @@ import type { SetRow } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
 import { addPlanItem, recentDoneSetsAll, setVideoUrl, swapPlanItem, useActivePlan, useFinishedSessions, useLibrary } from '../../data/workouts'
+import { exerciseCueKeys } from '../../data/seed/exercise-cues'
 import { tierOf } from '../../domain/exercise-tiers'
 import type { ExerciseKind } from '../../domain/muscle'
 import { recordScore } from '../../domain/progress'
@@ -44,7 +45,9 @@ const dateText = (epochDay: number, style: 'long' | 'short') =>
     : { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
 export function ExerciseDetailScreen({ param }: { param?: string }) {
-  const id = param ?? ''
+  const [rawId, flag] = (param ?? '').split('/')
+  const id = rawId ?? ''
+  const fromLive = flag === 'live'
   const library = useLibrary()
   const settings = useSettings()
   const sessions = useFinishedSessions()
@@ -84,8 +87,21 @@ export function ExerciseDetailScreen({ param }: { param?: string }) {
         <Button variant="tonal" icon={<LinkIcon />} onClick={() => setLinkOpen(true)}>{ex.videoUrl?.trim() ? t('detail_change_link') : t('detail_add_link')}</Button>
         {ex.custom && <Button variant="tonal" onClick={() => setEditing(true)}>{t('lib_edit')}</Button>}
       </div>
+      {(() => {
+        const cues = exerciseCueKeys(ex.id)
+        if (!cues) return null
+        return (
+          <Card>
+            <h2 class="wk-card-title" style={{ fontSize: '18px', marginBlockEnd: '8px' }}>{t('cues_title')}</h2>
+            <p style={{ margin: '0 0 4px', fontSize: '14px', lineHeight: '20px' }}>{t(cues[0])}</p>
+            <p style={{ margin: '0 0 10px', fontSize: '14px', lineHeight: '20px' }}>{t(cues[1])}</p>
+            <div class="wk-s" style={{ fontWeight: 500 }}>{t('cues_mistake')}</div>
+            <p class="wk-s" style={{ margin: '2px 0 0' }}>{t(cues[2])}</p>
+          </Card>
+        )
+      })()}
       {tier && <div><TierBadge tier={tier} /></div>}
-      {plan && <Button variant="tonal" block onClick={() => setPutOpen(true)}>{t('swap_into_plan')}</Button>}
+      {plan && !fromLive && <Button variant="tonal" block onClick={() => setPutOpen(true)}>{t('swap_into_plan')}</Button>}
 
       <Card>
         <h2 class="wk-card-title" style={{ fontSize: '18px' }}>{t('detail_progress')}</h2>

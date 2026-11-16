@@ -16,5 +16,12 @@
   "food_add_a_food": "Add a food",
   "food_calories_surplus": "Calories · surplus",
   "food_protein_of_goal": "{1} / {2} g",
-  "label_protein": "Protein"
+  "label_protein": "Protein",
+  "food_w_show_less": "Show less",
+  "food_w_barcode_unsupported": "Camera barcode scanning isn't supported in this browser. Enter the barcode number below to look it up.",
+  "food_w_barcode_code": "Barcode number",
+  "food_w_barcode_lookup": "Look up",
+  "food_w_paste_meal_hint": "Paste the JSON reply from Gemini here",
+  "food_w_paste_meal_btn": "Paste",
+  "food_w_read_meal": "Read meal"
 }

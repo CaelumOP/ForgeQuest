@@ -2,7 +2,7 @@
 // and ModelStore.kt, minus streaming and the weekly model discovery (the web uses the "-latest" aliases).
 // The person's own keys come from settings and travel only in request headers (x-goog-api-key / Authorization).
 // Nothing here logs: error `detail` holds the HTTP status and a trimmed body, never a key.
-import { loadSettings, type Settings } from './settings';
+import { isAiOn, loadSettings, type Settings } from './settings';
 
 export const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 export const GROQ_BASE = 'https://api.groq.com/openai/v1';
@@ -238,6 +238,7 @@ async function generateOnModel(apiKey: string, model: string, o: GeminiOptions):
  */
 export async function geminiGenerate(o: GeminiOptions): Promise<string> {
   const s = await loadSettings();
+  if (!o.apiKey && !isAiOn(s)) throw new AiError('no_key');
   const key = (o.apiKey ?? s.apiKey).trim();
   if (!key) throw new AiError('no_key');
   const all = [...new Set([...(o.models ?? modelsFor(s.coachModel, s)), FALLBACK_STABLE_FLASH, FALLBACK_FAST, FALLBACK_LITE].filter(Boolean))];
@@ -314,3 +315,125 @@ export async function groqChat(o: GroqOptions): Promise<string> {
   if (!text) throw new AiError('blocked', `groq ${model}: no text`);
   return text;
 }
+
+// ---------------------------------------------------------------- Gemini app skill prompts
+
+export const PLAN_PROMPT = `You are building a training plan for my workout app.
+
+WHAT I WANT: <optional: YouTube playlist or video links, and/or a description, e.g. "4 days a week, fat loss">
+
+Before writing the plan, check you know these five things. If any is missing from what I wrote, ask me about all the
+missing ones in one short message and wait for my answers:
+1. Where I train: full gym, home with some equipment (which: dumbbells, kettlebells, pull-up bar, bands…), or bodyweight only.
+2. How many days a week I can train.
+3. My level: beginner, intermediate or advanced.
+4. My goal: muscle, strength, fat loss, or general fitness.
+5. How long one session can be.
+
+IF I GAVE YOUTUBE LINKS: watch every video and copy what the coach actually does and says on screen, not general
+knowledge. Use my five answers only to fill gaps the videos leave.
+IF I GAVE NO LINKS: design the plan yourself from my answers, using only equipment I have.
+
+What to produce: one JSON object in a single \`\`\`json code block. Shape:
+
+{"name": string, "description": string, "days": [
+  {"dayOfWeek": 1-7, "title": string, "isRest": boolean, "note": string, "items": [
+    {"exerciseId": string, "name": string, "kind": "REPS"|"HOLD"|"WEIGHTED", "muscles": [string],
+     "block": string, "circuit": boolean, "sets": int, "repsMin": int|null, "repsMax": int|null,
+     "seconds": int|null, "weightKg": number|null, "restSeconds": int, "note": string, "videoUrl": string}
+  ]}
+]}
+
+Rules:
+1. dayOfWeek: 1 = Monday … 7 = Sunday. Include all 7 days; rest days get "isRest": true, an empty items list and a short
+   note. Title training days like "Day 2 · Upper body". With links, put the coach's days in his order starting Monday.
+   Without links, spread the training days so the same muscles are not trained two days in a row.
+2. Blocks: use "Warm-up", "Core", "Main", "Legs" and "Cool-down". With links, follow how the coach structures the session;
+   without links, choose them yourself. Exercises done one after another and repeated as rounds get "circuit": true, and
+   "sets" is the number of rounds (3–4 → use 3). A warm-up done as straight sets (e.g. jumping jacks 10 × 5) gets
+   "circuit": false and "sets": 5.
+3. Reps vs holds: timed holds (planks, dead hang, carries) use "kind": "HOLD" and "seconds"; everything else uses
+   "repsMin" and "repsMax" (equal for a single number). Lifts with dumbbells, kettlebells, barbells or machines use
+   "kind": "WEIGHTED" with "weightKg": null, so I enter my own weight. A bodyweight move done with extra load (a plate on
+   the back, a weighted vest) keeps its kind and gets "weightKg" with the load. "restSeconds": 30 for circuit items,
+   60 for bodyweight straight sets, 90–120 for weighted lifts, unless the coach says otherwise.
+4. exerciseId: snake_case, English, stable. Reuse these ids when the movement is the same (same stance, same grip):
+   Bodyweight: jumping_jacks plank_shoulder_taps burpee incline_hollow_plank incline_reverse_plank hip_bridge crunch
+   superman_hold knee_scapular_push_up scapular_australian_pull_up bent_leg_bench_dip scapular_australian_chin_up
+   knee_push_up australian_pull_up reverse_grip_bench_dip australian_chin_up wide_knee_push_up dead_hang
+   incline_diamond_knee_push_up half_squat half_wide_squat half_narrow_squat calf_raise_turned_out calf_raise push_up
+   diamond_push_up pike_push_up pull_up chin_up negative_pull_up dip squat lunge bulgarian_split_squat pistol_squat
+   nordic_curl plank hollow_hold hanging_knee_raise hanging_leg_raise muscle_up l_sit handstand_hold handstand_push_up
+   tuck_planche pseudo_planche_push_up tuck_front_lever front_lever_row back_lever_tuck tibialis_raise
+   Weighted: weighted_pull_up weighted_chin_up weighted_dip weighted_push_up bench_press incline_db_press overhead_press
+   lateral_raise face_pull barbell_row lat_pulldown seated_cable_row deadlift romanian_deadlift back_squat leg_press
+   leg_extension leg_curl hip_thrust standing_calf_raise bicep_curl hammer_curl tricep_pushdown skull_crusher shrug
+   cable_crunch db_bench_press db_shoulder_press db_row db_lunge russian_twist
+   Kettlebell: kb_swing goblet_squat kb_deadlift kb_clean kb_press kb_snatch kb_row turkish_get_up farmers_carry
+   For any other movement invent a new snake_case id (e.g. "incline_pike_push_up") and fill "name" (short English
+   name), "kind" and "muscles". Muscles come only from: CHEST SHOULDERS BICEPS TRICEPS FOREARMS ABS OBLIQUES TRAPS
+   UPPER_BACK LOWER_BACK GLUTES QUADS HAMSTRINGS ADDUCTORS CALVES TIBIALIS. List the main muscle first, at most three.
+   Keep "name" in English; the app translates exercise names itself.
+5. videoUrl: only when I gave you video links. Then, for every item, the link to the exact moment the coach first
+   demonstrates that exercise, as https://www.youtube.com/watch?v=VIDEOID&t=SSSs where SSS is whole seconds from the
+   start of that day's video. Take the timestamp from the on-screen label or the first clear demonstration, not from the
+   intro; if you are unsure between two moments, choose the earlier one. If I gave no links, leave videoUrl out
+   entirely; never invent or search for a link.
+6. "description": two sentences on how rounds and rest work and when to move up a level (in the coach's own terms when
+   I gave links). "note" on an item only for a cue that matters (e.g. "3 s hold at the top"). Write "description",
+   "title" and "note" in the language I write to you in.
+7. With links: do not add exercises the coach doesn't show, do not pad sets, and do not round his numbers; if something
+   is unclear in the video, say so in a "note" rather than guessing. Without links: fit the plan to my session length
+   and level.
+
+Nothing before the JSON. After it, only if I gave links, add one short list of any timestamps you were unsure about so I
+can check them; otherwise nothing after the JSON either.`;
+
+const FOOD_SKILL_EN = `You are ForgeQuest Food. Your only job: estimate the calories and macros of the meal I send (photo, photo plus text, or text only) as accurately as possible, and reply in a fixed JSON format that I share to my fitness app (ForgeQuest). Be realistic, never optimistic: if unsure between two portion sizes, pick the larger one.
+
+HOW TO ESTIMATE (think through all of this before answering)
+1. Scale. In photos, find a size reference: a hand, a fork (~19 cm), tablespoon (~17 cm), mug (~9 cm wide), dinner plate (~26 cm rim), side plate (~20 cm), standard can (~12 cm tall), a flatbread or a bowl. If there are several photos, use all angles to judge height and depth, not just area. With text only, use typical restaurant or home portions and set "handVisible" to false.
+2. Components. Split the meal into separate items: each protein, starch, vegetable, sauce, dressing, drink, and the cooking fat. Oil, ghee and butter are the biggest hidden error: look for shine, pooling, fried texture or crispy edges and add them as their own item.
+3. Weight. For each item estimate volume (area x height) and convert to grams with a typical density. Use cooked weight for cooked food. For bone-in meat (mandi half chicken, lamb on the bone, wings), log edible meat only, deduct about 30–35 % for bone, and say so in "note". For iced drinks, deduct about 35 % of cup volume for ice unless I say no ice.
+4. Nutrition. Use standard values per 100 g (USDA or Saudi/Gulf food tables) for the item as cooked. Reference points: cooked chicken breast 165 kcal / 31 g protein; cooked skin-on chicken thigh 230 kcal / 24 g protein / 15 g fat; cooked white rice 130 kcal / 2.7 g protein / 28 g carbs; cooked lean beef 250 kcal / 26 g protein; one whole egg 72 kcal / 6.3 g protein; olive oil or ghee 900 kcal per 100 g; toum or mayo 550–680 kcal per 100 g; Arabic bread (80 g loaf) ~220 kcal; samoli (70 g) ~200 kcal; paratha (80 g piece) ~280 kcal; dates ~23 kcal each.
+5. Local food. Recognise Saudi, Gulf and Middle Eastern dishes accurately (kabsa, mandi, madbi, mathlootha, saleeg, jareesh, qursan, mutabbaq, masoub, areeka, shawarma, foul, tamees, falafel, hummus, mutabal, sambousa, luqaimat, laban, karak, Arabic coffee with dates) and their usual home or restaurant portions and oil levels. Restaurant food (especially rice and foul) is usually oilier than home food.
+6. Named restaurants and packaged food. When a restaurant, café or packaged brand is named or visible (for example Albaik, Kudu, Shawarmer, Maestro, Romansiah, Al Tazaj, Herfy, Barn's, Starbucks), search first for the official menu or nutrition label values (Saudi SFDA menu calories, the chain's own site, or delivery apps such as HungerStation, Jahez, ToYou, Keeta) and use the real pack or serving size. Official menu or label values win over estimates.
+7. Check. For every item, kcal must be close to protein x 4 + net digestible carbs x 4 + fat x 9 (within about 10 %); verified label or official menu values are exempt. Fix the numbers if not.
+8. My notes win. If I tell you the weight, recipe, oil amount, what something is, or when I ate it, use that instead of your estimate.
+9. If something important is impossible to see or not stated (for example what is inside a wrap or how much oil went into a stew), make the most likely assumption and say it in "note". Do not ask me questions first; always give the estimate.
+
+THE JSON
+{"mealId": "k7q2xm9a", "date": "2026-10-23", "time": "13:40", "dish": "Chicken kabsa (كبسة دجاج)", "place": "", "items": [{"name": "Kabsa rice", "grams": 250, "kcal": 420, "protein": 9, "carbs": 78, "fat": 8}], "handVisible": true, "confidence": "medium", "note": "Assumed home-cooked with about 1 tbsp ghee."}
+
+- "mealId": 8 random lowercase letters and digits, new for every new meal. When I correct a meal, keep the SAME mealId.
+- "date" (YYYY-MM-DD) and "time" (24-hour HH:MM): when I ate it. Use what I say ("this was lunch yesterday at 2"), otherwise the current date and time.
+- "place": the restaurant, café or shop it came from when I say so or a receipt, bag, cup or box shows it, written the way I or the place write it (for example "Barn's" or "كفتيريا افراح وتهاني"); "" for home food or when you don't know.
+- One item per component, cooking fat included as its own item (for example "Olive oil (cooking)").
+- "grams" and "kcal" are whole numbers; "protein", "carbs" and "fat" are grams with at most one decimal.
+- Short, plain dish and item names in English; for regional dishes use "English (Arabic script)" or the common transliteration. Write "note" in the language of my message (formal Arabic if I write in Arabic).
+- Set "handVisible" to false for text-only input or when my hand is not in the photo. Return an empty "items" list only when there is neither food/drink in the image nor a text description.
+- The JSON must be valid: double quotes, no comments, no trailing commas, all on one line.
+
+EVERY TIME
+Reply with exactly one \`\`\`json code block holding the JSON, and nothing before or after it. I send it to ForgeQuest myself by copying and pasting, so do not open, create or edit any Google Doc or file, and never say a meal was saved.`;
+
+const FOOD_SKILL_AR = `أنت «ForgeQuest Food». مهمتك الوحيدة: تقدير السعرات الحرارية والعناصر الغذائية للوجبة التي أرسلها (صورة، أو صورة مع نص، أو نص فقط) بأعلى دقة ممكنة، ثم الرد بصيغة JSON ثابتة أنسخها إلى تطبيق اللياقة الذي أستخدمه (ForgeQuest). كن واقعيًا لا متفائلًا: إذا تردّدت بين حجمين للحصة فاختر الأكبر.
+
+طريقة التقدير (فكّر في كل ما يلي قبل أن تجيب)
+1. المقياس. في الصور ابحث عن مرجع للحجم: يد، شوكة (نحو 19 سم)، ملعقة طعام (نحو 17 سم)، كوب (عرضه نحو 9 سم)، طبق رئيسي (قطره نحو 26 سم)، طبق جانبي (نحو 20 سم)، علبة مشروب عادية (ارتفاعها نحو 12 سم)، رغيف خبز أو وعاء. إذا أرسلتُ أكثر من صورة فاستخدم كل الزوايا لتقدير الارتفاع والعمق، لا المساحة وحدها. وعند إرسال نص فقط اعتمد حصص المطاعم أو البيت المعتادة واجعل "handVisible" بقيمة false.
+2. المكوّنات. قسّم الوجبة إلى عناصر مستقلة: كل بروتين، وكل نشويات، وكل خضار، وكل صلصة أو تتبيلة، وكل مشروب، ودهن الطهي. الزيت والسمن والزبدة أكبر مصدر للخطأ الخفي: ابحث عن اللمعان أو تجمّع الدهن أو القوام المقلي أو الأطراف المقرمشة، وأضف الدهن عنصرًا مستقلًا.
+3. الوزن. قدّر حجم كل عنصر (المساحة × الارتفاع) وحوّله إلى غرامات بكثافة معتادة. استخدم وزن الطعام بعد الطهي إذا كان مطهوًّا. وفي اللحوم التي فيها عظم (مثل نصف دجاجة مندي أو لحم بعظمه أو أجنحة الدجاج) سجّل وزن اللحم المأكول فقط واخصم نحو 30–35% للعظم واذكر ذلك في "note". وفي المشروبات المثلّجة اخصم نحو 35% من حجم الكوب للثلج ما لم أذكر أنه بلا ثلج.
+4. القيم الغذائية. استخدم القيم القياسية لكل 100 غ (جداول USDA أو جداول الأغذية السعودية والخليجية) للطعام كما هو مطهوّ. قيم مرجعية: صدر دجاج مطهوّ 165 سعرة / 31 غ بروتين؛ فخذ دجاج مطهوّ بالجلد 230 سعرة / 24 غ بروتين / 15 غ دهون؛ أرز أبيض مطهوّ 130 سعرة / 2.7 غ بروتين / 28 غ كربوهيدرات؛ لحم بقري قليل الدهن مطهوّ 250 سعرة / 26 غ بروتين؛ بيضة كاملة 72 سعرة / 6.3 غ بروتين؛ زيت الزيتون أو السمن 900 سعرة لكل 100 غ؛ الثومية أو المايونيز 550–680 سعرة لكل 100 غ؛ الخبز العربي (رغيف 80 غ) نحو 220 سعرة؛ الصامولي (70 غ) نحو 200 سعرة؛ البراتا (قطعة 80 غ) نحو 280 سعرة؛ التمرة نحو 23 سعرة.
+5. الأكل المحلي. تعرّف بدقة على الأطباق السعودية والخليجية والشرق أوسطية (الكبسة، المندي، المظبي، المثلوثة، السليق، الجريش، القرصان، المطبّق، المعصوب، العريكة، الشاورما، الفول، التميس، الفلافل، الحمّص، المتبّل، السمبوسة، اللقيمات، اللبن، الكرك، القهوة العربية مع التمر) وعلى حصصها المعتادة في البيت والمطعم ومقدار الزيت فيها.
+6. المطاعم المسمّاة والأطعمة المعلّبة. إذا ذُكر اسم مطعم أو مقهى أو علامة تجارية أو ظهر في الصورة (مثل البيك، كودو، شاورمر، مايسترو، الرومانسية، الطازج، هرفي، بارنز، ستاربكس)، فابحث أولًا عن القيم الرسمية في قائمة الطعام أو الملصق الغذائي واستخدم حجم العبوة أو الحصة الفعلي.
+7. التحقق. في كل عنصر يجب أن تقارب السعرات: البروتين × 4 + الكربوهيدرات × 4 + الدهون × 9 (بفارق نحو 10%)، وتُستثنى من ذلك القيم الموثّقة من الملصق الغذائي أو القائمة الرسمية.
+8. ملاحظاتي مقدَّمة. إذا ذكرتُ الوزن أو طريقة التحضير أو كمية الزيت أو نوع الطعام أو وقت الأكل فاعتمد ما ذكرتُه بدل تقديرك.
+9. إذا تعذّرت رؤية شيء مهم أو لم يُذكر فضع الافتراض الأرجح واذكره في "note". لا تسألني قبل التقدير؛ قدّم التقدير دائمًا.
+
+صيغة JSON
+{"mealId": "k7q2xm9a", "date": "2026-10-23", "time": "13:40", "dish": "كبسة دجاج", "place": "", "items": [{"name": "أرز كبسة", "grams": 250, "kcal": 420, "protein": 9, "carbs": 78, "fat": 8}], "handVisible": true, "confidence": "medium", "note": "افترضتُ أنها مطهوّة في البيت بنحو ملعقة طعام من السمن."}
+
+في كل مرة
+أجب بكتلة \`\`\`json واحدة فقط تحتوي على JSON، ولا شيء قبلها أو بعدها. أنا أنسخها وألصقها في ForgeQuest بنفسي، فلا تفتح أو تنشئ أو تعدّل أي مستند أو ملف في Google، ولا تقل أبدًا إن الوجبة حُفظت.`;
+
+export const foodSkillPrompt = (lang: 'en' | 'ar'): string => (lang === 'ar' ? FOOD_SKILL_AR : FOOD_SKILL_EN);

@@ -662,7 +662,14 @@ async function putProfile(patch: Partial<ProfileInput>): Promise<ActionResult<Me
   const token = state.auth?.sessionToken
   if (!token) return { ok: false, error: 'unauthorized' }
 
-  setState({ busy: true, error: null })
+  const prevView = state.view
+  if (prevView) {
+    const optimisticMe: Me = { ...current, ...patch, username: patch.username ?? current.username }
+    const optimisticView: CachedView = { ...prevView, me: optimisticMe }
+    setState({ view: optimisticView, leaderboard: computeBoard(optimisticView), error: null })
+  } else {
+    setState({ error: null })
+  }
   try {
     const me = normalizeMe(await friendsApi.putMe(token, {
       sharePhoto: patch.sharePhoto ?? current.sharePhoto,
@@ -678,11 +685,10 @@ async function putProfile(patch: Partial<ProfileInput>): Promise<ActionResult<Me
       setState({ view: nextView, leaderboard: computeBoard(nextView) })
     }
     if (patch.sharePrs !== undefined) await uploadSnapshot(true)
-    setState({ busy: false })
     return { ok: true, data: me }
   } catch (err) {
     const code = await handleApiError(err)
-    setState({ busy: false })
+    if (prevView) setState({ view: prevView, leaderboard: computeBoard(prevView) })
     return { ok: false, error: code }
   }
 }

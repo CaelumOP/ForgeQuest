@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'preact/hooks'
 import { getLang, t } from '../../i18n'
 import type { ExerciseRow } from '../../data/db'
-import { ALL_ACTIVE_EQUIPMENT, EQUIPMENT_LABEL, MOVEMENT_PATTERN_LABEL, expandLegacyEquipment, profileFor, rankSubstitutes, type Equipment } from '../../domain/exercise-swap-engine'
+import { ALL_ACTIVE_EQUIPMENT, EQUIPMENT_LABEL, expandLegacyEquipment, profileFor, rankSubstitutes, type Equipment, type MovementPattern } from '../../domain/exercise-swap-engine'
 import { EXERCISE_KINDS, MUSCLES, type ExerciseKind, type Muscle } from '../../domain/muscle'
 import { Button, Chip, ChipGroup, Sheet, TextField } from '../kit'
 import { AddIcon, SearchIcon } from './glyphs'
@@ -9,6 +9,7 @@ import { filterExercises, kindLabel, muscleLabel, musclesLabel } from './helpers
 import './workouts.css'
 
 const eqName = (e: Equipment) => EQUIPMENT_LABEL[e][getLang()]
+const patternName = (p: MovementPattern) => t(`pattern_${p.toLowerCase()}`)
 
 export type ExercisePickerProps = {
   open: boolean
@@ -34,7 +35,6 @@ export function ExercisePicker(p: ExercisePickerProps) {
 }
 
 function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, userEquipment }: ExercisePickerProps) {
-  const lang = getLang()
   const mine = useMemo(() => expandLegacyEquipment(userEquipment ?? new Set<Equipment>()), [userEquipment])
   const limited = mine.size > 0 && !ALL_ACTIVE_EQUIPMENT.every((e) => mine.has(e))
   const [query, setQuery] = useState('')
@@ -75,7 +75,7 @@ function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, 
     <div class="wk-pickbody">
       {sourceExercise && src && (
         <div class="wk-s" style={{ color: 'var(--teal)' }}>
-          {sourceExercise.name} · {MOVEMENT_PATTERN_LABEL[src.pattern][lang]} · {eqName(src.equipment)}
+          {sourceExercise.name} · {patternName(src.pattern)} · {eqName(src.equipment)}
         </div>
       )}
       <div class="wk-search">
@@ -100,7 +100,7 @@ function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, 
               <button key={c.exercise.id} type="button" class="wk-prow best" onClick={() => onPick(c.exercise as ExerciseRow)}>
                 <span class="wk-prow-text">
                   <span class="wk-prow-name">{c.exercise.name}</span>
-                  <span class="wk-prow-sub">{MOVEMENT_PATTERN_LABEL[c.profile.pattern][lang]} · {eqName(c.profile.equipment)} · {musclesLabel(c.exercise)}</span>
+                  <span class="wk-prow-sub">{patternName(c.profile.pattern)} · {eqName(c.profile.equipment)} · {musclesLabel(c.exercise)}</span>
                 </span>
                 <span class="wk-pill">{kindLabel(c.exercise.kind)}</span>
               </button>

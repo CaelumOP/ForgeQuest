@@ -76,8 +76,8 @@
   "friends_last_day": "Last day",
   "friends_your_rank": "You're #{1} of {2}",
   "friends_done_count": {
-    "one": "{1} workout",
-    "other": "{1} workouts"
+    "one": "{1} workout day",
+    "other": "{1} workout days"
   },
   "friends_together": {
     "one": "{1} week together",
@@ -112,8 +112,8 @@
   "friends_inbox_title": "Inbox",
   "friends_inbox_badge_aria": "Inbox, {1} new",
   "friends_inbox_empty": "Nothing here yet",
-  "friends_inbox_pings_title": "Do your workout!",
-  "friends_inbox_ping_msg": "{1}: Do your workout! 💪",
+  "friends_inbox_pings_title": "Go train 💪",
+  "friends_inbox_ping_msg": "{1}: Go train 💪",
   "friends_inbox_activity_title": "Friend activity",
   "friends_inbox_activity_msg": "{1} just finished a workout 💪",
   "friends_alert_when_trains": "Alert me when {1} trains",
@@ -122,5 +122,5 @@
   "settings_friends_alerts": "Friend workout alerts",
   "settings_friends_share_workouts": "Share my workouts with friends",
   "settings_friends_share_workouts_hint": "Friends see when you finish a workout",
-  "settings_friends_pings": "\"Do your workout\" messages"
+  "settings_friends_pings": "\"Go train 💪\" messages"
 }

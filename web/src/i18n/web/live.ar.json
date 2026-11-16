@@ -9,5 +9,9 @@
   "live_web_view_workout": "عرض التمرين",
   "live_web_rest_over": "انتهت الراحة",
   "live_new_record": "رقم قياسي جديد: {1}",
-  "live_rank": "الرتبة: {2}"
+  "live_rank": "الرتبة: {2}",
+  "live_warmup_done": "تحديد الإحماء كمنجز",
+  "live_warmup_not_counted": "إحماء · لا يُحسب ضمن عداد الجلسات",
+  "live_effort_caption": "كيف كانت هذه الجولة؟",
+  "live_effort_skip": "تخطي"
 }

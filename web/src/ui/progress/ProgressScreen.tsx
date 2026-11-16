@@ -1,18 +1,21 @@
 import { useMemo, useState } from 'preact/hooks'
 import { getLang, plural, t, intlLocale } from '../../i18n'
 import { useProgress, type ProgressSnapshot } from '../../data/progress'
-import { weightUnit } from '../../data/settings'
-import { trainingDays } from '../../data/workouts'
+import { configuredEquipment, updateSettings, weightUnit } from '../../data/settings'
+import { swapPlanItem, trainingDays } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
-import type { SetEntity, SessionEntity } from '../../domain/entities'
+import type { PlanItemEntity, SetEntity, SessionEntity } from '../../domain/entities'
+import { muscleWeekTargets, pickInsights, recoverySplit } from '../../domain/insights'
 import type { ExerciseKind } from '../../domain/muscle'
 import {
-  TREND_RANGE_DAYS, TREND_RANGES, bestSetSeries, consistencyGrid, lifetime, movingAverage, percentChange, proteinDaysPerWeek,
+  TREND_RANGE_DAYS, TREND_RANGES, analyzeFatigueAndPlateaus, bestSetSeries, consistencyGrid, lifetime, movingAverage, percentChange, proteinDaysPerWeek,
   thenNow, topExercises, trainingLoad, trendRangeFrom, weeklyCounts, weeklySets, type TrendPoint, type TrendRange,
 } from '../../domain/trends'
+import { nextVariation, recentlyCycledIds, recordCycle } from '../../domain/variation-cycle'
 import { fromKg, toKg, unitLabel, weightNumber, formatWeight, type WeightUnit } from '../../domain/units'
-import { Card, Chip, ChipGroup, EmptyState, LineChart, Ring } from '../kit'
+import { Button, Card, Chip, ChipGroup, EmptyState, LineChart, Ring, toast } from '../kit'
 import { carbWeeks, formatDelta, formatValue, grouped } from './helpers'
+import { formatInsight } from './insightText'
 import './progress.css'
 
 const RANGE_KEYS: Record<TrendRange, string> = {
@@ -225,6 +228,89 @@ function Legend({ color, label, alpha }: { color: string; label: string; alpha?:
   return <span class="pg-leg"><i class="pg-dot" style={{ background: `var(${color})`, opacity: alpha ?? 1 }} />{label}</span>
 }
 
+function TodayCards({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: WeightUnit }) {
+  const ar = getLang() === 'ar'
+  const sUnit = t('unit_s')
+  const sep = t('list_separator')
+  const today = d.today
+  const sessions = s.sessions as SessionEntity[]
+  const sets = s.doneSets as SetEntity[]
+  const targets = muscleWeekTargets((s.plan ? s.plan.days.flatMap((x) => x.items) : []) as PlanItemEntity[], s.exercises)
+  const insights = pickInsights({ sessions, sets, exercises: s.exercises, streak: s.streak, muscleWeekTargets: targets }, s.settings.insightHistory, today, 3)
+    .map((ins) => formatInsight(ins, s.exercises, unit))
+  const { fresh, recovering } = recoverySplit(s.recovery)
+  const muscleLabel = (m: string) => t(`muscle_${m.toLowerCase()}`)
+  const report = analyzeFatigueAndPlateaus(sessions, sets, s.exercises, today)
+  const stalled = report.stalledLifts.slice(0, 3)
+  const library = [...s.exercises.values()]
+  const planIds = new Set(s.plan ? s.plan.days.flatMap((x) => x.items.map((it) => it.exerciseId)) : [])
+  const eq = configuredEquipment(s.settings)
+  const cycled = recentlyCycledIds(s.settings.cycleHistory, today)
+  const weekWorkouts = weeklyCounts(d.workoutDays, 1, today)[0] ?? 0
+  const weekSets = d.weeklySets[d.weeklySets.length - 1] ?? 0
+
+  const onSwitch = async (fromId: string, toId: string, toName: string) => {
+    if (!s.plan) return
+    const items = s.plan.days.flatMap((x) => x.items).filter((it) => it.exerciseId === fromId)
+    for (const item of items) await swapPlanItem(item, toId)
+    await updateSettings((cur) => ({ ...cur, cycleHistory: recordCycle(cur.cycleHistory, fromId, today) }))
+    toast(t('stalled_switch', toName))
+  }
+
+  return (
+    <>
+      {insights.length > 0 && (
+        <Card>
+          <h3 class="pg-h3">{t('progress_insights_title')}</h3>
+          {insights.map((line, i) => <p class="pg-hint" key={i}>{line}</p>)}
+        </Card>
+      )}
+      {(fresh.length > 0 || recovering.length > 0) && (
+        <Card>
+          <h3 class="pg-h3">{t('coach_today_recovery_title')}</h3>
+          {fresh.length > 0 && <p class="pg-hint">{t('coach_fresh', fresh.map(muscleLabel).join(sep))}</p>}
+          {recovering.length > 0 && <p class="pg-hint">{t('coach_recovering', recovering.map(muscleLabel).join(sep))}</p>}
+        </Card>
+      )}
+      {stalled.length > 0 && (
+        <Card>
+          <h3 class="pg-h3">{t('coach_stalled_title')}</h3>
+          {stalled.map((lift) => {
+            const ex = s.exercises.get(lift.exerciseId)
+            const name = ex?.name ?? lift.exerciseName
+            const peakText = ex
+              ? t('stalled_peak', name, t(ex.kind === 'WEIGHTED' ? 'peak_est_max' : 'peak_best', formatValue(lift.bestScore, ex.kind, unit, sUnit, ar)))
+              : name
+            const sug = planIds.has(lift.exerciseId) ? nextVariation(lift, library, eq, planIds, cycled)?.to ?? null : null
+            return (
+              <div key={lift.exerciseId} style={{ marginBlockStart: '8px' }}>
+                <p class="pg-hint">{peakText}</p>
+                {sug && (
+                  <div style={{ marginBlockStart: '6px' }}>
+                    <Button variant="tonal" onClick={() => void onSwitch(lift.exerciseId, sug.id, sug.name)}>
+                      {t('stalled_switch', sug.name)}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </Card>
+      )}
+      {report.needsDeload && (
+        <Card>
+          <p class="pg-hint">{t('coach_deload_hint')}</p>
+        </Card>
+      )}
+      {(weekWorkouts > 0 || weekSets > 0) && (
+        <Card>
+          <p class="pg-hint">{t('coach_week_line', weekWorkouts, weekSets)}</p>
+        </Card>
+      )}
+    </>
+  )
+}
+
 /** Trends, records and consistency over months (Android ProgressScreen without readiness / Fitbit). */
 export function ProgressScreen(_: { param?: string }) {
   const snap = useProgress()
@@ -257,6 +343,7 @@ export function ProgressScreen(_: { param?: string }) {
     <div class="content">
       {head}
       <div class="pg-list">
+        <TodayCards s={snap} d={d} unit={unit} />
         <ChipGroup label={t('progress_title')} value={range} onChange={(v) => setRangeIdx(TREND_RANGES.indexOf(v))}
           options={TREND_RANGES.map((r) => ({ value: r, label: t(RANGE_KEYS[r]) }))} />
         <LoadCard d={d} />

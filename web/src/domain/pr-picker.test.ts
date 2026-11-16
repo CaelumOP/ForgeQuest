@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { isExtraBlock, pickPrs } from './pr-picker'
+
+describe('pr-picker', () => {
+  it('excludes warm-up, cool-down, and stretch sets from PRs', () => {
+    const sets = [
+      { id: 1, exerciseId: 'back_squat', block: 'Warm-up', done: true, reps: 10, seconds: null, weightKg: 100 },
+      { id: 2, exerciseId: 'back_squat', block: 'Main', done: true, reps: 5, seconds: null, weightKg: 90 },
+      { id: 3, exerciseId: 'quad_stretch', block: 'Cool-down', done: true, reps: null, seconds: 60, weightKg: null },
+    ]
+    const prev = new Map([['back_squat', 80], ['quad_stretch', 30]])
+    const picked = pickPrs(sets, (id) => (id === 'quad_stretch' ? 'HOLD' : 'WEIGHTED'), prev)
+    expect([...picked]).toEqual([2])
+  })
+
+  it('picks at most one PR per exercise and skips first ever session', () => {
+    const sets = [
+      { id: 1, exerciseId: 'push_up', block: 'Main', done: true, reps: 15, seconds: null, weightKg: null },
+      { id: 2, exerciseId: 'push_up', block: 'Main', done: true, reps: 16, seconds: null, weightKg: null },
+      { id: 3, exerciseId: 'pull_up', block: 'Main', done: true, reps: 10, seconds: null, weightKg: null },
+    ]
+    const prev = new Map([['push_up', 12]])
+    const picked = pickPrs(sets, () => 'REPS', prev)
+    expect([...picked]).toEqual([2])
+  })
+
+  it('isExtraBlock detects warm-up and cool-down case-insensitively', () => {
+    expect(isExtraBlock('Warm-up')).toBe(true)
+    expect(isExtraBlock('COOL-DOWN')).toBe(true)
+    expect(isExtraBlock('Main')).toBe(false)
+    expect(isExtraBlock(null)).toBe(false)
+  })
+})

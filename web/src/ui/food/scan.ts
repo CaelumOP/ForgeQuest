@@ -1,7 +1,7 @@
 // Pure helpers for the photo scan (port of FoodRepository.kt scan/scanInstructions/parseScan) plus the
 // browser-only photo shrink. The photo is never stored: it lives in memory until the screen closes.
 import { AiError, geminiGenerate, imagePart, scanModelsFor, textPart } from '../../data/ai';
-import { loadSettings } from '../../data/settings';
+import { isAiOn, loadSettings } from '../../data/settings';
 import { scaledKcal } from '../../domain/nutrition';
 
 export type ScanItem = { name: string; grams: number; kcal: number; protein: number; carbs: number };
@@ -101,10 +101,25 @@ export function parseScan(text: string): FoodScan | null {
 /** Sends the shrunk photo to Gemini with the Android scan prompt. Throws AiError. */
 export async function scanMeal(base64Jpeg: string, signal?: AbortSignal): Promise<FoodScan> {
   const s = await loadSettings();
-  if (!s.apiKey.trim()) throw new AiError('no_key');
+  if (!isAiOn(s) || !s.apiKey.trim()) throw new AiError('no_key');
   const raw = await geminiGenerate({
     system: scanInstructions(s.handLengthCm, s.palmWidthCm),
     parts: [textPart('Estimate this meal with realistic cooked weights and macro math.'), imagePart(base64Jpeg)],
+    json: true, lowThinking: true, models: scanModelsFor(s), signal,
+  });
+  const scan = parseScan(raw);
+  if (!scan) throw new AiError('unreadable', raw.slice(0, 200));
+  if (scan.items.length === 0) throw new AiError('no_food');
+  return scan;
+}
+
+/** Estimates calories and macros for a typed meal description. Throws AiError. */
+export async function estimateFoodText(description: string, signal?: AbortSignal): Promise<FoodScan> {
+  const s = await loadSettings();
+  if (!isAiOn(s) || !s.apiKey.trim()) throw new AiError('no_key');
+  const raw = await geminiGenerate({
+    system: scanInstructions(s.handLengthCm, s.palmWidthCm),
+    parts: [textPart(`There is no photo. Estimate one typical home-sized serving of what the user typed: ${description.slice(0, 200)}`)],
     json: true, lowThinking: true, models: scanModelsFor(s), signal,
   });
   const scan = parseScan(raw);

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import { markBadgesSeen, useProgress } from '../../data/progress'
 import { BADGES, BADGE_CATEGORIES, type BadgeCategory, type BadgeDef } from '../../domain/badges'
+import { badgeProgress } from '../../domain/badge-progress'
 import { Button, Card, Sheet } from '../kit'
 import { TabIcon } from '../icons'
 import './progress.css'
@@ -25,6 +26,14 @@ export function BadgesScreen(_: { param?: string }) {
   useEffect(() => () => { void markBadgesSeen() }, [])
   if (!snap) return <div class="content" />
   const owned = new Map(snap.badges.map((b) => [b.id, b]))
+  let nextUp: { badge: BadgeDef; prog: [number, number]; ratio: number } | null = null
+  for (const b of BADGES) {
+    if (owned.has(b.id)) continue
+    const prog = badgeProgress(b.id, snap.stats)
+    if (!prog) continue
+    const ratio = prog[0] / prog[1]
+    if (!nextUp || ratio > nextUp.ratio) nextUp = { badge: b, prog, ratio }
+  }
   return (
     <div class="content">
       <div class="pg-head">
@@ -32,6 +41,16 @@ export function BadgesScreen(_: { param?: string }) {
         <p class="pg-sub">{t('profile_badges_unlocked', snap.badges.length, BADGES.length)}</p>
       </div>
       <div class="pg-list">
+        {nextUp && (
+          <Card>
+            <div class="pg-hint">{t('badges_next_up')}</div>
+            <h3 class="pg-h3">{`${title(nextUp.badge)} · ${desc(nextUp.badge)}`}</h3>
+            <div class="bd-next-bar" role="progressbar" aria-valuenow={nextUp.prog[0]} aria-valuemin={0} aria-valuemax={nextUp.prog[1]}>
+              <div class="bd-next-fill" style={{ inlineSize: `${Math.round(nextUp.ratio * 100)}%` }} />
+            </div>
+            <p class="pg-hint">{`\u2066${nextUp.prog[0]} / ${nextUp.prog[1]}\u2069`}</p>
+          </Card>
+        )}
         {BADGE_CATEGORIES.map((cat) => (
           <Card key={cat}>
             <h3 class="pg-h3">{t(`badge_cat_${cat.toLowerCase()}`)}</h3>
@@ -39,6 +58,7 @@ export function BadgesScreen(_: { param?: string }) {
               {BADGES.filter((b) => b.category === cat).map((b) => {
                 const got = owned.get(b.id)
                 const isNew = got != null && !got.seen
+                const prog = !got ? badgeProgress(b.id, snap.stats) : null
                 return (
                   <button key={b.id} type="button" class={`bd${got ? ' on' : ''}`} onClick={() => setOpen(b)}>
                     <span class="bd-circle">
@@ -46,6 +66,7 @@ export function BadgesScreen(_: { param?: string }) {
                       {isNew && <i class="bd-new" />}
                     </span>
                     <span class="bd-title">{title(b)}</span>
+                    {prog && prog[0] > 0 && <span class="bd-prog">{`\u2066${prog[0]} / ${prog[1]}\u2069`}</span>}
                     <span class="kit-sr">{got ? t('progress_web_badge_unlocked') : t('progress_web_badge_locked')}{isNew ? `, ${t('progress_web_badge_new')}` : ''}</span>
                   </button>
                 )

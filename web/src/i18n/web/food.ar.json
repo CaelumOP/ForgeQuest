@@ -16,5 +16,12 @@
   "food_add_a_food": "إضافة طعام",
   "food_calories_surplus": "سعرات زائدة",
   "food_protein_of_goal": "⁦{1} / {2}⁩ غ",
-  "label_protein": "البروتين"
+  "label_protein": "البروتين",
+  "food_w_show_less": "عرض أقل",
+  "food_w_barcode_unsupported": "مسح الباركود بالكاميرا غير مدعوم في هذا المتصفح. أدخل رقم الباركود أدناه للبحث عنه.",
+  "food_w_barcode_code": "رقم الباركود",
+  "food_w_barcode_lookup": "بحث",
+  "food_w_paste_meal_hint": "الصق رد JSON من Gemini هنا",
+  "food_w_paste_meal_btn": "لصق",
+  "food_w_read_meal": "قراءة الوجبة"
 }

@@ -10,7 +10,7 @@ import type { SetEntity } from '../../domain/entities'
 import { bestSetSeries } from '../../domain/trends'
 import type { WeightUnit } from '../../domain/units'
 import { Button, Card, Sheet } from '../kit'
-import { BoltIcon, EditIcon, HistoryIcon, PlayCircleIcon, PlayIcon, RepeatIcon, Sparkline } from './glyphs'
+import { BoltIcon, EditIcon, HistoryIcon, LibraryIcon, PlayCircleIcon, PlayIcon, RepeatIcon, Sparkline } from './glyphs'
 import {
   blockLabel, dayName, dayShort, fitExerciseRows, openFormVideo, prescription, ROW_HEIGHT_2COL,
 } from './helpers'
@@ -93,8 +93,9 @@ export function WorkoutsScreen(_: { param?: string }) {
           {/* The top bar already says Workouts: this line names the plan. */}
           <h1 class="wk-plan">{plan?.plan.name ?? t('today_no_plan')}</h1>
         </div>
+        <a class="wk-iconlink" href="#/library" aria-label={t('workouts_library')}><LibraryIcon /></a>
         <a class="wk-iconlink" href="#/history" aria-label={t('cd_workout_history')}><HistoryIcon /></a>
-        {plan && <a class="wk-iconlink" href="#/plan" aria-label={t('cd_edit_plan')}><EditIcon /></a>}
+        {plan && <a class="wk-iconlink" href={`#/plan/day-${selected}`} aria-label={t('cd_edit_plan')}><EditIcon /></a>}
       </div>
 
       {plan && (

@@ -111,3 +111,18 @@ describe('progressionInputs', () => {
     expect(progressionInputs(null, 'squat', []).target).toBeNull()
   })
 })
+
+describe('deload & reasons', () => {
+  it('halves sets on deload week and keeps numbers without progressing', () => {
+    const r = nextPrefill('WEIGHTED', target(4, 8, 12, null, 60), sets(4, 12, 60), [], 'KG', false, false, true)
+    expect(r.sets.length).toBe(2)
+    expect(r.sets[0]).toEqual({ reps: 12, seconds: null, weightKg: 60 })
+  })
+  it('returns progression reasons matching Android Progression.kt', () => {
+    expect(nextPrefill('WEIGHTED', target(3, 8, 12, null, 60), sets(3, 12, 60), [], 'KG', false, false).reason).toBe('LOAD_UP')
+    expect(nextPrefill('WEIGHTED', target(3, 8, 12, null, 60), sets(3, 10, 60), [], 'KG', false, false).reason).toBe('MORE_REPS')
+    expect(nextPrefill('WEIGHTED', target(3, 8, 12, null, 60), sets(3, 10, 60, null, 'HARD'), [], 'KG', false, false).reason).toBe('HARD')
+    expect(nextPrefill('WEIGHTED', target(3, 8, 12, null, 60), sets(3, 10, 60, null, 'PAIN'), [], 'KG', false, false).reason).toBe('PAIN')
+    expect(nextPrefill('WEIGHTED', target(3, 8, 12, null, 60), sets(2, 10, 60), [], 'KG', false, false).reason).toBe('MISSED')
+  })
+})
