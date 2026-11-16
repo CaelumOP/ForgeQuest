@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'preact/hooks'
+import { shownName } from '../../data/friends'
 import type { Person } from '../../domain/forge-score'
 import './friends.css'
 
 export function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.trim()[0]?.toUpperCase() ?? '?'
 }
 
 /** Photo when shared (and it loads), else initials. Decorative: callers label the row. */
@@ -17,7 +15,7 @@ export function Avatar({ person, small }: { person: Person; small?: boolean }) {
     <span class={small ? 'fr-avatar sm' : 'fr-avatar'} aria-hidden="true">
       {person.photoUrl && !imgFailed
         ? <img src={person.photoUrl} alt="" referrerPolicy="no-referrer" onError={() => setImgFailed(true)} />
-        : initialsFor(person.name)}
+        : initialsFor(shownName(person))}
     </span>
   )
 }

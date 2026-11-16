@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import { db } from '../data/db'
 import en from './en.json'
 import ar from './ar.json'
 
@@ -31,9 +32,13 @@ function initialLang(): Lang {
 let lang: Lang = initialLang()
 
 function applyLang() {
-  if (typeof document === 'undefined') return
-  document.documentElement.lang = lang
-  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lang
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+  }
+  if (typeof indexedDB !== 'undefined') {
+    void db.kv.put({ key: 'lang', value: lang }).catch(() => {})
+  }
 }
 applyLang()
 

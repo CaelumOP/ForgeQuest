@@ -44,7 +44,7 @@ export interface Snapshot {
 }
 
 /** sharedStreak (v3): consecutive weeks you and this friend both hit, computed by the server. */
-export type Friend = Person & { snapshot: Snapshot | null; sharedStreak?: number }
+export type Friend = Person & { snapshot: Snapshot | null; sharedStreak?: number; muted?: boolean }
 
 export interface LeaderboardEntry {
   person: Person

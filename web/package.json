@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "dexie": "^4.4.7",
+    "firebase": "13.1.0",
     "preact": "^11.0.2"
   },
   "devDependencies": {
