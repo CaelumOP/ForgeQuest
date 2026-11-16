@@ -388,10 +388,39 @@ internal fun FriendsSettingsGroup(
     val error = vm.friendsError.collectAsState().value
     val joined = uiData != null || me?.joined == true
     val confirmDelete = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            scope.launch { vm.app.friends.onNotificationsAllowed() }
+        }
+    }
+
+    fun requestNotifsIfNeeded() {
+        val permGranted = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU ||
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val enabled = permGranted && androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+        if (enabled) return
+        val prefs = context.getSharedPreferences("friends_prefs", android.content.Context.MODE_PRIVATE)
+        val activity = context.findActivity()
+        val canAsk = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            !permGranted &&
+            (!prefs.getBoolean("push_asked", false) ||
+                (activity != null && androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.POST_NOTIFICATIONS)))
+        if (canAsk) {
+            prefs.edit().putBoolean("push_asked", true).apply()
+            notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                },
+            )
+        }
+    }
 
     val statusText = when {
         !signedIn -> stringResource(R.string.settings_friends_status_signed_out)
-        joined && me != null -> stringResource(R.string.settings_friends_status_signed_in, me.name)
+        joined && me != null -> stringResource(R.string.settings_friends_status_signed_in, com.forgequest.app.data.friends.Usernames.ltr(me.shownName))
         else -> stringResource(R.string.settings_friends_status_pending)
     }
 
@@ -475,6 +504,68 @@ internal fun FriendsSettingsGroup(
                             modifier = Modifier.weight(1f),
                         )
                         com.forgequest.app.ui.components.FitSwitch(me.sharePrs, null)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(me.alertsOn, role = androidx.compose.ui.semantics.Role.Switch) {
+                                vm.setFriendsAlerts(alertsOn = it)
+                                if (it) requestNotifsIfNeeded()
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.friends_alerts_on),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        com.forgequest.app.ui.components.FitSwitch(me.alertsOn, null)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(me.shareWorkouts, role = androidx.compose.ui.semantics.Role.Switch) {
+                                vm.setFriendsAlerts(shareWorkouts = it)
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(
+                                text = stringResource(R.string.friends_share_workouts),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = c.textPrimary,
+                            )
+                            Text(
+                                text = stringResource(R.string.friends_share_workouts_sub),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.textSecondary,
+                            )
+                        }
+                        com.forgequest.app.ui.components.FitSwitch(me.shareWorkouts, null)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(me.pingsOn, role = androidx.compose.ui.semantics.Role.Switch) {
+                                vm.setFriendsAlerts(pingsOn = it)
+                                if (it) requestNotifsIfNeeded()
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.friends_pings_on),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        com.forgequest.app.ui.components.FitSwitch(me.pingsOn, null)
                     }
                     androidx.compose.material3.HorizontalDivider(color = c.divider)
                 }

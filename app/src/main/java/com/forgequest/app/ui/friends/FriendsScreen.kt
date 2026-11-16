@@ -1,9 +1,22 @@
 package com.forgequest.app.ui.friends
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import android.text.format.DateUtils
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,9 +45,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,9 +64,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,7 +78,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -74,11 +95,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import com.forgequest.app.R
 import com.forgequest.app.data.friends.FriendsUiData
+import com.forgequest.app.data.friends.Inbox
+import com.forgequest.app.data.friends.InboxActivity
+import com.forgequest.app.data.friends.InboxPing
 import com.forgequest.app.data.friends.Me
-import com.forgequest.app.data.friends.Nudge
 import com.forgequest.app.data.friends.Person
 import com.forgequest.app.data.friends.findActivity
 import com.forgequest.app.domain.FriendBadge
@@ -129,10 +158,69 @@ fun FriendsScreen(nav: NavHostController) {
     val scope = rememberCoroutineScope()
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
+    var inboxOpen by rememberSaveable { mutableStateOf(false) }
     var outOpen by rememberSaveable { mutableStateOf(false) }
-    var dismissedNudges by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val sentMsg = stringResource(R.string.friends_nudge_sent)
     val nudge: (String) -> Unit = { id -> scope.launch { if (vm.nudge(id) == null) context.toast(sentMsg) } }
+
+    var notifCheckTick by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) notifCheckTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notifCheckTick++
+        if (granted) {
+            scope.launch { vm.app.friends.onNotificationsAllowed() }
+        }
+    }
+
+    val friendsPrefs = remember(context) { context.getSharedPreferences("friends_prefs", Context.MODE_PRIVATE) }
+
+    fun maybeAutoAskNotifications() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !friendsPrefs.getBoolean("push_asked", false)
+        ) {
+            friendsPrefs.edit().putBoolean("push_asked", true).apply()
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    fun requestNotificationsExplicitly() {
+        val permGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (permGranted && NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+        val activity = context.findActivity()
+        val canAsk = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !permGranted &&
+            (!friendsPrefs.getBoolean("push_asked", false) ||
+                (activity != null && ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)))
+        if (canAsk) {
+            friendsPrefs.edit().putBoolean("push_asked", true).apply()
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            context.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                },
+            )
+        }
+    }
+
+    var wasJoined by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(me?.joined) {
+        val nowJoined = me?.joined == true
+        if (wasJoined == false && nowJoined) {
+            maybeAutoAskNotifications()
+        }
+        wasJoined = nowJoined
+    }
 
     LaunchedEffect(signedIn) {
         if (signedIn || vm.isDemo) vm.refresh()
@@ -142,6 +230,36 @@ fun FriendsScreen(nav: NavHostController) {
     val showJoined = uiData != null && (signedIn || activeDemo)
     val showJoinForm = signedIn && !activeDemo && uiData == null && me?.joined != true
     val showLoadingJoined = signedIn && !activeDemo && uiData == null && me?.joined == true
+
+    LaunchedEffect(showJoined, FriendsInboxLink.pending) {
+        if (showJoined && FriendsInboxLink.pending) {
+            inboxOpen = true
+            FriendsInboxLink.pending = false
+        }
+    }
+
+    var unseenPingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(inboxOpen) {
+        if (inboxOpen) {
+            unseenPingKeys = uiData?.view?.inbox?.pings
+                ?.filter { !it.seen }
+                ?.map { "${it.fromId}_${it.day}_${it.createdAt}" }
+                ?.toSet()
+                ?: emptySet()
+            vm.markInboxSeen()
+        }
+    }
+
+    var listTopY by remember { mutableFloatStateOf(0f) }
+    var listBottomY by remember { mutableFloatStateOf(Float.MAX_VALUE) }
+    var meRowVisible by remember { mutableStateOf(true) }
+    val leaderboard = uiData?.leaderboard.orEmpty()
+    val meIndex = leaderboard.indexOfFirst { it.isMe }
+    val showStickyMe = showJoined &&
+        uiData?.view?.friends?.isNotEmpty() == true &&
+        leaderboard.size > 6 &&
+        meIndex >= 0 &&
+        !meRowVisible
 
     PullToRefreshBox(
         isRefreshing = refreshing,
@@ -153,16 +271,21 @@ fun FriendsScreen(nav: NavHostController) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .onGloballyPositioned { coords ->
+                    val pos = coords.positionInRoot()
+                    listTopY = pos.y
+                    listBottomY = pos.y + coords.size.height
+                },
             contentPadding = PaddingValues(
                 start = ForgeSpace.Gutter,
                 end = ForgeSpace.Gutter,
-                bottom = 24.dp,
+                bottom = if (showStickyMe) 104.dp else 24.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap),
         ) {
             item {
-                // Title with Add and Settings beside it; refresh is pull-to-refresh.
+                // Title with Add, Inbox bell, and Settings beside it; refresh is pull-to-refresh.
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.friends_title),
@@ -174,6 +297,34 @@ fun FriendsScreen(nav: NavHostController) {
                         IconButton(onClick = { addOpen = true }, modifier = Modifier.size(48.dp)) {
                             Box(Modifier.size(40.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.PersonAdd, contentDescription = stringResource(R.string.friends_add_title), tint = c.teal)
+                            }
+                        }
+                        val badgeCount = uiData?.view?.badgeCount ?: 0
+                        val bellCd = if (badgeCount > 0) {
+                            stringResource(R.string.friends_inbox_badge_cd, badgeCount)
+                        } else {
+                            stringResource(R.string.friends_inbox_title)
+                        }
+                        IconButton(
+                            onClick = {
+                                inboxOpen = true
+                                maybeAutoAskNotifications()
+                            },
+                            modifier = Modifier.size(48.dp).semantics { contentDescription = bellCd },
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (badgeCount > 0) {
+                                        Badge(
+                                            containerColor = c.teal,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                                        ) {
+                                            Text(badgeCount.toString())
+                                        }
+                                    }
+                                },
+                            ) {
+                                Icon(Icons.Rounded.Notifications, contentDescription = null, tint = c.teal)
                             }
                         }
                         IconButton(onClick = { nav.navigate("settings/friends") }, modifier = Modifier.size(48.dp)) {
@@ -230,19 +381,6 @@ fun FriendsScreen(nav: NavHostController) {
 
                 showJoined -> {
                     val data = uiData!!
-                    val nudges = data.view.nudges.filter { "${it.fromId}_${it.day}" !in dismissedNudges }
-                    items(nudges, key = { "nudge_${it.fromId}_${it.day}" }) { n ->
-                        NudgeBanner(n, onDismiss = { dismissedNudges = dismissedNudges + "${n.fromId}_${n.day}" })
-                    }
-                    items(data.view.incoming, key = { "in_${it.id}" }) { person ->
-                        IncomingRequestCard(
-                            person = person,
-                            busy = busy,
-                            onAccept = { vm.accept(person.id) },
-                            onDecline = { vm.decline(person.id) },
-                        )
-                    }
-
                     if (data.view.friends.isEmpty()) {
                         item { EmptyFriends(data.view.me, busy, onSendInvite = { vm.invite(it) }) }
                     } else {
@@ -251,6 +389,18 @@ fun FriendsScreen(nav: NavHostController) {
                             FitCard(padding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                                 data.leaderboard.forEachIndexed { index, entry ->
                                     if (index > 0 && !entry.isMe && !data.leaderboard[index - 1].isMe) HorizontalDivider(color = c.divider)
+                                    val rowModifier = if (entry.isMe) {
+                                        Modifier.onGloballyPositioned { coords ->
+                                            if (coords.isAttached) {
+                                                val pos = coords.positionInRoot()
+                                                val top = pos.y
+                                                val bottom = top + coords.size.height
+                                                meRowVisible = bottom > listTopY && top < listBottomY
+                                            }
+                                        }
+                                    } else {
+                                        Modifier
+                                    }
                                     LeaderboardRow(
                                         rank = index + 1,
                                         entry = entry,
@@ -258,6 +408,7 @@ fun FriendsScreen(nav: NavHostController) {
                                         busy = busy,
                                         onOpen = { selectedId = entry.id },
                                         onNudge = { nudge(entry.id) },
+                                        modifier = rowModifier,
                                     )
                                 }
                             }
@@ -297,6 +448,56 @@ fun FriendsScreen(nav: NavHostController) {
                 }
             }
         }
+
+        AnimatedVisibility(
+            visible = showStickyMe,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            if (meIndex >= 0) {
+                val meEntry = leaderboard[meIndex]
+                Surface(
+                    shape = ForgeShape.Lg,
+                    color = c.card,
+                    shadowElevation = 6.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp),
+                ) {
+                    Box(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        LeaderboardRow(
+                            rank = meIndex + 1,
+                            entry = meEntry,
+                            nudged = false,
+                            busy = busy,
+                            onOpen = {},
+                            onNudge = {},
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (inboxOpen && uiData != null) {
+        val permGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        val notifsAllowed = remember(notifCheckTick, permGranted) {
+            permGranted && NotificationManagerCompat.from(context).areNotificationsEnabled()
+        }
+        InboxSheet(
+            incoming = uiData!!.view.incoming,
+            inbox = uiData!!.view.inbox,
+            unseenPingKeys = unseenPingKeys,
+            notifsAllowed = notifsAllowed,
+            busy = busy,
+            onRequestNotifs = ::requestNotificationsExplicitly,
+            onAccept = vm::accept,
+            onDecline = vm::decline,
+            onDismiss = { inboxOpen = false },
+        )
     }
 
     if (addOpen && uiData != null) {
@@ -338,6 +539,7 @@ fun FriendsScreen(nav: NavHostController) {
             unit = unit,
             nudgedToday = entry.id in nudgedToday,
             busy = busy,
+            onSetMuted = { muted -> vm.setMuted(entry.id, muted) },
             onNudge = { vm.nudge(entry.id) },
             onRemove = {
                 selectedId = null
@@ -403,76 +605,6 @@ private fun EmptyFriends(me: Me, busy: Boolean, onSendInvite: suspend (String) -
     }
 }
 
-@Composable
-private fun NudgeBanner(nudge: Nudge, onDismiss: () -> Unit) {
-    val c = Fit.colors
-    FitCard(padding = PaddingValues(start = ForgeSpace.CardPaddingCompact, end = 4.dp, top = 4.dp, bottom = 4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(32.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.friends_nudged_you, nudge.name),
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.textPrimary,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = c.textSecondary)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun IncomingRequestCard(
-    person: Person,
-    busy: Boolean,
-    onAccept: () -> Unit,
-    onDecline: () -> Unit,
-) {
-    val c = Fit.colors
-    FitCard(padding = PaddingValues(horizontal = ForgeSpace.CardPaddingCompact, vertical = 12.dp)) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            itemVerticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(Modifier.weight(1f).defaultMinSize(minWidth = 180.dp), verticalAlignment = Alignment.CenterVertically) {
-                FriendAvatar(person.name, person.photoUrl, size = 40.dp)
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(person.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                    Row {
-                        person.username?.let { HandleText(it) }
-                        Text(" " + stringResource(R.string.friends_wants_friends), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    }
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onDecline, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.friends_decline), color = c.textSecondary)
-                }
-                Button(
-                    onClick = onAccept,
-                    enabled = !busy,
-                    shape = ForgeShape.Full,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Text(stringResource(R.string.friends_accept), style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        }
-    }
-}
-
 private val FriendBadge.labelRes: Int
     get() = when (this) {
         FriendBadge.TRAINED -> R.string.friends_badge_trained
@@ -483,10 +615,9 @@ private val FriendBadge.labelRes: Int
     }
 
 /**
- * One board row: rank, avatar, name (+ gold flame with the shared streak), status line, score, then the nudge bell as a
- * SIBLING button (never nested in the row's own click target). Rows without a bell keep its space so scores line up.
+ * One board row: rank, avatar, name (with shared streak under it), status line, score, and the "Go train 💪" pill
+ * on its own line under the status text (never squeezes the name).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LeaderboardRow(
     rank: Int,
@@ -495,6 +626,7 @@ private fun LeaderboardRow(
     busy: Boolean,
     onOpen: () -> Unit,
     onNudge: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val c = Fit.colors
     val statusWord = stringResource(entry.badge.labelRes)
@@ -503,15 +635,14 @@ private fun LeaderboardRow(
     val together = if (entry.sharedStreak > 0) pluralStringResource(R.plurals.friends_together, entry.sharedStreak, entry.sharedStreak) else null
     val scoreText = if (entry.syncedThisWeek) entry.score.toString() else "–"
     val spoken = listOfNotNull("$rank. $name", together, status, scoreText).joinToString(", ")
-    Row(
-        Modifier
+    Column(
+        modifier
             .fillMaxWidth()
             .let { if (entry.isMe) it.clip(ForgeShape.Sm).background(c.cardHigh).border(1.5.dp, c.teal, ForgeShape.Sm) else it },
-        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .heightIn(min = 64.dp)
                 .clip(ForgeShape.Sm)
                 .let { if (!entry.isMe) it.clickable(role = Role.Button, onClick = onOpen) else it }
@@ -530,17 +661,17 @@ private fun LeaderboardRow(
             FriendAvatar(entry.name, entry.photoUrl, size = 40.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                    Text(name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                    if (entry.sharedStreak > 0) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = c.gold, modifier = Modifier.size(14.dp))
-                            Text(
-                                entry.sharedStreak.toString(),
-                                style = MaterialTheme.typography.labelMedium.copy(fontFamily = NumberFont).tabular(),
-                                color = c.gold,
-                            )
-                        }
+                Text(name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                if (together != null) {
+                    Spacer(Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = c.gold, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            together,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = c.gold,
+                        )
                     }
                 }
                 Spacer(Modifier.height(2.dp))
@@ -549,26 +680,241 @@ private fun LeaderboardRow(
             Spacer(Modifier.width(8.dp))
             Text(
                 text = scoreText,
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = NumberFont, fontWeight = FontWeight.SemiBold).tabular(),
-                color = if (entry.syncedThisWeek) c.textPrimary else c.textSecondary,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = NumberFont,
+                    fontWeight = if (entry.isMe) FontWeight.Bold else FontWeight.SemiBold,
+                ).tabular(),
+                color = when {
+                    entry.isMe -> c.teal
+                    entry.syncedThisWeek -> c.textPrimary
+                    else -> c.textSecondary
+                },
             )
         }
         val canNudge = !entry.isMe && entry.weekState != "hit"
-        when {
-            !canNudge -> Spacer(Modifier.width(48.dp))
-            nudged -> {
-                val label = stringResource(R.string.friends_nudged_name, entry.name)
-                Box(Modifier.size(48.dp).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Check, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+        if (canNudge) {
+            Box(Modifier.padding(start = 78.dp, end = 4.dp, bottom = 4.dp)) {
+                if (nudged) {
+                    Text(
+                        text = stringResource(R.string.friends_sent_today),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = c.textSecondary,
+                        modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .clip(ForgeShape.Full)
+                            .clickable(enabled = !busy, role = Role.Button, onClick = onNudge)
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Surface(
+                            shape = ForgeShape.Full,
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, c.teal),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.friends_go_train),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = c.teal,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
                 }
             }
-            else -> IconButton(onClick = onNudge, enabled = !busy, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    Icons.Rounded.NotificationsActive,
-                    contentDescription = stringResource(R.string.friends_nudge_name, entry.name),
-                    tint = c.teal,
-                    modifier = Modifier.size(20.dp),
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun InboxSheet(
+    incoming: List<Person>,
+    inbox: Inbox,
+    unseenPingKeys: Set<String>,
+    notifsAllowed: Boolean,
+    busy: Boolean,
+    onRequestNotifs: () -> Unit,
+    onAccept: (String) -> Unit,
+    onDecline: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = Fit.colors
+    val pings = remember(inbox.pings) { inbox.pings.sortedByDescending { it.createdAt } }
+    val activity = remember(inbox.activity) { inbox.activity.sortedByDescending { it.at } }
+    val allEmpty = incoming.isEmpty() && pings.isEmpty() && activity.isEmpty()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberFullSheetState(),
+        containerColor = c.card,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(horizontal = ForgeSpace.Gutter)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.friends_inbox_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = c.textPrimary,
+                modifier = Modifier.semantics { heading() },
+            )
+
+            if (!notifsAllowed) {
+                Surface(
+                    shape = ForgeShape.Md,
+                    color = c.cardHigh,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.friends_turn_on_notifs),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            onClick = onRequestNotifs,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.friends_turn_on_action), color = c.teal)
+                        }
+                    }
+                }
+            }
+
+            if (allEmpty) {
+                Text(
+                    text = stringResource(R.string.friends_inbox_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = c.textSecondary,
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
+            }
+
+            if (incoming.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.friends_incoming_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = c.textSecondary,
+                    modifier = Modifier.semantics { heading() },
+                )
+                incoming.forEach { person ->
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            Modifier.weight(1f).defaultMinSize(minWidth = 180.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            FriendAvatar(person.shownName, person.photoUrl, size = 40.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(person.shownName, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                                Text(
+                                    stringResource(R.string.friends_wants_friends),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = c.textSecondary,
+                                )
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = { onDecline(person.id) },
+                                enabled = !busy,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
+                                Text(stringResource(R.string.friends_decline), color = c.textSecondary)
+                            }
+                            Button(
+                                onClick = { onAccept(person.id) },
+                                enabled = !busy,
+                                shape = ForgeShape.Full,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
+                                Text(stringResource(R.string.friends_accept), style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (pings.isNotEmpty()) {
+                if (incoming.isNotEmpty()) HorizontalDivider(color = c.divider)
+                Text(
+                    text = stringResource(R.string.friends_inbox_pings_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = c.textSecondary,
+                    modifier = Modifier.semantics { heading() },
+                )
+                pings.forEach { ping ->
+                    val isUnseen = "${ping.fromId}_${ping.day}_${ping.createdAt}" in unseenPingKeys
+                    InboxMessageRow(
+                        text = stringResource(R.string.friends_inbox_ping_line, Usernames.ltr(ping.shownName)),
+                        timeMs = ping.createdAt,
+                        unseen = isUnseen,
+                    )
+                }
+            }
+
+            if (activity.isNotEmpty()) {
+                if (incoming.isNotEmpty() || pings.isNotEmpty()) HorizontalDivider(color = c.divider)
+                Text(
+                    text = stringResource(R.string.friends_inbox_activity_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = c.textSecondary,
+                    modifier = Modifier.semantics { heading() },
+                )
+                activity.forEach { act ->
+                    InboxMessageRow(
+                        text = stringResource(R.string.friends_inbox_activity_line, Usernames.ltr(act.shownName)),
+                        timeMs = act.at,
+                        unseen = false,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InboxMessageRow(text: String, timeMs: Long, unseen: Boolean) {
+    val c = Fit.colors
+    val relTime = if (timeMs > 0L) {
+        DateUtils.getRelativeTimeSpanString(timeMs, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
+    } else {
+        ""
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (unseen) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(c.teal))
+            Spacer(Modifier.width(10.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+            if (relTime.isNotEmpty()) {
+                Text(relTime, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
     }
@@ -842,16 +1188,18 @@ private fun OutgoingRow(person: Person, busy: Boolean, onCancel: () -> Unit) {
             .padding(start = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FriendAvatar(person.name, person.photoUrl, size = 32.dp)
+        FriendAvatar(person.shownName, person.photoUrl, size = 32.dp)
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(person.name, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-            person.username?.let { HandleText(it) }
-        }
+        Text(
+            text = person.shownName,
+            style = MaterialTheme.typography.bodyMedium,
+            color = c.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
         IconButton(onClick = onCancel, enabled = !busy, modifier = Modifier.size(48.dp)) {
             Icon(
                 Icons.Rounded.Close,
-                contentDescription = stringResource(R.string.friends_cancel_invite, person.name),
+                contentDescription = stringResource(R.string.friends_cancel_invite, Usernames.ltr(person.shownName)),
                 tint = c.textSecondary,
             )
         }
@@ -878,6 +1226,7 @@ private fun FriendDetailSheet(
     unit: WeightUnit,
     nudgedToday: Boolean,
     busy: Boolean,
+    onSetMuted: (Boolean) -> Unit,
     onNudge: suspend () -> String?,
     onRemove: () -> Unit,
     onBlock: () -> Unit,
@@ -900,6 +1249,7 @@ private fun FriendDetailSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
                 .padding(horizontal = ForgeSpace.Gutter)
                 .padding(bottom = 20.dp),
@@ -908,10 +1258,12 @@ private fun FriendDetailSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FriendAvatar(entry.name, entry.photoUrl, size = 56.dp)
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(entry.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                    entry.username?.let { HandleText(it) }
-                }
+                Text(
+                    entry.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = c.textPrimary,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
             }
 
             // Shared streak: the one thing this sheet is about.
@@ -962,16 +1314,36 @@ private fun FriendDetailSheet(
                     .heightIn(min = 48.dp),
             ) {
                 Text(
-                    text = if (nudged) stringResource(R.string.friends_nudged_today) else stringResource(R.string.friends_nudge_name, entry.name),
+                    text = if (nudged) stringResource(R.string.friends_sent_today) else stringResource(R.string.friends_go_train),
                     style = MaterialTheme.typography.labelLarge,
                 )
+            }
+
+            val alertsEnabled = !entry.muted
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .toggleable(value = alertsEnabled, role = Role.Switch) { checked ->
+                        onSetMuted(!checked)
+                    }
+                    .heightIn(min = 48.dp)
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.friends_alert_when_trains, Usernames.ltr(entry.name)),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = c.textPrimary,
+                    modifier = Modifier.weight(1f).padding(end = 12.dp),
+                )
+                FitSwitch(alertsEnabled, null)
             }
 
             Column {
                 KeyValue(stringResource(R.string.friends_score_label), if (entry.syncedThisWeek) entry.score.toString() else "–")
                 KeyValue(stringResource(entry.badge.labelRes), pluralStringResource(R.plurals.friends_done_count, entry.done, entry.done))
                 if (entry.syncedThisWeek) {
-                    KeyValue(stringResource(R.string.friends_their_streak, entry.name), pluralStringResource(R.plurals.friends_weeks, entry.streakWeeks, entry.streakWeeks))
+                    KeyValue(stringResource(R.string.friends_their_streak, Usernames.ltr(entry.name)), pluralStringResource(R.plurals.friends_weeks, entry.streakWeeks, entry.streakWeeks))
                     KeyValue(stringResource(R.string.friends_protein_label), pluralStringResource(R.plurals.friends_days, entry.proteinDays, entry.proteinDays))
                 }
             }
@@ -1035,7 +1407,7 @@ private fun FriendDetailSheet(
             onDismissRequest = { confirmRemove = false },
             containerColor = c.card,
             title = { Text(stringResource(R.string.friends_remove_confirm_title), color = c.textPrimary) },
-            text = { Text(stringResource(R.string.friends_remove_confirm_body, entry.name), color = c.textSecondary) },
+            text = { Text(stringResource(R.string.friends_remove_confirm_body, Usernames.ltr(entry.name)), color = c.textSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmRemove = false
@@ -1057,7 +1429,7 @@ private fun FriendDetailSheet(
             onDismissRequest = { confirmBlock = false },
             containerColor = c.card,
             title = { Text(stringResource(R.string.friends_block_confirm_title), color = c.textPrimary) },
-            text = { Text(stringResource(R.string.friends_block_confirm_body, entry.name), color = c.textSecondary) },
+            text = { Text(stringResource(R.string.friends_block_confirm_body, Usernames.ltr(entry.name)), color = c.textSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmBlock = false
@@ -1096,18 +1468,6 @@ private fun KeyValue(key: String, value: String) {
         Spacer(Modifier.width(12.dp))
         Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold).tabular(), color = c.textPrimary)
     }
-}
-
-/** "@name" under a display name; forced LTR so the @ stays in front in Arabic. */
-@Composable
-private fun HandleText(username: String) {
-    Text(
-        text = "\u2066@$username\u2069",
-        style = MaterialTheme.typography.bodySmall,
-        color = Fit.colors.textSecondary,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
 }
 
 /** Username input with live format check (same rules as the Worker); shared by Join and Settings. */

@@ -2209,8 +2209,6 @@
     <string name="friends_sign_in_google">تسجيل الدخول بحساب Google</string>
     <string name="friends_join_title">أنشئ ملفك الشخصي</string>
     <string name="friends_join_subtitle">اختر كيف يظهر اسمك وبياناتك على لوحة الأسبوع.</string>
-    <string name="friends_name_label">الاسم المعروض</string>
-    <string name="friends_name_hint">من 1 إلى 40 حرفًا</string>
     <string name="friends_username_label">اسم المستخدم</string>
     <string name="friends_username_hint">من 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو _ أو .</string>
     <string name="friends_username_rules">استخدم من 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو _ أو . (دون نقطة في البداية أو النهاية)</string>
@@ -2226,7 +2224,6 @@
     <string name="friends_add_hint">اسم المستخدم</string>
     <string name="friends_add_button">إرسال</string>
     <string name="friends_invite_sent">تم إرسال الدعوة</string>
-    <string name="friends_nudged_you">ذكّرك %1$s بالتمرين</string>
     <string name="friends_incoming_title">طلبات الصداقة</string>
     <string name="friends_accept">قبول</string>
     <string name="friends_decline">رفض</string>
@@ -2243,7 +2240,6 @@
     <string name="friends_prs_title">الأرقام القياسية هذا الأسبوع</string>
     <string name="friends_prs_hidden">الأرقام القياسية مخفية أو لم يُسجّل أي رقم هذا الأسبوع.</string>
     <string name="friends_nudge">تذكير</string>
-    <string name="friends_nudged_today">تم تذكيره اليوم</string>
     <string name="friends_nudge_sent">تم إرسال التذكير</string>
     <string name="friends_remove">إزالة</string>
     <string name="friends_block">حظر</string>
@@ -2281,8 +2277,6 @@
     <string name="friends_week_done">%1$s: أنجز</string>
     <string name="friends_week_free">%1$s: أسبوع حر</string>
     <string name="friends_week_not_yet">%1$s: لم ينجز بعد</string>
-    <string name="friends_nudge_name">نبّه %1$s</string>
-    <string name="friends_nudged_name">نبّهت %1$s اليوم</string>
     <string name="friends_score_label">نقاط فورج</string>
     <string name="friends_their_streak">سلسلة %1$s</string>
     <string name="friends_protein_label">أيام تحقيق هدف البروتين</string>
@@ -2291,6 +2285,22 @@
     <string name="friends_empty_title">التمرين أسهل مع الأصدقاء</string>
     <string name="friends_you">أنت</string>
     <string name="friends_refresh">تحديث</string>
+    <string name="friends_inbox_title">صندوق الوارد</string>
+    <string name="friends_inbox_badge_cd">صندوق الوارد، %1$d جديد</string>
+    <string name="friends_inbox_empty">لا جديد هنا بعد</string>
+    <string name="friends_inbox_pings_title">رسائل «يلا تمرّن»</string>
+    <string name="friends_inbox_ping_line">%1$s: يلا تمرّن 💪</string>
+    <string name="friends_inbox_activity_title">نشاط الأصدقاء</string>
+    <string name="friends_inbox_activity_line">أنهى %1$s تمرينًا للتو 💪</string>
+    <string name="friends_turn_on_notifs">فعّل الإشعارات</string>
+    <string name="friends_turn_on_action">تفعيل</string>
+    <string name="friends_go_train">يلا تمرّن 💪</string>
+    <string name="friends_sent_today">أُرسلت اليوم ✓</string>
+    <string name="friends_alert_when_trains">نبّهني حين يتمرّن %1$s</string>
+    <string name="friends_alerts_on">تنبيهات تمارين الأصدقاء</string>
+    <string name="friends_share_workouts">شارك تمارينك مع أصدقائك</string>
+    <string name="friends_share_workouts_sub">يرى أصدقاؤك حين تنهي تمرينًا</string>
+    <string name="friends_pings_on">رسائل «يلا تمرّن»</string>
     <plurals name="friends_days_left">
         <item quantity="zero">لا أيام متبقية</item>
         <item quantity="one">يوم واحد متبقٍ</item>

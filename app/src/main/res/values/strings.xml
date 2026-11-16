@@ -1898,8 +1898,6 @@
     <string name="friends_sign_in_google">Sign in with Google</string>
     <string name="friends_join_title">Set up your profile</string>
     <string name="friends_join_subtitle">Pick how friends see you on the weekly board.</string>
-    <string name="friends_name_label">Display name</string>
-    <string name="friends_name_hint">1–40 characters</string>
     <string name="friends_username_label">Username</string>
     <string name="friends_username_hint">3–20 letters, numbers, _ or .</string>
     <string name="friends_username_rules">Use 3–20 letters, numbers, _ or . (no dot at the start or end)</string>
@@ -1915,7 +1913,6 @@
     <string name="friends_add_hint">\@username</string>
     <string name="friends_add_button">Send</string>
     <string name="friends_invite_sent">Invite sent</string>
-    <string name="friends_nudged_you">%1$s nudged you</string>
     <string name="friends_incoming_title">Friend requests</string>
     <string name="friends_accept">Accept</string>
     <string name="friends_decline">Decline</string>
@@ -1932,7 +1929,6 @@
     <string name="friends_prs_title">This week\'s PRs</string>
     <string name="friends_prs_hidden">PRs are private or none logged this week.</string>
     <string name="friends_nudge">Nudge</string>
-    <string name="friends_nudged_today">Already nudged today</string>
     <string name="friends_nudge_sent">Nudge sent</string>
     <string name="friends_remove">Remove</string>
     <string name="friends_block">Block</string>
@@ -1970,8 +1966,6 @@
     <string name="friends_week_done">%1$s: done</string>
     <string name="friends_week_free">%1$s: free week</string>
     <string name="friends_week_not_yet">%1$s: not yet</string>
-    <string name="friends_nudge_name">Nudge %1$s</string>
-    <string name="friends_nudged_name">Nudged %1$s today</string>
     <string name="friends_score_label">Forge Score</string>
     <string name="friends_their_streak">%1$s\'s streak</string>
     <string name="friends_protein_label">Protein goal hit</string>
@@ -1980,6 +1974,22 @@
     <string name="friends_empty_title">Training is easier with friends</string>
     <string name="friends_you">You</string>
     <string name="friends_refresh">Refresh</string>
+    <string name="friends_inbox_title">Inbox</string>
+    <string name="friends_inbox_badge_cd">Inbox, %1$d new</string>
+    <string name="friends_inbox_empty">Nothing here yet</string>
+    <string name="friends_inbox_pings_title">\"Do your workout!\" messages</string>
+    <string name="friends_inbox_ping_line">%1$s: Do your workout! 💪</string>
+    <string name="friends_inbox_activity_title">Friend activity</string>
+    <string name="friends_inbox_activity_line">%1$s just finished a workout 💪</string>
+    <string name="friends_turn_on_notifs">Turn on notifications</string>
+    <string name="friends_turn_on_action">Turn on</string>
+    <string name="friends_go_train">Go train 💪</string>
+    <string name="friends_sent_today">Sent today ✓</string>
+    <string name="friends_alert_when_trains">Alert me when %1$s trains</string>
+    <string name="friends_alerts_on">Friend workout alerts</string>
+    <string name="friends_share_workouts">Share my workouts with friends</string>
+    <string name="friends_share_workouts_sub">Friends see when you finish a workout</string>
+    <string name="friends_pings_on">\"Do your workout\" messages</string>
     <plurals name="friends_days_left">
         <item quantity="one">%1$d day left</item>
         <item quantity="other">%1$d days left</item>
