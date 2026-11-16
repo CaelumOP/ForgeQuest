@@ -10,15 +10,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
-        ExerciseEntity::class, PlanEntity::class, PlanDayEntity::class, PlanItemEntity::class,
+        BodyMeasurementEntity::class, ExerciseEntity::class, PlanEntity::class, PlanDayEntity::class, PlanItemEntity::class,
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
         WeightEntity::class, ChatEntity::class, BadgeEntity::class, ReadinessDayEntity::class, DayNoteEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun bodyMeasurements(): BodyMeasurementDao
     abstract fun exercises(): ExerciseDao
     abstract fun plans(): PlanDao
     abstract fun sessions(): SessionDao
@@ -108,8 +109,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercises ADD COLUMN equipment TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN pattern TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN setupNote TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN aliases TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN unitOverride TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN mediaKey TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE plans ADD COLUMN scheduleMode TEXT NOT NULL DEFAULT 'WEEKDAY'")
+                db.execSQL("ALTER TABLE plans ADD COLUMN rotationCursor INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE plan_items ADD COLUMN supersetGroup INTEGER")
+                db.execSQL("ALTER TABLE plan_items ADD COLUMN autoWarmup INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE plan_items ADD COLUMN progressionMode TEXT NOT NULL DEFAULT 'DOUBLE'")
+                db.execSQL("ALTER TABLE sets ADD COLUMN setType TEXT NOT NULL DEFAULT 'WORKING'")
+                db.execSQL("CREATE TABLE IF NOT EXISTS body_measurements (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, epochDay INTEGER NOT NULL, metric TEXT NOT NULL, valueCm REAL NOT NULL, loggedAt INTEGER NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_body_measurements_epochDay ON body_measurements (epochDay)")
+            }
+        }
+
         /** Every upgrade step in order, 1 to the current version; the migration test walks the same list. */
-        internal val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+        internal val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)

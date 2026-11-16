@@ -576,7 +576,7 @@
     <string name="profile_setup_body">الصق مفتاح Gemini مجانيًا؛ يستغرق ذلك دقيقة تقريبًا.</string>
     <string name="profile_add_key">إضافة المفتاح</string>
     <string name="profile_default_name">الرياضي</string>
-    <string name="profile_rank_line">%2$s · المستوى %3$d</string>
+    <string name="profile_rank_line">الرتبة %1$s · %2$s · المستوى %3$d</string>
     <string name="profile_xp_line">%1$d من %2$d نقطة خبرة للمستوى %3$d</string>
     <string name="profile_xp_how">نقاط الخبرة: %1$d لكل تمرين، و%2$d لكل مجموعة، و%3$d لكل رقم قياسي، و%4$d لكل وسام.</string>
     <string name="profile_best_streak">أفضل سلسلة (أسابيع)</string>
@@ -714,11 +714,11 @@
     <string name="live_finish_workout">إنهاء التمرين</string>
     <plurals name="live_finish_unticked_title">
         <item quantity="zero">إنهاء التمرين؟</item>
-        <item quantity="one">إنهاء التمرين؟</item>
-        <item quantity="two">إنهاء التمرين؟</item>
-        <item quantity="few">إنهاء التمرين؟</item>
-        <item quantity="many">إنهاء التمرين؟</item>
-        <item quantity="other">إنهاء التمرين؟</item>
+        <item quantity="one">إنهاء التمرين مع مجموعة واحدة غير معلَّمة؟</item>
+        <item quantity="two">إنهاء التمرين مع مجموعتين غير معلَّمتين؟</item>
+        <item quantity="few">إنهاء التمرين مع %1$d مجموعات غير معلَّمة؟</item>
+        <item quantity="many">إنهاء التمرين مع %1$d مجموعةً غير معلَّمة؟</item>
+        <item quantity="other">إنهاء التمرين مع %1$d مجموعة غير معلَّمة؟</item>
     </plurals>
     <plurals name="live_finish_unticked_body">
         <item quantity="zero">ستُحفظ المجموعات التي علّمتها فقط.</item>

@@ -14,7 +14,15 @@ import { unitCode, unitFromCodeOrLabel, type WeightUnit } from '../domain/units'
 
 export type BodyType = 'MALE' | 'FEMALE';
 
+export const DEFAULT_PLATE_INVENTORY = [25, 20, 15, 10, 5, 2.5, 1.25];
+
 export interface Settings {
+  autoBackup: boolean;
+  autoBackupOptedOut: boolean;
+  restoreOfferShown: string[];
+  barWeightKg: number;
+  plateInventory: number[];
+  ttsCues: boolean;
   onboarded: boolean;
   name: string;
   bodyType: BodyType;
@@ -84,6 +92,8 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
+  autoBackup: true, autoBackupOptedOut: false, restoreOfferShown: [],
+  barWeightKg: 20, plateInventory: [...DEFAULT_PLATE_INVENTORY], ttsCues: false,
   onboarded: false, name: '', bodyType: 'MALE', kcalGoal: 2200, proteinGoal: 140, weeklyTargetOverride: 0,
   handLengthCm: 0, palmWidthCm: 0, fastModel: '', smartModel: '', liteModel: '', modelsCheckedAt: 0,
   coachModel: 'auto', groqModel: '', lastCheckinWeek: -1, driveEmail: '', lastBackupAt: 0, coachNotes: '',
@@ -111,6 +121,8 @@ function normalize(raw: unknown): Settings {
   const s = out as unknown as Settings;
   return {
     ...s,
+    restoreOfferShown: Array.isArray(s.restoreOfferShown) ? s.restoreOfferShown.filter((v) => typeof v === 'string') : [],
+    plateInventory: Array.isArray(s.plateInventory) ? s.plateInventory.filter((v) => typeof v === 'number' && Number.isFinite(v) && v > 0) : [...DEFAULT_PLATE_INVENTORY],
     bodyType: s.bodyType === 'FEMALE' ? 'FEMALE' : 'MALE',
     kcalGoal: Math.max(s.kcalGoal, 1200),
     unit: unitCode(unitFromCodeOrLabel(s.unit)),
@@ -154,7 +166,14 @@ export function useSettings(): Settings {
   return useLive(loadSettings, [], DEFAULT_SETTINGS as Settings);
 }
 
-export const weightUnit = (s: Settings): WeightUnit => unitFromCodeOrLabel(s.unit);
+export const weightUnit = (s: Settings, unitOverride = ''): WeightUnit => unitFromCodeOrLabel(unitOverride || s.unit);
+
+/** driveEmail is set only by successful Drive authorization, never Friends sign-in. */
+export const autoBackupEffective = (s: Settings): boolean => s.autoBackup && !s.autoBackupOptedOut && !!s.driveEmail.trim();
+export const setAutoBackup = (enabled: boolean): Promise<Settings> =>
+  updateSettings((s) => ({ ...s, autoBackup: enabled, autoBackupOptedOut: !enabled }));
+export const markRestoreOfferShown = (account: string): Promise<Settings> =>
+  updateSettings((s) => ({ ...s, restoreOfferShown: [...new Set([...s.restoreOfferShown, account.trim().toLowerCase()])] }));
 
 /** Available equipment from the explicit setting, else inferred from the coach notes; empty if unknown. */
 export function configuredEquipment(s: Settings): Set<Equipment> {
@@ -175,6 +194,7 @@ export function toBackupSettings(s: Settings): BackupSettings {
     goalSetDay: s.goalSetDay, debriefEnabled: s.debriefEnabled,
     dayActivity: s.dayActivity, cutPace: s.cutPace, gainPace: s.gainPace, targetWeightKg: s.targetWeightKg, targetSetDay: s.targetSetDay,
     justLog: s.justLog,
+    barWeightKg: s.barWeightKg, plateInventory: s.plateInventory, ttsCues: s.ttsCues,
   };
 }
 
@@ -193,6 +213,7 @@ export function fromBackupSettings(b: BackupSettings, s: Settings): Settings {
     goalSetDay: b.goalSetDay, debriefEnabled: b.debriefEnabled,
     dayActivity: parseDayActivity(b.dayActivity), cutPace: parseCutPace(b.cutPace), gainPace: parseGainPace(b.gainPace),
     targetWeightKg: b.targetWeightKg, targetSetDay: b.targetSetDay, justLog: b.justLog,
+    barWeightKg: b.barWeightKg ?? 20, plateInventory: b.plateInventory ?? [...DEFAULT_PLATE_INVENTORY], ttsCues: b.ttsCues ?? false,
   });
 }
 

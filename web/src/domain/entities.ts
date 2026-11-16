@@ -10,6 +10,14 @@ export type ExerciseEntity = {
   secondary: Muscle[]
   videoUrl?: string | null
   custom?: boolean
+  /** Comma-separated persisted Equipment names; all entries are required. */
+  equipment?: string
+  pattern?: string
+  setupNote?: string
+  aliases?: string
+  unitOverride?: string
+  pinned?: boolean
+  mediaKey?: string
 }
 
 export type PlanItemEntity = {
@@ -20,6 +28,9 @@ export type PlanItemEntity = {
   block: string
   circuit: boolean
   sets: number
+  supersetGroup?: number | null
+  autoWarmup?: boolean
+  progressionMode?: string
   repsMin: number | null
   repsMax: number | null
   seconds: number | null
@@ -61,6 +72,7 @@ export type SetEntity = {
   effort: string
   /** When the set was ticked (epoch ms); null while unticked or for sets done before this existed. */
   doneAt?: number | null
+  setType?: string
 }
 
 export type ReadinessDayEntity = {

@@ -283,6 +283,18 @@ interface FoodDao {
 }
 
 @Dao
+interface BodyMeasurementDao {
+    @Query("SELECT * FROM body_measurements ORDER BY epochDay, loggedAt")
+    fun observeAll(): Flow<List<BodyMeasurementEntity>>
+    @Query("SELECT * FROM body_measurements ORDER BY epochDay, loggedAt")
+    suspend fun all(): List<BodyMeasurementEntity>
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(measurement: BodyMeasurementEntity): Long
+    @Query("DELETE FROM body_measurements WHERE id = :id")
+    suspend fun delete(id: Long)
+}
+
+@Dao
 interface WeightDao {
     @Query("SELECT * FROM weights ORDER BY epochDay")
     fun observeAll(): Flow<List<WeightEntity>>
@@ -329,6 +341,9 @@ interface BadgeDao {
 
 @Dao
 interface BackupDao {
+    @Query("SELECT * FROM body_measurements") suspend fun bodyMeasurements(): List<BodyMeasurementEntity>
+    @Query("DELETE FROM body_measurements") suspend fun clearBodyMeasurements()
+    @Insert suspend fun putBodyMeasurements(v: List<BodyMeasurementEntity>)
     @Query("SELECT * FROM exercises") suspend fun exercises(): List<ExerciseEntity>
     @Query("SELECT * FROM plans") suspend fun plans(): List<PlanEntity>
     @Query("SELECT * FROM plan_days") suspend fun planDays(): List<PlanDayEntity>
@@ -349,7 +364,9 @@ interface BackupDao {
         sessions: List<SessionEntity>, sets: List<SetEntity>, foods: List<FoodEntity>, meals: List<MealEntity>,
         weights: List<WeightEntity>, chat: List<ChatEntity>, badges: List<BadgeEntity>, dayNotes: List<DayNoteEntity>,
         readinessDays: List<ReadinessDayEntity>,
+        bodyMeasurements: List<BodyMeasurementEntity> = emptyList(),
     ) {
+        clearBodyMeasurements(); putBodyMeasurements(bodyMeasurements)
         clearExercises(); clearPlans(); clearDays(); clearItems(); clearSessions(); clearSets()
         clearFoods(); clearMeals(); clearWeights(); clearChat(); clearBadges(); clearDayNotes()
         putExercises(exercises); putPlans(plans); putDays(days); putItems(items); putSessions(sessions); putSets(sets)

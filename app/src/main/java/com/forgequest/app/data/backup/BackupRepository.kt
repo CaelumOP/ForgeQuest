@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.room.withTransaction
 import com.forgequest.app.data.WorkoutRepository
+import com.forgequest.app.data.db.BodyMeasurementEntity
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.BadgeEntity
 import com.forgequest.app.data.db.ChatEntity
@@ -70,6 +71,9 @@ data class BackupSettings(
     val targetSetDay: Long = 0,
     /** Added in 2.17.0; older backups have no field and restore as false. */
     val justLog: Boolean = false,
+    val barWeightKg: Float = 20f,
+    val plateInventory: List<Float> = com.forgequest.app.data.prefs.DEFAULT_PLATE_INVENTORY,
+    val ttsCues: Boolean = false,
 ) {
     companion object {
         fun from(s: Settings) = BackupSettings(
@@ -101,6 +105,7 @@ data class BackupSettings(
             targetWeightKg = s.targetWeightKg,
             targetSetDay = s.targetSetDay,
             justLog = s.justLog,
+            barWeightKg = s.barWeightKg, plateInventory = s.plateInventory, ttsCues = s.ttsCues,
         )
     }
 
@@ -133,6 +138,7 @@ data class BackupSettings(
         targetWeightKg = targetWeightKg,
         targetSetDay = targetSetDay,
         justLog = justLog,
+        barWeightKg = barWeightKg, plateInventory = plateInventory, ttsCues = ttsCues,
     )
 }
 
@@ -161,6 +167,7 @@ data class BackupFile(
     val weekTargets: Map<String, Int>? = null,
     /** Week-start convention of [weekTargets]; "sunday" for 4.0+, absent/other means Monday keys. */
     val weekStart: String? = null,
+    val bodyMeasurements: List<BodyMeasurementEntity> = emptyList(),
 ) {
     /** One line a person can read before deciding to restore. */
     fun summary(): String {
@@ -207,6 +214,7 @@ class BackupRepository(
                 readinessDays = b.readinessDays(),
                 weekTargets = targets,
                 weekStart = "sunday",
+                bodyMeasurements = b.bodyMeasurements(),
             )
         }
     }
@@ -226,7 +234,7 @@ class BackupRepository(
                 // a marker instead, so the "Snap & log" badge still counts it.
                 file.foods.map { it.copy(photoPath = it.photoPath?.takeIf { p -> File(p).exists() }) },
                 file.meals.map { it.copy(photoPath = it.photoPath?.let { p -> if (File(p).exists()) p else SCANNED_NO_PHOTO }) },
-                file.weights, file.chat, file.badges, file.dayNotes, file.readinessDays,
+                file.weights, file.chat, file.badges, file.dayNotes, file.readinessDays, file.bodyMeasurements,
             )
         }
         file.settings?.let { restored -> settings.update { restored.applyTo(it) } }
@@ -242,7 +250,7 @@ class BackupRepository(
     /** Keeps the three most recent pre-restore copies so an accidental restore can be undone by importing one. */
     private suspend fun saveSafetyCopy() {
         val current = build()
-        if (current.sessions.isEmpty() && current.meals.isEmpty() && current.weights.isEmpty() && current.plans.isEmpty() && current.foods.isEmpty()) return
+        if (current.sessions.isEmpty() && current.meals.isEmpty() && current.weights.isEmpty() && current.plans.isEmpty() && current.foods.isEmpty() && current.bodyMeasurements.isEmpty() && current.exercises.none { it.custom }) return
         val stamp = Instant.ofEpochMilli(current.createdAt).atZone(ZoneId.systemDefault()).format(SAFETY_STAMP)
         val dir = safetyDir
         val name = uniqueSafetyName(dir.list().orEmpty().toSet(), stamp)

@@ -118,6 +118,7 @@ function parseFile(file) {
         if (/<\/?[a-zA-Z][^>]*>/.test(value[im[1]])) html.push(name);
       }
     }
+    if (Object.hasOwn(strings, name)) throw new Error(`Duplicate string ${name} in ${file}`);
     strings[name] = value;
   }
   return { strings, nonTranslatable, html };
@@ -129,10 +130,44 @@ const counts = (o) => ({
   plurals: Object.values(o).filter((v) => typeof v !== 'string').length,
 });
 
-const en = parseFile(join(resDir, 'values', 'strings.xml'));
-const ar = parseFile(join(resDir, 'values-ar', 'strings.xml'));
+function parseDirectory(directory) {
+  const result = { strings: {}, nonTranslatable: [], html: [] };
+  for (const file of readdirSync(directory).filter((f) => /^strings(?:_.*)?\.xml$/.test(f)).sort()) {
+    const parsed = parseFile(join(directory, file));
+    for (const key of Object.keys(parsed.strings)) {
+      if (Object.hasOwn(result.strings, key)) throw new Error(`Duplicate string ${key} in ${directory}/${file}`);
+    }
+    Object.assign(result.strings, parsed.strings);
+    result.nonTranslatable.push(...parsed.nonTranslatable);
+    result.html.push(...parsed.html);
+  }
+  return result;
+}
+
+const en = parseDirectory(join(resDir, 'values'));
+const ar = parseDirectory(join(resDir, 'values-ar'));
 const skipAr = new Set(ar.nonTranslatable);
 const arStrings = Object.fromEntries(Object.entries(ar.strings).filter(([k]) => !skipAr.has(k)));
+
+const missingTranslations = Object.keys(en.strings).filter((k) => !(k in arStrings) && !en.nonTranslatable.includes(k));
+const extraTranslations = Object.keys(arStrings).filter((k) => !(k in en.strings));
+if (missingTranslations.length || extraTranslations.length) {
+  throw new Error(`EN/AR key mismatch: missing ${missingTranslations.join(', ')}; extra ${extraTranslations.join(', ')}`);
+}
+const signature = (s) => [...s.matchAll(/\{(\d+)\}/g)].map((m) => m[1]).sort().join(',');
+for (const [key, value] of Object.entries(arStrings)) {
+  const english = en.strings[key];
+  if (typeof value !== typeof english) throw new Error(`String/plural mismatch: ${key}`);
+  const pairs = typeof value === 'string' ? [[english, value, '']] : Object.entries(value).map(([q, v]) => [english[q] ?? english.other, v, q]);
+  for (const [a, b, quantity] of pairs) {
+    // Arabic zero/one/two can express the count grammatically without a numeral.
+    const implicitCount = ['zero', 'one', 'two'].includes(quantity) && signature(b).split(',').filter(Boolean).every((p) => signature(a).split(',').includes(p));
+    if (!implicitCount && signature(a) !== signature(b)) throw new Error(`Placeholder mismatch: ${key}`);
+  }
+}
+
+// Validate without rewriting generated files during package-local checks.
+if (process.argv.includes('--check')) process.exit(0);
 
 mkdirSync(join(outDir, 'prompts'), { recursive: true });
 writeFileSync(join(outDir, 'en.json'), JSON.stringify(sortKeys(en.strings), null, 2) + '\n');
