@@ -16,6 +16,7 @@ import { enablePush, pushPermission, pushSupported } from '../../data/push'
 import { t, useLang } from '../../i18n'
 import { normalizeUsername } from '../../domain/forge-score'
 import { Button, Card, Dialog, TextField, toast } from '../kit'
+import { useIsDark } from '../theme'
 
 export function friendsSummary(st: FriendsState): string {
   if (st.status === 'joined' && st.view) {
@@ -33,6 +34,7 @@ export function FriendsSection({
   Title: (p: { title: string; hint?: string }) => JSX.Element
 }) {
   const lang = useLang()
+  const isDark = useIsDark()
   const st = useFriends()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const googleRef = useRef<HTMLDivElement>(null)
@@ -56,18 +58,28 @@ export function FriendsSection({
   }
 
   useEffect(() => {
-    if (!st.loading && st.status === 'signed_out') {
-      void renderGoogleSignInButton(googleRef.current)
-    }
-  }, [st.loading, st.status, lang])
+    if (st.loading || st.status !== 'signed_out') return
+    const el = googleRef.current
+    if (!el) return
+    const ctl = new AbortController()
+    const avail = el.clientWidth
+    const width = avail > 0 ? Math.min(280, Math.max(180, Math.floor(avail))) : 240
+    void renderGoogleSignInButton(el, {
+      theme: isDark ? 'filled_black' : 'outline',
+      width,
+      locale: lang,
+      signal: ctl.signal,
+    })
+    return () => ctl.abort()
+  }, [st.loading, st.status, lang, isDark])
 
   return (
     <Card>
       <Title title={t('settings_group_friends')} hint={friendsSummary(st)} />
 
       {st.status === 'signed_out' && (
-        <div class="pf-actions">
-          <div ref={googleRef} aria-label={t('settings_friends_sign_in')} />
+        <div class="pf-actions pf-friends-signin">
+          <div ref={googleRef} class="pf-google-slot" aria-label={t('settings_friends_sign_in')} />
         </div>
       )}
 

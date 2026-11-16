@@ -17,6 +17,7 @@ import { PartsSheet, PlaceField, partsCount } from './FoodParts'
 import { BarcodeSheet } from './BarcodeSheet'
 import { PasteMealSheet } from './PasteMealSheet'
 import { estimateFoodText, scanTotals, type FoodScan } from './scan'
+import { unlockAudio } from '../live/feedback'
 import './food.css'
 
 const ReplayIcon = () => (
@@ -417,7 +418,7 @@ export function FoodScreen(_: { param?: string }) {
       <div class="food-head">
         <span class="food-head-fill" />
         <Button icon={<CameraIcon size={20} />} onClick={() => { location.hash = '#/scan' }}>{t('food_scan_meal')}</Button>
-        <IconButton label={t('barcode_scan')} tone="tonal" onClick={() => setBarcodeOpen(true)}><BarcodeIcon /></IconButton>
+        <IconButton label={t('barcode_scan')} tone="tonal" onClick={() => { unlockAudio(); setBarcodeOpen(true) }}><BarcodeIcon /></IconButton>
         <IconButton label={t('food_add')} tone="tonal" onClick={openAdd}><AddIcon /></IconButton>
       </div>
       <DayPicker day={day} today={today} onShift={shift} onToday={() => { setDay(today); setFollowToday(true) }} />
@@ -490,10 +491,29 @@ export function FoodScreen(_: { param?: string }) {
       />
       <BarcodeSheet
         open={barcodeOpen}
+        aiReady={aiReady}
         onClose={() => setBarcodeOpen(false)}
         onFound={(p) => {
           setBarcodeOpen(false)
-          setEditing({ ...blankFood(cat), name: p.name || t('barcode_unnamed', p.code), place: p.brand, serving: p.serving, kcal: p.kcal, protein: p.protein, carbs: p.carbs })
+          setEditing({ ...blankFood(cat), name: p.name || t('barcode_unnamed', p.code), place: p.brand, serving: p.serving, kcal: p.kcal, protein: p.protein, carbs: p.carbs, barcode: p.code })
+        }}
+        onLogOwn={async (f) => {
+          setBarcodeOpen(false)
+          const sep = t('food_list_sep')
+          await logFoods([{ food: f, qty: 1, category: f.category === 'DRINKS' ? 'DRINKS' : cat, name: logName(f, (n, off) => t('food_without', n, off), sep) }], day)
+          toast(t('food_logged_name', f.name) + (await badgeSuffix()))
+        }}
+        onEditOwn={(f) => {
+          setBarcodeOpen(false)
+          setEditing(f)
+        }}
+        onCreateManual={(code) => {
+          setBarcodeOpen(false)
+          setEditing({ ...blankFood(cat), barcode: code })
+        }}
+        onLabelRead={(code) => {
+          setBarcodeOpen(false)
+          location.hash = `#/scan/label/${encodeURIComponent(code)}`
         }}
       />
       <PasteMealSheet open={pasteOpen} onClose={() => setPasteOpen(false)} onParsed={(scan) => void logPasted(scan)} />

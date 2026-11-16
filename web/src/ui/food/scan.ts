@@ -3,6 +3,7 @@
 import { AiError, geminiGenerate, imagePart, scanModelsFor, textPart } from '../../data/ai';
 import { isAiOn, loadSettings } from '../../data/settings';
 import { scaledKcal } from '../../domain/nutrition';
+import type { BarcodeProduct } from './barcode';
 
 export type ScanItem = { name: string; grams: number; kcal: number; protein: number; carbs: number };
 export type FoodScan = { dish: string; items: ScanItem[]; handVisible: boolean; note: string };
@@ -147,4 +148,53 @@ export function scanTotals(items: readonly ScanItem[], portion: number, fatKcal:
     protein: items.reduce((a, i) => a + i.protein, 0) * portion,
     carbs: items.reduce((a, i) => a + i.carbs, 0) * portion,
   };
+}
+
+const LABEL_INSTRUCTIONS = `You read nutrition facts labels from photos for a fitness app. Copy the printed numbers exactly; never estimate or guess.
+Prefer the "per 100 g" (or per 100 ml) column. If the label has only a per-serving column, use it and set basis to "serving" and servingGrams to the serving size in grams or ml printed on the label.
+Calories are kcal (if only kJ is printed, divide by 4.184). Protein and carbohydrates are in grams.
+If the photo is not a nutrition label or the numbers can't be read, return kcal 0.
+Reply ONLY with JSON: {"name": string, "basis": "100g" or "serving", "servingGrams": number, "kcal": number, "protein": number, "carbs": number}
+"name" is the product name if printed, else an empty string.`;
+
+/** Parses a Gemini nutrition-label JSON reply into a BarcodeProduct, or null if unreadable. */
+export function parseLabelRead(text: string, barcode: string): BarcodeProduct | null {
+  let root: unknown;
+  try { root = JSON.parse(extractJson(text)); } catch { return null; }
+  if (typeof root !== 'object' || root === null || Array.isArray(root)) return null;
+  const o = root as Record<string, unknown>;
+  const kcal = num(o.kcal);
+  if (!(kcal > 0)) return null;
+  const perServing = typeof o.basis === 'string' && o.basis.trim().toLowerCase() === 'serving';
+  const servingGrams = Math.max(0, num(o.servingGrams));
+  if (perServing && servingGrams <= 0) return null;
+  const protein = Math.max(0, num(o.protein));
+  const carbs = Math.max(0, num(o.carbs));
+  const name = typeof o.name === 'string' ? o.name.trim() : '';
+  return {
+    code: barcode.trim(),
+    name,
+    brand: '',
+    kcal: Math.round(kcal),
+    protein: Math.round(protein * 10) / 10,
+    carbs: Math.round(carbs * 10) / 10,
+    serving: perServing ? `${Math.round(servingGrams)} g` : '100 g',
+  };
+}
+
+/** Sends a nutrition label photo to Gemini and extracts printed calories/macros for the scanned barcode. */
+export async function readNutritionLabel(base64Jpeg: string, barcode: string, signal?: AbortSignal): Promise<BarcodeProduct> {
+  const s = await loadSettings();
+  if (!isAiOn(s) || !s.apiKey.trim()) throw new AiError('no_key');
+  const raw = await geminiGenerate({
+    system: LABEL_INSTRUCTIONS,
+    parts: [textPart('Read the nutrition label in this photo.'), imagePart(base64Jpeg)],
+    json: true,
+    lowThinking: true,
+    models: scanModelsFor(s),
+    signal,
+  });
+  const parsed = parseLabelRead(raw, barcode);
+  if (!parsed) throw new AiError('unreadable', raw.slice(0, 200));
+  return parsed;
 }

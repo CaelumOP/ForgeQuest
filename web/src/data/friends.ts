@@ -482,22 +482,23 @@ async function hashSnapshot(s: Snapshot): Promise<string> {
 
 export async function renderGoogleSignInButton(
   container: HTMLElement | null,
-  options?: { theme?: 'outline' | 'filled_blue' | 'filled_black'; width?: number },
+  options?: { theme?: 'outline' | 'filled_blue' | 'filled_black'; width?: number; locale?: string; signal?: AbortSignal },
 ): Promise<boolean> {
-  if (!container) return false
+  if (!container || options?.signal?.aborted) return false
   try {
     await preloadGis()
   } catch {
-    setState({ error: 'network' })
+    if (!options?.signal?.aborted) setState({ error: 'network' })
     return false
   }
+  if (options?.signal?.aborted) return false
   // Wait briefly in case accounts.oauth2 settled while accounts.id initializes on the same script tick.
   let idApi = gisId()
   if (!idApi) {
     await new Promise((r) => setTimeout(r, 50))
     idApi = gisId()
   }
-  if (!idApi) return false
+  if (!idApi || options?.signal?.aborted) return false
 
   if (!gisInitialized) {
     idApi.initialize({
@@ -513,14 +514,17 @@ export async function renderGoogleSignInButton(
     gisInitialized = true
   }
 
+  // Render into a fresh child element each time so GIS doesn't reuse the first-rendered locale on the parent node.
   container.innerHTML = ''
-  idApi.renderButton(container, {
+  const slot = document.createElement('div')
+  container.appendChild(slot)
+  idApi.renderButton(slot, {
     theme: options?.theme ?? 'outline',
     size: 'large',
     shape: 'pill',
     text: 'signin_with',
     width: options?.width,
-    locale: getLang(),
+    locale: options?.locale ?? getLang(),
   })
   return true
 }

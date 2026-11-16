@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractJson, fitWithin, parseScan, scanInstructions, scanTotals, withGrams } from './scan';
+import { extractJson, fitWithin, parseLabelRead, parseScan, scanInstructions, scanTotals, withGrams } from './scan';
 
 describe('fitWithin (photo shrink size math)', () => {
   it('shrinks the long edge to 1024 and keeps the ratio', () => {
@@ -69,5 +69,34 @@ describe('scan maths and prompt', () => {
   it('uses the hand size only when known', () => {
     expect(scanInstructions(18.5, 8)).toContain('hand length = 18.5 cm, palm width = 8 cm');
     expect(scanInstructions(0, 0)).toContain('standard fork');
+  });
+});
+
+describe('parseLabelRead (Gemini nutrition label JSON)', () => {
+  it('parses per-100g and per-serving labels and rejects unreadable ones', () => {
+    expect(
+      parseLabelRead('```json\n{"name":"Tuna","basis":"100g","servingGrams":80,"kcal":110,"protein":25,"carbs":0}\n```', '12345678'),
+    ).toEqual({
+      code: '12345678',
+      name: 'Tuna',
+      brand: '',
+      kcal: 110,
+      protein: 25,
+      carbs: 0,
+      serving: '100 g',
+    });
+    expect(
+      parseLabelRead('{"name":"Bar","basis":"serving","servingGrams":45,"kcal":190,"protein":15,"carbs":20}', '12345678'),
+    ).toEqual({
+      code: '12345678',
+      name: 'Bar',
+      brand: '',
+      kcal: 190,
+      protein: 15,
+      carbs: 20,
+      serving: '45 g',
+    });
+    expect(parseLabelRead('{"kcal":0}', '12345678')).toBeNull();
+    expect(parseLabelRead('{"basis":"serving","servingGrams":0,"kcal":100}', '12345678')).toBeNull();
   });
 });

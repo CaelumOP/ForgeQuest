@@ -10,6 +10,7 @@ import {
   FRIENDS_CACHE_KEY,
   FRIENDS_DEMO_KEY,
   markInboxSeen,
+  renderGoogleSignInButton,
   setFriendMuted,
   shownName,
   syncFriendsQuietly,
@@ -224,5 +225,54 @@ describe('friends persistence and backup isolation', () => {
     expect(initialsFor('tariq')).toBe('T')
     expect(initialsFor('  omar ali ')).toBe('O')
     expect(initialsFor('')).toBe('?')
+  })
+
+  it('renderGoogleSignInButton renders into a fresh child div with theme, width, and locale', async () => {
+    const renderButton = vi.fn()
+    const initialize = vi.fn()
+    const created: Array<{ tag: string }> = []
+    const children: unknown[] = []
+    const container = {
+      innerHTML: 'stale',
+      appendChild(child: unknown) {
+        children.push(child)
+        return child
+      },
+    } as unknown as HTMLElement
+
+    vi.stubGlobal('window', {
+      google: { accounts: { id: { initialize, renderButton }, oauth2: {} } },
+    })
+    vi.stubGlobal('document', {
+      createElement(tag: string) {
+        const node = { tag }
+        created.push(node)
+        return node
+      },
+    })
+
+    await expect(
+      renderGoogleSignInButton(container, { theme: 'filled_black', width: 260, locale: 'en' }),
+    ).resolves.toBe(true)
+    expect(renderButton).toHaveBeenCalledTimes(1)
+    expect(renderButton.mock.calls[0][0]).toBe(created[0])
+    expect(renderButton.mock.calls[0][1]).toMatchObject({
+      theme: 'filled_black',
+      width: 260,
+      locale: 'en',
+      shape: 'pill',
+    })
+
+    await expect(
+      renderGoogleSignInButton(container, { theme: 'outline', width: 240, locale: 'ar' }),
+    ).resolves.toBe(true)
+    expect(renderButton).toHaveBeenCalledTimes(2)
+    expect(renderButton.mock.calls[1][0]).toBe(created[1])
+    expect(renderButton.mock.calls[1][0]).not.toBe(renderButton.mock.calls[0][0])
+    expect(renderButton.mock.calls[1][1]).toMatchObject({
+      theme: 'outline',
+      width: 240,
+      locale: 'ar',
+    })
   })
 })

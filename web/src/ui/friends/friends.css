@@ -25,7 +25,9 @@
 .fr-sub { margin: 0; font-size: 14px; color: var(--text-2); }
 
 .fr-google-wrap {
-  min-block-size: 44px;
+  inline-size: 100%;
+  max-inline-size: 280px;
+  min-block-size: 48px;
   display: flex;
   justify-content: center;
   align-items: center;

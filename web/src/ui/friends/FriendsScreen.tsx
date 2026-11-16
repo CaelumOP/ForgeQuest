@@ -37,6 +37,7 @@ import {
   CheckIcon,
 } from '../icons'
 import { Button, Card, Dialog, IconButton, Sheet, TextField, toast } from '../kit'
+import { useIsDark } from '../theme'
 import { Avatar } from './Avatar'
 import './friends.css'
 
@@ -75,10 +76,22 @@ function SwitchRow({ label, on, onToggle, disabled }: { label: string; on: boole
 
 function SignedOutView({ error }: { error: string | null }) {
   const lang = useLang()
+  const isDark = useIsDark()
   const btnRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    void renderGoogleSignInButton(btnRef.current)
-  }, [lang])
+    const el = btnRef.current
+    if (!el) return
+    const ctl = new AbortController()
+    const avail = el.clientWidth
+    const width = avail > 0 ? Math.min(280, Math.max(200, Math.floor(avail))) : 260
+    void renderGoogleSignInButton(el, {
+      theme: isDark ? 'filled_black' : 'outline',
+      width,
+      locale: lang,
+      signal: ctl.signal,
+    })
+    return () => ctl.abort()
+  }, [lang, isDark])
   return (
     <Card class="fr-pitch">
       <span class="fr-pitch-ic" aria-hidden="true"><GroupIcon size={28} /></span>

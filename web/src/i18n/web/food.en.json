@@ -23,5 +23,18 @@
   "food_w_barcode_lookup": "Look up",
   "food_w_paste_meal_hint": "Paste the JSON reply from Gemini here",
   "food_w_paste_meal_btn": "Paste",
-  "food_w_read_meal": "Read meal"
+  "food_w_read_meal": "Read meal",
+  "food_w_barcode_type": "Type the number",
+  "food_w_barcode_photo": "Scan from a photo",
+  "food_w_barcode_photo_none": "No barcode found in that photo. Try a clearer, closer shot.",
+  "food_w_barcode_bad_code": "Check the barcode digits — the check digit doesn't match.",
+  "food_w_barcode_denied": "Camera permission was denied. Allow it in browser settings, or scan from a photo or type the number.",
+  "food_w_barcode_no_camera": "No camera found on this device. Scan from a photo or type the number below.",
+  "food_w_barcode_camera_err": "Couldn't start the camera. Tap to retry, or use a photo or number below.",
+  "food_w_barcode_retry": "Tap to retry",
+  "food_w_barcode_beep": "Scan sound",
+  "food_w_barcode_create": "Create food",
+  "food_w_barcode_missing_noai": "Add it manually and it will be saved under this barcode for next time.",
+  "food_w_barcode_found_saved": "From your foods",
+  "food_w_barcode_label_save_log": "Save & log"
 }

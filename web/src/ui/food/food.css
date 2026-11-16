@@ -122,3 +122,23 @@
 .food-part-sum .k { color: var(--blue); font-size: 16px; font-weight: 600; }
 .food-part-sum .p { color: var(--teal); }
 .food-part-sum .c { color: var(--purple); }
+
+/* Barcode scanner */
+.bc-stage { position: relative; inline-size: 100%; block-size: 260px; border-radius: var(--r-md); background: #000; overflow: hidden; }
+.bc-video { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
+.bc-tap-layer { position: absolute; inset: 0; border: 0; padding: 0; background: none; display: grid; place-items: center; cursor: pointer; }
+.bc-roi { inline-size: min(76%, 280px); block-size: 132px; border: 2px solid var(--teal); border-radius: var(--r-sm); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42); pointer-events: none; }
+.bc-cam-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px; text-align: center; background: rgba(0, 0, 0, 0.72); color: #fff; }
+.bc-cam-msg p { margin: 0; font-size: 14px; line-height: 20px; max-inline-size: 32ch; }
+.bc-overlay-bar { position: absolute; inset-block-start: 10px; inset-inline: 10px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+.bc-round-btn { pointer-events: auto; inline-size: 48px; block-size: 48px; border: 0; border-radius: var(--r-full); background: rgba(0, 0, 0, 0.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.bc-round-btn[aria-pressed='true'] { background: var(--teal); color: var(--on-teal); }
+.bc-fallbacks { display: flex; flex-wrap: wrap; gap: 8px; }
+.bc-fallbacks > .kit-btn { flex: 1 1 140px; }
+.bc-manual { display: flex; flex-direction: column; gap: 10px; padding-block-start: 4px; }
+.bc-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--r-md); background: var(--card); }
+.bc-card-title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; color: var(--text); }
+.bc-card-macros { margin: 0; font-size: 14px; color: var(--teal); font-weight: 500; }
+.bc-card-body { margin: 0; font-size: 14px; line-height: 20px; color: var(--text-2); }
+.bc-card-actions { display: flex; flex-direction: column; gap: 8px; margin-block-start: 8px; }
+.bc-err { color: var(--coral); }
