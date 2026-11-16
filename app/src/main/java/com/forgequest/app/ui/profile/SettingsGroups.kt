@@ -473,7 +473,7 @@ internal fun FriendsSettingsGroup(
                         modifier = Modifier
                             .fillMaxWidth()
                             .toggleable(me.sharePhoto, role = androidx.compose.ui.semantics.Role.Switch) {
-                                vm.setFriendsShare(sharePhoto = it, sharePrs = me.sharePrs)
+                                vm.updateFriendsFlag { cur -> cur.copy(sharePhoto = it) }
                             }
                             .heightIn(min = 48.dp)
                             .padding(vertical = 8.dp),
@@ -491,7 +491,7 @@ internal fun FriendsSettingsGroup(
                         modifier = Modifier
                             .fillMaxWidth()
                             .toggleable(me.sharePrs, role = androidx.compose.ui.semantics.Role.Switch) {
-                                vm.setFriendsShare(sharePhoto = me.sharePhoto, sharePrs = it)
+                                vm.updateFriendsFlag { cur -> cur.copy(sharePrs = it) }
                             }
                             .heightIn(min = 48.dp)
                             .padding(vertical = 8.dp),
@@ -509,7 +509,7 @@ internal fun FriendsSettingsGroup(
                         modifier = Modifier
                             .fillMaxWidth()
                             .toggleable(me.alertsOn, role = androidx.compose.ui.semantics.Role.Switch) {
-                                vm.setFriendsAlerts(alertsOn = it)
+                                vm.updateFriendsFlag { cur -> cur.copy(alertsOn = it) }
                                 if (it) requestNotifsIfNeeded()
                             }
                             .heightIn(min = 48.dp)
@@ -528,7 +528,7 @@ internal fun FriendsSettingsGroup(
                         modifier = Modifier
                             .fillMaxWidth()
                             .toggleable(me.shareWorkouts, role = androidx.compose.ui.semantics.Role.Switch) {
-                                vm.setFriendsAlerts(shareWorkouts = it)
+                                vm.updateFriendsFlag { cur -> cur.copy(shareWorkouts = it) }
                             }
                             .heightIn(min = 48.dp)
                             .padding(vertical = 8.dp),
@@ -552,7 +552,7 @@ internal fun FriendsSettingsGroup(
                         modifier = Modifier
                             .fillMaxWidth()
                             .toggleable(me.pingsOn, role = androidx.compose.ui.semantics.Role.Switch) {
-                                vm.setFriendsAlerts(pingsOn = it)
+                                vm.updateFriendsFlag { cur -> cur.copy(pingsOn = it) }
                                 if (it) requestNotifsIfNeeded()
                             }
                             .heightIn(min = 48.dp)

@@ -291,7 +291,14 @@ fun FoodScreen(nav: NavHostController) {
                 SectionTitle(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day))
             }
             if (meals.isEmpty()) {
-                item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
+                val emptyTextRes = when {
+                    !isToday -> R.string.food_nothing_that_day
+                    aiOn && foods.isNotEmpty() -> R.string.food_nothing_today
+                    aiOn -> R.string.food_nothing_today_no_saved_ai
+                    foods.isNotEmpty() -> R.string.food_nothing_today_no_ai
+                    else -> R.string.food_nothing_today_empty
+                }
+                item { Text(stringResource(emptyTextRes), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
             }
             items(if (showAllMeals) newestMeals else newestMeals.take(MEALS_SHOWN), key = { "m${it.id}" }) { meal ->
                 SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {

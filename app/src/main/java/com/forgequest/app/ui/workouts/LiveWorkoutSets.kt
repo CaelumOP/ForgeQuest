@@ -186,11 +186,13 @@ internal fun SetRow(
                 ExerciseKind.REPS -> NumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                     unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
+                    unitPlurals = R.plurals.rx_reps,
                 )
                 ExerciseKind.WEIGHTED -> {
                     NumberStepper(
                         (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                         unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
+                        unitPlurals = R.plurals.rx_reps,
                     )
                     val unit by vm.unit.collectAsState()
                     NumberStepper(

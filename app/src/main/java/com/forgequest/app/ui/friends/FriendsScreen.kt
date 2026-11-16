@@ -1302,29 +1302,31 @@ private fun FriendDetailSheet(
                 }
             }
 
-            Button(
-                onClick = {
-                    scope.launch {
-                        when (onNudge()) {
-                            null -> context.toast(sentMsg)
-                            "already_nudged" -> alreadyNudgedNote = true
+            if (entry.weekState != "hit") {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            when (onNudge()) {
+                                null -> context.toast(sentMsg)
+                                "already_nudged" -> alreadyNudgedNote = true
+                            }
                         }
-                    }
-                },
-                enabled = !nudged && !busy,
-                shape = ForgeShape.Full,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp),
-            ) {
-                Text(
-                    text = if (nudged) stringResource(R.string.friends_sent_today) else stringResource(R.string.friends_go_train),
-                    style = MaterialTheme.typography.labelLarge,
-                )
+                    },
+                    enabled = !nudged && !busy,
+                    shape = ForgeShape.Full,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = if (nudged) stringResource(R.string.friends_sent_today) else stringResource(R.string.friends_go_train),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
 
             val alertsEnabled = !entry.muted
@@ -1375,7 +1377,7 @@ private fun FriendDetailSheet(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = pr.exercise,
+                                text = com.forgequest.app.data.seed.ExerciseNamesAr.displayName(pr.exercise),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = c.textPrimary,
                                 modifier = Modifier.weight(1f),

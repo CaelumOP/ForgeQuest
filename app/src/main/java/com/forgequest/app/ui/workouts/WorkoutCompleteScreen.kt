@@ -102,7 +102,7 @@ internal fun WorkoutCompleteScreen(
     ) {
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.live_complete), style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
-        Text(sum.title, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(sum.title), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         Spacer(Modifier.height(20.dp))
         // The top of the screen is whatever is most notable about this workout.
         val hero = sum.prHero
@@ -182,7 +182,7 @@ internal fun WorkoutCompleteScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.live_next_up, com.forgequest.app.domain.Dates.dayName(dow), title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                Text(stringResource(R.string.live_next_up, com.forgequest.app.domain.Dates.dayName(dow), com.forgequest.app.data.seed.StarterPlans.displayTitle(title)), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
             }
         }
         // Sets and time, one small line.

@@ -130,8 +130,9 @@ fun ProfileScreen(nav: NavHostController) {
             )
             }
             Spacer(Modifier.height(12.dp))
+            val workoutDays = s.sessions.map { it.epochDay }.distinct().size
             Row(Modifier.fillMaxWidth()) {
-                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", stringResource(R.string.tab_workouts), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
+                com.forgequest.app.ui.components.StatColumn("$workoutDays", androidx.compose.ui.res.pluralStringResource(R.plurals.progress_total_workouts, workoutDays), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
                 if (!justLog) {
                     com.forgequest.app.ui.components.StatColumn("${s.streak.best}", stringResource(R.string.profile_best_streak), c.gold, Modifier.weight(1f))
                 }

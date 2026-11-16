@@ -214,7 +214,7 @@ fun WorkoutsScreen(nav: NavHostController) {
                 Column(m) {
                     Text(stringResource(R.string.workouts_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
                     Text(
-                        plan?.plan?.name ?: stringResource(R.string.today_no_plan),
+                        plan?.plan?.name?.let(com.forgequest.app.data.seed.StarterPlans::displayTitle) ?: stringResource(R.string.today_no_plan),
                         style = MaterialTheme.typography.bodyMedium,
                         color = c.textSecondary,
                         maxLines = if (fallbackScroll) 2 else 1,
@@ -373,10 +373,10 @@ private fun RecoveryHeroCard(
     }
 
     val titleText = when {
-        open != null -> open.title
+        open != null -> com.forgequest.app.data.seed.StarterPlans.displayTitle(open.title)
         !planExists -> stringResource(R.string.today_no_plan)
         isRest -> stringResource(R.string.today_rest_day)
-        else -> day?.day?.title.orEmpty()
+        else -> com.forgequest.app.data.seed.StarterPlans.displayTitle(day?.day?.title.orEmpty())
     }
 
     val countText = if (planExists && !isRest && day != null) {
@@ -755,7 +755,7 @@ private fun DayDetailsContent(
     trends: Map<String, List<Float>> = emptyMap(),
 ) {
     val c = Fit.colors
-    Text(day.day.title, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+    Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(day.day.title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
     if (day.day.note.isNotBlank()) {
         Spacer(Modifier.height(4.dp))
         Text(day.day.note, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

@@ -303,14 +303,32 @@ object StarterPlans {
 
     private val extraArabic = mapOf(
         "General fitness plan" to "خطة لياقة عامة",
+        "Strength plan" to "خطة القوة",
+        "Build muscle plan" to "خطة بناء العضلات",
+        "Lose fat plan" to "خطة خسارة الدهون",
+        "Endurance plan" to "خطة التحمّل",
+        "Quick workout" to "تمرين سريع",
+        "Workout" to "تمرين",
         "Upper" to "الجزء العلوي",
         "Lower" to "الجزء السفلي",
         "Conditioning" to "اللياقة",
     )
 
-    /** Translates known starter or builder plan/day titles into Arabic when the app runs in Arabic. */
+    private val toEnglish: Map<String, String> by lazy {
+        buildMap {
+            for ((en, ar) in extraArabic) put(ar, en)
+            // StarterPlans entries win for shared Arabic labels ("الجزء العلوي" -> "Upper body", "الجزء السفلي" -> "Lower body").
+            for ((en, ar) in arabic) put(ar, en)
+            put("خطة اللياقة العامة", "General fitness plan")
+            put("لياقة وتحمّل", "Conditioning")
+            put("الساقان", "Legs")
+        }
+    }
+
+    /** Translates known starter or builder plan/day/session titles at display time in either direction. */
     fun displayTitle(title: String): String =
-        if (java.util.Locale.getDefault().language == "ar") arabic[title] ?: extraArabic[title] ?: title else title
+        if (java.util.Locale.getDefault().language == "ar") arabic[title] ?: extraArabic[title] ?: title
+        else toEnglish[title] ?: title
 
     private fun localize(p: PlanDraft): PlanDraft {
         if (java.util.Locale.getDefault().language != "ar") return p

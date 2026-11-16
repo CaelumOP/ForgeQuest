@@ -284,7 +284,14 @@
     </plurals>
     <string name="map_cd_all_fresh">خريطة تعافي العضلات. كل العضلات مستعدة.</string>
     <string name="map_cd_recovering">خريطة تعافي العضلات. في طور التعافي: %1$s</string>
-    <string name="map_cd_muscle_ready">%1$s تستعد بعد %2$d ساعة</string>
+    <plurals name="map_cd_muscle_ready">
+        <item quantity="zero">%1$s مستعدة الآن</item>
+        <item quantity="one">%1$s تستعد بعد ساعة واحدة</item>
+        <item quantity="two">%1$s تستعد بعد ساعتين</item>
+        <item quantity="few">%1$s تستعد بعد %2$d ساعات</item>
+        <item quantity="many">%1$s تستعد بعد %2$d ساعةً</item>
+        <item quantity="other">%1$s تستعد بعد %2$d ساعة</item>
+    </plurals>
     <string name="map_front">الأمام</string>
     <string name="map_back">الخلف</string>
     <string name="map_fully_recovered">%1$s · تعافت تمامًا</string>
@@ -336,6 +343,9 @@
     <string name="food_estimating">جارٍ التقدير…</string>
     <string name="food_estimate_basis">بناءً على: %1$s. عدّل الأرقام إن اختلفت حصتك.</string>
     <string name="food_nothing_today">لم تسجّل شيئًا بعد. حدّد من أطعمتك أدناه، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
+    <string name="food_nothing_today_no_saved_ai">لم تسجّل شيئًا بعد. ابحث في الأعلى، أو صوّر طبقك، أو استخدم «تسجيل سريع».</string>
+    <string name="food_nothing_today_no_ai">لم تسجّل شيئًا بعد. حدّد من أطعمتك أدناه، أو امسح الباركود، أو استخدم «تسجيل سريع».</string>
+    <string name="food_nothing_today_empty">لم تسجّل شيئًا بعد. ابحث في الأعلى، أو امسح الباركود، أو استخدم «تسجيل سريع».</string>
     <string name="food_nothing_that_day">لم يُسجَّل شيء في هذا اليوم.</string>
     <plurals name="food_log_selection">
         <item quantity="zero">تسجيل %1$d · %2$d سعرة · %3$d غ بروتين</item>
@@ -968,7 +978,7 @@
     <string name="profile_height">الطول</string>
     <string name="profile_age">العمر</string>
     <string name="unit_years">سنة</string>
-    <string name="goals_suggest_missing">حدّد طولك وعمرك في قسم «الجسم والصحة» للحصول على السعرات المقترحة</string>
+    <string name="goals_suggest_missing">حدّد طولك وعمرك في قسم «عنك» أعلاه للحصول على السعرات المقترحة</string>
     <string name="goals_use">استخدام</string>
     <string name="profile_language">اللغة</string>
     <string name="language_system">إعداد الهاتف</string>
@@ -1144,6 +1154,16 @@
     <string name="live_mark_warmup_done">تحديد الإحماء كمنجز</string>
     <string name="live_warmup_done">تم الإحماء ✓</string>
     <string name="live_effort_caption">كيف كانت هذه المجموعة؟</string>
+    <string name="live_swap_confirm_title">استبدال %1$s؟</string>
+    <plurals name="live_swap_confirm_body">
+        <item quantity="zero">سيؤدي الاستبدال إلى استبدال هذا التمرين بـ %2$s.</item>
+        <item quantity="one">أنجزت مجموعة واحدة هنا بالفعل. سيستبدل هذا الإجراء التمرين بـ %2$s ويمسح ذلك التحديد.</item>
+        <item quantity="two">أنجزت مجموعتين هنا بالفعل. سيستبدل هذا الإجراء التمرين بـ %2$s ويمسح ذينك التحديدين.</item>
+        <item quantity="few">أنجزت %1$d مجموعات هنا بالفعل. سيستبدل هذا الإجراء التمرين بـ %2$s ويمسح تلك التحديدات.</item>
+        <item quantity="many">أنجزت %1$d مجموعةً هنا بالفعل. سيستبدل هذا الإجراء التمرين بـ %2$s ويمسح تلك التحديدات.</item>
+        <item quantity="other">أنجزت %1$d مجموعة هنا بالفعل. سيستبدل هذا الإجراء التمرين بـ %2$s ويمسح تلك التحديدات.</item>
+    </plurals>
+    <string name="live_swap_confirm_action">استبدال على أي حال</string>
     <string name="live_next">التالي: %1$s</string>
     <string name="live_exercise_of">التمرين %1$d من %2$d</string>
     <string name="cd_focus_mode">وضع التركيز</string>
@@ -1172,9 +1192,9 @@
     <string name="goal_trend_gain_fast">تكسب الوزن أسرع من وتيرتك، ومعظم الزيادة دهون، فقلّل طعامك قليلًا.</string>
     <string name="goal_trend_diet_break">مضت مدة على خسارة الدهون، وأسبوع أو أسبوعان عند سعرات الثبات يساعدانك على المواصلة.</string>
     <string name="goal_trend_gain_stalled">لم يتغير وزنك منذ ثلاثة أسابيع، فأضف وجبة خفيفة يوميًا لتواصل البناء.</string>
-    <string name="effort_easy">سهل</string>
-    <string name="effort_ok">مناسب</string>
-    <string name="effort_hard">صعب</string>
+    <string name="effort_easy">سهلة</string>
+    <string name="effort_ok">مناسبة</string>
+    <string name="effort_hard">صعبة</string>
     <string name="effort_pain">ألم</string>
     <string name="rx_hold_ceiling">جاهز لنسخة أصعب أو وزن إضافي</string>
     <string name="daytag_title">إعفاء هذا اليوم</string>
@@ -1634,7 +1654,7 @@
     <string name="peak_best">أفضل رقم %1$s</string>
     <string name="stalled_switch">التبديل إلى %1$s</string>
     <string name="coach_deload_hint">التعب يتراكم. أسبوع أخف سيفيدك.</string>
-    <string name="coach_week_line">هذا الأسبوع · التمارين: %1$d · المجموعات: %2$d</string>
+    <string name="coach_week_line">هذا الأسبوع · أيام التمرين: %1$d · المجموعات: %2$d</string>
     <string name="coach_turn_on_ai">تشغيل المدرب الذكي</string>
     <string name="summary_ai_off">الذكاء الاصطناعي متوقف</string>
     <string name="ai_key_needed_food">مفتاح Gemini المجاني يشغّل ماسح الوجبات.</string>
@@ -2236,11 +2256,11 @@
     <string name="friends_empty_board">أضف صديقًا باسم المستخدم لتقارنا التقدم الأسبوعي.</string>
     <string name="friends_stat_streak">سلسلة %1$dأ</string>
     <string name="friends_stat_protein">%1$dي بروتين</string>
-    <string name="friends_badge_trained">تمرّن</string>
+    <string name="friends_badge_trained">تم التمرين</string>
     <string name="friends_badge_on_track">على المسار</string>
     <string name="friends_badge_slacking">دون الهدف</string>
     <string name="friends_badge_rest">يوم راحة</string>
-    <string name="friends_badge_not_synced">لم يزامن هذا الأسبوع</string>
+    <string name="friends_badge_not_synced">بلا مزامنة هذا الأسبوع</string>
     <string name="friends_prs_title">الأرقام القياسية هذا الأسبوع</string>
     <string name="friends_prs_hidden">الأرقام القياسية مخفية أو لم يُسجّل أي رقم هذا الأسبوع.</string>
     <string name="friends_nudge">تذكير</string>
@@ -2250,7 +2270,7 @@
     <string name="friends_remove_confirm_title">إزالة الصديق؟</string>
     <string name="friends_remove_confirm_body">هل تريد إزالة %1$s من لوحة الأصدقاء؟ يمكنكما الإضافة مجددًا لاحقًا.</string>
     <string name="friends_block_confirm_title">حظر المستخدم؟</string>
-    <string name="friends_block_confirm_body">هل تريد حظر %1$s؟ ستتم إزالته ولن يتمكن من إرسال دعوات أو تذكيرات لك.</string>
+    <string name="friends_block_confirm_body">هل تريد حظر %1$s؟ ستُزال الصداقة ولن تصلك أي دعوات أو تذكيرات بعد الآن.</string>
     <string name="friends_cancel">إلغاء</string>
     <string name="friends_outgoing_title">دعوات معلّقة</string>
     <string name="friends_error_line">خطأ: %1$s</string>
@@ -2278,9 +2298,9 @@
     <string name="friends_your_rank">ترتيبك %1$d من %2$d</string>
     <string name="friends_together_sub">الأسابيع التي أنجز فيها كلاكما هدفه</string>
     <string name="friends_together_start">أنجزا هدف هذا الأسبوع معًا لتبدأ سلسلتكما</string>
-    <string name="friends_week_done">%1$s: أنجز</string>
+    <string name="friends_week_done">%1$s: تم الإنجاز</string>
     <string name="friends_week_free">%1$s: أسبوع حر</string>
-    <string name="friends_week_not_yet">%1$s: لم ينجز بعد</string>
+    <string name="friends_week_not_yet">%1$s: ليس بعد</string>
     <string name="friends_week_you_done">أنت: أنجزت</string>
     <string name="friends_week_you_free">أنت: أسبوع حر</string>
     <string name="friends_week_you_not_yet">أنت: لم تنجزه بعد</string>
@@ -2288,7 +2308,7 @@
     <string name="friends_their_streak">سلسلة %1$s</string>
     <string name="friends_protein_label">أيام تحقيق هدف البروتين</string>
     <string name="friends_cancel_invite">إلغاء الدعوة إلى %1$s</string>
-    <string name="friends_wants_friends">يريد أن يكون صديقك</string>
+    <string name="friends_wants_friends">طلب صداقة</string>
     <string name="friends_empty_title">التمرين أسهل مع الأصدقاء</string>
     <string name="friends_you">أنت</string>
     <string name="friends_refresh">تحديث</string>
@@ -2298,12 +2318,12 @@
     <string name="friends_inbox_pings_title">رسائل «يلا تمرّن»</string>
     <string name="friends_inbox_ping_line">%1$s: يلا تمرّن 💪</string>
     <string name="friends_inbox_activity_title">نشاط الأصدقاء</string>
-    <string name="friends_inbox_activity_line">أنهى %1$s تمرينًا للتو 💪</string>
+    <string name="friends_inbox_activity_line">تمرين منجز من %1$s للتو 💪</string>
     <string name="friends_turn_on_notifs">فعّل الإشعارات</string>
     <string name="friends_turn_on_action">تفعيل</string>
     <string name="friends_go_train">يلا تمرّن 💪</string>
     <string name="friends_sent_today">أُرسلت اليوم ✓</string>
-    <string name="friends_alert_when_trains">نبّهني حين يتمرّن %1$s</string>
+    <string name="friends_alert_when_trains">نبّهني عند تمرين %1$s</string>
     <string name="friends_alerts_on">تنبيهات تمارين الأصدقاء</string>
     <string name="friends_share_workouts">شارك تمارينك مع أصدقائك</string>
     <string name="friends_share_workouts_sub">يرى أصدقاؤك حين تنهي تمرينًا</string>

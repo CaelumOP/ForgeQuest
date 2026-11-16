@@ -26,6 +26,7 @@ import com.forgequest.app.ui.CalorieUi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Everything the Settings screen does, with its passing state (the snackbar, the busy line, the Google consent sheet, the
@@ -340,33 +341,36 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         app.friends.signIn(activity)
     }
 
-    fun setFriendsShare(sharePhoto: Boolean, sharePrs: Boolean) = viewModelScope.launch {
-        val prev = app.friends.me.value
-        if (prev != null) app.friends.applyLocalMe(prev.copy(sharePhoto = sharePhoto, sharePrs = sharePrs))
-        if (!app.friends.join(sharePhoto, sharePrs) && prev != null) {
-            app.friends.applyLocalMe(prev)
-            app.friends.error.value?.let { message.value = app.str(R.string.friends_error_line, it) }
+    private val friendsSettingsMutex = kotlinx.coroutines.sync.Mutex()
+
+    /** Updates one Friends toggle synchronously in memory and serializes the sync so rapid taps never clobber each other. */
+    fun updateFriendsFlag(transform: (com.forgequest.app.data.friends.Me) -> com.forgequest.app.data.friends.Me) {
+        val current = app.friends.state.value?.view?.me ?: app.friends.me.value ?: return
+        val next = transform(current)
+        app.friends.applyLocalMe(next)
+        viewModelScope.launch {
+            friendsSettingsMutex.withLock {
+                val latest = app.friends.me.value ?: next
+                if (!app.friends.syncMeSettings(latest)) {
+                    if (app.friends.me.value == next) app.friends.applyLocalMe(current)
+                    app.friends.error.value?.let { message.value = app.str(R.string.friends_error_line, it) }
+                }
+            }
         }
     }
 
+    fun setFriendsShare(sharePhoto: Boolean, sharePrs: Boolean) = updateFriendsFlag {
+        it.copy(sharePhoto = sharePhoto, sharePrs = sharePrs)
+    }
+
     /** v4 Friends alert switches; null leaves a flag unchanged. */
-    fun setFriendsAlerts(alertsOn: Boolean? = null, shareWorkouts: Boolean? = null, pingsOn: Boolean? = null) =
-        viewModelScope.launch {
-            val prev = app.friends.me.value
-            if (prev != null) {
-                app.friends.applyLocalMe(
-                    prev.copy(
-                        alertsOn = alertsOn ?: prev.alertsOn,
-                        shareWorkouts = shareWorkouts ?: prev.shareWorkouts,
-                        pingsOn = pingsOn ?: prev.pingsOn,
-                    ),
-                )
-            }
-            if (!app.friends.setAlertFlags(alertsOn, shareWorkouts, pingsOn) && prev != null) {
-                app.friends.applyLocalMe(prev)
-                app.friends.error.value?.let { message.value = app.str(R.string.friends_error_line, it) }
-            }
-        }
+    fun setFriendsAlerts(alertsOn: Boolean? = null, shareWorkouts: Boolean? = null, pingsOn: Boolean? = null) = updateFriendsFlag {
+        it.copy(
+            alertsOn = alertsOn ?: it.alertsOn,
+            shareWorkouts = shareWorkouts ?: it.shareWorkouts,
+            pingsOn = pingsOn ?: it.pingsOn,
+        )
+    }
 
     fun changeFriendsUsername(raw: String) = viewModelScope.launch {
         if (app.friends.changeUsername(raw)) message.value = app.str(R.string.settings_friends_username_saved)

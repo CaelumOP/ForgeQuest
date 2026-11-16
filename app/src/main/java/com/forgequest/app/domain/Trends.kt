@@ -31,11 +31,12 @@ data class FatigueAndPlateauReport(
 /** Everything the Progress screen shows, computed from sessions, sets, weights and meals. Pure, so it's unit-tested. */
 object Trends {
 
-    /** Workouts per week (Sunday..Saturday), oldest first, for the [weeks] weeks ending with the current one. */
+    /** Workout days per week (Sunday..Saturday), oldest first, for the [weeks] weeks ending with the current one. */
     fun weeklyCounts(workoutDays: Collection<Long>, weeks: Int, today: Long): List<Int> {
+        val uniqueDays = workoutDays.toSet()
         val thisWeek = Dates.weekStart(today)
         val starts = (weeks - 1 downTo 0).map { thisWeek - 7L * it }
-        return starts.map { ws -> workoutDays.count { it in ws..ws + 6 } }
+        return starts.map { ws -> uniqueDays.count { it in ws..ws + 6 } }
     }
 
     /**
@@ -47,11 +48,11 @@ object Trends {
         return (weeks - 1 downTo 0).map { back -> val end = today - 1 - 7L * back; days.count { it in end - 6..end } }
     }
 
-    /** Sets done per week, same shape as [weeklyCounts]. */
+    /** Working sets done per week (warm-up and cool-down sets excluded), same shape as [weeklyCounts]. */
     fun weeklySets(sets: List<SetEntity>, sessionDay: Map<Long, Long>, weeks: Int, today: Long): List<Int> {
         val thisWeek = Dates.weekStart(today)
         val starts = (weeks - 1 downTo 0).map { thisWeek - 7L * it }
-        val days = sets.mapNotNull { sessionDay[it.sessionId] }
+        val days = sets.filterNot { WorkoutScore.isExtra(it.block) }.mapNotNull { sessionDay[it.sessionId] }
         return starts.map { ws -> days.count { it in ws..ws + 6 } }
     }
 

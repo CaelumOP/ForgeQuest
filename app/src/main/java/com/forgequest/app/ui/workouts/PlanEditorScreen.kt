@@ -148,7 +148,7 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
             app.workouts.applyPlan(draft, source)
             // A new plan sets the week: its training days become the weekly target.
             app.settings.update { it.copy(weeklyTargetOverride = 0) }
-            message.value = app.str(R.string.plan_switched_to, draft.name)
+            message.value = app.str(R.string.plan_switched_to, StarterPlans.displayTitle(draft.name))
         }
     }
 
@@ -175,8 +175,8 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         app.workouts.updatePlanDay(day.copy(isRest = rest, title = if (rest) app.str(R.string.today_rest_day) else if (day.title == app.str(R.string.today_rest_day) || day.title == "Rest day") app.str(R.string.plan_workout) else day.title))
     }
     val allPlans: StateFlow<List<PlanEntity>> = app.workouts.allPlans.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    fun activate(plan: PlanEntity) = viewModelScope.launch { app.workouts.activatePlan(plan.id); app.settings.update { it.copy(weeklyTargetOverride = 0) }; message.value = app.str(R.string.plan_switched, plan.name) }
-    fun deletePlan(plan: PlanEntity) = viewModelScope.launch { app.workouts.deletePlan(plan.id); message.value = app.str(R.string.lib_deleted, plan.name) }
+    fun activate(plan: PlanEntity) = viewModelScope.launch { app.workouts.activatePlan(plan.id); app.settings.update { it.copy(weeklyTargetOverride = 0) }; message.value = app.str(R.string.plan_switched, StarterPlans.displayTitle(plan.name)) }
+    fun deletePlan(plan: PlanEntity) = viewModelScope.launch { app.workouts.deletePlan(plan.id); message.value = app.str(R.string.lib_deleted, StarterPlans.displayTitle(plan.name)) }
     fun move(item: PlanItemEntity, delta: Int) = viewModelScope.launch { app.workouts.movePlanItem(item, delta) }
     /** From the item sheet: save what was edited there, then move, in that order. */
     fun saveAndMove(draft: PlanItemEntity, delta: Int) = viewModelScope.launch {
@@ -241,7 +241,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.plan_your_plan), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                Text(s.plan?.plan?.name ?: stringResource(R.string.plan_no_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(s.plan?.plan?.name?.let(StarterPlans::displayTitle) ?: stringResource(R.string.plan_no_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
@@ -278,7 +278,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                                     .heightIn(min = 40.dp).padding(end = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(day.day.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f, fill = false))
+                                Text(StarterPlans.displayTitle(day.day.title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f, fill = false))
                                 if (!day.day.isRest) Icon(Icons.Rounded.Edit, contentDescription = null, tint = c.teal, modifier = Modifier.padding(start = 6.dp).size(16.dp))
                             }
                         }
@@ -466,7 +466,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                 Spacer(Modifier.height(12.dp))
                 (StarterPlans.all + StarterPlans.more).forEach { plan ->
                     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(ForgeShape.Md).background(c.cardHigh).clickable { templates = false; vm.preview(plan) }.padding(16.dp)) {
-                        Text(plan.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Text(StarterPlans.displayTitle(plan.name), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Spacer(Modifier.height(4.dp))
                         Text(plan.description, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
@@ -489,7 +489,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(plan.name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                            Text(StarterPlans.displayTitle(plan.name), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                             Text(
                                 listOf(
                                     when (plan.source) { "coach" -> stringResource(R.string.plan_src_coach); "docs" -> stringResource(R.string.plan_src_docs); "starter" -> stringResource(R.string.plan_src_starter); else -> stringResource(R.string.plan_src_you) },
@@ -510,7 +510,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
             AlertDialog(
                 onDismissRequest = { toDelete = null },
                 containerColor = c.card,
-                title = { Text(stringResource(R.string.food_delete_title, plan.name), color = c.textPrimary) },
+                title = { Text(stringResource(R.string.food_delete_title, StarterPlans.displayTitle(plan.name)), color = c.textPrimary) },
                 text = { Text(stringResource(R.string.plan_delete_body), color = c.textSecondary) },
                 confirmButton = { TextButton(onClick = { vm.deletePlan(plan); toDelete = null }) { Text(stringResource(R.string.action_delete), color = c.coral) } },
                 dismissButton = { TextButton(onClick = { toDelete = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
@@ -534,7 +534,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(Dates.dayName(dow), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                            Text(if (target == null || target.day.isRest) stringResource(R.string.live_rest) else target.day.title, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                            Text(if (target == null || target.day.isRest) stringResource(R.string.live_rest) else StarterPlans.displayTitle(target.day.title), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                         }
                     }
                 }
@@ -726,7 +726,7 @@ fun PlanPreviewSheet(
 
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
         Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
-            Text(draft.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+            Text(StarterPlans.displayTitle(draft.name), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
             if (draft.description.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))
                 Text(draft.description, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -736,7 +736,7 @@ fun PlanPreviewSheet(
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     Text(Dates.dayShort(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                        Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else StarterPlans.displayTitle(d.title), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
                         if (!d.isRest && d.items.isNotEmpty()) {
                             val sep = stringResource(R.string.list_separator)
                             Text(

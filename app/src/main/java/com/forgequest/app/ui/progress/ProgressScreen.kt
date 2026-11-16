@@ -469,7 +469,7 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
     val freshText = fresh.map { it.localLabel() }.joinToString(sep)
     val recoveringText = recovering.map { it.localLabel() }.joinToString(sep)
     val today = Dates.today()
-    val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 1, today).lastOrNull() ?: 0
+    val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }.distinct(), 1, today).lastOrNull() ?: 0
     val weekSets = Trends.weeklySets(s.doneSets, s.sessions.associate { it.id to it.epochDay }, 1, today).lastOrNull() ?: 0
     val stalled = report?.stalledLifts.orEmpty().take(3)
     if (insights.isNotEmpty()) {

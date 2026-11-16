@@ -197,4 +197,34 @@ object ExerciseNamesAr {
         "skull_crusher" to "تمرين الجمجمة",
         "cable_crunch" to "الطحن البطني بالكابل",
     )
+
+    private val byEnglishLower: Map<String, String> by lazy {
+        buildMap {
+            for (ex in ExerciseCatalog.all) {
+                val ar = byId[ex.id] ?: continue
+                put(ex.name.lowercase(), ar)
+            }
+            // Demo PRs and older aliases.
+            byId["back_squat"]?.let { put("barbell back squat", it) }
+        }
+    }
+
+    private val byArabic: Map<String, String> by lazy {
+        buildMap {
+            for (ex in ExerciseCatalog.all) {
+                val ar = byId[ex.id] ?: continue
+                put(ar, ex.name)
+            }
+        }
+    }
+
+    /** Translates built-in exercise names (such as synced friend PRs) at display time. */
+    fun displayName(name: String): String {
+        val trimmed = name.trim()
+        return if (java.util.Locale.getDefault().language == "ar") {
+            byEnglishLower[trimmed.lowercase()] ?: name
+        } else {
+            byArabic[trimmed] ?: name
+        }
+    }
 }

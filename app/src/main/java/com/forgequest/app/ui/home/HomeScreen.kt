@@ -184,7 +184,7 @@ fun HomeScreen(nav: NavHostController) {
     }
     // A rest day says where the week stands and what comes next, instead of a fixed line.
     val nextTraining = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
-        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() }?.let { dow to it.day.title } }
+        .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() }?.let { dow to com.forgequest.app.data.seed.StarterPlans.displayTitle(it.day.title) } }
     val restLine = nextTraining?.takeIf { s.streak.targetThisWeek > 0 && !justLog }
         ?.let { (dow, title) -> stringResource(R.string.today_rest_week, s.streak.doneThisWeek, s.streak.targetThisWeek, title, Dates.dayName(dow)) }
     // The sentence under the verdict, and which of its wordings: the same all day, a different one next time.
@@ -578,7 +578,7 @@ private fun StatRow(stats: List<HomeStat>) {
 private fun MonthRow(s: ProgressSnapshot, onOpen: () -> Unit) {
     val c = Fit.colors
     val today = Dates.today()
-    val weekly = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 8, today)
+    val weekly = Trends.weeklyCounts(s.sessions.map { it.epochDay }.distinct(), 8, today)
     val monthWorkouts = s.sessions.asSequence().filter { it.epochDay > today - 30 }.map { it.epochDay }.distinct().count()
     val sessionDays = s.sessions.associate { it.id to it.epochDay }
     val monthRecords = s.doneSets.count { it.isPr && (sessionDays[it.sessionId] ?: 0L) > today - 30 }
@@ -843,7 +843,7 @@ private fun TodayCard(
             noPlan -> stringResource(R.string.today_no_plan)
             isRest && doneToday -> stringResource(R.string.today_extra_done)
             isRest -> stringResource(R.string.today_rest_day)
-            else -> day!!.day.title
+            else -> com.forgequest.app.data.seed.StarterPlans.displayTitle(day!!.day.title)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

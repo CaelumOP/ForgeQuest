@@ -188,6 +188,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 
     var confirmExit by remember { mutableStateOf(false) }
     var confirmFinish by remember { mutableStateOf(false) }
+    var pendingSwap by remember { mutableStateOf<Pair<Int, ExerciseEntity>?>(null) }
     // Asked only when the user taps "remind me" on the finish screen; the rest countdown in the shade uses it too.
     // "Reminder is on" shows only once it really is: after a grant, or at once when permission is already there.
     var reminded by remember { mutableStateOf(false) }
@@ -222,7 +223,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     var focus by remember { mutableStateOf(prefs.getBoolean("focus", false)) }
     val expandedWarmups = remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
     val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = current.coerceAtLeast(0)) { groups.size.coerceAtLeast(1) }
-    val nowExerciseId = remember(groups, nextSet, focus, pager.currentPage, doneCount, expandedWarmups.toMap()) {
+    val nowExerciseId = remember(groups, nextSet, focus, pager.currentPage) {
         if (focus && groups.isNotEmpty()) {
             val active = groups.getOrNull(pager.currentPage)
             when (active) {
@@ -232,13 +233,8 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     ?: active.allSets.firstOrNull()?.exerciseId
                 null -> nextSet?.exerciseId
             }
-        } else if (doneCount > 0) {
-            nextSet?.exerciseId
         } else {
-            groups.firstOrNull { g ->
-                g.allSets.any { !it.done } &&
-                    !(g is Group.Straight && WorkoutScore.isWarmUp(g.block) && expandedWarmups[g.key] != true)
-            }?.allSets?.firstOrNull { !it.done }?.exerciseId ?: nextSet?.exerciseId
+            nextSet?.exerciseId
         }
     }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -270,7 +266,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
-                        Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(s.title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(pluralStringResource(R.plurals.live_header, workSets.size, elapsed / 60, elapsed % 60, workDone, workSets.size), style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary)
                         nowExerciseId?.let { exercises[it]?.let { ex -> Text(stringResource(R.string.live_now, ex.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
                     }
@@ -359,14 +355,15 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 }
             }
             Box(Modifier.fillMaxWidth().background(c.background).navigationBarsPadding().padding(16.dp)) {
+                val finishChecks = if (workSets.isNotEmpty()) workSets else sets
                 PillButton(
                     if (finishing) stringResource(R.string.live_saving) else stringResource(R.string.live_finish_workout),
-                    onClick = { if (sets.any { !it.done }) confirmFinish = true else vm.finish() },
+                    onClick = { if (finishChecks.any { !it.done }) confirmFinish = true else vm.finish() },
                     enabled = doneCount > 0 && !finishing,
                     modifier = Modifier.fillMaxWidth(),
                     // Quiet until every set is ticked, so it does not compete with the tick or invite an early tap.
-                    container = if (sets.all { it.done }) c.teal else c.cardHigh,
-                    content = if (sets.all { it.done }) c.onTeal else c.textPrimary,
+                    container = if (finishChecks.all { it.done }) c.teal else c.cardHigh,
+                    content = if (finishChecks.all { it.done }) c.onTeal else c.textPrimary,
                 )
             }
         }
@@ -398,7 +395,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     }
 
     if (confirmFinish) {
-        val left = sets.count { !it.done }
+        val finishPool = if (workSets.isNotEmpty()) workSets else sets
+        val left = finishPool.count { !it.done }
+        val doneInPool = finishPool.count { it.done }
         AlertDialog(
             onDismissRequest = { confirmFinish = false },
             containerColor = c.card,
@@ -412,7 +411,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = c.teal, contentColor = c.onTeal),
                     ) { Text(stringResource(R.string.live_finish)) }
                     // Only offered once at least half the sets are ticked, so it can't turn an empty workout into a full one.
-                    if (sets.count { it.done } * 2 >= sets.size) {
+                    if (doneInPool * 2 >= finishPool.size) {
                         TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
                     }
                     TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
@@ -445,17 +444,53 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             title = if (mode is PickerMode.Swap) stringResource(R.string.live_swap_exercise) else stringResource(R.string.live_add_exercise),
             library = library,
             onPick = { ex ->
-                if (mode is PickerMode.Swap) vm.swap(mode.position, ex.id) else vm.addExercise(ex.id)
+                if (mode is PickerMode.Swap) {
+                    if (sets.any { it.itemPosition == mode.position && it.done }) {
+                        pendingSwap = mode.position to ex
+                    } else {
+                        vm.swap(mode.position, ex.id)
+                    }
+                } else {
+                    vm.addExercise(ex.id)
+                }
                 picker = null
             },
             onCreate = { name, kind, muscle ->
-                vm.createExercise(name, kind, muscle) { id -> if (mode is PickerMode.Swap) vm.swap(mode.position, id) else vm.addExercise(id) }
+                if (mode is PickerMode.Swap && sets.any { it.itemPosition == mode.position && it.done }) {
+                    vm.createExercise(name, kind, muscle) { id ->
+                        val created = exercises[id] ?: ExerciseEntity(id, name, kind, listOf(muscle), emptyList(), custom = true)
+                        pendingSwap = mode.position to created
+                    }
+                } else {
+                    vm.createExercise(name, kind, muscle) { id -> if (mode is PickerMode.Swap) vm.swap(mode.position, id) else vm.addExercise(id) }
+                }
                 picker = null
             },
             onDismiss = { picker = null },
             initialMuscle = swappingEx?.primary?.firstOrNull(),
             sourceExercise = swappingEx,
             userEquipment = userEquipment,
+        )
+    }
+
+    pendingSwap?.let { (pos, newEx) ->
+        val oldExName = sets.firstOrNull { it.itemPosition == pos }?.let { exercises[it.exerciseId]?.name } ?: ""
+        val doneInGroup = sets.count { it.itemPosition == pos && it.done }
+        AlertDialog(
+            onDismissRequest = { pendingSwap = null },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.live_swap_confirm_title, oldExName), color = c.textPrimary) },
+            text = { Text(pluralStringResource(R.plurals.live_swap_confirm_body, doneInGroup, doneInGroup, newEx.name), color = c.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = { vm.swap(pos, newEx.id); pendingSwap = null }) {
+                    Text(stringResource(R.string.live_swap_confirm_action), color = c.coral)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSwap = null }) {
+                    Text(stringResource(R.string.action_cancel), color = c.textSecondary)
+                }
+            },
         )
     }
 }

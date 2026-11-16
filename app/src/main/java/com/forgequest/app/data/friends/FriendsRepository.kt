@@ -163,7 +163,10 @@ class FriendsRepository(
 
     suspend fun refresh(): Boolean {
         if (isDemo) {
-            _state.value = demoUiData()
+            val progressSnap = runCatching { progress.freshSnapshot() }.getOrNull()
+            val data = demoUiData(progressSnap)
+            _me.value = data.view.me
+            _state.value = data
             _error.value = null
             return true
         }
@@ -241,12 +244,69 @@ class FriendsRepository(
     /** Updates in-memory Me (and the cached leaderboard view if loaded) for optimistic toggles or demo mode. */
     internal fun applyLocalMe(updatedMe: Me) {
         _me.value = updatedMe
+        if (isDemo) saveDemoMe(updatedMe)
         _state.value?.let { cur ->
             val updatedView = cur.view.copy(me = updatedMe)
             _state.value = cur.copy(
                 view = updatedView,
                 leaderboard = FriendsLeaderboard.build(updatedView, cur.mySnapshot),
             )
+        }
+    }
+
+    /** Serializes Friends share/alert flag updates against the latest in-memory [Me] so rapid taps never clobber each other. */
+    suspend fun syncMeSettings(desired: Me): Boolean {
+        if (isDemo) {
+            applyLocalMe(desired)
+            _error.value = null
+            return true
+        }
+        if (!signedIn) return false
+        return try {
+            val updated = syncMutex.withLock {
+                val target = _me.value ?: desired
+                val updatedMe = api.putMe(
+                    target.sharePhoto,
+                    target.sharePrs,
+                    username = null,
+                    alertsOn = target.alertsOn,
+                    shareWorkouts = target.shareWorkouts,
+                    pingsOn = target.pingsOn,
+                )
+                val newest = _me.value
+                val merged = if (newest != null && newest != target) {
+                    updatedMe.copy(
+                        sharePhoto = newest.sharePhoto,
+                        sharePrs = newest.sharePrs,
+                        alertsOn = newest.alertsOn,
+                        shareWorkouts = newest.shareWorkouts,
+                        pingsOn = newest.pingsOn,
+                    )
+                } else {
+                    updatedMe
+                }
+                saveMe(merged)
+                _state.value?.let { cur ->
+                    val updatedView = cur.view.copy(me = merged)
+                    cache.save(updatedView)
+                    _state.value = cur.copy(
+                        view = updatedView,
+                        leaderboard = FriendsLeaderboard.build(updatedView, cur.mySnapshot),
+                    )
+                }
+                uploadSnapshotLocked(force = true, sharePrs = merged.sharePrs)
+                refreshViewLocked()
+                merged
+            }
+            saveMe(updated)
+            _error.value = null
+            syncPushToken()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: FriendsException) {
+            _error.value = e.code
+            false
         }
     }
 
@@ -265,7 +325,11 @@ class FriendsRepository(
         if (cur.view.inbox.pings.none { !it.seen }) return
         val seenView = cur.view.copy(inbox = cur.view.inbox.copy(pings = cur.view.inbox.pings.map { it.copy(seen = true) }))
         _state.value = cur.copy(view = seenView)
-        if (isDemo || !signedIn) return
+        if (isDemo) {
+            prefs.edit().putBoolean(KEY_DEMO_PINGS_SEEN, true).apply()
+            return
+        }
+        if (!signedIn) return
         cache.save(seenView)
         try {
             api.inboxSeen()
@@ -469,10 +533,29 @@ class FriendsRepository(
     }
 
     private fun loadInitialMe(): Me? {
-        if (isDemo) return demoUiData().view.me
+        if (isDemo) return loadDemoMe()
         cache.load()?.me?.let { return it }
         val raw = prefs.getString(KEY_LAST_ME, null) ?: return null
         return runCatching { FriendsApi.json.decodeFromString(Me.serializer(), raw) }.getOrNull()
+    }
+
+    private fun defaultDemoMe() = Me(
+        id = "demo_me",
+        username = "tariq",
+        name = "tariq",
+        photoUrl = null,
+        sharePhoto = true,
+        sharePrs = true,
+        joined = true,
+    )
+
+    private fun loadDemoMe(): Me {
+        val raw = prefs.getString(KEY_DEMO_ME, null) ?: return defaultDemoMe()
+        return runCatching { FriendsApi.json.decodeFromString(Me.serializer(), raw) }.getOrNull() ?: defaultDemoMe()
+    }
+
+    private fun saveDemoMe(me: Me) {
+        prefs.edit().putString(KEY_DEMO_ME, FriendsApi.json.encodeToString(Me.serializer(), me)).apply()
     }
 
     private fun loadInitialState(): FriendsUiData? {
@@ -528,8 +611,8 @@ class FriendsRepository(
         val weekEnd = weekStart + 6L
         val scheduledDays = snap.plan?.trainingDays ?: emptySet()
         val trainedDays = snap.sessions.asSequence()
-            .filter { it.finishedAt != null && it.planDayId != null }
-            .map { Instant.ofEpochMilli(it.finishedAt!!).atZone(zone).toLocalDate().toEpochDay() }
+            .filter { it.finishedAt != null }
+            .map { it.epochDay }
             .filter { it in weekStart..today }
             .toSet()
         val proteinGoal = snap.settings.proteinGoal
@@ -587,29 +670,25 @@ class FriendsRepository(
         )
     }
 
-    private fun demoUiData(): FriendsUiData {
+    private fun demoUiData(progressSnap: ProgressSnapshot? = null): FriendsUiData {
         val today = Dates.today()
         val weekStart = Dates.weekStart(today)
         val now = System.currentTimeMillis()
-        val me = Me(
-            id = "demo_me",
-            username = "tariq",
-            name = "tariq",
-            photoUrl = null,
-            sharePhoto = true,
-            sharePrs = true,
-            joined = true,
-        )
-        val mySnap = Snapshot(
+        val me = loadDemoMe()
+        val samplePrs = listOf(Pr("Bench Press", 92.5, 5), Pr("Pull-up", 15.0, 8))
+        val mySnap = progressSnap?.let { ps ->
+            val built = buildSnapshot(ps, sharePrs = me.sharePrs, today = today)
+            built.copy(prs = if (!me.sharePrs) null else built.prs?.ifEmpty { samplePrs })
+        } ?: Snapshot(
             weekStart = weekStart,
-            done = 3,
-            due = 3,
+            done = 0,
+            due = 0,
             score = 100,
-            badge = ForgeScore.TRAINED,
-            streakWeeks = 6,
-            proteinDays = 5,
-            prs = listOf(Pr("Bench Press", 92.5, 5), Pr("Pull-up", 15.0, 8)),
-            weekState = "hit",
+            badge = ForgeScore.REST,
+            streakWeeks = 0,
+            proteinDays = 0,
+            prs = if (me.sharePrs) samplePrs else null,
+            weekState = "open",
         )
         val friends = listOf(
             Friend(
@@ -705,7 +784,14 @@ class FriendsRepository(
             nudges = listOf(Nudge(fromId = "demo_1", name = "omar", username = "omar", day = today)),
             inbox = Inbox(
                 pings = listOf(
-                    InboxPing(fromId = "demo_1", name = "omar", username = "omar", day = today, createdAt = now / 1000 - 2 * HOUR_S),
+                    InboxPing(
+                        fromId = "demo_1",
+                        name = "omar",
+                        username = "omar",
+                        day = today,
+                        createdAt = now / 1000 - 2 * HOUR_S,
+                        seen = prefs.getBoolean(KEY_DEMO_PINGS_SEEN, false),
+                    ),
                 ),
                 activity = listOf(
                     InboxActivity(userId = "demo_2", name = "lina", username = "lina", at = now / 1000 - 3 * HOUR_S),
@@ -727,6 +813,8 @@ class FriendsRepository(
 
     companion object {
         private const val KEY_DEMO = "friends_demo"
+        private const val KEY_DEMO_ME = "demo_me"
+        private const val KEY_DEMO_PINGS_SEEN = "demo_pings_seen"
         private const val KEY_LAST_SNAPSHOT = "last_snapshot"
         private const val KEY_LAST_ME = "last_me"
         private const val KEY_NUDGED_DAY = "nudged_day"
