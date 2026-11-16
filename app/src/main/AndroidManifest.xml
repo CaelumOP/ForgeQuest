@@ -75,6 +75,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Friends push (FCM data messages): "Do your workout!" and "<friend> just finished a workout" -->
+        <service
+            android:name=".data.notify.FriendsMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Fires when a rest between sets ends, so the alert arrives with the screen off or the app closed -->
         <receiver android:name=".data.notify.RestAlarmReceiver" android:exported="false" />
 

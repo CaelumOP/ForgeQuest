@@ -131,6 +131,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.1")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
+    // FCM push for Friends (4.1). Initialised from res/values/firebase.xml, no google-services plugin.
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-messaging")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.credentials:credentials:1.5.0")

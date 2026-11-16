@@ -50,6 +50,17 @@ class Notifier(private val context: Context) {
                     description = context.getString(R.string.notif_reminder_channel_desc)
                 }
             )
+            // Friends push (4.1): two channels so a person can silence workout alerts but keep "Do your workout" messages.
+            nm.createNotificationChannel(
+                NotificationChannel(FRIENDS_PINGS_CHANNEL, context.getString(R.string.notif_friends_pings_channel), NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = context.getString(R.string.notif_friends_pings_channel_desc)
+                }
+            )
+            nm.createNotificationChannel(
+                NotificationChannel(FRIENDS_ACTIVITY_CHANNEL, context.getString(R.string.notif_friends_activity_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = context.getString(R.string.notif_friends_activity_channel_desc)
+                }
+            )
         }
     }
 
@@ -117,7 +128,36 @@ class Notifier(private val context: Context) {
         runCatching { manager.notify(REMINDER_ID, n) }
     }
 
+    // ------------------------------------------------------------ Friends push
+
+    /**
+     * Shows a Friends push. [ping] = "Do your workout!" message, else "<friend> just finished a workout".
+     * [text] is already localised; tapping opens the Friends tab with the Inbox sheet.
+     */
+    fun showFriendPush(ping: Boolean, fromId: String, text: String) {
+        if (!canPost()) return
+        val open = PendingIntent.getActivity(
+            context, if (ping) 11 else 12,
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(MainActivity.EXTRA_OPEN_FRIENDS_INBOX, true),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = NotificationCompat.Builder(context, if (ping) FRIENDS_PINGS_CHANNEL else FRIENDS_ACTIVITY_CHANNEL)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(text)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+            .setContentIntent(open)
+            .build()
+        // One notification per friend and kind: a newer one replaces the older instead of stacking.
+        runCatching { manager.notify((if (ping) "ping:" else "act:").plus(fromId).hashCode(), n) }
+    }
+
     companion object {
+        const val FRIENDS_PINGS_CHANNEL = "friends_pings"
+        const val FRIENDS_ACTIVITY_CHANNEL = "friends_activity"
+
         /** Alarm usage: heard at the alarm volume, also when the ringer is on vibrate. */
         val ALARM_AUDIO: AudioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)

@@ -187,6 +187,9 @@ private fun MainScaffold() {
     val context = LocalContext.current
     val review by context.container.meals.review.collectAsState()
     LaunchedEffect(review) { if (review != null && route != Routes.SCAN) nav.navigate(Routes.SCAN) { launchSingleTop = true } }
+    // A tapped Friends push: go to the Friends tab; FriendsScreen opens the Inbox and clears the flag.
+    val openInbox = com.forgequest.app.ui.friends.FriendsInboxLink.pending
+    LaunchedEffect(openInbox) { if (openInbox && route != Routes.FRIENDS) nav.goToTab(Routes.FRIENDS) }
 
     // 600 dp and wider (tablets, unfolded foldables): the bar becomes a rail on the start edge and the content stays one
     // 640 dp column in the middle. Phones are unchanged.

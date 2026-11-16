@@ -52,6 +52,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) takeFriendsInboxExtra(intent)
         // Built-in exercise names follow the language, which can change between activity restarts.
         container.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { container.workouts.seedLibrary() }
         // Strings resolved outside Compose (errors, notifications) follow the in-app language too.
@@ -82,6 +83,24 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        takeFriendsInboxExtra(intent)
+    }
+
+    private fun takeFriendsInboxExtra(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_FRIENDS_INBOX, false) == true) {
+            com.forgequest.app.ui.friends.FriendsInboxLink.pending = true
+            intent.removeExtra(EXTRA_OPEN_FRIENDS_INBOX)
+        }
+    }
+
+    companion object {
+        /** Set on Friends push notifications: open the Friends tab with the Inbox sheet. */
+        const val EXTRA_OPEN_FRIENDS_INBOX = "com.forgequest.app.OPEN_FRIENDS_INBOX"
     }
 
     override fun onStop() {

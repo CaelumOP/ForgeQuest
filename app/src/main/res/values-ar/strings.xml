@@ -867,6 +867,12 @@
     <string name="rest_exact_open">فتح الإعدادات</string>
     <string name="notif_reminder_channel">تذكيرات التمرين</string>
     <string name="notif_reminder_channel_desc">تنبيه في أيام التمرين المخطط لها</string>
+    <string name="notif_friends_pings_channel">رسائل «يلا تمرّن»</string>
+    <string name="notif_friends_pings_channel_desc">حين يدعوك صديق إلى التمرين</string>
+    <string name="notif_friends_activity_channel">تمارين الأصدقاء</string>
+    <string name="notif_friends_activity_channel_desc">حين ينهي صديق تمرينه</string>
+    <string name="push_friend_ping">%1$s: يلا تمرّن! 💪</string>
+    <string name="push_friend_activity">أنهى %1$s تمرينه للتو 💪</string>
     <string name="notif_next">التالي: %1$s</string>
     <string name="notif_next_set">المجموعة التالية عند انتهاء المؤقت</string>
     <string name="notif_rest_over">انتهت الراحة</string>

@@ -762,6 +762,12 @@
     <string name="rest_exact_open">Open settings</string>
     <string name="notif_reminder_channel">Workout reminders</string>
     <string name="notif_reminder_channel_desc">A nudge on planned training days</string>
+    <string name="notif_friends_pings_channel">Do your workout messages</string>
+    <string name="notif_friends_pings_channel_desc">When a friend tells you to go train</string>
+    <string name="notif_friends_activity_channel">Friend workouts</string>
+    <string name="notif_friends_activity_channel_desc">When a friend finishes a workout</string>
+    <string name="push_friend_ping">%1$s: Do your workout! 💪</string>
+    <string name="push_friend_activity">%1$s just finished a workout 💪</string>
     <string name="notif_next">Next: %1$s</string>
     <string name="notif_next_set">Next set when the timer ends</string>
     <string name="notif_rest_over">Rest over</string>

@@ -9,7 +9,10 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ForgeScore
 import com.forgequest.app.domain.FriendsLeaderboard
 import com.forgequest.app.domain.LeaderboardEntry
+import androidx.core.app.NotificationManagerCompat
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +41,11 @@ class FriendsRepository(
 ) {
     private val prefs = context.applicationContext.getSharedPreferences(FriendsSession.PREFS_NAME, Context.MODE_PRIVATE)
     private val syncMutex = Mutex()
+    private val appContext = context.applicationContext
+
+    /** True once this process has registered the current FCM token with the Worker. */
+    @Volatile
+    private var pushSynced = false
 
     val signedIn: Boolean
         get() = session.session() != null
@@ -120,6 +128,7 @@ class FriendsRepository(
             }
             saveMe(updated)
             _error.value = null
+            syncPushToken()
             true
         } catch (e: CancellationException) {
             throw e
@@ -159,6 +168,7 @@ class FriendsRepository(
                 true
             }
             _error.value = null
+            if (ok) syncPushToken()
             ok
         } catch (e: CancellationException) {
             throw e
@@ -297,11 +307,47 @@ class FriendsRepository(
         }
     }
 
+    /**
+     * Registers this phone's FCM token with the Worker (PUT /v1/push) when signed in, joined and allowed to notify.
+     * [newToken] comes from FriendsMessagingService.onNewToken; otherwise the token is fetched. Never throws: phones
+     * without Play services, or Firebase failing to start, simply get no push. Runs outside [syncMutex].
+     */
+    suspend fun syncPushToken(newToken: String? = null) {
+        if (newToken != null) pushSynced = false
+        if (pushSynced || !signedIn || isDemo || !isJoined()) return
+        if (!NotificationManagerCompat.from(appContext).areNotificationsEnabled()) return
+        val token = newToken ?: try {
+            FirebaseMessaging.getInstance().token.await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        } ?: return
+        try {
+            val old = session.lastPushToken()
+            api.putPush(token)
+            session.setLastPushToken(token)
+            pushSynced = true
+            if (!old.isNullOrBlank() && old != token) runCatching { api.deletePush(old) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: FriendsException) {
+            // Offline or server error: the next refresh tries again.
+        }
+    }
+
+    /** Call after the person grants notifications, so the token is registered right away. */
+    suspend fun onNotificationsAllowed() {
+        pushSynced = false
+        syncPushToken()
+    }
+
     suspend fun signOut() {
         val pushToken = session.lastPushToken()
         if (!pushToken.isNullOrBlank() && session.session() != null && !isDemo) {
             runCatching { api.deletePush(pushToken) }
         }
+        pushSynced = false
         val keepDemo = if (BuildConfig.DEBUG) prefs.getBoolean(KEY_DEMO, false) else false
         session.clear()
         if (keepDemo) prefs.edit().putBoolean(KEY_DEMO, true).apply()
@@ -316,6 +362,11 @@ class FriendsRepository(
     suspend fun deleteAccount(): Boolean {
         if (!signedIn || isDemo) return false
         return try {
+            // Unregister the push token while the session is still valid, then delete the account.
+            session.lastPushToken()?.takeIf { it.isNotBlank() }?.let { t ->
+                runCatching { api.deletePush(t) }
+                session.setLastPushToken(null)
+            }
             api.deleteMe()
             signOut()
             true
