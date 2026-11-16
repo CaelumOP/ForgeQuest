@@ -13,7 +13,6 @@ import {
 } from '../../domain/plan-builder'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { Button, Card, Chip, IconButton, Segmented, Stepper, haptics, toast } from '../kit'
-import { goBack } from '../nav'
 import { GearCustomizeRow, GearSheet, TrainingPlaceSelector } from '../profile/GearSheet'
 import { ExercisePicker } from '../workouts/ExercisePicker'
 import { SwapIcon } from '../workouts/glyphs'
@@ -97,7 +96,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
         weeklyTargetOverride: 0,
       }))
       toast(t('pb_saved'))
-      goBack()
+      location.hash = '#/workouts'
     } finally {
       setBusy(false)
     }

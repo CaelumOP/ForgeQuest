@@ -12,6 +12,8 @@ const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: 'effort
 /** Easy teal, OK blue, Hard purple, Pain coral. */
 const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'HARD' ? 'purple' : e === 'OK' ? 'blue' : 'teal')
 
+export type EditedField = 'reps' | 'weightKg' | 'seconds'
+
 export type SetRowProps = {
   label: string | null
   sublabel: string | null
@@ -24,7 +26,7 @@ export type SetRowProps = {
   /** Briefly flash stepper numbers gold when a new PR is entered. */
   flash?: boolean
   showEffort: boolean
-  onChange: (next: SetRow, editedField?: boolean) => void
+  onChange: (next: SetRow, editedField?: EditedField) => void
   onToggle: (set: SetRow) => void
   onStartHold: (set: SetRow) => void
   onDismissEffort?: () => void
@@ -74,11 +76,11 @@ export function SetRowView(p: SetRowProps) {
   const [noteOpen, setNoteOpen] = useState(false)
   const timer = useRef<number | undefined>(undefined)
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = undefined } }
-  const save = (patch: Partial<SetRow>, editedField = false) => p.onChange({ ...set, ...patch }, editedField)
+  const save = (patch: Partial<SetRow>, editedField?: EditedField) => p.onChange({ ...set, ...patch }, editedField)
   const effort = parseEffort(set.effort || null)
   const weightStepper = (
     <Stepper label={t('stepper_weight')} value={Math.round(fromKg(unit, set.weightKg ?? 0) * 10) / 10} min={0} max={fromKg(unit, 999)} step={loadStep(unit)}
-      format={(n) => `${Math.round(n * 10) / 10} ${u}`} onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) }, true)} />
+      format={(n) => `${Math.round(n * 10) / 10} ${u}`} onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) }, 'weightKg')} />
   )
   return (
     <div class="lw-setwrap">
@@ -106,12 +108,12 @@ export function SetRowView(p: SetRowProps) {
             <div class="lw-holdrow">
               {!set.done && <button type="button" class="lw-play" aria-label={t('cd_start_hold')} onClick={() => p.onStartHold(set)}><PlayIcon /></button>}
               <Stepper label={t('stepper_hold_time')} value={set.seconds ?? 0} min={0} max={3600} step={5}
-                format={(n) => `${n} ${t('unit_s')}`} onChange={(v) => save({ seconds: clampField('seconds', v) }, true)} />
+                format={(n) => `${n} ${t('unit_s')}`} onChange={(v) => save({ seconds: clampField('seconds', v) }, 'seconds')} />
             </div>
           )}
           {kind !== 'HOLD' && (
             <Stepper label={t('stepper_reps')} value={set.reps ?? 0} min={0} max={999}
-              format={kind === 'WEIGHTED' ? (n) => plural('rx_reps_n', n, n) : undefined} onChange={(v) => save({ reps: clampField('reps', v) }, true)} />
+              format={kind === 'WEIGHTED' ? (n) => plural('rx_reps_n', n, n) : undefined} onChange={(v) => save({ reps: clampField('reps', v) }, 'reps')} />
           )}
           {(kind === 'WEIGHTED' || set.weightKg != null) && weightStepper}
         </div>
@@ -130,13 +132,20 @@ export function SetRowView(p: SetRowProps) {
             {SET_EFFORTS.map((e) => (
               <button key={e} type="button" role="radio" aria-checked={set.effort === e}
                 class={`lw-effort-seg kit-accent-${accentOf(e)}${set.effort === e ? ' lw-effort-on' : ''}`}
-                onClick={() => { haptics.tick(); save({ effort: set.effort === e ? '' : e }); p.onDismissEffort?.() }}>{t(EFFORT_KEY[e])}</button>
+                onClick={() => {
+                  haptics.tick()
+                  const nextEffort = set.effort === e ? '' : e
+                  save({ effort: nextEffort })
+                  if (nextEffort === 'PAIN') setNoteOpen(true)
+                  else p.onDismissEffort?.()
+                }}>{t(EFFORT_KEY[e])}</button>
             ))}
           </div>
           {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}
         </div>
       )}
-      <NoteSheet open={noteOpen} initial={set.note} onClose={() => setNoteOpen(false)} onSave={(v) => { save({ note: v.trim().slice(0, 120) }); setNoteOpen(false) }} />
+      <NoteSheet open={noteOpen} initial={set.note} onClose={() => setNoteOpen(false)}
+        onSave={(v) => { save({ note: v.trim().slice(0, 120) }); setNoteOpen(false); if (p.showEffort) p.onDismissEffort?.() }} />
     </div>
   )
 }

@@ -544,17 +544,21 @@ export function ProfileScreen() {
 /** "Just log" mode: the name and workout count only; XP keeps adding up out of sight. */
 function RankCard({ snap, name, justLog }: { snap: ProgressSnapshot; name: string; justLog: boolean }) {
   const { level } = snap
+  const ar = getLang() === 'ar'
+  const mark = ar ? String(level.level) : level.rank.letter
+  const rankKey = `rank_${level.rank.title.toLowerCase()}`
+  const rankTitle = t(rankKey) === rankKey ? level.rank.title : t(rankKey)
   return (
     <Card>
       <div class="pf-row">
         {!justLog && (
-          <Ring value={level.progress} color="--blue" track="--blue-track" size={64} stroke={4} label={level.rank.letter}>
-            <span class="pf-rank">{level.rank.letter}</span>
+          <Ring value={level.progress} color="--blue" track="--blue-track" size={64} stroke={4} label={mark}>
+            <span class="pf-rank">{mark}</span>
           </Ring>
         )}
         <span class="pf-grow">
           <h2 class="pf-name">{name.trim() || t('profile_default_name')}</h2>
-          {!justLog && <span class="pf-s">{t('profile_rank_line', level.rank.letter, level.rank.title, level.level)}</span>}
+          {!justLog && <span class="pf-s">{t('profile_rank_line', level.rank.letter, rankTitle, level.level)}</span>}
         </span>
       </div>
       {!justLog && <>

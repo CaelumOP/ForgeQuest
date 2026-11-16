@@ -26,9 +26,9 @@ import { syncFriendsQuietly } from '../../data/friends'
 import { blockLabel, openFormVideo } from '../workouts/helpers'
 import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
-import { currentGroupIndex, groupSets, groupSetsByExercise, nextUntickedSet, type Group } from './groups'
+import { carryForwardUpdates, currentGroupIndex, groupSets, groupSetsByExercise, nextUntickedSet, type Group } from './groups'
 import { HoldOverlay, RestBar } from './Overlays'
-import { SetRowView, SetTick, type SetRowProps } from './SetRowView'
+import { SetRowView, SetTick, type EditedField, type SetRowProps } from './SetRowView'
 import {
   adjustRest, clock, holdElapsed, restLeft, holdSaved, loadTimers, saveTimers, startHold, startRest, restDone,
   type HoldTimer, type RestTimer,
@@ -84,7 +84,8 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const [showWelcomeBack, setShowWelcomeBack] = useState(false)
   const activePlan = useActivePlan()
   const deloadWeek = !!activePlan && session?.planDayId != null && isDeloadWeek(activePlan.plan.createdAt, todayEpochDay())
-  const editedRef = useRef(new Set<number>())
+  const editedRepsRef = useRef(new Set<number>())
+  const editedWeightRef = useRef(new Set<number>())
   const prBuzzedRef = useRef(new Set<string>())
   const celebratedRef = useRef(new Set<number>())
   // Best score ever per exercise (finished workouts only), so a set that beats it shows a gold tick.
@@ -233,6 +234,9 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const doneCount = sets.filter((s) => s.done).length
   const workSets = useMemo(() => sets.filter((s) => !isExtraBlock(s.block)), [sets])
   const workDone = workSets.filter((s) => s.done).length
+  const trackedSets = workSets.length > 0 ? workSets : sets
+  const trackedDone = trackedSets.filter((s) => s.done).length
+  const trackedLeft = trackedSets.length - trackedDone
   const current = currentGroupIndex(groups)
   const nextSet = nextUntickedSet(groups)
   const nameOf = (id: string) => exercises.get(id)?.name ?? id
@@ -263,9 +267,9 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   }
   const sid = session.id!
 
-  const startRestFor = (set: SetRow) => {
-    const ordered = [...setsRef.current].sort((a, b) => a.itemPosition - b.itemPosition || a.setIndex - b.setIndex)
-    const next = ordered.find((s) => !s.done && s.id !== set.id)
+  const startRestFor = (set: SetRow, doneAtMs: number) => {
+    const withTick = setsRef.current.map((s) => (s.id === set.id ? { ...set, done: true, doneAt: doneAtMs } : s))
+    const next = nextUntickedSet(groupSetsByExercise(withTick))
     setRestSaved(startRest(set.restSeconds, Date.now(), next ? nameOf(next.exerciseId) : null))
   }
   const announcePr = (set: SetRow) => {
@@ -293,10 +297,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       window.setTimeout(() => setNewBestId((cur) => (cur === updated.id ? null : cur)), 1400)
     }
   }
-  const save = (next: SetRow, editedField = false) => {
+  const save = (next: SetRow, editedField?: EditedField) => {
     if (editedField && next.id != null) {
-      editedRef.current.add(next.id)
-      checkBest(next)
+      if (editedField === 'reps') editedRepsRef.current.add(next.id)
+      if (editedField === 'weightKg') editedWeightRef.current.add(next.id)
+      if (next.done) checkBest(next)
     }
     void updateSet(next).catch(() => toast(t('live_web_save_failed')))
   }
@@ -306,32 +311,34 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const done = !group.every((s) => s.done)
     setEffortSetId(null)
     if (done) haptics.check(); else haptics.tick()
-    group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt: done ? Date.now() : null }) })
+    const doneAt = done ? Date.now() : null
+    group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt }) })
   }
   const carryForward = (set: SetRow) => {
-    for (const next of setsRef.current) {
-      if (next.itemPosition === set.itemPosition && next.exerciseId === set.exerciseId && next.setIndex > set.setIndex && !next.done && next.id != null && !editedRef.current.has(next.id)) {
-        const nextReps = set.reps != null && next.reps != null ? set.reps : next.reps
-        const nextWeight = set.weightKg != null && set.weightKg > 0 ? set.weightKg : next.weightKg
-        if (nextReps !== next.reps || nextWeight !== next.weightKg) {
-          void updateSet({ ...next, reps: nextReps, weightKg: nextWeight }).catch(() => {})
-        }
-      }
+    for (const updated of carryForwardUpdates(setsRef.current, set, editedRepsRef.current, editedWeightRef.current)) {
+      void updateSet(updated).catch(() => {})
     }
   }
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
+    const doneAt = done ? Date.now() : null
     setEffortSetId(done ? (set.id ?? null) : null)
-    const withTick = setsRef.current.map((s) => (s.id === set.id ? { ...s, done } : s))
+    const withTick = setsRef.current.map((s) => (s.id === set.id ? { ...set, done, doneAt } : s))
     const picked = pickPrs(withTick, (id) => exercises.get(id)?.kind ?? 'REPS', best)
     const freshPr = done && set.id != null && picked.has(set.id) && !prBuzzedRef.current.has(set.exerciseId)
     if (!done) haptics.tick()
-    else if (freshPr) { prBuzzedRef.current.add(set.exerciseId); haptics.pr(); announcePr(set) }
-    else haptics.check()
-    save({ ...set, done, doneAt: done ? Date.now() : null })
+    else if (freshPr) {
+      prBuzzedRef.current.add(set.exerciseId)
+      celebratedRef.current.add(set.id!)
+      haptics.pr()
+      announcePr(set)
+      setNewBestId(set.id!)
+      window.setTimeout(() => setNewBestId((cur) => (cur === set.id ? null : cur)), 1400)
+    } else haptics.check()
+    save({ ...set, done, doneAt })
     if (done) carryForward(set)
-    if (done && set.restSeconds > 0) startRestFor(set)
+    if (done && set.restSeconds > 0 && doneAt != null) startRestFor(set, doneAt)
     else if (!done) setRestSaved(null)
   }
   const easeIn = async () => {
@@ -357,9 +364,12 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const held = holdSaved(h, Date.now())
     const set = setsRef.current.find((s) => s.id === h.setId)
     if (!set || held === 0) return
-    save({ ...set, seconds: held, done: true, doneAt: Date.now() })
+    const doneAt = Date.now()
+    const updated = { ...set, seconds: held, done: true, doneAt }
+    save(updated)
+    checkBest(updated)
     if (hapticsOn) buzz(40)
-    if (set.restSeconds > 0) startRestFor(set)
+    if (set.restSeconds > 0) startRestFor(set, doneAt)
   }
   const addRest = (delta: number) => {
     const r = restRef.current
@@ -530,15 +540,16 @@ export function LiveWorkoutScreen(_: { param?: string }) {
         {flash && !rest && <div class="lw-rest-flash" role="status">{t('live_web_rest_over')}</div>}
         {rest && <RestBar rest={rest} now={now} nextLabel={nextLabel} onAdd={() => addRest(15)}
           onRemove={() => { if (restLeftNow(rest) > 15) addRest(-15); else setRestSaved(null) }} onSkip={() => { setRestSaved(null); setEffortSetId(null) }} />}
+        {doneCount === 0 && <div class="lw-small lw-center">{t('live_finish_hint')}</div>}
         <Button block disabled={doneCount === 0 || finishing} loading={finishing}
-          onClick={() => { unlockAudio(); if (sets.some((s) => !s.done)) setConfirmFinish(true); else void doFinish(false) }}>
+          onClick={() => { unlockAudio(); if (trackedLeft > 0) setConfirmFinish(true); else void doFinish(false) }}>
           {finishing ? t('live_saving') : t('live_finish_workout')}
         </Button>
       </div>
 
       {hold && <HoldOverlay hold={hold} now={now} onStop={stopHold} onCancel={() => setHoldSaved(null)} />}
 
-      <FinishSheet open={confirmFinish} left={sets.filter((s) => !s.done).length} canTickAll={doneCount * 2 >= sets.length} onClose={() => setConfirmFinish(false)}
+      <FinishSheet open={confirmFinish} left={trackedLeft} canTickAll={trackedDone * 2 >= trackedSets.length} onClose={() => setConfirmFinish(false)}
         onFinish={(all) => { setConfirmFinish(false); void doFinish(all) }} />
       <Dialog open={confirmExit} destructive title={t('live_discard_title')} message={t('live_discard_body')}
         confirmLabel={t('live_discard')} cancelLabel={t('live_keep_going')} onConfirm={() => void doDiscard()} onCancel={() => setConfirmExit(false)} />
@@ -616,7 +627,7 @@ function formatTargetLabel(label: string): string {
 
 type CardProps = {
   g: Group; forceOpen: boolean; exercises: Map<string, ExerciseRow>; previous: Map<string, SetRow[]>; prIds: Set<number>; newBestId: number | null; reasons: Map<string, ProgressionReason>; unit: WeightUnit; effortSetId: number | null
-  onChange: (s: SetRow, editedField?: boolean) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onDismissEffort: () => void; onMenu: (position: number, swapOnly: boolean) => void; onSwap: (position: number) => void; onAddRound: (positions: number[]) => void
+  onChange: (s: SetRow, editedField?: EditedField) => void; onToggle: (s: SetRow) => void; onToggleAll: (sets: SetRow[]) => void; onStartHold: (s: SetRow) => void; onDismissEffort: () => void; onMenu: (position: number, swapOnly: boolean) => void; onSwap: (position: number) => void; onAddRound: (positions: number[]) => void
   harder: Map<string, Hint>; onStepUp: (oldId: string, next: ExerciseRow) => void
 }
 

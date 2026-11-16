@@ -13,7 +13,7 @@ import {
   type FriendsState,
 } from '../../data/friends'
 import { enablePush, pushPermission, pushSupported } from '../../data/push'
-import { t } from '../../i18n'
+import { t, useLang } from '../../i18n'
 import { normalizeUsername } from '../../domain/forge-score'
 import { Button, Card, Dialog, TextField, toast } from '../kit'
 
@@ -32,6 +32,7 @@ export function FriendsSection({
 }: {
   Title: (p: { title: string; hint?: string }) => JSX.Element
 }) {
+  const lang = useLang()
   const st = useFriends()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const googleRef = useRef<HTMLDivElement>(null)
@@ -58,7 +59,7 @@ export function FriendsSection({
     if (!st.loading && st.status === 'signed_out') {
       void renderGoogleSignInButton(googleRef.current)
     }
-  }, [st.loading, st.status])
+  }, [st.loading, st.status, lang])
 
   return (
     <Card>

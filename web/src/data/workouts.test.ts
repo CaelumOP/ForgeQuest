@@ -158,4 +158,44 @@ describe('live session', () => {
     expect(await putSession({ ...(await db.sessions.get(id))!, note: 'x' })).toBe(id);
     expect(await putSet({ ...first, reps: 11 })).toBe(first.id);
   });
+
+  it('excludes warm-ups from doneSets and drops skipped warm-ups on tickAll', async () => {
+    const id = await startSession(null);
+    await putSet({
+      sessionId: id, exerciseId: 'jumping_jacks', itemPosition: 0, block: 'Warm-up', circuit: false,
+      setIndex: 0, targetLabel: '10 reps', reps: 10, seconds: null, weightKg: null,
+      done: false, isPr: false, restSeconds: 20, note: '', effort: '', doneAt: null,
+    });
+    await putSet({
+      sessionId: id, exerciseId: 'squat', itemPosition: 1, block: 'Main', circuit: false,
+      setIndex: 0, targetLabel: '10 reps', reps: 10, seconds: null, weightKg: null,
+      done: true, isPr: false, restSeconds: 60, note: '', effort: '', doneAt: Date.now(),
+    });
+    await putSet({
+      sessionId: id, exerciseId: 'squat', itemPosition: 1, block: 'Main', circuit: false,
+      setIndex: 1, targetLabel: '10 reps', reps: 10, seconds: null, weightKg: null,
+      done: false, isPr: false, restSeconds: 60, note: '', effort: '', doneAt: null,
+    });
+    const res = await finishSession(id, true);
+    expect(res.doneSets).toBe(2);
+    const saved = await getSets(id);
+    expect(saved.map((s) => s.exerciseId)).toEqual(['squat', 'squat']);
+  });
+
+  it('seedLibrary translates plan-builder titles and session titles in both directions', async () => {
+    await applyPlan({
+      name: 'Build muscle plan',
+      description: 'Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.',
+      days: [{ dayOfWeek: 1, title: 'Full body', isRest: false, note: '', items: [] }],
+    }, 'builder');
+    const sessId = await putSession({
+      planDayId: null, title: 'Full body', epochDay: 20000, startedAt: 1000, finishedAt: 2000, note: '', debrief: '',
+    });
+    await seedLibrary('ar');
+    expect((await getActivePlan())!.plan.name).toBe('خطة بناء العضلات');
+    expect((await db.sessions.get(sessId))!.title).toBe('الجسم كاملًا');
+    await seedLibrary('en');
+    expect((await getActivePlan())!.plan.name).toBe('Build muscle plan');
+    expect((await db.sessions.get(sessId))!.title).toBe('Full body');
+  });
 });

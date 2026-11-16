@@ -13,5 +13,10 @@
   "live_warmup_done": "Mark warm-up done",
   "live_warmup_not_counted": "Warm-up · not in set count",
   "live_effort_caption": "How did that set feel?",
-  "live_effort_skip": "Skip"
+  "live_effort_skip": "Skip",
+  "live_finish_hint": "Tick at least one set to finish",
+  "live_xp_gained": {
+    "one": "+{1} XP",
+    "other": "+{1} XP"
+  }
 }

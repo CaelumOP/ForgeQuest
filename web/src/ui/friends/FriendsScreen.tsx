@@ -74,10 +74,11 @@ function SwitchRow({ label, on, onToggle, disabled }: { label: string; on: boole
 }
 
 function SignedOutView({ error }: { error: string | null }) {
+  const lang = useLang()
   const btnRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     void renderGoogleSignInButton(btnRef.current)
-  }, [])
+  }, [lang])
   return (
     <Card class="fr-pitch">
       <span class="fr-pitch-ic" aria-hidden="true"><GroupIcon size={28} /></span>

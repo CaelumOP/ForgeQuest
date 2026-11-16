@@ -127,7 +127,7 @@ export function WorkoutSummary({ sum, onDone }: { sum: WorkoutSummaryData; onDon
           <div>
             <div class="lws-levelrow">
               <span class={`lws-level${leveledUp ? ' lws-levelup' : ''}`}>{leveledUp ? t('live_level_up', sum.after.level) : t('live_level', sum.after.level)}</span>
-              <span class="lws-xpline">+{sum.xpGained} {t('live_xp')}</span>
+              <span class="lws-xpline">{plural('live_xp_gained', sum.xpGained, sum.xpGained)}</span>
             </div>
             <div class="lws-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><div style={{ inlineSize: `${pct}%` }} /></div>
             <p class="lws-xpline">{t('profile_xp_line', sum.after.xpIntoLevel, sum.after.xpForNextLevel, sum.after.level + 1)}</p>

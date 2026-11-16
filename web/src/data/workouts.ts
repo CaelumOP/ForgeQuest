@@ -1,5 +1,6 @@
 // Port of app/.../data/WorkoutRepository.kt: library seeding, plans, the live session, history and records.
 // Live workout rule: every tap is its own one-row write (putSet / putSession), never a long transaction.
+import { getLang } from '../i18n';
 import {
   db, putSession, putSet, deleteSet,
   type ExerciseRow, type PlanDayRow, type PlanItemRow, type PlanRow, type SessionRow, type SetRow,
@@ -19,6 +20,7 @@ import { debriefForSession, type DebriefResult } from '../domain/debrief';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
 import { isDeloadWeek, nextPrefill, progressionInputs, type PastSet, type ProgressionReason } from '../domain/progression';
+import { isExtraBlock } from '../domain/pr-picker';
 import { isWarmUp, scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
@@ -74,25 +76,41 @@ export async function seedLibrary(lang: 'en' | 'ar' = 'en'): Promise<void> {
 
   // Starter plan & plan-builder texts follow the language (only rows whose text is an exact built-in title).
   const EXTRA_PLAN_AR: Record<string, string> = {
-    'General fitness plan': 'خطة لياقة عامة',
-    'Strength plan': 'خطة قوة',
-    'Muscle building plan': 'خطة بناء العضلات',
+    'Build muscle plan': 'خطة بناء العضلات',
+    'Endurance plan': 'خطة التحمّل',
+    'Lose fat plan': 'خطة خسارة الدهون',
+    'General fitness plan': 'خطة اللياقة العامة',
+    'Strength plan': 'خطة القوة',
     'Fat loss & fitness plan': 'خطة حرق الدهون واللياقة',
+    'Quick workout': 'تمرين سريع',
+    'Workout': 'تمرين',
     'Upper': 'الجزء العلوي',
     'Lower': 'الجزء السفلي',
-    'Conditioning': 'اللياقة',
+    'Conditioning': 'لياقة وتحمّل',
+    'Legs': 'الساقان',
+    'Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.':
+      'التدرّج: عند بلوغ الحد الأعلى من التكرارات في كل المجموعات، زد الحمل أو التكرارات. كل رابع أسبوع، خفّض المجموعات للنصف.',
+  };
+  const ALIASES_TO_AR: Record<string, string> = {
+    'Muscle building plan': 'خطة بناء العضلات',
+  };
+  const ALIASES_TO_EN: Record<string, string> = {
+    'خطة لياقة عامة': 'General fitness plan',
+    'خطة قوة': 'Strength plan',
+    'اللياقة': 'Conditioning',
   };
   const allPairs = [...Object.entries(STARTER_PLANS_AR), ...Object.entries(EXTRA_PLAN_AR)];
-  const swap = (s: string) => {
-    for (const [en, a] of allPairs) {
-      const [from, to] = arabic ? [en, a] : [a, en];
-      if (s === from) return to;
-    }
-    return s;
-  };
-  await db.transaction('rw', db.plans, db.planDays, async () => {
+  const map = new Map<string, string>();
+  for (const [en, a] of allPairs) {
+    if (arabic) map.set(en, a);
+    else map.set(a, en);
+  }
+  for (const [from, to] of Object.entries(arabic ? ALIASES_TO_AR : ALIASES_TO_EN)) map.set(from, to);
+  const swap = (s: string) => map.get(s) ?? s;
+  await db.transaction('rw', db.plans, db.planDays, db.sessions, async () => {
     await db.plans.toCollection().modify((p) => { p.name = swap(p.name); p.description = swap(p.description); });
     await db.planDays.toCollection().modify((d) => { d.title = swap(d.title); d.note = swap(d.note); });
+    await db.sessions.toCollection().modify((s) => { s.title = swap(s.title); });
   });
 }
 
@@ -228,7 +246,8 @@ export async function addPlanItem(dayId: number, exerciseId: string): Promise<vo
     weightKg: ex.kind === 'WEIGHTED' ? 0 : null, restSeconds: 90, note: '',
   });
   const day = await db.planDays.get(dayId);
-  if (day?.isRest) await db.planDays.update(dayId, { isRest: false, title: day.title === REST_TITLE ? 'Workout' : day.title });
+  const workoutFallback = getLang() === 'ar' ? 'تمرين' : 'Workout';
+  if (day?.isRest) await db.planDays.update(dayId, { isRest: false, title: day.title === REST_TITLE || day.title === 'يوم راحة' ? workoutFallback : day.title });
 }
 
 // ---------------------------------------------------------------- Exercises
@@ -326,8 +345,9 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
   const open = await openSessionNow();
   if (open) return open.id!;
   const now = Date.now();
+  const quickTitle = getLang() === 'ar' ? 'تمرين سريع' : QUICK_TITLE;
   const id = await putSession({
-    planDayId: day?.day.id ?? null, title: day?.day.title ?? QUICK_TITLE, epochDay: todayEpochDay(), startedAt: now,
+    planDayId: day?.day.id ?? null, title: day?.day.title ?? quickTitle, epochDay: todayEpochDay(), startedAt: now,
     finishedAt: null, note: '', debrief: '',
   });
   const activePlan = day ? await getActivePlan() : null;
@@ -456,8 +476,15 @@ export function finishSession(sessionId: number, tickAll = false): Promise<Finis
     if (!session) return { sessionTitle: '', doneSets: 0, prs: [], xpGained: 0, endedAt: Date.now(), clipped: false };
     const mine = await db.sets.where('sessionId').equals(sessionId).toArray();
     const now = Date.now();
-    if (tickAll) await db.sets.bulkPut(mine.map((s) => (s.done ? s : { ...s, done: true, doneAt: now })));
-    else await db.sets.bulkDelete(mine.filter((s) => !s.done).map((s) => s.id!));
+    const hasWork = mine.some((s) => !isExtraBlock(s.block));
+    if (tickAll) {
+      const toTick = mine.filter((s) => !s.done && !(hasWork && isExtraBlock(s.block)));
+      const toDrop = mine.filter((s) => !s.done && hasWork && isExtraBlock(s.block));
+      if (toTick.length) await db.sets.bulkPut(toTick.map((s) => ({ ...s, done: true, doneAt: now })));
+      if (toDrop.length) await db.sets.bulkDelete(toDrop.map((s) => s.id!));
+    } else {
+      await db.sets.bulkDelete(mine.filter((s) => !s.done).map((s) => s.id!));
+    }
     const done = (await getSets(sessionId)).filter((s) => s.done);
 
     const earlier = new Set((await finishedSessions())
@@ -479,8 +506,9 @@ export function finishSession(sessionId: number, tickAll = false): Promise<Finis
     // The plan day's sets as they are now, kept so a later plan edit can't change this workout's score.
     const planned = session.planDayId == null ? 0 : plannedSetsOf(await db.planItems.where('dayId').equals(session.planDayId).toArray());
     const endedAt = endTime(now, lastDoneAt(done));
+    const workingDone = done.filter((s) => !isExtraBlock(s.block)).length;
     await db.sessions.put({ ...session, finishedAt: endedAt, plannedSets: planned > 0 ? planned : null });
-    return { sessionTitle: session.title, doneSets: done.length, prs, xpGained: totalXp(1, setsForXp(done.length, session.epochDay), prs.length, 0), endedAt, clipped: endedAt !== now };
+    return { sessionTitle: session.title, doneSets: workingDone, prs, xpGained: totalXp(1, setsForXp(done.length, session.epochDay), prs.length, 0), endedAt, clipped: endedAt !== now };
   });
 }
 

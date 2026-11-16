@@ -11,7 +11,16 @@
   "live_new_record": "رقم قياسي جديد: {1}",
   "live_rank": "الرتبة: {2}",
   "live_warmup_done": "تحديد الإحماء كمنجز",
-  "live_warmup_not_counted": "إحماء · لا يُحسب ضمن عداد الجلسات",
-  "live_effort_caption": "كيف كانت هذه الجولة؟",
-  "live_effort_skip": "تخطي"
+  "live_warmup_not_counted": "إحماء · لا يُحتسب ضمن المجموعات",
+  "live_effort_caption": "كيف كانت هذه المجموعة؟",
+  "live_effort_skip": "تجاوز",
+  "live_finish_hint": "حدّد مجموعة واحدة على الأقل للإنهاء",
+  "live_xp_gained": {
+    "zero": "⁦+0⁩ نقطة خبرة",
+    "one": "⁦+1⁩ نقطة خبرة",
+    "two": "⁦+2⁩ نقطتا خبرة",
+    "few": "⁦+{1}⁩ نقاط خبرة",
+    "many": "⁦+{1}⁩ نقطة خبرة",
+    "other": "⁦+{1}⁩ نقطة خبرة"
+  }
 }

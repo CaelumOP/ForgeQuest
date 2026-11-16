@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import { getLang } from '../i18n'
 import { GOOGLE_CLIENT_ID } from '../config'
 import { todayEpochDay, weekStart } from '../domain/dates'
 import {
@@ -519,6 +520,7 @@ export async function renderGoogleSignInButton(
     shape: 'pill',
     text: 'signin_with',
     width: options?.width,
+    locale: getLang(),
   })
   return true
 }

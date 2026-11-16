@@ -193,7 +193,8 @@ function Rings({ s }: { s: ProgressSnapshot }) {
   const size = 210
   const stroke = carbs ? 13 : 16
   const gap = stroke + 4
-  const proteinShown = Math.round(useTweened(Math.round(n.protein)))
+  const proteinLeft = Math.round(useTweened(gramsLeft(st.proteinGoal, n.protein)))
+  const proteinMet = proteinLeft <= 0
   const kcalShown = Math.round(useTweened(n.kcal))
   const specs = [
     { value: n.protein / goalProtein, color: '--teal', track: '--teal-track' },
@@ -207,8 +208,8 @@ function Rings({ s }: { s: ProgressSnapshot }) {
           {specs.map((p, i) => <Arc key={i} {...p} size={size} stroke={stroke} inset={i * gap} index={i} />)}
         </svg>
         <div class="home-rings-center">
-          <div class="home-rings-protein">{proteinShown}</div>
-          <div class="home-rings-cap">{t('home_center_protein')}</div>
+          <div class="home-rings-protein">{proteinMet ? t('home_done') : proteinLeft}</div>
+          <div class="home-rings-cap">{t(proteinMet ? 'food_protein_met' : 'home_center_protein')}</div>
           <div class="home-rings-kcal" style={{ color: `var(${kcalColor})` }}>{t('home_center_kcal', nf().format(kcalShown))}</div>
         </div>
       </div>

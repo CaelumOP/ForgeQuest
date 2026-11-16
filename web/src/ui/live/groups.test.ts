@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SetRow } from '../../data/db'
-import { clampField, currentGroupIndex, groupSetsByExercise } from './groups'
+import { carryForwardUpdates, clampField, currentGroupIndex, groupSetsByExercise, nextUntickedSet } from './groups'
 
 let id = 0
 const s = (itemPosition: number, setIndex: number, o: Partial<SetRow> = {}): SetRow => ({
@@ -29,5 +29,53 @@ describe('clampField', () => {
     expect(clampField('reps', 1200)).toBe(999)
     expect(clampField('seconds', 4000)).toBe(3600)
     expect(clampField('weightKg', 22.54)).toBe(22.5)
+  })
+})
+
+describe('nextUntickedSet', () => {
+  it('stays on the current or later exercise instead of jumping back to a skipped warm-up', () => {
+    const sets = [
+      s(0, 0, { block: 'Warm-up', exerciseId: 'calf_raise', done: false }),
+      s(1, 0, { block: 'Main', exerciseId: 'bench', done: true, doneAt: 1000 }),
+      s(1, 1, { block: 'Main', exerciseId: 'bench', done: false }),
+      s(2, 0, { block: 'Main', exerciseId: 'row', done: false }),
+    ]
+    const g = groupSetsByExercise(sets)
+    expect(nextUntickedSet(g)?.exerciseId).toBe('bench')
+    const afterBench = groupSetsByExercise([
+      sets[0],
+      sets[1],
+      { ...sets[2], done: true, doneAt: 2000 },
+      sets[3],
+    ])
+    expect(nextUntickedSet(afterBench)?.exerciseId).toBe('row')
+  })
+})
+
+describe('carryForwardUpdates', () => {
+  it('preserves coach rep targets when only weight was edited on set 1', () => {
+    const s1 = s(0, 0, { reps: 9, weightKg: 5 })
+    const s2 = s(0, 1, { reps: 10, weightKg: 2.5 })
+    const s3 = s(0, 2, { reps: 10, weightKg: 2.5 })
+    const editedReps = new Set<number>()
+    const editedWeight = new Set<number>([s1.id!])
+    const updates = carryForwardUpdates([s1, s2, s3], s1, editedReps, editedWeight)
+    expect(updates).toEqual([
+      { ...s2, reps: 10, weightKg: 5 },
+      { ...s3, reps: 10, weightKg: 5 },
+    ])
+  })
+
+  it('carries both reps and weight when both were edited, skipping manually edited later sets', () => {
+    const s1 = s(0, 0, { reps: 9, weightKg: 5 })
+    const s2 = s(0, 1, { reps: 10, weightKg: 2.5 })
+    const s3 = s(0, 2, { reps: 12, weightKg: 2.5 })
+    const editedReps = new Set<number>([s1.id!, s3.id!])
+    const editedWeight = new Set<number>([s1.id!])
+    const updates = carryForwardUpdates([s1, s2, s3], s1, editedReps, editedWeight)
+    expect(updates).toEqual([
+      { ...s2, reps: 9, weightKg: 5 },
+      { ...s3, reps: 12, weightKg: 5 },
+    ])
   })
 })

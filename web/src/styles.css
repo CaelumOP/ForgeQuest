@@ -206,7 +206,7 @@ button { min-height: 44px; padding-block: 0; padding-inline: 24px; border: 0; bo
 
 /* App shell: top bar, one scrolling area, tab bar. Only the middle scrolls. */
 /* 100dvh keeps the tab bar on screen. position: fixed + inset: 0 pushed it off the bottom on iPhone (2026-10-24). */
-.shell { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
+.shell { display: flex; flex-direction: column; height: 100%; height: 100dvh; overflow-x: clip; }
 /* iOS 26 Home Screen apps get a viewport short by the top safe area (WebKit bug 301108), which left an empty strip
    under the tab bar (seen in the iPhone Simulator check, 812 of 874 pt). WebKit only does that while the page is
    shorter than the screen, so the page is made screen-tall and the shell follows it. min() keeps it from scrolling
