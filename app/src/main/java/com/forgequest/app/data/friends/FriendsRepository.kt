@@ -89,15 +89,21 @@ class FriendsRepository(
     /**
      * Joins Friends or updates the profile; [api.putMe] runs immediately so disabling a toggle nulls the column on the server.
      * [username] (raw input) is required on first join; null keeps the current one.
+     * The v4 alert flags are sent only when non-null (null keeps the server value).
      */
-    suspend fun join(name: String, sharePhoto: Boolean, sharePrs: Boolean, username: String? = null): Boolean {
+    suspend fun join(
+        sharePhoto: Boolean,
+        sharePrs: Boolean,
+        username: String? = null,
+        alertsOn: Boolean? = null,
+        shareWorkouts: Boolean? = null,
+        pingsOn: Boolean? = null,
+    ): Boolean {
         if (!signedIn || isDemo) return false
-        val cleanName = name.trim().take(40)
-        if (cleanName.isEmpty()) return false
         val cleanUsername = username?.let { Usernames.normalize(it) ?: run { _error.value = "bad_username"; return false } }
         return try {
             val updated = syncMutex.withLock {
-                val updatedMe = api.putMe(cleanName, sharePhoto, sharePrs, cleanUsername)
+                val updatedMe = api.putMe(sharePhoto, sharePrs, cleanUsername, alertsOn, shareWorkouts, pingsOn)
                 saveMe(updatedMe)
                 // If share toggles changed while cached view is displayed, reflect it immediately too.
                 _state.value?.let { cur ->
@@ -207,12 +213,60 @@ class FriendsRepository(
 
     suspend fun block(id: String) = runAction { api.block(id) }
 
-    /** Changes the username in Settings, keeping name and share toggles. */
+    /** Changes one of the v4 alert switches in Friends settings, keeping everything else. */
+    suspend fun setAlertFlags(alertsOn: Boolean? = null, shareWorkouts: Boolean? = null, pingsOn: Boolean? = null): Boolean {
+        val me = _state.value?.view?.me ?: _me.value ?: return false
+        return join(me.sharePhoto, me.sharePrs, alertsOn = alertsOn, shareWorkouts = shareWorkouts, pingsOn = pingsOn)
+    }
+
+    /**
+     * Marks the inbox read: local state first (the badge clears at once), then POST /v1/inbox/seen.
+     * Only calls the server when there is an unseen "Do your workout" message.
+     */
+    suspend fun markInboxSeen() {
+        val cur = _state.value ?: return
+        if (cur.view.inbox.pings.none { !it.seen }) return
+        val seenView = cur.view.copy(inbox = cur.view.inbox.copy(pings = cur.view.inbox.pings.map { it.copy(seen = true) }))
+        _state.value = cur.copy(view = seenView)
+        if (isDemo || !signedIn) return
+        cache.save(seenView)
+        try {
+            api.inboxSeen()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: FriendsException) {
+            // Not critical: the next refresh shows the server's seen state again.
+        }
+    }
+
+    /** Mutes or unmutes one friend's workout alerts (optimistic; reverted with an error on failure). */
+    suspend fun setMuted(id: String, muted: Boolean) {
+        val before = _state.value ?: return
+        applyMuted(id, muted)
+        if (isDemo) return
+        try {
+            api.setMuted(id, muted)
+            _state.value?.let { cache.save(it.view) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: FriendsException) {
+            _state.value = before
+            _error.value = e.code
+        }
+    }
+
+    private fun applyMuted(id: String, muted: Boolean) {
+        val cur = _state.value ?: return
+        val view = cur.view.copy(friends = cur.view.friends.map { if (it.id == id) it.copy(muted = muted) else it })
+        _state.value = cur.copy(view = view, leaderboard = FriendsLeaderboard.build(view, cur.mySnapshot))
+    }
+
+    /** Changes the username in Settings, keeping the share toggles. */
     suspend fun changeUsername(raw: String): Boolean {
         val me = _state.value?.view?.me ?: _me.value ?: return false
         val clean = Usernames.normalize(raw) ?: run { _error.value = "bad_username"; return false }
         if (clean == me.username) return true
-        return join(me.name, me.sharePhoto, me.sharePrs, clean)
+        return join(me.sharePhoto, me.sharePrs, clean)
     }
 
     /**
@@ -458,10 +512,11 @@ class FriendsRepository(
     private fun demoUiData(): FriendsUiData {
         val today = Dates.today()
         val weekStart = Dates.weekStart(today)
+        val now = System.currentTimeMillis()
         val me = Me(
             id = "demo_me",
             username = "tariq",
-            name = "Tariq",
+            name = "tariq",
             photoUrl = null,
             sharePhoto = true,
             sharePrs = true,
@@ -480,7 +535,7 @@ class FriendsRepository(
         val friends = listOf(
             Friend(
                 id = "demo_1",
-                name = "Omar",
+                name = "omar",
                 username = "omar",
                 snapshot = Snapshot(
                     weekStart = weekStart,
@@ -497,7 +552,7 @@ class FriendsRepository(
             ),
             Friend(
                 id = "demo_2",
-                name = "Lina",
+                name = "lina",
                 username = "lina",
                 snapshot = Snapshot(
                     weekStart = weekStart,
@@ -514,7 +569,7 @@ class FriendsRepository(
             ),
             Friend(
                 id = "demo_3",
-                name = "Zaid",
+                name = "zaid",
                 username = "zaid",
                 snapshot = Snapshot(
                     weekStart = weekStart,
@@ -531,7 +586,7 @@ class FriendsRepository(
             ),
             Friend(
                 id = "demo_4",
-                name = "Sami",
+                name = "sami",
                 username = "sami",
                 snapshot = Snapshot(
                     weekStart = weekStart,
@@ -548,7 +603,7 @@ class FriendsRepository(
             ),
             Friend(
                 id = "demo_5",
-                name = "Noor",
+                name = "noor",
                 username = "noor",
                 snapshot = Snapshot(
                     weekStart = weekStart - 7L,
@@ -566,9 +621,18 @@ class FriendsRepository(
             today = today,
             weekStart = weekStart,
             friends = friends,
-            incoming = listOf(Person(id = "demo_in_1", username = "karim", name = "Karim")),
-            outgoing = listOf(Person(id = "demo_out_1", username = "maya", name = "Maya")),
-            nudges = listOf(Nudge(fromId = "demo_1", name = "Omar", username = "omar", day = today)),
+            incoming = listOf(Person(id = "demo_in_1", username = "karim", name = "karim")),
+            outgoing = listOf(Person(id = "demo_out_1", username = "maya", name = "maya")),
+            nudges = listOf(Nudge(fromId = "demo_1", name = "omar", username = "omar", day = today)),
+            inbox = Inbox(
+                pings = listOf(
+                    InboxPing(fromId = "demo_1", name = "omar", username = "omar", day = today, createdAt = now - 2 * HOUR_MS),
+                ),
+                activity = listOf(
+                    InboxActivity(userId = "demo_2", name = "lina", username = "lina", at = now - 3 * HOUR_MS),
+                    InboxActivity(userId = "demo_1", name = "omar", username = "omar", at = now - 26 * HOUR_MS),
+                ),
+            ),
         )
         return FriendsUiData(
             view = view,
@@ -588,5 +652,6 @@ class FriendsRepository(
         private const val KEY_LAST_ME = "last_me"
         private const val KEY_NUDGED_DAY = "nudged_day"
         private const val KEY_NUDGED_IDS = "nudged_ids"
+        private const val HOUR_MS = 3_600_000L
     }
 }

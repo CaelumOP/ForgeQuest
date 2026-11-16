@@ -41,6 +41,8 @@ data class LeaderboardEntry(
     /** Weeks you and this friend both hit (0 for me). */
     val sharedStreak: Int = 0,
     val username: String? = null,
+    /** v4: I muted this friend's workout alerts. */
+    val muted: Boolean = false,
 )
 
 object FriendsLeaderboard {
@@ -55,12 +57,12 @@ object FriendsLeaderboard {
         val entries = buildList {
             for (f in view.friends) {
                 if (f.id == view.me.id) continue
-                add(toEntry(f.id, f.name, f.photoUrl, isMe = false, snapshot = f.snapshot, weekStart = view.weekStart).copy(sharedStreak = f.sharedStreak, username = f.username))
+                add(toEntry(f.id, f.shownName, f.photoUrl, isMe = false, snapshot = f.snapshot, weekStart = view.weekStart).copy(sharedStreak = f.sharedStreak, username = f.username, muted = f.muted))
             }
             add(
                 toEntry(
                     id = view.me.id,
-                    name = view.me.name,
+                    name = view.me.shownName,
                     photoUrl = view.me.photoUrl,
                     isMe = true,
                     snapshot = meSnapshot,

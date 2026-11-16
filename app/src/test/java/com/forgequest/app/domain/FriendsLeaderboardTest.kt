@@ -54,7 +54,7 @@ class FriendsLeaderboardTest {
 
         val board = FriendsLeaderboard.build(view, meSnapshot = snap(week = weekStart, score = 90, badge = ForgeScore.TRAINED))
 
-        assertEquals(listOf("Tariq", "Omar", "Karim", "Noor"), board.map { it.name })
+        assertEquals(listOf("tariq", "Omar", "Karim", "Noor"), board.map { it.name })
         val noor = board.first { it.id == "f_stale" }
         assertEquals(0, noor.score)
         assertEquals(FriendBadge.NOT_SYNCED, noor.badge)
@@ -87,7 +87,7 @@ class FriendsLeaderboardTest {
 
         val board = FriendsLeaderboard.build(view, meSnapshot = snap(score = 85, badge = ForgeScore.TRAINED))
 
-        assertEquals(listOf("Adam", "lina", "Tariq", "Zaid"), board.map { it.name })
+        assertEquals(listOf("Adam", "lina", "tariq", "Zaid"), board.map { it.name })
         assertEquals(listOf(100, 85, 85, 85), board.map { it.score })
     }
 
@@ -111,6 +111,6 @@ class FriendsLeaderboardTest {
         assertEquals(0, meEntry.score)
         assertEquals(FriendBadge.NOT_SYNCED, meEntry.badge)
         assertFalse(meEntry.syncedThisWeek)
-        assertEquals(listOf("Omar", "Tariq"), board.map { it.name })
+        assertEquals(listOf("Omar", "tariq"), board.map { it.name })
     }
 }

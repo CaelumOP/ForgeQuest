@@ -341,9 +341,12 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     }
 
     fun setFriendsShare(sharePhoto: Boolean, sharePrs: Boolean) = viewModelScope.launch {
-        val name = friendsState.value?.view?.me?.name ?: friendsMe.value?.name ?: return@launch
-        app.friends.join(name, sharePhoto, sharePrs)
+        app.friends.join(sharePhoto, sharePrs)
     }
+
+    /** v4 Friends alert switches; null leaves a flag unchanged. */
+    fun setFriendsAlerts(alertsOn: Boolean? = null, shareWorkouts: Boolean? = null, pingsOn: Boolean? = null) =
+        viewModelScope.launch { app.friends.setAlertFlags(alertsOn, shareWorkouts, pingsOn) }
 
     fun changeFriendsUsername(raw: String) = viewModelScope.launch {
         if (app.friends.changeUsername(raw)) message.value = app.str(R.string.settings_friends_username_saved)

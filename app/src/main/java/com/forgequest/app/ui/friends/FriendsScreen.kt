@@ -207,7 +207,6 @@ fun FriendsScreen(nav: NavHostController) {
                 showJoinForm -> {
                     item {
                         JoinFormCard(
-                            suggestedName = settings?.name?.takeIf { it.isNotBlank() } ?: me?.name.orEmpty(),
                             busy = busy,
                             onJoin = vm::join,
                         )
@@ -615,24 +614,15 @@ private fun SignedOutCard(busy: Boolean, onSignIn: () -> Unit) {
 
 @Composable
 private fun JoinFormCard(
-    suggestedName: String,
     busy: Boolean,
-    onJoin: (String, String, Boolean, Boolean) -> Unit,
+    onJoin: (String, Boolean, Boolean) -> Unit,
 ) {
     val c = Fit.colors
-    var name by rememberSaveable { mutableStateOf("") }
     var username by rememberSaveable { mutableStateOf("") }
-    var nameEdited by rememberSaveable { mutableStateOf(false) }
     var sharePhoto by rememberSaveable { mutableStateOf(true) }
     var sharePrs by rememberSaveable { mutableStateOf(true) }
 
-    LaunchedEffect(suggestedName) {
-        if (!nameEdited && name.isEmpty() && suggestedName.isNotBlank()) {
-            name = suggestedName.trim().take(40)
-        }
-    }
-
-    val valid = name.trim().length in 1..40 && Usernames.normalize(username) != null
+    val valid = Usernames.normalize(username) != null
 
     FitCard {
         Text(
@@ -647,32 +637,6 @@ private fun JoinFormCard(
             color = c.textSecondary,
         )
         Spacer(Modifier.height(14.dp))
-        OutlinedTextField(
-            value = name,
-            onValueChange = {
-                nameEdited = true
-                name = it.take(40)
-            },
-            label = { Text(stringResource(R.string.friends_name_label)) },
-            placeholder = { Text(stringResource(R.string.friends_name_hint)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words,
-                imeAction = ImeAction.Done,
-            ),
-            shape = ForgeShape.Md,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = c.teal,
-                unfocusedBorderColor = c.divider,
-                focusedTextColor = c.textPrimary,
-                unfocusedTextColor = c.textPrimary,
-                cursorColor = c.teal,
-                focusedLabelColor = c.teal,
-                unfocusedLabelColor = c.textSecondary,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(8.dp))
         UsernameField(value = username, onValueChange = { username = it }, enabled = !busy)
         Spacer(Modifier.height(12.dp))
         Row(
@@ -709,7 +673,7 @@ private fun JoinFormCard(
         }
         Spacer(Modifier.height(14.dp))
         Button(
-            onClick = { onJoin(name.trim(), username, sharePhoto, sharePrs) },
+            onClick = { onJoin(username, sharePhoto, sharePrs) },
             enabled = valid && !busy,
             shape = ForgeShape.Full,
             colors = ButtonDefaults.buttonColors(
