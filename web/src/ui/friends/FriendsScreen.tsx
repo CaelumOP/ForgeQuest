@@ -39,6 +39,7 @@ import {
 import { Button, Card, Dialog, IconButton, Sheet, TextField, toast } from '../kit'
 import { useIsDark } from '../theme'
 import { Avatar } from './Avatar'
+import { RankBadge } from './RankBadge'
 import './friends.css'
 
 const BADGE_KEYS: Record<FriendBadge, string> = {
@@ -317,6 +318,7 @@ export function FriendsScreen({ param }: { param?: string }) {
   const today = view ? Math.max(view.today, todayEpochDay()) : 0
   const daysLeft = view ? Math.max(0, view.weekStart + 6 - today) : 0
   const myRank = state.leaderboard.findIndex((e) => e.isMe) + 1
+  const myEntry = myRank > 0 ? state.leaderboard[myRank - 1] : null
   const mine = view?.mySnapshot
   const myWeekState = mine && view && mine.weekStart >= view.weekStart ? mine.weekState ?? null : null
 
@@ -362,7 +364,7 @@ export function FriendsScreen({ param }: { param?: string }) {
             <>
               <div class="fr-week">
                 <span><b>{t('friends_board_title')}</b> · {daysLeft === 0 ? t('friends_last_day') : plural('friends_days_left', daysLeft)}</span>
-                {myRank > 0 && <span>{t('friends_your_rank', myRank, state.leaderboard.length)}</span>}
+                {myEntry?.syncedThisWeek && <RankBadge rank={myRank} total={state.leaderboard.length} lang={lang} />}
               </div>
               <Card class="fr-board" padded={false}>
                 {state.leaderboard.map((entry, idx) => {
@@ -371,7 +373,12 @@ export function FriendsScreen({ param }: { param?: string }) {
                   const displayName = entry.isMe ? t('friends_you') : shownName(entry.person)
                   const body = (
                     <>
-                      <span class="fr-rank">{entry.syncedThisWeek ? idx + 1 : '–'}</span>
+                      <RankBadge
+                        rank={entry.syncedThisWeek ? idx + 1 : null}
+                        total={state.leaderboard.length}
+                        lang={lang}
+                        hideUnsyncedA11y
+                      />
                       <Avatar person={entry.person} />
                       <span class="fr-board-mid">
                         <span class="fr-name">{displayName}</span>

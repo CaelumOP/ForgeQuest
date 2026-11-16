@@ -1976,7 +1976,7 @@
     <string name="friends_add_title">Add a friend</string>
     <string name="friends_settings">Friends settings</string>
     <string name="friends_last_day">Last day</string>
-    <string name="friends_your_rank">You\'re #%1$d of %2$d</string>
+    <string name="friends_rank_cd">%1$s of %2$d</string>
     <string name="friends_together_sub">Weeks you both hit your target</string>
     <string name="friends_together_start">Hit this week together to start a streak</string>
     <string name="friends_week_done">%1$s: done</string>

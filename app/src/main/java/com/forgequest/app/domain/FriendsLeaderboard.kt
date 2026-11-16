@@ -128,4 +128,20 @@ object FriendsLeaderboard {
         due > 0 && done >= due -> "hit"
         else -> weekState
     }
+
+    /** English lowercase ordinal suffix ("st", "nd", "rd", "th") for [rank]. */
+    fun ordinalSuffix(rank: Int): String {
+        val abs = kotlin.math.abs(rank)
+        val mod100 = abs % 100
+        if (mod100 in 11..13) return "th"
+        return when (abs % 10) {
+            1 -> "st"
+            2 -> "nd"
+            3 -> "rd"
+            else -> "th"
+        }
+    }
+
+    /** Formats [rank] as an English ordinal (e.g. 1 -> "1st", 12 -> "12th"). */
+    fun ordinal(rank: Int): String = "$rank${ordinalSuffix(rank)}"
 }

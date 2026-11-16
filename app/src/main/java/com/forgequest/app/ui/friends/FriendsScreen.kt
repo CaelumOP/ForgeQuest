@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -403,6 +404,7 @@ fun FriendsScreen(nav: NavHostController) {
                                     }
                                     LeaderboardRow(
                                         rank = index + 1,
+                                        total = data.leaderboard.size,
                                         entry = entry,
                                         nudged = entry.id in nudgedToday,
                                         busy = busy,
@@ -469,6 +471,7 @@ fun FriendsScreen(nav: NavHostController) {
                     Box(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                         LeaderboardRow(
                             rank = meIndex + 1,
+                            total = leaderboard.size,
                             entry = meEntry,
                             nudged = false,
                             busy = busy,
@@ -555,20 +558,22 @@ fun FriendsScreen(nav: NavHostController) {
     }
 }
 
-/** "This week · 3 days left" and "You're #2 of 5": one line of text, no card. */
+/** "This week · 3 days left" with compact rank badge at the trailing end. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WeekLine(data: FriendsUiData) {
     val c = Fit.colors
     val today = maxOf(data.view.today, com.forgequest.app.domain.Dates.today())
     val daysLeft = (data.view.weekStart + 6 - today).coerceAtLeast(0L).toInt()
-    val rank = data.leaderboard.indexOfFirst { it.isMe } + 1
+    val meIndex = data.leaderboard.indexOfFirst { it.isMe }
+    val meEntry = data.leaderboard.getOrNull(meIndex)
     FlowRow(
         Modifier.fillMaxWidth().padding(horizontal = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.friends_board_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
             Text(
                 " · " + if (daysLeft == 0) stringResource(R.string.friends_last_day) else pluralStringResource(R.plurals.friends_days_left, daysLeft, daysLeft),
@@ -576,12 +581,8 @@ private fun WeekLine(data: FriendsUiData) {
                 color = c.textSecondary,
             )
         }
-        if (rank > 0) {
-            Text(
-                stringResource(R.string.friends_your_rank, rank, data.leaderboard.size),
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.textSecondary,
-            )
+        if (meEntry != null && meEntry.syncedThisWeek) {
+            RankBadge(rank = meIndex + 1, total = data.leaderboard.size)
         }
     }
 }
@@ -622,6 +623,7 @@ private val FriendBadge.labelRes: Int
 @Composable
 private fun LeaderboardRow(
     rank: Int,
+    total: Int,
     entry: LeaderboardEntry,
     nudged: Boolean,
     busy: Boolean,
@@ -630,12 +632,14 @@ private fun LeaderboardRow(
     modifier: Modifier = Modifier,
 ) {
     val c = Fit.colors
+    val isArabic = LocalConfiguration.current.locales[0].language == "ar"
     val statusWord = stringResource(entry.badge.labelRes)
     val status = if (entry.syncedThisWeek) "$statusWord · " + pluralStringResource(R.plurals.friends_done_count, entry.done, entry.done) else statusWord
     val name = if (entry.isMe) stringResource(R.string.friends_you) else entry.name
     val together = if (entry.sharedStreak > 0) pluralStringResource(R.plurals.friends_together, entry.sharedStreak, entry.sharedStreak) else null
     val scoreText = if (entry.syncedThisWeek) entry.score.toString() else "–"
-    val spoken = listOfNotNull("$rank. $name", together, status, scoreText).joinToString(", ")
+    val rankSpoken = if (entry.syncedThisWeek) rankContentDescription(rank, total, isArabic) else null
+    val spoken = listOfNotNull(rankSpoken, name, together, status, scoreText).joinToString(", ")
     Column(
         modifier
             .fillMaxWidth()
@@ -651,12 +655,10 @@ private fun LeaderboardRow(
                 .padding(horizontal = 4.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = if (entry.syncedThisWeek) rank.toString() else "–",
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = NumberFont).tabular(),
-                color = if (entry.isMe) c.teal else c.textSecondary,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.defaultMinSize(minWidth = 20.dp),
+            RankBadge(
+                rank = if (entry.syncedThisWeek) rank else null,
+                total = total,
+                includeSemantics = false,
             )
             Spacer(Modifier.width(10.dp))
             FriendAvatar(entry.name, entry.photoUrl, size = 40.dp)
@@ -694,7 +696,8 @@ private fun LeaderboardRow(
         }
         val canNudge = !entry.isMe && entry.weekState != "hit"
         if (canNudge) {
-            Box(Modifier.padding(start = 78.dp, end = 4.dp, bottom = 4.dp)) {
+            val nudgeStart = if (isArabic) 84.dp else 94.dp
+            Box(Modifier.padding(start = nudgeStart, end = 4.dp, bottom = 4.dp)) {
                 if (nudged) {
                     Text(
                         text = stringResource(R.string.friends_sent_today),

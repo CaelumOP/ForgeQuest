@@ -82,7 +82,7 @@
     "other": "{1} يوم متبقٍ"
   },
   "friends_last_day": "اليوم الأخير",
-  "friends_your_rank": "ترتيبك {1} من {2}",
+  "friends_rank_cd": "المركز {1} من {2}",
   "friends_done_count": {
     "zero": "لا أيام تمرين",
     "one": "يوم تمرين واحد",

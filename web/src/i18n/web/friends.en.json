@@ -74,7 +74,7 @@
     "other": "{1} days left"
   },
   "friends_last_day": "Last day",
-  "friends_your_rank": "You're #{1} of {2}",
+  "friends_rank_cd": "{1} of {2}",
   "friends_done_count": {
     "one": "{1} workout day",
     "other": "{1} workout days"

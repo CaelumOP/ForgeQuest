@@ -122,4 +122,39 @@ class FriendsLeaderboardTest {
         assertEquals("free", FriendsLeaderboard.effectiveWeekState(weekState = "free", done = 0, due = 3))
         assertEquals(null, FriendsLeaderboard.effectiveWeekState(weekState = null, done = 0, due = 0))
     }
+
+    @Test
+    fun englishOrdinalSuffixHandlesTeensHundredsAndStandardCases() {
+        val expected = mapOf(
+            1 to "st",
+            2 to "nd",
+            3 to "rd",
+            4 to "th",
+            5 to "th",
+            10 to "th",
+            11 to "th",
+            12 to "th",
+            13 to "th",
+            14 to "th",
+            20 to "th",
+            21 to "st",
+            22 to "nd",
+            23 to "rd",
+            24 to "th",
+            100 to "th",
+            101 to "st",
+            102 to "nd",
+            103 to "rd",
+            111 to "th",
+            112 to "th",
+            113 to "th",
+            121 to "st",
+            122 to "nd",
+            123 to "rd",
+        )
+        for ((rank, suffix) in expected) {
+            assertEquals("suffix for $rank", suffix, FriendsLeaderboard.ordinalSuffix(rank))
+            assertEquals("ordinal for $rank", "$rank$suffix", FriendsLeaderboard.ordinal(rank))
+        }
+    }
 }
