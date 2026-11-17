@@ -1,3 +1,4 @@
+import { ForgeScoreButton, ForgeScoreInfoButton, ForgeScoreSheet } from './ForgeScoreSheet'
 import { useEffect, useId, useRef, useState } from 'preact/hooks'
 import { getLang, intlLocale, plural, t, useLang, type Lang } from '../../i18n'
 import {
@@ -257,6 +258,7 @@ export function FriendsScreen({ param }: { param?: string }) {
   const state = useFriends()
   const settings = useSettings()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [scoreOpen, setScoreOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [inboxOpen, setInboxOpen] = useState(false)
   const [unseenPings, setUnseenPings] = useState<Set<string>>(() => new Set())
@@ -337,6 +339,7 @@ export function FriendsScreen({ param }: { param?: string }) {
       {!state.loading && state.status === 'joined' && view && (
         <>
           <div class="fr-actions">
+            <ForgeScoreInfoButton onClick={() => setScoreOpen(true)} />
             <IconButton label={t('friends_add_title')} tone="tonal" onClick={() => setAddOpen(true)}><PersonAddIcon /></IconButton>
             <button
               type="button"
@@ -390,16 +393,18 @@ export function FriendsScreen({ param }: { param?: string }) {
                         )}
                         <span class="fr-status">{statusLine(entry)}</span>
                       </span>
-                      <span class={entry.syncedThisWeek ? 'fr-score' : 'fr-score fr-score-stale'}>
-                        {entry.syncedThisWeek ? entry.score : '–'}
-                      </span>
+
                     </>
                   )
                   return (
                     <div key={entry.person.id} class={entry.isMe ? 'fr-board-row fr-board-me' : 'fr-board-row'}>
-                      {entry.isMe
-                        ? <div class="fr-row-main">{body}</div>
-                        : <button type="button" class="fr-row-main" onClick={() => setSelectedId(entry.person.id)}>{body}</button>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-xs)' }}>
+                        {entry.isMe
+                          ? <div class="fr-row-main" style={{ flex: 1 }}>{body}</div>
+                          : <button type="button" class="fr-row-main" style={{ flex: 1 }} onClick={() => setSelectedId(entry.person.id)}>{body}</button>}
+                        <ForgeScoreButton score={entry.syncedThisWeek ? entry.score : null}
+                          done={entry.done} target={entry.target} onClick={() => setScoreOpen(true)} />
+                      </div>
                       {canNudge && (
                         <div class="fr-nudge-row">
                           <button
@@ -441,6 +446,12 @@ export function FriendsScreen({ param }: { param?: string }) {
           )}
         </>
       )}
+
+      <ForgeScoreSheet open={scoreOpen} onClose={() => setScoreOpen(false)}
+        done={myEntry?.done ?? 0} target={myEntry?.target ?? 0}
+        prCount={myEntry?.prCount ?? 0} proteinDays={myEntry?.proteinDays ?? 0}
+        breakdown={myEntry?.breakdown ?? { base: myEntry?.score ?? 0, prBonus: 0,
+          proteinBonus: 0, extraBonus: 0, bonus: 0, score: myEntry?.score ?? 0 }} />
 
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title={t('friends_add_title')}>
         {view && <AddFriend username={view.me.username ?? ''} busy={state.busy} onDone={() => setAddOpen(false)} />}

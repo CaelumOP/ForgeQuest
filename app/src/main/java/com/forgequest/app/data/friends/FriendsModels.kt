@@ -59,6 +59,11 @@ data class Snapshot(
     val weekState: String? = null,
     /** v3, upload only: last week's final state ("hit", "free", "miss"); null for a brand-new user. */
     val lastWeekState: String? = null,
+    val target: Int? = null,
+    val prCount: Int? = null,
+    val reachedAt: Long? = null,
+    val scoreVersion: Int? = null,
+    val breakdown: com.forgequest.app.domain.ForgeScoreBreakdown? = null,
     val updatedAt: Long = 0,
 )
 
@@ -130,6 +135,7 @@ data class FriendsView(
     val nudges: List<Nudge> = emptyList(),
     /** v4: absent in 4.0 caches, so it defaults to empty. */
     val inbox: Inbox = Inbox(),
+    val mySnapshot: Snapshot? = null,
 ) {
     /** Bell badge: incoming requests + unseen "Do your workout" messages (activity never counts). */
     val badgeCount: Int get() = incoming.size + inbox.pings.count { !it.seen }

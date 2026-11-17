@@ -43,6 +43,10 @@ data class LeaderboardEntry(
     val username: String? = null,
     /** v4: I muted this friend's workout alerts. */
     val muted: Boolean = false,
+    val target: Int = due,
+    val prCount: Int = 0,
+    val reachedAt: Long = Long.MAX_VALUE,
+    val breakdown: ForgeScoreBreakdown? = null,
 )
 
 object FriendsLeaderboard {
@@ -72,9 +76,8 @@ object FriendsLeaderboard {
         }
         return entries.sortedWith(
             compareByDescending<LeaderboardEntry> { it.score }
-                .thenBy { it.name.lowercase(Locale.ROOT) }
-                .thenBy { it.name }
-                .thenByDescending { it.isMe }
+                .thenBy { it.reachedAt }
+                .thenBy { (it.username ?: it.name).lowercase(Locale.ROOT) }
                 .thenBy { it.id },
         )
     }
@@ -117,6 +120,10 @@ object FriendsLeaderboard {
                 streakWeeks = snapshot.streakWeeks,
                 prs = snapshot.prs.orEmpty(),
                 syncedThisWeek = true,
+                target = snapshot.target ?: snapshot.due,
+                prCount = snapshot.prCount ?: 0,
+                reachedAt = snapshot.reachedAt ?: snapshot.updatedAt.takeIf { it > 0 } ?: Long.MAX_VALUE,
+                breakdown = snapshot.breakdown,
                 weekState = effectiveWeekState(snapshot.weekState, snapshot.done, snapshot.due),
             )
         }

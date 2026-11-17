@@ -158,6 +158,7 @@ fun FriendsScreen(nav: NavHostController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var scoreOpen by rememberSaveable { mutableStateOf(false) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
     var inboxOpen by rememberSaveable { mutableStateOf(false) }
     var outOpen by rememberSaveable { mutableStateOf(false) }
@@ -295,6 +296,7 @@ fun FriendsScreen(nav: NavHostController) {
                         modifier = Modifier.weight(1f).semantics { heading() },
                     )
                     if (showJoined) {
+                        ForgeScoreInfoButton(onClick = { scoreOpen = true })
                         IconButton(onClick = { addOpen = true }, modifier = Modifier.size(48.dp)) {
                             Box(Modifier.size(40.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.PersonAdd, contentDescription = stringResource(R.string.friends_add_title), tint = c.teal)
@@ -410,6 +412,7 @@ fun FriendsScreen(nav: NavHostController) {
                                         busy = busy,
                                         onOpen = { selectedId = entry.id },
                                         onNudge = { nudge(entry.id) },
+                                        onScore = { scoreOpen = true },
                                         modifier = rowModifier,
                                     )
                                 }
@@ -477,11 +480,20 @@ fun FriendsScreen(nav: NavHostController) {
                             busy = busy,
                             onOpen = {},
                             onNudge = {},
+                            onScore = { scoreOpen = true },
                         )
                     }
                 }
             }
         }
+    }
+
+    if (scoreOpen) {
+        val own = uiData?.mySnapshot?.takeIf { it.weekStart == uiData?.view?.weekStart }
+        ForgeScoreSheet(done = own?.done ?: 0, target = own?.target ?: own?.due ?: 0,
+            prCount = own?.prCount ?: 0, proteinDays = own?.proteinDays ?: 0,
+            breakdown = own?.breakdown ?: com.forgequest.app.domain.ForgeScoreBreakdown(own?.score ?: 0, 0, 0, 0, 0, own?.score ?: 0),
+            onDismiss = { scoreOpen = false })
     }
 
     if (inboxOpen && uiData != null) {
@@ -629,6 +641,7 @@ private fun LeaderboardRow(
     busy: Boolean,
     onOpen: () -> Unit,
     onNudge: () -> Unit,
+    onScore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val c = Fit.colors
@@ -681,18 +694,7 @@ private fun LeaderboardRow(
                 Text(status, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             Spacer(Modifier.width(8.dp))
-            Text(
-                text = scoreText,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = NumberFont,
-                    fontWeight = if (entry.isMe) FontWeight.Bold else FontWeight.SemiBold,
-                ).tabular(),
-                color = when {
-                    entry.isMe -> c.teal
-                    entry.syncedThisWeek -> c.textPrimary
-                    else -> c.textSecondary
-                },
-            )
+            ForgeScoreButton(if (entry.syncedThisWeek) entry.score else null, entry.done, entry.target, onClick = onScore)
         }
         val canNudge = !entry.isMe && entry.weekState != "hit"
         if (canNudge) {

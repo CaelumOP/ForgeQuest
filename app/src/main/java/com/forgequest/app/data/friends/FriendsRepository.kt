@@ -19,7 +19,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
-import java.time.Instant
+import com.forgequest.app.data.db.MealEntity
+import com.forgequest.app.domain.ForgeScoreEvent
+import com.forgequest.app.domain.countsForPR
+import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.roundToLong
 
@@ -488,7 +491,9 @@ class FriendsRepository(
     private suspend fun uploadSnapshotLocked(force: Boolean, sharePrs: Boolean) {
         if (_me.value?.joined == false) return
         val progressSnap = progress.freshSnapshot()
-        val snapshot = buildSnapshot(progressSnap, sharePrs = sharePrs)
+        val today = Dates.today()
+        val snapshot = buildSnapshot(progressSnap, sharePrs = sharePrs, today = today,
+            meals = progress.mealsForScore(Dates.weekStart(today)))
         val json = FriendsApi.json.encodeToString(Snapshot.serializer(), snapshot)
         val hash = sha256(json)
         if (!force && hash == session.snapshotHash()) return
@@ -514,7 +519,8 @@ class FriendsRepository(
         }
         cache.save(view)
         _nudgedToday.value = loadNudgedToday(view.today)
-        val mySnap = loadLastSnapshot()
+        val mySnap = view.mySnapshot
+        mySnap?.let(::saveLastSnapshot)
         _state.value = FriendsUiData(
             view = view,
             leaderboard = FriendsLeaderboard.build(view, mySnap),
@@ -562,7 +568,7 @@ class FriendsRepository(
         if (isDemo) return demoUiData()
         val cached = cache.load() ?: return null
         if (!cached.me.joined) return null
-        val mySnap = loadLastSnapshot()
+        val mySnap = cached.mySnapshot
         return FriendsUiData(
             view = cached,
             leaderboard = FriendsLeaderboard.build(cached, mySnap),
@@ -606,66 +612,40 @@ class FriendsRepository(
         sharePrs: Boolean,
         today: Long = Dates.today(),
         zone: ZoneId = ZoneId.systemDefault(),
+        meals: List<MealEntity> = emptyList(), // demo callers may omit; real uploads must pass meals
     ): Snapshot {
-        val weekStart = Dates.weekStart(today)
-        val weekEnd = weekStart + 6L
-        val scheduledDays = snap.plan?.trainingDays ?: emptySet()
-        val trainedDays = snap.sessions.asSequence()
-            .filter { it.finishedAt != null }
-            .map { it.epochDay }
-            .filter { it in weekStart..today }
-            .toSet()
-        val proteinGoal = snap.settings.proteinGoal
-        val proteinHitDays = if (proteinGoal <= 0) {
-            emptySet()
-        } else {
-            snap.nutritionByDay.asSequence()
-                .filter { it.epochDay in weekStart..today && it.protein >= proteinGoal }
-                .map { it.epochDay }
-                .toSet()
-        }
-        val week = ForgeScore.compute(
-            today = today,
-            scheduledDays = scheduledDays,
-            trainedDays = trainedDays,
-            proteinHitDays = proteinHitDays,
-        )
-        val prs = if (!sharePrs) {
-            null
-        } else {
-            val sessionsById = snap.sessions.associateBy { it.id }
-            snap.doneSets.asSequence()
-                .filter { it.isPr }
-                .mapNotNull { set ->
-                    val s = sessionsById[set.sessionId] ?: return@mapNotNull null
-                    val fin = s.finishedAt ?: return@mapNotNull null
-                    val day = Instant.ofEpochMilli(fin).atZone(zone).toLocalDate().toEpochDay()
-                    if (day !in weekStart..weekEnd) return@mapNotNull null
-                    val rawName = snap.exercises[set.exerciseId]?.name ?: set.exerciseId
-                    val name = rawName.trim().ifBlank { set.exerciseId }.take(60)
-                    val kg = (((set.weightKg ?: 0f) * 100.0).roundToLong() / 100.0).coerceIn(0.0, 1000.0)
-                    val reps = (set.reps ?: set.seconds ?: 1).coerceIn(1, 100)
-                    Triple(fin, set.id, Pr(exercise = name, kg = kg, reps = reps))
+        val ws = Dates.weekStart(today)
+        val sessions = snap.sessions.filter { it.finishedAt != null && it.epochDay in ws..today }
+        val byId = sessions.associateBy { it.id }
+        val eligiblePrs = snap.doneSets.filter { it.done && it.isPr && countsForPR(it) && it.sessionId in byId }
+        val events = sessions.map { ForgeScoreEvent(it.finishedAt!! / 1000, workoutDay = it.epochDay) }.toMutableList()
+        eligiblePrs.forEach { events += ForgeScoreEvent(byId.getValue(it.sessionId).finishedAt!! / 1000, pr = true) }
+        val proteinDays = mutableSetOf<Long>()
+        if (snap.settings.proteinGoal > 0) {
+            for ((day, rows) in meals.filter { it.epochDay in ws..today }.groupBy { it.epochDay }) {
+                var protein = 0f
+                for (meal in rows.sortedBy { it.loggedAt }) {
+                    protein += meal.protein // stored meal macros already include quantity
+                    if (protein >= snap.settings.proteinGoal && proteinDays.add(day))
+                        events += ForgeScoreEvent(meal.loggedAt / 1000, proteinDay = day)
                 }
-                .sortedWith(compareByDescending<Triple<Long, Long, Pr>> { it.first }.thenByDescending { it.second })
-                .map { it.third }
-                .take(10)
-                .toList()
+            }
         }
+        val week = ForgeScore.compute(today, snap.plan?.trainingDays.orEmpty(), sessions.map { it.epochDay }.toSet(),
+            proteinDays, snap.settings.weeklyTargetOverride, eligiblePrs.size)
+        val prs = if (!sharePrs) null else eligiblePrs
+            .sortedWith(compareByDescending<com.forgequest.app.data.db.SetEntity> { byId.getValue(it.sessionId).finishedAt }.thenByDescending { it.id })
+            .take(10).map { set ->
+                val name = (snap.exercises[set.exerciseId]?.name ?: set.exerciseId).trim().ifBlank { set.exerciseId }.take(60)
+                val kg = (((set.weightKg ?: 0f) * 100.0).roundToLong() / 100.0).coerceIn(0.0, 1000.0)
+                Pr(name, kg, (set.reps ?: set.seconds ?: 1).coerceIn(1, 100))
+            }
         return Snapshot(
-            weekStart = week.weekStart,
-            done = week.done,
-            due = week.due,
-            score = week.score,
-            badge = week.badge,
-            streakWeeks = snap.streak.weeks,
-            proteinDays = week.proteinDays,
-            prs = prs,
-            weekState = when {
-                snap.streak.hitThisWeek -> "hit"
-                snap.streak.freeWeek -> "free"
-                else -> "open"
-            },
+            weekStart = ws, done = week.done, due = week.target, score = week.score, badge = week.badge,
+            streakWeeks = snap.streak.weeks, proteinDays = week.proteinDays, prs = prs,
+            target = week.target, prCount = eligiblePrs.size,
+            reachedAt = ForgeScore.reachedAt(week.target, events, LocalDate.ofEpochDay(ws).atStartOfDay(zone).toEpochSecond()),
+            weekState = when { snap.streak.hitThisWeek -> "hit"; snap.streak.freeWeek -> "free"; else -> "open" },
             lastWeekState = snap.streak.lastWeekState,
         )
     }

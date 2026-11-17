@@ -123,6 +123,20 @@ class FriendsModelsTest {
     }
 
     @Test
+    fun authoritativeSelfSnapshotRetainsV5Fields() {
+        val own = Snapshot(20000, 3, 3, 112, "trained", 1, 1,
+            target = 3, prCount = 2, reachedAt = 1728000123, scoreVersion = 2,
+            breakdown = com.forgequest.app.domain.ForgeScore.breakdown(3, 3, 2, 1))
+        val view = FriendsView(Me("me", sharePhoto = false, sharePrs = false, joined = true),
+            today = 20002, weekStart = 20000, mySnapshot = own)
+        val decoded = json.decodeFromString(FriendsView.serializer(), json.encodeToString(FriendsView.serializer(), view))
+        assertEquals(own, decoded.mySnapshot)
+        assertNull(json.decodeFromString(Snapshot.serializer(), """
+            {"weekStart":20000,"done":1,"due":1,"score":100,"badge":"trained","streakWeeks":0,"proteinDays":0}
+        """).target)
+    }
+
+    @Test
     fun encodeSnapshotExplicitNullPrs() {
         val snapshot = Snapshot(
             weekStart = 20497L,

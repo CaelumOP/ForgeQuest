@@ -40,6 +40,25 @@ class FriendsLeaderboardTest {
     )
 
     @Test
+    fun tiesUseReachedTimeThenUsernameAndKeepRawBreakdown() {
+        val breakdown = ForgeScore.breakdown(3, 3, 2, 1)
+        val mine = snap(score = 112).copy(target = 3, prCount = 2, reachedAt = 200, breakdown = breakdown)
+        val view = FriendsView(me = me, today = weekStart + 2, weekStart = weekStart,
+            friends = listOf(
+                Friend("early", username = "z", snapshot = mine.copy(reachedAt = 100)),
+                Friend("tie", username = "adam", snapshot = mine),
+                Friend("legacy", username = "old", snapshot = snap(score = 112).copy(updatedAt = 300)),
+            ))
+        val board = FriendsLeaderboard.build(view, mine)
+        assertEquals(listOf("early", "tie", "me", "legacy"), board.map { it.id })
+        val own = board.single { it.isMe }
+        assertEquals(3, own.target)
+        assertEquals(2, own.prCount)
+        assertEquals(breakdown, own.breakdown)
+        assertEquals(300L, board.last().reachedAt)
+    }
+
+    @Test
     fun staleAndMissingSnapshotsNeutralisedNeverSlacking() {
         val view = FriendsView(
             me = me,

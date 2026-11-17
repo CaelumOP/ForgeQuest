@@ -5,6 +5,8 @@ import { db } from './db'
 import {
   _resetFriendsForTest,
   badgeCount,
+  buildMySnapshot,
+  refreshFriends,
   ensureFriendsLoaded,
   FRIENDS_AUTH_KEY,
   FRIENDS_CACHE_KEY,
@@ -16,6 +18,9 @@ import {
   syncFriendsQuietly,
   uploadSnapshot,
 } from './friends'
+import { DEFAULT_SETTINGS } from './settings'
+import { todayEpochDay, weekStart } from '../domain/dates'
+import type { SetRow } from './db'
 import { initialsFor } from '../ui/friends/Avatar'
 
 describe('friends persistence and backup isolation', () => {
@@ -26,6 +31,62 @@ describe('friends persistence and backup isolation', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('sends raw inputs with real protein crossing time and private uncapped PR counts', async () => {
+    const now = new Date(2026, 10, 18, 18).getTime()
+    const today = todayEpochDay(new Date(now))
+    const ws = weekStart(today)
+    const finish = new Date(2026, 10, 18, 10).getTime()
+    await db.kv.put({ key: 'settings', value: { ...DEFAULT_SETTINGS, weeklyTargetOverride: 1, proteinGoal: 100 } })
+    await db.sessions.bulkPut([
+      { id: 1, planDayId: null, title: 'Free workout', epochDay: today, startedAt: finish - 1000, finishedAt: finish, note: '', debrief: '' },
+      { id: 2, planDayId: null, title: 'Old', epochDay: ws - 1, startedAt: finish, finishedAt: finish, note: '', debrief: '' },
+      { id: 3, planDayId: null, title: 'Open', epochDay: today, startedAt: finish, finishedAt: null, note: '', debrief: '' },
+    ])
+    const set: SetRow = { sessionId: 1, exerciseId: 'bench', itemPosition: 0, block: 'Main', circuit: false,
+      setIndex: 0, targetLabel: '5', reps: 5, seconds: null, weightKg: 50, done: true, isPr: true, restSeconds: 60, note: '', effort: '' }
+    await db.sets.bulkPut([
+      ...Array.from({ length: 12 }, (_, i) => ({ ...set, id: i + 1 })),
+      ...['WARMUP', 'DROPSET', 'RESTPAUSE'].map((setType, i) => ({ ...set, id: 20 + i, setType })),
+      { ...set, id: 30, done: false }, { ...set, id: 31, sessionId: 2 }, { ...set, id: 32, sessionId: 3 },
+      { ...set, id: 33, block: 'Warm-up' },
+    ])
+    const meal = { epochDay: today, name: 'Meal', category: 'LUNCH' as const, kcal: 300, quantity: 4,
+      carbs: 0, photoPath: null, foodId: null }
+    const crossing = finish + 7200000
+    await db.meals.bulkPut([
+      { ...meal, loggedAt: crossing, protein: 60 },
+      { ...meal, loggedAt: finish + 3600000, protein: 40 },
+      { ...meal, loggedAt: crossing + 3600000, protein: 50 },
+    ])
+    const hidden = await buildMySnapshot(false, now)
+    expect(hidden).toMatchObject({ done: 1, due: 1, target: 1, prCount: 12, proteinDays: 1,
+      score: 112, reachedAt: crossing / 1000, prs: null })
+    const shared = await buildMySnapshot(true, now)
+    expect(shared.prs).toHaveLength(10)
+    expect({ ...shared, prs: null }).toEqual(hidden)
+    await db.kv.put({ key: 'settings', value: { ...DEFAULT_SETTINGS, weeklyTargetOverride: 1, proteinGoal: 0 } })
+    expect(await buildMySnapshot(false, now)).toMatchObject({ proteinDays: 0, score: 110, reachedAt: finish / 1000 })
+  })
+
+  it('keeps the authoritative self row after upload and replaces it only from GET', async () => {
+    const own = { weekStart: 20772, done: 1, due: 3, target: 3, score: 33, badge: 'on_track',
+      streakWeeks: 0, proteinDays: 0, prCount: 0, reachedAt: 1794700000, scoreVersion: 2 }
+    const view = { me: { id: 'u1', username: 'tariq', name: 'tariq', photoUrl: null, sharePhoto: true, sharePrs: false, joined: true },
+      today: 20775, weekStart: 20772, mySnapshot: own, friends: [], incoming: [], outgoing: [], nudges: [] }
+    await db.kv.bulkPut([{ key: FRIENDS_AUTH_KEY, value: { sessionToken: 'test' } }, { key: FRIENDS_CACHE_KEY, value: view }])
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })))
+    await uploadSnapshot(true)
+    expect((await db.kv.get(FRIENDS_CACHE_KEY))?.value).toMatchObject({ mySnapshot: own })
+    const authoritative = { ...own, score: 38, prCount: 1 }
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(
+      url.includes('/v1/friends') ? new Response(JSON.stringify({ ...view, mySnapshot: authoritative })) : new Response(null, { status: 204 }))))
+    expect((await refreshFriends(true)).ok).toBe(true)
+    expect((await db.kv.get(FRIENDS_CACHE_KEY))?.value).toMatchObject({ mySnapshot: authoritative })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...view, mySnapshot: null }))))
+    expect((await refreshFriends(true)).ok).toBe(true)
+    expect((await db.kv.get(FRIENDS_CACHE_KEY))?.value).toMatchObject({ mySnapshot: null })
   })
 
   it('excludes friendsAuth, friendsCache, and friendsDemo from built backups', async () => {

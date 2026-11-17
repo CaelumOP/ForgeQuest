@@ -5,11 +5,14 @@ import { todayEpochDay, weekStart } from '../domain/dates'
 import {
   buildLeaderboard,
   computeForgeWeek,
+  scoreReachedAt,
+  type ForgeScoreEvent,
   normalizeUsername,
   type LeaderboardEntry,
   type Pr,
   type Snapshot,
 } from '../domain/forge-score'
+import { countsForPR } from '../domain/set-types'
 import { db } from './db'
 import { preloadGis } from './drive'
 import {
@@ -39,7 +42,7 @@ export interface FriendsAuth {
 export const shownName = (p: { username?: string | null; name?: string | null }): string =>
   p.username || p.name || ''
 
-/** What we keep in kv `friendsCache`: the last GET /friends plus my own last uploaded snapshot. */
+/** What we keep in kv `friendsCache`: the last GET /friends including my server-calculated snapshot. */
 export type CachedView = FriendsView & { mySnapshot: Snapshot | null }
 
 export type FriendsStatus = 'signed_out' | 'needs_join' | 'joined'
@@ -125,8 +128,8 @@ function computeBoard(view: CachedView | null): LeaderboardEntry[] {
   return buildLeaderboard(view.weekStart, me, view.mySnapshot, view.friends)
 }
 
-function withMine(view: FriendsView, mySnapshot: Snapshot | null): CachedView {
-  return { ...view, mySnapshot }
+function withMine(view: FriendsView, _mySnapshot: Snapshot | null): CachedView {
+  return { ...view, mySnapshot: view.mySnapshot ?? null }
 }
 
 function normalizeMe(me: Me): Me {
@@ -405,19 +408,31 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
   const progress = await getProgressSnapshot(now, true)
 
   const scheduledDays = progress.plan ? trainingDays(progress.plan) : new Set<number>()
-  const trainedDays = new Set(
-    progress.sessions.filter((s) => s.planDayId != null).map((s) => s.epochDay),
-  )
-
-  const proteinGoal = progress.settings.proteinGoal
-  const proteinDaysSet =
-    proteinGoal > 0
-      ? new Set(
-          progress.nutritionByDay.filter((d) => d.protein >= proteinGoal).map((d) => d.epochDay),
-        )
-      : new Set<number>()
-
-  const week = computeForgeWeek(today, scheduledDays, trainedDays, proteinDaysSet)
+  const sessions = progress.sessions.filter(s => s.finishedAt != null && s.epochDay >= ws && s.epochDay <= today)
+  const byId = new Map(sessions.map(s => [s.id!, s]))
+  const trainedDays = new Set(sessions.map(s => s.epochDay))
+  const eligiblePrs = progress.doneSets.filter(s => s.done && s.isPr && countsForPR(s) && byId.has(s.sessionId))
+  const events: ForgeScoreEvent[] = sessions.map(s => ({ at: Math.floor(s.finishedAt! / 1000), workoutDay: s.epochDay }))
+  for (const set of eligiblePrs) events.push({ at: Math.floor(byId.get(set.sessionId)!.finishedAt! / 1000), pr: true })
+  const proteinDaysSet = new Set<number>()
+  const totals = new Map<number, number>()
+  if (progress.settings.proteinGoal > 0) {
+    const meals = await db.meals.where('epochDay').between(ws, today, true, true).toArray()
+    for (const meal of meals.sort((a, b) => a.loggedAt - b.loggedAt)) {
+      const total = (totals.get(meal.epochDay) ?? 0) + meal.protein
+      totals.set(meal.epochDay, total)
+      if (total >= progress.settings.proteinGoal && !proteinDaysSet.has(meal.epochDay)) {
+        proteinDaysSet.add(meal.epochDay)
+        events.push({ at: Math.floor(meal.loggedAt / 1000), proteinDay: meal.epochDay })
+      }
+    }
+  }
+  const week = computeForgeWeek(today, scheduledDays, trainedDays, proteinDaysSet,
+    progress.settings.weeklyTargetOverride, eligiblePrs.length)
+  const localSunday = new Date(now)
+  localSunday.setHours(0, 0, 0, 0)
+  localSunday.setDate(localSunday.getDate() - (today - ws))
+  const reachedAt = scoreReachedAt(week.target, events, Math.floor(localSunday.getTime() / 1000))
 
   let prs: Pr[] | null = null
   if (sharePrs) {
@@ -427,7 +442,7 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
         .map((s) => [s.id!, s]),
     )
     const prSets = progress.doneSets
-      .filter((s) => s.isPr && weekSessions.has(s.sessionId))
+      .filter((s) => s.isPr && countsForPR(s) && weekSessions.has(s.sessionId))
       .sort((a, b) => {
         const sa = weekSessions.get(a.sessionId)?.finishedAt ?? 0
         const sb = weekSessions.get(b.sessionId)?.finishedAt ?? 0
@@ -449,7 +464,10 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
   return {
     weekStart: week.weekStart,
     done: week.done,
-    due: week.due,
+    due: week.target,
+    target: week.target,
+    prCount: eligiblePrs.length,
+    reachedAt,
     score: week.score,
     badge: week.badge,
     streakWeeks: Math.min(520, Math.max(0, progress.streak.weeks)),
@@ -465,6 +483,9 @@ async function hashSnapshot(s: Snapshot): Promise<string> {
     weekStart: s.weekStart,
     done: s.done,
     due: s.due,
+    target: s.target,
+    prCount: s.prCount,
+    reachedAt: s.reachedAt,
     score: s.score,
     badge: s.badge,
     streakWeeks: s.streakWeeks,
@@ -600,7 +621,7 @@ export async function uploadSnapshot(force = false): Promise<boolean> {
   await friendsApi.putSnapshot(auth.sessionToken, snap)
   const nextAuth: FriendsAuth = { ...auth, lastSnapshotHash: hash }
   await saveAuth(nextAuth)
-  const nextView: CachedView = { ...view, mySnapshot: snap }
+  const nextView: CachedView = { ...view }
   await saveCache(nextView)
   if (state.status === 'joined') {
     setState({

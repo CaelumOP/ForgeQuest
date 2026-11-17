@@ -47,6 +47,7 @@ export interface Inbox {
 }
 
 export interface FriendsView {
+  mySnapshot?: Snapshot | null
   me: Me
   today: number
   weekStart: number
