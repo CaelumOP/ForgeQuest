@@ -9,6 +9,10 @@ export function countsForProgression(set: TypedSet): boolean {
   return type === 'WORKING' && !['warm-up', 'cool-down'].includes((set.block ?? '').toLowerCase());
 }
 export const countsForScore = countsForProgression;
+/** A set the user actually trained, for "N sets" labels: drop/rest-pause/failure count, warm-ups and cool-downs don't. */
+export function countsAsWorkingSet(set: TypedSet): boolean {
+  return (set.setType ?? 'WORKING') !== 'WARMUP' && !['warm-up', 'cool-down'].includes((set.block ?? '').toLowerCase());
+}
 export function countsForPR(set: TypedSet): boolean {
   return !set.autoTicked && countsForProgression(set);
 }

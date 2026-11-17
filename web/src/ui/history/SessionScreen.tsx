@@ -5,7 +5,7 @@ import { getSession, useWorkoutScore } from '../../data/workouts'
 import { useSettings, weightUnit } from '../../data/settings'
 import { deleteFinishedSet, deleteSession, moveSession, updateFinishedSet, useLibrary, useSession, useSets } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
-import { isExtraBlock } from '../../domain/volume-change'
+import { countsAsWorkingSet } from '../../domain/set-types'
 import { fromKg, loadStep, toKg, unitLabel } from '../../domain/units'
 import { Button, Card, Chip, Dialog, EmptyState, IconButton, ListRow, Sheet, Stepper, TextField } from '../kit'
 import { CloseIcon, MoreIcon } from '../icons'
@@ -87,7 +87,7 @@ export function SessionScreen({ param }: { param?: string }) {
   const groups = [...groupMap.entries()].sort((a, b) => a[0] - b[0]).map(([, g]) => g.sort((a, b) => a.setIndex - b.setIndex))
   const today = todayEpochDay()
 
-  const workingCount = sets.filter((s) => !isExtraBlock(s.block)).length
+  const workingCount = sets.filter(countsAsWorkingSet).length
   const isPainNote = noteFor?.effort === 'PAIN'
   const noteTitle = isPainNote ? t('v42_pain_note_title') : t('live_note_title')
   const quickTags: [string, string][] = isPainNote

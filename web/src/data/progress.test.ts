@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie';
 import { beforeEach, describe, expect, it } from 'vitest';
 import fixtureText from './fixtures/android-backup.json?raw';
 import { applyBackup, decodeBackup } from './backup';
-import { db, putSession } from './db';
+import { db, putSession, putSet, type SetRow } from './db';
 import { todayEpochDay, weekStart } from '../domain/dates';
 import { weekTargets } from './settings';
 import { applyPlan, getActivePlan, seedLibrary } from './workouts';
@@ -109,5 +109,27 @@ describe('progress', () => {
     expect(snap.streak.targetThisWeek).toBe(3);
     expect(snap.streak.weeks).toBe(1);
     expect((await weekTargets()).get(lastWeekSun)).toBe(3);
+  });
+
+  it('badge bests skip warm-ups and stretches; XP ignores auto-ticked records', async () => {
+    const today = todayEpochDay();
+    const startedAt = Date.UTC(1970, 0, 1) + today * 86_400_000;
+    const sessionId = await putSession({ planDayId: null, title: 'T', epochDay: today, startedAt, finishedAt: startedAt + 1_800_000, note: '', debrief: '' });
+    const row = (exerciseId: string, extra: Partial<SetRow>): SetRow => ({
+      sessionId, exerciseId, itemPosition: 0, block: 'Main', circuit: false, setIndex: 0, targetLabel: '',
+      reps: null, seconds: null, weightKg: null, done: true, isPr: false, restSeconds: 60, note: '', effort: '', ...extra,
+    } as SetRow);
+    await putSet(row('burpee', { reps: 8 }));
+    await putSet(row('burpee', { reps: 20, setType: 'WARMUP', setIndex: 1 }));
+    await putSet(row('quad_stretch', { seconds: 90, itemPosition: 1 }));
+    const autoPr = await putSet(row('burpee', { reps: 6, setIndex: 2, isPr: true, autoTicked: true }));
+    const snap = await getProgressSnapshot();
+    expect(snap.stats.bestReps.burpee).toBe(8);
+    expect(snap.stats.bestSeconds.quad_stretch).toBeUndefined();
+
+    await db.sets.update(autoPr, { isPr: false });
+    expect((await getProgressSnapshot()).level.totalXp).toBe(snap.level.totalXp); // the auto-ticked record earned nothing
+    await db.sets.update(autoPr, { isPr: true, autoTicked: false });
+    expect((await getProgressSnapshot()).level.totalXp).toBeGreaterThan(snap.level.totalXp);
   });
 });
