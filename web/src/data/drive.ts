@@ -3,21 +3,73 @@
 // either app can restore the other's backup. Tokens come from Google Identity Services (GIS) and last
 // about an hour; a fresh one needs a tap (iPhone blocks the sign-in popup without one).
 import { GOOGLE_CLIENT_ID } from '../config'
-import { buildBackup, decodeBackup, encodeBackup, type BackupFile } from './backup'
+import { applyBackup, buildBackup, decodeBackup, encodeBackup, type BackupFile } from './backup'
 import { db } from './db'
-import { loadSettings, updateSettings } from './settings'
+import { autoBackupEffective, loadSettings, markRestoreOfferShown, updateSettings } from './settings'
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata'
 const API = 'https://www.googleapis.com/drive/v3'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
 export const BACKUP_NAME = 'forgequest_backup.json'
 const TOKEN_KEY = 'fq.drive.token'
+const REMOTE_MOD_PREFIX = 'fq.drive.remoteMod.'
 /** On open, back up only when the last one is older than this. After a workout, always. */
 const OPEN_BACKUP_AGE_MS = 6 * 3_600_000
 
-export type DriveErrorKind = 'offline' | 'cancelled' | 'http' | 'no-backup'
+export type DriveErrorKind = 'offline' | 'cancelled' | 'http' | 'no-backup' | 'remote-newer'
 export class DriveError extends Error {
   constructor(readonly kind: DriveErrorKind, readonly status = 0) { super(`drive ${kind} ${status}`); this.name = 'DriveError' }
+}
+
+// ---------------------------------------------------------------- Serialization & policy
+
+let syncQueue: Promise<unknown> = Promise.resolve()
+
+/** Serializes backup, fetch, connect, and restore operations so concurrent triggers never race. */
+export function withSyncLock<T>(job: () => Promise<T>): Promise<T> {
+  const next = syncQueue.then(job, job)
+  syncQueue = next.catch(() => undefined)
+  return next
+}
+
+/** True when this device holds no meaningful user data (ignores seeded built-in exercises). */
+export function isDeviceEmpty(f: BackupFile): boolean {
+  return (
+    !f.sessions.length &&
+    !f.meals.length &&
+    !f.weights.length &&
+    !f.plans.length &&
+    !f.foods.length &&
+    !(f.bodyMeasurements?.length) &&
+    !f.exercises.some((e) => e.custom)
+  )
+}
+
+export function normalizeAccountKey(email: string): string {
+  return email.trim().toLowerCase() || 'connected'
+}
+
+export function shouldOfferRestore(
+  local: BackupFile,
+  hasRemoteBackup: boolean,
+  email: string,
+  restoreOfferShown: readonly string[],
+): boolean {
+  return hasRemoteBackup && isDeviceEmpty(local) && !restoreOfferShown.includes(normalizeAccountKey(email))
+}
+
+export function isRemoteNewer(knownModifiedTime: string | null, remoteModifiedTime: string | null | undefined): boolean {
+  if (!knownModifiedTime || !remoteModifiedTime) return false
+  return remoteModifiedTime !== knownModifiedTime
+}
+
+function getKnownRemoteMod(accountKey: string): string | null {
+  try { return localStorage.getItem(`${REMOTE_MOD_PREFIX}${accountKey}`) } catch { return null }
+}
+
+function setKnownRemoteMod(accountKey: string, mod: string | null | undefined): void {
+  if (!mod) return
+  try { localStorage.setItem(`${REMOTE_MOD_PREFIX}${accountKey}`, mod) } catch { /* ignore */ }
 }
 
 // ---------------------------------------------------------------- Token
@@ -93,10 +145,12 @@ async function call(token: string, url: string, init: RequestInit = {}): Promise
   return r
 }
 
-async function findBackupId(token: string): Promise<string | null> {
+type RemoteFileInfo = { id: string; modifiedTime?: string }
+
+async function findBackupInfo(token: string): Promise<RemoteFileInfo | null> {
   const q = encodeURIComponent(`name='${BACKUP_NAME}'`)
-  const body = await (await call(token, `${API}/files?spaces=appDataFolder&q=${q}&fields=files(id)`)).json() as { files?: { id: string }[] }
-  return body.files?.[0]?.id ?? null
+  const body = await (await call(token, `${API}/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)`)).json() as { files?: RemoteFileInfo[] }
+  return body.files?.[0] ?? null
 }
 
 export async function accountEmail(token: string): Promise<string> {
@@ -104,16 +158,13 @@ export async function accountEmail(token: string): Promise<string> {
   return body.user?.emailAddress ?? ''
 }
 
-const isEmpty = (f: BackupFile) => !f.sessions.length && !f.meals.length && !f.weights.length
-
-/**
- * Uploads this phone's data over the Drive backup. Returns false, writing nothing, when this phone has no
- * workouts, meals or weights and Drive already holds a backup: a new phone must never wipe the old backup.
- */
-export async function backupNow(token: string): Promise<boolean> {
+async function backupInternal(token: string, accountKey: string, forceOverwrite = false): Promise<boolean> {
   const file = await buildBackup()
-  const existing = await findBackupId(token)
-  if (existing && isEmpty(file)) return false
+  const existing = await findBackupInfo(token)
+  if (existing && isDeviceEmpty(file)) return false
+  if (!forceOverwrite && existing && isRemoteNewer(getKnownRemoteMod(accountKey), existing.modifiedTime)) {
+    throw new DriveError('remote-newer')
+  }
   const boundary = `fq${Date.now().toString(36)}`
   const meta = existing ? { name: BACKUP_NAME } : { name: BACKUP_NAME, parents: ['appDataFolder'] }
   const body = [
@@ -121,40 +172,87 @@ export async function backupNow(token: string): Promise<boolean> {
     `--${boundary}`, 'Content-Type: application/json', '', encodeBackup(file),
     `--${boundary}--`, '',
   ].join('\r\n')
-  await call(token, existing ? `${UPLOAD}/files/${existing}?uploadType=multipart` : `${UPLOAD}/files?uploadType=multipart`, {
-    method: existing ? 'PATCH' : 'POST',
-    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
-    body,
-  })
+  const resp = await call(
+    token,
+    existing
+      ? `${UPLOAD}/files/${existing.id}?uploadType=multipart&fields=id,modifiedTime`
+      : `${UPLOAD}/files?uploadType=multipart&fields=id,modifiedTime`,
+    {
+      method: existing ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
+    },
+  )
+  try {
+    const info = await resp.json() as { modifiedTime?: string }
+    setKnownRemoteMod(accountKey, info.modifiedTime)
+  } catch { /* mocked responses without JSON body or modifiedTime */ }
   await updateSettings((s) => ({ ...s, lastBackupAt: Date.now() }))
   return true
 }
 
+/**
+ * Uploads this phone's data over the Drive backup. Returns false, writing nothing, when this phone has no
+ * meaningful user data and Drive already holds a backup: a new phone must never wipe the old backup.
+ */
+export function backupNow(token: string, forceOverwrite = false): Promise<boolean> {
+  return withSyncLock(async () => {
+    const s = await loadSettings()
+    return backupInternal(token, normalizeAccountKey(s.driveEmail), forceOverwrite)
+  })
+}
+
+async function fetchByInfo(token: string, info: RemoteFileInfo, accountKey: string): Promise<BackupFile> {
+  const file = decodeBackup(await (await call(token, `${API}/files/${info.id}?alt=media`)).text())
+  setKnownRemoteMod(accountKey, info.modifiedTime)
+  return file
+}
+
 /** Downloads the Drive backup without applying it, so the person can see what's in it first. */
-export async function fetchDriveBackup(token: string): Promise<BackupFile> {
-  const id = await findBackupId(token)
-  if (!id) throw new DriveError('no-backup')
-  return decodeBackup(await (await call(token, `${API}/files/${id}?alt=media`)).text())
+export function fetchDriveBackup(token: string): Promise<BackupFile> {
+  return withSyncLock(async () => {
+    const info = await findBackupInfo(token)
+    if (!info) throw new DriveError('no-backup')
+    const s = await loadSettings()
+    return fetchByInfo(token, info, normalizeAccountKey(s.driveEmail))
+  })
+}
+
+/** Serializes restoring a backup against any background or manual upload. */
+export function restoreSerialized(file: BackupFile): Promise<unknown> {
+  return withSyncLock(() => applyBackup(file))
 }
 
 // ---------------------------------------------------------------- Flows
 
-export type ConnectResult = { kind: 'backed-up' } | { kind: 'offer-restore'; file: BackupFile }
+export type ConnectResult =
+  | { kind: 'backed-up'; backedUp: boolean; autoBackupOn: boolean }
+  | { kind: 'offer-restore'; file: BackupFile }
 
 /**
- * Connect from a tap: sign in, remember the account, then back up. On a phone with no data and a backup
- * already in Drive (a new phone), returns that backup so the person can restore it instead.
+ * Connect from a tap: sign in, remember the account, inspect remote backup, offer one-tap restore once per
+ * account/device when empty, and only then upload (respecting autoBackup / opt-out).
  */
-export async function connectDrive(): Promise<ConnectResult> {
-  const token = await requestToken()
-  const email = await accountEmail(token)
-  await updateSettings((s) => ({ ...s, driveEmail: email }))
-  if (isEmpty(await buildBackup())) {
-    const id = await findBackupId(token)
-    if (id) return { kind: 'offer-restore', file: await fetchDriveBackup(token) }
-  }
-  await backupNow(token)
-  return { kind: 'backed-up' }
+export function connectDrive(): Promise<ConnectResult> {
+  return withSyncLock(async () => {
+    const token = await requestToken()
+    const email = await accountEmail(token)
+    const accountKey = normalizeAccountKey(email)
+    const updated = await updateSettings((s) => ({ ...s, driveEmail: email || 'connected' }))
+    const [local, existing] = await Promise.all([buildBackup(), findBackupInfo(token)])
+
+    if (shouldOfferRestore(local, existing != null, accountKey, updated.restoreOfferShown)) {
+      await markRestoreOfferShown(accountKey)
+      const file = await fetchByInfo(token, existing!, accountKey)
+      return { kind: 'offer-restore', file }
+    }
+
+    if (autoBackupEffective(updated)) {
+      const backedUp = await backupInternal(token, accountKey, false)
+      return { kind: 'backed-up', backedUp, autoBackupOn: true }
+    }
+    return { kind: 'backed-up', backedUp: false, autoBackupOn: false }
+  })
 }
 
 export async function disconnectDrive(): Promise<void> {
@@ -170,24 +268,28 @@ export async function tokenForTap(): Promise<string> {
 }
 
 /**
- * Background backup (app open, finished workout): only when connected and a token is still valid; never
- * opens a popup. On open it skips when the last backup is recent. Failures stay quiet: the "Tap to back
- * up" pill shows while there is newer data than the last backup.
+ * Background backup (app open, finished workout): only when connected, auto-backup is effective, and a token
+ * is still valid; never opens a popup. On open it skips when the last backup is recent.
  */
 export async function autoBackup(reason: 'open' | 'workout'): Promise<void> {
   const s = await loadSettings()
   const token = validToken()
-  if (!s.driveEmail || !token) return
+  if (!autoBackupEffective(s) || !token) return
   if (reason === 'open' && Date.now() - s.lastBackupAt < OPEN_BACKUP_AGE_MS) return
-  try { await backupNow(token) } catch (e) { console.warn('auto backup failed', e) }
+  try {
+    await withSyncLock(() => backupInternal(token, normalizeAccountKey(s.driveEmail), false))
+  } catch (e) {
+    console.warn('auto backup failed', e)
+  }
 }
 
-/** Newest change time among workouts, meals and weights: newer than lastBackupAt means not yet backed up. */
+/** Newest change time among workouts, meals, weights and measurements: newer than lastBackupAt means not yet backed up. */
 export async function lastActivityAt(): Promise<number> {
-  const [session, meal, weight] = await Promise.all([
+  const [session, meal, weight, meas] = await Promise.all([
     db.sessions.orderBy('finishedAt').last(),
     db.meals.orderBy('loggedAt').last(),
     db.weights.toArray().then((w) => w.reduce((m, x) => Math.max(m, x.loggedAt), 0)),
+    db.bodyMeasurements.toArray().then((b) => b.reduce((m, x) => Math.max(m, x.loggedAt), 0)),
   ])
-  return Math.max(session?.finishedAt ?? 0, meal?.loggedAt ?? 0, weight)
+  return Math.max(session?.finishedAt ?? 0, meal?.loggedAt ?? 0, weight, meas)
 }

@@ -44,8 +44,14 @@ import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import com.forgequest.app.data.prefs.DEFAULT_PLATE_INVENTORY
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -154,6 +160,7 @@ internal fun CoachSettingsGroup(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AppSettingsGroup(
     vm: SettingsViewModel,
@@ -163,6 +170,8 @@ internal fun AppSettingsGroup(
     val c = Fit.colors
     val context = LocalContext.current
     val settings = s.settings
+    val exercises by vm.exercises.collectAsState()
+    var showExUnits by remember { mutableStateOf(false) }
     val canLock = remember {
         androidx.biometric.BiometricManager.from(context).canAuthenticate(
             androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
@@ -267,7 +276,126 @@ internal fun AppSettingsGroup(
                 stringResource(R.string.profile_vibration_hint), settings.hapticsEnabled,
             ) { vm.setHaptics(it) }
         }
+        FitCard {
+            SwitchHeader(
+                Icons.Rounded.VolumeUp, c.teal, c.tealTrack, stringResource(R.string.prog41_tts_title),
+                stringResource(R.string.prog41_tts_hint), settings.ttsCues,
+            ) { vm.setTtsCues(it) }
+        }
+        FitCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Rounded.FitnessCenter, c.teal, c.tealTrack)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.prog41_bar_weight_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.prog41_bar_weight_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(20f, 15f, 10f).forEach { kg ->
+                    ChoiceChip(
+                        text = settings.weightUnit.format(kg, 0),
+                        selected = kotlin.math.abs(settings.barWeightKg - kg) < 0.1f,
+                        onClick = { vm.setBarWeightKg(kg) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(stringResource(R.string.prog41_plates_title), style = MaterialTheme.typography.labelLarge, color = c.textPrimary)
+            Text(stringResource(R.string.prog41_plates_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                DEFAULT_PLATE_INVENTORY.forEach { plateKg ->
+                    val on = settings.plateInventory.any { kotlin.math.abs(it - plateKg) < 0.01f }
+                    ChoiceChip(
+                        text = settings.weightUnit.format(plateKg),
+                        selected = on,
+                        onClick = { vm.togglePlate(plateKg) },
+                    )
+                }
+            }
+        }
+        val overrideCount = exercises.count { it.unitOverride.isNotBlank() }
+        SettingsRow(
+            Icons.Rounded.Tune,
+            c.teal,
+            c.tealTrack,
+            stringResource(R.string.prog41_ex_units_title),
+            if (overrideCount == 0) stringResource(R.string.prog41_ex_units_summary_none, settings.weightUnit.label)
+            else stringResource(R.string.prog41_ex_units_summary_count, overrideCount),
+        ) { showExUnits = true }
     }
+    if (showExUnits) {
+        PerExerciseUnitsDialog(
+            exercises = exercises,
+            defaultLabel = settings.weightUnit.label,
+            onSet = vm::setExerciseUnitOverride,
+            onDismiss = { showExUnits = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PerExerciseUnitsDialog(
+    exercises: List<com.forgequest.app.data.db.ExerciseEntity>,
+    defaultLabel: String,
+    onSet: (String, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = Fit.colors
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(exercises, query) {
+        val q = query.trim().lowercase()
+        val list = if (q.isEmpty()) exercises.sortedByDescending { it.unitOverride.isNotBlank() }
+        else exercises.filter { it.name.lowercase().contains(q) || it.aliases.lowercase().contains(q) }
+        list.take(35)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        title = { Text(stringResource(R.string.prog41_ex_units_title), color = c.textPrimary) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text(stringResource(R.string.prog41_csv_search_hint)) },
+                    singleLine = true,
+                    shape = ForgeShape.Md,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = c.teal, unfocusedBorderColor = c.divider,
+                        focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
+                    items(filtered, key = { it.id }) { ex ->
+                        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                            Text(ex.name, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                            Spacer(Modifier.height(4.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                ChoiceChip("${stringResource(R.string.prog41_ex_units_default)} ($defaultLabel)", ex.unitOverride.isBlank(), onClick = {
+                                    onSet(ex.id, "")
+                                })
+                                ChoiceChip("kg", ex.unitOverride.equals("kg", ignoreCase = true), onClick = {
+                                    onSet(ex.id, "kg")
+                                })
+                                ChoiceChip("lb", ex.unitOverride.equals("lb", ignoreCase = true), onClick = {
+                                    onSet(ex.id, "lb")
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok), color = c.teal) }
+        },
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -278,10 +406,12 @@ internal fun BackupSettingsGroup(
     toggleGroup: (String) -> Unit,
     saveLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Uri?>,
     importLauncher: androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, Uri?>,
+    onImportCsv: () -> Unit,
 ) {
     val c = Fit.colors
     val settings = s.settings
     val safetyCopies by vm.safetyCopies.collectAsState()
+    var showDriveNotice by remember { mutableStateOf(false) }
 
     SettingsGroup(
         Icons.Rounded.Cloud, c.teal, c.tealTrack, stringResource(R.string.settings_group_backup),
@@ -292,6 +422,14 @@ internal fun BackupSettingsGroup(
         },
         onToggle = { toggleGroup("backup") },
     ) {
+        SettingsRow(
+            Icons.Rounded.UploadFile,
+            c.teal,
+            c.tealTrack,
+            stringResource(R.string.prog41_csv_import_title),
+            stringResource(R.string.prog41_csv_import_hint),
+            onClick = onImportCsv,
+        )
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Backup, c.teal, c.tealTrack)
@@ -327,10 +465,19 @@ internal fun BackupSettingsGroup(
             }
             Spacer(Modifier.height(12.dp))
             if (settings.driveEmail.isBlank()) {
-                PillButton(stringResource(R.string.drive_connect), onClick = vm::connectDrive, modifier = Modifier.fillMaxWidth())
+                PillButton(stringResource(R.string.drive_connect), onClick = { showDriveNotice = true }, modifier = Modifier.fillMaxWidth())
             } else {
+                SwitchHeader(
+                    Icons.Rounded.Backup,
+                    c.teal,
+                    c.tealTrack,
+                    stringResource(R.string.prog41_drive_auto_title),
+                    stringResource(R.string.prog41_drive_auto_hint_android),
+                    checked = settings.autoBackup && !settings.autoBackupOptedOut,
+                ) { vm.setAutoBackup(it) }
+                Spacer(Modifier.height(10.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PillButton(stringResource(R.string.drive_back_up_now), onClick = vm::backupNow)
+                    PillButton(stringResource(R.string.drive_back_up_now), onClick = { vm.backupNow() })
                     TonalPill(stringResource(R.string.action_restore), onClick = vm::restore)
                     TonalPill(stringResource(R.string.drive_disconnect), onClick = vm::disconnectDrive, tint = c.textSecondary)
                 }
@@ -341,6 +488,24 @@ internal fun BackupSettingsGroup(
                 )
             }
         }
+    }
+    if (showDriveNotice) {
+        AlertDialog(
+            onDismissRequest = { showDriveNotice = false },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.prog41_drive_notice_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.prog41_drive_notice_body), color = c.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = { showDriveNotice = false; vm.connectDrive() }) {
+                    Text(stringResource(R.string.prog41_drive_notice_confirm), color = c.teal)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDriveNotice = false }) {
+                    Text(stringResource(R.string.action_cancel), color = c.textSecondary)
+                }
+            },
+        )
     }
 }
 

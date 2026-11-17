@@ -86,6 +86,7 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     val busy by vm.busy.collectAsState()
     val consent by vm.consent.collectAsState()
     val restorePreview by vm.restorePreview.collectAsState()
+    val remoteNewer by vm.remoteNewerPrompt.collectAsState()
     val shareUri by vm.shareUri.collectAsState()
     val snackbar = LocalSnackbar.current
     UndoSnackbarEffect(vm.undo)
@@ -146,7 +147,7 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
                 if (id == null || id == "you") YouSettingsGroup(vm, s, onGroup)
                 if (id == null || id == "health") HealthSettingsGroup(vm, s, onGroup, probe, { startHealthCheck() }, healthAccess)
                 if (id == null || id == "friends") FriendsSettingsGroup(vm, onGroup)
-                if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher)
+                if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher) { nav.navigate(Routes.CSV_IMPORT) }
                 if (id == null || id == "coach") CoachSettingsGroup(
                     vm, nav, s, apiKey, aiOn, onGroup,
                     onOpenKeyDialog = { keyDialog = true },
@@ -195,19 +196,49 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
         AlertDialog(
             onDismissRequest = { vm.restorePreview.value = null },
             containerColor = c.card,
-            title = { Text(stringResource(R.string.restore_title, stringResource(preview.source)), color = c.textPrimary) },
+            title = {
+                Text(
+                    if (preview.isAutoOffer) stringResource(R.string.prog41_drive_restore_offer_title)
+                    else stringResource(R.string.restore_title, stringResource(preview.source)),
+                    color = c.textPrimary,
+                )
+            },
             text = {
                 Column {
                     Text(preview.file.localSummary(), color = c.textPrimary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        stringResource(R.string.restore_body),
+                        stringResource(if (preview.isAutoOffer) R.string.prog41_drive_restore_offer_body else R.string.restore_body),
                         color = c.textSecondary, style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = vm::applyRestore) { Text(stringResource(R.string.action_restore), color = c.coral) } },
+            confirmButton = { TextButton(onClick = vm::applyRestore) { Text(stringResource(R.string.action_restore), color = if (preview.isAutoOffer) c.teal else c.coral) } },
             dismissButton = { TextButton(onClick = { vm.restorePreview.value = null }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+        )
+    }
+
+    if (remoteNewer) {
+        AlertDialog(
+            onDismissRequest = { vm.remoteNewerPrompt.value = false },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.prog41_drive_remote_newer_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.prog41_drive_remote_newer_body), color = c.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = { vm.remoteNewerPrompt.value = false; vm.restore() }) {
+                    Text(stringResource(R.string.action_restore), color = c.teal)
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { vm.remoteNewerPrompt.value = false; vm.backupNow(forceOverwrite = true) }) {
+                        Text(stringResource(R.string.drive_back_up_now), color = c.coral)
+                    }
+                    TextButton(onClick = { vm.remoteNewerPrompt.value = false }) {
+                        Text(stringResource(R.string.action_cancel), color = c.textSecondary)
+                    }
+                }
+            },
         )
     }
 

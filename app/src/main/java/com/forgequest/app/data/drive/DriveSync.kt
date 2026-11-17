@@ -1,10 +1,9 @@
 package com.forgequest.app.data.drive
 
-import com.forgequest.app.R
-
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.forgequest.app.R
 import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.backup.BackupRepository
 import com.forgequest.app.data.prefs.SettingsRepository
@@ -14,6 +13,8 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -28,12 +29,14 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.time.Instant
+import java.util.Locale
 
 sealed class DriveError(res: Int, vararg args: Any) : com.forgequest.app.LocalizedException(res, *args) {
     object NotConfigured : DriveError(R.string.drive_err_not_configured)
     object NeedsConsent : DriveError(R.string.drive_err_needs_consent)
     object Offline : DriveError(R.string.drive_err_offline)
     object NoBackup : DriveError(R.string.drive_err_no_backup)
+    object RemoteNewer : DriveError(R.string.prog41_drive_remote_newer_title)
     class Http(code: Int) : DriveError(R.string.drive_err_http, code)
 }
 
@@ -43,9 +46,46 @@ sealed interface DriveAuth {
     data class NeedsUi(val intent: PendingIntent) : DriveAuth
 }
 
+/** Outcome of connecting Drive and inspecting remote backup vs local state. */
+sealed interface DriveConnectOutcome {
+    data class OfferRestore(val email: String, val file: BackupFile) : DriveConnectOutcome
+    data class Connected(val email: String, val backedUp: Boolean, val autoBackupOn: Boolean) : DriveConnectOutcome
+}
+
+/** Pure policy helpers for Drive backup/restore decisions (unit-tested without network). */
+object DriveConnectPolicy {
+    /** True when the device holds no meaningful user data (ignores seeded built-in exercises). */
+    fun isDeviceEmpty(file: BackupFile): Boolean =
+        file.sessions.isEmpty() &&
+            file.meals.isEmpty() &&
+            file.weights.isEmpty() &&
+            file.plans.isEmpty() &&
+            file.foods.isEmpty() &&
+            file.bodyMeasurements.isEmpty() &&
+            file.exercises.none { it.custom }
+
+    fun normalizeAccountKey(email: String): String =
+        email.trim().lowercase(Locale.ROOT).ifBlank { "connected" }
+
+    fun shouldOfferRestore(
+        local: BackupFile,
+        hasRemoteBackup: Boolean,
+        email: String,
+        restoreOfferShown: Set<String>,
+    ): Boolean =
+        hasRemoteBackup &&
+            isDeviceEmpty(local) &&
+            normalizeAccountKey(email) !in restoreOfferShown
+
+    fun isRemoteNewer(knownModifiedTime: String?, remoteModifiedTime: String?): Boolean {
+        if (knownModifiedTime.isNullOrBlank() || remoteModifiedTime.isNullOrBlank()) return false
+        return remoteModifiedTime != knownModifiedTime
+    }
+}
+
 /**
  * Google Drive backup and the app-created meals Doc over the Drive REST API.
- * Backups live in the hidden per-app folder.
+ * Backups live in the hidden per-app folder (`drive.appdata`); Meals Doc keeps `drive.file`.
  */
 class DriveSync(
     private val context: Context,
@@ -54,14 +94,13 @@ class DriveSync(
     private val http: OkHttpClient = OkHttpClient(),
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val syncMutex = Mutex()
+    private val metaPrefs by lazy { context.getSharedPreferences("drive_sync_meta", Context.MODE_PRIVATE) }
 
-    /**
-     * One sign-in covers everything, and both scopes are Google's low-risk ones (no security review, so the OAuth
-     * app can be published for anyone): the hidden backup folder, and Docs the app creates itself (the meals Doc).
-     * The app never sees the person's other files.
-     */
     private val backupScope = Scope("https://www.googleapis.com/auth/drive.appdata")
     private val fileScope = Scope("https://www.googleapis.com/auth/drive.file")
+
+    suspend fun <T> withSyncLock(block: suspend () -> T): T = syncMutex.withLock { block() }
 
     suspend fun authorize(): DriveAuth {
         val scopes = listOf(backupScope, fileScope)
@@ -90,7 +129,8 @@ class DriveSync(
     }
 
     /** Silent token for background work; null when the user has to approve something first. */
-    suspend fun silentToken(): String? = com.forgequest.app.data.suspendRunCatching { (authorize() as? DriveAuth.Token)?.accessToken }.getOrNull()
+    suspend fun silentToken(): String? =
+        com.forgequest.app.data.suspendRunCatching { (authorize() as? DriveAuth.Token)?.accessToken }.getOrNull()
 
     suspend fun accountEmail(token: String): String = withContext(Dispatchers.IO) {
         val body = call(token, Request.Builder().url("$API/about?fields=user(emailAddress)").get())
@@ -99,14 +139,58 @@ class DriveSync(
 
     // ------------------------------------------------------------ Backup
 
+    private data class RemoteFileInfo(val id: String, val modifiedTime: String?)
+
+    private fun knownModified(accountKey: String): String? =
+        metaPrefs.getString("mod_$accountKey", null)
+
+    private fun saveKnownModified(accountKey: String, modifiedTime: String?) {
+        if (modifiedTime.isNullOrBlank()) return
+        metaPrefs.edit().putString("mod_$accountKey", modifiedTime).apply()
+    }
+
     /**
-     * Uploads this phone's data over the Drive backup. Returns false, writing nothing, when this phone has no workouts,
-     * meals or weights and Drive already holds a backup: a new phone must never wipe the old backup before Restore.
+     * Connect flow: record account, inspect Drive backup, offer one-tap restore once per account/device if
+     * this device is empty of meaningful user data, and only otherwise upload (when autoBackupEffective is on).
      */
-    suspend fun backup(token: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun connectAndInspect(token: String): DriveConnectOutcome = syncMutex.withLock {
+        val email = accountEmail(token)
+        val accountKey = DriveConnectPolicy.normalizeAccountKey(email)
+        val shownEmail = email.ifBlank { context.getString(R.string.drive_connected) }
+        settings.update { it.copy(driveEmail = shownEmail) }
+        val currentSettings = settings.current()
+        val local = backups.build()
+        val existing = withContext(Dispatchers.IO) { findBackupInfo(token) }
+
+        if (DriveConnectPolicy.shouldOfferRestore(local, existing != null, accountKey, currentSettings.restoreOfferShown)) {
+            settings.markRestoreOfferShown(accountKey)
+            val remote = withContext(Dispatchers.IO) { fetchBackupById(token, existing!!.id, existing.modifiedTime, accountKey) }
+            return@withLock DriveConnectOutcome.OfferRestore(shownEmail, remote)
+        }
+
+        if (currentSettings.autoBackupEffective) {
+            val backedUp = backupInternal(token, accountKey, forceOverwrite = false)
+            return@withLock DriveConnectOutcome.Connected(shownEmail, backedUp, autoBackupOn = true)
+        }
+        DriveConnectOutcome.Connected(shownEmail, backedUp = false, autoBackupOn = false)
+    }
+
+    suspend fun backup(token: String, forceOverwrite: Boolean = false): Boolean = syncMutex.withLock {
+        val accountKey = DriveConnectPolicy.normalizeAccountKey(settings.current().driveEmail)
+        backupInternal(token, accountKey, forceOverwrite)
+    }
+
+    private suspend fun backupInternal(
+        token: String,
+        accountKey: String,
+        forceOverwrite: Boolean,
+    ): Boolean = withContext(Dispatchers.IO) {
         val file = backups.build()
-        val existing = findBackupId(token)
-        if (existing != null && file.sessions.isEmpty() && file.meals.isEmpty() && file.weights.isEmpty()) return@withContext false
+        val existing = findBackupInfo(token)
+        if (existing != null && DriveConnectPolicy.isDeviceEmpty(file)) return@withContext false
+        if (!forceOverwrite && existing != null && DriveConnectPolicy.isRemoteNewer(knownModified(accountKey), existing.modifiedTime)) {
+            throw DriveError.RemoteNewer
+        }
         val content = backups.encode(file)
         val metadata = if (existing == null) """{"name":"$BACKUP_NAME","parents":["appDataFolder"]}""" else """{"name":"$BACKUP_NAME"}"""
         val multipart = MultipartBody.Builder().setType("multipart/related".toMediaType())
@@ -114,24 +198,43 @@ class DriveSync(
             .addPart(content.toRequestBody("application/json".toMediaType()))
             .build()
         val request = if (existing == null) {
-            Request.Builder().url("$UPLOAD/files?uploadType=multipart").post(multipart)
+            Request.Builder().url("$UPLOAD/files?uploadType=multipart&fields=id,modifiedTime").post(multipart)
         } else {
-            Request.Builder().url("$UPLOAD/files/$existing?uploadType=multipart").patch(multipart)
+            Request.Builder().url("$UPLOAD/files/${existing.id}?uploadType=multipart&fields=id,modifiedTime").patch(multipart)
         }
-        call(token, request)
+        val resp = call(token, request)
+        val mod = runCatching {
+            json.parseToJsonElement(resp).jsonObject["modifiedTime"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull()
+        saveKnownModified(accountKey, mod)
         settings.update { it.copy(lastBackupAt = System.currentTimeMillis()) }
         true
     }
 
     /** Downloads the Drive backup without applying it, so the person can read what's in it first. */
-    suspend fun fetchBackup(token: String): BackupFile = withContext(Dispatchers.IO) {
-        val id = findBackupId(token) ?: throw DriveError.NoBackup
-        backups.decode(call(token, Request.Builder().url("$API/files/$id?alt=media").get()))
+    suspend fun fetchBackup(token: String): BackupFile = syncMutex.withLock {
+        val accountKey = DriveConnectPolicy.normalizeAccountKey(settings.current().driveEmail)
+        withContext(Dispatchers.IO) {
+            val info = findBackupInfo(token) ?: throw DriveError.NoBackup
+            fetchBackupById(token, info.id, info.modifiedTime, accountKey)
+        }
     }
 
-    private fun findBackupId(token: String): String? {
-        val body = call(token, Request.Builder().url("$API/files?spaces=appDataFolder&q=name%3D%27$BACKUP_NAME%27&fields=files(id)").get())
-        return json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull
+    private fun fetchBackupById(token: String, id: String, modifiedTime: String?, accountKey: String): BackupFile {
+        val file = backups.decode(call(token, Request.Builder().url("$API/files/$id?alt=media").get()))
+        saveKnownModified(accountKey, modifiedTime)
+        return file
+    }
+
+    private fun findBackupInfo(token: String): RemoteFileInfo? {
+        val body = call(
+            token,
+            Request.Builder().url("$API/files?spaces=appDataFolder&q=name%3D%27$BACKUP_NAME%27&fields=files(id,modifiedTime)").get(),
+        )
+        val obj = json.parseToJsonElement(body).jsonObject["files"]?.jsonArray?.firstOrNull()?.jsonObject ?: return null
+        val id = obj["id"]?.jsonPrimitive?.contentOrNull ?: return null
+        val mod = obj["modifiedTime"]?.jsonPrimitive?.contentOrNull
+        return RemoteFileInfo(id, mod)
     }
 
     // ------------------------------------------------------------ App-created Docs
@@ -168,10 +271,6 @@ class DriveSync(
 
     private class FoundDoc(val id: String, val name: String?, val text: String, val modifiedAt: Long)
 
-    /**
-     * Finds the newest non-trashed Doc called [name]. When none exists it is created from [placeholder] (if given),
-     * [onMissing] runs, and null is returned. Also null when the Doc isn't newer than [sinceMillis].
-     */
     private suspend fun findNewestDoc(token: String, name: String, sinceMillis: Long, placeholder: String?, onMissing: () -> Unit = {}): FoundDoc? {
         val q = "mimeType='application/vnd.google-apps.document' and name='$name' and trashed=false"
         val url = "$API/files?q=${java.net.URLEncoder.encode(q, "UTF-8")}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,name,modifiedTime)"

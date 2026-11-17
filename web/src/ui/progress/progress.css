@@ -85,3 +85,24 @@ html[dir='rtl'] .pg-spark { transform: scaleX(-1); }
   .bm-row { block-size: 220px; flex: none; }
   .bm-legend { flex-wrap: wrap; }
 }
+
+.pg-vol-pill { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: var(--r-full); background: var(--blue-track); color: var(--blue); font-size: 13px; font-weight: 500; }
+.pg-data-blue { color: var(--blue); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pg-data-purple { color: var(--purple); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pg-str-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-block-start: 10px; font-size: 14px; }
+.pg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 8px; }
+.pg-calc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 6px; }
+.pg-calc-label { font-size: 15px; color: var(--text); }
+.pg-1rm-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px; border-radius: var(--r-md); background: var(--card-high); margin-block: 10px; }
+.pg-1rm-col { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.pg-1rm-lbl { font-size: 12px; color: var(--text-2); }
+.pg-1rm-val { font-size: 20px; }
+.pg-pcts { display: flex; flex-wrap: wrap; gap: 8px; }
+.pg-pct { padding: 6px 10px; border-radius: var(--r-sm); background: var(--blue-track); color: var(--blue); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pg-meas-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pg-meas-latest { display: flex; align-items: center; gap: 10px; margin-block: 4px 8px; font-size: 18px; }
+.pg-meas-delta { padding: 2px 8px; border-radius: var(--r-full); background: var(--purple-track); color: var(--purple); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pg-meas-list { display: flex; flex-direction: column; margin-block-start: 8px; }
+.pg-meas-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 44px; }
+.pg-meas-item > :first-child { flex: 1; }
+.pg-meas-sheet { display: flex; flex-direction: column; gap: 14px; }

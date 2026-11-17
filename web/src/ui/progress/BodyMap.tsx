@@ -1,12 +1,14 @@
 // Muscle recovery map. Anatomy art: react-native-body-highlighter 3.2.0, MIT License (c) 2022 ELABBASSI Hicham.
 // Exported so the Workouts tab can reuse it: <BodyMap recovery={snapshot.recovery} bodyType={settings.bodyType} />.
 import type { Ref } from 'preact'
+import { useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import { MUSCLES, muscleFromSlug, type Muscle } from '../../domain/muscle'
 import type { MuscleRecovery } from '../../domain/progress'
 import { haptics } from '../kit'
 import art from './body_map.json'
 import { recoveryFill } from './helpers'
+import { formatSets } from './metrics'
 import './progress.css'
 
 type View = { viewBox: number[]; outline: string | null; parts: [string, string][] }
@@ -105,6 +107,79 @@ export function BodyMap({ recovery, bodyType, selected, onSelect, exerciseCount,
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Soft Coach data-only palette for weekly muscle volume (no teal). */
+export function volumeFill(sets: number): string {
+  if (sets <= 0) return 'var(--muscle-rest)'
+  if (sets < 6) return 'var(--purple)'
+  if (sets < 16) return 'var(--blue)'
+  return 'var(--gold)'
+}
+
+function VolumeFigure({ view, volume, selected, onTap }: {
+  view: View; volume: ReadonlyMap<Muscle, number>; selected: Muscle | null; onTap: (m: Muscle | null) => void
+}) {
+  const [x, y, w, h] = view.viewBox
+  return (
+    <svg class="bm-svg" viewBox={`${x} ${y} ${w} ${h}`} aria-hidden="true" focusable="false" onClick={() => onTap(null)}>
+      {view.outline && <path d={view.outline} class="bm-neutral" />}
+      {view.parts.map(([slug, d], i) => {
+        const m = muscleFromSlug(slug)
+        if (!m) return <path key={i} d={d} class="bm-neutral" />
+        const isSel = selected === m
+        return (
+          <path
+            key={i}
+            d={d}
+            class={`bm-muscle${isSel ? ' selected' : ''}`}
+            style={{ fill: volumeFill(volume.get(m) ?? 0) }}
+            onClick={(e) => { e.stopPropagation(); haptics.lightTick(); onTap(isSel ? null : m) }}
+          />
+        )
+      })}
+      {view.outline && <path d={view.outline} class="bm-outline" vector-effect="non-scaling-stroke" />}
+    </svg>
+  )
+}
+
+/** Weekly muscle volume body map (estimate label: "sets this week per muscle"). */
+export function VolumeBodyMap({ volume, bodyType }: { volume: ReadonlyMap<Muscle, number>; bodyType: 'MALE' | 'FEMALE' }) {
+  const [selected, setSelected] = useState<Muscle | null>(null)
+  const body = (art as unknown as Art)[bodyType === 'FEMALE' ? 'female' : 'male']
+  const legendItems: [string, string][] = [
+    ['--muscle-rest', 'prog41_vol_legend_0'],
+    ['--purple', 'prog41_vol_legend_low'],
+    ['--blue', 'prog41_vol_legend_mid'],
+    ['--gold', 'prog41_vol_legend_high'],
+  ]
+  return (
+    <div class="bm">
+      <div class="bm-row" dir="ltr" role="img" aria-label={t('prog41_vol_cd')}>
+        <VolumeFigure view={body.front} volume={volume} selected={selected} onTap={setSelected} />
+        <VolumeFigure view={body.back} volume={volume} selected={selected} onTap={setSelected} />
+      </div>
+      <div class="bm-slot">
+        {selected ? (
+          <span class="pg-vol-pill">{t('prog41_vol_selected', label(selected), formatSets(volume.get(selected) ?? 0))}</span>
+        ) : (
+          <span class="pg-hint" style={{ margin: 0 }}>{t('prog41_vol_tap_hint')}</span>
+        )}
+      </div>
+      <ul class="bm-legend">
+        {legendItems.map(([c, k]) => (
+          <li key={k}><span class="pg-dot" style={{ background: `var(${c})` }} aria-hidden="true" />{t(k)}</li>
+        ))}
+      </ul>
+      <div class="kit-sr">
+        {MUSCLES.map((m) => (
+          <button key={m} type="button" onClick={() => setSelected(m)}>
+            {t('prog41_vol_selected', label(m), formatSets(volume.get(m) ?? 0))}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

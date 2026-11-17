@@ -16,7 +16,12 @@ import com.forgequest.app.data.ai.AiError
 import com.forgequest.app.data.backup.BackupError
 import com.forgequest.app.data.backup.BackupFile
 import com.forgequest.app.data.drive.DriveAuth
+import com.forgequest.app.data.drive.DriveConnectOutcome
 import com.forgequest.app.data.drive.DriveError
+import com.forgequest.app.data.drive.DriveSyncWorker
+import com.forgequest.app.data.db.ExerciseEntity
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import com.forgequest.app.data.notify.ReminderWorker
 import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.domain.Dates
@@ -40,10 +45,13 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     val consent = MutableStateFlow<android.app.PendingIntent?>(null)
 
     /** A backup waiting for the person to confirm: where it came from, and its contents. */
-    data class RestorePreview(@androidx.annotation.StringRes val source: Int, val file: BackupFile)
+    data class RestorePreview(@androidx.annotation.StringRes val source: Int, val file: BackupFile, val isAutoOffer: Boolean = false)
     val restorePreview = MutableStateFlow<RestorePreview?>(null)
+    val remoteNewerPrompt = MutableStateFlow(false)
     val shareUri = MutableStateFlow<Uri?>(null)
     val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
+    val exercises: StateFlow<List<ExerciseEntity>> =
+        app.workouts.library.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private var afterConsent: (suspend (String) -> Unit)? = null
 
     fun setName(name: String) = viewModelScope.launch { app.settings.update { it.copy(name = name.take(24)) } }
@@ -140,6 +148,23 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = WeightUnit.fromCodeOrLabel(unit).code) } }
     fun setJustLog(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(justLog = on) } }
     fun setHaptics(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(hapticsEnabled = on) }; if (on) app.haptics.tick() }
+    fun setTtsCues(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(ttsCues = on) } }
+    fun setBarWeightKg(kg: Float) = viewModelScope.launch { app.settings.update { it.copy(barWeightKg = kg.coerceIn(5f, 30f)) } }
+    fun togglePlate(plateKg: Float) = viewModelScope.launch {
+        app.settings.update { s ->
+            val current = s.plateInventory.toMutableList()
+            if (current.any { kotlin.math.abs(it - plateKg) < 0.01f }) {
+                current.removeAll { kotlin.math.abs(it - plateKg) < 0.01f }
+            } else {
+                current += plateKg
+            }
+            s.copy(plateInventory = current.sortedDescending())
+        }
+    }
+    fun setExerciseUnitOverride(exerciseId: String, unitCode: String) = viewModelScope.launch {
+        val ex = app.db.exercises().byId(exerciseId) ?: return@launch
+        app.db.exercises().upsert(ex.copy(unitOverride = unitCode))
+    }
 
     fun setBody(type: BodyType) = viewModelScope.launch { app.settings.update { it.copy(bodyType = type) } }
 
@@ -242,14 +267,33 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     }
 
     fun connectDrive() = withDrive(app.str(R.string.drive_connecting)) { token ->
-        val email = app.drive.accountEmail(token)
-        app.settings.update { it.copy(driveEmail = email.ifBlank { app.str(R.string.drive_connected) }) }
-        // An empty phone keeps the Drive backup untouched so it can still be restored.
-        message.value = app.str(if (app.drive.backup(token)) R.string.drive_connected_backed_up else R.string.drive_err_nothing_to_back_up)
+        when (val outcome = app.drive.connectAndInspect(token)) {
+            is DriveConnectOutcome.OfferRestore -> {
+                DriveSyncWorker.syncScheduling(app.appContext, app.settings.current().autoBackupEffective)
+                restorePreview.value = RestorePreview(R.string.restore_src_drive, outcome.file, isAutoOffer = true)
+            }
+            is DriveConnectOutcome.Connected -> {
+                DriveSyncWorker.syncScheduling(app.appContext, outcome.autoBackupOn)
+                message.value = when {
+                    !outcome.autoBackupOn -> app.str(R.string.prog41_drive_connected_auto_off)
+                    outcome.backedUp -> app.str(R.string.drive_connected_backed_up)
+                    else -> app.str(R.string.drive_err_nothing_to_back_up)
+                }
+            }
+        }
     }
 
-    fun backupNow() = withDrive(app.str(R.string.drive_backing_up)) { token ->
-        message.value = app.str(if (app.drive.backup(token)) R.string.drive_backed_up else R.string.drive_err_nothing_to_back_up)
+    fun setAutoBackup(enabled: Boolean) = viewModelScope.launch {
+        app.settings.setAutoBackup(enabled)
+        DriveSyncWorker.syncScheduling(app.appContext, app.settings.current().autoBackupEffective)
+    }
+
+    fun backupNow(forceOverwrite: Boolean = false) = withDrive(app.str(R.string.drive_backing_up)) { token ->
+        try {
+            message.value = app.str(if (app.drive.backup(token, forceOverwrite)) R.string.drive_backed_up else R.string.drive_err_nothing_to_back_up)
+        } catch (_: DriveError.RemoteNewer) {
+            remoteNewerPrompt.value = true
+        }
     }
 
     fun restore() = withDrive(app.str(R.string.drive_reading_backup)) { token ->
@@ -319,7 +363,8 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         busy.value = app.str(R.string.backup_restoring)
         viewModelScope.launch {
             try {
-                app.backup.apply(preview.file)
+                app.drive.withSyncLock { app.backup.apply(preview.file) }
+                DriveSyncWorker.syncScheduling(app.appContext, app.settings.current().autoBackupEffective)
                 safetyCopies.value = app.backup.safetyCopies()
                 message.value = app.str(R.string.backup_restored_from, app.str(preview.source))
             } catch (e: Exception) {
@@ -330,7 +375,10 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         }
     }
 
-    fun disconnectDrive() = viewModelScope.launch { app.settings.update { it.copy(driveEmail = "") } }
+    fun disconnectDrive() = viewModelScope.launch {
+        app.settings.update { it.copy(driveEmail = "") }
+        DriveSyncWorker.cancel(app.appContext)
+    }
 
     val friendsState = app.friends.state
     val friendsSignedIn = app.friends.signedInState

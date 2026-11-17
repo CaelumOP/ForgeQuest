@@ -79,3 +79,4 @@
 .pf-google-slot { inline-size: 100%; min-inline-size: 0; max-inline-size: 280px; min-block-size: 48px; display: flex; align-items: center; }
 @media (max-width: 300px) { .pf-friends-signin { margin-inline-start: 0; } }
 .pf-username { display: flex; flex-direction: column; gap: 4px; margin-block-end: 8px; }
+.pf-offline-line { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-block-start: 10px; }

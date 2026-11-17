@@ -1,11 +1,14 @@
 // Profile → Backup: Google Drive (same file as Android) and a backup file to save or restore by hand.
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { plural, t, intlLocale } from '../../i18n'
-import { applyBackup, backupCounts, buildBackup, decodeBackup, encodeBackup, listSafetyCopies, type BackupFile } from '../../data/backup'
-import { connectDrive, disconnectDrive, DriveError, backupNow, fetchDriveBackup, preloadGis, tokenForTap } from '../../data/drive'
+import { backupCounts, buildBackup, decodeBackup, encodeBackup, listSafetyCopies, type BackupFile } from '../../data/backup'
+import { requestPersistence } from '../../data/db'
+import {
+  backupNow, connectDrive, disconnectDrive, DriveError, fetchDriveBackup, preloadGis, restoreSerialized, tokenForTap, validToken,
+} from '../../data/drive'
 import { useLive } from '../../data/live'
-import type { Settings } from '../../data/settings'
-import { Button, Card, Dialog, toast } from '../kit'
+import { autoBackupEffective, setAutoBackup, type Settings } from '../../data/settings'
+import { Button, Card, Dialog, ListRow, toast } from '../kit'
 
 const when = (ms: number) => new Intl.DateTimeFormat(intlLocale(), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(ms)
 
@@ -18,12 +21,13 @@ export function driveErrorText(e: unknown): string {
     if (e.kind === 'offline') return t('drive_err_offline')
     if (e.kind === 'cancelled') return t('drive_web_signin_cancelled')
     if (e.kind === 'no-backup') return t('drive_err_no_backup')
+    if (e.kind === 'remote-newer') return t('prog41_drive_remote_newer_title')
     return t('drive_err_http', e.status)
   }
   return t('backup_restore_failed')
 }
 
-type Pending = { file: BackupFile; source: string }
+type Pending = { file: BackupFile; source: string; isAutoOffer?: boolean }
 
 const contents = (f: BackupFile) => {
   const c = backupCounts(f)
@@ -33,32 +37,64 @@ const contents = (f: BackupFile) => {
 export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: string; hint?: string }) => preact.JSX.Element }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const [noticeOpen, setNoticeOpen] = useState(false)
+  const [remoteNewerOpen, setRemoteNewerOpen] = useState(false)
+  const [online, setOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true))
+  const [persisted, setPersisted] = useState<boolean | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const copies = useLive(listSafetyCopies, [], [])
-  useEffect(() => { void preloadGis().catch(() => undefined) }, [])
+
+  useEffect(() => {
+    void preloadGis().catch(() => undefined)
+    void navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(false))
+    const onUp = () => setOnline(true)
+    const onDown = () => setOnline(false)
+    addEventListener('online', onUp)
+    addEventListener('offline', onDown)
+    return () => { removeEventListener('online', onUp); removeEventListener('offline', onDown) }
+  }, [])
 
   const run = async (label: string, job: () => Promise<void>) => {
     if (busy) return
     setBusy(label)
-    try { await job() } catch (e) { console.warn('backup action failed', e); toast(driveErrorText(e)) } finally { setBusy(null) }
+    try {
+      await job()
+    } catch (e) {
+      if (e instanceof DriveError && e.kind === 'remote-newer') {
+        setRemoteNewerOpen(true)
+      } else {
+        console.warn('backup action failed', e)
+        toast(driveErrorText(e))
+      }
+    } finally {
+      setBusy(null)
+    }
   }
 
   const connect = () => run(t('drive_connecting'), async () => {
     const r = await connectDrive()
-    if (r.kind === 'offer-restore') setPending({ file: r.file, source: t('restore_src_drive') })
-    else toast(t('drive_connected_backed_up'))
+    if (r.kind === 'offer-restore') {
+      setPending({ file: r.file, source: t('restore_src_drive'), isAutoOffer: true })
+    } else if (!r.autoBackupOn) {
+      toast(t('prog41_drive_connected_auto_off'))
+    } else {
+      toast(r.backedUp ? t('drive_connected_backed_up') : t('drive_web_nothing_to_back_up'))
+    }
   })
-  const backUp = () => run(t('drive_backing_up'), async () => {
-    toast((await backupNow(await tokenForTap())) ? t('drive_backed_up') : t('drive_web_nothing_to_back_up'))
+
+  const backUp = (force = false) => run(t('drive_backing_up'), async () => {
+    toast((await backupNow(await tokenForTap(), force)) ? t('drive_backed_up') : t('drive_web_nothing_to_back_up'))
   })
+
   const fromDrive = () => run(t('drive_reading_backup'), async () => {
     setPending({ file: await fetchDriveBackup(await tokenForTap()), source: t('restore_src_drive') })
   })
+
   const saveFile = () => run(t('backup_preparing'), async () => {
     const day = new Date().toISOString().slice(0, 10)
     const file = new File([encodeBackup(await buildBackup())], `forgequest-backup-${day}.json`, { type: 'application/json' })
     if (navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: t('backup_share_title') }) } catch { return } // closed the sheet
+      try { await navigator.share({ files: [file], title: t('backup_share_title') }) } catch { return }
     } else {
       const a = document.createElement('a')
       a.href = URL.createObjectURL(file)
@@ -68,33 +104,67 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
     }
     toast(t('backup_saved'))
   })
+
   const fromFile = (f: File | undefined) => f && run(t('backup_reading_file'), async () => {
     try { setPending({ file: decodeBackup(await f.text()), source: t('restore_src_file') }) } catch { toast(t('backup_err_unreadable')) }
   })
+
   const undo = () => run(t('backup_reading_copy'), async () => {
     const latest = copies[0]
     if (latest) setPending({ file: decodeBackup(latest.json), source: t('restore_src_copy') })
   })
+
   const restore = () => {
     const p = pending
     setPending(null)
-    if (p) void run(t('backup_restoring'), async () => { await applyBackup(p.file); toast(t('backup_restored_from', p.source)) })
+    if (p) void run(t('backup_restoring'), async () => { await restoreSerialized(p.file); toast(t('backup_restored_from', p.source)) })
   }
+
+  const protectStorage = async () => {
+    const ok = await requestPersistence()
+    setPersisted(ok)
+  }
+
+  const autoOn = s.autoBackup && !s.autoBackupOptedOut
+  const needsReconnect = autoBackupEffective(s) && !validToken()
 
   return (
     <>
+      <Card padded={false}>
+        <ListRow title={t('prog41_csv_import_title')} subtitle={t('prog41_csv_import_hint')} href="#/import-csv" />
+      </Card>
       <Card>
         <Title title={t('drive_title')} hint={s.driveEmail ? `${s.driveEmail}` : t('drive_web_hint')} />
         {s.driveEmail && <span class="pf-s">{backupSummary(s)}</span>}
         {busy && <span class="pf-s" role="status">{busy}</span>}
+        {s.driveEmail && (
+          <button
+            type="button"
+            class="pf-switchrow"
+            role="switch"
+            aria-checked={autoOn}
+            onClick={() => void setAutoBackup(!autoOn)}
+          >
+            <span class="pf-grow">
+              <span class="pf-t">{t('prog41_drive_auto_title')}</span>
+              <span class="pf-s">{t('prog41_drive_auto_hint_web')}</span>
+            </span>
+            <span class={autoOn ? 'pf-switch pf-switch-on' : 'pf-switch'} aria-hidden="true"><span class="pf-knob" /></span>
+          </button>
+        )}
         <div class="pf-actions">
-          {!s.driveEmail
-            ? <Button onClick={connect} loading={busy === t('drive_connecting')}>{t('drive_connect')}</Button>
-            : <>
-                <Button variant="tonal" onClick={backUp} disabled={!!busy}>{t('drive_back_up_now')}</Button>
-                <Button variant="tonal" onClick={fromDrive} disabled={!!busy}>{t('drive_web_restore')}</Button>
-                <Button variant="text" onClick={() => void disconnectDrive()} disabled={!!busy}>{t('drive_disconnect')}</Button>
-              </>}
+          {!s.driveEmail ? (
+            <Button onClick={() => setNoticeOpen(true)} loading={busy === t('drive_connecting')}>{t('drive_connect')}</Button>
+          ) : (
+            <>
+              {needsReconnect && (
+                <Button onClick={() => void backUp()} disabled={!!busy}>{t('prog41_drive_reconnect')}</Button>
+              )}
+              <Button variant="tonal" onClick={() => void backUp()} disabled={!!busy}>{t('drive_back_up_now')}</Button>
+              <Button variant="tonal" onClick={fromDrive} disabled={!!busy}>{t('drive_web_restore')}</Button>
+              <Button variant="text" onClick={() => void disconnectDrive()} disabled={!!busy}>{t('drive_disconnect')}</Button>
+            </>
+          )}
         </div>
       </Card>
       <Card>
@@ -104,12 +174,42 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
           <Button variant="tonal" onClick={() => fileInput.current?.click()} disabled={!!busy}>{t('backup_web_restore_file')}</Button>
           {copies.length > 0 && <Button variant="text" onClick={undo} disabled={!!busy}>{t('profile_undo_restore')}</Button>}
         </div>
+        <div class="pf-offline-line">
+          <span class="pf-s">
+            {`${online ? t('prog41_web_offline_ready') : t('prog41_web_offline_now')} · ${persisted ? t('prog41_web_storage_persisted') : t('prog41_web_storage_not_persisted')}`}
+          </span>
+          {persisted === false && (
+            <Button variant="text" onClick={() => void protectStorage()}>{t('prog41_web_storage_protect')}</Button>
+          )}
+        </div>
         <input ref={fileInput} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const el = e.target as HTMLInputElement; fromFile(el.files?.[0]); el.value = '' }} />
       </Card>
-      <Dialog open={pending != null} title={pending ? t('restore_title', pending.source) : ''}
-        message={pending ? `${contents(pending.file)}\n\n${t('restore_body')}` : undefined}
-        confirmLabel={t('drive_web_restore_confirm')} destructive onConfirm={restore} onCancel={() => setPending(null)} />
+      <Dialog
+        open={noticeOpen}
+        title={t('prog41_drive_notice_title')}
+        message={t('prog41_drive_notice_body')}
+        confirmLabel={t('prog41_drive_notice_confirm')}
+        onConfirm={() => { setNoticeOpen(false); void connect() }}
+        onCancel={() => setNoticeOpen(false)}
+      />
+      <Dialog
+        open={pending != null}
+        title={pending ? (pending.isAutoOffer ? t('prog41_drive_restore_offer_title') : t('restore_title', pending.source)) : ''}
+        message={pending ? `${contents(pending.file)}\n\n${pending.isAutoOffer ? t('prog41_drive_restore_offer_body') : t('restore_body')}` : undefined}
+        confirmLabel={t('drive_web_restore_confirm')}
+        destructive={!pending?.isAutoOffer}
+        onConfirm={restore}
+        onCancel={() => setPending(null)}
+      />
+      <Dialog
+        open={remoteNewerOpen}
+        title={t('prog41_drive_remote_newer_title')}
+        message={t('prog41_drive_remote_newer_body')}
+        confirmLabel={t('drive_web_restore_confirm')}
+        onConfirm={() => { setRemoteNewerOpen(false); void fromDrive() }}
+        onCancel={() => setRemoteNewerOpen(false)}
+      />
     </>
   )
 }

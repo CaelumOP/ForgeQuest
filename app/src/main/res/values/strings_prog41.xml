@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Body measurements -->
+    <string name="prog41_meas_title">Body measurements</string>
+    <string name="prog41_meas_hint">Log optional tape measurements in cm.</string>
+    <string name="prog41_meas_log">Log</string>
+    <string name="prog41_meas_log_title">Log measurement</string>
+    <string name="prog41_meas_metric_waist">Waist</string>
+    <string name="prog41_meas_metric_chest">Chest</string>
+    <string name="prog41_meas_metric_arms">Arms</string>
+    <string name="prog41_meas_metric_thighs">Thighs</string>
+    <string name="prog41_meas_metric_hips">Hips</string>
+    <string name="prog41_meas_value_cm">Measurement (cm)</string>
+    <string name="prog41_meas_saved">Measurement saved</string>
+    <string name="prog41_meas_deleted">Measurement removed</string>
+    <string name="prog41_meas_empty">No measurements logged yet for this metric.</string>
+    <string name="prog41_meas_need_two">Log one more day to see the trend.</string>
+    <string name="prog41_meas_latest">Latest: %1$s cm</string>
+    <string name="prog41_meas_delete_cd">Delete measurement</string>
+    <string name="prog41_meas_invalid">Enter a value between 10 and 300 cm.</string>
+
+    <!-- Weekly muscle volume -->
+    <string name="prog41_vol_title">Weekly muscle volume</string>
+    <string name="prog41_vol_subtitle">Sets this week per muscle (estimate)</string>
+    <string name="prog41_vol_explain">Working sets count as 1 for primary muscles and 0.5 for secondary. Warm-ups and drop sets stay out.</string>
+    <string name="prog41_vol_legend_0">0 sets</string>
+    <string name="prog41_vol_legend_low">1–5 sets</string>
+    <string name="prog41_vol_legend_mid">6–15 sets</string>
+    <string name="prog41_vol_legend_high">16+ sets</string>
+    <string name="prog41_vol_selected">%1$s · ~%2$s sets this week (est.)</string>
+    <string name="prog41_vol_tap_hint">Tap a muscle to see its estimated weekly sets.</string>
+    <string name="prog41_vol_cd">Estimated weekly muscle sets map</string>
+
+    <!-- Estimated 1RM & Strength / BW -->
+    <string name="prog41_1rm_title">Estimated 1RM calculator</string>
+    <string name="prog41_1rm_hint">Epley estimate from one working set, plus percentage targets.</string>
+    <string name="prog41_1rm_weight">Weight (%1$s)</string>
+    <string name="prog41_1rm_reps">Reps</string>
+    <string name="prog41_1rm_result_label">Estimated 1RM (Epley)</string>
+    <string name="prog41_1rm_ratio_label">Strength / bodyweight</string>
+    <string name="prog41_1rm_ratio_val">%1$s× BW</string>
+    <string name="prog41_1rm_ratio_missing">Log body weight to see ×BW</string>
+    <string name="prog41_1rm_use_best">Use best: %1$s</string>
+    <string name="prog41_1rm_latest_est">Est. 1RM: %1$s</string>
+
+    <!-- CSV Import -->
+    <string name="prog41_csv_import_title">Import history (CSV)</string>
+    <string name="prog41_csv_import_hint">Import workouts from Strong, Hevy, or FitNotes CSV exports.</string>
+    <string name="prog41_csv_pick_file">Choose CSV file</string>
+    <string name="prog41_csv_detected">Detected format: %1$s</string>
+    <string name="prog41_csv_preview_summary">%1$d workouts · %2$d new sets · %3$d duplicates skipped</string>
+    <string name="prog41_csv_unmatched_title">Map unmatched exercises</string>
+    <string name="prog41_csv_unmatched_hint">Choose an existing exercise, create a custom one, or skip.</string>
+    <string name="prog41_csv_map_pick">Pick exercise</string>
+    <string name="prog41_csv_map_create">Create custom</string>
+    <string name="prog41_csv_map_skip">Skip</string>
+    <string name="prog41_csv_mapped_to">Mapped to: %1$s</string>
+    <string name="prog41_csv_import_btn">Import workouts</string>
+    <string name="prog41_csv_done">Imported %1$d workouts and %2$d sets.</string>
+    <string name="prog41_csv_nothing">All sets in this file are already imported or skipped.</string>
+    <string name="prog41_csv_error">Could not read this CSV file. Check that it is a Strong, Hevy, or FitNotes export.</string>
+    <string name="prog41_csv_search_hint">Search exercises</string>
+
+    <!-- Auto backup & Drive -->
+    <string name="prog41_drive_notice_title">Back up to Google Drive</string>
+    <string name="prog41_drive_notice_body">Workouts, meals, body weight, measurements, plans, custom exercises, and settings are saved to a hidden app folder in your Drive. Nothing else in Drive is seen. AI keys stay on this device.</string>
+    <string name="prog41_drive_notice_confirm">Continue to Google</string>
+    <string name="prog41_drive_auto_title">Auto backup</string>
+    <string name="prog41_drive_auto_hint_android">Daily backup while connected to Google Drive.</string>
+    <string name="prog41_drive_auto_hint_web">Backs up automatically while connected; tap to reconnect when needed.</string>
+    <string name="prog41_drive_reconnect">Tap to reconnect</string>
+    <string name="prog41_drive_connected_auto_off">Google Drive connected. Auto backup stays off until you turn it on.</string>
+    <string name="prog41_drive_remote_newer_title">Newer backup on Google Drive</string>
+    <string name="prog41_drive_remote_newer_body">Another device updated your Drive backup. Restore from Drive first so you do not overwrite newer data.</string>
+    <string name="prog41_drive_restore_offer_title">Backup found on Google Drive</string>
+    <string name="prog41_drive_restore_offer_body">This device has no training history yet. Restore your data in one tap, or keep starting fresh.</string>
+
+    <!-- Settings & Onboarding & Web offline -->
+    <string name="prog41_bar_weight_title">Barbell weight</string>
+    <string name="prog41_bar_weight_hint">Used by the barbell plate calculator.</string>
+    <string name="prog41_plates_title">Plate inventory</string>
+    <string name="prog41_plates_hint">Select the plate sizes available per side.</string>
+    <string name="prog41_tts_title">Spoken hold &amp; rest cues</string>
+    <string name="prog41_tts_hint">Speak hold countdowns and rest-over alerts.</string>
+    <string name="prog41_ex_units_title">Per-exercise weight units</string>
+    <string name="prog41_ex_units_hint">Override kg or lb for specific machines or cables.</string>
+    <string name="prog41_ex_units_summary_none">All exercises follow your default (%1$s)</string>
+    <string name="prog41_ex_units_summary_count">%1$d custom unit overrides</string>
+    <string name="prog41_ex_units_default">Default</string>
+    <string name="prog41_onb_quick_place">Quick setup preset</string>
+    <string name="prog41_onb_place_gym">Gym</string>
+    <string name="prog41_onb_place_home">Home</string>
+    <string name="prog41_onb_place_bw">Bodyweight</string>
+    <string name="prog41_onb_exp_title">Training experience</string>
+    <string name="prog41_onb_exp_new">Beginner</string>
+    <string name="prog41_onb_exp_some">Intermediate</string>
+    <string name="prog41_onb_exp_seasoned">Experienced</string>
+    <string name="prog41_onb_import_csv">Importing from Strong, Hevy, or FitNotes?</string>
+    <string name="prog41_web_offline_ready">Offline ready</string>
+    <string name="prog41_web_offline_now">Offline</string>
+    <string name="prog41_web_storage_persisted">Browser storage protected</string>
+    <string name="prog41_web_storage_not_persisted">Storage not locked yet</string>
+    <string name="prog41_web_storage_protect">Protect storage</string>
+</resources>

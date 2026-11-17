@@ -127,6 +127,7 @@ data class OnboardingState(
     val builtForMe: Boolean = true,
     val planIndex: Int = StarterPlans.BODYWEIGHT_INDEX,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
+    val experience: Experience = Experience.SOME,
 ) {
     val male get() = bodyType == BodyType.MALE
     val bodyReady get() = heightCm in 120f..230f && age in 10..100
@@ -179,7 +180,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
                 val library = app.workouts.library.first()
                 val input = PlanInput(
                     goal = TrainGoal.GENERAL, days = PlanBuilder.spreadDays(s.daysPerWeek), minutes = 45,
-                    equipment = s.equipmentPreset.equipment, experience = Experience.SOME,
+                    equipment = s.equipmentPreset.equipment, experience = s.experience,
                 )
                 val built = PlanBuilder.build(input, library)
                 app.workouts.applyPlan(localizeBuiltPlan(app, built, TrainGoal.GENERAL), "builder")
@@ -251,7 +252,7 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun OnboardingScreen() {
+fun OnboardingScreen(onImportCsv: (() -> Unit)? = null) {
     val vm = appViewModel { OnboardingViewModel(it) }
     val s by vm.state.collectAsState()
     val c = Fit.colors
@@ -274,7 +275,7 @@ fun OnboardingScreen() {
         ) { step ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 when (step) {
-                    0 -> StepWelcome(s, vm)
+                    0 -> StepWelcome(s, vm, onImportCsv)
                     else -> StepPlan(s, vm)
                 }
             }
@@ -312,7 +313,7 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
+private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel, onImportCsv: (() -> Unit)? = null) {
     val c = Fit.colors
     Title(stringResource(R.string.onb_welcome_title), stringResource(R.string.onb_welcome_body))
     // Keyboard up on arrival: the first thing asked for is typing a name.
@@ -334,6 +335,13 @@ private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.body_male), s.bodyType == BodyType.MALE, { vm.update { it.copy(bodyType = BodyType.MALE) } })
         ChoiceChip(stringResource(R.string.body_female), s.bodyType == BodyType.FEMALE, { vm.update { it.copy(bodyType = BodyType.FEMALE) } })
+    }
+    if (onImportCsv != null) {
+        Spacer(Modifier.height(20.dp))
+        Text(stringResource(R.string.prog41_onb_import_csv), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        TextButton(onClick = onImportCsv) {
+            Text(stringResource(R.string.prog41_csv_import_title), color = c.teal)
+        }
     }
 }
 
@@ -534,6 +542,38 @@ private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
         options = dayOptions.map { java.text.NumberFormat.getIntegerInstance().format(it) },
         selected = dayOptions.indexOf(s.daysPerWeek),
         onSelect = { i -> vm.update { it.copy(daysPerWeek = dayOptions[i], planIndex = planForDays(dayOptions[i], it.equipmentPreset)) } },
+    )
+    Spacer(Modifier.height(20.dp))
+
+    Text(stringResource(R.string.prog41_onb_quick_place), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+    Spacer(Modifier.height(8.dp))
+    val quickPlaces = listOf(
+        R.string.prog41_onb_place_gym to EquipmentPreset.FULL_GYM,
+        R.string.prog41_onb_place_home to EquipmentPreset.HOME_GYM,
+        R.string.prog41_onb_place_bw to EquipmentPreset.BODYWEIGHT_ONLY,
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        quickPlaces.forEach { (labelId, preset) ->
+            ChoiceChip(
+                text = stringResource(labelId),
+                selected = s.equipmentPreset == preset,
+                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planForDays(it.daysPerWeek, preset)) } },
+            )
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+
+    Text(stringResource(R.string.prog41_onb_exp_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+    Spacer(Modifier.height(8.dp))
+    val expOptions = listOf(
+        Experience.NEW to R.string.prog41_onb_exp_new,
+        Experience.SOME to R.string.prog41_onb_exp_some,
+        Experience.SEASONED to R.string.prog41_onb_exp_seasoned,
+    )
+    SegmentedTabs(
+        options = expOptions.map { stringResource(it.second) },
+        selected = expOptions.indexOfFirst { it.first == s.experience }.coerceAtLeast(0),
+        onSelect = { i -> vm.update { it.copy(experience = expOptions[i].first) } },
     )
     Spacer(Modifier.height(20.dp))
 

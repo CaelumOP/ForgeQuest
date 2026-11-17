@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Body measurements -->
+    <string name="prog41_meas_title">قياسات الجسم</string>
+    <string name="prog41_meas_hint">سجّل قياسات الجسم الاختيارية بالسنتيمتر.</string>
+    <string name="prog41_meas_log">تسجيل</string>
+    <string name="prog41_meas_log_title">تسجيل قياس</string>
+    <string name="prog41_meas_metric_waist">الخصر</string>
+    <string name="prog41_meas_metric_chest">الصدر</string>
+    <string name="prog41_meas_metric_arms">الذراعين</string>
+    <string name="prog41_meas_metric_thighs">الفخذين</string>
+    <string name="prog41_meas_metric_hips">الأرداف</string>
+    <string name="prog41_meas_value_cm">القياس (سم)</string>
+    <string name="prog41_meas_saved">تم حفظ القياس</string>
+    <string name="prog41_meas_deleted">تم حذف القياس</string>
+    <string name="prog41_meas_empty">لم يُسجَّل أي قياس لهذا الجزء بعد.</string>
+    <string name="prog41_meas_need_two">سجّل يومًا آخر لعرض المنحنى.</string>
+    <string name="prog41_meas_latest">الأخير: %1$s سم</string>
+    <string name="prog41_meas_delete_cd">حذف القياس</string>
+    <string name="prog41_meas_invalid">أدخل قيمة بين 10 و 300 سم.</string>
+
+    <!-- Weekly muscle volume -->
+    <string name="prog41_vol_title">حجم التمرين الأسبوعي للعضلات</string>
+    <string name="prog41_vol_subtitle">المجموعات هذا الأسبوع لكل عضلة (تقديري)</string>
+    <string name="prog41_vol_explain">تُحتسب المجموعات الأساسية بـ 1 للعضلة الرئيسية و 0.5 للمساعدة، دون مجموعات التسخين أو الدروب سِت.</string>
+    <string name="prog41_vol_legend_0">0 مجموعات</string>
+    <string name="prog41_vol_legend_low">1–5 مجموعات</string>
+    <string name="prog41_vol_legend_mid">6–15 مجموعة</string>
+    <string name="prog41_vol_legend_high">16+ مجموعة</string>
+    <string name="prog41_vol_selected">%1$s · ~%2$s مجموعة هذا الأسبوع (تقديري)</string>
+    <string name="prog41_vol_tap_hint">اضغط على أي عضلة لعرض المجموعات الأسبوعية التقديرية.</string>
+    <string name="prog41_vol_cd">خريطة المجموعات الأسبوعية التقديرية للعضلات</string>
+
+    <!-- Estimated 1RM & Strength / BW -->
+    <string name="prog41_1rm_title">حاسبة أقصى وزن تقديري (1RM)</string>
+    <string name="prog41_1rm_hint">تقدير إيبلي من مجموعة عمل واحدة، مع نسب التدريب.</string>
+    <string name="prog41_1rm_weight">الوزن (%1$s)</string>
+    <string name="prog41_1rm_reps">العدّات</string>
+    <string name="prog41_1rm_result_label">أقصى وزن تقديري لعدّة واحدة (1RM)</string>
+    <string name="prog41_1rm_ratio_label">نسبة القوة إلى وزن الجسم</string>
+    <string name="prog41_1rm_ratio_val">%1$s× وزن الجسم</string>
+    <string name="prog41_1rm_ratio_missing">سجّل وزن الجسم لحساب النسبة</string>
+    <string name="prog41_1rm_use_best">استخدم الأفضل: %1$s</string>
+    <string name="prog41_1rm_latest_est">1RM تقديري: %1$s</string>
+
+    <!-- CSV Import -->
+    <string name="prog41_csv_import_title">استيراد سجل التمارين (CSV)</string>
+    <string name="prog41_csv_import_hint">استورد تمارينك من ملفات CSV لتطبيقات Strong أو Hevy أو FitNotes.</string>
+    <string name="prog41_csv_pick_file">اختر ملف CSV</string>
+    <string name="prog41_csv_detected">التنسيق المكتشف: %1$s</string>
+    <string name="prog41_csv_preview_summary">%1$d حصص · %2$d مجموعات جديدة · %3$d مكررة تم تخطيها</string>
+    <string name="prog41_csv_unmatched_title">ربط التمارين غير المطابقة</string>
+    <string name="prog41_csv_unmatched_hint">اختر تمرينًا موجودًا أو أنشئ تمرينًا مخصصًا أو تخطَّه.</string>
+    <string name="prog41_csv_map_pick">اختر تمرينًا</string>
+    <string name="prog41_csv_map_create">إنشاء تمرين مخصص</string>
+    <string name="prog41_csv_map_skip">تخطي</string>
+    <string name="prog41_csv_mapped_to">مربوط بـ: %1$s</string>
+    <string name="prog41_csv_import_btn">استيراد التمارين</string>
+    <string name="prog41_csv_done">تم استيراد %1$d حصص و %2$d مجموعة.</string>
+    <string name="prog41_csv_nothing">كل المجموعات في هذا الملف مستوردة مسبقًا أو تم تخطيها.</string>
+    <string name="prog41_csv_error">تعذر قراءة ملف CSV. تأكد أنه تصدير من Strong أو Hevy أو FitNotes.</string>
+    <string name="prog41_csv_search_hint">ابحث عن تمرين</string>
+
+    <!-- Auto backup & Drive -->
+    <string name="prog41_drive_notice_title">النسخ الاحتياطي إلى Google Drive</string>
+    <string name="prog41_drive_notice_body">تُحفظ التمارين والوجبات ووزن الجسم والقياسات والخطط والتمارين المخصصة والإعدادات في مجلد مخفي للتطبيق في Drive دون الوصول لبقية ملفاتك. مفاتيح الذكاء الاصطناعي تبقى على جهازك.</string>
+    <string name="prog41_drive_notice_confirm">المتابعة إلى Google</string>
+    <string name="prog41_drive_auto_title">النسخ الاحتياطي التلقائي</string>
+    <string name="prog41_drive_auto_hint_android">نسخ احتياطي يومي أثناء الاتصال بـ Google Drive.</string>
+    <string name="prog41_drive_auto_hint_web">ينسخ احتياطيًا تلقائيًا أثناء الاتصال؛ اضغط لإعادة الاتصال عند الحاجة.</string>
+    <string name="prog41_drive_reconnect">اضغط لإعادة الاتصال</string>
+    <string name="prog41_drive_connected_auto_off">تم ربط Google Drive. سيبقى النسخ التلقائي متوقفًا حتى تفعّله.</string>
+    <string name="prog41_drive_remote_newer_title">توجد نسخة أحدث على Google Drive</string>
+    <string name="prog41_drive_remote_newer_body">حدّث جهاز آخر نسختك في Drive. استعد النسخة من Drive أولًا حتى لا تستبدل البيانات الأحدث.</string>
+    <string name="prog41_drive_restore_offer_title">تم العثور على نسخة احتياطية في Google Drive</string>
+    <string name="prog41_drive_restore_offer_body">لا يوجد سجل تدريب على هذا الجهاز بعد. استعد بياناتك بضغطة واحدة أو ابدأ من جديد.</string>
+
+    <!-- Settings & Onboarding & Web offline -->
+    <string name="prog41_bar_weight_title">وزن البار</string>
+    <string name="prog41_bar_weight_hint">يُستخدم في حاسبة أقراص البار.</string>
+    <string name="prog41_plates_title">الأقراص المتوفرة</string>
+    <string name="prog41_plates_hint">اختر أوزان الأقراص المتوفرة لكل جهة.</string>
+    <string name="prog41_tts_title">تنبيهات صوتية للثبات والراحة</string>
+    <string name="prog41_tts_hint">نطق عدّات الثبات وانتهاء وقت الراحة.</string>
+    <string name="prog41_ex_units_title">وحدة الوزن لكل تمرين</string>
+    <string name="prog41_ex_units_hint">تخصيص الكيلو أو الرطل لأجهزة أو تمارين محددة.</string>
+    <string name="prog41_ex_units_summary_none">جميع التمارين تتبع الوحدة الافتراضية (%1$s)</string>
+    <string name="prog41_ex_units_summary_count">%1$d تمارين بوحدة مخصصة</string>
+    <string name="prog41_ex_units_default">الافتراضي</string>
+    <string name="prog41_onb_quick_place">إعداد سريع حسب المكان</string>
+    <string name="prog41_onb_place_gym">نادي</string>
+    <string name="prog41_onb_place_home">منزل</string>
+    <string name="prog41_onb_place_bw">وزن الجسم</string>
+    <string name="prog41_onb_exp_title">الخبرة التدريبية</string>
+    <string name="prog41_onb_exp_new">مبتدئ</string>
+    <string name="prog41_onb_exp_some">متوسط</string>
+    <string name="prog41_onb_exp_seasoned">متقدم</string>
+    <string name="prog41_onb_import_csv">هل تنتقل من Strong أو Hevy أو FitNotes؟</string>
+    <string name="prog41_web_offline_ready">جاهز دون اتصال</string>
+    <string name="prog41_web_offline_now">دون اتصال</string>
+    <string name="prog41_web_storage_persisted">تخزين المتصفح محمي</string>
+    <string name="prog41_web_storage_not_persisted">التخزين غير محمي بعد</string>
+    <string name="prog41_web_storage_protect">حماية التخزين</string>
+</resources>

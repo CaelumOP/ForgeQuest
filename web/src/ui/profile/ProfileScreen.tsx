@@ -5,10 +5,11 @@ import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
 import { getLang, plural, setLang, t, useLang, type Lang, intlLocale } from '../../i18n'
 import { setTheme, useTheme, type Theme } from '../theme'
-import { isAiOn, updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
+import { isAiOn, DEFAULT_PLATE_INVENTORY, updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
+import { db, type ExerciseRow } from '../../data/db'
 import { foodSkillPrompt, PLAN_PROMPT } from '../../data/ai'
 import { logWeight, useProgress, type ProgressSnapshot } from '../../data/progress'
-import { applyPlan, seedLibrary, trainingDays } from '../../data/workouts'
+import { applyPlan, seedLibrary, trainingDays, useLibrary } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
 import {
   ageFromBirthYear, allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, GAIN_PACE, GAIN_PACES, MAX_SAFE_KCAL, MIN_FAT_SHARE_PCT, MIN_PROTEIN_PER_KG, MIN_SAFE_KCAL,
@@ -18,7 +19,7 @@ import { calorieInputs, floorFor, setTarget } from '../../data/calories'
 import { bodyStep, fromKg, toKg, unitLabel } from '../../domain/units'
 import { BADGES, BADGES_BY_ID } from '../../domain/badges'
 import { EditIcon } from '../icons'
-import { Button, Card, ChipGroup, LineChart, ListRow, Ring, SectionHeader, Segmented, Sheet, Stat, Stepper, TextField, toast } from '../kit'
+import { Button, Card, Chip, ChipGroup, LineChart, ListRow, Ring, SectionHeader, Segmented, Sheet, Stat, Stepper, TextField, toast } from '../kit'
 import { PastePlanSheet } from '../coach/PastePlanSheet'
 import {
   applyNutrition, carbsFor, hasBodyStats, impliedFatPct, kcalFor, proteinFor, summary, type NutritionPatch,
@@ -252,6 +253,9 @@ export function ProfileScreen() {
   const [advOpen, setAdvOpen] = useState(false)
   const [nameDraft, setNameDraft] = useState<string | null>(null)
   const [pastePlanOpen, setPastePlanOpen] = useState(false)
+  const [exUnitsOpen, setExUnitsOpen] = useState(false)
+  const [exUnitsQuery, setExUnitsQuery] = useState('')
+  const library = useLibrary()
   const toggle = (id: string) => {
     const next = openIds.includes(id) ? openIds.filter((x) => x !== id) : [...openIds, id]
     setOpenIds(next); saveOpen(next)
@@ -348,6 +352,55 @@ export function ProfileScreen() {
         </Card>
         <Card>
           <Switch label={t('profile_vibration')} hint={t('profile_vibration_hint')} on={s.hapticsEnabled} onChange={(v) => void set({ hapticsEnabled: v })} />
+        </Card>
+        <Card>
+          <Switch label={t('prog41_tts_title')} hint={t('prog41_tts_hint')} on={s.ttsCues} onChange={(v) => void set({ ttsCues: v })} />
+        </Card>
+        <Card>
+          <CardTitle icon="training" accent="teal" title={t('prog41_bar_weight_title')} hint={t('prog41_bar_weight_hint')} />
+          <div class="pf-actions">
+            {[20, 15, 10].map((kg) => (
+              <Chip
+                key={kg}
+                label={`${Math.round(fromKg(unit, kg))} ${unitLabel(unit, ar)}`}
+                selected={Math.abs(s.barWeightKg - kg) < 0.1}
+                onClick={() => void set({ barWeightKg: kg })}
+              />
+            ))}
+          </div>
+          <span class="pf-t" style={{ display: 'block', marginBlockStart: '12px' }}>{t('prog41_plates_title')}</span>
+          <span class="pf-s" style={{ display: 'block', marginBlockEnd: '6px' }}>{t('prog41_plates_hint')}</span>
+          <div class="pf-actions">
+            {DEFAULT_PLATE_INVENTORY.map((plateKg) => {
+              const on = s.plateInventory.some((p) => Math.abs(p - plateKg) < 0.01)
+              return (
+                <Chip
+                  key={plateKg}
+                  label={`${Number(fromKg(unit, plateKg).toFixed(2))} ${unitLabel(unit, ar)}`}
+                  selected={on}
+                  onClick={() => {
+                    const next = on
+                      ? s.plateInventory.filter((p) => Math.abs(p - plateKg) >= 0.01)
+                      : [...s.plateInventory, plateKg].sort((a, b) => b - a)
+                    void set({ plateInventory: next })
+                  }}
+                />
+              )
+            })}
+          </div>
+        </Card>
+        <Card padded={false}>
+          <ListRow
+            title={t('prog41_ex_units_title')}
+            subtitle={(() => {
+              const cnt = library.filter((e) => !!e.unitOverride).length
+              return cnt === 0
+                ? t('prog41_ex_units_summary_none', unitLabel(unit, ar))
+                : t('prog41_ex_units_summary_count', cnt)
+            })()}
+            icon={<span class="pf-ic pf-teal"><Glyph name="tune" /></span>}
+            onClick={() => { setExUnitsQuery(''); setExUnitsOpen(true) }}
+          />
         </Card>
         <Card padded={false}>
           <ListRow title={t('pb_rebuild')} subtitle={t('pb_rebuild_hint')} icon={<span class="pf-ic pf-teal"><Glyph name="tune" /></span>} href="#/plan-builder" />
@@ -480,6 +533,33 @@ export function ProfileScreen() {
       </Group>
 
       <WeightSheet latest={latestKg} s={s} open={weightOpen} onClose={() => setWeightOpen(false)} />
+      <Sheet open={exUnitsOpen} onClose={() => setExUnitsOpen(false)} title={t('prog41_ex_units_title')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <TextField label={t('prog41_csv_search_hint')} type="search" value={exUnitsQuery} onInput={setExUnitsQuery} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxBlockSize: '320px', overflowY: 'auto' }}>
+            {(() => {
+              const q = exUnitsQuery.trim().toLowerCase()
+              const list = q
+                ? library.filter((e) => e.name.toLowerCase().includes(q) || (e.aliases ?? '').toLowerCase().includes(q))
+                : [...library].sort((a, b) => Number(!!b.unitOverride) - Number(!!a.unitOverride))
+              return list.slice(0, 35).map((ex: ExerciseRow) => (
+                <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span class="pf-t">{ex.name}</span>
+                  <div class="pf-actions" style={{ marginBlockStart: 0 }}>
+                    <Chip
+                      label={`${t('prog41_ex_units_default')} (${unitLabel(unit, ar)})`}
+                      selected={!ex.unitOverride}
+                      onClick={() => void db.exercises.update(ex.id, { unitOverride: '' })}
+                    />
+                    <Chip label="kg" selected={ex.unitOverride?.toLowerCase() === 'kg'} onClick={() => void db.exercises.update(ex.id, { unitOverride: 'kg' })} />
+                    <Chip label="lb" selected={ex.unitOverride?.toLowerCase() === 'lb'} onClick={() => void db.exercises.update(ex.id, { unitOverride: 'lb' })} />
+                  </div>
+                </div>
+              ))
+            })()}
+          </div>
+        </div>
+      </Sheet>
       {editingTarget === 'PROTEIN' && (() => {
         const hasKg = latestKg != null && latestKg > 0
         const initRatio = hasKg ? Math.min(2.5, Math.max(MIN_PROTEIN_PER_KG, Math.round((s.proteinGoal / latestKg!) * 10) / 10)) : null

@@ -17,6 +17,8 @@ import { fromKg, toKg, unitLabel, weightNumber, formatWeight, type WeightUnit } 
 import { Button, Card, Chip, ChipGroup, EmptyState, LineChart, Ring, toast } from '../kit'
 import { carbWeeks, formatDelta, formatValue, grouped } from './helpers'
 import { formatInsight } from './insightText'
+import { strengthToBodyweight } from './metrics'
+import { MeasurementsCard, OneRmCalculatorCard, WeeklyVolumeCard } from './ProgressExtras'
 import './progress.css'
 
 const RANGE_KEYS: Record<TrendRange, string> = {
@@ -175,6 +177,10 @@ function StrengthCard({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: W
   const kind = ex?.kind ?? 'REPS'
   const pts = inRange(d, d.series.get(selected) ?? [])
   const name = ex?.name ?? selected
+  const fullPts = d.series.get(selected) ?? []
+  const latestEst = fullPts.length ? fullPts[fullPts.length - 1].value : 0
+  const ratio = kind === 'WEIGHTED' && latestEst > 0 ? strengthToBodyweight(latestEst, s.latestWeight) : null
+  const ar = getLang() === 'ar'
   return (
     <Card>
       <h3 class="pg-h3">{t('progress_strength')}</h3>
@@ -187,6 +193,12 @@ function StrengthCard({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: W
         : <LineChart title={`${t('progress_strength')}: ${name}`} color="--chart-strength"
             data={pts.map((p) => ({ label: dateLabel(p.epochDay), value: kind === 'WEIGHTED' ? fromKg(unit, p.value) : p.value }))}
             format={(v) => (kind === 'WEIGHTED' ? weightNumber(unit, toKg(unit, v)) : v.toFixed(0))} />}
+      {kind === 'WEIGHTED' && latestEst > 0 && (
+        <div class="pg-str-meta">
+          <span class="pg-data-blue">{t('prog41_1rm_latest_est', formatWeight(unit, latestEst, ar, 1))}</span>
+          {ratio != null && <span class="pg-data-purple">{t('prog41_1rm_ratio_val', ratio.toFixed(2))}</span>}
+        </div>
+      )}
     </Card>
   )
 }
@@ -327,12 +339,15 @@ export function ProgressScreen(_: { param?: string }) {
   )
   if (!snap || !d) return <div class="content">{head}</div>
   if (snap.sessions.length === 0) {
+    const unit = weightUnit(snap.settings)
     return (
       <div class="content">
         {head}
         <div class="pg-list">
           <Card><EmptyState title={t('progress_empty_title')} body={t('progress_empty_body')}
             icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" /></svg>} /></Card>
+          <MeasurementsCard range={range} />
+          <OneRmCalculatorCard s={snap} unit={unit} />
         </div>
       </div>
     )
@@ -349,8 +364,11 @@ export function ProgressScreen(_: { param?: string }) {
         <ChipGroup label={t('progress_title')} value={range} onChange={(v) => setRangeIdx(TREND_RANGES.indexOf(v))}
           options={TREND_RANGES.map((r) => ({ value: r, label: t(RANGE_KEYS[r]) }))} />
         <LoadCard d={d} />
+        <WeeklyVolumeCard s={snap} />
         <Tiles s={snap} d={d} unit={unit} />
         <StrengthCard s={snap} d={d} unit={unit} />
+        <OneRmCalculatorCard s={snap} unit={unit} />
+        <MeasurementsCard range={range} />
         {d.weightPoints.length >= 2 && (
           <Card>
             <h3 class="pg-h3">{t('weight_body')}</h3>

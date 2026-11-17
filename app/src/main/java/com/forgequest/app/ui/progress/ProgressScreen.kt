@@ -90,7 +90,10 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class ProgressViewModel(val app: AppContainer) : ViewModel() {
+    private val measurementsRepo = com.forgequest.app.data.MeasurementsRepository(app.db)
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val measurements: StateFlow<List<com.forgequest.app.data.db.BodyMeasurementEntity>> =
+        measurementsRepo.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** Fitbit readiness saved day by day; empty when the Fitbit isn't connected. */
     val readiness: StateFlow<List<com.forgequest.app.data.db.ReadinessDayEntity>> =
         app.db.readiness().observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -101,7 +104,9 @@ class ProgressViewModel(val app: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     /** "Switch" on a stalled lift: its variation takes its place in the plan. */
     fun switchVariation(from: String, to: String) = viewModelScope.launch { app.workouts.cycleVariation(from, to) }
-
+    fun logMeasurement(metric: com.forgequest.app.data.MeasurementMetric, valueCm: Float) =
+        viewModelScope.launch { measurementsRepo.log(metric, valueCm) }
+    fun deleteMeasurement(id: Long) = viewModelScope.launch { measurementsRepo.delete(id) }
 }
 
 /** Everything derived for one range, computed once per snapshot change. */
@@ -137,6 +142,7 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
 fun ProgressScreen(nav: NavHostController) {
     val vm = appViewModel { ProgressViewModel(it) }
     val snap by vm.snapshot.collectAsState()
+    val measurements by vm.measurements.collectAsState()
     val readiness by vm.readiness.collectAsState()
     val report by vm.report.collectAsState()
     val c = Fit.colors
@@ -160,10 +166,17 @@ fun ProgressScreen(nav: NavHostController) {
             }
         }
         if (s.sessions.isEmpty()) {
-            FitCard(Modifier.padding(16.dp)) {
-                EmptyState(Icons.AutoMirrored.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body)) {
-                    PillButton(stringResource(R.string.hist_go_workouts), onClick = { nav.goToTab(Routes.WORKOUTS) })
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
+                FitCard {
+                    EmptyState(Icons.AutoMirrored.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body)) {
+                        PillButton(stringResource(R.string.hist_go_workouts), onClick = { nav.goToTab(Routes.WORKOUTS) })
+                    }
                 }
+                Spacer(Modifier.height(12.dp))
+                MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
+                Spacer(Modifier.height(12.dp))
+                OneRmCalculatorCard(s, unit)
+                Spacer(Modifier.height(32.dp))
             }
             return
         }
@@ -178,10 +191,19 @@ fun ProgressScreen(nav: NavHostController) {
             LoadCard(d, reveal)
             Spacer(Modifier.height(12.dp))
 
+            WeeklyVolumeCard(s)
+            Spacer(Modifier.height(12.dp))
+
             TileGrid(s, d, unit, reveal)
             Spacer(Modifier.height(12.dp))
 
             StrengthCard(s, d, unit, reveal, dateLabel)
+            Spacer(Modifier.height(12.dp))
+
+            OneRmCalculatorCard(s, unit)
+            Spacer(Modifier.height(12.dp))
+
+            MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
             Spacer(Modifier.height(12.dp))
 
             if (d.weightPoints.size >= 2) {
@@ -378,6 +400,27 @@ private fun StrengthCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reve
                 format = { v -> if (kind == ExerciseKind.WEIGHTED) unit.number(unit.toKg(v)) else "%.0f".format(v) },
                 dateLabel = dateLabel,
             )
+        }
+        if (kind == ExerciseKind.WEIGHTED) {
+            val latestEst = d.series[selected].orEmpty().lastOrNull()?.value
+            if (latestEst != null && latestEst > 0f) {
+                val ratio = ProgressMetrics.strengthToBodyweight(latestEst, s.latestWeight)
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.prog41_1rm_latest_est, unit.format(latestEst, 1)),
+                        style = MaterialTheme.typography.labelLarge.tabular(),
+                        color = c.blue,
+                    )
+                    if (ratio != null) {
+                        Text(
+                            stringResource(R.string.prog41_1rm_ratio_val, String.format(Locale.US, "%.2f", ratio)),
+                            style = MaterialTheme.typography.labelLarge.tabular(),
+                            color = c.purple,
+                        )
+                    }
+                }
+            }
         }
     }
 }

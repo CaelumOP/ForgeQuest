@@ -7,6 +7,7 @@ import {
 import type { WeightUnit } from '../../domain/units'
 import { unitCode } from '../../domain/units'
 import type { BodyType } from '../../data/settings'
+import type { Experience } from '../../domain/plan-builder'
 
 export const LAST_STEP = 3 // language, name, plan (equipment + days), key
 export const DAY_OPTIONS = [2, 3, 4, 5] as const
@@ -33,6 +34,8 @@ export type OnbState = {
   gainPace: GainPace
   planIndex: number
   preset: EquipmentPreset
+  experience: Experience
+  builtForMe: boolean
 }
 
 /**
@@ -49,6 +52,7 @@ export const initialState = (): OnbState => ({
   step: 0, name: '', bodyType: 'MALE', daysPerWeek: DEFAULT_DAYS, justLog: false, weightKg: 75, unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
   goalsTouched: false, goal: 'MAINTAIN', dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD',
   planIndex: planForDays(DEFAULT_DAYS, 'CALISTHENICS_PARK'), preset: 'CALISTHENICS_PARK',
+  experience: 'SOME', builtForMe: true,
 })
 
 /** The equipment to show after picking starter plan [index]: the gym split needs a gym, the dumbbell plan dumbbells. */

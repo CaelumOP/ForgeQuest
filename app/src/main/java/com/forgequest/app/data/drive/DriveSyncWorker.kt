@@ -11,12 +11,12 @@ import androidx.work.WorkerParameters
 import com.forgequest.app.container
 import java.util.concurrent.TimeUnit
 
-/** Daily backup to Drive. Silent; skips if Drive isn't connected. */
+/** Daily backup to Drive. Respects [Settings.autoBackupEffective]; skips if opted out or disconnected. */
 class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext.container
         val s = app.settings.current()
-        if (s.driveEmail.isBlank()) return Result.success()
+        if (!s.autoBackupEffective) return Result.success()
         val token = app.drive.silentToken() ?: return Result.success()
         return try {
             app.drive.backup(token)
@@ -31,11 +31,21 @@ class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
     }
 
     companion object {
+        const val WORK_NAME = "drive_sync"
+
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<DriveSyncWorker>(1, TimeUnit.DAYS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork("drive_sync", ExistingPeriodicWorkPolicy.KEEP, request)
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+        }
+
+        fun cancel(context: Context) {
+            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+        }
+
+        fun syncScheduling(context: Context, enabled: Boolean) {
+            if (enabled) schedule(context) else cancel(context)
         }
     }
 }
