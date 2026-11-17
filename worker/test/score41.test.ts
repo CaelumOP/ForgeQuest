@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { toSnapshot } from "../src/types";
-import { scoreBreakdown } from "../src/score";
+import { scoreBreakdown, snapshotScore } from "../src/score";
 import { validateSnapshot } from "../src/validate";
 const vectors = JSON.parse(readFileSync(new URL("./forge-score-v2.vectors.json", import.meta.url), "utf8"));
 describe("ForgeScore v2", () => {
@@ -22,6 +22,11 @@ describe("ForgeScore v2", () => {
   });
   it("calculates raw inputs regardless of claimed score", () => {
     expect(validateSnapshot({ ...old, target: 3, prCount: 1, reachedAt: 1794758400 }, 20774).score).toBe(78);
+  });
+  it("legacy 4.0 snapshots keep the 4.0 rule: nothing due yet scores 100", () => {
+    expect(snapshotScore({ done: 0, due: 0, proteinDays: 0 }).score).toBe(100);
+    expect(snapshotScore({ done: 1, due: 2, proteinDays: 0 }).score).toBe(50);
+    expect(snapshotScore({ done: 0, due: 1, proteinDays: 0 }).score).toBe(0);
   });
   it("accepts a phone clock up to 10 minutes fast and clamps reachedAt to now", () => {
     const now = 1794758400;
