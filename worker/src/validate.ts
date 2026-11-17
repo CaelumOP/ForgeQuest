@@ -85,6 +85,9 @@ export function validateProfile(body: Record<string, unknown>): {
   };
 }
 
+/** Phones whose clock runs a little fast still sync; the stored time is clamped to the server's now. */
+const CLOCK_SKEW_SEC = 600;
+
 export function validateSnapshot(
   body: Record<string, unknown>,
   todayEpochDay: number,
@@ -94,7 +97,7 @@ export function validateSnapshot(
   const rawInputs = body.target !== undefined || body.prCount !== undefined || body.reachedAt !== undefined;
   if (rawInputs && (!isIntInRange(body.target, 0, 7) ||
       !isIntInRange(body.prCount, 0, 1000000) ||
-      !isIntInRange(body.reachedAt, Math.max(0, Number(weekStart) * 86400 - 14 * 3600), nowSec))) {
+      !isIntInRange(body.reachedAt, Math.max(0, Number(weekStart) * 86400 - 14 * 3600), nowSec + CLOCK_SKEW_SEC))) {
     throw new HttpError(400, "bad_snapshot");
   }
   if (
@@ -151,7 +154,7 @@ export function validateSnapshot(
     done,
     due,
     score: snapshotScore({ done, due, proteinDays, ...(rawInputs ? { target: body.target as number, prCount: body.prCount as number } : {}) }).score,
-    ...(rawInputs ? { target: body.target as number, prCount: body.prCount as number, reachedAt: body.reachedAt as number } : {}),
+    ...(rawInputs ? { target: body.target as number, prCount: body.prCount as number, reachedAt: Math.min(body.reachedAt as number, nowSec) } : {}),
     badge: badge as Badge,
     streakWeeks,
     proteinDays,

@@ -224,7 +224,7 @@ describe("ForgeQuest Friends Worker", () => {
     it("rejects future and out-of-week scoring timestamps", async () => {
       const u = await loginUser("bounds41", "Bounds");
       const ws = sundayWeekStart(riyadhEpochDay(nowMs));
-      for (const reachedAt of [Math.floor(nowMs / 1000) + 1, ws * 86400 - 14 * 3600 - 1]) {
+      for (const reachedAt of [Math.floor(nowMs / 1000) + 601, ws * 86400 - 14 * 3600 - 1]) {
         const r = await req("PUT", "/v1/snapshot", { token: u.session, body: {
           weekStart: ws, done: 0, due: 3, score: 0, badge: "rest", streakWeeks: 0,
           proteinDays: 0, prs: null, target: 3, prCount: 0, reachedAt,

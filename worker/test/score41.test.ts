@@ -23,6 +23,12 @@ describe("ForgeScore v2", () => {
   it("calculates raw inputs regardless of claimed score", () => {
     expect(validateSnapshot({ ...old, target: 3, prCount: 1, reachedAt: 1794758400 }, 20774).score).toBe(78);
   });
+  it("accepts a phone clock up to 10 minutes fast and clamps reachedAt to now", () => {
+    const now = 1794758400;
+    const ok = validateSnapshot({ ...old, target: 3, prCount: 1, reachedAt: now + 300 }, 20774, now);
+    expect(ok.reachedAt).toBe(now);
+    expect(() => validateSnapshot({ ...old, target: 3, prCount: 1, reachedAt: now + 3600 }, 20774, now)).toThrow();
+  });
   it.each([{ target: 8 }, { prCount: -1 }, { reachedAt: -1 }, { target: 3, prCount: 0 }, { target: null }])("rejects malformed or partial raw inputs %j", extra => {
     expect(() => validateSnapshot({ ...old, ...extra }, 20774)).toThrow("bad_snapshot");
   });
