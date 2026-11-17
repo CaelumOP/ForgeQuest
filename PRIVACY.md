@@ -1,12 +1,18 @@
 # ForgeQuest privacy policy
 
-_Last updated: November 1, 2026_
+_Last updated: November 17, 2026_
 
 ForgeQuest is a personal fitness app for Android, with a web app for iPhone at https://caelumop.github.io/ForgeQuest. This page explains what both do with your data. The web app has its own section below.
 
 ## What stays on your phone
 
-Your workouts, meals, body weight, goals, coach chat and readiness scores are stored on your phone. ForgeQuest has no server and no account system of its own, and its developer cannot see your data.
+Your workouts, meals, body weight, goals, coach chat and readiness scores are stored on your phone. They are not sent to any ForgeQuest server, and its developer cannot see them. The only server is the optional Friends feature below, which receives a small weekly summary and nothing else.
+
+## Friends (optional)
+
+If you sign in to Friends with Google, ForgeQuest's Friends server (Cloudflare) stores: your Google account ID, the username you pick, your Google profile photo (only while "Share photo" is on), your friend list, friend requests, blocks and "Go train" pings, a notification token so pings can reach your phone, and a weekly summary: workout days done and planned, protein-goal days, number of personal records, your Forge Score and streak, and when you reached that score. PR details (exercise and weight) are shared only while "Share PRs" is on. Your sets, meals, body weight and notes are never sent.
+
+You can turn off photo and PR sharing, alerts and pings in Settings, and "Delete Friends account" in Settings removes your profile, friend list and weekly summaries from the server.
 
 ## Google sign-in and Google Drive
 
@@ -14,6 +20,8 @@ If you choose to connect Google Drive, ForgeQuest asks for two permissions:
 
 - **App data folder** (`drive.appdata`): to save and restore a daily backup in a hidden folder that only ForgeQuest can see.
 - **Files ForgeQuest creates** (`drive.file`): to create and update the Google Docs it makes itself ("ForgeQuest data", "ForgeQuest from Gemini" and "ForgeQuest plan"). ForgeQuest cannot see your other files.
+
+When you sign in to Google Drive, a daily automatic backup is turned on (you can switch it off in Settings). Backups go only to your own Drive, never to a ForgeQuest server.
 
 You can disconnect at any time in the app (Profile › Google Drive › Disconnect) or at https://myaccount.google.com/permissions.
 
