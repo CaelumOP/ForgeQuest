@@ -1,22 +1,21 @@
 package com.forgequest.app.ui.workouts
 
-import com.forgequest.app.ui.theme.ForgeShape
-import com.forgequest.app.ui.theme.tabular
-import androidx.compose.animation.core.snap
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import com.forgequest.app.ui.theme.LocalReducedMotion
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -26,16 +25,17 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +44,9 @@ import com.forgequest.app.R
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.LocalReducedMotion
+import com.forgequest.app.ui.theme.tabular
 
 /** Full-screen clock for a timed hold: 3-2-1, the countdown to the target, then extra time counting up. */
 @Composable
@@ -92,8 +95,22 @@ internal fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: 
     }
 }
 
+private val REST_PRESETS = listOf(60, 90, 120, 180)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> Unit, onRemove: () -> Unit, onSkip: () -> Unit) {
+internal fun RestBar(
+    secondsLeft: Int,
+    total: Int,
+    next: String?,
+    isRestPause: Boolean,
+    canCopyLastSet: Boolean,
+    onAdd: () -> Unit,
+    onRemove: () -> Unit,
+    onSelectPreset: (Int) -> Unit,
+    onCopyLastSet: () -> Unit,
+    onSkip: () -> Unit,
+) {
     val c = Fit.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(ForgeShape.Md).background(c.cardHigh).padding(16.dp)) {
         // At large text sizes the three buttons drop to their own line, so the time never wraps digit by digit.
@@ -111,6 +128,51 @@ internal fun RestBar(secondsLeft: Int, total: Int, next: String?, onAdd: () -> U
         }
         if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }
         if (next != null) Text(stringResource(R.string.live_next, next), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+        Spacer(Modifier.height(8.dp))
+        val presets = if (isRestPause) listOf(15) + REST_PRESETS else REST_PRESETS
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            presets.forEach { preset ->
+                val selected = total == preset
+                Surface(
+                    onClick = { onSelectPreset(preset) },
+                    shape = ForgeShape.Full,
+                    color = if (selected) c.teal else c.card,
+                    contentColor = if (selected) c.onTeal else c.textPrimary,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            stringResource(R.string.live41_rest_preset_s, preset),
+                            style = MaterialTheme.typography.labelMedium.tabular(),
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+            if (canCopyLastSet) {
+                Surface(
+                    onClick = onCopyLastSet,
+                    shape = ForgeShape.Full,
+                    color = c.tealTrack,
+                    contentColor = c.teal,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            stringResource(R.string.live41_copy_last_set),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(Modifier.height(8.dp))
         RestWave(if (total == 0) 0f else secondsLeft / total.toFloat())
     }

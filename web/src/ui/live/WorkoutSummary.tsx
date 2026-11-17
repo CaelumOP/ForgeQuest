@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'preact/hooks'
-import { plural, t, useLang, intlLocale } from '../../i18n'
+import { listSep, plural, t, useLang, intlLocale } from '../../i18n'
 import { debriefLines } from '../../data/debrief-text'
 import type { BadgeDef } from '../../domain/badges'
 import { MILESTONE_KINDS, SCORE_TIER_KEY } from '../../domain/finish-summary'
 import { formatWeight } from '../../domain/units'
 import { GRACE_MS } from '../../domain/workout-end'
-import { Button } from '../kit'
+import { formatWorkoutRecap } from '../../domain/workout-recap'
+import { Button, toast } from '../kit'
 import { CalendarIcon } from '../icons'
 import { TrophyIcon } from '../home/glyphs'
 import { dayName } from '../workouts/helpers'
@@ -13,6 +14,23 @@ import { prValueText, renderInsightText, type WorkoutSummaryData } from './summa
 
 const tr = (key: string, fallback: string) => { const v = t(key); return v === key ? fallback : v }
 const badgeTitle = (b: BadgeDef) => tr(`badge_${b.id}_title`, b.title)
+
+async function shareRecapText(title: string, text: string): Promise<void> {
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      await navigator.share({ title, text })
+      return
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return
+    }
+  }
+  try {
+    await navigator.clipboard?.writeText(text)
+    toast(t('live41_share_copied'))
+  } catch {
+    toast(t('live41_share_copied'))
+  }
+}
 
 /** Editorial "Workout complete" screen (Android WorkoutCompleteScreen v3.5). */
 export function WorkoutSummary({ sum, onDone }: { sum: WorkoutSummaryData; onDone: () => void; onView?: () => void }) {
@@ -48,6 +66,22 @@ export function WorkoutSummary({ sum, onDone }: { sum: WorkoutSummaryData; onDon
   const heroOld = hero ? prValueText(unit, arabic, hero.kind, hero.oldKg, hero.oldReps, hero.oldSeconds) : null
   const score = sum.score ?? null
   const showScore = sum.tier != null && score != null && score.showNumber && type !== 'FIRST_OR_BACK' && type !== 'ROUGH'
+
+  const handleShare = () => {
+    if (!sum.recap) return
+    const text = formatWorkoutRecap(sum.recap, {
+      setsLabel: (n) => plural('live41_recap_sets', n, n),
+      minutesLabel: (m) => t('live41_recap_minutes', m),
+      totalLiftedLabel: (total) => t('live41_recap_total_lifted', total),
+      bestLabel: (best) => t('live41_recap_best', best),
+      prTag: t('live41_recap_pr_tag'),
+      prsHeaderLabel: (list) => t('live41_recap_prs_header', list),
+      repsLabel: (r) => plural('debrief_n_reps', r, r),
+      secondsLabel: (s) => plural('debrief_n_seconds', s, s),
+      listSeparator: listSep(lang),
+    })
+    void shareRecapText(sum.recap.title, text)
+  }
 
   return (
     <div class="shell lw lws" role="status">
@@ -133,6 +167,7 @@ export function WorkoutSummary({ sum, onDone }: { sum: WorkoutSummaryData; onDon
             <p class="lws-xpline">{t('profile_xp_line', sum.after.xpIntoLevel, sum.after.xpForNextLevel, sum.after.level + 1)}</p>
           </div>
         )}
+        {sum.recap && <Button variant="tonal" block onClick={handleShare}>{t('live41_share_summary')}</Button>}
         <Button block onClick={onDone}>{t('home_done')}</Button>
       </div>
     </div>

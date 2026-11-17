@@ -1,0 +1,26 @@
+/* Thumb-zone keypad sheet for live workout numeric entry. Colors from styles.css variables only. */
+.nk-wrap { display: flex; flex-direction: column; gap: 12px; }
+.nk-head-actions { display: flex; align-items: center; justify-content: flex-end; }
+.nk-readout {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 16px; border-radius: var(--r-md); background: var(--card);
+}
+.nk-value { font-size: 28px; line-height: 34px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+.nk-value-err { color: var(--coral); }
+.nk-range { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.nk-range-err { color: var(--coral); }
+.nk-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.nk-chip {
+  min-block-size: 48px; padding-inline: 16px; border: 0; border-radius: var(--r-full);
+  background: var(--card); color: var(--text); font: inherit; font-size: 14px; font-weight: 600;
+  font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.nk-chip-last { background: var(--teal-track); color: var(--teal); }
+.nk-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; direction: ltr; }
+.nk-key {
+  min-block-size: 52px; border: 0; border-radius: var(--r-md); background: var(--card); color: var(--text);
+  font: inherit; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.nk-key:active, .nk-chip:active { opacity: 0.78; }

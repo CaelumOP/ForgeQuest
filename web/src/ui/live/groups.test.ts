@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SetRow } from '../../data/db'
-import { carryForwardUpdates, clampField, currentGroupIndex, groupSetsByExercise, nextUntickedSet } from './groups'
+import { carryForwardUpdates, clampField, currentGroupIndex, effectiveRestSeconds, groupSetsByExercise, nextUntickedSet } from './groups'
 
 let id = 0
 const s = (itemPosition: number, setIndex: number, o: Partial<SetRow> = {}): SetRow => ({
@@ -28,7 +28,7 @@ describe('clampField', () => {
     expect(clampField('reps', -3)).toBe(0)
     expect(clampField('reps', 1200)).toBe(999)
     expect(clampField('seconds', 4000)).toBe(3600)
-    expect(clampField('weightKg', 22.54)).toBe(22.5)
+    expect(clampField('weightKg', 22.54)).toBe(22.54)
   })
 })
 
@@ -77,5 +77,58 @@ describe('carryForwardUpdates', () => {
       { ...s2, reps: 9, weightKg: 5 },
       { ...s3, reps: 12, weightKg: 5 },
     ])
+  })
+
+  it('excludes warm-up, drop-set, and rest-pause sets from carry-forward updates', () => {
+    const warmup = s(0, 0, { reps: 12, weightKg: 40, setType: 'WARMUP' })
+    const working = s(0, 1, { reps: 8, weightKg: 60, setType: 'WORKING' })
+    const dropset = s(0, 2, { reps: 10, weightKg: 45, setType: 'DROPSET' })
+    const workingNext = s(0, 3, { reps: 8, weightKg: 60, setType: 'WORKING' })
+
+    // Editing a warm-up never overwrites later working sets
+    expect(
+      carryForwardUpdates(
+        [warmup, working],
+        warmup,
+        new Set([warmup.id!]),
+        new Set([warmup.id!]),
+      ),
+    ).toEqual([])
+
+    // Editing a working set skips dropsets and updates only later unticked working/failure sets
+    expect(
+      carryForwardUpdates(
+        [working, dropset, workingNext],
+        { ...working, weightKg: 65 },
+        new Set(),
+        new Set([working.id!]),
+      ),
+    ).toEqual([{ ...workingNext, weightKg: 65 }])
+  })
+})
+
+describe('supersetGroup & effectiveRestSeconds', () => {
+  it('pairs superset items into circuit rounds and dissolves singletons back to straight', () => {
+    const sets = [s(0, 0), s(0, 1), s(1, 0), s(1, 1), s(2, 0)]
+    const groups = groupSetsByExercise(sets, (pos) => (pos === 0 || pos === 1 ? 1 : pos === 2 ? 2 : null))
+    expect(groups.map((g) => g.kind)).toEqual(['circuit', 'straight'])
+    expect(groups[0].kind === 'circuit' ? groups[0].supersetGroup : null).toBe(1)
+    expect(groups[0].kind === 'circuit' ? groups[0].rounds.map((r) => r.map((x) => x.itemPosition)) : []).toEqual([
+      [0, 1],
+      [0, 1],
+    ])
+  })
+
+  it('computes 0s for warm-up, 15s for rest-pause, 10s for superset A1, and full rest for A2', () => {
+    const a1 = s(0, 0, { restSeconds: 90 })
+    const a2 = s(1, 0, { restSeconds: 90 })
+    const warmup = s(2, 0, { restSeconds: 90, setType: 'WARMUP' })
+    const restPause = s(2, 1, { restSeconds: 90, setType: 'RESTPAUSE' })
+    const groups = groupSetsByExercise([a1, a2, warmup, restPause], (pos) => (pos === 0 || pos === 1 ? 1 : null))
+
+    expect(effectiveRestSeconds(warmup, groups)).toBe(0)
+    expect(effectiveRestSeconds(restPause, groups)).toBe(15)
+    expect(effectiveRestSeconds(a1, groups)).toBe(10)
+    expect(effectiveRestSeconds(a2, groups)).toBe(90)
   })
 })

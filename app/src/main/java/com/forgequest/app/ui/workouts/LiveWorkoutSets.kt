@@ -1,61 +1,55 @@
 package com.forgequest.app.ui.workouts
 
-import com.forgequest.app.ui.theme.ForgeShape
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathMeasure
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.Dp
-import com.forgequest.app.ui.theme.ForgeMotion
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import com.forgequest.app.ui.theme.LocalReducedMotion
-import com.forgequest.app.ui.theme.effectsSpec
-import com.forgequest.app.ui.theme.spatialSpec
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,6 +62,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -76,17 +77,52 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
+import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.PlateMath
 import com.forgequest.app.domain.SetEffort
-import com.forgequest.app.ui.labelRes
+import com.forgequest.app.domain.SetType
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.components.ChoiceChip
-import com.forgequest.app.ui.components.NumberStepper
+import com.forgequest.app.ui.components.KeypadNumberStepper
+import com.forgequest.app.ui.components.rememberFullSheetState
 import com.forgequest.app.ui.components.steadyToggleable
+import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.LocalReducedMotion
+import com.forgequest.app.ui.theme.effectsSpec
+import com.forgequest.app.ui.theme.spatialSpec
+import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.ui.workouts.LiveWorkoutViewModel.Field
+
+internal fun parseSetType(raw: String?): SetType =
+    SetType.entries.firstOrNull { it.name == raw } ?: SetType.WORKING
+
+@Composable
+private fun setTypeLabel(type: SetType): String = stringResource(
+    when (type) {
+        SetType.WORKING -> R.string.live41_set_type_working
+        SetType.WARMUP -> R.string.live41_set_type_warmup
+        SetType.DROPSET -> R.string.live41_set_type_dropset
+        SetType.FAILURE -> R.string.live41_set_type_failure
+        SetType.RESTPAUSE -> R.string.live41_set_type_restpause
+    },
+)
+
+@Composable
+private fun setTypeTag(type: SetType): String? = when (type) {
+    SetType.WORKING -> null
+    SetType.WARMUP -> stringResource(R.string.live41_tag_warmup)
+    SetType.DROPSET -> stringResource(R.string.live41_tag_dropset)
+    SetType.FAILURE -> stringResource(R.string.live41_tag_failure)
+    SetType.RESTPAUSE -> stringResource(R.string.live41_tag_restpause)
+}
 
 @OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -95,11 +131,14 @@ internal fun SetRow(
     sublabel: String?,
     set: SetEntity,
     kind: ExerciseKind,
+    exercise: ExerciseEntity? = null,
     vm: LiveWorkoutViewModel,
     onLabelClick: (() -> Unit)? = null,
     previous: SetEntity? = null,
 ) {
     val c = Fit.colors
+    val settings by vm.settings.collectAsState()
+    val effectiveUnit = settings.weightUnitFor(exercise?.unitOverride.orEmpty())
     val prIds by vm.prSetIds.collectAsState()
     val pr = set.isPr || set.id in prIds
     val scheme = MaterialTheme.colorScheme
@@ -113,22 +152,78 @@ internal fun SetRow(
     val flashing = flashingId == set.id
     val flashColor by animateColorAsState(if (flashing) c.gold else c.textPrimary, label = "flash")
     var noteDialog by remember { mutableStateOf(false) }
+    var typeSheet by remember { mutableStateOf(false) }
+    var plateBreakdown by remember { mutableStateOf<PlateMath.Breakdown?>(null) }
+
     if (noteDialog) {
         SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
     }
+    val setType = parseSetType(set.setType)
+    if (typeSheet) {
+        SetTypeSheet(
+            selected = setType,
+            onSelect = { chosen -> vm.setSetType(set, chosen); typeSheet = false },
+            onDismiss = { typeSheet = false },
+        )
+    }
+    plateBreakdown?.let { breakdown ->
+        PlateBreakdownSheet(
+            breakdown = breakdown,
+            onDismiss = { plateBreakdown = null },
+        )
+    }
+
     val effort = SetEffort.parse(set.effort.ifBlank { null })
     // From 1.35x text the row splits in two tiers: set number, last-time hint and tick on top, the steppers below.
     val reflow = com.forgequest.app.ui.components.reflowText()
     val rowModifier = Modifier.fillMaxWidth().padding(top = 8.dp).clip(ForgeShape.Sm).background(rowColor).border(1.dp, rowBorder, ForgeShape.Sm)
         .combinedClickable(onClick = {}, onLongClick = { noteDialog = true }, onLongClickLabel = stringResource(R.string.cd_add_note))
-        .padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)
+        .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)
+
+    val tagText = setTypeTag(setType)
+    val badgeBg = when (setType) {
+        SetType.WORKING -> c.cardHigh
+        SetType.WARMUP -> c.cardHigh
+        SetType.DROPSET -> c.purpleTrack
+        SetType.FAILURE -> c.goldTrack
+        SetType.RESTPAUSE -> c.blueTrack
+    }
+    val badgeInk = when (setType) {
+        SetType.WORKING -> c.textSecondary
+        SetType.WARMUP -> c.textSecondary
+        SetType.DROPSET -> c.purple
+        SetType.FAILURE -> c.gold
+        SetType.RESTPAUSE -> c.blue
+    }
+    val badgeText = tagText ?: label ?: "${set.setIndex + 1}"
+    val badgeDesc = stringResource(R.string.live41_set_badge_cd, label ?: "${set.setIndex + 1}", setTypeLabel(setType))
+
     val number: @Composable () -> Unit = {
-        if (label != null) {
-            Box(Modifier.size(28.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
-                Text(label, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(role = Role.Button) { typeSheet = true }
+                .semantics { contentDescription = badgeDesc },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(badgeBg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    badgeText,
+                    style = MaterialTheme.typography.labelMedium.tabular(),
+                    color = badgeInk,
+                    fontWeight = if (tagText != null) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1,
+                )
             }
-            Spacer(Modifier.width(12.dp))
         }
+        Spacer(Modifier.width(4.dp))
     }
     val info: @Composable (Modifier) -> Unit = { m ->
         Column(
@@ -140,11 +235,13 @@ internal fun SetRow(
                     if (onLabelClick != null) Icon(Icons.Rounded.ExpandMore, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary, modifier = Modifier.size(18.dp))
                 }
             }
+            if (setType != SetType.WORKING) {
+                Text(setTypeLabel(setType), style = MaterialTheme.typography.labelSmall, color = badgeInk, fontWeight = FontWeight.Medium)
+            }
             if (previous != null) {
-                val unit by vm.unit.collectAsState()
                 val last = when (kind) {
                     ExerciseKind.HOLD -> stringResource(R.string.rx_seconds, previous.seconds ?: 0)
-                    ExerciseKind.WEIGHTED -> "${previous.reps ?: 0} × ${unit.format(previous.weightKg ?: 0f)}"
+                    ExerciseKind.WEIGHTED -> "${previous.reps ?: 0} × ${effectiveUnit.format(previous.weightKg ?: 0f)}"
                     ExerciseKind.REPS -> "${previous.reps ?: 0}"
                 }
                 Text(stringResource(R.string.live_last_time, last), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
@@ -171,70 +268,281 @@ internal fun SetRow(
             }
         }
     }
+
+    val isBarbell = remember(exercise?.id, exercise?.equipment) { PlateMath.isBarbellExercise(exercise) }
+    val weightQuickDeltas = remember(effectiveUnit) {
+        if (effectiveUnit == WeightUnit.LB) listOf(5f, 10f, 25f) else listOf(2.5f, 5f, 10f)
+    }
+
     val steppers: @Composable () -> Unit = {
-            when (kind) {
-                ExerciseKind.HOLD -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!set.done) IconButton(onClick = { vm.startHold(set) }) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.cd_start_hold), tint = c.teal)
-                    }
-                    NumberStepper(
-                        (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
-                        unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
-                    )
+        when (kind) {
+            ExerciseKind.HOLD -> Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!set.done) IconButton(onClick = { vm.startHold(set) }) {
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.cd_start_hold), tint = c.teal)
                 }
-                // "reps" beside the number: a bare 8 read as seconds or kilos to beginners.
-                ExerciseKind.REPS -> NumberStepper(
+                KeypadNumberStepper(
+                    (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
+                    unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
+                    quickDeltas = listOf(5f, 10f, 30f),
+                    lastTimeValue = previous?.seconds?.toFloat(),
+                    lastTimeLabel = previous?.seconds?.let { stringResource(R.string.rx_seconds, it) },
+                )
+            }
+            // "reps" beside the number: a bare 8 read as seconds or kilos to beginners.
+            ExerciseKind.REPS -> KeypadNumberStepper(
+                (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
+                unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
+                unitPlurals = R.plurals.rx_reps,
+                quickDeltas = listOf(1f, 2f, 5f),
+                lastTimeValue = previous?.reps?.toFloat(),
+            )
+            ExerciseKind.WEIGHTED -> {
+                KeypadNumberStepper(
                     (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                     unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
                     unitPlurals = R.plurals.rx_reps,
+                    quickDeltas = listOf(1f, 2f, 5f),
+                    lastTimeValue = previous?.reps?.toFloat(),
                 )
-                ExerciseKind.WEIGHTED -> {
-                    NumberStepper(
-                        (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
-                        unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
-                        unitPlurals = R.plurals.rx_reps,
-                    )
-                    val unit by vm.unit.collectAsState()
-                    NumberStepper(
-                        unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f),
-                        unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = if (flashing) flashColor else c.blue,
+                val lastWeight = previous?.weightKg?.takeIf { it > 0f }
+                KeypadNumberStepper(
+                    effectiveUnit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, effectiveUnit.toKg(it)) }, step = effectiveUnit.loadStep, min = 0f, max = effectiveUnit.fromKg(999f),
+                    unit = effectiveUnit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = if (flashing) flashColor else c.blue,
+                    quickDeltas = weightQuickDeltas,
+                    lastTimeValue = lastWeight?.let { effectiveUnit.fromKg(it) },
+                    lastTimeLabel = lastWeight?.let { effectiveUnit.format(it) },
+                )
+            }
+        }
+        // Bodyweight moves with weight added in the plan editor (a plate on the back, a vest).
+        val extra = set.weightKg
+        if (kind != ExerciseKind.WEIGHTED && extra != null) {
+            val lastExtra = previous?.weightKg?.takeIf { it > 0f }
+            KeypadNumberStepper(
+                effectiveUnit.fromKg(extra), { vm.setField(set, Field.WEIGHT, effectiveUnit.toKg(it)) }, step = effectiveUnit.loadStep, min = 0f, max = effectiveUnit.fromKg(999f),
+                unit = effectiveUnit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
+                quickDeltas = weightQuickDeltas,
+                lastTimeValue = lastExtra?.let { effectiveUnit.fromKg(it) },
+                lastTimeLabel = lastExtra?.let { effectiveUnit.format(it) },
+            )
+        }
+        val weightKg = set.weightKg ?: 0f
+        if (isBarbell && weightKg > 0f) {
+            val breakdown = remember(weightKg, effectiveUnit, settings.barWeightKg, settings.plateInventory) {
+                PlateMath.calculate(weightKg, effectiveUnit, settings.barWeightKg, settings.plateInventory)
+            }
+            if (!breakdown.belowBar) {
+                val summaryText = if (breakdown.barOnly) {
+                    stringResource(R.string.live41_plates_bar_only, "${PlateMath.formatPlate(breakdown.barWeight)} ${effectiveUnit.label}")
+                } else {
+                    stringResource(R.string.live41_plates_side, PlateMath.formatPerSideSummary(breakdown.perSide))
+                }
+                val cd = stringResource(R.string.live41_plates_breakdown_cd, effectiveUnit.format(weightKg))
+                Box(
+                    Modifier
+                        .heightIn(min = 48.dp)
+                        .clip(ForgeShape.Full)
+                        .clickable(role = Role.Button) { plateBreakdown = breakdown }
+                        .semantics { contentDescription = cd }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        summaryText,
+                        style = MaterialTheme.typography.labelSmall.tabular(),
+                        color = c.blue,
+                        maxLines = 1,
                     )
                 }
             }
-            // Bodyweight moves with weight added in the plan editor (a plate on the back, a vest).
-            val extra = set.weightKg
-            if (kind != ExerciseKind.WEIGHTED && extra != null) {
-                val unit by vm.unit.collectAsState()
-                NumberStepper(
-                    unit.fromKg(extra), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f),
-                    unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
-                )
-            }
+        }
     }
     Column {
-    if (reflow) {
-        Column(rowModifier) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                number()
-                info(Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
+        if (reflow) {
+            Column(rowModifier) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    number()
+                    info(Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
+                }
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) { steppers() }
             }
-            FlowRow(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) { steppers() }
+        } else Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
+            number()
+            info(Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) { steppers() }
+            Spacer(Modifier.width(8.dp))
+            com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
         }
-    } else Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
-        number()
-        info(Modifier.weight(1f))
-        Spacer(Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) { steppers() }
-        Spacer(Modifier.width(8.dp))
-        com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SetTypeSheet(
+    selected: SetType,
+    onSelect: (SetType) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = Fit.colors
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberFullSheetState(),
+        containerColor = c.card,
+        shape = RoundedCornerShape(topStart = ForgeShape.LgRadius, topEnd = ForgeShape.LgRadius),
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.live41_set_type_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = c.textSecondary)
+                }
+            }
+            SetType.entries.forEach { type ->
+                val isSel = type == selected
+                val desc = stringResource(
+                    when (type) {
+                        SetType.WORKING -> R.string.live41_set_type_working_desc
+                        SetType.WARMUP -> R.string.live41_set_type_warmup_desc
+                        SetType.DROPSET -> R.string.live41_set_type_dropset_desc
+                        SetType.FAILURE -> R.string.live41_set_type_failure_desc
+                        SetType.RESTPAUSE -> R.string.live41_set_type_restpause_desc
+                    },
+                )
+                Surface(
+                    onClick = { onSelect(type) },
+                    shape = ForgeShape.Md,
+                    color = if (isSel) c.tealTrack else c.cardHigh,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val tag = setTypeTag(type)
+                        Box(
+                            Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(if (isSel) c.teal else c.card),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                tag ?: "1",
+                                style = MaterialTheme.typography.labelMedium.tabular(),
+                                color = if (isSel) c.onTeal else c.textSecondary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(setTypeLabel(type), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                            Text(desc, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        }
+                        if (isSel) {
+                            Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlateBreakdownSheet(
+    breakdown: PlateMath.Breakdown,
+    onDismiss: () -> Unit,
+) {
+    val c = Fit.colors
+    val unitLabel = breakdown.unit.label
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberFullSheetState(),
+        containerColor = c.card,
+        shape = RoundedCornerShape(topStart = ForgeShape.LgRadius, topEnd = ForgeShape.LgRadius),
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.live41_plates_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = c.textSecondary)
+                }
+            }
+            Text(
+                listOf(
+                    stringResource(R.string.live41_plates_target, "${PlateMath.formatPlate(breakdown.targetWeight)} $unitLabel"),
+                    stringResource(R.string.live41_plates_bar, "${PlateMath.formatPlate(breakdown.barWeight)} $unitLabel"),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium.tabular(),
+                color = c.textSecondary,
+            )
+            if (breakdown.perSide.isEmpty()) {
+                Box(
+                    Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.cardHigh).padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(stringResource(R.string.live41_plates_none_needed), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.cardHigh).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    breakdown.perSide.forEach { p ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "${PlateMath.formatPlate(p.weight)} $unitLabel",
+                                style = MaterialTheme.typography.titleMedium.tabular(),
+                                color = c.blue,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                "× ${p.count}",
+                                style = MaterialTheme.typography.titleMedium.tabular(),
+                                color = c.textPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
+            Text(
+                stringResource(R.string.live41_plates_loaded, "${PlateMath.formatPlate(breakdown.loadedWeight)} $unitLabel"),
+                style = MaterialTheme.typography.labelLarge.tabular(),
+                color = c.textPrimary,
+            )
+            if (breakdown.remainder >= 0.05f) {
+                Text(
+                    stringResource(R.string.live41_plates_remainder, "${PlateMath.formatPlate(breakdown.remainder)} $unitLabel"),
+                    style = MaterialTheme.typography.bodySmall.tabular(),
+                    color = c.gold,
+                )
+            }
+        }
     }
 }
 

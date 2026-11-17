@@ -5,6 +5,7 @@ import { INSIGHT_KINDS, type Insight, type InsightKindId, type InsightSlot } fro
 import type { DayType, ScoreTier } from '../../domain/finish-summary'
 import type { ExerciseKind } from '../../domain/muscle'
 import type { LevelInfo } from '../../domain/progress'
+import type { RecapInput } from '../../domain/workout-recap'
 import { formatWeight, type WeightUnit } from '../../domain/units'
 import type { WorkoutScoreResult } from '../../domain/workout-score'
 import { exerciseCueKeys } from '../../data/seed/exercise-cues'
@@ -48,6 +49,7 @@ export type WorkoutSummaryData = {
   headlineVariant?: number | null
   insights?: Insight[]
   prHero?: PrHeroData | null
+  recap?: RecapInput
 }
 
 type PlanDays = { day: { dayOfWeek: number; title: string; isRest: boolean }; items: unknown[] }[]

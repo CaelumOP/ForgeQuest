@@ -1,16 +1,47 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
-import type { SetRow } from '../../data/db'
+import type { ExerciseRow, SetRow } from '../../data/db'
 import type { ExerciseKind } from '../../domain/muscle'
 import { SET_EFFORTS, parseEffort, type SetEffort } from '../../domain/effort'
+import { SET_TYPES, type SetType } from '../../domain/set-types'
+import {
+  calculatePlates, DEFAULT_KG_PLATES, formatPlateNumber, formatPlatesSummary,
+  isBarbellExercise, type PlateBreakdown,
+} from '../../domain/plate-math'
 import { fromKg, loadStep, toKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
-import { Chip, CoachMark, Sheet, Stepper, TextField, Button, haptics } from '../kit'
+import { Button, Chip, CoachMark, Sheet, TextField, haptics } from '../kit'
+import { NumberStepper } from '../kit/NumberStepper'
+import { CheckIcon } from '../icons'
 import { clampField } from './groups'
 import { PlayIcon } from './glyphs'
 
 const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: 'effort_ok', HARD: 'effort_hard', PAIN: 'effort_pain' }
-/** Easy teal, OK blue, Hard purple, Pain coral. */
 const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'HARD' ? 'purple' : e === 'OK' ? 'blue' : 'teal')
+
+const SET_TYPE_LABEL_KEY: Record<SetType, string> = {
+  WORKING: 'live41_set_type_working',
+  WARMUP: 'live41_set_type_warmup',
+  DROPSET: 'live41_set_type_dropset',
+  FAILURE: 'live41_set_type_failure',
+  RESTPAUSE: 'live41_set_type_restpause',
+}
+const SET_TYPE_DESC_KEY: Record<SetType, string> = {
+  WORKING: 'live41_set_type_working_desc',
+  WARMUP: 'live41_set_type_warmup_desc',
+  DROPSET: 'live41_set_type_dropset_desc',
+  FAILURE: 'live41_set_type_failure_desc',
+  RESTPAUSE: 'live41_set_type_restpause_desc',
+}
+const SET_TYPE_TAG_KEY: Record<Exclude<SetType, 'WORKING'>, string> = {
+  WARMUP: 'live41_tag_warmup',
+  DROPSET: 'live41_tag_dropset',
+  FAILURE: 'live41_tag_failure',
+  RESTPAUSE: 'live41_tag_restpause',
+}
+
+export function parseSetType(raw: string | undefined | null): SetType {
+  return (SET_TYPES as readonly string[]).includes(raw ?? '') ? (raw as SetType) : 'WORKING'
+}
 
 export type EditedField = 'reps' | 'weightKg' | 'seconds'
 
@@ -19,7 +50,10 @@ export type SetRowProps = {
   sublabel: string | null
   set: SetRow
   kind: ExerciseKind
+  exercise?: ExerciseRow
   unit: WeightUnit
+  barWeightKg?: number
+  plateInventory?: readonly number[]
   previous?: SetRow
   /** The set's numbers beat the person's best: a done tick turns gold with a star. */
   pr?: boolean
@@ -46,7 +80,6 @@ export function previousText(prev: SetRow, kind: ExerciseKind, unit: WeightUnit)
  */
 export function SetTick({ checked, pr = false, onToggle }: { checked: boolean; pr?: boolean; onToggle: () => void }) {
   const gold = checked && pr
-  // Pop only when a set turns gold on screen, not when a gold row is drawn again.
   const was = useRef(gold)
   const [pop, setPop] = useState(false)
   useEffect(() => {
@@ -68,32 +101,74 @@ export function SetTick({ checked, pr = false, onToggle }: { checked: boolean; p
   )
 }
 
-/** One set: number, previous-performance hint, steppers and the big tick (Android SetRow). Long-press opens the note. */
+/** One set: tappable type/number badge, previous-performance hint, thumb-keypad steppers, plate hint and tick. */
 export function SetRowView(p: SetRowProps) {
-  const { set, kind, unit } = p
+  const { set, kind, unit, exercise } = p
   const ar = getLang() === 'ar'
   const u = unitLabel(unit, ar)
   const [noteOpen, setNoteOpen] = useState(false)
+  const [typeOpen, setTypeOpen] = useState(false)
+  const [plateBreakdown, setPlateBreakdown] = useState<PlateBreakdown | null>(null)
   const timer = useRef<number | undefined>(undefined)
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = undefined } }
   const save = (patch: Partial<SetRow>, editedField?: EditedField) => p.onChange({ ...set, ...patch }, editedField)
   const effort = parseEffort(set.effort || null)
+  const setType = parseSetType(set.setType)
+  const tag = setType === 'WORKING' ? null : t(SET_TYPE_TAG_KEY[setType])
+  const badgeLabel = tag ?? p.label ?? String(set.setIndex + 1)
+  const badgeClass = `lw-num-pill lw-type-${setType.toLowerCase()}`
+
+  const isBarbell = useMemo(() => isBarbellExercise(exercise), [exercise?.id, exercise?.equipment])
+  const weightQuickDeltas = useMemo(() => (unit === 'LB' ? [5, 10, 25] : [2.5, 5, 10]), [unit])
+  const lastWeight = p.previous?.weightKg != null && p.previous.weightKg > 0 ? p.previous.weightKg : null
+  const lastWeightDisplay = lastWeight != null ? Math.round(fromKg(unit, lastWeight) * 10) / 10 : null
+
+  const weightKg = set.weightKg ?? 0
+  const breakdown = useMemo(() => {
+    if (!isBarbell || weightKg <= 0) return null
+    return calculatePlates(weightKg, unit, p.barWeightKg ?? 20, p.plateInventory ?? DEFAULT_KG_PLATES)
+  }, [isBarbell, weightKg, unit, p.barWeightKg, p.plateInventory])
+
   const weightStepper = (
-    <Stepper label={t('stepper_weight')} value={Math.round(fromKg(unit, set.weightKg ?? 0) * 10) / 10} min={0} max={fromKg(unit, 999)} step={loadStep(unit)}
-      format={(n) => `${Math.round(n * 10) / 10} ${u}`} onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) }, 'weightKg')} />
+    <NumberStepper
+      label={t('stepper_weight')}
+      value={Math.round(fromKg(unit, weightKg) * 10) / 10}
+      min={0}
+      max={Math.round(fromKg(unit, 999))}
+      step={loadStep(unit)}
+      decimals={1}
+      unit={u}
+      quickDeltas={weightQuickDeltas}
+      lastTimeValue={lastWeightDisplay}
+      lastTimeLabel={lastWeight != null ? `${weightNumber(unit, lastWeight)} ${u}` : null}
+      format={(n) => `${Math.round(n * 10) / 10} ${u}`}
+      onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) }, 'weightKg')}
+    />
   )
+
   return (
     <div class="lw-setwrap">
       <div class={`lw-set${set.done ? ' lw-set-done' : ''}${set.done && (set.isPr || p.pr) ? ' lw-set-pr' : ''}`}
         onPointerDown={() => { clear(); timer.current = window.setTimeout(() => setNoteOpen(true), 550) }}
         onPointerUp={clear} onPointerLeave={clear} onPointerCancel={clear}
         onContextMenu={(e) => { e.preventDefault(); setNoteOpen(true) }}>
-        {p.label != null && <span class="lw-num">{p.label}</span>}
+        <button
+          type="button"
+          class="lw-num-btn"
+          aria-label={t('live41_set_badge_cd', p.label ?? String(set.setIndex + 1), t(SET_TYPE_LABEL_KEY[setType]))}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => setTypeOpen(true)}
+        >
+          <span class={badgeClass}>{badgeLabel}</span>
+        </button>
         <div class="lw-setinfo">
           {p.sublabel != null && (
             p.onLabelClick
               ? <button type="button" class="lw-sublabel lw-sublabel-btn" aria-label={t('cd_options')} onClick={p.onLabelClick}>{p.sublabel} ▾</button>
               : <span class="lw-sublabel">{p.sublabel}</span>
+          )}
+          {setType !== 'WORKING' && (
+            <span class={`lw-type-label lw-type-ink-${setType.toLowerCase()}`}>{t(SET_TYPE_LABEL_KEY[setType])}</span>
           )}
           {p.previous && <span class="lw-small">{t('live_last_time', previousText(p.previous, kind, unit))}</span>}
           <span class="lw-small">
@@ -107,15 +182,47 @@ export function SetRowView(p: SetRowProps) {
           {kind === 'HOLD' && (
             <div class="lw-holdrow">
               {!set.done && <button type="button" class="lw-play" aria-label={t('cd_start_hold')} onClick={() => p.onStartHold(set)}><PlayIcon /></button>}
-              <Stepper label={t('stepper_hold_time')} value={set.seconds ?? 0} min={0} max={3600} step={5}
-                format={(n) => `${n} ${t('unit_s')}`} onChange={(v) => save({ seconds: clampField('seconds', v) }, 'seconds')} />
+              <NumberStepper
+                label={t('stepper_hold_time')}
+                value={set.seconds ?? 0}
+                min={0}
+                max={3600}
+                step={5}
+                unit={t('unit_s')}
+                quickDeltas={[5, 10, 30]}
+                lastTimeValue={p.previous?.seconds ?? null}
+                lastTimeLabel={p.previous?.seconds != null ? t('rx_seconds', p.previous.seconds) : null}
+                format={(n) => `${n} ${t('unit_s')}`}
+                onChange={(v) => save({ seconds: clampField('seconds', v) }, 'seconds')}
+              />
             </div>
           )}
           {kind !== 'HOLD' && (
-            <Stepper label={t('stepper_reps')} value={set.reps ?? 0} min={0} max={999}
-              format={kind === 'WEIGHTED' ? (n) => plural('rx_reps_n', n, n) : undefined} onChange={(v) => save({ reps: clampField('reps', v) }, 'reps')} />
+            <NumberStepper
+              label={t('stepper_reps')}
+              value={set.reps ?? 0}
+              min={0}
+              max={999}
+              unit={t('unit_reps')}
+              quickDeltas={[1, 2, 5]}
+              lastTimeValue={p.previous?.reps ?? null}
+              format={kind === 'WEIGHTED' ? (n) => plural('rx_reps_n', n, n) : undefined}
+              onChange={(v) => save({ reps: clampField('reps', v) }, 'reps')}
+            />
           )}
           {(kind === 'WEIGHTED' || set.weightKg != null) && weightStepper}
+          {breakdown && !breakdown.belowBar && (
+            <button
+              type="button"
+              class="lw-plates-btn"
+              aria-label={t('live41_plates_breakdown_cd', `${weightNumber(unit, weightKg)} ${u}`)}
+              onClick={() => setPlateBreakdown(breakdown)}
+            >
+              {breakdown.barOnly
+                ? t('live41_plates_bar_only', `${formatPlateNumber(breakdown.barWeight)} ${u}`)
+                : t('live41_plates_side', formatPlatesSummary(breakdown.perSide))}
+            </button>
+          )}
         </div>
         <CoachMark id="coach_tick" title={t('coach_tick_t')} body={t('coach_tick_b')} below>
           <SetTick checked={set.done} pr={set.isPr || p.pr} onToggle={() => p.onToggle(set)} />
@@ -127,7 +234,6 @@ export function SetRowView(p: SetRowProps) {
             <span class="lw-effort-cap">{t('live_effort_caption')}</span>
             <button type="button" class="lw-effort-skip" onClick={() => p.onDismissEffort?.()}>{t('live_effort_skip')}</button>
           </div>
-          {/* One connected group: round outer ends, 6px seams; the chosen effort morphs into a full pill in its colour. */}
           <div class="lw-effort-group" role="radiogroup" aria-label={t('a11y_set_effort')}>
             {SET_EFFORTS.map((e) => (
               <button key={e} type="button" role="radio" aria-checked={set.effort === e}
@@ -144,9 +250,110 @@ export function SetRowView(p: SetRowProps) {
           {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}
         </div>
       )}
+
       <NoteSheet open={noteOpen} initial={set.note} onClose={() => setNoteOpen(false)}
         onSave={(v) => { save({ note: v.trim().slice(0, 120) }); setNoteOpen(false); if (p.showEffort) p.onDismissEffort?.() }} />
+
+      <SetTypeSheet
+        open={typeOpen}
+        selected={setType}
+        onClose={() => setTypeOpen(false)}
+        onSelect={(nextType) => {
+          haptics.tick()
+          save({ setType: nextType })
+          setTypeOpen(false)
+        }}
+      />
+
+      <PlateBreakdownSheet
+        breakdown={plateBreakdown}
+        arabic={ar}
+        onClose={() => setPlateBreakdown(null)}
+      />
     </div>
+  )
+}
+
+function SetTypeSheet({
+  open,
+  selected,
+  onClose,
+  onSelect,
+}: {
+  open: boolean
+  selected: SetType
+  onClose: () => void
+  onSelect: (t: SetType) => void
+}) {
+  return (
+    <Sheet open={open} onClose={onClose} title={t('live41_set_type_title')}>
+      <div class="lw-type-list">
+        {SET_TYPES.map((type) => {
+          const isSel = type === selected
+          const tag = type === 'WORKING' ? '1' : t(SET_TYPE_TAG_KEY[type])
+          return (
+            <button
+              key={type}
+              type="button"
+              class={`lw-type-opt${isSel ? ' lw-type-opt-on' : ''}`}
+              onClick={() => onSelect(type)}
+            >
+              <span class={`lw-type-badge${isSel ? ' lw-type-badge-on' : ''}`}>{tag}</span>
+              <span class="lw-type-opt-text">
+                <span class="lw-type-opt-title">{t(SET_TYPE_LABEL_KEY[type])}</span>
+                <span class="lw-small">{t(SET_TYPE_DESC_KEY[type])}</span>
+              </span>
+              {isSel && <span class="lw-type-check"><CheckIcon size={20} /></span>}
+            </button>
+          )
+        })}
+      </div>
+    </Sheet>
+  )
+}
+
+function PlateBreakdownSheet({
+  breakdown,
+  arabic,
+  onClose,
+}: {
+  breakdown: PlateBreakdown | null
+  arabic: boolean
+  onClose: () => void
+}) {
+  if (!breakdown) return null
+  const u = unitLabel(breakdown.unit, arabic)
+  return (
+    <Sheet open onClose={onClose} title={t('live41_plates_title')}>
+      <div class="lw-plates-sheet">
+        <div class="lw-small">
+          {[
+            t('live41_plates_target', `${formatPlateNumber(breakdown.targetWeight)} ${u}`),
+            t('live41_plates_bar', `${formatPlateNumber(breakdown.barWeight)} ${u}`),
+          ].join(' · ')}
+        </div>
+        {breakdown.perSide.length === 0 ? (
+          <div class="lw-peek-box">{t('live41_plates_none_needed')}</div>
+        ) : (
+          <div class="lw-peek-box">
+            {breakdown.perSide.map((p) => (
+              <div key={p.weight} class="lw-plate-row">
+                <span class="lw-plate-w">{`${formatPlateNumber(p.weight)} ${u}`}</span>
+                <span class="lw-plate-c">{`× ${p.count}`}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div class="lw-plate-loaded">
+          {t('live41_plates_loaded', `${formatPlateNumber(breakdown.loadedWeight)} ${u}`)}
+        </div>
+        {breakdown.remainder >= 0.05 && (
+          <div class="lw-plate-rem">
+            {t('live41_plates_remainder', `${formatPlateNumber(breakdown.remainder)} ${u}`)}
+          </div>
+        )}
+      </div>
+    </Sheet>
   )
 }
 
