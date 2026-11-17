@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Swap v2 -->
+    <string name="swap_easier">أسهل</string>
+    <string name="swap_same_level">نفس المستوى</string>
+    <string name="swap_harder">أصعب</string>
+    <string name="swap_current">الحالي</string>
+
+    <!-- Picker & Library -->
+    <string name="picker_pinned">المفضلة</string>
+    <string name="picker_recent">المستخدمة مؤخرًا</string>
+    <string name="picker_map_filter">تصفية حسب خريطة العضلات</string>
+    <string name="picker_clear_filter">مسح التصفية</string>
+    <string name="picker_pin_toggle">تثبيت التمرين</string>
+    <string name="picker_unpin_toggle">إلغاء التثبيت</string>
+
+    <!-- Exercise Detail -->
+    <string name="detail_start_pose">البداية</string>
+    <string name="detail_finish_pose">النهاية</string>
+    <string name="detail_muscles_specs">العضلات والمواصفات</string>
+    <string name="detail_main_muscles">الأساسية</string>
+    <string name="detail_secondary_muscles">المساعدة</string>
+    <string name="detail_setup_note">ملاحظة الإعداد</string>
+    <string name="detail_setup_note_hint">مثال: المقعد 3، المسمار 4</string>
+    <string name="detail_no_media">لا توجد صورة توضيحية بعد</string>
+    <string name="detail_strength_bw">القوة / الوزن</string>
+    <string name="detail_variations">بدائل وتمارين مشابهة</string>
+
+    <!-- Custom Exercise Editor -->
+    <string name="editor_equipment">المعدات</string>
+    <string name="editor_pattern">نمط الحركة</string>
+    <string name="editor_secondary_muscles">العضلات المساعدة</string>
+    <string name="editor_unit_override">وحدة الوزن</string>
+    <string name="editor_unit_default">الافتراضي للتطبيق</string>
+    <string name="editor_unit_kg">كجم</string>
+    <string name="editor_unit_lb">رطل</string>
+    <string name="editor_more_options">تفاصيل إضافية</string>
+</resources>

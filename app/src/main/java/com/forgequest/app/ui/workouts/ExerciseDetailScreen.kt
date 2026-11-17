@@ -1,15 +1,13 @@
 package com.forgequest.app.ui.workouts
 
-import com.forgequest.app.ui.theme.ForgeShape
-import com.forgequest.app.R
-import com.forgequest.app.data.db.ExerciseEntity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,9 +19,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkBorder
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,30 +49,37 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
-import com.forgequest.app.data.ProgressSnapshot
-import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.domain.ExerciseKind
-import com.forgequest.app.domain.ExerciseTiers
+import com.forgequest.app.R
 import com.forgequest.app.data.PlanDayWithItems
+import com.forgequest.app.data.ProgressSnapshot
+import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.PlanItemEntity
+import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.ExerciseSwapEngine
+import com.forgequest.app.domain.ExerciseTiers
 import com.forgequest.app.domain.Records
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
-import com.forgequest.app.ui.exerciseCues
-import com.forgequest.app.ui.components.SegmentedTabs
+import com.forgequest.app.ui.components.ExerciseMediaPair
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.MuscleMapMini
 import com.forgequest.app.ui.components.PillButton
+import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.exerciseCues
+import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeShape
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -85,6 +93,15 @@ class ExerciseDetailViewModel(val app: AppContainer) : ViewModel() {
     val message = MutableStateFlow<String?>(null)
     fun setVideo(id: String, url: String) = viewModelScope.launch {
         if (!app.workouts.setVideoUrl(id, url)) message.value = app.str(R.string.detail_bad_link)
+    }
+
+    fun togglePin(ex: ExerciseEntity) = viewModelScope.launch {
+        app.workouts.updateExercise(ex.copy(pinned = !ex.pinned))
+    }
+
+    fun setSetupNote(ex: ExerciseEntity, note: String) = viewModelScope.launch {
+        app.workouts.updateExercise(ex.copy(setupNote = note.trim()))
+        message.value = app.str(R.string.lib_saved, ex.name)
     }
 
     /** Puts [new] in place of [item] on [day], translating its sets and reps. */
@@ -121,6 +138,7 @@ private fun metricsFor(kind: ExerciseKind, wu: WeightUnit): List<Metric> = when 
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: Boolean = false) {
     val vm = appViewModel { ExerciseDetailViewModel(it) }
@@ -129,6 +147,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: B
     val context = LocalContext.current
     var metricIndex by remember { mutableIntStateOf(0) }
     var editLink by remember { mutableStateOf(false) }
+    var editSetupNote by remember { mutableStateOf(false) }
     var putInPlan by remember { mutableStateOf(false) }
     val message by vm.message.collectAsState()
     val snackbar = LocalSnackbar.current
@@ -152,32 +171,85 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: B
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
-            Text(ex?.name ?: exerciseId, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(ex?.name ?: exerciseId, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+            if (ex != null) {
+                IconButton(onClick = { vm.togglePin(ex) }) {
+                    Icon(
+                        imageVector = if (ex.pinned) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                        contentDescription = stringResource(if (ex.pinned) R.string.picker_unpin_toggle else R.string.picker_pin_toggle),
+                        tint = if (ex.pinned) c.teal else c.textSecondary,
+                    )
+                }
+            }
         }
-        Column(Modifier.padding(horizontal = 16.dp)) {
-            Text(
-                listOfNotNull(ex?.kind?.label(), ex?.musclesLabel()?.ifBlank { null }).joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.textSecondary,
-            )
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // (a) Start -> Finish photo pair card + YouTube form link
+            if (ex != null) {
+                ExerciseMediaPair(ex)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton(stringResource(R.string.cd_watch_form), onClick = { openFormVideo(context, ex) }, icon = Icons.Rounded.PlayArrow, container = c.blueTrack, content = c.blue)
                 TonalPill(if (ex?.videoUrl.isNullOrBlank()) stringResource(R.string.detail_add_link) else stringResource(R.string.detail_change_link), onClick = { editLink = true }, icon = Icons.Rounded.Link)
             }
-            exerciseCues(exerciseId)?.let {
-                Spacer(Modifier.height(12.dp))
-                FormCues(it)
+
+            // (b) Muscles & specs card: equipment / kind / tier pills + mini front/back muscle map
+            if (ex != null) {
+                val prof = remember(ex.id, ex.equipment, ex.pattern) { ExerciseSwapEngine.profileFor(ex) }
+                val tier = remember(ex.id, ex.custom) { ExerciseTiers.of(ex) }
+                FitCard {
+                    Text(stringResource(R.string.detail_muscles_specs), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SmallDataPill(prof.equipment.localName(), c.textPrimary, c.cardHigh)
+                        SmallDataPill(ex.kind.label(), c.textSecondary, c.cardHigh)
+                        if (tier != null) TierBadge(tier)
+                        else if (ex.custom) SmallDataPill(stringResource(R.string.lib_custom), c.textSecondary, c.cardHigh)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    MuscleMapMini(primary = ex.primary, secondary = ex.secondary, bodyType = s.settings.bodyType)
+                    val sep = stringResource(R.string.list_separator)
+                    if (ex.primary.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        val mainMuscles = ex.primary.map { it.localLabel() }.joinToString(sep)
+                        Text(
+                            "${stringResource(R.string.detail_main_muscles)}: $mainMuscles",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textPrimary,
+                        )
+                    }
+                    if (ex.secondary.isNotEmpty()) {
+                        Spacer(Modifier.height(2.dp))
+                        val secMuscles = ex.secondary.map { it.localLabel() }.joinToString(sep)
+                        Text(
+                            "${stringResource(R.string.detail_secondary_muscles)}: $secMuscles",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textSecondary,
+                        )
+                    }
+                }
             }
-            ex?.let { ExerciseTiers.of(it) }?.let {
-                Spacer(Modifier.height(12.dp))
-                TierBadge(it)
+
+            // (c) "How to do it": 2-3 cues + "Common mistake"
+            exerciseCues(exerciseId)?.let { FormCues(it) }
+
+            // (d) Setup note
+            if (ex != null) {
+                FitCard {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.detail_setup_note), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { editSetupNote = true }) {
+                            Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.cd_edit), tint = c.teal)
+                        }
+                    }
+                    Text(
+                        ex.setupNote.ifBlank { stringResource(R.string.detail_setup_note_hint) },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (ex.setupNote.isBlank()) c.textSecondary else c.textPrimary,
+                    )
+                }
             }
-            if (!fromLive && ex != null && s.plan != null) {
-                Spacer(Modifier.height(12.dp))
-                TonalPill(stringResource(R.string.swap_into_plan), onClick = { putInPlan = true }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.SwapHoriz, tint = c.teal)
-            }
-            Spacer(Modifier.height(16.dp))
+
+            // (e) History / PRs
             FitCard {
                 Text(stringResource(R.string.detail_progress), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
@@ -198,7 +270,7 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: B
                     Text(stringResource(R.string.detail_best, "%.0f".format(it), metric.unit), style = MaterialTheme.typography.labelLarge, color = c.gold)
                 }
             }
-            Spacer(Modifier.height(12.dp))
+
             if (history.isNotEmpty()) {
                 FitCard {
                     val sUnit = stringResource(R.string.unit_s)
@@ -228,7 +300,12 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: B
                     }
                 }
             }
-            Spacer(Modifier.height(24.dp))
+
+            // (f) "Put in my plan" (hidden when opened from live)
+            if (!fromLive && ex != null && s.plan != null) {
+                TonalPill(stringResource(R.string.swap_into_plan), onClick = { putInPlan = true }, modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.SwapHoriz, tint = c.teal)
+            }
+            Spacer(Modifier.height(16.dp))
         }
     }
 
@@ -261,6 +338,25 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: B
             dismissButton = { TextButton(onClick = { editLink = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
         )
     }
+
+    if (editSetupNote && ex != null) {
+        var note by remember(ex.id) { mutableStateOf(ex.setupNote) }
+        AlertDialog(
+            onDismissRequest = { editSetupNote = false },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.detail_setup_note), color = c.textPrimary) },
+            text = {
+                OutlinedTextField(
+                    value = note, onValueChange = { note = it.take(120) },
+                    placeholder = { Text(stringResource(R.string.detail_setup_note_hint)) },
+                    shape = ForgeShape.Md, modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
+                )
+            },
+            confirmButton = { TextButton(onClick = { vm.setSetupNote(ex, note); editSetupNote = false }) { Text(stringResource(R.string.action_save), color = c.teal) } },
+            dismissButton = { TextButton(onClick = { editSetupNote = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+        )
+    }
 }
 
 /** "How to do it": two form cues and the common mistake. The form video button sits just above. */
@@ -283,7 +379,6 @@ private fun FormCues(cues: Triple<Int, Int, Int>) {
 fun LineChart(points: List<Float>, modifier: Modifier = Modifier) {
     val c = Fit.colors
     Canvas(modifier) {
-        // Range hugs the data with a small margin, so a 75 → 76 kg month shows a real slope, not a flat line at the top.
         val lo = points.min()
         val hi = points.max()
         val margin = ((hi - lo) * 0.25f).coerceAtLeast(if (hi >= 20f) hi * 0.02f else 1f)

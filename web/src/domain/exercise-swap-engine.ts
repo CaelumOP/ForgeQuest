@@ -1,6 +1,7 @@
 // Equipment, biomechanical profiles and exercise substitution: same as Android ExerciseSwapEngine.kt.
 import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity, PlanDraftDay, PlanDraftItem, PlanItemEntity } from './entities'
+import { tierOf } from './exercise-tiers'
 import { isExerciseKind, isMuscle, type ExerciseKind } from './muscle'
 
 const f = Math.fround
@@ -347,11 +348,14 @@ export function profileFits(profile: BiomechanicalProfile, available: ReadonlySe
   return req.every((r) => available.has(r) || (r === 'FLAT_BENCH' && available.has('ADJ_BENCH')))
 }
 
+export type SwapDifficulty = 'EASIER' | 'SAME' | 'HARDER'
+
 export type SwapCandidate = {
   exercise: ExerciseEntity
   profile: BiomechanicalProfile
   score: number
   matchesUserEquipment: boolean
+  difficulty?: SwapDifficulty | null
 }
 
 const prof = (equipment: Equipment, pattern: MovementPattern, angle: JointAngle, ...preferredSwaps: string[]): BiomechanicalProfile =>
@@ -715,11 +719,50 @@ export function rankSubstitutes(
         profile: cand,
         score: patternPts + anglePts + primaryPts + secondaryPts + kindPts + curatedBonus,
         matchesUserEquipment: profileFits(cand, effective),
+        difficulty: compareSwapTier(source, candidate),
       }
     })
   const good = (c: SwapCandidate) => (c.matchesUserEquipment && c.score >= 45 ? 1 : 0)
   return ranked.sort((a, b) =>
     good(b) - good(a) || b.score - a.score || (a.exercise.name < b.exercise.name ? -1 : a.exercise.name > b.exercise.name ? 1 : 0))
+}
+
+const TIER_RANK = { FOUNDATION: 0, INTERMEDIATE: 1, ADVANCED: 2 } as const
+
+export function compareSwapTier(source: ExerciseEntity, candidate: ExerciseEntity): SwapDifficulty | null {
+  const src = tierOf(source)
+  const cand = tierOf(candidate)
+  if (!src || !cand) return null
+  if (TIER_RANK[cand] < TIER_RANK[src]) return 'EASIER'
+  if (TIER_RANK[cand] > TIER_RANK[src]) return 'HARDER'
+  return 'SAME'
+}
+
+/**
+ * Swap-sheet ordering: within the best-match group (fits user equipment and score >= 45),
+ * keeps the top 3 similarity matches first, then surfaces same-pattern EASIER options right after
+ * them so an easier alternative is always visible without scrolling.
+ */
+export function rankSwapSheet(
+  source: ExerciseEntity,
+  library: readonly ExerciseEntity[],
+  userEquipment: ReadonlySet<Equipment> = allEquipment(),
+  topKeep = 3,
+): SwapCandidate[] {
+  const srcPattern = profileFor(source).pattern
+  const ranked = rankSubstitutes(source, library, userEquipment)
+  const best = ranked.filter((c) => c.matchesUserEquipment && c.score >= 45)
+  const rest = ranked.filter((c) => !(c.matchesUserEquipment && c.score >= 45))
+  if (best.length <= topKeep) return ranked
+  const head = best.slice(0, topKeep)
+  const headIds = new Set(head.map((c) => c.exercise.id))
+  const tail = best.slice(topKeep)
+  const easierSamePattern = tail.filter(
+    (c) => !headIds.has(c.exercise.id) && c.profile.pattern === srcPattern && c.difficulty === 'EASIER',
+  )
+  const easierIds = new Set(easierSamePattern.map((c) => c.exercise.id))
+  const remainingBest = tail.filter((c) => !easierIds.has(c.exercise.id))
+  return [...head, ...easierSamePattern, ...remainingBest, ...rest]
 }
 
 /** A plan item moved onto [newExercise]; a load never carries across exercises. */

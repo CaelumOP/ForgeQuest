@@ -1,5 +1,6 @@
 // Difficulty of the built-in exercises (docs/plans/exercise-tiers.md) and the "ready for a harder version" ladder for
 // bodyweight rep moves. Custom exercises have no tier. Android: ExerciseTiers.kt.
+import { EXERCISE_LEVELS } from '../data/seed/exercise-levels'
 import type { ExerciseEntity } from './entities'
 import { ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, profileFits, profileFor, type Equipment, type MovementPattern } from './exercise-swap-engine'
 import type { PastSet } from './progression'
@@ -27,6 +28,9 @@ export function tierOf(ex: ExerciseEntity): Tier | null {
   if (ex.custom) return null
   if (ADVANCED.has(ex.id)) return 'ADVANCED'
   if (INTERMEDIATE.has(ex.id)) return 'INTERMEDIATE'
+  const lvl = EXERCISE_LEVELS[ex.id]
+  if (lvl === 'expert') return 'ADVANCED'
+  if (lvl === 'intermediate') return 'INTERMEDIATE'
   return 'FOUNDATION'
 }
 

@@ -375,11 +375,14 @@ data class BiomechanicalProfile(
     }
 }
 
+enum class SwapDifficulty { EASIER, SAME, HARDER }
+
 data class SwapCandidate(
     val exercise: ExerciseEntity,
     val profile: BiomechanicalProfile,
     val score: Int,
     val matchesUserEquipment: Boolean,
+    val difficulty: SwapDifficulty? = null,
 )
 
 object ExerciseSwapEngine {
@@ -734,6 +737,7 @@ object ExerciseSwapEngine {
                     profile = candProf,
                     score = totalScore,
                     matchesUserEquipment = hasEq,
+                    difficulty = compareTier(source, candidate),
                 )
             }
             .sortedWith(
@@ -741,6 +745,45 @@ object ExerciseSwapEngine {
                     .thenByDescending { it.score }
                     .thenBy { it.exercise.name }
             )
+    }
+
+    fun compareTier(source: ExerciseEntity, candidate: ExerciseEntity): SwapDifficulty? {
+        val srcTier = ExerciseTiers.of(source) ?: return null
+        val candTier = ExerciseTiers.of(candidate) ?: return null
+        return when {
+            candTier.ordinal < srcTier.ordinal -> SwapDifficulty.EASIER
+            candTier.ordinal > srcTier.ordinal -> SwapDifficulty.HARDER
+            else -> SwapDifficulty.SAME
+        }
+    }
+
+    /**
+     * Swap-sheet ordering: within the best-match group (fits user equipment and score >= 45),
+     * keeps the top 3 similarity matches first, then surfaces same-pattern EASIER options right after
+     * them so an easier alternative is always visible without scrolling.
+     */
+    fun rankSwapSheet(
+        source: ExerciseEntity,
+        library: List<ExerciseEntity>,
+        userEquipment: Set<Equipment> = Equipment.allActive,
+        topKeep: Int = 3,
+    ): List<SwapCandidate> {
+        val srcPattern = profileFor(source).pattern
+        val ranked = rankSubstitutes(source, library, userEquipment)
+        val best = ranked.filter { it.matchesUserEquipment && it.score >= 45 }
+        val rest = ranked.filterNot { it.matchesUserEquipment && it.score >= 45 }
+        if (best.size <= topKeep) return ranked
+        val head = best.take(topKeep)
+        val headIds = head.map { it.exercise.id }.toSet()
+        val tail = best.drop(topKeep)
+        val easierSamePattern = tail.filter {
+            it.exercise.id !in headIds &&
+                it.profile.pattern == srcPattern &&
+                it.difficulty == SwapDifficulty.EASIER
+        }
+        val easierIds = easierSamePattern.map { it.exercise.id }.toSet()
+        val remainingBest = tail.filter { it.exercise.id !in easierIds }
+        return head + easierSamePattern + remainingBest + rest
     }
 
     private fun areSynergisticPatterns(a: MovementPattern, b: MovementPattern): Boolean {

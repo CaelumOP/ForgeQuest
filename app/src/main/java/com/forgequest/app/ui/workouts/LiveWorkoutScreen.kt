@@ -284,6 +284,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     var reminded by remember { mutableStateOf(false) }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) { vm.remindMe(); reminded = true } }
     var picker by remember { mutableStateOf<PickerMode?>(null) }
+    var swapAnchors by remember { mutableStateOf(mapOf<Int, String>()) }
     var peekExerciseId by remember { mutableStateOf<String?>(null) }
     var setupNoteExercise by remember { mutableStateOf<ExerciseEntity?>(null) }
     var unitExercise by remember { mutableStateOf<ExerciseEntity?>(null) }
@@ -629,14 +630,17 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     }
 
     picker?.let { mode ->
-        val swappingEx = (mode as? PickerMode.Swap)?.let { m ->
-            sets.firstOrNull { it.itemPosition == m.position }?.let { exercises[it.exerciseId] }
-        }
+        val currentExId = (mode as? PickerMode.Swap)?.let { m -> sets.firstOrNull { it.itemPosition == m.position }?.exerciseId }
+        val anchorExId = (mode as? PickerMode.Swap)?.let { m -> swapAnchors[m.position] ?: currentExId }
+        val swappingEx = anchorExId?.let { exercises[it] }
         ExercisePickerSheet(
             title = if (mode is PickerMode.Swap) stringResource(R.string.live_swap_exercise) else stringResource(R.string.live_add_exercise),
             library = library,
             onPick = { ex ->
                 if (mode is PickerMode.Swap) {
+                    if (currentExId != null && mode.position !in swapAnchors) {
+                        swapAnchors = swapAnchors + (mode.position to currentExId)
+                    }
                     if (sets.any { it.itemPosition == mode.position && it.done }) {
                         pendingSwap = mode.position to ex
                     } else {
@@ -648,6 +652,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 picker = null
             },
             onCreate = { name, kind, muscle ->
+                if (mode is PickerMode.Swap && currentExId != null && mode.position !in swapAnchors) {
+                    swapAnchors = swapAnchors + (mode.position to currentExId)
+                }
                 if (mode is PickerMode.Swap && sets.any { it.itemPosition == mode.position && it.done }) {
                     vm.createExercise(name, kind, muscle) { id ->
                         val created = exercises[id] ?: ExerciseEntity(id, name, kind, listOf(muscle), emptyList(), custom = true)
@@ -662,6 +669,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             initialMuscle = swappingEx?.primary?.firstOrNull(),
             sourceExercise = swappingEx,
             userEquipment = userEquipment,
+            currentExerciseId = currentExId,
         )
     }
 

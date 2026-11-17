@@ -34,7 +34,7 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: false,
       includeAssets: ['icon.svg', 'icon-180.png'],
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,json,wasm}'], importScripts: ['push-sw.js'] },
+      workbox: { maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, globPatterns: ['**/*.{js,css,html,svg,png,woff2,json,wasm}'], importScripts: ['push-sw.js'] },
       manifest: {
         name: 'ForgeQuest',
         short_name: 'ForgeQuest',

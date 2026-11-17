@@ -643,13 +643,21 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     try { await discardSession(sid); location.hash = '#/workouts' } catch { toast(t('live_web_save_failed')); setFinishing(false) }
   }
 
+  const swapAnchorsRef = useRef(new Map<number, string>())
   const pick = async (ex: ExerciseRow) => {
     const mode = picker
     setPicker(null)
-    if (mode?.kind === 'swap') await swapExercise(sid, mode.position, ex.id)
-    else await addExercise(sid, ex.id)
+    if (mode?.kind === 'swap') {
+      const cur = sets.find((s) => s.itemPosition === mode.position)?.exerciseId
+      if (cur && !swapAnchorsRef.current.has(mode.position)) swapAnchorsRef.current.set(mode.position, cur)
+      await swapExercise(sid, mode.position, ex.id)
+    } else {
+      await addExercise(sid, ex.id)
+    }
   }
-  const swapping = picker?.kind === 'swap' ? exercises.get(sets.find((s) => s.itemPosition === picker.position)?.exerciseId ?? '') : undefined
+  const currentSwapId = picker?.kind === 'swap' ? sets.find((s) => s.itemPosition === picker.position)?.exerciseId : undefined
+  const anchorSwapId = picker?.kind === 'swap' ? (swapAnchorsRef.current.get(picker.position) ?? currentSwapId) : undefined
+  const swapping = anchorSwapId ? exercises.get(anchorSwapId) : undefined
 
   const elapsed = Math.max(0, Math.floor((now - session.startedAt) / 1000))
   const header = plural('live_header', workSets.length, Math.floor(elapsed / 60), String(elapsed % 60).padStart(2, '0'), workDone, workSets.length)
@@ -849,9 +857,15 @@ export function LiveWorkoutScreen(_: { param?: string }) {
         onPick={(ex) => void pick(ex)}
         onCreate={(name, kind, muscle) => { void addCustomExercise(name, kind, [muscle], null).then(async (id) => {
           const mode = picker; setPicker(null)
-          if (mode?.kind === 'swap') await swapExercise(sid, mode.position, id); else await addExercise(sid, id)
+          if (mode?.kind === 'swap') {
+            const cur = sets.find((s) => s.itemPosition === mode.position)?.exerciseId
+            if (cur && !swapAnchorsRef.current.has(mode.position)) swapAnchorsRef.current.set(mode.position, cur)
+            await swapExercise(sid, mode.position, id)
+          } else {
+            await addExercise(sid, id)
+          }
         }) }}
-        onClose={() => setPicker(null)} initialMuscle={swapping?.primary?.[0]} sourceExercise={swapping} userEquipment={equipment} />
+        onClose={() => setPicker(null)} initialMuscle={swapping?.primary?.[0]} sourceExercise={swapping} currentExerciseId={currentSwapId} userEquipment={equipment} />
     </div>
   )
 }
