@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -82,6 +83,8 @@ import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.MuscleExercises
 import com.forgequest.app.domain.Progression
+import com.forgequest.app.domain.Rotation
+import com.forgequest.app.domain.ScheduleMode
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.WorkoutScore
@@ -176,9 +179,23 @@ fun WorkoutsScreen(nav: NavHostController) {
     val planIds = remember(plan) { plan?.days.orEmpty().flatMap { d -> d.items.map { it.exerciseId } }.toSet() }
     val equipment = s.settings.configuredEquipment
 
+    val isRotation = plan != null && ScheduleMode.parse(plan.plan.scheduleMode) == ScheduleMode.ROTATION
+    val rotationDueDay = remember(plan, isRotation, todayDow) {
+        if (isRotation) Rotation.dueDay(plan, todayDow) else null
+    }
+    LaunchedEffect(plan?.plan?.id, plan?.plan?.scheduleMode, plan?.plan?.rotationCursor) {
+        if (isRotation && rotationDueDay != null) {
+            selectedDay = rotationDueDay.day.dayOfWeek
+        }
+    }
+    val missedYesterday = remember(plan, s.sessions, s.dayTags) {
+        Rotation.missedYesterday(plan, s.sessions, s.dayTags, Dates.today())
+    }
+
     val day = plan?.day(selectedDay)
     val isRest = plan != null && (day == null || day.day.isRest)
     val isToday = selectedDay == todayDow
+    val isDue = isRotation && rotationDueDay != null && selectedDay == rotationDueDay.day.dayOfWeek
     val deload = plan != null && day != null && !day.day.isRest && Progression.isDeloadWeek(plan.plan.createdAt, Dates.today())
 
     val startDay = {
@@ -256,6 +273,7 @@ fun WorkoutsScreen(nav: NavHostController) {
                 day = day,
                 selectedDay = selectedDay,
                 isToday = isToday,
+                isDue = isDue,
                 isRest = isRest,
                 fallbackScroll = fallbackScroll,
                 onSeeExercises = { muscleSheet = it },
@@ -294,11 +312,44 @@ fun WorkoutsScreen(nav: NavHostController) {
                 }
             }
 
+            if (open == null && missedYesterday != null) {
+                FitCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    padding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(
+                                R.string.plan41_missed_yesterday,
+                                com.forgequest.app.data.seed.StarterPlans.displayTitle(missedYesterday.day.title),
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TonalPill(
+                            stringResource(R.string.plan41_do_missed_today),
+                            onClick = {
+                                scope.launch {
+                                    vm.start(missedYesterday)
+                                    nav.navigate(Routes.LIVE)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+
             BottomActionRow(
                 open = open,
                 planExists = plan != null,
                 isRest = isRest,
                 isToday = isToday,
+                isDue = isDue,
                 doneToday = s.workoutDoneToday,
                 onResume = { nav.navigate(Routes.LIVE) },
                 onBuildPlan = { nav.navigate(Routes.PLAN_BUILDER) },
@@ -359,6 +410,7 @@ private fun RecoveryHeroCard(
     day: PlanDayWithItems?,
     selectedDay: Int,
     isToday: Boolean,
+    isDue: Boolean = false,
     isRest: Boolean,
     fallbackScroll: Boolean,
     onSeeExercises: (Muscle) -> Unit,
@@ -368,7 +420,9 @@ private fun RecoveryHeroCard(
     val c = Fit.colors
     val tagText = when {
         open != null -> stringResource(R.string.today_in_progress)
-        !planExists || isToday -> stringResource(R.string.day_today)
+        !planExists -> stringResource(R.string.day_today)
+        isDue -> stringResource(R.string.plan41_rotation_tag)
+        isToday -> stringResource(R.string.day_today)
         else -> Dates.dayName(selectedDay)
     }
 
@@ -625,6 +679,7 @@ private fun BottomActionRow(
     planExists: Boolean,
     isRest: Boolean,
     isToday: Boolean,
+    isDue: Boolean = false,
     doneToday: Boolean,
     onResume: () -> Unit,
     onBuildPlan: () -> Unit,
@@ -669,8 +724,8 @@ private fun BottomActionRow(
         }
         else -> {
             val startLabel = when {
-                doneToday && isToday -> stringResource(R.string.today_train_again)
-                isToday -> stringResource(R.string.workouts_start)
+                doneToday && (isToday || isDue) -> stringResource(R.string.today_train_again)
+                isToday || isDue -> stringResource(R.string.workouts_start)
                 else -> stringResource(R.string.workouts_start_this)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

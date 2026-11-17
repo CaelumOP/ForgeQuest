@@ -1,6 +1,12 @@
 package com.forgequest.app.ui.workouts
 
+import android.content.Intent
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ContentPasteGo
 import androidx.compose.material.icons.rounded.EditCalendar
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
@@ -103,11 +109,20 @@ import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.PlanShare
+import com.forgequest.app.domain.ProgressionMode
+import com.forgequest.app.domain.Rotation
+import com.forgequest.app.domain.ScheduleMode
+import com.forgequest.app.domain.SupersetRules
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.blockLabel
+import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.components.FitCard
+import com.forgequest.app.ui.components.FitSwitch
+import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.UndoSnackbarEffect
 import com.forgequest.app.ui.components.UndoState
 import com.forgequest.app.ui.components.IconCircle
@@ -127,10 +142,29 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
 
     /** A plan waiting for the user to confirm, from a template, pasted text or Google Docs. */
     val pending = MutableStateFlow<PlanDraft?>(null)
+    val pendingShared = MutableStateFlow<PlanShare.ParseResult.Valid?>(null)
     val busy = MutableStateFlow<String?>(null)
     val message = MutableStateFlow<String?>(null)
 
     fun preview(draft: PlanDraft) { pending.value = draft }
+
+    fun importShared(shared: PlanShare.SharedPlan) {
+        pendingShared.value = null
+        viewModelScope.launch {
+            app.workouts.importSharedPlan(shared)
+            app.settings.update { it.copy(weeklyTargetOverride = 0) }
+            message.value = app.str(R.string.plan_switched_to, StarterPlans.displayTitle(shared.name))
+        }
+    }
+
+    fun setScheduleMode(planId: Long, mode: ScheduleMode) = viewModelScope.launch {
+        app.workouts.setPlanScheduleMode(planId, mode)
+    }
+
+    fun saveItemWithSuperset(dayId: Long, item: PlanItemEntity, pairWithNext: Boolean) = viewModelScope.launch {
+        app.workouts.updatePlanItem(item)
+        app.workouts.setPairWithNext(dayId, item.id, pairWithNext)
+    }
 
     fun adaptPending(exercises: Map<String, ExerciseEntity>, userEquipment: Set<Equipment>) {
         val draft = pending.value ?: return
@@ -209,6 +243,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
     val snap by vm.snapshot.collectAsState()
     val library by vm.library.collectAsState()
     val pending by vm.pending.collectAsState()
+    val pendingShared by vm.pendingShared.collectAsState()
     val busy by vm.busy.collectAsState()
     val message by vm.message.collectAsState()
     val snackbar = LocalSnackbar.current
@@ -222,6 +257,8 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
     var templates by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(openTemplates) }
     var changePlan by remember { mutableStateOf(false) }
     var paste by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(openPaste) }
+    var shareOpen by remember { mutableStateOf(false) }
+    var importOpen by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var previous by remember { mutableStateOf(false) }
     var moveDay by remember { mutableStateOf(false) }
@@ -243,6 +280,11 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                 Text(stringResource(R.string.plan_your_plan), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Text(s.plan?.plan?.name?.let(StarterPlans::displayTitle) ?: stringResource(R.string.plan_no_plan), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            if (s.plan != null) {
+                IconButton(onClick = { shareOpen = true }) {
+                    Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.plan41_share_plan), tint = c.teal)
+                }
+            }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
             // Changing plans is occasional, so it sits behind one button and the week plan gets the screen.
@@ -257,6 +299,38 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     }
                 }
             } else {
+                val activePlan = s.plan
+                val mode = ScheduleMode.parse(activePlan.plan.scheduleMode)
+                val nextRotDay = if (mode == ScheduleMode.ROTATION) Rotation.dueDay(activePlan, Dates.todayDayOfWeek()) else null
+                FitCard {
+                    Text(stringResource(R.string.plan41_schedule_mode), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        stringResource(if (mode == ScheduleMode.ROTATION) R.string.plan41_schedule_rotation_hint else R.string.plan41_schedule_weekday_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.textSecondary,
+                    )
+                    if (nextRotDay != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.plan41_rotation_next, StarterPlans.displayTitle(nextRotDay.day.title)),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = c.blue,
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    SegmentedTabs(
+                        options = listOf(stringResource(R.string.plan41_mode_weekday), stringResource(R.string.plan41_mode_rotation)),
+                        selected = if (mode == ScheduleMode.ROTATION) 1 else 0,
+                        onSelect = { idx ->
+                            val nextMode = if (idx == 1) ScheduleMode.ROTATION else ScheduleMode.WEEKDAY
+                            if (nextMode != mode) vm.setScheduleMode(activePlan.plan.id, nextMode)
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                        wrap = true,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
                 EditorDayStrip(selectedDay = selectedDay, onSelect = { selectedDay = it })
                 Spacer(Modifier.height(12.dp))
             }
@@ -364,8 +438,21 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                                 )
                                 Column(Modifier.weight(1f)) {
                                     Text(ex?.name ?: item.exerciseId, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                                    val progLabel = when (ProgressionMode.parse(item.progressionMode)) {
+                                        ProgressionMode.LINEAR -> stringResource(R.string.plan41_prog_linear)
+                                        ProgressionMode.MAINTAIN -> stringResource(R.string.plan41_prog_maintain)
+                                        ProgressionMode.DOUBLE -> null
+                                    }
                                     Text(
-                                        listOfNotNull(item.block.ifBlank { null }?.let { blockLabel(it) }, if (item.circuit) pluralStringResource(R.plurals.plan_circuit_rounds, item.sets, item.sets) else null, item.prescription(ex?.kind, s.settings.weightUnit), stringResource(R.string.plan_rest_seconds, item.restSeconds)).joinToString(" · "),
+                                        listOfNotNull(
+                                            item.block.ifBlank { null }?.let { blockLabel(it) },
+                                            if (item.circuit) pluralStringResource(R.plurals.plan_circuit_rounds, item.sets, item.sets) else null,
+                                            if (item.supersetGroup != null) stringResource(R.string.plan41_superset_tag) else null,
+                                            if (item.autoWarmup) stringResource(R.string.plan41_auto_warmup_tag) else null,
+                                            progLabel,
+                                            item.prescription(ex?.kind, s.settings.weightUnit),
+                                            stringResource(R.string.plan_rest_seconds, item.restSeconds),
+                                        ).joinToString(" · "),
                                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                                     )
                                 }
@@ -428,6 +515,8 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
         val kind = s.exercises[item.exerciseId]?.kind ?: ExerciseKind.REPS
         val siblings = day?.items?.sortedBy { it.position }.orEmpty()
         val index = siblings.indexOfFirst { it.id == item.id }
+        val prevItem = if (index > 0) siblings[index - 1] else null
+        val nextItem = if (index >= 0 && index < siblings.lastIndex) siblings[index + 1] else null
         ItemEditorSheet(
             item = item,
             kind = kind,
@@ -435,10 +524,18 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
             unit = s.settings.weightUnit,
             canMoveUp = index > 0,
             canMoveDown = index >= 0 && index < siblings.lastIndex,
+            prevItem = prevItem,
+            prevName = prevItem?.let { s.exercises[it.exerciseId]?.name ?: it.exerciseId },
+            nextItem = nextItem,
+            nextName = nextItem?.let { s.exercises[it.exerciseId]?.name ?: it.exerciseId },
             // Both carry the sheet's draft, so sets, reps or rest changed there are not lost.
             onMove = { draft, delta -> vm.saveAndMove(draft, delta); editing = null },
             onSwap = { draft -> vm.updateItem(draft); editing = null; swappingItem = draft },
-            onSave = { vm.updateItem(it); editing = null },
+            onSave = { updated, pairWithNext ->
+                if (day != null) vm.saveItemWithSuperset(day.day.id, updated, pairWithNext)
+                else vm.updateItem(updated)
+                editing = null
+            },
             onDismiss = { editing = null },
         )
     }
@@ -446,9 +543,14 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
     if (changePlan) {
         // Three ways to a new plan, each with one line saying what it does. Ready-made plans are reached from the builder.
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { changePlan = false }, containerColor = c.card) {
-            Column(Modifier.padding(bottom = 32.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_change), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.padding(horizontal = ForgeSpace.Gutter, vertical = 8.dp))
                 ChoiceRow(Icons.Rounded.Tune, stringResource(R.string.pb_title), stringResource(R.string.pb_entry_info), onClick = { changePlan = false; nav.navigate(com.forgequest.app.ui.Routes.PLAN_BUILDER) })
+                ChoiceRow(Icons.AutoMirrored.Rounded.ListAlt, stringResource(R.string.plan_ready_made), stringResource(R.string.plan_ready_made_info), onClick = { changePlan = false; templates = true })
+                ChoiceRow(Icons.Rounded.ContentPasteGo, stringResource(R.string.plan41_import_plan), stringResource(R.string.plan41_import_plan_info), onClick = { changePlan = false; importOpen = true })
+                if (s.plan != null) {
+                    ChoiceRow(Icons.Rounded.Share, stringResource(R.string.plan41_share_plan), stringResource(R.string.plan41_share_plan_info), onClick = { changePlan = false; shareOpen = true })
+                }
                 ChoiceRow(Icons.Rounded.AutoAwesome, stringResource(R.string.plan_gemini), stringResource(R.string.plan_gemini_info)) {
                     com.forgequest.app.ui.components.GeminiPlanPills(onPaste = { changePlan = false; paste = true }, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
                 }
@@ -461,14 +563,28 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
 
     if (templates) {
         ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { templates = false }, containerColor = c.card) {
-            Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
                 Text(stringResource(R.string.plan_ready_made_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
                 (StarterPlans.all + StarterPlans.more).forEach { plan ->
+                    val trainingDayCount = plan.days.count { !it.isRest && it.items.isNotEmpty() }
+                    val vol = remember(plan, s.exercises) { PlanShare.weeklyMuscleVolume(plan, s.exercises) }
                     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(ForgeShape.Md).background(c.cardHigh).clickable { templates = false; vm.preview(plan) }.padding(16.dp)) {
                         Text(StarterPlans.displayTitle(plan.name), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                         Spacer(Modifier.height(4.dp))
                         Text(plan.description, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            pluralStringResource(R.plurals.plan41_days_per_week, trainingDayCount, trainingDayCount),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.textSecondary,
+                        )
+                        if (vol.isNotEmpty()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(stringResource(R.string.plan41_weekly_volume), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                            Spacer(Modifier.height(4.dp))
+                            WeeklyVolumeChips(vol)
+                        }
                     }
                 }
             }
@@ -588,6 +704,110 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
         )
     }
 
+    pendingShared?.let { valid ->
+        SharedPlanPreviewSheet(
+            parsed = valid,
+            exercises = s.exercises,
+            onImport = { vm.importShared(valid.plan) },
+            onDismiss = { vm.pendingShared.value = null },
+        )
+    }
+
+    if (shareOpen && s.plan != null) {
+        val activePlan = s.plan
+        val ctx = LocalContext.current
+        val jsonText = remember(activePlan, s.exercises) { PlanShare.exportPlan(activePlan, s.exercises) }
+        val copiedMsg = stringResource(R.string.plan41_copied)
+        ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = { shareOpen = false }, containerColor = c.card) {
+            Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
+                Text(stringResource(R.string.plan41_share_plan), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                Spacer(Modifier.height(4.dp))
+                Text(stringResource(R.string.plan41_share_plan_info), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Spacer(Modifier.height(16.dp))
+                PillButton(
+                    stringResource(R.string.plan41_copy_json),
+                    onClick = {
+                        val cb = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        cb.setPrimaryClip(android.content.ClipData.newPlainText(activePlan.plan.name, jsonText))
+                        shareOpen = false
+                        vm.message.value = copiedMsg
+                    },
+                    icon = Icons.Rounded.ContentCopy,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                TonalPill(
+                    stringResource(R.string.plan41_send_share),
+                    onClick = {
+                        shareOpen = false
+                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, activePlan.plan.name)
+                            putExtra(Intent.EXTRA_TEXT, jsonText)
+                        }
+                        ctx.startActivity(Intent.createChooser(sendIntent, activePlan.plan.name))
+                    },
+                    icon = Icons.Rounded.Share,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (importOpen) {
+        var rawText by remember { mutableStateOf("") }
+        var errorText by remember { mutableStateOf<String?>(null) }
+        val errPrefix = stringResource(R.string.plan41_import_error, "%s")
+        val importCtx = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { importOpen = false },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.plan41_import_plan), color = c.textPrimary) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.plan41_import_safe_note), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = rawText,
+                        onValueChange = { rawText = it; errorText = null },
+                        placeholder = { Text(stringResource(R.string.plan41_import_hint)) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
+                        shape = ForgeShape.Md,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
+                    )
+                    if (rawText.isBlank()) {
+                        TextButton(onClick = {
+                            rawText = (importCtx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                                .primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(importCtx)?.toString().orEmpty()
+                            errorText = null
+                        }) { Text(stringResource(R.string.action_paste), color = c.teal) }
+                    }
+                    errorText?.let { err ->
+                        Spacer(Modifier.height(6.dp))
+                        Text(err, style = MaterialTheme.typography.bodySmall, color = c.coral)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when (val res = PlanShare.parseAndValidate(rawText, s.exercises)) {
+                            is PlanShare.ParseResult.Valid -> {
+                                importOpen = false
+                                vm.pendingShared.value = res
+                            }
+                            is PlanShare.ParseResult.Invalid -> {
+                                errorText = errPrefix.format(res.errors.firstOrNull().orEmpty())
+                            }
+                        }
+                    },
+                    enabled = rawText.isNotBlank(),
+                ) { Text(stringResource(R.string.plan41_import_preview), color = c.teal) }
+            },
+            dismissButton = { TextButton(onClick = { importOpen = false }) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+        )
+    }
+
     if (renaming && day != null) {
         var title by remember { mutableStateOf(day.day.title) }
         val workoutLabel = stringResource(R.string.plan_workout)
@@ -640,21 +860,41 @@ private fun ItemEditorSheet(
     unit: WeightUnit,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
+    prevItem: PlanItemEntity? = null,
+    prevName: String? = null,
+    nextItem: PlanItemEntity? = null,
+    nextName: String? = null,
     onMove: (PlanItemEntity, Int) -> Unit,
     onSwap: (PlanItemEntity) -> Unit,
-    onSave: (PlanItemEntity) -> Unit,
+    onSave: (PlanItemEntity, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val c = Fit.colors
     var draft by remember { mutableStateOf(item) }
+    val initiallyPairedWithNext = nextItem != null && item.supersetGroup != null && nextItem.supersetGroup == item.supersetGroup
+    val pairedWithPrev = prevItem != null && item.supersetGroup != null && prevItem.supersetGroup == item.supersetGroup
+    var pairWithNext by remember { mutableStateOf(initiallyPairedWithNext) }
+    val isExtra = WorkoutScore.isExtra(draft.block)
+    val canPair = nextItem != null && !isExtra && !WorkoutScore.isExtra(nextItem.block) && !pairedWithPrev && draft.sets == nextItem.sets
+    val progModes = ProgressionMode.entries
+
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
-        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
                 TonalPill(stringResource(R.string.live_swap_exercise), onClick = { onSwap(draft) }, icon = Icons.Rounded.SwapHoriz)
             }
             Spacer(Modifier.height(16.dp))
-            EditorRow(if (draft.circuit) stringResource(R.string.plan_rounds) else stringResource(R.string.live_sets), draft.sets.toFloat(), { draft = draft.copy(sets = it.toInt()) }, step = 1f, min = 1f, max = 10f)
+            EditorRow(
+                if (draft.circuit) stringResource(R.string.plan_rounds) else stringResource(R.string.live_sets),
+                draft.sets.toFloat(),
+                { v ->
+                    val nextSets = v.toInt()
+                    draft = draft.copy(sets = nextSets)
+                    if (nextItem == null || nextSets != nextItem.sets) pairWithNext = false
+                },
+                step = 1f, min = 1f, max = 10f,
+            )
             if (kind == ExerciseKind.HOLD) {
                 EditorRow(stringResource(R.string.kind_hold), (draft.seconds ?: 30).toFloat(), { draft = draft.copy(seconds = it.toInt()) }, step = 5f, min = 5f, max = 3600f, unit = stringResource(R.string.unit_s))
             } else {
@@ -684,6 +924,61 @@ private fun ItemEditorSheet(
                 }
                 Switch(checked = draft.circuit, onCheckedChange = { draft = draft.copy(circuit = it) }, colors = com.forgequest.app.ui.components.fitSwitchColors(c.teal))
             }
+            if (!isExtra) {
+                val curMode = ProgressionMode.parse(draft.progressionMode)
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.plan41_prog_mode), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(
+                        when (curMode) {
+                            ProgressionMode.DOUBLE -> R.string.plan41_prog_double_hint
+                            ProgressionMode.LINEAR -> R.string.plan41_prog_linear_hint
+                            ProgressionMode.MAINTAIN -> R.string.plan41_prog_maintain_hint
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.textSecondary,
+                )
+                Spacer(Modifier.height(8.dp))
+                SegmentedTabs(
+                    options = listOf(
+                        stringResource(R.string.plan41_prog_double),
+                        stringResource(R.string.plan41_prog_linear),
+                        stringResource(R.string.plan41_prog_maintain),
+                    ),
+                    selected = progModes.indexOf(curMode).coerceAtLeast(0),
+                    onSelect = { idx -> draft = draft.copy(progressionMode = progModes[idx].name) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    wrap = true,
+                )
+                if (kind == ExerciseKind.WEIGHTED) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.plan41_auto_warmup), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                            Text(stringResource(R.string.plan41_auto_warmup_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        }
+                        FitSwitch(checked = draft.autoWarmup, onCheckedChange = { draft = draft.copy(autoWarmup = it) })
+                    }
+                }
+                if (nextItem != null && !WorkoutScore.isExtra(nextItem.block)) {
+                    val partnerTitle = nextName ?: nextItem.exerciseId
+                    val pairSub = when {
+                        pairedWithPrev -> stringResource(R.string.plan41_pair_hint_prev, prevName ?: prevItem?.exerciseId.orEmpty())
+                        nextItem.sets != draft.sets -> stringResource(R.string.plan41_pair_hint_sets, partnerTitle, nextItem.sets)
+                        pairWithNext -> stringResource(R.string.plan41_pair_hint_active, partnerTitle)
+                        else -> stringResource(R.string.plan41_pair_hint_ready, partnerTitle)
+                    }
+                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.plan41_pair_next), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                            Text(pairSub, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        }
+                        FitSwitch(checked = pairWithNext, onCheckedChange = { if (canPair) pairWithNext = it }, enabled = canPair)
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.plan_order), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
@@ -691,7 +986,7 @@ private fun ItemEditorSheet(
                 PillButton(stringResource(R.string.plan_move_down), onClick = { onMove(draft, 1) }, icon = Icons.Rounded.ArrowDownward, container = c.cardHigh, content = c.textPrimary, enabled = canMoveDown)
             }
             Spacer(Modifier.height(16.dp))
-            PillButton(stringResource(R.string.action_save), onClick = { onSave(draft) }, modifier = Modifier.fillMaxWidth())
+            PillButton(stringResource(R.string.action_save), onClick = { onSave(draft, pairWithNext) }, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -718,6 +1013,7 @@ fun PlanPreviewSheet(
     onAdapt: (() -> Unit)? = null,
 ) {
     val c = Fit.colors
+    val vol = remember(draft, exercises) { PlanShare.weeklyMuscleVolume(draft, exercises) }
     val incompatibleCount = remember(draft, exercises, userEquipment) {
         val clean = com.forgequest.app.domain.expandLegacyEquipment(userEquipment)
         if (clean.isEmpty() || clean.containsAll(Equipment.allActive)) 0
@@ -730,6 +1026,12 @@ fun PlanPreviewSheet(
             if (draft.description.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))
                 Text(draft.description, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+            if (vol.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text(stringResource(R.string.plan41_weekly_volume), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                Spacer(Modifier.height(4.dp))
+                WeeklyVolumeChips(vol)
             }
             Spacer(Modifier.height(12.dp))
             draft.days.sortedBy { Dates.weekOrder.indexOf(it.dayOfWeek) }.forEach { d ->
@@ -761,6 +1063,83 @@ fun PlanPreviewSheet(
             Text(stringResource(R.string.plan_replaces), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             Spacer(Modifier.height(12.dp))
             PillButton(stringResource(R.string.plan_use_this), onClick = onApply, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SharedPlanPreviewSheet(
+    parsed: PlanShare.ParseResult.Valid,
+    exercises: Map<String, ExerciseEntity>,
+    onImport: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = Fit.colors
+    val plan = parsed.plan
+    ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
+        Column(Modifier.padding(horizontal = ForgeSpace.Gutter).padding(bottom = 32.dp).verticalScroll(rememberScrollState())) {
+            Text(plan.name, style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+            if (plan.description.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(plan.description, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            }
+            if (parsed.customExercises.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.plan41_import_custom_note, parsed.customExercises.size, parsed.customExercises.joinToString(stringResource(R.string.list_separator))),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.gold,
+                )
+            }
+            if (parsed.volume.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text(stringResource(R.string.plan41_weekly_volume), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                Spacer(Modifier.height(4.dp))
+                WeeklyVolumeChips(parsed.volume)
+            }
+            Spacer(Modifier.height(12.dp))
+            plan.days.sortedBy { Dates.weekOrder.indexOf(it.dayOfWeek) }.forEach { d ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Text(Dates.dayShort(d.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = c.teal, modifier = Modifier.widthIn(min = 44.dp).padding(end = 8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(if (d.isRest || d.items.isEmpty()) stringResource(R.string.live_rest) else d.title, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                        if (!d.isRest && d.items.isNotEmpty()) {
+                            val sep = stringResource(R.string.list_separator)
+                            Text(
+                                d.items.joinToString(sep) { exercises[it.exerciseId]?.name ?: it.name ?: it.exerciseId },
+                                style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.plan41_import_safe_note), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            Spacer(Modifier.height(12.dp))
+            PillButton(stringResource(R.string.plan41_import_confirm), onClick = onImport, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun WeeklyVolumeChips(volume: List<PlanShare.MuscleSets>, limit: Int = 8) {
+    val c = Fit.colors
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        volume.take(limit).forEach { entry ->
+            Box(
+                Modifier.clip(ForgeShape.Full).background(c.blueTrack).padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    stringResource(R.string.plan41_muscle_sets_item, entry.muscle.localLabel(), entry.sets),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = c.blue,
+                )
+            }
         }
     }
 }

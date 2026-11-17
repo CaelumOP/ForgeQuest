@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan41_schedule_mode">نظام الجدول</string>
+    <string name="plan41_mode_weekday">أيام محددة</string>
+    <string name="plan41_mode_rotation">بالتناوب</string>
+    <string name="plan41_schedule_weekday_hint">يبقى كل تمرين في يومه المحدد من الأسبوع.</string>
+    <string name="plan41_schedule_rotation_hint">ينتقل إلى التمرين التالي عند إنهاء كل تمرين.</string>
+    <string name="plan41_rotation_next">التالي في التناوب: %1$s</string>
+    <string name="plan41_rotation_tag">التالي في التناوب</string>
+    <string name="plan41_missed_yesterday">فاتك تمرين أمس: %1$s</string>
+    <string name="plan41_do_missed_today">أدِّه اليوم</string>
+
+    <string name="plan41_pair_next">اربط بالتمرين التالي (سوبر سِت)</string>
+    <string name="plan41_pair_hint_ready">تبادل المجموعات مع %1$s.</string>
+    <string name="plan41_pair_hint_active">مربوط سوبر سِت مع %1$s.</string>
+    <string name="plan41_pair_hint_prev">مربوط مسبقًا مع %1$s.</string>
+    <string name="plan41_pair_hint_sets">يجب أن يطابق عدد المجموعات تمرين %1$s (%2$d مجموعات).</string>
+    <string name="plan41_superset_tag">سوبر سِت</string>
+
+    <string name="plan41_auto_warmup">مجموعات تسخين تلقائية</string>
+    <string name="plan41_auto_warmup_hint">يضيف 2–3 مجموعات تسخين متدرجة (50% / 70% / 85%) قبل المجموعة الأولى.</string>
+    <string name="plan41_auto_warmup_tag">تسخين متدرج</string>
+
+    <string name="plan41_prog_mode">نظام التدرّج</string>
+    <string name="plan41_prog_double">مزدوج</string>
+    <string name="plan41_prog_linear">خطي</string>
+    <string name="plan41_prog_maintain">تثبيت</string>
+    <string name="plan41_prog_double_hint">زد العدّات حتى الحد الأعلى ثم أضف وزنًا.</string>
+    <string name="plan41_prog_linear_hint">أضف 2.5 كغ للعلوي أو 5 كغ للسفلي بعد كل تمرين مكتمل.</string>
+    <string name="plan41_prog_maintain_hint">حافظ على الأوزان والعدّات الحالية دون زيادة.</string>
+
+    <string name="plan41_weekly_volume">المجموعات الأسبوعية المقدّرة</string>
+    <string name="plan41_muscle_sets_item">%1$s %2$d</string>
+    <plurals name="plan41_days_per_week">
+        <item quantity="zero">0 أيام/أسبوع</item>
+        <item quantity="one">يوم واحد/أسبوع</item>
+        <item quantity="two">يومان/أسبوع</item>
+        <item quantity="few">%1$d أيام/أسبوع</item>
+        <item quantity="many">%1$d يومًا/أسبوع</item>
+        <item quantity="other">%1$d يوم/أسبوع</item>
+    </plurals>
+
+    <string name="plan41_share_plan">مشاركة الخطة</string>
+    <string name="plan41_share_plan_info">انسخ هذه الخطة أو أرسلها بصيغة JSON موثّقة.</string>
+    <string name="plan41_copy_json">نسخ رمز الخطة</string>
+    <string name="plan41_send_share">مشاركة عبر…</string>
+    <string name="plan41_copied">تم نسخ الخطة</string>
+    <string name="plan41_import_plan">استيراد خطة مشتركة</string>
+    <string name="plan41_import_plan_info">ألصق رمز خطة ForgeQuest المشتركة. تبقى خططك السابقة محفوظة.</string>
+    <string name="plan41_import_hint">ألصق رمز JSON للخطة هنا</string>
+    <string name="plan41_import_preview">معاينة الاستيراد</string>
+    <string name="plan41_import_confirm">استيراد كخطة جديدة</string>
+    <string name="plan41_import_safe_note">تُحفظ كخطة جديدة، وتبقى خططك الحالية محفوظة كما هي.</string>
+    <string name="plan41_import_custom_note">سيُنشئ %1$d تمرينًا مخصصًا: %2$s</string>
+    <string name="plan41_import_error">تعذّر قراءة الخطة: %1$s</string>
+    <string name="plan_ready_made">التحوّل إلى خطة جاهزة</string>
+    <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
+</resources>

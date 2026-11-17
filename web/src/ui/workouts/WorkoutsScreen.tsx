@@ -7,6 +7,7 @@ import { configuredEquipment, weightUnit } from '../../data/settings'
 import { startSession, useOpenSession, type PlanDayWithItems } from '../../data/workouts'
 import { dayOfWeek, todayEpochDay, WEEK_ORDER } from '../../domain/dates'
 import type { SetEntity } from '../../domain/entities'
+import { dueDay, missedYesterday, parseScheduleMode } from '../../domain/rotation'
 import { bestSetSeries } from '../../domain/trends'
 import type { WeightUnit } from '../../domain/units'
 import { Button, Card, Sheet } from '../kit'
@@ -19,6 +20,7 @@ import type { Equipment } from '../../domain/exercise-swap-engine'
 import type { Muscle } from '../../domain/muscle'
 import { muscleExercises } from '../../domain/muscle-exercises'
 import { MuscleSheet } from './MuscleSheet'
+import '../plan/plan41.css'
 import './workouts.css'
 
 const go = (hash: string) => { location.hash = hash }
@@ -28,7 +30,8 @@ export function WorkoutsScreen(_: { param?: string }) {
   const lang = useLang()
   const s = useProgress()
   const open = useOpenSession()
-  const today = dayOfWeek(todayEpochDay())
+  const todayEpoch = todayEpochDay()
+  const today = dayOfWeek(todayEpoch)
   const [selected, setSelected] = useState(today)
   const [starting, setStarting] = useState(false)
   const [dayDetailsOpen, setDayDetailsOpen] = useState(false)
@@ -54,12 +57,26 @@ export function WorkoutsScreen(_: { param?: string }) {
   }, [s?.doneSets, s?.sessions, s?.exercises])
 
   const plan = s?.plan
+  const isRotation = !!plan && parseScheduleMode(plan.plan.scheduleMode) === 'ROTATION'
+  const rotationDue = useMemo(
+    () => (plan && isRotation ? dueDay(plan, today) : null),
+    [plan, isRotation, today],
+  )
+  useEffect(() => {
+    if (isRotation && rotationDue) setSelected(rotationDue.day.dayOfWeek)
+  }, [plan?.plan.id, plan?.plan.scheduleMode, plan?.plan.rotationCursor])
+  const missed = useMemo(
+    () => (s && plan ? missedYesterday(plan, s.sessions, s.dayTags, todayEpoch) : null),
+    [plan, s?.sessions, s?.dayTags, todayEpoch],
+  )
+
   const day = plan?.days.find((d) => d.day.dayOfWeek === selected)
   const isRest = !!plan && (!day || day.day.isRest)
 
   if (!s) return <div class="content wk wk-one" />
   const unit = weightUnit(s.settings)
   const isToday = selected === today
+  const isDue = isRotation && !!rotationDue && selected === rotationDue.day.dayOfWeek
   const arabic = lang === 'ar'
 
   const start = async (d: PlanDayWithItems | null) => {
@@ -72,7 +89,9 @@ export function WorkoutsScreen(_: { param?: string }) {
   }
 
   const heroTag = open ? t('today_in_progress')
-    : !plan || isToday ? t('day_today')
+    : !plan ? t('day_today')
+    : isDue ? t('plan41_rotation_tag')
+    : isToday ? t('day_today')
     : dayName(selected, lang)
 
   const heroTitle = open ? open.title
@@ -157,6 +176,15 @@ export function WorkoutsScreen(_: { param?: string }) {
         />
       ) : null}
 
+      {!open && missed && (
+        <Card padded={false} class="p41-missed-banner">
+          <span class="p41-missed-text">{t('plan41_missed_yesterday', missed.day.title)}</span>
+          <Button variant="tonal" loading={starting} onClick={() => start(missed)}>
+            {t('plan41_do_missed_today')}
+          </Button>
+        </Card>
+      )}
+
       <div class="wk-go">
         {open ? (
           <Button block icon={<PlayIcon />} onClick={() => go('#/live')}>{t('action_resume')}</Button>
@@ -181,7 +209,7 @@ export function WorkoutsScreen(_: { param?: string }) {
         ) : (
           <>
             <Button class="wk-go-main" loading={starting} icon={<PlayIcon />} onClick={() => start(day ?? null)}>
-              {s.workoutDoneToday && isToday ? t('today_train_again') : isToday ? t('workouts_start') : t('workouts_start_this')}
+              {s.workoutDoneToday && (isToday || isDue) ? t('today_train_again') : (isToday || isDue) ? t('workouts_start') : t('workouts_start_this')}
             </Button>
             <button
               type="button"

@@ -126,3 +126,56 @@ describe('deload & reasons', () => {
     expect(nextPrefill('WEIGHTED', target(3, 8, 12, null, 60), sets(2, 10, 60), [], 'KG', false, false).reason).toBe('MISSED')
   })
 })
+
+describe('ProgressionMode LINEAR / MAINTAIN & WP1a set-types', () => {
+  it('LINEAR adds +2.5 kg upper and +5 kg lower regardless of display unit', () => {
+    const t = target(3, 5, 5, null, 60)
+    const upper = nextPrefill('WEIGHTED', t, sets(3, 5, 60), [], 'KG', false, false, false, 'LINEAR', false)
+    expect(upper.reason).toBe('LOAD_UP')
+    expect(upper.sets[0].weightKg).toBeCloseTo(62.5, 2)
+
+    const lower = nextPrefill('WEIGHTED', t, sets(3, 5, 100), [], 'KG', false, false, false, 'LINEAR', true)
+    expect(lower.reason).toBe('LOAD_UP')
+    expect(lower.sets[0].weightKg).toBeCloseTo(105, 2)
+
+    const lowerLb = nextPrefill('WEIGHTED', t, sets(3, 5, toKg('LB', 225)), [], 'LB', false, false, false, 'LINEAR', true)
+    expect(lowerLb.sets[0].weightKg!).toBeCloseTo(toKg('LB', 225) + 5, 2)
+  })
+
+  it('MAINTAIN holds weight and reps even when top of rep range is reached', () => {
+    const t = target(3, 8, 12, null, 60)
+    const maintain = nextPrefill('WEIGHTED', t, sets(3, 12, 60), [], 'KG', false, false, false, 'MAINTAIN', false)
+    expect(maintain.reason).toBe('SAME')
+    expect(maintain.sets[0]).toEqual({ reps: 12, seconds: null, weightKg: 60 })
+  })
+
+  it('enforces precedence pain > hard > missed > lowReadiness > deload > mode rules, and never auto-resets on failures', () => {
+    const t = target(3, 5, 5, null, 100)
+    // Pain takes back weight even under LINEAR or MAINTAIN
+    expect(nextPrefill('WEIGHTED', t, sets(3, 5, 100, null, 'PAIN'), [], 'KG', false, false, false, 'LINEAR', true).sets[0].weightKg).toBeCloseTo(97.5, 2)
+    expect(nextPrefill('WEIGHTED', t, sets(3, 5, 100, null, 'PAIN'), [], 'KG', false, false, false, 'MAINTAIN', false).sets[0].weightKg).toBeCloseTo(97.5, 2)
+    // Hard blocks linear increment and never resets after repeated failures
+    const hardLinear = nextPrefill('WEIGHTED', t, sets(3, 5, 100, null, 'HARD'), sets(3, 5, 100, null, 'HARD'), 'KG', false, false, false, 'LINEAR', true)
+    expect(hardLinear.reason).toBe('HARD')
+    expect(hardLinear.sets[0].weightKg).toBeCloseTo(100, 2)
+    // Missed / low readiness / deload also hold under LINEAR
+    expect(nextPrefill('WEIGHTED', t, sets(2, 5, 100), [], 'KG', false, false, false, 'LINEAR', true).reason).toBe('MISSED')
+    expect(nextPrefill('WEIGHTED', t, sets(3, 5, 100), [], 'KG', true, false, false, 'LINEAR', true).reason).toBe('LOW_READINESS')
+    expect(nextPrefill('WEIGHTED', t, sets(3, 5, 100), [], 'KG', false, false, true, 'LINEAR', true).sets).toHaveLength(2)
+  })
+
+  it('progressionInputs excludes WARMUP, DROPSET, and RESTPAUSE sets while keeping WORKING and FAILURE', () => {
+    const row = (setIndex: number, reps: number, weightKg: number, setType: string) =>
+      ({ sessionId: 10, setIndex, reps, seconds: null, weightKg, effort: '', note: '', setType, block: 'Main' })
+    const item = { block: 'Main', sets: 2, repsMin: 8, repsMax: 12, seconds: null, weightKg: 80, progressionMode: 'LINEAR' }
+    const input = progressionInputs(item, 'bench_press', [
+      row(0, 8, 40, 'WARMUP'),
+      row(1, 10, 80, 'WORKING'),
+      row(2, 9, 80, 'FAILURE'),
+      row(3, 12, 60, 'DROPSET'),
+      row(4, 4, 80, 'RESTPAUSE'),
+    ])
+    expect(input.mode).toBe('LINEAR')
+    expect(input.last.map((s) => s.reps)).toEqual([10, 9])
+  })
+})

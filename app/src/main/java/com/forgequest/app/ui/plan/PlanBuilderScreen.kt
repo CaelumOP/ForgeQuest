@@ -95,11 +95,13 @@ import com.forgequest.app.domain.Injury
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.BuiltPlan
 import com.forgequest.app.domain.PlanBuilder
+import com.forgequest.app.domain.PlanShare
 import com.forgequest.app.domain.RepPref
 import com.forgequest.app.domain.RestPref
 import com.forgequest.app.domain.TrainGoal
 import com.forgequest.app.domain.expandLegacyEquipment
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.workouts.WeeklyVolumeChips
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
 import com.forgequest.app.ui.components.IconCircle
@@ -290,12 +292,21 @@ fun PlanBuilderScreen(nav: NavHostController) {
                 )
             }
         } else {
+            val libraryById = remember(library) { library.associateBy { it.id } }
+            val volume = remember(review, libraryById) { PlanShare.weeklyMuscleVolume(review.draft, libraryById) }
             Column(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter).padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (review.draft.days.isEmpty()) {
                     FitCard { Text(stringResource(R.string.pb_empty), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary) }
+                } else if (volume.isNotEmpty()) {
+                    FitCard(Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(stringResource(R.string.plan41_weekly_volume), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                            WeeklyVolumeChips(volume)
+                        }
+                    }
                 }
                 review.draft.days.sortedBy { Dates.weekOrder.indexOf(it.dayOfWeek) }.forEach { day ->
                     ReviewDay(day, review, onSwap = { index -> vm.swap(day.dayOfWeek, index) })
