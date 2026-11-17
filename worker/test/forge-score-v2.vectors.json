@@ -1,0 +1,184 @@
+{
+  "cases": [
+    {
+      "name": "Sunday starts at zero",
+      "done": 0,
+      "target": 3,
+      "prCount": 0,
+      "proteinDays": 0,
+      "expect": {
+        "base": 0,
+        "prBonus": 0,
+        "proteinBonus": 0,
+        "extraBonus": 0,
+        "bonus": 0,
+        "score": 0
+      }
+    },
+    {
+      "name": "one of three rounds down",
+      "done": 1,
+      "target": 3,
+      "prCount": 0,
+      "proteinDays": 0,
+      "expect": {
+        "base": 33,
+        "prBonus": 0,
+        "proteinBonus": 0,
+        "extraBonus": 0,
+        "bonus": 0,
+        "score": 33
+      }
+    },
+    {
+      "name": "two of three rounds up",
+      "done": 2,
+      "target": 3,
+      "prCount": 0,
+      "proteinDays": 0,
+      "expect": {
+        "base": 67,
+        "prBonus": 0,
+        "proteinBonus": 0,
+        "extraBonus": 0,
+        "bonus": 0,
+        "score": 67
+      }
+    },
+    {
+      "name": "example with PR",
+      "done": 2,
+      "target": 3,
+      "prCount": 1,
+      "proteinDays": 0,
+      "expect": {
+        "base": 67,
+        "prBonus": 5,
+        "proteinBonus": 0,
+        "extraBonus": 0,
+        "bonus": 5,
+        "score": 72
+      }
+    },
+    {
+      "name": "half rounds up",
+      "done": 1,
+      "target": 8,
+      "prCount": 0,
+      "proteinDays": 0,
+      "expect": {
+        "base": 13,
+        "prBonus": 0,
+        "proteinBonus": 0,
+        "extraBonus": 0,
+        "bonus": 0,
+        "score": 13
+      }
+    },
+    {
+      "name": "target achieved",
+      "done": 3,
+      "target": 3,
+      "prCount": 0,
+      "proteinDays": 0,
+      "expect": {
+        "base": 100,
+        "prBonus": 0,
+        "proteinBonus": 0,
+        "extraBonus": 0,
+        "bonus": 0,
+        "score": 100
+      }
+    },
+    {
+      "name": "extra day",
+      "done": 4,
+      "target": 3,
+      "prCount": 0,
+      "proteinDays": 0,
+      "expect": {
+        "base": 100,
+        "prBonus": 0,
+        "proteinBonus": 0,
+        "extraBonus": 5,
+        "bonus": 5,
+        "score": 105
+      }
+    },
+    {
+      "name": "bonus caps",
+      "done": 7,
+      "target": 3,
+      "prCount": 9,
+      "proteinDays": 7,
+      "expect": {
+        "base": 100,
+        "prBonus": 10,
+        "proteinBonus": 6,
+        "extraBonus": 5,
+        "bonus": 20,
+        "score": 120
+      }
+    },
+    {
+      "name": "protein only",
+      "done": 0,
+      "target": 3,
+      "prCount": 0,
+      "proteinDays": 2,
+      "expect": {
+        "base": 0,
+        "prBonus": 0,
+        "proteinBonus": 4,
+        "extraBonus": 0,
+        "bonus": 4,
+        "score": 4
+      }
+    },
+    {
+      "name": "no target",
+      "done": 0,
+      "target": 0,
+      "prCount": 0,
+      "proteinDays": 0,
+      "expect": {
+        "base": 0,
+        "prBonus": 0,
+        "proteinBonus": 0,
+        "extraBonus": 0,
+        "bonus": 0,
+        "score": 0
+      }
+    },
+    {
+      "name": "no target still earns bonuses",
+      "done": 1,
+      "target": 0,
+      "prCount": 1,
+      "proteinDays": 1,
+      "expect": {
+        "base": 0,
+        "prBonus": 5,
+        "proteinBonus": 2,
+        "extraBonus": 5,
+        "bonus": 12,
+        "score": 12
+      }
+    },
+    {
+      "name": "one target",
+      "done": 1,
+      "target": 1,
+      "prCount": 2,
+      "proteinDays": 3,
+      "expect": {
+        "base": 100,
+        "prBonus": 10,
+        "proteinBonus": 6,
+        "extraBonus": 0,
+        "bonus": 16,
+        "score": 116
+      }
+    }
+  ]
+}
