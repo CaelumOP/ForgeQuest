@@ -41,7 +41,11 @@ object ExerciseSearch {
         if (normQuery.isEmpty()) return exercises
         return exercises
             .mapNotNull { ex -> val s = scoreNormalized(ex, normQuery); if (s > 0) ex to s else null }
-            .sortedByDescending { it.second }
+            .sortedWith(
+                compareByDescending<Pair<ExerciseEntity, Int>> { it.second }
+                    .thenBy { it.first.name.length }
+                    .thenBy { it.first.name.lowercase() }
+            )
             .map { it.first }
     }
 
@@ -70,11 +74,17 @@ object ExerciseSearch {
 
         if (!tokens.all { combined.contains(it) }) return 0
 
+        val hasWordStart = listOf(currentName, enName, arName).any { name ->
+            name.contains(" $normQuery")
+        }
+        val exactAlias = aliasesNorm.split(' ').any { it == normQuery }
+
         return when {
             currentName == normQuery || enName == normQuery || arName == normQuery || idNorm == normQuery -> 100
-            currentName.startsWith(normQuery) || enName.startsWith(normQuery) || arName.startsWith(normQuery) -> 80
+            currentName.startsWith(normQuery) || enName.startsWith(normQuery) || arName.startsWith(normQuery) -> if (exactAlias) 85 else 80
+            hasWordStart -> 70
             currentName.contains(normQuery) || enName.contains(normQuery) || arName.contains(normQuery) -> 60
-            aliasesNorm.split(' ').any { it == normQuery } -> 50
+            exactAlias -> 50
             else -> 30
         }
     }

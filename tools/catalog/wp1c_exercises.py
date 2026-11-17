@@ -985,7 +985,7 @@ WP1C_EXERCISES = [
       "GLUTES",
       "HAMSTRINGS"
     ],
-    "equipment": "FLAT_BENCH",
+    "equipment": "BODYWEIGHT",
     "pattern": "CARRY_CONDITIONING",
     "stretch": False,
     "aliases": [
@@ -1054,7 +1054,7 @@ WP1C_EXERCISES = [
       "GLUTES",
       "HAMSTRINGS"
     ],
-    "equipment": "FLAT_BENCH",
+    "equipment": "BODYWEIGHT",
     "pattern": "CARRY_CONDITIONING",
     "stretch": False,
     "aliases": [
@@ -2429,7 +2429,7 @@ WP1C_EXERCISES = [
       "GLUTES",
       "HAMSTRINGS"
     ],
-    "equipment": "CABLE_MACHINE",
+    "equipment": "MACHINE",
     "pattern": "SQUAT_BILATERAL",
     "stretch": False,
     "aliases": [
@@ -6995,7 +6995,7 @@ WP1C_EXERCISES = [
       "GLUTES",
       "HAMSTRINGS"
     ],
-    "equipment": "CABLE_MACHINE",
+    "equipment": "MACHINE",
     "pattern": "HIP_HINGE",
     "stretch": False,
     "aliases": [
@@ -7026,7 +7026,7 @@ WP1C_EXERCISES = [
     "secondary": [
       "FOREARMS"
     ],
-    "equipment": "CABLE_MACHINE",
+    "equipment": "MACHINE",
     "pattern": "UPPER_BACK_PULL",
     "stretch": False,
     "aliases": [
@@ -7360,7 +7360,7 @@ WP1C_EXERCISES = [
       "GLUTES",
       "HAMSTRINGS"
     ],
-    "equipment": "CABLE_MACHINE",
+    "equipment": "MACHINE",
     "pattern": "SQUAT_UNILATERAL",
     "stretch": False,
     "aliases": [
@@ -7729,7 +7729,7 @@ WP1C_EXERCISES = [
       "GLUTES",
       "HAMSTRINGS"
     ],
-    "equipment": "CABLE_MACHINE",
+    "equipment": "MACHINE",
     "pattern": "SQUAT_BILATERAL",
     "stretch": False,
     "aliases": [

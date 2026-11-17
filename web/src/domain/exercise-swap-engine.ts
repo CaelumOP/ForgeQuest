@@ -34,7 +34,7 @@ export const EQUIPMENT = [
   'PULL_UP_BAR', 'DIP_STATION', 'LOW_BAR',
   // Upper cables & machines
   'CABLE_MACHINE', 'LAT_PULLDOWN', 'SEATED_ROW_MACHINE', 'SMITH_MACHINE',
-  'CHEST_PRESS_MACHINE', 'SHOULDER_PRESS_MACHINE', 'PEC_DECK', 'PREACHER_CURL_MACHINE',
+  'CHEST_PRESS_MACHINE', 'SHOULDER_PRESS_MACHINE', 'PEC_DECK', 'PREACHER_CURL_MACHINE', 'MACHINE',
   // Lower machines
   'LEG_PRESS', 'HACK_SQUAT', 'LEG_EXTENSION', 'LEG_CURL', 'CALF_MACHINE',
   // Legacy grouped values preserved for old DataStore/Dexie/backup decoding; never shown in pickers.
@@ -64,16 +64,17 @@ export const EQUIPMENT_META: Record<Equipment, EquipmentMeta> = {
   LOW_BAR: { en: 'Low bar', ar: 'بار منخفض', group: 'BARS' },
   CABLE_MACHINE: { en: 'Cable machine', ar: 'جهاز كابل', group: 'UPPER_MACHINES' },
   LAT_PULLDOWN: { en: 'Lat pulldown', ar: 'سحب علوي', group: 'UPPER_MACHINES' },
-  SEATED_ROW_MACHINE: { en: 'Seated row', ar: 'تجديف جالس', group: 'UPPER_MACHINES' },
+  SEATED_ROW_MACHINE: { en: 'Seated row machine', ar: 'جهاز تجديف جالس', group: 'UPPER_MACHINES' },
   SMITH_MACHINE: { en: 'Smith machine', ar: 'جهاز سميث', group: 'UPPER_MACHINES' },
-  CHEST_PRESS_MACHINE: { en: 'Chest press', ar: 'جهاز صدر', group: 'UPPER_MACHINES' },
-  SHOULDER_PRESS_MACHINE: { en: 'Shoulder press', ar: 'جهاز أكتاف', group: 'UPPER_MACHINES' },
+  CHEST_PRESS_MACHINE: { en: 'Chest press machine', ar: 'جهاز ضغط صدر', group: 'UPPER_MACHINES' },
+  SHOULDER_PRESS_MACHINE: { en: 'Shoulder press machine', ar: 'جهاز ضغط أكتاف', group: 'UPPER_MACHINES' },
   PEC_DECK: { en: 'Pec deck', ar: 'جهاز تفتيح', group: 'UPPER_MACHINES' },
-  PREACHER_CURL_MACHINE: { en: 'Preacher curl', ar: 'جهاز بايسبس', group: 'UPPER_MACHINES' },
-  LEG_PRESS: { en: 'Leg press', ar: 'دفع أرجل', group: 'LOWER_MACHINES' },
-  HACK_SQUAT: { en: 'Hack squat', ar: 'هاك سكوات', group: 'LOWER_MACHINES' },
-  LEG_EXTENSION: { en: 'Leg extension', ar: 'مد أرجل', group: 'LOWER_MACHINES' },
-  LEG_CURL: { en: 'Leg curl', ar: 'ثني أرجل', group: 'LOWER_MACHINES' },
+  PREACHER_CURL_MACHINE: { en: 'Preacher curl machine', ar: 'جهاز بايسبس', group: 'UPPER_MACHINES' },
+  MACHINE: { en: 'Machine', ar: 'جهاز', group: 'UPPER_MACHINES' },
+  LEG_PRESS: { en: 'Leg press machine', ar: 'جهاز دفع أرجل', group: 'LOWER_MACHINES' },
+  HACK_SQUAT: { en: 'Hack squat machine', ar: 'جهاز هاك سكوات', group: 'LOWER_MACHINES' },
+  LEG_EXTENSION: { en: 'Leg extension machine', ar: 'جهاز مد أرجل', group: 'LOWER_MACHINES' },
+  LEG_CURL: { en: 'Leg curl machine', ar: 'جهاز ثني أرجل', group: 'LOWER_MACHINES' },
   CALF_MACHINE: { en: 'Calf machine', ar: 'جهاز بطة', group: 'LOWER_MACHINES' },
   DIP_BARS_OR_BENCH: { en: 'Dip bars / rings / bench', ar: 'متوازي أو حلقات أو مقعد', group: null, legacy: true },
   BARBELL_RACK: { en: 'Barbell & rack', ar: 'بار وراك', group: null, legacy: true },
@@ -599,7 +600,8 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     : has('leg_extension', 'leg extension') ? 'LEG_EXTENSION'
     : has('leg_curl', 'leg curl') ? 'LEG_CURL'
     : has('calf') && has('machine', 'standing_calf', 'seated_calf') ? 'CALF_MACHINE'
-    : has('cable', 'machine', 'pushdown') ? 'CABLE_MACHINE'
+    : has('cable', 'pushdown') ? 'CABLE_MACHINE'
+    : has('machine') ? 'MACHINE'
     : has('barbell', 'bench_press', 'back_squat', 'deadlift') ? 'BARBELL'
     : has('kb_', 'kettlebell') ? 'KETTLEBELL'
     : has('db_', 'dumbbell', 'curl', 'lateral') ? 'DUMBBELLS'

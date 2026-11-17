@@ -15,6 +15,7 @@ object PrPicker {
         sets.filter { it.done && countsForPR(it) && it.exerciseId !in ExerciseCatalog.STRETCH_IDS }.groupBy { it.exerciseId }.forEach { (id, group) ->
             val prev = previousBest[id] ?: return@forEach
             val kind = kindOf(id)
+            if (kind == ExerciseKind.WEIGHTED && prev <= 0f) return@forEach
             val best = group.maxByOrNull { Records.score(kind, it.reps, it.seconds, it.weightKg, id) } ?: return@forEach
             if (Records.score(kind, best.reps, best.seconds, best.weightKg, id) > prev) out += best.id
         }

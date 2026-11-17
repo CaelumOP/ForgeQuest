@@ -283,4 +283,11 @@ describe('seedLibrary upgrade and idempotency', () => {
     expect(await db.exercises.count()).toBe(EXERCISE_CATALOG.length + 1)
     expect((await db.exercises.get('bench_press'))!.name).toBe('My Custom Bench')
   })
+
+  it('ranks bench_press above Bench Jump and Bench Press with Chains for "bench"', async () => {
+    const { filterExercisesBySearch } = await import('./search')
+    const sorted = [...EXERCISE_CATALOG].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    const hits = filterExercisesBySearch(sorted, 'bench')
+    expect(hits[0]?.id).toBe('bench_press')
+  })
 })

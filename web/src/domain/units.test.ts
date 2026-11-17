@@ -6,6 +6,8 @@ describe('units', () => {
     expect(fromKg('LB', toKg('LB', 135))).toBeCloseTo(135, 3)
     expect(formatWeight('KG', 72.5, false)).toBe('⁦72.5 kg⁩')
     expect(formatWeight('KG', 72.5, true)).toBe('⁧72.5 كغ⁩')
+    expect(formatWeight('KG', 100, false)).toBe('⁦100 kg⁩')
+    expect(formatWeight('KG', 100, true)).toBe('⁧100 كغ⁩')
     expect(weightNumber('KG', 60)).toBe('60')
     expect(weightNumber('KG', 62.5)).toBe('62.5')
   })

@@ -44,4 +44,14 @@ class PrPickerTest {
         val a = set(12, "a"); val b = set(12, "b")
         assertEquals(setOf(a.id, b.id), pick(listOf(a, b), mapOf("a" to 10f, "b" to 10f)))
     }
+
+    @Test
+    fun zeroKgPreviousBestDoesNotMakeAWeightedPr() {
+        val goblet = SetEntity(
+            id = nextId++, sessionId = 1, exerciseId = "goblet_squat", itemPosition = 0,
+            block = "Main", circuit = false, setIndex = 0, targetLabel = "",
+            reps = 8, weightKg = 15f, done = true,
+        )
+        assertEquals(emptySet<Long>(), PrPicker.pick(listOf(goblet), { ExerciseKind.WEIGHTED }, mapOf("goblet_squat" to 0f)))
+    }
 }

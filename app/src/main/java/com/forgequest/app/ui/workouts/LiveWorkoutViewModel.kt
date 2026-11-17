@@ -196,6 +196,10 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** This is the lighter week of the plan's 4-week cycle. */
     val deloadWeek = MutableStateFlow(false)
 
+    /** The set just ticked: only it shows the Easy · Hard · Failure chips and Pain button, so they fade once you move on.
+     *  Declared before init: the init timer loop can set it immediately when a rest already ran out (resume crash). */
+    val effortSetId = MutableStateFlow<Long?>(null)
+
     init {
         viewModelScope.launch { checkWelcomeBack() }
         viewModelScope.launch { deloadWeek.value = repo.isDeloadWeekNow() }
@@ -269,9 +273,6 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         }
     }
 
-    /** The set just ticked: only it shows the Easy · OK · Hard · Pain chips, so they fade once you move on. */
-    val effortSetId = MutableStateFlow<Long?>(null)
-
     /** Sets whose numbers were typed or nudged this session; the rest still hold the plan's defaults. */
     private val edited = mutableSetOf<Long>()
 
@@ -314,7 +315,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val currentGroups = group(sets.value) { pos -> supersetGroups.value[pos] }
         val restSec = if (done) effectiveRestSeconds(set, currentGroups) else 0
         viewModelScope.launch {
-            repo.updateSet(set.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null))
+            repo.updateSet(set.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null, effort = if (done) set.effort else ""))
             if (done) carryForward(set)
         }
         if (done && restSec > 0) {

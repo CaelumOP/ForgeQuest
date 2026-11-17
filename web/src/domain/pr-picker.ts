@@ -37,6 +37,7 @@ export function pickPrs(
     const prev = previousBest.get(id)
     if (prev == null || !Number.isFinite(prev)) continue
     const kind = kindOf(id)
+    if (kind === 'WEIGHTED' && prev <= 0) continue
     let best: PrSet | null = null
     let bestScore = -Infinity
     for (const s of group) {

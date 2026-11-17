@@ -63,7 +63,7 @@ describe('workout-recap', () => {
     const plain = out.replace(/[\u2066\u2067\u2069]/g, '')
     expect(plain).toContain('Push A · ')
     expect(plain).toContain('6 sets · 42 min')
-    expect(plain).toContain('Bench Press — best 185.0 lb × 8 (PR)')
+    expect(plain).toContain('Bench Press — best 185 lb × 8 (PR)')
     expect(plain).not.toContain('250')
     expect(plain).toContain('Plank — best 75s')
     expect(plain).toContain('PRs: Bench Press')

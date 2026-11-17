@@ -30,6 +30,10 @@ import com.forgequest.app.ui.theme.Fit
 internal fun pickAvatarPhoto(friendsPhoto: String?, drivePhoto: String?): String? =
     friendsPhoto?.takeIf { it.isNotBlank() } ?: drivePhoto?.takeIf { it.isNotBlank() }
 
+/** Name for the photo-less Home avatar: Settings name first, else the Friends shownName; blank counts as none. */
+internal fun pickAvatarName(settingsName: String, friendsShownName: String?): String =
+    settingsName.trim().ifEmpty { friendsShownName?.trim().orEmpty() }
+
 /** First letter of the name for the photo-less avatar; "?" when there is no name. */
 internal fun avatarInitial(name: String): String =
     name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"

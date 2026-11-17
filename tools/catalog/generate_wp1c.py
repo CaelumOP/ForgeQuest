@@ -134,7 +134,7 @@ def map_equipment(entry: dict) -> str:
             return "PREACHER_CURL_MACHINE"
         if "treadmill" in nl or "bike" in nl or "bicycling" in nl or "elliptical" in nl or "rowing" in nl or "stair" in nl or "step mill" in nl:
             return "BODYWEIGHT"
-        return "CABLE_MACHINE"
+        return "MACHINE"
     if eq in ("body only", "", "medicine ball", "exercise ball", "foam roll", "other"):
         if "plate" in nl:
             return "BARBELL"
@@ -144,7 +144,7 @@ def map_equipment(entry: dict) -> str:
             return "DIP_STATION"
         if "hyperextension" in nl or "roman" in nl:
             return "ROMAN_CHAIR"
-        if "bench" in nl:
+        if "bench" in nl and cat not in ("plyometrics", "cardio"):
             return "FLAT_BENCH"
         return "BODYWEIGHT"
     return "BODYWEIGHT"

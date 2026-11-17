@@ -1,5 +1,6 @@
 package com.forgequest.app.domain
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -69,10 +70,12 @@ class WorkoutRecapTest {
         val plain = text.replace(Regex("[\u2066\u2067\u2069]"), "")
         assertTrue(plain.contains("Push A · "))
         assertTrue(plain.contains("6 sets · 42 min"))
-        assertTrue(plain.contains("Bench Press — best 185.0 lb × 8 (PR)"))
+        assertTrue(plain.contains("Bench Press — best 185 lb × 8 (PR)"))
         assertFalse(plain.contains("250"))
         assertTrue(plain.contains("Plank — best 75s"))
         assertTrue(plain.contains("PRs: Bench Press"))
+        assertEquals("\u2066100 kg\u2069", WeightUnit.KG.format(100f))
+        assertEquals("\u2066102.5 kg\u2069", WeightUnit.KG.format(102.5f))
     }
 
     @Test

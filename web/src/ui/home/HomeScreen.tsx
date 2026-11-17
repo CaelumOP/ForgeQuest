@@ -16,10 +16,10 @@ import { Button, Card, Chip, CoachMark, type CoachStep, Ring, Sheet, Stat, Stepp
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
-import { canExcuse, greetingKey, pickAvatarPhoto } from './helpers'
+import { avatarInitial, canExcuse, greetingKey, pickAvatarName, pickAvatarPhoto } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { RaadEgg } from './RaadEgg'
-import { useFriends } from '../../data/friends'
+import { shownName, useFriends } from '../../data/friends'
 import { Avatar } from '../friends/Avatar'
 import { CalorieCard } from './CalorieCard'
 import { FoodTargetsCard, TargetNudge } from './SetupCards'
@@ -148,6 +148,7 @@ function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRa
   const mark = ar ? String(s.level.level) : s.level.rank.letter
   const f = useFriends()
   const photo = pickAvatarPhoto(f.status === 'joined' ? f.view?.me.photoUrl : null)
+  const avatarName = pickAvatarName(name, f.status === 'joined' && f.view ? shownName(f.view.me) : null)
   const [imgFailed, setImgFailed] = useState(false)
   useEffect(() => { setImgFailed(false) }, [photo])
   return (
@@ -162,7 +163,7 @@ function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRa
           <span class="home41-avatar" aria-hidden="true">
             {photo && !imgFailed
               ? <img src={photo} alt="" referrerPolicy="no-referrer" onError={() => setImgFailed(true)} />
-              : (name || '?')[0]!.toUpperCase()}
+              : avatarInitial(avatarName)}
           </span>
           {showRank && <span class="home41-badge" aria-hidden="true">{mark}</span>}
           <span class="home41-gear" aria-hidden="true">

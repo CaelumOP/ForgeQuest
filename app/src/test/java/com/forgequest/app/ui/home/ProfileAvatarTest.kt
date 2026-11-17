@@ -11,4 +11,10 @@ class ProfileAvatarTest {
     @Test fun initialIsUppercasedFirstLetter() = assertEquals("S", avatarInitial("  sara"))
     @Test fun initialFallsBackToQuestionMark() = assertEquals("?", avatarInitial("   "))
     @Test fun arabicInitialIsKept() = assertEquals("أ", avatarInitial("أحمد"))
+    @Test fun avatarNameFallsBackToFriendsShownName() {
+        assertEquals("tariq", pickAvatarName("", "tariq"))
+        assertEquals("Omar", pickAvatarName("  Omar ", "tariq"))
+        assertEquals("", pickAvatarName("  ", null))
+        assertEquals("T", avatarInitial(pickAvatarName("", "tariq")))
+    }
 }

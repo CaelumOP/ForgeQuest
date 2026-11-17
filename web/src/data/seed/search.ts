@@ -41,10 +41,14 @@ function scoreNormalized(exercise: Pick<ExerciseEntity, 'id' | 'name' | 'aliases
   const combined = [currentName, enName, arName, aliasesNorm, idNorm].filter(Boolean).join(' ')
   if (!tokens.every((t) => combined.includes(t))) return 0
 
+  const hasWordStart = currentName.includes(` ${normQuery}`) || enName.includes(` ${normQuery}`) || arName.includes(` ${normQuery}`)
+  const exactAlias = aliasesNorm.split(' ').some((w) => w === normQuery)
+
   if (currentName === normQuery || enName === normQuery || arName === normQuery || idNorm === normQuery) return 100
-  if (currentName.startsWith(normQuery) || enName.startsWith(normQuery) || arName.startsWith(normQuery)) return 80
+  if (currentName.startsWith(normQuery) || enName.startsWith(normQuery) || arName.startsWith(normQuery)) return exactAlias ? 85 : 80
+  if (hasWordStart) return 70
   if (currentName.includes(normQuery) || enName.includes(normQuery) || arName.includes(normQuery)) return 60
-  if (aliasesNorm.split(' ').some((w) => w === normQuery)) return 50
+  if (exactAlias) return 50
   return 30
 }
 
@@ -67,6 +71,10 @@ export function filterExercisesBySearch<T extends Pick<ExerciseEntity, 'id' | 'n
   return exercises
     .map((ex) => ({ ex, s: scoreNormalized(ex, normQuery) }))
     .filter((x) => x.s > 0)
-    .sort((a, b) => b.s - a.s)
+    .sort((a, b) =>
+      b.s - a.s ||
+      a.ex.name.length - b.ex.name.length ||
+      a.ex.name.toLowerCase().localeCompare(b.ex.name.toLowerCase()),
+    )
     .map((x) => x.ex)
 }

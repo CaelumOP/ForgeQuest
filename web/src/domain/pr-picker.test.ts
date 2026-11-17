@@ -36,6 +36,14 @@ describe('pr-picker', () => {
     expect([...picked]).toEqual([4])
   })
 
+  it('does not award a PR for weighted lifts when previous best is 0 kg', () => {
+    const sets = [
+      { id: 1, exerciseId: 'goblet_squat', block: 'Main', done: true, reps: 8, seconds: null, weightKg: 15 },
+    ]
+    const prev = new Map([['goblet_squat', 0]])
+    expect([...pickPrs(sets, () => 'WEIGHTED', prev)]).toEqual([])
+  })
+
   it('isExtraBlock detects warm-up and cool-down case-insensitively', () => {
     expect(isExtraBlock('Warm-up')).toBe(true)
     expect(isExtraBlock('COOL-DOWN')).toBe(true)

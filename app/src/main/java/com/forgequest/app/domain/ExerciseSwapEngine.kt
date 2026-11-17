@@ -44,18 +44,19 @@ enum class Equipment(
     // Upper cables & machines
     CABLE_MACHINE("Cable machine", "جهاز كابل", EquipmentGroup.UPPER_MACHINES),
     LAT_PULLDOWN("Lat pulldown", "سحب علوي", EquipmentGroup.UPPER_MACHINES),
-    SEATED_ROW_MACHINE("Seated row", "تجديف جالس", EquipmentGroup.UPPER_MACHINES),
+    SEATED_ROW_MACHINE("Seated row machine", "جهاز تجديف جالس", EquipmentGroup.UPPER_MACHINES),
     SMITH_MACHINE("Smith machine", "جهاز سميث", EquipmentGroup.UPPER_MACHINES),
-    CHEST_PRESS_MACHINE("Chest press", "جهاز صدر", EquipmentGroup.UPPER_MACHINES),
-    SHOULDER_PRESS_MACHINE("Shoulder press", "جهاز أكتاف", EquipmentGroup.UPPER_MACHINES),
+    CHEST_PRESS_MACHINE("Chest press machine", "جهاز ضغط صدر", EquipmentGroup.UPPER_MACHINES),
+    SHOULDER_PRESS_MACHINE("Shoulder press machine", "جهاز ضغط أكتاف", EquipmentGroup.UPPER_MACHINES),
     PEC_DECK("Pec deck", "جهاز تفتيح", EquipmentGroup.UPPER_MACHINES),
-    PREACHER_CURL_MACHINE("Preacher curl", "جهاز بايسبس", EquipmentGroup.UPPER_MACHINES),
+    PREACHER_CURL_MACHINE("Preacher curl machine", "جهاز بايسبس", EquipmentGroup.UPPER_MACHINES),
+    MACHINE("Machine", "جهاز", EquipmentGroup.UPPER_MACHINES),
 
     // Lower machines
-    LEG_PRESS("Leg press", "دفع أرجل", EquipmentGroup.LOWER_MACHINES),
-    HACK_SQUAT("Hack squat", "هاك سكوات", EquipmentGroup.LOWER_MACHINES),
-    LEG_EXTENSION("Leg extension", "مد أرجل", EquipmentGroup.LOWER_MACHINES),
-    LEG_CURL("Leg curl", "ثني أرجل", EquipmentGroup.LOWER_MACHINES),
+    LEG_PRESS("Leg press machine", "جهاز دفع أرجل", EquipmentGroup.LOWER_MACHINES),
+    HACK_SQUAT("Hack squat machine", "جهاز هاك سكوات", EquipmentGroup.LOWER_MACHINES),
+    LEG_EXTENSION("Leg extension machine", "جهاز مد أرجل", EquipmentGroup.LOWER_MACHINES),
+    LEG_CURL("Leg curl machine", "جهاز ثني أرجل", EquipmentGroup.LOWER_MACHINES),
     CALF_MACHINE("Calf machine", "جهاز بطة", EquipmentGroup.LOWER_MACHINES),
 
     // Legacy grouped values preserved for old DataStore/backup decoding; never shown in pickers.
@@ -640,7 +641,8 @@ object ExerciseSwapEngine {
             "leg_extension" in lower || "leg extension" in lower -> Equipment.LEG_EXTENSION
             "leg_curl" in lower || "leg curl" in lower -> Equipment.LEG_CURL
             "calf" in lower && ("machine" in lower || "standing_calf" in lower || "seated_calf" in lower) -> Equipment.CALF_MACHINE
-            "cable" in lower || "machine" in lower || "pushdown" in lower -> Equipment.CABLE_MACHINE
+            "cable" in lower || "pushdown" in lower -> Equipment.CABLE_MACHINE
+            "machine" in lower -> Equipment.MACHINE
             "barbell" in lower || "bench_press" in lower || "back_squat" in lower || "deadlift" in lower -> Equipment.BARBELL
             "kb_" in lower || "kettlebell" in lower -> Equipment.KETTLEBELL
             "db_" in lower || "dumbbell" in lower || "curl" in lower || "lateral" in lower -> Equipment.DUMBBELLS

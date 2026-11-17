@@ -30,6 +30,11 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
         .map { d -> pickAvatarPhoto(d?.view?.me?.photoUrl, null) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /** Friends username/display name for the Home avatar initials fallback when Settings name is blank. */
+    val friendsName: StateFlow<String?> = app.friends.state
+        .map { d -> d?.view?.me?.shownName?.takeIf { it.isNotBlank() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     init {
         // Load the food list quietly, so the first food search isn't empty while it loads.
         viewModelScope.launch { delay(1500); app.catalog.warm() }

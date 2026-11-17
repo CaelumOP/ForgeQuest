@@ -416,8 +416,9 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     unlockAudio()
     const done = !set.done
     const doneAt = done ? Date.now() : null
+    const effort = done ? set.effort : ''
     setEffortSetId(done ? (set.id ?? null) : null)
-    const withTick = setsRef.current.map((s) => (s.id === set.id ? { ...set, done, doneAt } : s))
+    const withTick = setsRef.current.map((s) => (s.id === set.id ? { ...set, done, doneAt, effort } : s))
     const picked = pickPrs(withTick.filter((s) => countsForPR(s)), (id) => exercises.get(id)?.kind ?? 'REPS', best)
     const freshPr = done && countsForPR(set) && set.id != null && picked.has(set.id) && !prBuzzedRef.current.has(set.exerciseId)
     if (!done) haptics.tick()
@@ -429,7 +430,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       setNewBestId(set.id!)
       window.setTimeout(() => setNewBestId((cur) => (cur === set.id ? null : cur)), 1400)
     } else haptics.check()
-    save({ ...set, done, doneAt })
+    save({ ...set, done, doneAt, effort })
     if (done) carryForward(set)
     if (done && doneAt != null) startRestFor(set, doneAt)
     else if (!done) setRestSaved(null)

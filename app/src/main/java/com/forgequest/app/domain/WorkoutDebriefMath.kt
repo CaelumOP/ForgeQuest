@@ -245,8 +245,10 @@ object WorkoutDebriefMath {
     private fun wins(input: Input, exs: List<Ex>, headline: Headline): List<Win> {
         val score = input.score
         val candidates = sequence {
-            // 1. Records: weight > reps > hold.
-            exs.filter { it.pr != null }.sortedBy { it.pr!!.ordinal }.forEach { x ->
+            // 1. Records: weight > reps > hold, breaking ties by highest best-set score (e1RM for weighted lifts).
+            exs.filter { it.pr != null }
+                .sortedWith(compareBy<Ex>({ it.pr!!.ordinal }, { -it.now.best }))
+                .forEach { x ->
                 val top = x.working.filter { it.isPr }.ifEmpty { x.working }
                     .maxBy { Records.score(x.e.kind, it.reps, it.seconds, it.weightKg, x.id) }
                 yield(Win.Pr(x.id, x.pr!!, top.weightKg?.takeIf { it > 0f }, top.reps, top.seconds))

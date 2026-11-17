@@ -126,6 +126,7 @@ fun HomeScreen(nav: NavHostController) {
     val vm = appViewModel { HomeViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val profilePhoto by vm.profilePhoto.collectAsState()
+    val friendsName by vm.friendsName.collectAsState()
     val open by vm.openSession.collectAsState()
     val c = Fit.colors
     val scope = rememberCoroutineScope()
@@ -275,6 +276,7 @@ fun HomeScreen(nav: NavHostController) {
             Box(Modifier.fillMaxWidth()) {
                 Header(
                     s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROFILE) }, photoUrl = profilePhoto,
+                    avatarName = pickAvatarName(s.settings.name, friendsName),
                     status = homeStatus(
                         hasOpen = open != null, noPlan = today == null, isRest = today?.day?.isRest == true,
                         done = s.workoutDoneToday, excused = s.excusedToday != null,
@@ -423,7 +425,7 @@ private fun statusText(status: HomeStatus, dayTitle: String, s: ProgressSnapshot
 }
 
 @Composable
-private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, photoUrl: String?, status: HomeStatus, dayTitle: String) {
+private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, photoUrl: String?, avatarName: String, status: HomeStatus, dayTitle: String) {
     val c = Fit.colors
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
@@ -454,7 +456,7 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
         }
         // The avatar is the way into Profile and settings; the rank letter rides on it as a small badge.
         com.forgequest.app.ui.components.CoachMarkBox("coach_profile", R.string.home41_profile_hint_t, R.string.home41_profile_hint_b, below = true) {
-            ProfileAvatar(s.settings.name, photoUrl, if (showRank) s.level.rank.mark(s.level.level) else null, onRankClick)
+            ProfileAvatar(avatarName, photoUrl, if (showRank) s.level.rank.mark(s.level.level) else null, onRankClick)
         }
     }
 }

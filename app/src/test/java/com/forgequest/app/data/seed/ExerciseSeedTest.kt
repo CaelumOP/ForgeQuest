@@ -97,6 +97,9 @@ class ExerciseSeedTest {
         val ohpHits = ExerciseSearch.filter(ExerciseCatalog.all, "OHP")
         assertTrue(ohpHits.any { it.id == "overhead_press" })
         assertFalse(ExerciseSearch.matches(benchEn, "zzzz_no_match"))
+
+        val benchHits = ExerciseSearch.filter(ExerciseCatalog.all.sortedBy { it.name }, "bench")
+        assertEquals("bench_press", benchHits.first().id)
     }
 
     @Test

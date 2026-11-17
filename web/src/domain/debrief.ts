@@ -202,8 +202,8 @@ function pickHeadline(input: DebriefInput, exs: Ex[], lowRecovery: boolean): Hea
 function wins(input: DebriefInput, exs: Ex[], headline: Headline): Win[] {
   const score = input.score
   const candidates: Win[] = []
-  // 1. Records: weight > reps > hold.
-  for (const x of exs.filter((x) => x.pr != null).sort((a, b) => PR_ORDER[a.pr!] - PR_ORDER[b.pr!])) {
+  // 1. Records: weight > reps > hold, breaking ties by highest best-set score (e1RM for weighted lifts).
+  for (const x of exs.filter((x) => x.pr != null).sort((a, b) => PR_ORDER[a.pr!] - PR_ORDER[b.pr!] || b.now.best - a.now.best)) {
     const pool = x.working.filter((s) => s.isPr)
     let top = (pool.length ? pool : x.working)[0]
     for (const s of pool.length ? pool : x.working) {
