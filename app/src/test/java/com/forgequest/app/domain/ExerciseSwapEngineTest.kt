@@ -69,10 +69,13 @@ class ExerciseSwapEngineTest {
     fun everyCatalogExerciseHasAnArabicNameAndASwapProfile() {
         val ids = ExerciseCatalog.all.map { it.id }
         assertEquals("duplicate ids", ids.size, ids.toSet().size)
-        ids.forEach {
-            assertTrue("no Arabic name: $it", it in com.forgequest.app.data.seed.ExerciseNamesAr.byId)
-            assertTrue("no swap profile: $it", it in ExerciseSwapEngine.catalogProfiles)
-            assertTrue("custom_ prefix: $it", !it.startsWith("custom_"))
+        ExerciseCatalog.all.forEach { ex ->
+            assertTrue("no Arabic name: ${ex.id}", ex.id in com.forgequest.app.data.seed.ExerciseNamesAr.byId)
+            val profile = ExerciseSwapEngine.profileFor(ex)
+            if (ex.id !in ExerciseSwapEngine.catalogProfiles && ex.pattern.isNotBlank()) {
+                assertEquals("pattern mismatch: ${ex.id}", ex.pattern, profile.pattern.name)
+            }
+            assertTrue("custom_ prefix: ${ex.id}", !ex.id.startsWith("custom_"))
         }
         ExerciseSwapEngine.catalogProfiles.forEach { (id, profile) ->
             profile.preferredSwaps.forEach { assertTrue("$id swaps to unknown $it", it in ids) }

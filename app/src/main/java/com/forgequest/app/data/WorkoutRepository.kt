@@ -21,13 +21,22 @@ import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.PrPicker
 import com.forgequest.app.domain.Progression
+import com.forgequest.app.domain.ProgressionMode
+import com.forgequest.app.domain.PlanShare
 import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
+import com.forgequest.app.domain.Rotation
+import com.forgequest.app.domain.ScheduleMode
+import com.forgequest.app.domain.SetType
+import com.forgequest.app.domain.SupersetRules
+import com.forgequest.app.domain.WarmupRamp
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.StreakCalculator
 import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.domain.WorkoutScore
+import com.forgequest.app.domain.countsForPR
+import com.forgequest.app.domain.countsForScore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -97,12 +106,27 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 if (existing.custom) continue
                 val ar = com.forgequest.app.data.seed.ExerciseNamesAr.byId[builtIn.id]
                 val wantedName = if (arabic && ar != null) ar else builtIn.name
-                val nameNeedsUpdate = existing.name != wantedName && (existing.name == ar || existing.name == builtIn.name || existing.name == com.forgequest.app.data.seed.ExerciseNamesAr.previous[builtIn.id])
+                val prevAr = com.forgequest.app.data.seed.ExerciseNamesAr.previousAll[builtIn.id].orEmpty()
+                val recognizedName = existing.name == ar || existing.name == builtIn.name || existing.name in prevAr
+                val nameNeedsUpdate = existing.name != wantedName && recognizedName
                 val videoNeedsUpdate = existing.videoUrl == null && builtIn.videoUrl != null
-                if (nameNeedsUpdate || videoNeedsUpdate) {
+                val newEquipment = if (existing.equipment.isBlank() && builtIn.equipment.isNotBlank()) builtIn.equipment else existing.equipment
+                val newPattern = if (existing.pattern.isBlank() && builtIn.pattern.isNotBlank()) builtIn.pattern else existing.pattern
+                val newAliases = if (existing.aliases.isBlank() && builtIn.aliases.isNotBlank()) builtIn.aliases else existing.aliases
+                val newMediaKey = if (existing.mediaKey.isBlank() && builtIn.mediaKey.isNotBlank()) builtIn.mediaKey else existing.mediaKey
+                val metadataNeedsUpdate =
+                    newEquipment != existing.equipment ||
+                        newPattern != existing.pattern ||
+                        newAliases != existing.aliases ||
+                        newMediaKey != existing.mediaKey
+                if (nameNeedsUpdate || videoNeedsUpdate || metadataNeedsUpdate) {
                     toUpsert += existing.copy(
                         name = if (nameNeedsUpdate) wantedName else existing.name,
                         videoUrl = if (videoNeedsUpdate) builtIn.videoUrl else existing.videoUrl,
+                        equipment = newEquipment,
+                        pattern = newPattern,
+                        aliases = newAliases,
+                        mediaKey = newMediaKey,
                     )
                 }
             }
@@ -136,7 +160,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     }
 
     /** Saves [draft] as the active plan, creating custom exercises for ids the library doesn't know. */
-    suspend fun applyPlan(draft: PlanDraft, source: String): Long = db.withTransaction {
+    suspend fun applyPlan(draft: PlanDraft, source: String, scheduleMode: String = ScheduleMode.WEEKDAY.name): Long = db.withTransaction {
         for (day in draft.days) for (item in day.items) {
             val existing = exercises.byId(item.exerciseId)
             if (existing == null) {
@@ -165,7 +189,15 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         }
         plans.deactivateAll()
         val planId = plans.insertPlan(
-            PlanEntity(name = draft.name, description = draft.description, source = source, active = true, createdAt = System.currentTimeMillis())
+            PlanEntity(
+                name = draft.name,
+                description = draft.description,
+                source = source,
+                active = true,
+                createdAt = System.currentTimeMillis(),
+                scheduleMode = ScheduleMode.parse(scheduleMode).name,
+                rotationCursor = 0,
+            )
         )
         for (dow in 1..7) {
             val day = draft.days.firstOrNull { it.dayOfWeek == dow }
@@ -178,15 +210,127 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                     note = day?.note ?: "",
                 )
             )
-            day?.items?.mapIndexed { index, item ->
-                PlanItemEntity(
-                    dayId = dayId, position = index, exerciseId = item.exerciseId, block = item.block, circuit = item.circuit,
-                    sets = item.sets.coerceIn(1, 10), repsMin = item.repsMin, repsMax = item.repsMax, seconds = item.seconds,
-                    weightKg = item.weightKg, restSeconds = item.restSeconds, note = item.note,
-                )
-            }?.let { plans.insertItems(it) }
+            if (day != null) {
+                val items = day.items.mapIndexed { index, item ->
+                    val ex = exercises.byId(item.exerciseId)
+                    val autoWarmup = !WorkoutScore.isExtra(item.block) && WarmupRamp.isHeavyBarbellCompound(ex)
+                    PlanItemEntity(
+                        dayId = dayId, position = index, exerciseId = item.exerciseId, block = item.block, circuit = item.circuit,
+                        sets = item.sets.coerceIn(1, 10), repsMin = item.repsMin, repsMax = item.repsMax, seconds = item.seconds,
+                        weightKg = item.weightKg, restSeconds = item.restSeconds, note = item.note,
+                        autoWarmup = autoWarmup,
+                    )
+                }
+                plans.insertItems(items)
+            }
         }
         planId
+    }
+
+    /** Safely imports a validated shared plan as a new active plan without overwriting any existing plans. */
+    suspend fun importSharedPlan(shared: PlanShare.SharedPlan): Long = db.withTransaction {
+        val existingNames = mutableListOf<String>()
+        db.openHelper.writableDatabase.query("SELECT name FROM plans").use { c ->
+            while (c.moveToNext()) existingNames += c.getString(0)
+        }
+        val safeName = PlanShare.safeImportName(shared.name, existingNames)
+        for (day in shared.days) for (item in day.items) {
+            val existing = exercises.byId(item.exerciseId)
+            if (existing == null) {
+                val kind = runCatching { ExerciseKind.valueOf(item.kind ?: "") }.getOrElse {
+                    if (item.seconds != null) ExerciseKind.HOLD else if (item.weightKg != null) ExerciseKind.WEIGHTED else ExerciseKind.REPS
+                }
+                val muscles = item.muscles.mapNotNull { m -> runCatching { Muscle.valueOf(m) }.getOrNull() }
+                exercises.upsert(
+                    ExerciseEntity(
+                        id = item.exerciseId,
+                        name = item.name ?: item.exerciseId.replace('_', ' ').replaceFirstChar { it.uppercase() },
+                        kind = kind,
+                        primary = muscles.take(2).ifEmpty { listOf(Muscle.ABS) },
+                        secondary = muscles.drop(2),
+                        videoUrl = item.videoUrl,
+                        custom = true,
+                    )
+                )
+            }
+        }
+        plans.deactivateAll()
+        val planId = plans.insertPlan(
+            PlanEntity(
+                name = safeName,
+                description = shared.description,
+                source = "manual",
+                active = true,
+                createdAt = System.currentTimeMillis(),
+                scheduleMode = ScheduleMode.parse(shared.scheduleMode).name,
+                rotationCursor = 0,
+            )
+        )
+        for (dow in 1..7) {
+            val day = shared.days.firstOrNull { it.dayOfWeek == dow }
+            val dayId = plans.insertDay(
+                PlanDayEntity(
+                    planId = planId,
+                    dayOfWeek = dow,
+                    title = day?.title ?: AppText.get(R.string.today_rest_day),
+                    isRest = day == null || day.isRest || day.items.isEmpty(),
+                    note = day?.note ?: "",
+                )
+            )
+            if (day != null && day.items.isNotEmpty()) {
+                val raw = day.items.mapIndexed { index, item ->
+                    PlanItemEntity(
+                        dayId = dayId,
+                        position = index,
+                        exerciseId = item.exerciseId,
+                        block = item.block,
+                        circuit = item.circuit,
+                        sets = item.sets.coerceIn(1, 10),
+                        repsMin = item.repsMin,
+                        repsMax = item.repsMax,
+                        seconds = item.seconds,
+                        weightKg = item.weightKg,
+                        restSeconds = item.restSeconds,
+                        note = item.note,
+                        supersetGroup = item.supersetGroup,
+                        autoWarmup = item.autoWarmup,
+                        progressionMode = ProgressionMode.parse(item.progressionMode).name,
+                    )
+                }
+                plans.insertItems(SupersetRules.normalizeDaySupersets(raw))
+            }
+        }
+        planId
+    }
+
+    /** Switches a plan between WEEKDAY and ROTATION scheduling; resets/clamps rotationCursor safely. */
+    suspend fun setPlanScheduleMode(planId: Long, mode: ScheduleMode) = db.withTransaction {
+        val plan = plans.byId(planId) ?: return@withTransaction
+        val queueSize = plans.days(planId).count { !it.isRest && plans.items(it.id).isNotEmpty() }
+        val nextCursor = if (mode == ScheduleMode.ROTATION) {
+            if (ScheduleMode.parse(plan.scheduleMode) == ScheduleMode.ROTATION) Rotation.cursorAfterPlanEdit(plan.rotationCursor, queueSize) else 0
+        } else {
+            plan.rotationCursor
+        }
+        updatePlanScheduleColumns(planId, mode.name, nextCursor, plan.active)
+    }
+
+    private suspend fun updatePlanScheduleColumns(planId: Long, scheduleMode: String, rotationCursor: Int, isActive: Boolean) {
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE plans SET scheduleMode = ?, rotationCursor = ? WHERE id = ?",
+            arrayOf<Any>(scheduleMode, rotationCursor, planId),
+        )
+        if (isActive) plans.activate(planId) else db.invalidationTracker.refreshVersionsAsync()
+    }
+
+    private suspend fun clampRotationCursorForPlan(planId: Long) {
+        val plan = plans.byId(planId) ?: return
+        if (ScheduleMode.parse(plan.scheduleMode) != ScheduleMode.ROTATION) return
+        val queueSize = plans.days(planId).count { !it.isRest && plans.items(it.id).isNotEmpty() }
+        val next = Rotation.cursorAfterPlanEdit(plan.rotationCursor, queueSize)
+        if (next != plan.rotationCursor) {
+            updatePlanScheduleColumns(planId, plan.scheduleMode, next, plan.active)
+        }
     }
 
     /** Every plan ever applied, newest first. Switching back is instant; nothing is lost on Apply. */
@@ -214,7 +358,12 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val target = index + delta
         if (index < 0 || target !in items.indices) return@withTransaction
         val reordered = items.toMutableList().also { it.add(target, it.removeAt(index)) }
-        reordered.forEachIndexed { i, it -> if (it.position != i) plans.updateItem(it.copy(position = i)) }
+            .mapIndexed { i, it -> it.copy(position = i) }
+        val normalized = SupersetRules.normalizeDaySupersets(reordered)
+        normalized.forEachIndexed { i, updated ->
+            val orig = items.firstOrNull { it.id == updated.id }
+            if (orig != updated) plans.updateItem(updated)
+        }
     }
 
     /** Swaps two weekdays of the active plan, e.g. to make the week start on Saturday. */
@@ -229,10 +378,52 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         plans.updateDay(a.copy(dayOfWeek = dayB))
     }
 
-    suspend fun updatePlanItem(item: PlanItemEntity) = plans.updateItem(item)
-    suspend fun deletePlanItem(id: Long) = plans.deleteItem(id)
-    suspend fun restorePlanItem(item: PlanItemEntity) = plans.restoreItem(item)
-    suspend fun updatePlanDay(day: PlanDayEntity) = plans.updateDay(day)
+    suspend fun updatePlanItem(item: PlanItemEntity) = db.withTransaction {
+        plans.updateItem(item)
+        normalizeDaySupersetsInDb(item.dayId)
+    }
+
+    /** Pairs or unpairs [itemId] with the next exercise on the same day when both have the same working-set count. */
+    suspend fun setPairWithNext(dayId: Long, itemId: Long, pair: Boolean) = db.withTransaction {
+        val items = plans.items(dayId).sortedBy { it.position }
+        val index = items.indexOfFirst { it.id == itemId }
+        if (index < 0) return@withTransaction
+        val updated = SupersetRules.setPairWithNext(items, index, pair)
+        updated.forEachIndexed { idx, next ->
+            if (items[idx] != next) plans.updateItem(next)
+        }
+    }
+
+    private suspend fun normalizeDaySupersetsInDb(dayId: Long) {
+        val items = plans.items(dayId).sortedBy { it.position }
+        val normalized = SupersetRules.normalizeDaySupersets(items)
+        normalized.forEachIndexed { idx, next ->
+            if (items[idx] != next) plans.updateItem(next)
+        }
+    }
+
+    suspend fun deletePlanItem(id: Long) = db.withTransaction {
+        var dayId: Long? = null
+        db.openHelper.writableDatabase.query("SELECT dayId FROM plan_items WHERE id = ?", arrayOf<Any>(id)).use { c ->
+            if (c.moveToFirst()) dayId = c.getLong(0)
+        }
+        plans.deleteItem(id)
+        dayId?.let { did ->
+            normalizeDaySupersetsInDb(did)
+            plans.day(did)?.let { clampRotationCursorForPlan(it.planId) }
+        }
+    }
+
+    suspend fun restorePlanItem(item: PlanItemEntity) = db.withTransaction {
+        plans.restoreItem(item)
+        normalizeDaySupersetsInDb(item.dayId)
+        plans.day(item.dayId)?.let { clampRotationCursorForPlan(it.planId) }
+    }
+
+    suspend fun updatePlanDay(day: PlanDayEntity) = db.withTransaction {
+        plans.updateDay(day)
+        clampRotationCursorForPlan(day.planId)
+    }
 
     /** Swaps an exercise on a plan day while translating its set/rep/hold/weight prescription biomechanically. */
     suspend fun swapPlanItem(item: PlanItemEntity, newExerciseId: String) = db.withTransaction {
@@ -255,7 +446,10 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             )
         )
         val day = plans.day(dayId)
-        if (day != null && day.isRest) plans.updateDay(day.copy(isRest = false, title = if (day.title == "Rest day" || day.title == AppText.get(R.string.today_rest_day)) AppText.get(R.string.plan_workout) else day.title))
+        if (day != null) {
+            if (day.isRest) plans.updateDay(day.copy(isRest = false, title = if (day.title == "Rest day" || day.title == AppText.get(R.string.today_rest_day)) AppText.get(R.string.plan_workout) else day.title))
+            clampRotationCursorForPlan(day.planId)
+        }
     }
 
     suspend fun addCustomExercise(name: String, kind: ExerciseKind, primary: List<Muscle>, videoUrl: String?): String {
@@ -338,15 +532,18 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val deload = createdAt != null && item != null && !WorkoutScore.isExtra(item.block) && Progression.isDeloadWeek(createdAt, Dates.today())
         val input = Progression.inputs(item, ex?.id, usable)
         val s = settings?.current()
+        val unit = s?.weightUnitFor(ex?.unitOverride.orEmpty()) ?: WeightUnit.KG
         return Progression.next(
             kind = ex?.kind ?: ExerciseKind.REPS,
             target = input.target,
             last = input.last,
             previous = input.previous,
-            unit = s?.weightUnit ?: WeightUnit.KG,
+            unit = unit,
             lowReadiness = s?.healthEnabled == true && lowReadinessToday(),
             warmup = input.warmup,
             deload = deload,
+            mode = input.mode,
+            lowerBody = Progression.isLowerBody(ex?.primary.orEmpty()),
         )
     }
 
@@ -363,6 +560,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     /**
      * Prefills today's sets from the last two finished sessions of [ex] using [Progression]: load and reps
      * only go up after clean sessions, never on a low-readiness day, and in the person's own unit.
+     * When [item.autoWarmup] is enabled on a weighted move, prepends 2–3 WARMUP ramp sets before Set 1.
      */
     private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
         val kind = ex?.kind ?: ExerciseKind.REPS
@@ -370,21 +568,48 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val label = targetLabel(kind, item).let { base ->
             if (result.holdCeilingReached) listOf(base, AppText.get(R.string.rx_hold_ceiling)).filter { it.isNotBlank() }.joinToString(" · ") else base
         }
-        return result.sets.mapIndexed { i, p ->
+        val s = settings?.current()
+        val unit = s?.weightUnitFor(ex?.unitOverride.orEmpty()) ?: WeightUnit.KG
+        val barWeightKg = s?.barWeightKg ?: 20f
+        val firstWorkingKg = result.sets.firstOrNull()?.weightKg ?: 0f
+        val ramp = if (item != null && item.autoWarmup && !WorkoutScore.isExtra(item.block) && kind == ExerciseKind.WEIGHTED) {
+            WarmupRamp.generate(firstWorkingKg, unit, barWeightKg)
+        } else {
+            emptyList()
+        }
+        val warmupEntities = ramp.mapIndexed { idx, r ->
             SetEntity(
                 sessionId = sessionId,
                 exerciseId = ex?.id ?: item?.exerciseId ?: "",
                 itemPosition = position,
                 block = item?.block ?: "Main",
                 circuit = item?.circuit ?: false,
-                setIndex = i,
+                setIndex = idx,
+                targetLabel = "",
+                reps = r.reps,
+                seconds = null,
+                weightKg = r.weightKg,
+                restSeconds = 0,
+                setType = SetType.WARMUP.name,
+            )
+        }
+        val workEntities = result.sets.mapIndexed { i, p ->
+            SetEntity(
+                sessionId = sessionId,
+                exerciseId = ex?.id ?: item?.exerciseId ?: "",
+                itemPosition = position,
+                block = item?.block ?: "Main",
+                circuit = item?.circuit ?: false,
+                setIndex = ramp.size + i,
                 targetLabel = label,
                 reps = p.reps,
                 seconds = p.seconds,
                 weightKg = p.weightKg,
                 restSeconds = item?.restSeconds ?: 90,
+                setType = SetType.WORKING.name,
             )
         }
+        return warmupEntities + workEntities
     }
 
     /** Today's Fitbit recovery says ease off or recover (below 50); no data means train as normal. */
@@ -533,6 +758,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
      */
     suspend fun finishSession(sessionId: Long, tickAll: Boolean = false): FinishResult = db.withTransaction {
         val session = sessions.byId(sessionId) ?: return@withTransaction FinishResult("", 0, emptyList(), 0)
+        val wasAlreadyFinished = session.finishedAt != null
         // Sets ticked only by "tick all" are not real work, so they can't be records.
         val unticked = if (tickAll) sessions.sets(sessionId).filter { !it.done }.map { it.id }.toSet() else emptySet()
         if (tickAll) {
@@ -552,7 +778,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             val ex = exercises.byId(exerciseId) ?: continue
             kinds[exerciseId] = ex.kind
             sessions.recentDoneSetsAll(exerciseId)
-                .filter { it.sessionId in earlier }
+                .filter { it.sessionId in earlier && countsForPR(it) }
                 .maxOfOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
                 ?.let { previousBest[exerciseId] = it }
         }
@@ -567,7 +793,20 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val now = System.currentTimeMillis()
         val end = com.forgequest.app.domain.WorkoutEnd.endTime(now, sessions.lastDoneAt(sessionId))
         sessions.update(session.copy(finishedAt = end, plannedSets = plannedSets))
-        val workDone = done.count { !WorkoutScore.isExtra(it.block) }
+        // Advance ROTATION cursor atomically once when a qualifying (non-quick, previously unfinished) workout finishes.
+        if (!wasAlreadyFinished && session.planDayId != null) {
+            val planDay = plans.day(session.planDayId)
+            val plan = planDay?.let { plans.byId(it.planId) }
+            if (plan != null) {
+                val queueIds = plans.days(plan.id).filter { !it.isRest && plans.items(it.id).isNotEmpty() }
+                    .sortedBy { it.dayOfWeek }.map { it.id }
+                val nextCursor = Rotation.cursorOnFinish(plan, queueIds, session, wasAlreadyFinished = false)
+                if (nextCursor != null) {
+                    updatePlanScheduleColumns(plan.id, plan.scheduleMode, nextCursor, plan.active)
+                }
+            }
+        }
+        val workDone = done.count { countsForScore(it) }
         val xp = com.forgequest.app.domain.Xp.run { total(1, setsForXp(done.size, session.epochDay), prNames.size, 0) }
         FinishResult(session.title, workDone, prNames, xp, endedAt = end, clipped = end != now)
     }
@@ -616,8 +855,9 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     private suspend fun recomputeRecords(exerciseId: String) {
         val ex = exercises.byId(exerciseId) ?: return
         val all = sessions.recentDoneSetsAll(exerciseId)
+        val eligible = all.filter { countsForPR(it) && it.exerciseId !in ExerciseCatalog.STRETCH_IDS }
         val sessionById = sessions.finished().associateBy { it.id }
-        val ordered = all.groupBy { it.sessionId }.entries
+        val ordered = eligible.groupBy { it.sessionId }.entries
             .sortedWith(
                 compareBy<Map.Entry<Long, List<SetEntity>>> { sessionById[it.key]?.epochDay ?: 0L }
                     .thenBy { sessionById[it.key]?.startedAt ?: 0L }

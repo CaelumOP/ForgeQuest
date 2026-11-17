@@ -24,6 +24,18 @@ describe('pr-picker', () => {
     expect([...picked]).toEqual([2])
   })
 
+  it('never awards PRs to WARMUP, DROPSET, or RESTPAUSE sets while FAILURE sets still count', () => {
+    const sets = [
+      { id: 1, exerciseId: 'bench_press', block: 'Main', setType: 'WARMUP', done: true, reps: 5, seconds: null, weightKg: 120 },
+      { id: 2, exerciseId: 'bench_press', block: 'Main', setType: 'DROPSET', done: true, reps: 10, seconds: null, weightKg: 110 },
+      { id: 3, exerciseId: 'bench_press', block: 'Main', setType: 'RESTPAUSE', done: true, reps: 3, seconds: null, weightKg: 105 },
+      { id: 4, exerciseId: 'bench_press', block: 'Main', setType: 'FAILURE', done: true, reps: 5, seconds: null, weightKg: 100 },
+    ]
+    const prev = new Map([['bench_press', 90]])
+    const picked = pickPrs(sets, () => 'WEIGHTED', prev)
+    expect([...picked]).toEqual([4])
+  })
+
   it('isExtraBlock detects warm-up and cool-down case-insensitively', () => {
     expect(isExtraBlock('Warm-up')).toBe(true)
     expect(isExtraBlock('COOL-DOWN')).toBe(true)

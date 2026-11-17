@@ -576,7 +576,13 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
   if (known) return known
   const lower = (ex.id + ' ' + ex.name).toLowerCase()
   const has = (...parts: string[]) => parts.some((p) => lower.includes(p))
+  const rawRequires = (ex.equipment ?? '')
+    .split(',')
+    .map((t) => t.trim().toUpperCase())
+    .filter((t): t is Equipment => t.length > 0 && t in EQUIPMENT_META)
+  const parsedRequires = rawRequires.length > 0 ? [...expandLegacyEquipment(rawRequires)] : []
   const eq: Equipment =
+    parsedRequires[0] ?? (
     has('smith') ? 'SMITH_MACHINE'
     : has('pulldown') && !has('straight') ? 'LAT_PULLDOWN'
     : has('seated') && has('row') ? 'SEATED_ROW_MACHINE'
@@ -600,9 +606,10 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     : has('bench', 'split') ? 'FLAT_BENCH'
     : has('row') ? 'SEATED_ROW_MACHINE'
     : ex.kind === 'WEIGHTED' ? 'DUMBBELLS'
-    : 'BODYWEIGHT'
+    : 'BODYWEIGHT')
   const main = ex.primary[0]
-  const pattern: MovementPattern =
+  const rawPattern = ex.pattern?.trim().toUpperCase()
+  const inferredPattern: MovementPattern =
     has('pike', 'handstand', 'overhead', 'shoulder_press') ? 'VERTICAL_PUSH'
     : has('incline') && has('push') ? 'HORIZONTAL_PUSH'
     : has('dip') ? 'DIP_PUSH'
@@ -642,7 +649,15 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     HIP_ADDUCTION: 'FRONTAL_ADDUCTION',
     MOBILITY: 'STRETCH',
   }
-  return { equipment: eq, pattern, angle: angle[pattern], preferredSwaps: [], requires: [eq] }
+  const pattern: MovementPattern =
+    rawPattern && rawPattern in angle ? (rawPattern as MovementPattern) : inferredPattern
+  return {
+    equipment: eq,
+    pattern,
+    angle: angle[pattern],
+    preferredSwaps: [],
+    requires: parsedRequires.length > 0 ? parsedRequires : [eq],
+  }
 }
 
 const SYNERGISTIC: ReadonlyArray<readonly [MovementPattern, MovementPattern]> = [

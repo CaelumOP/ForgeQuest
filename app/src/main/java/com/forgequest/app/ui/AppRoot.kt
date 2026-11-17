@@ -118,6 +118,7 @@ object Routes {
     const val PLAN_BUILDER = "plan_builder"
     const val SETTINGS = "settings"
     const val SETTINGS_GROUP = "settings/{id}"
+    const val CSV_IMPORT = "csv_import"
     fun settingsGroup(id: String) = "settings/$id"
     fun exercise(id: String, fromLive: Boolean = false) = "exercise/$id?fromLive=$fromLive"
     fun session(id: Long) = "session/$id"
@@ -274,6 +275,7 @@ private fun MainScaffold() {
                 composable(Routes.SETTINGS_GROUP, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     com.forgequest.app.ui.profile.SettingsScreen(nav, entry.arguments?.getString("id"))
                 }
+                composable(Routes.CSV_IMPORT) { com.forgequest.app.ui.profile.CsvImportScreen(nav) }
                 composable(Routes.LIBRARY) { ExerciseLibraryScreen(nav) }
                 composable(Routes.PROGRESS) { ProgressScreen(nav) }
                 composable(Routes.SESSION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->

@@ -616,7 +616,15 @@ object ExerciseSwapEngine {
     fun profileFor(ex: ExerciseEntity): BiomechanicalProfile {
         catalogProfiles[ex.id]?.let { return it }
         val lower = (ex.id + " " + ex.name).lowercase()
-        val eq = when {
+        val parsedRequires = ex.equipment.split(",")
+            .mapNotNull { token ->
+                token.trim().takeIf { it.isNotEmpty() }?.let { raw ->
+                    runCatching { Equipment.valueOf(raw.uppercase()) }.getOrNull()
+                }
+            }
+            .toSet()
+            .let(::expandLegacyEquipment)
+        val eq = parsedRequires.firstOrNull() ?: when {
             "smith" in lower -> Equipment.SMITH_MACHINE
             "pulldown" in lower && "straight" !in lower -> Equipment.LAT_PULLDOWN
             "seated" in lower && "row" in lower -> Equipment.SEATED_ROW_MACHINE
@@ -643,7 +651,10 @@ object ExerciseSwapEngine {
             else -> Equipment.BODYWEIGHT
         }
         val mainMuscle = ex.primary.firstOrNull()
-        val pattern = when {
+        val parsedPattern = ex.pattern.trim().takeIf { it.isNotEmpty() }?.let { raw ->
+            runCatching { MovementPattern.valueOf(raw.uppercase()) }.getOrNull()
+        }
+        val pattern = parsedPattern ?: when {
             "pike" in lower || "handstand" in lower || "overhead" in lower || "shoulder_press" in lower -> MovementPattern.VERTICAL_PUSH
             "incline" in lower && "push" in lower -> MovementPattern.HORIZONTAL_PUSH
             "dip" in lower -> MovementPattern.DIP_PUSH
@@ -684,7 +695,12 @@ object ExerciseSwapEngine {
             MovementPattern.HIP_ADDUCTION -> JointAngle.FRONTAL_ADDUCTION
             MovementPattern.MOBILITY -> JointAngle.STRETCH
         }
-        return BiomechanicalProfile(eq, pattern, angle)
+        return BiomechanicalProfile(
+            equipment = eq,
+            pattern = pattern,
+            angle = angle,
+            requires = if (parsedRequires.isNotEmpty()) parsedRequires else setOf(eq),
+        )
     }
 
     fun rankSubstitutes(

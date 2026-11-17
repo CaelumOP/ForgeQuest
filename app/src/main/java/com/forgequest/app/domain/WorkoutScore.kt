@@ -113,7 +113,7 @@ object WorkoutScore {
      * Either way the workout needs only two thirds of the planned sets. Warm-up sets count for nothing but a PR.
      */
     fun compute(work: List<Work>, plannedSets: Int?, lowReadiness: Boolean, firstEver: Boolean = false, afterBreak: Boolean = false): Result {
-        val working = work.map { w -> Work(w.exerciseId, w.kind, w.done.filterNot { isExtra(it.block) }, w.last.filterNot { isExtra(it.block) }) }
+        val working = work.map { w -> Work(w.exerciseId, w.kind, w.done.filter { countsForScore(it) }, w.last.filter { countsForScore(it) }) }
         val sets = working.flatMap { it.done }
         val pain = working.filter { w -> w.done.any { SetEffort.parse(it.effort) == SetEffort.PAIN } }.map { it.exerciseId }.toSet()
         val rough = lowReadiness || pain.isNotEmpty()
@@ -133,7 +133,7 @@ object WorkoutScore {
                 Trend.SAME -> { compared++; halves += 1 }
                 Trend.DOWN -> { compared++; halves += if (forgiven) 1 else 0 }
             }
-            val pr = if (work[i].done.any { it.isPr }) prKindOf(w.kind) else null
+            val pr = if (work[i].done.any { it.isPr && countsForPR(it) }) prKindOf(w.kind) else null
             ExerciseResult(w.exerciseId, t, forgiven, pr)
         }
         val ratio = if (effective == null) 1.0 else sets.size / effective.toDouble()
@@ -149,7 +149,7 @@ object WorkoutScore {
             compared == 0 -> 2
             else -> minOf(3, 2 * halves / compared)
         }
-        val prs = work.sumOf { w -> w.done.count { it.isPr } }
+        val prs = work.sumOf { w -> w.done.count { it.isPr && countsForPR(it) } }
         val total = 3 + completion + progress + if (prs > 0) 1 else 0
         return Result(total.coerceIn(4, 10), sets.size, planned, up, compared, prs, rough, firstEver, afterBreak, effective, exercises, lowReadiness)
     }

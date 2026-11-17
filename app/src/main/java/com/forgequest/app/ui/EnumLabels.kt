@@ -421,7 +421,8 @@ private val exerciseCueText: Map<String, Triple<Int, Int, Int>> = mapOf(
 )
 
 /** Two form cues and the common mistake for a built-in exercise, as string resources (explicit map: release builds shrink getIdentifier). Null for custom exercises. */
-fun exerciseCues(id: String): Triple<Int, Int, Int>? = exerciseCueText[id]
+fun exerciseCues(id: String): Triple<Int, Int, Int>? =
+    exerciseCueText[id] ?: com.forgequest.app.data.seed.ExerciseCues.addedById[id]
 
 /** A resolved insight sentence: a string resource, or a plurals resource when [plural] (quantity: the first Count slot). */
 data class InsightRes(val id: Int, val plural: Boolean)

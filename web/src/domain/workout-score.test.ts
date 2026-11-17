@@ -150,4 +150,17 @@ describe('scoresForSessions', () => {
     const r = scoresForSessions([sess(1, 100), sess(2, 102)], [row(1, 8), row(2, 6)], kinds, new Map([[7, 1]]), new Set([102]))
     expect(r.get(2)).toMatchObject({ rough: true, score: 8 })
   })
+
+  it('never counts WARMUP, DROPSET, or RESTPAUSE sets in workout score', () => {
+    const main = sets(3, 10, 50)
+    const nonCounted = [
+      { ...set(8, 25), setType: 'WARMUP' },
+      { ...set(12, 35, { isPr: true }), setType: 'DROPSET' },
+      { ...set(4, 50), setType: 'RESTPAUSE' },
+    ]
+    const withExtras = score([{ exerciseId: 'ex1', kind: 'WEIGHTED', done: [...nonCounted, ...main], last: sets(3, 8, 50) }, ...many(same, 3)], 12)
+    expect(withExtras.doneSets).toBe(12)
+    expect(withExtras.prs).toBe(0)
+    expect(withExtras.score).toBe(8)
+  })
 })

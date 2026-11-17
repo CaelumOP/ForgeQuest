@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db, putSession, putSet, type SetRow } from './db';
 import { FULL_BODY_BEGINNER } from './seed/starter-plans';
 import {
-  addExercise, applyPlan, finishSession, getActivePlan, getSets, moveSession, openSessionNow, seedLibrary,
-  startSession, updateSet, deleteSession, restoreSession, recentDoneSets, type PlanDayWithItems,
+  addExercise, applyPlan, finishSession, getActivePlan, getSets, importSharedPlan, moveSession,
+  openSessionNow, recomputeRecords, seedLibrary, setPairWithNext, startSession, updatePlanDay,
+  updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, type PlanDayWithItems,
 } from './workouts';
+import { exportSharedPlan, parseAndValidateSharedPlan } from '../domain/plan-share';
 
 const pause = () => new Promise((r) => setTimeout(r, 5));
 
@@ -37,7 +39,7 @@ describe('library and plans', () => {
     await seedLibrary();
     expect(await db.exercises.count()).toBe(n);
     await seedLibrary('ar');
-    expect((await db.exercises.get('burpee'))!.name).toBe('البيربي');
+    expect((await db.exercises.get('burpee'))!.name).toBe('بيربي');
     await seedLibrary('en');
     expect((await db.exercises.get('burpee'))!.name).toBe('Burpee');
   });
@@ -197,5 +199,165 @@ describe('live session', () => {
     await seedLibrary('en');
     expect((await getActivePlan())!.plan.name).toBe('Build muscle plan');
     expect((await db.sessions.get(sessId))!.title).toBe('Full body');
+  });
+});
+
+describe('WP4 plan41 rules (rotation, supersets, autoWarmup, linear/maintain, sharing)', () => {
+  async function seedRotationPlan() {
+    await applyPlan({
+      name: 'PPL Rotation',
+      description: 'Push Pull Legs',
+      days: [
+        {
+          dayOfWeek: 1, title: 'Push', isRest: false, note: '',
+          items: [
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'bench_press', block: 'Main', circuit: false, sets: 3, repsMin: 5, repsMax: 5, seconds: null, weightKg: 60, restSeconds: 120, note: '' },
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'db_bench_press', block: 'Main', circuit: false, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: 20, restSeconds: 90, note: '' },
+          ],
+        },
+        {
+          dayOfWeek: 3, title: 'Pull', isRest: false, note: '',
+          items: [
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'barbell_row', block: 'Main', circuit: false, sets: 3, repsMin: 8, repsMax: 10, seconds: null, weightKg: 60, restSeconds: 90, note: '' },
+          ],
+        },
+        {
+          dayOfWeek: 5, title: 'Legs', isRest: false, note: '',
+          items: [
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'back_squat', block: 'Main', circuit: false, sets: 3, repsMin: 5, repsMax: 5, seconds: null, weightKg: 100, restSeconds: 150, note: '' },
+          ],
+        },
+      ],
+    }, 'manual', 'ROTATION');
+  }
+
+  it('advances rotationCursor atomically once on finish, ignoring discard / quick / repeated finish / restore / edit', async () => {
+    await seedRotationPlan();
+    let plan = (await getActivePlan())!;
+    expect(plan.plan.scheduleMode).toBe('ROTATION');
+    expect(plan.plan.rotationCursor).toBe(0);
+
+    // 1. Discard open session -> cursor stays 0
+    const pushDay = plan.days.find((d) => d.day.title === 'Push')!;
+    const discardedId = await startSession(pushDay);
+    await deleteSession(discardedId);
+    expect((await getActivePlan())!.plan.rotationCursor).toBe(0);
+
+    // 2. Quick workout -> cursor stays 0
+    const quickId = await startSession(null);
+    await addExercise(quickId, 'burpee');
+    await finishSession(quickId, true);
+    expect((await getActivePlan())!.plan.rotationCursor).toBe(0);
+
+    // 3. Qualifying workout finishes -> cursor becomes 1 (Pull)
+    const s1 = await startSession(pushDay);
+    await finishSession(s1, true);
+    expect((await getActivePlan())!.plan.rotationCursor).toBe(1);
+
+    // 4. Repeated finish on already-finished session -> cursor stays 1
+    await finishSession(s1, true);
+    expect((await getActivePlan())!.plan.rotationCursor).toBe(1);
+
+    // 5. Restore deleted finished session -> cursor unchanged
+    const s1Row = (await db.sessions.get(s1))!;
+    const s1Sets = await getSets(s1);
+    await deleteSession(s1);
+    await restoreSession(s1Row, s1Sets);
+    expect((await getActivePlan())!.plan.rotationCursor).toBe(1);
+
+    // 6. Plan edit advancing cursor wrap: turn Legs into rest while cursor is 2 -> clamps/wraps back to 0
+    const s2 = await startSession((await getActivePlan())!.days.find((d) => d.day.title === 'Pull')!);
+    await finishSession(s2, true);
+    expect((await getActivePlan())!.plan.rotationCursor).toBe(2);
+    const legsDay = (await getActivePlan())!.days.find((d) => d.day.title === 'Legs')!.day;
+    await updatePlanDay({ ...legsDay, isRest: true });
+    plan = (await getActivePlan())!;
+    expect(plan.plan.rotationCursor).toBe(0);
+  });
+
+  it('auto-enables autoWarmup only on heavy barbell compounds and generates WARMUP sets before Set 1 that do not affect progression/PRs', async () => {
+    await seedRotationPlan();
+    const push = (await getActivePlan())!.days.find((d) => d.day.title === 'Push')!;
+    expect(push.items[0].autoWarmup).toBe(true); // bench_press
+    expect(push.items[1].autoWarmup).toBe(false); // db_bench_press
+
+    const sid = await startSession(push);
+    const sets = (await getSets(sid)).filter((s) => s.exerciseId === 'bench_press').sort((a, b) => a.setIndex - b.setIndex);
+    const warmups = sets.filter((s) => (s.setType ?? 'WORKING') === 'WARMUP');
+    const workings = sets.filter((s) => (s.setType ?? 'WORKING') === 'WORKING');
+    expect(warmups.map((s) => s.weightKg)).toEqual([30, 42.5, 50]); // 50/70/85% of 60 kg
+    expect(warmups[warmups.length - 1].setIndex).toBeLessThan(workings[0].setIndex);
+    expect(workings).toHaveLength(3);
+
+    // Complete warm-ups at heavier weight + drop/work sets, then check finish/recomputeRecords excludes warmups
+    await updateSet({ ...warmups[0], weightKg: 999, done: true, effort: 'PAIN' });
+    for (const w of workings) await updateSet({ ...w, reps: 5, weightKg: 60, done: true, effort: 'OK' });
+    const res = await finishSession(sid, false);
+    expect(res.doneSets).toBe(3); // only 3 working bench sets counted in Push after db_bench dropped as unticked
+    await recomputeRecords('bench_press');
+    const saved = (await getSets(sid)).filter((s) => s.exerciseId === 'bench_press');
+    expect(saved.find((s) => s.setType === 'WARMUP')?.isPr).toBe(false);
+  });
+
+  it('enforces equal working sets for supersets and preserves/clears on edit', async () => {
+    await seedRotationPlan();
+    const push = (await getActivePlan())!.days.find((d) => d.day.title === 'Push')!;
+    await setPairWithNext(push.day.id!, push.items[0].id!, true);
+    let updated = (await getActivePlan())!.days.find((d) => d.day.id === push.day.id)!;
+    expect(updated.items[0].supersetGroup).toBe(1);
+    expect(updated.items[1].supersetGroup).toBe(1);
+
+    // Changing set count to 4 breaks the superset invariant automatically
+    await updatePlanItem({ ...updated.items[0], sets: 4 });
+    updated = (await getActivePlan())!.days.find((d) => d.day.id === push.day.id)!;
+    expect(updated.items[0].supersetGroup).toBeNull();
+    expect(updated.items[1].supersetGroup).toBeNull();
+
+    // Trying to pair mismatched set counts (4 vs 3) does nothing
+    await setPairWithNext(push.day.id!, updated.items[0].id!, true);
+    updated = (await getActivePlan())!.days.find((d) => d.day.id === push.day.id)!;
+    expect(updated.items[0].supersetGroup).toBeNull();
+  });
+
+  it('supports LINEAR and MAINTAIN progression modes in live sessions', async () => {
+    await applyPlan({
+      name: 'Linear Test',
+      description: '',
+      days: [
+        {
+          dayOfWeek: 1, title: 'Full', isRest: false, note: '',
+          items: [
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'back_squat', block: 'Main', circuit: false, sets: 3, repsMin: 5, repsMax: 5, seconds: null, weightKg: 100, restSeconds: 120, note: '' },
+          ],
+        },
+      ],
+    }, 'manual');
+    const item = (await getActivePlan())!.days.find((d) => !d.day.isRest)!.items[0];
+    await updatePlanItem({ ...item, progressionMode: 'LINEAR', autoWarmup: false });
+
+    const s1 = await startSession((await getActivePlan())!.days.find((d) => !d.day.isRest)!);
+    for (const row of await getSets(s1)) await updateSet({ ...row, reps: 5, weightKg: 100, done: true, effort: 'OK' });
+    await finishSession(s1, false);
+
+    // Next session steps up +5 kg for lower-body LINEAR lift
+    const s2 = await startSession((await getActivePlan())!.days.find((d) => !d.day.isRest)!);
+    expect((await getSets(s2))[0].weightKg).toBeCloseTo(105, 2);
+  });
+
+  it('exports and imports a shared plan without overwriting existing plans', async () => {
+    await seedRotationPlan();
+    const active = (await getActivePlan())!;
+    const lib = new Map((await db.exercises.toArray()).map((e) => [e.id, e]));
+    const json = exportSharedPlan(active, lib);
+    const parsed = parseAndValidateSharedPlan(json, lib);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const importedId = await importSharedPlan(parsed.plan);
+    const allPlans = await db.plans.toArray();
+    expect(allPlans).toHaveLength(2);
+    expect(allPlans.find((p) => p.id === active.plan.id)?.active).toBe(false);
+    expect(allPlans.find((p) => p.id === importedId)?.name).toBe('PPL Rotation (2)');
+    expect(allPlans.find((p) => p.id === importedId)?.scheduleMode).toBe('ROTATION');
   });
 });

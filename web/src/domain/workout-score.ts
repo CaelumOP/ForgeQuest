@@ -5,8 +5,9 @@ import type { SessionEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
 import { parseEffort } from './effort'
 import { recordScore, welcomeBack, type DayTag } from './progress'
+import { countsForPR, countsForScore } from './set-types'
 
-type Done = Pick<SetEntity, 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort'> & { block?: string }
+type Done = Pick<SetEntity, 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort'> & { block?: string; setType?: string }
 export type Trend = 'UP' | 'SAME' | 'DOWN'
 
 /** The block name the starter plans give warm-ups (the stored value, not the translated label). */
@@ -109,7 +110,7 @@ export function trend(kind: ExerciseKind, exerciseId: string, done: readonly Don
 export function computeWorkoutScore(
   work: ScoreWork[], plannedSets: number | null, lowReadiness: boolean, firstEver = false, afterBreak = false,
 ): WorkoutScoreResult {
-  const working = work.map((w) => ({ ...w, done: w.done.filter((s) => !isWarmUp(s.block)), last: w.last.filter((s) => !isWarmUp(s.block)) }))
+  const working = work.map((w) => ({ ...w, done: w.done.filter((s) => countsForScore(s)), last: w.last.filter((s) => countsForScore(s)) }))
   const sets = working.flatMap((w) => w.done)
   const pain = new Set(working.filter((w) => w.done.some((s) => parseEffort(s.effort) === 'PAIN')).map((w) => w.exerciseId))
   const rough = lowReadiness || pain.size > 0
@@ -124,13 +125,13 @@ export function computeWorkoutScore(
     if (tr != null) compared++
     if (tr === 'UP') { up++; halves += 2 } else if (tr === 'SAME') halves += 1
     else if (tr === 'DOWN') halves += forgiven ? 1 : 0
-    return { exerciseId: w.exerciseId, trend: tr, forgiven, pr: work[i].done.some((s) => s.isPr) ? prKindOf(w.kind) : null }
+    return { exerciseId: w.exerciseId, trend: tr, forgiven, pr: work[i].done.some((s) => s.isPr && countsForPR(s)) ? prKindOf(w.kind) : null }
   })
   const ratio = effective == null ? 1 : sets.length / effective
   const completion = ratio >= 1 ? 3 : ratio >= 0.75 ? 2 : ratio >= 0.5 ? 1 : 0
   // min(3, floor(4 × sum / compared)) with sum = halves / 2; below 75 % of the sets, progress doesn't count.
   const progress = ratio < 0.75 ? 0 : compared === 0 ? 2 : Math.min(3, Math.floor((2 * halves) / compared))
-  const prs = work.reduce((n, w) => n + w.done.filter((s) => s.isPr).length, 0)
+  const prs = work.reduce((n, w) => n + w.done.filter((s) => s.isPr && countsForPR(s)).length, 0)
   const total = 3 + completion + progress + (prs > 0 ? 1 : 0)
   return {
     score: Math.min(10, Math.max(4, total)), doneSets: sets.length, plannedSets: planned, up, compared, prs,

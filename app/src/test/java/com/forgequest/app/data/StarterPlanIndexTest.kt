@@ -57,10 +57,10 @@ class StarterPlanIndexTest {
         val prev = java.util.Locale.getDefault()
         try {
             java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar"))
-            assertEquals("سكوات بالبار خلفًا", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Barbell Back Squat"))
-            assertEquals("الضغط فوق الرأس", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Overhead Press"))
-            assertEquals("الرفعة الميتة الرومانية", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Romanian Deadlift"))
-            assertEquals("ضغط البنش", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Bench Press"))
+            assertEquals("سكوات بالبار", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Barbell Back Squat"))
+            assertEquals("شولدر برس بالبار (OHP)", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Overhead Press"))
+            assertEquals("رومانيان ديدلفت (RDL)", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Romanian Deadlift"))
+            assertEquals("بنش برس بالبار", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("Bench Press"))
 
             java.util.Locale.setDefault(java.util.Locale.forLanguageTag("en"))
             assertEquals("Back squat", com.forgequest.app.data.seed.ExerciseNamesAr.displayName("سكوات بالبار خلفًا"))
