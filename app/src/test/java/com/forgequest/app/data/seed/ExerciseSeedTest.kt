@@ -34,11 +34,12 @@ class ExerciseSeedTest {
     fun catalogAndMediaIntegrity() {
         val ids = ExerciseCatalog.all.map { it.id }
         assertEquals(ids.size, ids.toSet().size)
-        assertTrue(ids.size >= 376)
+        assertTrue(ids.size >= 800)
 
         val assetsDir = File("src/main/assets/ex_media")
         assertTrue("ex_media dir must exist", assetsDir.isDirectory)
 
+        var totalBytes = 0L
         for (ex in ExerciseCatalog.all) {
             assertTrue("AR name missing for ${ex.id}", !ExerciseNamesAr.byId[ex.id].isNullOrBlank())
             val key = ExerciseMedia.byId[ex.id].orEmpty()
@@ -48,7 +49,26 @@ class ExerciseSeedTest {
                     val f = File(assetsDir, "${key}_$frame.webp")
                     assertTrue("Missing asset ${f.name}", f.isFile)
                     assertTrue("Frame ${f.name} exceeds 20 KB", f.length() <= 20 * 1024)
+                    totalBytes += f.length()
                 }
+            }
+        }
+        assertTrue("Total media size $totalBytes exceeds 18 MB", totalBytes <= 18L * 1024L * 1024L)
+    }
+
+    @Test
+    fun exerciseLevelsAndStretchesAreValid() {
+        val valid = setOf("beginner", "intermediate", "expert")
+        for ((id, level) in ExerciseLevels.byId) {
+            assertTrue("Unknown exercise $id in ExerciseLevels", ExerciseCatalog.byId.containsKey(id))
+            assertTrue("Invalid level $level for $id", level in valid)
+        }
+        for (ex in ExerciseCatalog.all) {
+            if (ex.mediaKey.isNotEmpty()) {
+                assertTrue("Missing level for mapped ${ex.id}", ExerciseLevels.levelFor(ex.id) in valid)
+            }
+            if (ex.pattern == "MOBILITY") {
+                assertTrue("Mobility ${ex.id} must be in STRETCH_IDS", ex.id in ExerciseCatalog.STRETCH_IDS)
             }
         }
     }

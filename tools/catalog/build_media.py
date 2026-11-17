@@ -26,6 +26,7 @@ MANIFEST_PATH = REPO_ROOT / "tools/catalog/media_manifest.json"
 MAX_SIDE = 360
 INITIAL_QUALITY = 60
 CEILING_BYTES = 20000  # strictly under 20 KB (20,480 B)
+HARD_CAP_TOTAL_BYTES = 18 * 1024 * 1024  # 18 MB total cap across ex_media
 
 
 def encode_webp_under_ceiling(src_path: Path) -> tuple[bytes, int, int, tuple[int, int]]:
@@ -48,6 +49,7 @@ def main() -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from existing_overrides import EXISTING_OVERRIDES
     from new_exercises import NEW_EXERCISES
+    from wp1c_exercises import WP1C_EXERCISES
 
     fedb_json = FEDB_ROOT / "dist/exercises.json"
     if not fedb_json.exists():
@@ -63,6 +65,9 @@ def main() -> int:
             media_map[eid] = fid
     for ex in NEW_EXERCISES:
         media_map[ex["id"]] = ex["fedb"]
+    for ex in WP1C_EXERCISES:
+        if ex.get("has_media", True):
+            media_map[ex["id"]] = ex["fedb"]
 
     ANDROID_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     WEB_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -132,6 +137,9 @@ def main() -> int:
 
     print(f"Generated {len(expected_files)} WebP frames for {len(manifest)} exercises.")
     print(f"Per-platform size: {total_bytes:,} bytes ({total_bytes / (1024 * 1024):.2f} MB), max frame: {max_frame_bytes:,} bytes, re-encoded lower: {reencoded_count}")
+    if total_bytes > HARD_CAP_TOTAL_BYTES:
+        print(f"ERROR: Total media size {total_bytes:,} exceeds 18 MB cap ({HARD_CAP_TOTAL_BYTES:,})", file=sys.stderr)
+        return 1
     return 0
 
 

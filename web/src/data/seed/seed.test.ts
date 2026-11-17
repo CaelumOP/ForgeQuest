@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import exerciseAliasesKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/ExerciseAliases.kt?raw'
 import exerciseCatalogKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/ExerciseCatalog.kt?raw'
 import exerciseCuesKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/ExerciseCues.kt?raw'
+import exerciseLevelsKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/ExerciseLevels.kt?raw'
 import exerciseMediaKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/ExerciseMedia.kt?raw'
 import exerciseNamesArKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/ExerciseNamesAr.kt?raw'
 import starterPlansKt from '../../../../app/src/main/java/com/forgequest/app/data/seed/StarterPlans.kt?raw'
@@ -15,8 +16,9 @@ import { MUSCLES } from '../../domain/muscle'
 import { db } from '../db'
 import { seedLibrary } from '../workouts'
 import { EXERCISE_ALIASES } from './exercise-aliases'
-import { EXERCISE_CATALOG } from './exercise-catalog'
+import { EXERCISE_CATALOG, STRETCH_IDS } from './exercise-catalog'
 import { EXERCISE_CUE_KEYS } from './exercise-cues'
+import { EXERCISE_LEVELS } from './exercise-levels'
 import { EXERCISE_MEDIA_KEYS } from './exercise-media'
 import { EXERCISE_NAMES_AR } from './exercise-names-ar'
 import { filterExercisesBySearch, matchesExerciseSearch, normalizeExerciseSearch } from './search'
@@ -42,7 +44,7 @@ describe('seed data mirrors the Android catalog', () => {
     const ids = EXERCISE_CATALOG.map((e) => e.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids.length).toBe(kotlinCount)
-    expect(ids.length).toBeGreaterThanOrEqual(376)
+    expect(ids.length).toBeGreaterThanOrEqual(800)
   })
 
   it('every catalog id has an Arabic name matching ExerciseNamesAr.kt', () => {
@@ -80,6 +82,7 @@ describe('seed data mirrors the Android catalog', () => {
     const androidDir = path.join(repoRoot, 'app/src/main/assets/ex_media')
     const webDir = path.join(repoRoot, 'web/public/ex-media')
 
+    let totalMediaBytes = 0
     for (const ex of EXERCISE_CATALOG) {
       expect(ex.mediaKey, ex.id).toBe(EXERCISE_MEDIA_KEYS[ex.id] ?? '')
       if (ex.mediaKey) {
@@ -89,9 +92,35 @@ describe('seed data mirrors the Android catalog', () => {
           const wPath = path.join(webDir, filename)
           expect(fs.existsSync(aPath), `missing android ${filename}`).toBe(true)
           expect(fs.existsSync(wPath), `missing web ${filename}`).toBe(true)
-          expect(fs.statSync(wPath).size, `ceiling ${filename}`).toBeLessThanOrEqual(20 * 1024)
+          const size = fs.statSync(wPath).size
+          expect(size, `ceiling ${filename}`).toBeLessThanOrEqual(20 * 1024)
+          totalMediaBytes += size
         }
       }
+    }
+    expect(totalMediaBytes).toBeLessThanOrEqual(18 * 1024 * 1024)
+  })
+
+  it('levels match ExerciseLevels.kt and cover every mapped exercise with valid level strings', () => {
+    const ktLevels = extractKotlinMap(exerciseLevelsKt, 'val byId: Map<String, String> = mapOf(')
+    const valid = new Set(['beginner', 'intermediate', 'expert'])
+    const ids = new Set(EXERCISE_CATALOG.map((e) => e.id))
+    expect(Object.keys(EXERCISE_LEVELS).length).toBe(Object.keys(ktLevels).length)
+    for (const [id, lvl] of Object.entries(ktLevels)) {
+      expect(ids.has(id), id).toBe(true)
+      expect(valid.has(lvl), `${id}:${lvl}`).toBe(true)
+      expect(EXERCISE_LEVELS[id], id).toBe(lvl)
+    }
+    for (const ex of EXERCISE_CATALOG) {
+      if (ex.mediaKey) expect(EXERCISE_LEVELS[ex.id], ex.id).toBeTruthy()
+    }
+  })
+
+  it('all mobility stretches are registered in STRETCH_IDS', () => {
+    const mobilityIds = EXERCISE_CATALOG.filter((e) => e.pattern === 'MOBILITY').map((e) => e.id)
+    expect(mobilityIds.length).toBeGreaterThanOrEqual(100)
+    for (const id of mobilityIds) {
+      expect(STRETCH_IDS.has(id), id).toBe(true)
     }
   })
 

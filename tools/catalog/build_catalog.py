@@ -11,12 +11,14 @@ and emits synchronized Kotlin, TypeScript, and XML files.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from xml.sax.saxutils import escape
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_DIR = Path(__file__).resolve().parent
+FEDB_ROOT = Path(os.environ.get("FEDB_ROOT", "D:/Claude/tmp/fedb/free-exercise-db-main"))
 
 
 def kt_str(s: str) -> str:
@@ -50,12 +52,23 @@ def main() -> int:
     sys.path.insert(0, str(TOOLS_DIR))
     from existing_overrides import EXISTING_OVERRIDES
     from new_exercises import NEW_EXERCISES
+    from wp1c_exercises import WP1C_EXERCISES
+    from wp1c_merges import WP1C_MERGES
+
+    fedb_list: list[dict] = json.loads((FEDB_ROOT / "dist/exercises.json").read_text(encoding="utf-8"))
+    fedb_by_id: dict[str, dict] = {e["id"]: e for e in fedb_list}
+
+    merged_aliases_by_target: dict[str, list[str]] = {}
+    for fid, target_id in WP1C_MERGES.items():
+        if fid in fedb_by_id:
+            merged_aliases_by_target.setdefault(target_id, []).append(fedb_by_id[fid]["name"])
 
     base_path = TOOLS_DIR / "base_186.json"
     base_186: list[dict] = json.loads(base_path.read_text(encoding="utf-8"))
 
     all_exercises: list[dict] = []
     previous_names_map: dict[str, list[str]] = {}
+    levels_by_id: dict[str, str] = {}
 
     for b in base_186:
         eid = b["id"]
@@ -69,9 +82,11 @@ def main() -> int:
             previous_names_map[eid] = hist
 
         aliases_list = dedupe_aliases(
-            hist + extra_aliases,
+            hist + extra_aliases + merged_aliases_by_target.get(eid, []),
             {b["name"].lower(), ar_name.lower()},
         )
+        if fedb_id and fedb_id in fedb_by_id and fedb_by_id[fedb_id].get("level"):
+            levels_by_id[eid] = fedb_by_id[fedb_id]["level"]
         all_exercises.append({
             "id": eid,
             "name": b["name"],
@@ -89,12 +104,16 @@ def main() -> int:
             "isNew": False,
         })
 
-    for ex in NEW_EXERCISES:
+    for ex in NEW_EXERCISES + WP1C_EXERCISES:
         eid = ex["id"]
         aliases_list = dedupe_aliases(
-            ex["aliases"],
+            list(ex["aliases"]) + merged_aliases_by_target.get(eid, []),
             {ex["name"].lower(), ex["ar"].lower()},
         )
+        fid = ex.get("fedb")
+        if fid and fid in fedb_by_id and fedb_by_id[fid].get("level"):
+            levels_by_id[eid] = fedb_by_id[fid]["level"]
+        has_media = ex.get("has_media", True)
         all_exercises.append({
             "id": eid,
             "name": ex["name"],
@@ -104,11 +123,11 @@ def main() -> int:
             "secondary": ex["secondary"],
             "videoExprKt": None,
             "videoUrl": None,
-            "stretch": False,
+            "stretch": ex.get("stretch", False),
             "equipment": ex["equipment"],
             "pattern": ex["pattern"],
             "aliases": ", ".join(aliases_list),
-            "mediaKey": eid,
+            "mediaKey": eid if has_media else "",
             "cues_en": ex["cues_en"],
             "cues_ar": ex["cues_ar"],
             "isNew": True,
@@ -149,6 +168,17 @@ def main() -> int:
             parts.append(f'mediaKey = {kt_str(e["mediaKey"])}')
         return "        ex(" + ", ".join(parts) + "),"
 
+    # Chunk main exercises to stay well under the JVM 64 KB method bytecode limit.
+    chunk_size = 120
+    main_chunks = [mains[i : i + chunk_size] for i in range(0, len(mains), chunk_size)]
+    chunk_fns: list[str] = []
+    for idx, chunk in enumerate(main_chunks):
+        chunk_fns.append(f"    private fun part{idx}(): List<ExerciseEntity> = listOf(")
+        chunk_fns.extend(kt_ex_line(e) for e in chunk)
+        chunk_fns.append("    )")
+        chunk_fns.append("")
+    all_parts_expr = " + ".join(f"part{idx}()" for idx in range(len(main_chunks))) + " + stretches"
+
     kt_catalog = [
         "package com.forgequest.app.data.seed",
         "",
@@ -175,7 +205,7 @@ def main() -> int:
         "import com.forgequest.app.domain.Muscle.TRICEPS",
         "import com.forgequest.app.domain.Muscle.UPPER_BACK",
         "",
-        "/** Built-in exercise library: Hemo's foundation moves, calisthenics, gym staples, and curated free-exercise-db additions. */",
+        "/** Built-in exercise library: Hemo's foundation moves, calisthenics, gym staples, and free-exercise-db catalog. */",
         "object ExerciseCatalog {",
         "",
         "    private fun ex(",
@@ -211,9 +241,8 @@ def main() -> int:
         "",
         "    val STRETCH_IDS: Set<String> = stretches.mapTo(HashSet()) { it.id }",
         "",
-        "    val all: List<ExerciseEntity> = listOf(",
-        *[kt_ex_line(e) for e in mains],
-        "    ) + stretches",
+        *chunk_fns,
+        f"    val all: List<ExerciseEntity> = {all_parts_expr}",
         "",
         "    val byId: Map<String, ExerciseEntity> by lazy { all.associateBy { it.id } }",
         "}",
@@ -450,7 +479,7 @@ def main() -> int:
         "// Form cues (2 cues + common mistake) for all built-in exercises, mirroring Android strings_cues.xml + strings_catalog.xml.",
         "export const EXERCISE_CUE_KEYS: Record<string, readonly [string, string, string]> = {",
         *[
-            f"  {e['id']}: ['cue_{e['id']}_1', 'cue_{e['id']}_2', 'cue_{e['id']}_mistake'],"
+            f"  {ts_str(e['id'])}: ['cue_{e['id']}_1', 'cue_{e['id']}_2', 'cue_{e['id']}_mistake'],"
             for e in all_exercises
         ],
         "}",
@@ -478,7 +507,41 @@ def main() -> int:
     ]
     (REPO_ROOT / "web/src/data/seed/exercise-media.ts").write_text("\n".join(ts_media), encoding="utf-8")
 
-    print(f"Generated Kotlin + TypeScript + XML catalog files for {len(all_exercises)} exercises ({len(mapped)} mapped to WebP media, {len(new_exs)} new).")
+    # 12. Android ExerciseLevels.kt + Web exercise-levels.ts
+    sorted_levels = sorted(levels_by_id.items())
+    kt_levels = [
+        "package com.forgequest.app.data.seed",
+        "",
+        "/** Dataset difficulty level (beginner / intermediate / expert) for all mapped built-in exercises. */",
+        "object ExerciseLevels {",
+        "    val byId: Map<String, String> = mapOf(",
+        *[f"        {kt_str(eid)} to {kt_str(lvl)}," for eid, lvl in sorted_levels],
+        "    )",
+        "",
+        "    fun levelFor(id: String): String = byId[id].orEmpty()",
+        "}",
+        "",
+    ]
+    (REPO_ROOT / "app/src/main/java/com/forgequest/app/data/seed/ExerciseLevels.kt").write_text(
+        "\n".join(kt_levels), encoding="utf-8"
+    )
+
+    ts_levels = [
+        "/** Dataset difficulty level ('beginner' | 'intermediate' | 'expert') synced with ExerciseLevels.kt. */",
+        "export type ExerciseLevel = 'beginner' | 'intermediate' | 'expert'",
+        "",
+        "export const EXERCISE_LEVELS: Record<string, ExerciseLevel> = {",
+        *[f"  {ts_str(eid)}: {ts_str(lvl)}," for eid, lvl in sorted_levels],
+        "}",
+        "",
+        "export function exerciseLevelFor(id: string): ExerciseLevel | undefined {",
+        "  return EXERCISE_LEVELS[id]",
+        "}",
+        "",
+    ]
+    (REPO_ROOT / "web/src/data/seed/exercise-levels.ts").write_text("\n".join(ts_levels), encoding="utf-8")
+
+    print(f"Generated Kotlin + TypeScript + XML catalog files for {len(all_exercises)} exercises ({len(mapped)} mapped to WebP media, {len(levels_by_id)} levels, {len(new_exs)} new).")
     return 0
 
 
