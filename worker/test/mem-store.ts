@@ -32,6 +32,9 @@ export interface MemPushToken {
   updated_at: number;
 }
 
+import { encodeScore, readScore, snapshotScore } from "../src/score";
+import { toSnapshot } from "../src/types";
+
 export class MemStore implements Store {
   readonly users = new Map<string, UserRow>();
   readonly sessions = new Map<string, SessionRow>();
@@ -171,7 +174,10 @@ export class MemStore implements Store {
     user.joined = 1;
     if (!input.sharePrs) {
       const snap = this.snapshots.get(userId);
-      if (snap) snap.prs = null;
+      if (snap) {
+        const stored = readScore(snap);
+        snap.prs = JSON.stringify({ ...stored, prs: null });
+      }
     }
     if (!input.shareWorkouts) {
       for (const [k, w] of this.workoutEvents) if (w.user_id === userId) this.workoutEvents.delete(k);
@@ -241,11 +247,13 @@ export class MemStore implements Store {
       week_start: s.weekStart,
       done: s.done,
       due: s.due,
-      score: s.score,
+      score: snapshotScore(s).score,
       badge: s.badge,
       streak_weeks: s.streakWeeks,
       protein_days: s.proteinDays,
-      prs: s.prs === null ? null : JSON.stringify(s.prs),
+      prs: JSON.stringify({ ...JSON.parse(encodeScore(s, nowSec)),
+        reachedAt: stored && stored.week_start === s.weekStart && toSnapshot(stored, false).score === snapshotScore(s).score
+          ? readScore(stored).reachedAt : s.reachedAt ?? nowSec }),
       updated_at: nowSec,
     });
     const put = (weekStart: number, state: string) =>
@@ -253,6 +261,10 @@ export class MemStore implements Store {
     if (s.weekState) put(s.weekStart, s.weekState);
     if (s.lastWeekState) put(s.weekStart - 7, s.lastWeekState);
     return recorded;
+  }
+
+  async getSnapshot(userId: string): Promise<SnapshotRow | null> {
+    return this.snapshots.get(userId) ?? null;
   }
 
   async getFriendsView(userId: string, opts: FriendsViewOptions): Promise<FriendsViewData> {

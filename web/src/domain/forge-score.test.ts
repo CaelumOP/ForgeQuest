@@ -1,19 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import vectors from './forge-score.vectors.json'
-import { buildLeaderboard, computeForgeWeek, normalizeUsername, type Friend, type Person, type Snapshot } from './forge-score'
+import vectors from '../../../worker/test/forge-score-v2.vectors.json'
+import { buildLeaderboard, computeForgeWeek, scoreBreakdown, scoreReachedAt, normalizeUsername, type Friend, type Person, type Snapshot } from './forge-score'
 
 describe('computeForgeWeek', () => {
-  for (const v of vectors.cases) {
-    it(v.name, () => {
-      const actual = computeForgeWeek(
-        v.today,
-        new Set(v.scheduled),
-        new Set(v.trained),
-        new Set(v.protein),
-      )
-      expect(actual).toEqual(v.expect)
-    })
-  }
+  for (const v of vectors.cases) it(v.name, () => {
+    expect(scoreBreakdown(v.done, v.target, v.prCount, v.proteinDays)).toEqual(v.expect)
+  })
+  it('uses the full target, override, distinct days, and Sunday reset', () => {
+    const ws = 20772
+    const scheduled = new Set([1, 3, 5])
+    expect(computeForgeWeek(ws, scheduled, new Set([ws - 1])).score).toBe(0)
+    expect(computeForgeWeek(ws + 2, scheduled, new Set([ws, ws + 1, ws + 8]), new Set([ws - 1, ws]), 0, 1))
+      .toMatchObject({ score: 74, target: 3, done: 2, proteinDays: 1 })
+    expect(computeForgeWeek(ws + 1, scheduled, new Set([ws]), new Set(), 2).score).toBe(50)
+    expect(computeForgeWeek(ws, new Set(), new Set()).score).toBe(0)
+  })
+})
+
+describe('scoreReachedAt', () => {
+  it('ignores duplicate days and PRs beyond the cap, irrespective of input order', () => {
+    expect(scoreReachedAt(1, [{ at: 50, pr: true }, { at: 40, pr: true }, { at: 30, pr: true },
+      { at: 20, workoutDay: 1 }, { at: 10, workoutDay: 1 }], 0)).toBe(40)
+    expect(scoreReachedAt(3, [], 0)).toBe(0)
+  })
 })
 
 describe('buildLeaderboard', () => {
@@ -45,7 +54,16 @@ describe('buildLeaderboard', () => {
     expect(by.me.sharedStreak).toBe(0)
   })
 
-  it('includes me highlighted and sorts by score desc then name asc', () => {
+  it('uses reachedAt before username and never re-derives the server score', () => {
+    const board = buildLeaderboard(ws, null, null, [
+      { ...p('aaa', 'A'), snapshot: { ...snap(ws, 72), reachedAt: 30 } },
+      { ...p('zzz', 'Z'), snapshot: { ...snap(ws, 72), reachedAt: 20 } },
+    ])
+    expect(board.map(e => e.person.id)).toEqual(['zzz', 'aaa'])
+    expect(board[0].score).toBe(72)
+  })
+
+  it('includes me highlighted and sorts by score desc then username asc', () => {
     const friends: Friend[] = [
       { ...p('z', 'Zaid'), snapshot: snap(ws, 90, 'trained') },
       { ...p('a', 'omar'), snapshot: snap(ws, 90, 'on_track') },
@@ -67,7 +85,7 @@ describe('buildLeaderboard', () => {
     expect(karim).toMatchObject({ score: 0, badge: 'not_synced', syncedThisWeek: false, streakWeeks: 0, prs: [] })
     expect(board.find((e) => e.person.id === 'empty')!.badge).toBe('not_synced')
     expect(board.find((e) => e.person.id === 'fresh')!.prs).toEqual([])
-    expect(board.map((e) => e.person.id)).toEqual(['me', 'fresh', 'stale', 'empty'])
+    expect(board.map((e) => e.person.id)).toEqual(['me', 'fresh', 'empty', 'stale'])
   })
 })
 

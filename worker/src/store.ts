@@ -6,6 +6,8 @@ import {
   UserRow,
 } from "./types";
 
+import { encodeScore, snapshotScore } from "./score";
+
 export const MAX_PUSH_TOKENS = 5;
 
 export interface WeekStateRow {
@@ -94,6 +96,7 @@ export interface Store {
     event?: WorkoutEventInput,
   ): Promise<boolean>;
 
+  getSnapshot(userId: string): Promise<SnapshotRow | null>;
   getFriendsView(userId: string, opts: FriendsViewOptions): Promise<FriendsViewData>;
   markInboxSeen(userId: string): Promise<void>;
   setMute(userId: string, mutedId: string, muted: boolean): Promise<void>;
@@ -290,7 +293,8 @@ export class D1Store implements Store {
         ),
     ];
     if (!input.sharePrs) {
-      stmts.push(this.db.prepare("UPDATE snapshots SET prs = NULL WHERE user_id = ?1").bind(userId));
+      stmts.push(this.db.prepare(`UPDATE snapshots SET prs = CASE WHEN json_valid(prs) AND json_type(prs) = 'object'
+        THEN json_set(prs, '$.prs', NULL) ELSE NULL END WHERE user_id = ?1`).bind(userId));
     }
     if (!input.shareWorkouts) {
       stmts.push(this.db.prepare("DELETE FROM workout_events WHERE user_id = ?1").bind(userId));
@@ -343,7 +347,7 @@ export class D1Store implements Store {
     nowSec: number,
     event?: WorkoutEventInput,
   ): Promise<boolean> {
-    const prsJson = s.prs === null ? null : JSON.stringify(s.prs);
+    const prsJson = encodeScore(s, nowSec);
     const snapshotStmt = this.db
       .prepare(
         `INSERT INTO snapshots (user_id, week_start, done, due, score, badge, streak_weeks, protein_days, prs, updated_at)
@@ -356,7 +360,11 @@ export class D1Store implements Store {
            badge = excluded.badge,
            streak_weeks = excluded.streak_weeks,
            protein_days = excluded.protein_days,
-           prs = excluded.prs,
+           prs = CASE WHEN snapshots.week_start = excluded.week_start AND
+             (CASE WHEN json_valid(snapshots.prs) AND json_type(snapshots.prs) = 'object' THEN snapshots.score
+               WHEN snapshots.due = 0 THEN 0 ELSE round(100.0 * min(snapshots.done, snapshots.due) / snapshots.due) END) = excluded.score
+             THEN json_set(excluded.prs, '$.reachedAt', coalesce(CASE WHEN json_valid(snapshots.prs)
+               THEN json_extract(snapshots.prs, '$.reachedAt') END, snapshots.updated_at)) ELSE excluded.prs END,
            updated_at = excluded.updated_at`,
       )
       .bind(
@@ -364,7 +372,7 @@ export class D1Store implements Store {
         s.weekStart,
         s.done,
         s.due,
-        s.score,
+        snapshotScore(s).score,
         s.badge,
         s.streakWeeks,
         s.proteinDays,
@@ -398,6 +406,10 @@ export class D1Store implements Store {
     if (s.lastWeekState) stmts.push(weekStmt(s.weekStart - 7, s.lastWeekState));
     const res = await this.db.batch(stmts);
     return event !== undefined && (res[0].meta?.changes ?? 0) > 0;
+  }
+
+  async getSnapshot(userId: string): Promise<SnapshotRow | null> {
+    return this.db.prepare("SELECT * FROM snapshots WHERE user_id = ?1").bind(userId).first<SnapshotRow>();
   }
 
   async getFriendsView(userId: string, opts: FriendsViewOptions): Promise<FriendsViewData> {

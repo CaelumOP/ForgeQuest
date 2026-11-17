@@ -13,6 +13,7 @@ import {
   Me,
   NudgeView,
   Person,
+  Snapshot,
   toMe,
   toPerson,
   toSnapshot,
@@ -27,6 +28,7 @@ export async function handleGetFriends(
   user: UserRow,
 ): Promise<{
   me: Me;
+  mySnapshot: Snapshot | null;
   today: number;
   weekStart: number;
   friends: Friend[];
@@ -37,7 +39,7 @@ export async function handleGetFriends(
 }> {
   const today = riyadhEpochDay(ctx.nowMs);
   const weekStart = sundayWeekStart(today);
-  const v4 = new URL(ctx.request.url).searchParams.get("v") === "4";
+  const v4 = ["4", "5"].includes(new URL(ctx.request.url).searchParams.get("v") ?? "");
   const view = await ctx.store.getFriendsView(user.id, {
     v4,
     pingsSinceDay: today - 6,
@@ -51,9 +53,13 @@ export async function handleGetFriends(
     if (!m) statesByUser.set(w.user_id, (m = new Map()));
     m.set(w.week_start, w.state as WeekState);
   }
+  const mySnapshot = await ctx.store.getSnapshot(user.id);
   const mine = statesByUser.get(user.id) ?? new Map<number, WeekState>();
   return {
     me: toMe(user),
+    mySnapshot: mySnapshot ? toSnapshot(mySnapshot, user.share_prs === 1,
+      mySnapshot.week_start === weekStart && ["hit", "free", "open"].includes(mine.get(weekStart) ?? "")
+        ? mine.get(weekStart) as Snapshot["weekState"] : null) : null,
     today,
     weekStart,
     friends: view.friends.map(({ user: friend, snapshot, friendsSince }) => {
@@ -66,6 +72,12 @@ export async function handleGetFriends(
         sharedStreak: sharedStreak({ friendsSinceSec: friendsSince, today, mine, theirs }),
         muted: muted.has(friend.id),
       };
+    }).sort((a, b) => {
+      const current = (f: Friend) => f.snapshot && f.snapshot.weekStart >= weekStart ? f.snapshot : null;
+      const sa = current(a), sb = current(b);
+      return (sb?.score ?? 0) - (sa?.score ?? 0) ||
+        (sa?.reachedAt ?? Number.MAX_SAFE_INTEGER) - (sb?.reachedAt ?? Number.MAX_SAFE_INTEGER) ||
+        ((a.username ?? "") < (b.username ?? "") ? -1 : (a.username ?? "") > (b.username ?? "") ? 1 : 0);
     }),
     incoming: view.incoming.map(toPerson),
     outgoing: view.outgoing.map(toPerson),

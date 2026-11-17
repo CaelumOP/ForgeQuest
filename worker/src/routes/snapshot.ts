@@ -15,7 +15,7 @@ export async function handlePutSnapshot(
   }
   const body = await readJsonObject(ctx.request);
   const today = riyadhEpochDay(ctx.nowMs);
-  const snapshot = validateSnapshot(body, today);
+  const snapshot = validateSnapshot(body, today, ctx.nowSec);
   if (user.share_prs !== 1) {
     snapshot.prs = null;
   }

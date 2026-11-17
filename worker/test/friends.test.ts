@@ -3,6 +3,7 @@ import { base64UrlEncode, clearJwksCache, toArrayBuffer } from "../src/auth";
 import { clearFcmTokenCache, MAX_FCM_SENDS } from "../src/fcm";
 import { handleRequest } from "../src/index";
 import { isQuietHours, riyadhEpochDay, sundayWeekStart } from "../src/time";
+import { readScore } from "../src/score";
 import { Env, FetchFn } from "../src/types";
 import { MemStore } from "./mem-store";
 import { SqliteStore } from "./sqlite-store";
@@ -158,6 +159,80 @@ describe("ForgeQuest Friends Worker", () => {
     }
     return { session: auth.json.session as string, user: me };
   }
+
+  describe("server ForgeScore v2", () => {
+    it("ranks a mixed 4.0/4.1 board and returns an authoritative self snapshot", async () => {
+      const owner = await loginUser("owner41", "Owner");
+      const legacy = await loginUser("legacy41", "Legacy");
+      const newer = await loginUser("newer41", "Newer");
+      const early = await loginUser("early41", "Early");
+      const alpha = await loginUser("alpha41", "Alpha");
+      store.friends.set(owner.user.id, new Set([legacy.user.id, newer.user.id, early.user.id, alpha.user.id]));
+      const ws = sundayWeekStart(riyadhEpochDay(nowMs));
+      const at = Math.floor(nowMs / 1000);
+      const base = { weekStart: ws, done: 2, due: 3, score: 100, badge: "trained", streakWeeks: 0, proteinDays: 7, prs: null };
+      for (const [u, extra] of [[legacy, {}], [newer, { target: 3, prCount: 1, reachedAt: at - 10 }],
+          [early, { target: 3, prCount: 1, reachedAt: at - 20 }], [alpha, { target: 3, prCount: 1, reachedAt: at - 20 }],
+          [owner, { target: 3, prCount: 1, reachedAt: at - 10 }]] as const) {
+        expect((await req("PUT", "/v1/snapshot", { token: u.session, body: { ...base, ...extra } })).status).toBe(200);
+      }
+      const view = await req("GET", "/v1/friends?v=5", { token: owner.session });
+      expect(view.json.friends.map((f: any) => f.username)).toEqual(["alpha41", "early41", "newer41", "legacy41"]);
+      expect(view.json.friends.map((f: any) => f.snapshot.score)).toEqual([78, 78, 78, 67]);
+      expect(view.json.mySnapshot).toMatchObject({ score: 78, target: 3, prCount: 1, reachedAt: at - 10 });
+      expect(view.json.inbox).toBeDefined();
+      expect(view.json.friends[3].snapshot).toMatchObject({ due: 3, proteinDays: 7, scoreVersion: 1, prs: null });
+    });
+
+    it("preserves reachedAt on non-scoring syncs, privacy toggles, caps, and resets the week", async () => {
+      const u = await loginUser("timing41", "Timing");
+      const ws = sundayWeekStart(riyadhEpochDay(nowMs));
+      const at = Math.floor(nowMs / 1000);
+      const body = { weekStart: ws, done: 4, due: 3, score: 120, badge: "trained", streakWeeks: 0,
+        proteinDays: 3, prs: [{ exercise: "Squat", kg: 50, reps: 5 }], target: 3, prCount: 2, reachedAt: at - 20 };
+      const put = async (extra = {}) => expect((await req("PUT", "/v1/snapshot", { token: u.session, body: { ...body, ...extra } })).status).toBe(200);
+      await put();
+      await put({ prCount: 3, reachedAt: at - 10 });
+      expect(readScore(store.snapshots.get(u.user.id)!).reachedAt).toBe(at - 20);
+      expect((await req("PUT", "/v1/me", { token: u.session, body: { sharePhoto: true, sharePrs: false } })).status).toBe(200);
+      const view = await req("GET", "/v1/friends?v=4", { token: u.session });
+      expect(view.json.mySnapshot).toMatchObject({ score: 120, prCount: 3, prs: null, reachedAt: at - 20 });
+      expect(readScore(store.snapshots.get(u.user.id)!).prs).toBeNull();
+      nowMs += 7 * 86400000;
+      await put({ weekStart: ws + 7, done: 0, prCount: 0, proteinDays: 0, reachedAt: at + 7 * 86400 });
+      expect((await req("GET", "/v1/friends", { token: u.session })).json.mySnapshot.score).toBe(0);
+    });
+
+    it("ranks a local Sunday snapshot consistently with clients when Riyadh is still Saturday", async () => {
+      nowMs += 6 * 86400000;
+      const owner = await loginUser("zoneowner", "Owner");
+      const east = await loginUser("zoneeast", "East");
+      const west = await loginUser("zonewest", "West");
+      store.friends.set(owner.user.id, new Set([east.user.id, west.user.id]));
+      const ws = sundayWeekStart(riyadhEpochDay(nowMs));
+      for (const [u, start, done] of [[east, ws + 7, 1], [west, ws, 0]] as const) {
+        expect((await req("PUT", "/v1/snapshot", { token: u.session, body: {
+          weekStart: start, done, due: 3, badge: "trained", streakWeeks: 0, proteinDays: 0,
+          prs: null, target: 3, prCount: 0, reachedAt: Math.floor(nowMs / 1000),
+        } })).status).toBe(200);
+      }
+      const board = (await req("GET", "/v1/friends", { token: owner.session })).json;
+      expect(board.friends.map((f: any) => f.username)).toEqual(["zoneeast", "zonewest"]);
+      expect(board.friends[0].snapshot.score).toBe(33);
+    });
+
+    it("rejects future and out-of-week scoring timestamps", async () => {
+      const u = await loginUser("bounds41", "Bounds");
+      const ws = sundayWeekStart(riyadhEpochDay(nowMs));
+      for (const reachedAt of [Math.floor(nowMs / 1000) + 1, ws * 86400 - 14 * 3600 - 1]) {
+        const r = await req("PUT", "/v1/snapshot", { token: u.session, body: {
+          weekStart: ws, done: 0, due: 3, score: 0, badge: "rest", streakWeeks: 0,
+          proteinDays: 0, prs: null, target: 3, prCount: 0, reachedAt,
+        } });
+        expect(r.status).toBe(400);
+      }
+    });
+  });
 
   describe("Google ID token verification", () => {
     it("verifies good token, caches JWKS, and upserts user", async () => {
@@ -387,7 +462,7 @@ describe("ForgeQuest Friends Worker", () => {
       expect(off.status).toBe(200);
       expect(off.json.photoUrl).toBeNull();
       expect(off.json.sharePrs).toBe(false);
-      expect(store.snapshots.get(alice.user.id)?.prs).toBeNull();
+      expect(readScore(store.snapshots.get(alice.user.id)!).prs).toBeNull();
 
       // Uploading new snapshot while sharePrs=false forces prs=null
       const snapWhileOff = await req("PUT", "/v1/snapshot", {
@@ -404,7 +479,7 @@ describe("ForgeQuest Friends Worker", () => {
         },
       });
       expect(snapWhileOff.status).toBe(200);
-      expect(store.snapshots.get(alice.user.id)?.prs).toBeNull();
+      expect(readScore(store.snapshots.get(alice.user.id)!).prs).toBeNull();
 
       // The old code route is gone and the code never leaves the server
       expect((await req("POST", "/v1/me/code", { token: alice.session })).status).toBe(404);

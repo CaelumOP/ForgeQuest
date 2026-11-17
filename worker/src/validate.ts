@@ -1,3 +1,4 @@
+import { snapshotScore } from "./score";
 import { isSunday } from "./time";
 import { Badge, HttpError, PrItem, PushPlatform, SnapshotInput } from "./types";
 
@@ -87,15 +88,22 @@ export function validateProfile(body: Record<string, unknown>): {
 export function validateSnapshot(
   body: Record<string, unknown>,
   todayEpochDay: number,
+  nowSec = (todayEpochDay + 1) * 86400,
 ): SnapshotInput {
   const { weekStart, done, due, score, badge, streakWeeks, proteinDays, prs, weekState, lastWeekState } = body;
+  const rawInputs = body.target !== undefined || body.prCount !== undefined || body.reachedAt !== undefined;
+  if (rawInputs && (!isIntInRange(body.target, 0, 7) ||
+      !isIntInRange(body.prCount, 0, 1000000) ||
+      !isIntInRange(body.reachedAt, Math.max(0, Number(weekStart) * 86400 - 14 * 3600), nowSec))) {
+    throw new HttpError(400, "bad_snapshot");
+  }
   if (
     !isIntInRange(weekStart, -100_000, 1_000_000) ||
     !isSunday(weekStart) ||
     Math.abs(weekStart - todayEpochDay) > 8 ||
     !isIntInRange(done, 0, 7) ||
     !isIntInRange(due, 0, 7) ||
-    !isIntInRange(score, 0, 100) ||
+    (!(rawInputs && score === undefined) && !isIntInRange(score, 0, rawInputs ? 120 : 100)) ||
     typeof badge !== "string" ||
     !BADGES.has(badge) ||
     !isIntInRange(streakWeeks, 0, 520) ||
@@ -142,7 +150,8 @@ export function validateSnapshot(
     weekStart,
     done,
     due,
-    score,
+    score: snapshotScore({ done, due, proteinDays, ...(rawInputs ? { target: body.target as number, prCount: body.prCount as number } : {}) }).score,
+    ...(rawInputs ? { target: body.target as number, prCount: body.prCount as number, reachedAt: body.reachedAt as number } : {}),
     badge: badge as Badge,
     streakWeeks,
     proteinDays,

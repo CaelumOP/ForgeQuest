@@ -1,3 +1,5 @@
+import { readScore, snapshotScore } from "./score";
+
 export interface Env {
   DB: D1Database;
   GOOGLE_AUD: string;
@@ -31,6 +33,10 @@ export interface PrItem {
 }
 
 export interface SnapshotInput {
+  /** v5 raw scoring inputs. All three must be supplied together; time is Unix seconds. */
+  target?: number;
+  prCount?: number;
+  reachedAt?: number;
   weekStart: number;
   done: number;
   due: number;
@@ -46,6 +52,8 @@ export interface SnapshotInput {
 }
 
 export interface Snapshot extends Omit<SnapshotInput, "weekState" | "lastWeekState"> {
+  scoreVersion: 1 | 2;
+  breakdown: ReturnType<typeof snapshotScore>;
   updatedAt: number;
   /** The friend's state for the server's current week; null when unknown or their snapshot is from an older week. */
   weekState: "hit" | "free" | "open" | null;
@@ -175,26 +183,23 @@ export function toSnapshot(
   sharePrs: boolean,
   weekState: Snapshot["weekState"] = null,
 ): Snapshot {
-  let prs: PrItem[] | null = null;
-  if (sharePrs && row.prs !== null) {
-    try {
-      const parsed: unknown = JSON.parse(row.prs);
-      if (Array.isArray(parsed)) {
-        prs = parsed as PrItem[];
-      }
-    } catch {
-      prs = null;
-    }
-  }
+  const stored = readScore(row);
+  const breakdown = snapshotScore({ done: row.done, due: row.due, proteinDays: row.protein_days,
+    ...(stored.scoreVersion === 2 ? { target: stored.target, prCount: stored.prCount } : {}) });
   return {
     weekStart: row.week_start,
     done: row.done,
     due: row.due,
-    score: row.score,
+    score: breakdown.score,
+    scoreVersion: stored.scoreVersion,
+    target: stored.target,
+    prCount: stored.prCount,
+    reachedAt: stored.reachedAt,
+    breakdown,
     badge: row.badge as Badge,
     streakWeeks: row.streak_weeks,
     proteinDays: row.protein_days,
-    prs,
+    prs: sharePrs ? stored.prs : null,
     updatedAt: row.updated_at,
     weekState,
   };
