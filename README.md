@@ -7,7 +7,7 @@
 Follow a plan that fits your equipment, log every set, track protein and calories,<br>
 and keep each other going with friends. No account needed; Friends is an optional Google sign-in.
 
-[![Version](https://img.shields.io/badge/version-4.0.0-5CD6C0?style=flat-square)](apk/version.json)
+[![Version](https://img.shields.io/badge/version-4.1.0-5CD6C0?style=flat-square)](apk/version.json)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#install)
 [![Web](https://img.shields.io/badge/Web-PWA-8AB4F8?style=flat-square)](https://caelumop.github.io/ForgeQuest/)
 [![Languages](https://img.shields.io/badge/languages-English%20%C2%B7%20%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9-8AB4F8?style=flat-square)](#languages-and-looks)
