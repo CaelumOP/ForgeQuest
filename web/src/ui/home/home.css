@@ -86,3 +86,10 @@ button.home-day { cursor: pointer; }
 .home-friends-chip { display: inline-flex; align-items: center; gap: 2px; flex: none; color: var(--gold); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .home-friends-chip .fr-avatar { margin-inline-end: 2px; }
 .home-friends-empty { font-size: 12px; flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; }
+
+/* 4.1 header avatar: the entry to Profile and settings; rank badge on one corner, gear dot on the other. */
+.home41-avatar-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; inline-size: 56px; block-size: 56px; border-radius: var(--r-full); text-decoration: none; flex: none; }
+.home41-avatar { display: inline-flex; align-items: center; justify-content: center; inline-size: 48px; block-size: 48px; border-radius: var(--r-full); overflow: hidden; background: var(--teal-track); color: var(--teal); font-weight: 700; font-size: 18px; }
+.home41-avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.home41-badge { position: absolute; inset-inline-end: 0; inset-block-end: 0; min-inline-size: 22px; block-size: 22px; padding-inline: 4px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-full); background: var(--blue-track); color: var(--blue); font-weight: 700; font-size: 11px; border: 1.5px solid var(--bg); }
+.home41-gear { position: absolute; inset-inline-end: 0; inset-block-start: 0; inline-size: 20px; block-size: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-full); background: var(--card); color: var(--teal); border: 1px solid var(--divider); }

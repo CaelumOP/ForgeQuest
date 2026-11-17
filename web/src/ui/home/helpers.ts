@@ -13,3 +13,8 @@ export function greetingKey(hour: number): string {
 export function canExcuse(day: number, today: number, state: DayState): boolean {
   return day >= today - EXCUSE_BACK_DAYS && day <= today && state !== 'DONE' && state !== 'OFF'
 }
+
+/** Home avatar photo: the Friends sign-in photo first, else the Drive account photo; blank counts as none. */
+export function pickAvatarPhoto(friendsPhoto: string | null | undefined, drivePhoto?: string | null): string | null {
+  return friendsPhoto?.trim() ? friendsPhoto : drivePhoto?.trim() ? drivePhoto : null
+}

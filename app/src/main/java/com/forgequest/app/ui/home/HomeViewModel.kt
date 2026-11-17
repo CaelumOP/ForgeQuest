@@ -25,6 +25,11 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
         .map { d -> if (d?.view?.me?.joined == true) d.view.friends else emptyList() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Home avatar photo: the Friends sign-in photo (cache, no network). The Drive account photo has no getter yet. */
+    val profilePhoto: StateFlow<String?> = app.friends.state
+        .map { d -> pickAvatarPhoto(d?.view?.me?.photoUrl, null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     init {
         // Load the food list quietly, so the first food search isn't empty while it loads.
         viewModelScope.launch { delay(1500); app.catalog.warm() }

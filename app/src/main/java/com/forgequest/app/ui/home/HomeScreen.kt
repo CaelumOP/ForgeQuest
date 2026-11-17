@@ -125,6 +125,7 @@ import kotlin.math.roundToInt
 fun HomeScreen(nav: NavHostController) {
     val vm = appViewModel { HomeViewModel(it) }
     val snap by vm.snapshot.collectAsState()
+    val profilePhoto by vm.profilePhoto.collectAsState()
     val open by vm.openSession.collectAsState()
     val c = Fit.colors
     val scope = rememberCoroutineScope()
@@ -273,7 +274,7 @@ fun HomeScreen(nav: NavHostController) {
             // An update sits over the greeting row, in the same spot, so nothing below moves; dismissing it shows the header again.
             Box(Modifier.fillMaxWidth()) {
                 Header(
-                    s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROFILE) },
+                    s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROFILE) }, photoUrl = profilePhoto,
                     status = homeStatus(
                         hasOpen = open != null, noPlan = today == null, isRest = today?.day?.isRest == true,
                         done = s.workoutDoneToday, excused = s.excusedToday != null,
@@ -422,7 +423,7 @@ private fun statusText(status: HomeStatus, dayTitle: String, s: ProgressSnapshot
 }
 
 @Composable
-private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, status: HomeStatus, dayTitle: String) {
+private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, photoUrl: String?, status: HomeStatus, dayTitle: String) {
     val c = Fit.colors
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
@@ -451,12 +452,9 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
                 onTextLayout = { if (it.lineCount > 1) wrapped = true },
             )
         }
-        // The rank letter alone meant nothing to new people; the level under it says what the ring is.
-        if (showRank) Column(Modifier.clip(ForgeShape.Sm).clickable(onClickLabel = stringResource(R.string.cd_open_profile), role = Role.Button, onClick = onRankClick).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            MiniRing(s.level.progress, c.blue, c.blueTrack, size = 40.dp, stroke = 3.dp) {
-                Text(s.level.rank.mark(s.level.level), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, fontWeight = FontWeight.Bold)
-            }
-            Text(if (isArabic()) s.level.rank.localTitle() else stringResource(R.string.home_level, s.level.level), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+        // The avatar is the way into Profile and settings; the rank letter rides on it as a small badge.
+        com.forgequest.app.ui.components.CoachMarkBox("coach_profile", R.string.home41_profile_hint_t, R.string.home41_profile_hint_b, below = true) {
+            ProfileAvatar(s.settings.name, photoUrl, if (showRank) s.level.rank.mark(s.level.level) else null, onRankClick)
         }
     }
 }

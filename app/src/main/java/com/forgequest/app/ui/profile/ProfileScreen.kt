@@ -82,6 +82,7 @@ fun ProfileScreen(nav: NavHostController) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            IconButton(onClick = { nav.navigate(com.forgequest.app.ui.Routes.SETTINGS) }) { Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.home41_settings_cd), tint = c.teal) }
         }
 
         if (aiOn && apiKey.isBlank()) {

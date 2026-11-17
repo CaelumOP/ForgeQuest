@@ -298,6 +298,13 @@ export function ProfileScreen() {
         </Card>
       )}
 
+      <Card onClick={() => { document.getElementById('pf-settings')?.scrollIntoView({ block: 'start' }) }}>
+        <div class="pf-row">
+          <span class="pf-ic pf-teal"><Glyph name="app" /></span>
+          <span class="pf-grow"><span class="pf-h3 pf-block">{t('home41_settings_cd')}</span></span>
+        </div>
+      </Card>
+
       {snap && <RankCard snap={snap} name={s.name} justLog={s.justLog} />}
 
       {/* "Just log" mode: no badges entry (they keep unlocking and come back when it's turned off). */}
@@ -331,7 +338,7 @@ export function ProfileScreen() {
         <Card href="#/library"><span class="pf-short"><span class="pf-ic pf-teal"><Glyph name="training" /></span>{t('profile_exercise_library')}</span></Card>
       </div>
 
-      <SectionHeader title={t('settings_section_settings')} />
+      <div id="pf-settings"><SectionHeader title={t('settings_section_settings')} /></div>
 
       <Group id="app" accent="teal" icon="app" title={t('settings_group_app')} open={isOpen('app')} onToggle={() => toggle('app')}
         sum={summary(themeLabel(theme), lang === 'ar' ? 'العربية' : 'English', unitLabel(unit, ar), s.justLog ? t('just_log_title') : null)}>

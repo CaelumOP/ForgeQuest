@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { getLang, plural, t, intlLocale } from '../../i18n'
 import { logWeight, setDayTag, useProgress, type ProgressSnapshot } from '../../data/progress'
 import { planDay, startSession, useOpenSession } from '../../data/workouts'
@@ -12,11 +12,11 @@ import type { PlanItemEntity, SessionEntity, SetEntity } from '../../domain/enti
 import { muscleWeekTargets, pickInsights } from '../../domain/insights'
 import { gramsLeft } from '../../domain/nutrition'
 import { formatInsight } from '../progress/insightText'
-import { Button, Card, Chip, CoachMark, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
+import { Button, Card, Chip, CoachMark, type CoachStep, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
-import { canExcuse, greetingKey } from './helpers'
+import { canExcuse, greetingKey, pickAvatarPhoto } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { RaadEgg } from './RaadEgg'
 import { useFriends } from '../../data/friends'
@@ -146,8 +146,10 @@ function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRa
   // Arabic has no use for a Latin letter: the level goes in the ring instead (Android RankInfo.mark).
   const ar = getLang() === 'ar'
   const mark = ar ? String(s.level.level) : s.level.rank.letter
-  const rankKey = `rank_${s.level.rank.title.toLowerCase()}`
-  const rankLbl = ar ? (t(rankKey) === rankKey ? s.level.rank.title : t(rankKey)) : t('home_level', s.level.level)
+  const f = useFriends()
+  const photo = pickAvatarPhoto(f.status === 'joined' ? f.view?.me.photoUrl : null)
+  const [imgFailed, setImgFailed] = useState(false)
+  useEffect(() => { setImgFailed(false) }, [photo])
   return (
     <div class="home-head">
       <div class="home-head-text">
@@ -155,16 +157,19 @@ function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRa
         <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
         <div class="home-status">{statusText(status, dayTitle, s)}</div>
       </div>
-      {showRank && (
-        <a class="home-rank-wrap" href="#/profile" aria-label={t('home_web_rank_cd', mark)}>
-          <span class="home-rank">
-            <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
-              <span class="home-rank-letter">{mark}</span>
-            </Ring>
+      <CoachMark id={'coach_profile' as CoachStep} title={t('home41_profile_hint_t')} body={t('home41_profile_hint_b')} below>
+        <a class="home41-avatar-wrap" href="#/profile" aria-label={t('home41_profile_cd')}>
+          <span class="home41-avatar" aria-hidden="true">
+            {photo && !imgFailed
+              ? <img src={photo} alt="" referrerPolicy="no-referrer" onError={() => setImgFailed(true)} />
+              : (name || '?')[0]!.toUpperCase()}
           </span>
-          <span class="home-rank-lvl">{rankLbl}</span>
+          {showRank && <span class="home41-badge" aria-hidden="true">{mark}</span>}
+          <span class="home41-gear" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M19.4 13a7.9 7.9 0 000-2l2-1.6a.5.5 0 00.1-.6l-1.9-3.3a.5.5 0 00-.6-.2l-2.4 1a7.4 7.4 0 00-1.7-1l-.4-2.5a.5.5 0 00-.5-.4h-3.8a.5.5 0 00-.5.4l-.4 2.5a7.4 7.4 0 00-1.7 1l-2.4-1a.5.5 0 00-.6.2L2.6 8.8a.5.5 0 00.1.6l2 1.6a7.9 7.9 0 000 2l-2 1.6a.5.5 0 00-.1.6l1.9 3.3c.1.2.4.3.6.2l2.4-1c.5.4 1.1.7 1.7 1l.4 2.5c0 .2.2.4.5.4h3.8c.3 0 .5-.2.5-.4l.4-2.5c.6-.3 1.2-.6 1.7-1l2.4 1c.2.1.5 0 .6-.2l1.9-3.3a.5.5 0 00-.1-.6zM12 15.5A3.5 3.5 0 1112 8.5a3.5 3.5 0 010 7z" /></svg>
+          </span>
         </a>
-      )}
+      </CoachMark>
     </div>
   )
 }
