@@ -30,8 +30,7 @@ export function readScore(row: SnapshotRow): ScoreEnvelope {
 
 export function snapshotScore(s: Pick<SnapshotInput, "done" | "due" | "target" | "prCount" | "proteinDays">) {
   if (s.target === undefined) {
-    // 4.0 clients' rule (ForgeScore.kt on 4.0): nothing due yet this week = on track (100), else done/due.
-    const base = s.due === 0 ? 100 : Math.round(100 * Math.min(s.done, s.due) / s.due);
+    const base = scoreBreakdown(s.done, s.due).base;
     return { base, prBonus: 0, proteinBonus: 0, extraBonus: 0, bonus: 0, score: base };
   }
   return scoreBreakdown(s.done, s.target, s.prCount ?? 0, s.proteinDays);
