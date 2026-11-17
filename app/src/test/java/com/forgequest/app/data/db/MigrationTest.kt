@@ -19,7 +19,7 @@ import java.io.File
 // A plain Application: the real one schedules WorkManager jobs, which Robolectric has no setup for.
 @Config(sdk = [34], application = android.app.Application::class)
 class MigrationTest {
-    private val latest = 11
+    private val latest = 12
     private val dbName = "migration-test"
 
     @get:Rule
@@ -92,5 +92,22 @@ class MigrationTest {
             assertEquals("", c.getString(2))
         }
         db.close()
+    }
+
+    @Test fun populatedElevenUpgradesWithAutoTickedFalse() {
+        val name = "$dbName-autoticked"
+        helper.createDatabase(name, 11).apply {
+            execSQL("INSERT INTO exercises (id, name, kind, `primary`, secondary, custom) VALUES ('bench', 'Bench', 'WEIGHTED', 'CHEST', '', 0)")
+            execSQL("INSERT INTO sessions (title, epochDay, startedAt, note, debrief) VALUES ('Push', 1, 1, '', '')")
+            execSQL("INSERT INTO sets (sessionId, exerciseId, itemPosition, block, circuit, setIndex, targetLabel, done, isPr, restSeconds, note, effort, setType) VALUES (1, 'bench', 0, 'Main', 0, 0, '8', 1, 1, 60, '', '', 'WORKING')")
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 12, true, *AppDatabase.MIGRATIONS).use { db ->
+            db.query("SELECT autoTicked, isPr FROM sets").use { c ->
+                assertEquals(true, c.moveToFirst())
+                assertEquals(0, c.getInt(0))
+                assertEquals(1, c.getInt(1))
+            }
+        }
     }
 }

@@ -48,9 +48,12 @@ sealed interface DriveAuth {
 
 /** Outcome of connecting Drive and inspecting remote backup vs local state. */
 sealed interface DriveConnectOutcome {
-    data class OfferRestore(val email: String, val file: BackupFile) : DriveConnectOutcome
+    data class OfferRestore(val email: String, val file: BackupFile, val modifiedTime: String? = null) : DriveConnectOutcome
+    data class Conflict(val email: String, val fileId: String, val modifiedTime: String?) : DriveConnectOutcome
     data class Connected(val email: String, val backedUp: Boolean, val autoBackupOn: Boolean) : DriveConnectOutcome
 }
+
+data class FetchedBackup(val file: BackupFile, val modifiedTime: String?)
 
 /** Pure policy helpers for Drive backup/restore decisions (unit-tested without network). */
 object DriveConnectPolicy {
@@ -78,9 +81,13 @@ object DriveConnectPolicy {
             normalizeAccountKey(email) !in restoreOfferShown
 
     fun isRemoteNewer(knownModifiedTime: String?, remoteModifiedTime: String?): Boolean {
-        if (knownModifiedTime.isNullOrBlank() || remoteModifiedTime.isNullOrBlank()) return false
-        return remoteModifiedTime != knownModifiedTime
+        if (remoteModifiedTime.isNullOrBlank()) return false
+        return knownModifiedTime.isNullOrBlank() || remoteModifiedTime != knownModifiedTime
     }
+
+    fun needsRemoteChoice(hasRemoteBackup: Boolean, knownModifiedTime: String?, remoteModifiedTime: String?): Boolean =
+        hasRemoteBackup &&
+            (knownModifiedTime.isNullOrBlank() || remoteModifiedTime.isNullOrBlank() || remoteModifiedTime != knownModifiedTime)
 }
 
 /**
@@ -149,9 +156,14 @@ class DriveSync(
         metaPrefs.edit().putString("mod_$accountKey", modifiedTime).apply()
     }
 
+    fun markRestored(accountKey: String, modifiedTime: String?) {
+        saveKnownModified(DriveConnectPolicy.normalizeAccountKey(accountKey), modifiedTime)
+    }
+
     /**
      * Connect flow: record account, inspect Drive backup, offer one-tap restore once per account/device if
-     * this device is empty of meaningful user data, and only otherwise upload (when autoBackupEffective is on).
+     * this device is empty of meaningful user data, surface a conflict if an unseen remote backup exists, and
+     * only otherwise upload (when autoBackupEffective is on).
      */
     suspend fun connectAndInspect(token: String): DriveConnectOutcome = syncMutex.withLock {
         val email = accountEmail(token)
@@ -164,8 +176,14 @@ class DriveSync(
 
         if (DriveConnectPolicy.shouldOfferRestore(local, existing != null, accountKey, currentSettings.restoreOfferShown)) {
             settings.markRestoreOfferShown(accountKey)
-            val remote = withContext(Dispatchers.IO) { fetchBackupById(token, existing!!.id, existing.modifiedTime, accountKey) }
-            return@withLock DriveConnectOutcome.OfferRestore(shownEmail, remote)
+            val remote = withContext(Dispatchers.IO) { fetchBackupById(token, existing!!.id) }
+            return@withLock DriveConnectOutcome.OfferRestore(shownEmail, remote, existing?.modifiedTime)
+        }
+
+        // Only when an upload would follow: never overwrite a remote backup this device hasn't seen without asking.
+        if (existing != null && currentSettings.autoBackupEffective &&
+            DriveConnectPolicy.needsRemoteChoice(true, knownModified(accountKey), existing.modifiedTime)) {
+            return@withLock DriveConnectOutcome.Conflict(shownEmail, existing.id, existing.modifiedTime)
         }
 
         if (currentSettings.autoBackupEffective) {
@@ -188,7 +206,7 @@ class DriveSync(
         val file = backups.build()
         val existing = findBackupInfo(token)
         if (existing != null && DriveConnectPolicy.isDeviceEmpty(file)) return@withContext false
-        if (!forceOverwrite && existing != null && DriveConnectPolicy.isRemoteNewer(knownModified(accountKey), existing.modifiedTime)) {
+        if (!forceOverwrite && DriveConnectPolicy.needsRemoteChoice(existing != null, knownModified(accountKey), existing?.modifiedTime)) {
             throw DriveError.RemoteNewer
         }
         val content = backups.encode(file)
@@ -211,20 +229,16 @@ class DriveSync(
         true
     }
 
-    /** Downloads the Drive backup without applying it, so the person can read what's in it first. */
-    suspend fun fetchBackup(token: String): BackupFile = syncMutex.withLock {
-        val accountKey = DriveConnectPolicy.normalizeAccountKey(settings.current().driveEmail)
+    /** Downloads the Drive backup without applying it or marking it seen, so previewing never overwrites later. */
+    suspend fun fetchBackup(token: String): FetchedBackup = syncMutex.withLock {
         withContext(Dispatchers.IO) {
             val info = findBackupInfo(token) ?: throw DriveError.NoBackup
-            fetchBackupById(token, info.id, info.modifiedTime, accountKey)
+            FetchedBackup(fetchBackupById(token, info.id), info.modifiedTime)
         }
     }
 
-    private fun fetchBackupById(token: String, id: String, modifiedTime: String?, accountKey: String): BackupFile {
-        val file = backups.decode(call(token, Request.Builder().url("$API/files/$id?alt=media").get()))
-        saveKnownModified(accountKey, modifiedTime)
-        return file
-    }
+    private fun fetchBackupById(token: String, id: String): BackupFile =
+        backups.decode(call(token, Request.Builder().url("$API/files/$id?alt=media").get()))
 
     private fun findBackupInfo(token: String): RemoteFileInfo? {
         val body = call(

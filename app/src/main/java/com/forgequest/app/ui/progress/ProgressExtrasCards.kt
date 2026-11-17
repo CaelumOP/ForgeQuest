@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -200,6 +201,8 @@ internal fun MeasurementsCard(
     dateLabel: (Long) -> String,
     onLog: (MeasurementMetric, Float) -> Unit,
     onDelete: (Long) -> Unit,
+    openAdd: Boolean = false,
+    onOpenAddHandled: () -> Unit = {},
 ) {
     val c = Fit.colors
     var selectedIdx by rememberSaveable { mutableIntStateOf(0) }
@@ -213,6 +216,12 @@ internal fun MeasurementsCard(
     val latest = allPoints.lastOrNull()
     val prev = allPoints.getOrNull(allPoints.lastIndex - 1)
     var showDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(openAdd) {
+        if (openAdd) {
+            showDialog = true
+            onOpenAddHandled()
+        }
+    }
 
     FitCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -221,7 +230,14 @@ internal fun MeasurementsCard(
                 Text(stringResource(R.string.prog41_meas_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             Spacer(Modifier.width(8.dp))
-            TonalPill(stringResource(R.string.prog41_meas_log), icon = Icons.Rounded.Add, onClick = { showDialog = true })
+            com.forgequest.app.ui.components.CoachMarkBox(
+                com.forgequest.app.ui.onboarding.AppTour.PROGRESS,
+                R.string.v42_coach_progress_t,
+                R.string.v42_coach_progress_b,
+                below = true,
+            ) {
+                TonalPill(stringResource(R.string.prog41_meas_log), icon = Icons.Rounded.Add, onClick = { showDialog = true })
+            }
         }
         Spacer(Modifier.height(12.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -53,3 +53,6 @@ export async function deleteMeasurement(id: number): Promise<void> {
 export function useMeasurements(): BodyMeasurementRow[] {
   return useLive(() => db.bodyMeasurements.orderBy('epochDay').toArray(), [], [] as BodyMeasurementRow[])
 }
+
+/** Whether at least one body measurement has been logged. */
+export const hasAnyMeasurement = async (): Promise<boolean> => (await db.bodyMeasurements.count()) > 0

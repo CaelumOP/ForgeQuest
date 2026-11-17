@@ -3,6 +3,7 @@ import { weekStart } from './dates'
 import type { ExerciseEntity, SessionEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
 import { recordScore } from './progress'
+import { countsForPR, countsForScore } from './set-types'
 import { trendStats } from './workout-score'
 
 const f = Math.fround
@@ -54,7 +55,7 @@ export function weeklyCounts(workoutDays: Iterable<number>, weeks: number, today
 export function rollingWeeklySets(sets: readonly SetEntity[], sessionDay: ReadonlyMap<number, number>, weeks: number, today: number): number[] {
   const days = sets.flatMap((s) => {
     const d = sessionDay.get(s.sessionId)
-    return d == null || s.block.toLowerCase() === 'warm-up' ? [] : [d]
+    return d == null || !countsForScore(s) ? [] : [d]
   })
   return Array.from({ length: weeks }, (_, i) => today - 1 - 7 * (weeks - 1 - i)).map((end) => days.filter((d) => d >= end - 6 && d <= end).length)
 }
@@ -63,7 +64,7 @@ export function rollingWeeklySets(sets: readonly SetEntity[], sessionDay: Readon
 export function weeklySets(sets: readonly SetEntity[], sessionDay: ReadonlyMap<number, number>, weeks: number, today: number): number[] {
   const days = sets.flatMap((s) => {
     const d = sessionDay.get(s.sessionId)
-    return d == null ? [] : [d]
+    return d == null || !countsForScore(s) ? [] : [d]
   })
   return weekStarts(weeks, today).map((ws) => countIn(days, ws))
 }
@@ -87,6 +88,7 @@ export function trainingLoad(weeklySetCounts: readonly number[]): number {
 export function bestSetSeries(sets: readonly SetEntity[], kind: ExerciseKind, sessionDay: ReadonlyMap<number, number>): TrendPoint[] {
   const byDay = new Map<number, number>()
   for (const s of sets) {
+    if (!countsForScore(s)) continue
     const day = sessionDay.get(s.sessionId)
     if (day == null || day < 0) continue
     const score = recordScore(kind, s.reps, s.seconds, s.weightKg, s.exerciseId)
@@ -142,12 +144,13 @@ export function proteinDaysPerWeek(nutrition: ReadonlyArray<readonly [number, nu
 
 export type Lifetime = { workouts: number; reps: number; minutes: number; records: number; kgLifted: number }
 
-export function lifetime(sessions: readonly SessionEntity[], sets: readonly SetEntity[]): Lifetime {
+export function lifetime(sessions: readonly SessionEntity[], allSets: readonly SetEntity[]): Lifetime {
+  const sets = allSets.filter((s) => countsForScore(s)) // warm-ups never count in all-time totals
   return {
     workouts: sessions.length,
     reps: sets.reduce((a, s) => a + (s.reps ?? 0), 0),
     minutes: sessions.reduce((a, s) => a + (s.finishedAt == null ? 0 : Math.min(Math.max(Math.trunc((s.finishedAt - s.startedAt) / 60_000), 1), 300)), 0),
-    records: sets.filter((s) => s.isPr).length,
+    records: sets.filter((s) => s.isPr && countsForPR(s)).length,
     kgLifted: f(sets.reduce((a, s) => a + f(f(s.weightKg ?? 0) * (s.reps ?? 0)), 0)),
   }
 }
@@ -155,7 +158,10 @@ export function lifetime(sessions: readonly SessionEntity[], sets: readonly SetE
 /** Exercise ids by how often they appear in done sets, most first. */
 export function topExercises(sets: readonly SetEntity[], n: number): string[] {
   const counts = new Map<string, number>()
-  for (const s of sets) counts.set(s.exerciseId, (counts.get(s.exerciseId) ?? 0) + 1)
+  for (const s of sets) {
+    if (!countsForScore(s)) continue
+    counts.set(s.exerciseId, (counts.get(s.exerciseId) ?? 0) + 1)
+  }
   return [...counts].sort((a, b) => b[1] - a[1]).slice(0, n).map(([id]) => id)
 }
 
@@ -198,7 +204,7 @@ export function analyzeFatigueAndPlateaus(
   const byExercise = new Map<string, SetEntity[]>()
   for (const s of doneSets) {
     const d = sessionDay.get(s.sessionId)
-    if (d == null || d < windowStart || d > today || s.block.toLowerCase() === 'warm-up') continue
+    if (d == null || d < windowStart || d > today || !countsForScore(s)) continue
     const list = byExercise.get(s.exerciseId)
     if (list) list.push(s)
     else byExercise.set(s.exerciseId, [s])

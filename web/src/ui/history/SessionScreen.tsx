@@ -88,12 +88,15 @@ export function SessionScreen({ param }: { param?: string }) {
   const today = todayEpochDay()
 
   const workingCount = sets.filter((s) => !isExtraBlock(s.block)).length
-  const quickTags: [string, string][] = [
-    [t('live_tag_easy'), t('live_tag_easy')],
-    [t('live_tag_solid'), t('live_tag_solid')],
-    [t('live_tag_max'), t('live_tag_max_note')],
-    [t('live_tag_joint'), t('live_tag_joint_note')],
-  ]
+  const isPainNote = noteFor?.effort === 'PAIN'
+  const noteTitle = isPainNote ? t('v42_pain_note_title') : t('live_note_title')
+  const quickTags: [string, string][] = isPainNote
+    ? [
+        [t('v42_pain_tag_sharp'), t('v42_pain_tag_sharp')],
+        [t('v42_pain_tag_ache'), t('v42_pain_tag_ache')],
+        [t('v42_pain_tag_joint'), t('v42_pain_tag_joint')],
+      ]
+    : []
 
   return (
     <div class="content">
@@ -145,31 +148,33 @@ export function SessionScreen({ param }: { param?: string }) {
         </div>
       </Sheet>
 
-      <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={t('live_note_title')}>
+      <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={noteTitle}>
         <div class="hs-sheet">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {quickTags.map(([chipLabel, tagValue]) => {
-              const active = noteText.toLowerCase().includes(tagValue.toLowerCase())
-              return (
-                <Chip
-                  key={chipLabel}
-                  label={chipLabel}
-                  selected={active}
-                  onClick={() => {
-                    if (active) {
-                      const escaped = tagValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                      setNoteText(noteText.replace(new RegExp(escaped, 'gi'), '').replace(/^[\s·,]+|[\s·,]+$/g, ''))
-                    } else if (!noteText.trim()) {
-                      setNoteText(tagValue)
-                    } else {
-                      setNoteText(`${tagValue} · ${noteText}`.slice(0, 120))
-                    }
-                  }}
-                />
-              )
-            })}
-          </div>
-          <TextField label={t('live_note_title')} value={noteText} onInput={(v) => setNoteText(v.slice(0, 120))} placeholder={t('live_note_hint')} />
+          {quickTags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {quickTags.map(([chipLabel, tagValue]) => {
+                const active = noteText.toLowerCase().includes(tagValue.toLowerCase())
+                return (
+                  <Chip
+                    key={chipLabel}
+                    label={chipLabel}
+                    selected={active}
+                    onClick={() => {
+                      if (active) {
+                        const escaped = tagValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                        setNoteText(noteText.replace(new RegExp(escaped, 'gi'), '').replace(/^[\s·,]+|[\s·,]+$/g, ''))
+                      } else if (!noteText.trim()) {
+                        setNoteText(tagValue)
+                      } else {
+                        setNoteText(`${tagValue} · ${noteText}`.slice(0, 120))
+                      }
+                    }}
+                  />
+                )
+              })}
+            </div>
+          )}
+          <TextField label={noteTitle} value={noteText} onInput={(v) => setNoteText(v.slice(0, 120))} placeholder={isPainNote ? t('v42_pain_note_hint') : t('v42_note_hint')} />
           <Button onClick={() => { if (noteFor) void updateFinishedSet({ ...noteFor, note: noteText.trim().slice(0, 120) }); setNoteFor(null) }}>{t('action_save')}</Button>
         </div>
       </Sheet>

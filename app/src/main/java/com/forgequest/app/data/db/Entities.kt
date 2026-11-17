@@ -123,6 +123,7 @@ data class SetEntity(
     /** When the set was ticked (epoch ms); null while unticked or for sets done before this existed. */
     val doneAt: Long? = null,
     @ColumnInfo(defaultValue = "'WORKING'") val setType: String = "WORKING",
+    @ColumnInfo(defaultValue = "0") val autoTicked: Boolean = false,
 )
 
 @Serializable

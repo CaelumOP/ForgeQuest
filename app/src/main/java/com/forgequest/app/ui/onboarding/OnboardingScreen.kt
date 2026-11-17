@@ -1,9 +1,18 @@
 package com.forgequest.app.ui.onboarding
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import com.forgequest.app.data.plan.PlanAnswers
+import com.forgequest.app.ui.components.reflowText
+import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -34,8 +43,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -50,9 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -64,12 +74,10 @@ import com.forgequest.app.R
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.prefs.BodyType
-import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.StarterPlans
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.EquipmentPreset
 import com.forgequest.app.domain.Dates
-import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Nutrition
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.Experience
@@ -103,11 +111,35 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.util.Locale
 
+/** Main goal choices in 4.2 onboarding, mapped to nutrition goal, just-log mode, and plan builder goal. */
+enum class OnboardingGoalOption(
+    val nutritionGoal: NutritionGoal,
+    val justLog: Boolean,
+    val trainGoal: TrainGoal,
+) {
+    MUSCLE(NutritionGoal.GAIN, justLog = false, TrainGoal.MUSCLE),
+    FAT(NutritionGoal.CUT, justLog = false, TrainGoal.FAT_LOSS),
+    FIT(NutritionGoal.MAINTAIN, justLog = false, TrainGoal.GENERAL),
+    JUST_LOG(NutritionGoal.MAINTAIN, justLog = true, TrainGoal.GENERAL),
+    ;
+
+    companion object {
+        fun from(goal: NutritionGoal, justLog: Boolean): OnboardingGoalOption = when {
+            justLog -> JUST_LOG
+            goal == NutritionGoal.GAIN -> MUSCLE
+            goal == NutritionGoal.CUT -> FAT
+            else -> FIT
+        }
+    }
+}
+
 data class OnboardingState(
     val step: Int = 0,
     val name: String = "",
     val bodyType: BodyType = BodyType.MALE,
     val weightKg: Float = 75f,
+    /** False until the person edits or confirms a weight in Step 5. */
+    val weightTouched: Boolean = false,
     val unit: WeightUnit = WeightUnit.KG,
     /** 0 until typed: height and age are needed for the food targets (set up from Home after the first workout). */
     val heightCm: Float = 0f,
@@ -117,13 +149,14 @@ data class OnboardingState(
     val protein: Int = 135,
     val goalsTouched: Boolean = false,
     val goal: NutritionGoal = NutritionGoal.MAINTAIN,
+    val goalOption: OnboardingGoalOption = OnboardingGoalOption.FIT,
     val cutPace: CutPace = CutPace.STANDARD,
     val gainPace: GainPace = GainPace.STANDARD,
     /** Days a week the person can train: becomes the weekly streak target. */
     val daysPerWeek: Int = 3,
-    /** "Just log my training" picked on the plan step: no streaks, levels, badges or readiness. */
+    /** "Just log my training" picked on the goal step: no plan, streaks, levels, badges or readiness. */
     val justLog: Boolean = false,
-    /** "Built for me" card picked (the default): the plan comes from PlanBuilder instead of a starter plan. */
+    /** "Built for me" card picked (the default): the plan comes from PlanBuilder instead of starting empty. */
     val builtForMe: Boolean = true,
     val planIndex: Int = StarterPlans.BODYWEIGHT_INDEX,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
@@ -136,16 +169,24 @@ data class OnboardingState(
     val floor get() = Nutrition.calorieFloor(weightKg, heightCm, age, male)
     val burn get() = Nutrition.dailyBurn(weightKg, heightCm, age, male, trainingDays, base = dayActivity.base)
     val fastBlocked get() = Nutrition.allowedCutPace(CutPace.AGGRESSIVE, weightKg, heightCm, age, male) != CutPace.AGGRESSIVE
+
+    fun selectGoal(option: OnboardingGoalOption): OnboardingState = copy(
+        goalOption = option,
+        goal = option.nutritionGoal,
+        justLog = option.justLog,
+    )
 }
 
 /** Tour-only first run (no setup screens): no starting plan, 3 days a week target, everything editable later in Profile. */
 suspend fun quickStart(app: AppContainer) {
     app.workouts.seedLibrary()
+    TourPrefs.setGsEligible(app.appContext)
     app.settings.update { it.copy(onboarded = true, weeklyTargetOverride = 3, calorieV2Seen = true) }
 }
 
 class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     val state = MutableStateFlow(OnboardingState())
+    private var completing = false
 
     /** Applies a change and refreshes both suggestions, unless the person already set the goals by hand. */
     fun update(transform: (OnboardingState) -> OnboardingState) = state.update { s ->
@@ -159,7 +200,9 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
         )
     }
 
-    fun setWeight(kg: Float) = update { it.copy(weightKg = kg.coerceIn(30f, 250f)) }
+    fun selectGoal(option: OnboardingGoalOption) = update { it.selectGoal(option) }
+
+    fun setWeight(kg: Float) = update { it.copy(weightKg = kg.coerceIn(30f, 250f), weightTouched = true) }
 
     fun next() = state.update { it.copy(step = (it.step + 1).coerceAtMost(LAST_STEP)) }
     fun back() = state.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }
@@ -172,38 +215,59 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
         )
     }
 
-    fun finish() {
+    fun skipSetup() {
+        if (completing) return
+        completing = true
+        viewModelScope.launch { quickStart(app) }
+    }
+
+    fun finish(logWeight: Boolean = state.value.weightTouched) {
+        if (completing) return
+        completing = true
         val s = state.value
+        val trainGoal = s.goalOption.trainGoal
+        val nutritionGoal = s.goalOption.nutritionGoal
+        val justLog = s.goalOption.justLog
+        val builtDays = PlanBuilder.spreadDays(s.daysPerWeek)
         viewModelScope.launch {
             app.workouts.seedLibrary()
-            if (s.builtForMe) {
+            if (!justLog && s.builtForMe) {
                 val library = app.workouts.library.first()
                 val input = PlanInput(
-                    goal = TrainGoal.GENERAL, days = PlanBuilder.spreadDays(s.daysPerWeek), minutes = 45,
+                    goal = trainGoal, days = builtDays, minutes = 45,
                     equipment = s.equipmentPreset.equipment, experience = s.experience,
                 )
                 val built = PlanBuilder.build(input, library)
-                app.workouts.applyPlan(localizeBuiltPlan(app, built, TrainGoal.GENERAL), "builder")
+                app.workouts.applyPlan(localizeBuiltPlan(app, built, trainGoal), "builder")
             } else {
-                val selectedPlan = StarterPlans.all.getOrNull(s.planIndex) ?: emptyPlan
-                val catalogById = ExerciseCatalog.all.associateBy { it.id }
-                val adaptedPlan = if (selectedPlan === emptyPlan) {
-                    emptyPlan
-                } else {
-                    ExerciseSwapEngine.adaptPlanToEquipment(selectedPlan, catalogById, s.equipmentPreset.equipment, dropUnfit = true).first
-                }
-                app.workouts.applyPlan(adaptedPlan, if (selectedPlan === emptyPlan) "manual" else "starter")
+                app.workouts.applyPlan(emptyPlan, "manual")
             }
+            if (logWeight && s.weightTouched) {
+                app.progress.logWeight(s.weightKg)
+            }
+            TourPrefs.setGsEligible(app.appContext)
             app.settings.update {
                 it.copy(
                     onboarded = true,
                     name = s.name.trim(),
                     bodyType = s.bodyType,
+                    unit = s.unit.code,
+                    nutritionGoal = nutritionGoal,
+                    goalSetDay = Dates.today(),
+                    proteinPerKg = Nutrition.proteinPerKgFor(nutritionGoal, it.cutPace, it.gainPace),
                     equipment = s.equipmentPreset.encode(),
                     weeklyTargetOverride = s.daysPerWeek,
-                    justLog = s.justLog,
+                    justLog = justLog,
                     // A new person starts on the new suggestion, so the one-time "more accurate target" card never shows.
                     calorieV2Seen = true,
+                    planBuilderAnswers = if (!justLog && s.builtForMe) {
+                        PlanAnswers(
+                            goal = trainGoal,
+                            days = builtDays,
+                            equipment = s.equipmentPreset.equipment,
+                            experience = s.experience,
+                        ).encode()
+                    } else it.planBuilderAnswers,
                 )
             }
         }
@@ -212,8 +276,14 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     /** Opens the food-targets setup from Home with what is already known. */
     fun startFoodSetup(settings: com.forgequest.app.data.prefs.Settings, latestWeight: Float?) = update {
         OnboardingState(
-            bodyType = settings.bodyType, unit = settings.weightUnit, weightKg = latestWeight ?: 75f,
+            bodyType = settings.bodyType,
+            unit = settings.weightUnit,
+            weightKg = latestWeight ?: 75f,
+            weightTouched = latestWeight != null,
             daysPerWeek = if (settings.weeklyTargetOverride > 0) settings.weeklyTargetOverride else 3,
+            goal = settings.nutritionGoal,
+            goalOption = OnboardingGoalOption.from(settings.nutritionGoal, settings.justLog),
+            justLog = settings.justLog,
         )
     }
 
@@ -246,47 +316,89 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     companion object {
-        /** Name, then plan (days a week + equipment). */
-        const val LAST_STEP = 1
+        const val TOTAL_STEPS = 5
+        const val LAST_STEP = TOTAL_STEPS - 1
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OnboardingScreen(onImportCsv: (() -> Unit)? = null) {
     val vm = appViewModel { OnboardingViewModel(it) }
     val s by vm.state.collectAsState()
     val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     BackHandler(enabled = s.step > 0) { vm.back() }
 
     Column(
-        Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 24.dp),
+        Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = ForgeSpace.Lg),
     ) {
-        Spacer(Modifier.height(16.dp))
-        ProgressLine((s.step + 1) / (OnboardingViewModel.LAST_STEP + 1f), c.teal, c.cardHigh, height = 4.dp)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(ForgeSpace.Md))
+        ProgressLine((s.step + 1) / OnboardingViewModel.TOTAL_STEPS.toFloat(), c.teal, c.cardHigh, height = 4.dp)
+        Spacer(Modifier.height(ForgeSpace.Xs))
+        Text(
+            stringResource(R.string.v42_onb_step, s.step + 1, OnboardingViewModel.TOTAL_STEPS),
+            style = MaterialTheme.typography.labelSmall,
+            color = c.textSecondary,
+        )
+        Spacer(Modifier.height(ForgeSpace.Md))
         AnimatedContent(
             targetState = s.step,
             transitionSpec = {
-                val dir = if (targetState > initialState) 1 else -1
-                (slideInHorizontally { it / 4 * dir } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 * dir } + fadeOut())
+                if (reduced) {
+                    fadeIn(ForgeMotion.timed(true, 0, ForgeMotion.Easing.Standard)) togetherWith
+                        fadeOut(ForgeMotion.timed(true, 0, ForgeMotion.Easing.Standard))
+                } else {
+                    val base = if (targetState > initialState) 1 else -1
+                    val dir = if (rtl) -base else base
+                    (slideInHorizontally { it / 4 * dir } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 * dir } + fadeOut())
+                }
             },
             modifier = Modifier.weight(1f),
             label = "step",
         ) { step ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 when (step) {
-                    0 -> StepWelcome(s, vm, onImportCsv)
-                    else -> StepPlan(s, vm)
+                    0 -> StepWelcome(onImportCsv)
+                    1 -> StepAbout(s, vm)
+                    2 -> StepGoalChoice(s, vm)
+                    3 -> StepTraining(s, vm)
+                    else -> StepWeight(s, vm)
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (s.step > 0) TextButton(onClick = vm::back) { Text(stringResource(R.string.action_back), color = c.textSecondary) }
-            Spacer(Modifier.weight(1f))
-            val canGo = s.step != 0 || s.name.isNotBlank()
-            when {
-                s.step < OnboardingViewModel.LAST_STEP -> PillButton(stringResource(R.string.action_continue), onClick = vm::next, enabled = canGo)
-                else -> PillButton(stringResource(R.string.onb_finish), onClick = vm::finish)
+        val reflow = reflowText()
+        FlowRow(
+            Modifier.fillMaxWidth().padding(vertical = ForgeSpace.Md),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            when (s.step) {
+                0 -> {
+                    TextButton(onClick = vm::skipSetup, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.v42_onb_skip_setup), color = c.textSecondary)
+                    }
+                    if (!reflow) Spacer(Modifier.weight(1f))
+                    PillButton(stringResource(R.string.v42_onb_get_started), onClick = vm::next)
+                }
+                OnboardingViewModel.LAST_STEP -> {
+                    TextButton(onClick = vm::back, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.action_back), color = c.textSecondary)
+                    }
+                    if (!reflow) Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { vm.finish(logWeight = false) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.v42_onb_skip_step), color = c.textSecondary)
+                    }
+                    PillButton(stringResource(R.string.onb_finish), onClick = { vm.finish(logWeight = s.weightTouched) })
+                }
+                else -> {
+                    TextButton(onClick = vm::back, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.action_back), color = c.textSecondary)
+                    }
+                    if (!reflow) Spacer(Modifier.weight(1f))
+                    PillButton(stringResource(R.string.action_continue), onClick = vm::next)
+                }
             }
         }
     }
@@ -295,10 +407,10 @@ fun OnboardingScreen(onImportCsv: (() -> Unit)? = null) {
 @Composable
 private fun Title(title: String, body: String) {
     val c = Fit.colors
-    Text(title, style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
+    Text(title, style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
     Spacer(Modifier.height(8.dp))
     Text(body, style = MaterialTheme.typography.bodyLarge, color = c.textSecondary)
-    Spacer(Modifier.height(28.dp))
+    Spacer(Modifier.height(24.dp))
 }
 
 @Composable
@@ -313,36 +425,162 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-private fun StepWelcome(s: OnboardingState, vm: OnboardingViewModel, onImportCsv: (() -> Unit)? = null) {
+private fun StepWelcome(onImportCsv: (() -> Unit)? = null) {
     val c = Fit.colors
-    Title(stringResource(R.string.onb_welcome_title), stringResource(R.string.onb_welcome_body))
-    // Keyboard up on arrival: the first thing asked for is typing a name.
-    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    Title(stringResource(R.string.v42_onb_welcome_title), stringResource(R.string.v42_onb_welcome_body))
+    val values = listOf(
+        Icons.Rounded.FitnessCenter to R.string.v42_onb_value_train,
+        Icons.Rounded.Restaurant to R.string.v42_onb_value_food,
+        Icons.AutoMirrored.Rounded.ShowChart to R.string.v42_onb_value_progress,
+    )
+    values.forEach { (icon, textRes) ->
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = ForgeSpace.Sm).clip(ForgeShape.Md).background(c.card).padding(ForgeSpace.Md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconCircle(icon, c.teal, c.tealTrack)
+            Spacer(Modifier.width(ForgeSpace.Sm))
+            Text(stringResource(textRes), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+        }
+    }
+    if (onImportCsv != null) {
+        Spacer(Modifier.height(ForgeSpace.Md))
+        Text(stringResource(R.string.prog41_onb_import_csv), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        TextButton(onClick = onImportCsv, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.prog41_csv_import_title), color = c.teal)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StepAbout(s: OnboardingState, vm: OnboardingViewModel) {
+    val c = Fit.colors
+    Title(stringResource(R.string.v42_onb_about_title), stringResource(R.string.v42_onb_about_body))
     OutlinedTextField(
         value = s.name,
         onValueChange = { v -> vm.update { it.copy(name = v.take(24)) } },
-        label = { Text(stringResource(R.string.onb_your_name)) },
+        label = { Text(stringResource(R.string.v42_onb_name_optional)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
         shape = ForgeShape.Md,
         colors = fieldColors(),
-        modifier = Modifier.fillMaxWidth().focusRequester(focus),
+        modifier = Modifier.fillMaxWidth(),
     )
-    Spacer(Modifier.height(28.dp))
+    Spacer(Modifier.height(ForgeSpace.Lg))
     Text(stringResource(R.string.onb_body_type), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-    Spacer(Modifier.height(12.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Spacer(Modifier.height(ForgeSpace.Xs))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChip(stringResource(R.string.body_male), s.bodyType == BodyType.MALE, { vm.update { it.copy(bodyType = BodyType.MALE) } })
         ChoiceChip(stringResource(R.string.body_female), s.bodyType == BodyType.FEMALE, { vm.update { it.copy(bodyType = BodyType.FEMALE) } })
     }
-    if (onImportCsv != null) {
-        Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.prog41_onb_import_csv), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        TextButton(onClick = onImportCsv) {
-            Text(stringResource(R.string.prog41_csv_import_title), color = c.teal)
+    Spacer(Modifier.height(ForgeSpace.Lg))
+    Text(stringResource(R.string.v42_onb_units), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+    Spacer(Modifier.height(ForgeSpace.Xs))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChoiceChip(stringResource(R.string.unit_kilograms), s.unit == WeightUnit.KG, { vm.update { it.copy(unit = WeightUnit.KG) } })
+        ChoiceChip(stringResource(R.string.unit_pounds), s.unit == WeightUnit.LB, { vm.update { it.copy(unit = WeightUnit.LB) } })
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StepGoalChoice(s: OnboardingState, vm: OnboardingViewModel) {
+    val c = Fit.colors
+    Title(stringResource(R.string.v42_onb_goal_title), stringResource(R.string.v42_onb_goal_body))
+    val options = listOf(
+        Triple(OnboardingGoalOption.MUSCLE, R.string.v42_onb_goal_muscle, R.string.v42_onb_goal_muscle_desc),
+        Triple(OnboardingGoalOption.FAT, R.string.v42_onb_goal_fat, R.string.v42_onb_goal_fat_desc),
+        Triple(OnboardingGoalOption.FIT, R.string.v42_onb_goal_fit, R.string.v42_onb_goal_fit_desc),
+        Triple(OnboardingGoalOption.JUST_LOG, R.string.v42_onb_goal_log, R.string.v42_onb_goal_log_desc),
+    )
+    options.forEach { (opt, titleRes, descRes) ->
+        ChoiceCard(stringResource(titleRes), stringResource(descRes), s.goalOption == opt) {
+            vm.selectGoal(opt)
         }
     }
+    Spacer(Modifier.height(ForgeSpace.Sm))
+    Text(stringResource(R.string.v42_onb_experience), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+    Spacer(Modifier.height(ForgeSpace.Xs))
+    val expOptions = listOf(
+        Experience.NEW to R.string.v42_onb_exp_new,
+        Experience.SOME to R.string.v42_onb_exp_some,
+        Experience.SEASONED to R.string.v42_onb_exp_pro,
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        expOptions.forEach { (exp, labelRes) ->
+            ChoiceChip(stringResource(labelRes), s.experience == exp, { vm.update { it.copy(experience = exp) } })
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StepTraining(s: OnboardingState, vm: OnboardingViewModel) {
+    val c = Fit.colors
+    val isArabic = Locale.getDefault().language == "ar"
+    Title(stringResource(R.string.v42_onb_train_title), stringResource(R.string.v42_onb_train_body))
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconCircle(Icons.Rounded.LocalFireDepartment, c.gold, c.goldTrack)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.v42_onb_days_week), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            Text(stringResource(R.string.onb_days_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    val dayOptions = listOf(2, 3, 4, 5, 6)
+    SegmentedTabs(
+        options = dayOptions.map { java.text.NumberFormat.getIntegerInstance().format(it) },
+        selected = dayOptions.indexOf(s.daysPerWeek).coerceAtLeast(0),
+        onSelect = { i -> vm.update { it.copy(daysPerWeek = dayOptions[i], planIndex = planForDays(dayOptions[i], it.equipmentPreset)) } },
+    )
+    Spacer(Modifier.height(20.dp))
+
+    Text(stringResource(R.string.v42_onb_where_train), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+    Spacer(Modifier.height(8.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        EquipmentPreset.entries.forEach { preset ->
+            ChoiceChip(
+                text = if (isArabic) preset.labelAr else preset.labelEn,
+                selected = s.equipmentPreset == preset,
+                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planForDays(it.daysPerWeek, preset)) } },
+            )
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Text(stringResource(R.string.onb_equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+
+    if (!s.justLog) {
+        Spacer(Modifier.height(20.dp))
+        ChoiceCard(
+            stringResource(R.string.onb_built_title),
+            stringResource(R.string.onb_built_body, s.daysPerWeek),
+            s.builtForMe,
+        ) { vm.update { it.copy(builtForMe = true) } }
+        ChoiceCard(
+            stringResource(R.string.onb_start_empty),
+            stringResource(R.string.onb_start_empty_desc),
+            !s.builtForMe,
+        ) { vm.update { it.copy(builtForMe = false) } }
+    }
+}
+
+@Composable
+private fun StepWeight(s: OnboardingState, vm: OnboardingViewModel) {
+    Title(stringResource(R.string.v42_onb_weight_title), stringResource(R.string.v42_onb_weight_body))
+    GoalRow(
+        label = stringResource(R.string.weight_body),
+        value = s.unit.fromKg(s.weightKg),
+        onChange = { vm.setWeight(s.unit.toKg(it)) },
+        step = s.unit.bodyStep,
+        min = s.unit.fromKg(30f),
+        max = s.unit.fromKg(250f),
+        unit = s.unit.label,
+        decimals = 1,
+        placeholder = if (s.weightTouched) null else "– ${s.unit.label}",
+    )
 }
 
 /** Step 2: units, weight, height and age (one calm row each), then the normal day outside workouts. */
@@ -502,138 +740,14 @@ private fun Target(s: OnboardingState, vm: OnboardingViewModel) {
 }
 
 @Composable
-private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String, decimals: Int = 0) {
+private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step: Float, min: Float, max: Float, unit: String, decimals: Int = 0, placeholder: String? = null) {
     val c = Fit.colors
     Row(
         Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card).padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
-        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp)
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun StepPlan(s: OnboardingState, vm: OnboardingViewModel) {
-    val c = Fit.colors
-    val isArabic = Locale.getDefault().language == "ar"
-    Title(stringResource(R.string.onb_plan_title), stringResource(R.string.onb_plan_body))
-
-    // Habit (streaks, levels, badges) or just counting the training; Profile can change it later.
-    SegmentedTabs(
-        options = listOf(stringResource(R.string.onb_mode_habit), stringResource(R.string.onb_mode_just_log)),
-        selected = if (s.justLog) 1 else 0,
-        onSelect = { i -> vm.update { it.copy(justLog = i == 1) } },
-    )
-    Spacer(Modifier.height(20.dp))
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconCircle(Icons.Rounded.LocalFireDepartment, c.gold, c.goldTrack)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.onb_days_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-            Text(stringResource(R.string.onb_days_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        }
-    }
-    Spacer(Modifier.height(12.dp))
-    val dayOptions = listOf(2, 3, 4, 5)
-    SegmentedTabs(
-        options = dayOptions.map { java.text.NumberFormat.getIntegerInstance().format(it) },
-        selected = dayOptions.indexOf(s.daysPerWeek),
-        onSelect = { i -> vm.update { it.copy(daysPerWeek = dayOptions[i], planIndex = planForDays(dayOptions[i], it.equipmentPreset)) } },
-    )
-    Spacer(Modifier.height(20.dp))
-
-    Text(stringResource(R.string.prog41_onb_quick_place), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-    Spacer(Modifier.height(8.dp))
-    val quickPlaces = listOf(
-        R.string.prog41_onb_place_gym to EquipmentPreset.FULL_GYM,
-        R.string.prog41_onb_place_home to EquipmentPreset.HOME_GYM,
-        R.string.prog41_onb_place_bw to EquipmentPreset.BODYWEIGHT_ONLY,
-    )
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        quickPlaces.forEach { (labelId, preset) ->
-            ChoiceChip(
-                text = stringResource(labelId),
-                selected = s.equipmentPreset == preset,
-                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planForDays(it.daysPerWeek, preset)) } },
-            )
-        }
-    }
-    Spacer(Modifier.height(16.dp))
-
-    Text(stringResource(R.string.prog41_onb_exp_title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-    Spacer(Modifier.height(8.dp))
-    val expOptions = listOf(
-        Experience.NEW to R.string.prog41_onb_exp_new,
-        Experience.SOME to R.string.prog41_onb_exp_some,
-        Experience.SEASONED to R.string.prog41_onb_exp_seasoned,
-    )
-    SegmentedTabs(
-        options = expOptions.map { stringResource(it.second) },
-        selected = expOptions.indexOfFirst { it.first == s.experience }.coerceAtLeast(0),
-        onSelect = { i -> vm.update { it.copy(experience = expOptions[i].first) } },
-    )
-    Spacer(Modifier.height(20.dp))
-
-    Text(
-        text = stringResource(R.string.onb_available_equipment),
-        style = MaterialTheme.typography.titleSmall,
-        color = c.textPrimary,
-    )
-    Spacer(Modifier.height(8.dp))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        EquipmentPreset.entries.forEach { preset ->
-            ChoiceChip(
-                text = if (isArabic) preset.labelAr else preset.labelEn,
-                selected = s.equipmentPreset == preset,
-                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planForDays(it.daysPerWeek, preset)) } },
-            )
-        }
-    }
-    Spacer(Modifier.height(8.dp))
-    Text(stringResource(R.string.onb_equipment_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-    Spacer(Modifier.height(20.dp))
-
-    ChoiceCard(
-        stringResource(R.string.onb_built_title),
-        stringResource(R.string.onb_built_body, s.daysPerWeek),
-        s.builtForMe,
-    ) { vm.update { it.copy(builtForMe = true) } }
-
-    val options = StarterPlans.all.map { it.name to it.description } + (stringResource(R.string.onb_start_empty) to stringResource(R.string.onb_start_empty_desc))
-    options.forEachIndexed { index, (name, desc) ->
-        val selected = !s.builtForMe && s.planIndex == index
-        Row(
-            Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(ForgeShape.Md).background(c.card)
-                .then(if (selected) Modifier.border(2.dp, c.teal, ForgeShape.Md) else Modifier)
-                .selectable(selected = selected, role = Role.RadioButton) {
-                    val autoPreset = when {
-                        index == StarterPlans.GYM_SPLIT_INDEX -> EquipmentPreset.FULL_GYM
-                        index == StarterPlans.DUMBBELLS_INDEX && Equipment.DUMBBELLS !in s.equipmentPreset.equipment -> EquipmentPreset.DUMBBELLS_AND_BAR
-                        else -> s.equipmentPreset
-                    }
-                    vm.update { it.copy(builtForMe = false, planIndex = index, equipmentPreset = autoPreset) }
-                }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                val planDays = StarterPlans.all.getOrNull(index)?.days?.count { !it.isRest && it.items.isNotEmpty() } ?: 0
-                if (planDays > 0) Text(pluralStringResource(R.plurals.onb_plan_days, planDays, planDays), style = MaterialTheme.typography.labelMedium, color = c.teal)
-                Spacer(Modifier.height(4.dp))
-                Text(desc, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 3)
-            }
-            Spacer(Modifier.width(12.dp))
-            Box(
-                Modifier.size(24.dp).clip(CircleShape).background(if (selected) c.teal else c.cardHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (selected) Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = c.onTeal, modifier = Modifier.size(24.dp))
-            }
-        }
+        NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp, placeholder = placeholder)
     }
 }
 

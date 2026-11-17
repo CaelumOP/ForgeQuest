@@ -4,8 +4,8 @@ import { db, putSession, putSet, type SetRow } from './db';
 import { FULL_BODY_BEGINNER } from './seed/starter-plans';
 import {
   addExercise, applyPlan, finishSession, getActivePlan, getSets, importSharedPlan, moveSession,
-  openSessionNow, recomputeRecords, seedLibrary, setPairWithNext, startSession, updatePlanDay,
-  updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, type PlanDayWithItems,
+  openSessionNow, recomputeRecords, seedLibrary, setPairWithNext, startSession, stepUp, updateFinishedSet,
+  updatePlanDay, updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, type PlanDayWithItems,
 } from './workouts';
 import { exportSharedPlan, parseAndValidateSharedPlan } from '../domain/plan-share';
 
@@ -359,5 +359,81 @@ describe('WP4 plan41 rules (rotation, supersets, autoWarmup, linear/maintain, sh
     expect(allPlans.find((p) => p.id === active.plan.id)?.active).toBe(false);
     expect(allPlans.find((p) => p.id === importedId)?.name).toBe('PPL Rotation (2)');
     expect(allPlans.find((p) => p.id === importedId)?.scheduleMode).toBe('ROTATION');
+  });
+});
+
+describe('v4.2 audit fixes (stepUp done-set guard & autoTicked PR exclusion)', () => {
+  it('stepUp keeps positions with done sets on the old exercise, updates plan items, and returns swapped count', async () => {
+    await applyPlan({
+      name: 'StepUp Test',
+      description: '',
+      days: [
+        {
+          dayOfWeek: 1, title: 'Day 1', isRest: false, note: '',
+          items: [
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'push_up', block: 'Main', circuit: false, sets: 3, repsMin: 10, repsMax: 12, seconds: null, weightKg: null, restSeconds: 60, note: '' },
+          ],
+        },
+      ],
+    }, 'manual');
+    const day = (await getActivePlan())!.days.find((d) => !d.day.isRest)!;
+    const sid = await startSession(day);
+    const initialSets = (await getSets(sid)).filter((s) => s.exerciseId === 'push_up');
+    await updateSet({ ...initialSets[0], reps: 12, done: true, doneAt: Date.now() });
+
+    const swappedDone = await stepUp(sid, 'push_up', 'diamond_push_up');
+    expect(swappedDone).toBe(0);
+    const keptSets = await getSets(sid);
+    expect(keptSets.every((s) => s.exerciseId === 'push_up')).toBe(true);
+    expect(keptSets[0].done).toBe(true);
+    expect(keptSets[0].reps).toBe(12);
+    const updatedDay = (await getActivePlan())!.days.find((d) => d.day.id === day.day.id)!;
+    expect(updatedDay.items[0].exerciseId).toBe('diamond_push_up');
+
+    // A fresh session with no done sets swaps in-place and returns 1
+    await finishSession(sid, false);
+    const sid2 = await startSession(updatedDay);
+    await addExercise(sid2, 'push_up');
+    const swappedUndone = await stepUp(sid2, 'push_up', 'diamond_push_up');
+    expect(swappedUndone).toBe(1);
+    const sets2 = (await getSets(sid2)).filter((s) => s.itemPosition === 1);
+    expect(sets2.every((s) => s.exerciseId === 'diamond_push_up')).toBe(true);
+  });
+
+  it('finishSession(tickAll) marks autoTicked sets and recomputeRecords never turns them into PRs after edits', async () => {
+    const s1 = await startSession(null);
+    await addExercise(s1, 'bench_press');
+    const sets1 = await getSets(s1);
+    await updateSet({ ...sets1[0], reps: 8, weightKg: 60, done: true, doneAt: Date.now() });
+    await updateSet({ ...sets1[1], reps: 10, weightKg: 100, done: false });
+    await finishSession(s1, true);
+
+    const saved1 = await getSets(s1);
+    expect(saved1[0].autoTicked).toBe(false);
+    expect(saved1[1].autoTicked).toBe(true);
+    expect(saved1[1].isPr).toBe(false);
+
+    // Later workout beats set 0 (60kg) while remaining below autoTicked set 1 (100kg)
+    await pause();
+    const s2 = await startSession(null);
+    await addExercise(s2, 'bench_press');
+    const sets2 = await getSets(s2);
+    await updateSet({ ...sets2[0], reps: 8, weightKg: 70, done: true, doneAt: Date.now() });
+    await finishSession(s2, false);
+
+    // Editing a finished set triggers recomputeRecords: autoTicked set must stay non-PR, and s2 beats s1's manual set
+    const saved2 = await getSets(s2);
+    await updateFinishedSet({ ...saved2[0], reps: 9 });
+
+    const after1 = await getSets(s1);
+    const after2 = await getSets(s2);
+    expect(after1.find((s) => s.autoTicked)?.isPr).toBe(false);
+    expect(after2[0].isPr).toBe(true);
+
+    // Even editing the autoTicked set itself keeps it ineligible for PR
+    await updateFinishedSet({ ...after1[1], weightKg: 120 });
+    const afterEditAuto = await getSets(s1);
+    expect(afterEditAuto[1].autoTicked).toBe(true);
+    expect(afterEditAuto[1].isPr).toBe(false);
   });
 });

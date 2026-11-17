@@ -4,6 +4,7 @@ import { effortOf } from './effort';
 import type { ExerciseEntity, PlanItemEntity, SessionEntity, SetEntity } from './entities';
 import type { Muscle } from './muscle';
 import { recordScore, type MuscleRecovery, type WeeklyStreak } from './progress';
+import { countsForScore } from './set-types';
 import { isExtraBlock, workingVolume } from './volume-change';
 
 export function recoverySplit(
@@ -116,7 +117,7 @@ type LifetimeTotals = { workouts: number; sets: number; reps: number; minutes: n
 
 function lifetimeTotals(sessions: readonly SessionEntity[], sets: readonly SetEntity[]): LifetimeTotals {
   const ids = new Set(sessions.map((s) => s.id));
-  const working = sets.filter((s) => s.done && ids.has(s.sessionId) && !isExtraBlock(s.block));
+  const working = sets.filter((s) => s.done && ids.has(s.sessionId) && countsForScore(s));
   const withWork = new Set(working.map((s) => s.sessionId));
   const counted = sessions.filter((s) => withWork.has(s.id));
   const minutes = counted.reduce((sum, s) => {
@@ -212,7 +213,7 @@ export function pickInsights(
   );
   const known = new Set(sessions.map((s) => s.id));
   const done = input.sets.filter((s) => s.done && known.has(s.sessionId));
-  const work = done.filter((s) => !isExtraBlock(s.block) && !STRETCH_IDS.has(s.exerciseId));
+  const work = done.filter((s) => countsForScore(s) && !STRETCH_IDS.has(s.exerciseId));
   const workBySession = new Map<number, SetEntity[]>();
   for (const s of work) {
     const list = workBySession.get(s.sessionId);

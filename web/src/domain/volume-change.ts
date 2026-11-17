@@ -1,15 +1,17 @@
 import type { SessionEntity, SetEntity } from './entities';
 import { isWarmUp } from './workout-score';
+import { countsForScore } from './set-types';
 
 export const isExtraBlock = (block: string | undefined): boolean =>
   isWarmUp(block) || block?.toLowerCase() === 'cool-down';
 
 export function workingVolume(
-  sets: readonly Pick<SetEntity, 'block' | 'weightKg' | 'reps'>[],
+  sets: readonly (Pick<SetEntity, 'block' | 'weightKg' | 'reps'> & { setType?: string })[],
 ): number {
   let total = 0;
   for (const s of sets) {
-    if (isExtraBlock(s.block)) continue;
+    // Warm-up/cool-down blocks and WARMUP set types (auto warm-ups live in Main) are not working volume.
+    if (isExtraBlock(s.block) || !countsForScore(s as SetEntity)) continue;
     total += (s.weightKg ?? 0) * (s.reps ?? 0);
   }
   return total;

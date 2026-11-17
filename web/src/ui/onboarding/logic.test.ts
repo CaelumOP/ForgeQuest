@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { tIn } from '../../i18n'
+import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { DEFAULT_SETTINGS } from '../../data/settings'
 import {
-  bodyStatsReady, foodTargetsPatch, initialState, needsFoodTargets, planForDays, presetForPlan, setWeight, settingsPatch, withSuggestions,
+  bodyStatsReady, foodSetupInitialState, foodTargetsPatch, initialState, localizeOnboardingPlan,
+  needsFoodTargets, nextStep, planForDays, presetForPlan, prevStep, progressStep, setWeight,
+  settingsPatch, trainGoalFor, withSuggestions,
 } from './logic'
 
 describe('onboarding logic', () => {
@@ -79,5 +83,55 @@ describe('onboarding logic', () => {
     expect(presetForPlan(2, 'CALISTHENICS_PARK')).toBe('DUMBBELLS_AND_BAR')
     expect(presetForPlan(2, 'DUMBBELLS_AND_KETTLEBELL')).toBe('DUMBBELLS_AND_KETTLEBELL')
     expect(presetForPlan(1, 'HOME_GYM')).toBe('HOME_GYM')
+  })
+
+  it('maps nutrition goals to training goals and saves nutritionGoal and unit on finish', () => {
+    expect(trainGoalFor('GAIN')).toBe('MUSCLE')
+    expect(trainGoalFor('CUT')).toBe('FAT_LOSS')
+    expect(trainGoalFor('MAINTAIN')).toBe('GENERAL')
+
+    const s = { ...initialState(), goal: 'GAIN' as const, unit: 'LB' as const, daysPerWeek: 4, justLog: false }
+    expect(settingsPatch(s)({ ...DEFAULT_SETTINGS })).toMatchObject({
+      onboarded: true,
+      nutritionGoal: 'GAIN',
+      unit: 'lb',
+      weeklyTargetOverride: 4,
+      justLog: false,
+    })
+  })
+
+  it('skips the training step when justLog is selected', () => {
+    const habit = { step: 3, justLog: false }
+    expect(nextStep(habit)).toBe(4)
+    expect(prevStep({ step: 5, justLog: false })).toBe(4)
+    expect(progressStep({ step: 5, justLog: false })).toEqual({ current: 5, total: 5 })
+
+    const logOnly = { step: 3, justLog: true }
+    expect(nextStep(logOnly)).toBe(5)
+    expect(prevStep({ step: 5, justLog: true })).toBe(3)
+    expect(progressStep({ step: 5, justLog: true })).toEqual({ current: 4, total: 4 })
+  })
+
+  it('pre-fills FoodSetup with the saved nutritionGoal instead of MAINTAIN', () => {
+    const cutState = foodSetupInitialState({ ...DEFAULT_SETTINGS, nutritionGoal: 'CUT', unit: 'lb', weeklyTargetOverride: 4 }, 80)
+    expect(cutState.goal).toBe('CUT')
+    expect(cutState.unit).toBe('LB')
+    expect(cutState.daysPerWeek).toBe(4)
+
+    const gainState = foodSetupInitialState({ ...DEFAULT_SETTINGS, nutritionGoal: 'GAIN' }, null)
+    expect(gainState.goal).toBe('GAIN')
+    expect(gainState.kcal).toBeGreaterThan(cutState.kcal)
+  })
+
+  it('localizes the built-for-me onboarding plan in English and Arabic', () => {
+    const s = { ...initialState(), goal: 'GAIN' as const, daysPerWeek: 4, preset: 'FULL_GYM' as const, experience: 'SOME' as const }
+    const enPlan = localizeOnboardingPlan(s, EXERCISE_CATALOG, (k, ...a) => tIn('en', k, ...a))
+    expect(enPlan.name).toBe('Build muscle plan')
+    expect(enPlan.days.map((d) => d.title)).toEqual(['Upper body', 'Lower body', 'Upper body', 'Lower body'])
+
+    const arPlan = localizeOnboardingPlan(s, EXERCISE_CATALOG, (k, ...a) => tIn('ar', k, ...a))
+    expect(arPlan.name).toBe('خطة بناء العضلات')
+    expect(arPlan.days.map((d) => d.title)).toEqual(['الجزء العلوي', 'الجزء السفلي', 'الجزء العلوي', 'الجزء السفلي'])
+    expect(arPlan.description).not.toBe(enPlan.description)
   })
 })

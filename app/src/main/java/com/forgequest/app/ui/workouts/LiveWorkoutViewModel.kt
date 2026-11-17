@@ -608,11 +608,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         }.toMap()
     }
 
-    /** Switches an easy move for its harder version, today and on the plan day this workout came from. */
-    fun stepUp(oldId: String, newId: String) = currentSession?.let { s ->
+    /** Switches an easy move for its harder version, today (only unticked positions) and on the plan day this workout came from. */
+    fun stepUp(oldId: String, newId: String, onResult: (Int) -> Unit = {}) = currentSession?.let { s ->
         val positions = sets.value.filter { it.exerciseId == oldId }.map { it.itemPosition }.distinct()
         harder.value = harder.value - oldId
-        viewModelScope.launch { repo.stepUp(s, positions, oldId, newId) }
+        viewModelScope.launch {
+            val swapped = repo.stepUp(s, positions, oldId, newId)
+            onResult(swapped)
+        }
     }
 
     fun swap(itemPosition: Int, exerciseId: String) = currentSession?.let { s ->

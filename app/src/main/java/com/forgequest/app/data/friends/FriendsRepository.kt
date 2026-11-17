@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import java.security.MessageDigest
 import com.forgequest.app.data.db.MealEntity
 import com.forgequest.app.domain.ForgeScoreEvent
@@ -41,6 +43,7 @@ class FriendsRepository(
     private val session: FriendsSession,
     private val cache: FriendsCache,
     private val progress: ProgressRepository,
+    private val nowSecProvider: () -> Long = { System.currentTimeMillis() / 1000L },
 ) {
     private val prefs = context.applicationContext.getSharedPreferences(FriendsSession.PREFS_NAME, Context.MODE_PRIVATE)
     private val syncMutex = Mutex()
@@ -68,8 +71,11 @@ class FriendsRepository(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _nudgedToday = MutableStateFlow(loadNudgedToday(Dates.today()))
-    val nudgedToday: StateFlow<Set<String>> = _nudgedToday.asStateFlow()
+    private val _nudgeLocal = MutableStateFlow(loadNudgeMap())
+    val nudgeLocal: StateFlow<Map<String, Long>> = _nudgeLocal.asStateFlow()
+
+    private val _trainDayNudgeIds = MutableStateFlow<Set<String>>(emptySet())
+    val trainDayNudgeIds: StateFlow<Set<String>> = _trainDayNudgeIds.asStateFlow()
 
     fun clearError() {
         _error.value = null
@@ -223,7 +229,16 @@ class FriendsRepository(
     /** Sends a friend request by username. Returns null on success, else the error code (bad syntax never hits the server). */
     suspend fun invite(username: String): String? {
         val clean = Usernames.normalize(username) ?: return "bad_username".also { _error.value = it }
-        if (isDemo) return null
+        if (isDemo) {
+            _state.value?.let { cur ->
+                if (cur.view.outgoing.none { it.username == clean } && cur.view.friends.none { it.username == clean }) {
+                    val added = Person(id = "demo_out_$clean", username = clean, name = clean)
+                    val updatedView = cur.view.copy(outgoing = cur.view.outgoing + added)
+                    _state.value = cur.copy(view = updatedView)
+                }
+            }
+            return null
+        }
         return try {
             api.invite(clean)
             refresh()
@@ -236,13 +251,49 @@ class FriendsRepository(
         }
     }
 
-    suspend fun accept(id: String) = runAction { api.accept(id) }
+    suspend fun accept(id: String): Boolean {
+        if (isDemo) {
+            _state.value?.let { cur ->
+                val person = cur.view.incoming.firstOrNull { it.id == id }
+                val newFriend = person?.let { Friend(id = it.id, username = it.username, name = it.name, photoUrl = it.photoUrl) }
+                val updatedView = cur.view.copy(
+                    incoming = cur.view.incoming.filterNot { it.id == id },
+                    friends = if (newFriend != null && cur.view.friends.none { it.id == id }) cur.view.friends + newFriend else cur.view.friends,
+                )
+                _state.value = cur.copy(view = updatedView, leaderboard = FriendsLeaderboard.build(updatedView, cur.mySnapshot))
+            }
+            return true
+        }
+        return runAction { api.accept(id) }
+    }
 
-    suspend fun decline(id: String) = runAction { api.decline(id) }
+    suspend fun decline(id: String): Boolean {
+        if (isDemo) {
+            _state.value?.let { cur ->
+                val updatedView = cur.view.copy(
+                    incoming = cur.view.incoming.filterNot { it.id == id },
+                    outgoing = cur.view.outgoing.filterNot { it.id == id },
+                )
+                _state.value = cur.copy(view = updatedView)
+            }
+            return true
+        }
+        return runAction { api.decline(id) }
+    }
 
-    suspend fun remove(id: String) = runAction { api.remove(id) }
+    suspend fun remove(id: String): Boolean {
+        if (isDemo) {
+            _state.value?.let { cur ->
+                val updatedView = cur.view.copy(friends = cur.view.friends.filterNot { it.id == id })
+                _state.value = cur.copy(view = updatedView, leaderboard = FriendsLeaderboard.build(updatedView, cur.mySnapshot))
+            }
+            return true
+        }
+        return runAction { api.remove(id) }
+    }
 
-    suspend fun block(id: String) = runAction { api.block(id) }
+    suspend fun block(id: String): Boolean =
+        if (isDemo) remove(id) else runAction { api.block(id) }
 
     /** Updates in-memory Me (and the cached leaderboard view if loaded) for optimistic toggles or demo mode. */
     internal fun applyLocalMe(updatedMe: Me) {
@@ -374,25 +425,37 @@ class FriendsRepository(
     }
 
     /**
-     * Nudges [id]. Returns `null` when sent, `"already_nudged"` when already used today (also disabling Nudge for today),
+     * Nudges [id]. Returns `null` when sent, `"already_nudged"` when cooling down (updating the local cooldown map),
      * or another error code on failure.
      */
     suspend fun nudge(id: String): String? {
+        val sentAtSec = nowSecProvider()
         if (isDemo) {
-            markNudgedToday(id, Dates.today())
+            val nextAt = NudgeGate.localMidnightSec(sentAtSec)
+            recordNudgeBlocked(id, nextAt, sentAtSec)
+            _trainDayNudgeIds.value = _trainDayNudgeIds.value - id
             return null
         }
-        val day = _state.value?.view?.today ?: Dates.today()
         return try {
-            api.nudge(id)
-            markNudgedToday(id, day)
+            val result = api.nudge(id)
+            val blocked = NudgeGate.nextBlockedUntil(result.nextAt, sentAtSec)
+            recordNudgeBlocked(id, blocked, sentAtSec)
+            if (result.nextAt != null && result.nextAt - sentAtSec in 1L until TRAIN_DAY_HINT_THRESHOLD_SEC) {
+                _trainDayNudgeIds.value = _trainDayNudgeIds.value + id
+            } else {
+                _trainDayNudgeIds.value = _trainDayNudgeIds.value - id
+            }
             _error.value = null
             null
         } catch (e: CancellationException) {
             throw e
         } catch (e: FriendsException) {
             if (e.code == "already_nudged") {
-                markNudgedToday(id, day)
+                refresh()
+                val nowAfter = nowSecProvider()
+                val serverNextAt = _state.value?.view?.friends?.firstOrNull { it.id == id }?.nudgeNextAt
+                val blocked = NudgeGate.nextBlockedUntil(serverNextAt, nowAfter)
+                recordNudgeBlocked(id, blocked, nowAfter)
                 "already_nudged"
             } else {
                 _error.value = e.code
@@ -449,7 +512,8 @@ class FriendsRepository(
         _me.value = null
         _signedInState.value = false
         _error.value = null
-        _nudgedToday.value = emptySet()
+        _nudgeLocal.value = emptyMap()
+        _trainDayNudgeIds.value = emptySet()
         _state.value = if (isDemo) demoUiData() else null
     }
 
@@ -476,15 +540,18 @@ class FriendsRepository(
 
     private fun currentSharePrs(): Boolean = _state.value?.view?.me?.sharePrs ?: _me.value?.sharePrs ?: true
 
-    private suspend fun runAction(block: suspend () -> Unit) {
-        if (isDemo) return
-        try {
+    private suspend fun runAction(block: suspend () -> Unit): Boolean {
+        if (isDemo) return true
+        return try {
             block()
+            _error.value = null
             refresh()
+            true
         } catch (e: CancellationException) {
             throw e
         } catch (e: FriendsException) {
             _error.value = e.code
+            false
         }
     }
 
@@ -518,7 +585,7 @@ class FriendsRepository(
             return
         }
         cache.save(view)
-        _nudgedToday.value = loadNudgedToday(view.today)
+        _nudgeLocal.value = loadNudgeMap(nowSecProvider(), view.today)
         val mySnap = view.mySnapshot
         mySnap?.let(::saveLastSnapshot)
         _state.value = FriendsUiData(
@@ -592,19 +659,56 @@ class FriendsRepository(
         return runCatching { FriendsApi.json.decodeFromString(Snapshot.serializer(), raw) }.getOrNull()
     }
 
-    private fun loadNudgedToday(today: Long): Set<String> {
-        val savedDay = prefs.getLong(KEY_NUDGED_DAY, -1L)
-        if (savedDay != today) return emptySet()
-        return prefs.getStringSet(KEY_NUDGED_IDS, emptySet())?.toSet().orEmpty()
+    private fun loadNudgeMap(
+        nowSec: Long = nowSecProvider(),
+        today: Long = Dates.today(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): Map<String, Long> {
+        val stored = prefs.getString(KEY_NUDGE_NEXT_AT, null)?.let { raw ->
+            runCatching { FriendsApi.json.decodeFromString(NUDGE_MAP_SERIALIZER, raw) }.getOrNull()
+        }.orEmpty()
+        val merged = stored.toMutableMap()
+        val hasLegacy = prefs.contains(KEY_NUDGED_DAY) || prefs.contains(KEY_NUDGED_IDS)
+        if (hasLegacy) {
+            val savedDay = prefs.getLong(KEY_NUDGED_DAY, -1L)
+            if (savedDay == today) {
+                val midnight = NudgeGate.localMidnightSec(nowSec, zone)
+                val legacyIds = prefs.getStringSet(KEY_NUDGED_IDS, emptySet()).orEmpty()
+                for (id in legacyIds) {
+                    merged[id] = maxOf(merged[id] ?: 0L, midnight)
+                }
+            }
+        }
+        val pruned = NudgeGate.prune(merged, nowSec)
+        if (hasLegacy || pruned.size != stored.size) {
+            saveNudgeMap(pruned, removeLegacy = hasLegacy)
+        }
+        return pruned
     }
 
-    private fun markNudgedToday(id: String, day: Long) {
-        val next = loadNudgedToday(day) + id
-        prefs.edit()
-            .putLong(KEY_NUDGED_DAY, day)
-            .putStringSet(KEY_NUDGED_IDS, next)
-            .apply()
-        _nudgedToday.value = next
+    private fun saveNudgeMap(map: Map<String, Long>, removeLegacy: Boolean = false) {
+        prefs.edit().apply {
+            if (map.isEmpty()) {
+                remove(KEY_NUDGE_NEXT_AT)
+            } else {
+                putString(KEY_NUDGE_NEXT_AT, FriendsApi.json.encodeToString(NUDGE_MAP_SERIALIZER, map))
+            }
+            if (removeLegacy) {
+                remove(KEY_NUDGED_DAY)
+                remove(KEY_NUDGED_IDS)
+            }
+        }.apply()
+    }
+
+    private fun recordNudgeBlocked(id: String, blockedUntil: Long, nowSec: Long) {
+        val next = NudgeGate.prune(_nudgeLocal.value, nowSec).toMutableMap()
+        if (blockedUntil > nowSec) {
+            next[id] = blockedUntil
+        } else {
+            next.remove(id)
+        }
+        saveNudgeMap(next)
+        _nudgeLocal.value = next
     }
 
     internal fun buildSnapshot(
@@ -640,6 +744,11 @@ class FriendsRepository(
                 val kg = (((set.weightKg ?: 0f) * 100.0).roundToLong() / 100.0).coerceIn(0.0, 1000.0)
                 Pr(name, kg, (set.reps ?: set.seconds ?: 1).coerceIn(1, 100))
             }
+        val trainDays = snap.plan?.trainingDays
+            ?.filter { it in 1..7 }
+            ?.distinct()
+            ?.sorted()
+            ?.takeIf { it.isNotEmpty() }
         return Snapshot(
             weekStart = ws, done = week.done, due = week.target, score = week.score, badge = week.badge,
             streakWeeks = snap.streak.weeks, proteinDays = week.proteinDays, prs = prs,
@@ -647,6 +756,7 @@ class FriendsRepository(
             reachedAt = ForgeScore.reachedAt(week.target, events, LocalDate.ofEpochDay(ws).atStartOfDay(zone).toEpochSecond()),
             weekState = when { snap.streak.hitThisWeek -> "hit"; snap.streak.freeWeek -> "free"; else -> "open" },
             lastWeekState = snap.streak.lastWeekState,
+            trainDays = trainDays,
         )
     }
 
@@ -654,22 +764,35 @@ class FriendsRepository(
         val today = Dates.today()
         val weekStart = Dates.weekStart(today)
         val now = System.currentTimeMillis()
+        val nowSec = now / 1000L
         val me = loadDemoMe()
         val samplePrs = listOf(Pr("Bench Press", 92.5, 5), Pr("Pull-up", 15.0, 8))
         val mySnap = progressSnap?.let { ps ->
             val built = buildSnapshot(ps, sharePrs = me.sharePrs, today = today)
-            built.copy(prs = if (!me.sharePrs) null else built.prs?.ifEmpty { samplePrs })
+            val target = built.target ?: built.due
+            built.copy(
+                prs = if (!me.sharePrs) null else built.prs?.ifEmpty { samplePrs },
+                breakdown = ForgeScore.breakdown(built.done, target, built.prCount ?: 0, built.proteinDays),
+            )
         } ?: Snapshot(
             weekStart = weekStart,
             done = 0,
             due = 0,
-            score = 100,
+            score = 0,
             badge = ForgeScore.REST,
             streakWeeks = 0,
             proteinDays = 0,
             prs = if (me.sharePrs) samplePrs else null,
             weekState = "open",
+            target = 0,
+            prCount = 0,
+            breakdown = ForgeScore.breakdown(0, 0, 0, 0),
         )
+        val omarBreakdown = ForgeScore.breakdown(4, 4, 2, 6)
+        val linaBreakdown = ForgeScore.breakdown(3, 4, 1, 5)
+        val zaidBreakdown = ForgeScore.breakdown(2, 3, 0, 4)
+        val samiBreakdown = ForgeScore.breakdown(1, 4, 0, 2)
+        val noorBreakdown = ForgeScore.breakdown(3, 3, 0, 4)
         val friends = listOf(
             Friend(
                 id = "demo_1",
@@ -679,12 +802,15 @@ class FriendsRepository(
                     weekStart = weekStart,
                     done = 4,
                     due = 4,
-                    score = 100,
+                    score = omarBreakdown.score,
                     badge = ForgeScore.TRAINED,
                     streakWeeks = 9,
                     proteinDays = 6,
                     prs = listOf(Pr("Barbell Back Squat", 120.0, 5), Pr("Overhead Press", 60.0, 6)),
                     weekState = "hit",
+                    target = 4,
+                    prCount = 2,
+                    breakdown = omarBreakdown,
                 ),
                 sharedStreak = 6,
             ),
@@ -696,14 +822,18 @@ class FriendsRepository(
                     weekStart = weekStart,
                     done = 3,
                     due = 4,
-                    score = 85,
+                    score = linaBreakdown.score,
                     badge = ForgeScore.ON_TRACK,
                     streakWeeks = 4,
                     proteinDays = 5,
                     prs = listOf(Pr("Romanian Deadlift", 85.0, 8)),
                     weekState = "open",
+                    target = 4,
+                    prCount = 1,
+                    breakdown = linaBreakdown,
                 ),
                 sharedStreak = 4,
+                nudgeNextAt = nowSec + 2 * HOUR_S,
             ),
             Friend(
                 id = "demo_3",
@@ -713,12 +843,15 @@ class FriendsRepository(
                     weekStart = weekStart,
                     done = 2,
                     due = 3,
-                    score = 75,
+                    score = zaidBreakdown.score,
                     badge = ForgeScore.REST,
                     streakWeeks = 3,
                     proteinDays = 4,
                     prs = emptyList(),
                     weekState = "open",
+                    target = 3,
+                    prCount = 0,
+                    breakdown = zaidBreakdown,
                 ),
                 sharedStreak = 2,
             ),
@@ -730,12 +863,15 @@ class FriendsRepository(
                     weekStart = weekStart,
                     done = 1,
                     due = 4,
-                    score = 35,
+                    score = samiBreakdown.score,
                     badge = ForgeScore.SLACKING,
                     streakWeeks = 1,
                     proteinDays = 2,
                     prs = null,
                     weekState = "open",
+                    target = 4,
+                    prCount = 0,
+                    breakdown = samiBreakdown,
                 ),
                 sharedStreak = 0,
             ),
@@ -747,10 +883,13 @@ class FriendsRepository(
                     weekStart = weekStart - 7L,
                     done = 3,
                     due = 3,
-                    score = 95,
+                    score = noorBreakdown.score,
                     badge = ForgeScore.SLACKING,
                     streakWeeks = 2,
                     proteinDays = 4,
+                    target = 3,
+                    prCount = 0,
+                    breakdown = noorBreakdown,
                 ),
             ),
         )
@@ -799,6 +938,9 @@ class FriendsRepository(
         private const val KEY_LAST_ME = "last_me"
         private const val KEY_NUDGED_DAY = "nudged_day"
         private const val KEY_NUDGED_IDS = "nudged_ids"
+        private const val KEY_NUDGE_NEXT_AT = "nudge_next_at"
         private const val HOUR_S = 3_600L // inbox times are epoch seconds
+        private const val TRAIN_DAY_HINT_THRESHOLD_SEC = 5 * 3_600L
+        private val NUDGE_MAP_SERIALIZER = MapSerializer(String.serializer(), Long.serializer())
     }
 }

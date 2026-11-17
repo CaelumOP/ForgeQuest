@@ -14,4 +14,4 @@ fun countsForProgression(set: SetEntity): Boolean = when (set.setType) {
 }
 
 fun countsForScore(set: SetEntity): Boolean = countsForProgression(set)
-fun countsForPR(set: SetEntity): Boolean = countsForProgression(set)
+fun countsForPR(set: SetEntity): Boolean = !set.autoTicked && countsForProgression(set)

@@ -150,6 +150,9 @@ export async function logWeight(kg: number): Promise<void> {
   await putWeight({ epochDay: todayEpochDay(), kg: Math.trunc(kg * 10) / 10, loggedAt: Date.now() });
 }
 
+/** Whether at least one body weight entry has been logged. */
+export const hasAnyWeight = async (): Promise<boolean> => (await db.weights.count()) > 0;
+
 
 /** Excuses `epochDay` (today or up to 3 days back); null `tag` takes the excuse away. */
 export async function setDayTag(epochDay: number, tag: DayTag | null): Promise<void> {

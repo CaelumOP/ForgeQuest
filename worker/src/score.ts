@@ -16,6 +16,8 @@ export interface ScoreEnvelope {
   prCount: number;
   reachedAt: number;
   prs: PrItem[] | null;
+  /** 4.2: planned training weekdays (ISO 1..7); absent for older clients. */
+  trainDays?: number[];
 }
 
 export function readScore(row: SnapshotRow): ScoreEnvelope {
@@ -38,5 +40,6 @@ export function snapshotScore(s: Pick<SnapshotInput, "done" | "due" | "target" |
 
 export function encodeScore(s: SnapshotInput, nowSec: number): string {
   return JSON.stringify({ scoreVersion: s.target === undefined ? 1 : 2, target: s.target ?? s.due,
-    prCount: s.prCount ?? 0, reachedAt: s.reachedAt ?? nowSec, prs: s.prs } satisfies ScoreEnvelope);
+    prCount: s.prCount ?? 0, reachedAt: s.reachedAt ?? nowSec, prs: s.prs,
+    ...(s.trainDays ? { trainDays: s.trainDays } : {}) } satisfies ScoreEnvelope);
 }

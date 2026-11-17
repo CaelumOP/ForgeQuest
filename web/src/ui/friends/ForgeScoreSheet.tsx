@@ -1,4 +1,4 @@
-import { scoreBreakdown, type ForgeScoreBreakdown } from '../../domain/forge-score'
+import type { ForgeScoreBreakdown } from '../../domain/forge-score'
 import { t, useLang } from '../../i18n'
 import { Sheet } from '../kit'
 
@@ -9,21 +9,30 @@ type Props = {
   target: number
   prCount: number
   proteinDays: number
-  breakdown?: ForgeScoreBreakdown
+  score?: number | null
+  breakdown?: ForgeScoreBreakdown | null
 }
 
-export function ForgeScoreSheet({ open, onClose, done, target, prCount, proteinDays, breakdown }: Props) {
+export function ForgeScoreSheet({ open, onClose, done, target, prCount, proteinDays, score, breakdown }: Props) {
   useLang()
-  const b = breakdown ?? scoreBreakdown(done, target, prCount, proteinDays)
   return <Sheet open={open} onClose={onClose} title={t('score41_title')}>
     <div style={{ display: 'grid', gap: 'var(--sp-md)', overflowWrap: 'anywhere' }}>
-      {target === 0 && <p style={{ margin: 0 }}>{t('score41_target')}</p>}
-      <p style={{ margin: 0 }}>{t('score41_workouts', done, target, b.base)}</p>
-      {b.prBonus > 0 && <p style={{ margin: 0 }}>{t('score41_prs', prCount, b.prBonus)}</p>}
-      {b.proteinBonus > 0 && <p style={{ margin: 0 }}>{t('score41_protein', proteinDays, b.proteinBonus)}</p>}
-      {b.extraBonus > 0 && <p style={{ margin: 0 }}>{t('score41_extra')}</p>}
-      {b.prBonus + b.proteinBonus + b.extraBonus > b.bonus && <p class="muted">{t('score41_cap')}</p>}
-      <strong dir="ltr">{t('score41_total', b.base, b.bonus, b.score)}</strong>
+      {breakdown ? (
+        <>
+          {target === 0 && <p style={{ margin: 0 }}>{t('score41_target')}</p>}
+          <p style={{ margin: 0 }}>{t('score41_workouts', done, target, breakdown.base)}</p>
+          {breakdown.prBonus > 0 && <p style={{ margin: 0 }}>{t('score41_prs', prCount, breakdown.prBonus)}</p>}
+          {breakdown.proteinBonus > 0 && <p style={{ margin: 0 }}>{t('score41_protein', proteinDays, breakdown.proteinBonus)}</p>}
+          {breakdown.extraBonus > 0 && <p style={{ margin: 0 }}>{t('score41_extra')}</p>}
+          {breakdown.prBonus + breakdown.proteinBonus + breakdown.extraBonus > breakdown.bonus && <p class="muted">{t('score41_cap')}</p>}
+          <strong dir="ltr">{t('score41_total', breakdown.base, breakdown.bonus, breakdown.score)}</strong>
+        </>
+      ) : (
+        <>
+          <strong>{t('friends_score_label')}: <span dir="ltr">{score ?? '–'}</span></strong>
+          <p class="muted" style={{ margin: 0 }}>{t('v42_score_breakdown_unavailable')}</p>
+        </>
+      )}
       <p class="muted">{t('score41_rule_base')}</p>
       <p class="muted">{t('score41_rule_bonus')}</p>
       <p class="muted">{t('score41_rule_tie')}</p>

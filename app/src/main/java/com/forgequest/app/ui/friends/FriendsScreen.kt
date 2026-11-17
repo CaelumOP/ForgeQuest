@@ -6,12 +6,24 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import android.text.format.DateFormat
 import android.text.format.DateUtils
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +48,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -52,6 +65,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,8 +82,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,11 +95,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -95,6 +113,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
@@ -109,11 +128,13 @@ import com.forgequest.app.data.friends.Inbox
 import com.forgequest.app.data.friends.InboxActivity
 import com.forgequest.app.data.friends.InboxPing
 import com.forgequest.app.data.friends.Me
+import com.forgequest.app.data.friends.NudgeGate
 import com.forgequest.app.data.friends.Person
 import com.forgequest.app.data.friends.findActivity
 import com.forgequest.app.domain.FriendBadge
 import com.forgequest.app.domain.LeaderboardEntry
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
@@ -124,8 +145,10 @@ import com.forgequest.app.ui.components.rememberFullSheetState
 import com.forgequest.app.ui.components.rememberTextClipboard
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import com.forgequest.app.ui.theme.NumberFont
 import com.forgequest.app.ui.theme.tabular
 import com.forgequest.app.data.friends.Usernames
@@ -139,7 +162,15 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.semantics.contentDescription
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Date
+
+private const val ME_SCORE_ID = "__me__"
+
+private enum class NudgeButtonState { READY, SENT, COOLDOWN }
+
+private enum class InviteButtonState { IDLE, SENDING, SENT }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,7 +180,11 @@ fun FriendsScreen(nav: NavHostController) {
     val signedIn by vm.signedIn.collectAsState()
     val me by vm.me.collectAsState()
     val error by vm.error.collectAsState()
-    val nudgedToday by vm.nudgedToday.collectAsState()
+    val nudgeNextAt by vm.nudgeNextAt.collectAsState()
+    val trainDayNudgeIds by vm.trainDayNudgeIds.collectAsState()
+    val pending by vm.pending.collectAsState()
+    val hidden by vm.hidden.collectAsState()
+    val nudgeSent by vm.nudgeSent.collectAsState()
     val settings by vm.settings.collectAsState()
     val refreshing by vm.refreshing.collectAsState()
     val busy by vm.busy.collectAsState()
@@ -157,22 +192,57 @@ fun FriendsScreen(nav: NavHostController) {
     val c = Fit.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val snackbar = LocalSnackbar.current
+    val reduced = LocalReducedMotion.current
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    var scoreOpen by rememberSaveable { mutableStateOf(false) }
+    var scoreTargetId by rememberSaveable { mutableStateOf<String?>(null) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
     var inboxOpen by rememberSaveable { mutableStateOf(false) }
     var outOpen by rememberSaveable { mutableStateOf(false) }
-    val sentMsg = stringResource(R.string.friends_nudge_sent)
-    val nudge: (String) -> Unit = { id -> scope.launch { if (vm.nudge(id) == null) context.toast(sentMsg) } }
 
     var notifCheckTick by remember { mutableIntStateOf(0) }
+    var nowSec by remember { mutableLongStateOf(System.currentTimeMillis() / 1000L) }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) notifCheckTick++
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notifCheckTick++
+                nowSec = System.currentTimeMillis() / 1000L
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val nextExpiry = remember(nudgeNextAt, nowSec) {
+        nudgeNextAt.values.filter { it > nowSec }.minOrNull()
+    }
+    LaunchedEffect(nextExpiry, nudgeNextAt) {
+        val current = System.currentTimeMillis() / 1000L
+        nowSec = current
+        val target = nextExpiry ?: return@LaunchedEffect
+        val waitMs = ((target - current) * 1000L + 250L).coerceAtLeast(250L)
+        delay(waitMs)
+        nowSec = System.currentTimeMillis() / 1000L
+    }
+
+    LaunchedEffect(vm) {
+        val failedMsg = context.getString(R.string.v42_friends_action_failed)
+        val nowFriendsMsg = context.getString(R.string.v42_friends_now_friends)
+        vm.events.collect { event ->
+            when (event) {
+                is FriendsUiEvent.ActionFailed -> {
+                    if (event.overSheet) {
+                        Toast.makeText(context, failedMsg, Toast.LENGTH_SHORT).show()
+                    } else {
+                        scope.launch { snackbar.showSnackbar(failedMsg) }
+                    }
+                }
+                FriendsUiEvent.NowFriends -> {
+                    Toast.makeText(context, nowFriendsMsg, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -286,7 +356,7 @@ fun FriendsScreen(nav: NavHostController) {
             ),
             verticalArrangement = Arrangement.spacedBy(ForgeSpace.CardGap),
         ) {
-            item {
+            item(key = "header") {
                 // Title with Add, Inbox bell, and Settings beside it; refresh is pull-to-refresh.
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -296,7 +366,7 @@ fun FriendsScreen(nav: NavHostController) {
                         modifier = Modifier.weight(1f).semantics { heading() },
                     )
                     if (showJoined) {
-                        ForgeScoreInfoButton(onClick = { scoreOpen = true })
+                        ForgeScoreInfoButton(onClick = { scoreTargetId = ME_SCORE_ID })
                         IconButton(onClick = { addOpen = true }, modifier = Modifier.size(48.dp)) {
                             Box(Modifier.size(40.dp).clip(CircleShape).background(c.cardHigh), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.PersonAdd, contentDescription = stringResource(R.string.friends_add_title), tint = c.teal)
@@ -338,7 +408,7 @@ fun FriendsScreen(nav: NavHostController) {
             }
 
             error?.let { code ->
-                item {
+                item(key = "error") {
                     Text(
                         text = stringResource(R.string.friends_error_line, code),
                         style = MaterialTheme.typography.bodySmall,
@@ -350,7 +420,7 @@ fun FriendsScreen(nav: NavHostController) {
 
             when {
                 !signedIn && !activeDemo -> {
-                    item {
+                    item(key = "signed_out") {
                         SignedOutCard(
                             busy = busy,
                             onSignIn = { context.findActivity()?.let(vm::signIn) },
@@ -359,7 +429,7 @@ fun FriendsScreen(nav: NavHostController) {
                 }
 
                 showJoinForm -> {
-                    item {
+                    item(key = "join_form") {
                         JoinFormCard(
                             busy = busy,
                             onJoin = vm::join,
@@ -368,7 +438,7 @@ fun FriendsScreen(nav: NavHostController) {
                 }
 
                 showLoadingJoined -> {
-                    item {
+                    item(key = "loading") {
                         FitCard {
                             Box(
                                 Modifier
@@ -385,54 +455,71 @@ fun FriendsScreen(nav: NavHostController) {
                 showJoined -> {
                     val data = uiData!!
                     if (data.view.friends.isEmpty()) {
-                        item { EmptyFriends(data.view.me, busy, onSendInvite = { vm.invite(it) }) }
+                        item(key = "empty") { EmptyFriends(data.view.me, onSendInvite = { vm.invite(it) }) }
                     } else {
-                        item { WeekLine(data) }
-                        item {
+                        item(key = "week_line") { WeekLine(data) }
+                        item(key = "leaderboard") {
+                            val enter = if (reduced) EnterTransition.None else expandVertically(ForgeMotion.spatial(false)) + fadeIn(ForgeMotion.effects(false))
+                            val exit = if (reduced) ExitTransition.None else shrinkVertically(ForgeMotion.spatial(false)) + fadeOut(ForgeMotion.effects(false))
                             FitCard(padding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                                 data.leaderboard.forEachIndexed { index, entry ->
-                                    if (index > 0 && !entry.isMe && !data.leaderboard[index - 1].isMe) HorizontalDivider(color = c.divider)
-                                    val rowModifier = if (entry.isMe) {
-                                        Modifier.onGloballyPositioned { coords ->
-                                            if (coords.isAttached) {
-                                                val pos = coords.positionInRoot()
-                                                val top = pos.y
-                                                val bottom = top + coords.size.height
-                                                meRowVisible = bottom > listTopY && top < listBottomY
+                                    key(entry.id) {
+                                        val rowVisible = entry.id !in hidden
+                                        val hasVisibleAbove = data.leaderboard.take(index).any { it.id !in hidden && !it.isMe }
+                                        AnimatedVisibility(visible = rowVisible, enter = enter, exit = exit) {
+                                            Column {
+                                                if (index > 0 && !entry.isMe && hasVisibleAbove) HorizontalDivider(color = c.divider)
+                                                val rowModifier = if (entry.isMe) {
+                                                    Modifier.onGloballyPositioned { coords ->
+                                                        if (coords.isAttached) {
+                                                            val pos = coords.positionInRoot()
+                                                            val top = pos.y
+                                                            val bottom = top + coords.size.height
+                                                            meRowVisible = bottom > listTopY && top < listBottomY
+                                                        }
+                                                    }
+                                                } else {
+                                                    Modifier
+                                                }
+                                                val blockedUntil = NudgeGate.blockedUntil(null, nudgeNextAt[entry.id], nowSec)
+                                                val cooldownLabel = rememberCooldownLabel(blockedUntil, nowSec)
+                                                LeaderboardRow(
+                                                    rank = index + 1,
+                                                    total = data.leaderboard.size,
+                                                    entry = entry,
+                                                    justSent = entry.id in nudgeSent,
+                                                    cooldownLabel = cooldownLabel,
+                                                    showTrainDayHint = cooldownLabel != null && entry.id in trainDayNudgeIds,
+                                                    onOpen = { selectedId = entry.id },
+                                                    onNudge = { vm.nudge(entry.id) },
+                                                    onScore = { scoreTargetId = if (entry.isMe) ME_SCORE_ID else entry.id },
+                                                    modifier = rowModifier,
+                                                )
                                             }
                                         }
-                                    } else {
-                                        Modifier
                                     }
-                                    LeaderboardRow(
-                                        rank = index + 1,
-                                        total = data.leaderboard.size,
-                                        entry = entry,
-                                        nudged = entry.id in nudgedToday,
-                                        busy = busy,
-                                        onOpen = { selectedId = entry.id },
-                                        onNudge = { nudge(entry.id) },
-                                        onScore = { scoreOpen = true },
-                                        modifier = rowModifier,
-                                    )
                                 }
                             }
                         }
                     }
 
+                    val visibleOutgoing = data.view.outgoing.filter { it.id !in hidden }
                     if (data.view.outgoing.isNotEmpty()) {
-                        item {
+                        item(key = "outgoing_header") {
                             Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 48.dp)
-                                    .clip(ForgeShape.Sm)
-                                    .clickable(role = Role.Button) { outOpen = !outOpen }
-                                    .padding(horizontal = 4.dp),
+                                friendsItemMotion(
+                                    reduced = reduced,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 48.dp)
+                                        .clip(ForgeShape.Sm)
+                                        .clickable(role = Role.Button) { outOpen = !outOpen }
+                                        .padding(horizontal = 4.dp),
+                                ),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    pluralStringResource(R.plurals.friends_invites_waiting, data.view.outgoing.size, data.view.outgoing.size),
+                                    pluralStringResource(R.plurals.friends_invites_waiting, visibleOutgoing.size, visibleOutgoing.size),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = c.textSecondary,
                                     modifier = Modifier.weight(1f),
@@ -445,8 +532,14 @@ fun FriendsScreen(nav: NavHostController) {
                             }
                         }
                         if (outOpen) {
-                            items(data.view.outgoing, key = { "out_${it.id}" }) { person ->
-                                OutgoingRow(person, busy, onCancel = { vm.decline(person.id) })
+                            items(visibleOutgoing, key = { "out_${it.id}" }) { person ->
+                                Box(friendsItemMotion(reduced)) {
+                                    OutgoingRow(
+                                        person = person,
+                                        inProgress = person.id in pending,
+                                        onCancel = { vm.cancelInvite(person.id) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -456,8 +549,8 @@ fun FriendsScreen(nav: NavHostController) {
 
         AnimatedVisibility(
             visible = showStickyMe,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = if (reduced) EnterTransition.None else fadeIn(ForgeMotion.effects(false)),
+            exit = if (reduced) ExitTransition.None else fadeOut(ForgeMotion.effects(false)),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             if (meIndex >= 0) {
@@ -476,11 +569,12 @@ fun FriendsScreen(nav: NavHostController) {
                             rank = meIndex + 1,
                             total = leaderboard.size,
                             entry = meEntry,
-                            nudged = false,
-                            busy = busy,
+                            justSent = false,
+                            cooldownLabel = null,
+                            showTrainDayHint = false,
                             onOpen = {},
                             onNudge = {},
-                            onScore = { scoreOpen = true },
+                            onScore = { scoreTargetId = ME_SCORE_ID },
                         )
                     }
                 }
@@ -488,12 +582,35 @@ fun FriendsScreen(nav: NavHostController) {
         }
     }
 
-    if (scoreOpen) {
-        val own = uiData?.mySnapshot?.takeIf { it.weekStart == uiData?.view?.weekStart }
-        ForgeScoreSheet(done = own?.done ?: 0, target = own?.target ?: own?.due ?: 0,
-            prCount = own?.prCount ?: 0, proteinDays = own?.proteinDays ?: 0,
-            breakdown = own?.breakdown ?: com.forgequest.app.domain.ForgeScoreBreakdown(own?.score ?: 0, 0, 0, 0, 0, own?.score ?: 0),
-            onDismiss = { scoreOpen = false })
+    scoreTargetId?.let { targetId ->
+        val data = uiData
+        if (targetId == ME_SCORE_ID) {
+            val own = data?.mySnapshot?.takeIf { it.weekStart == data.view.weekStart }
+            ForgeScoreSheet(
+                done = own?.done ?: 0,
+                target = own?.target ?: own?.due ?: 0,
+                prCount = own?.prCount ?: 0,
+                proteinDays = own?.proteinDays ?: 0,
+                breakdown = own?.breakdown,
+                score = own?.score,
+                onDismiss = { scoreTargetId = null },
+            )
+        } else {
+            val entry = data?.leaderboard?.firstOrNull { it.id == targetId }
+            if (entry != null) {
+                ForgeScoreSheet(
+                    done = entry.done,
+                    target = entry.target,
+                    prCount = entry.prCount,
+                    proteinDays = entry.proteinDays,
+                    breakdown = if (entry.syncedThisWeek) entry.breakdown else null,
+                    score = if (entry.syncedThisWeek) entry.score else null,
+                    onDismiss = { scoreTargetId = null },
+                )
+            } else {
+                scoreTargetId = null
+            }
+        }
     }
 
     if (inboxOpen && uiData != null) {
@@ -507,7 +624,8 @@ fun FriendsScreen(nav: NavHostController) {
             inbox = uiData!!.view.inbox,
             unseenPingKeys = unseenPingKeys,
             notifsAllowed = notifsAllowed,
-            busy = busy,
+            pending = pending,
+            hidden = hidden,
             onRequestNotifs = ::requestNotificationsExplicitly,
             onAccept = vm::accept,
             onDecline = vm::decline,
@@ -536,8 +654,8 @@ fun FriendsScreen(nav: NavHostController) {
                 )
                 InviteHeaderCard(
                     me = uiData!!.view.me,
-                    busy = busy,
-                    onSendInvite = { username -> vm.invite(username).also { if (it == null) addOpen = false } },
+                    onSendInvite = { username -> vm.invite(username) },
+                    onInviteSuccess = { addOpen = false },
                 )
             }
         }
@@ -549,24 +667,50 @@ fun FriendsScreen(nav: NavHostController) {
         val mine = uiData?.mySnapshot
         val myWeekState = mine?.takeIf { s -> s.weekStart >= (uiData?.view?.weekStart ?: 0L) }
             ?.let { s -> com.forgequest.app.domain.FriendsLeaderboard.effectiveWeekState(s.weekState, s.done, s.due) }
+        val blockedUntil = NudgeGate.blockedUntil(null, nudgeNextAt[entry.id], nowSec)
+        val cooldownLabel = rememberCooldownLabel(blockedUntil, nowSec)
         FriendDetailSheet(
             entry = entry,
             myWeekState = myWeekState,
             unit = unit,
-            nudgedToday = entry.id in nudgedToday,
-            busy = busy,
+            justSent = entry.id in nudgeSent,
+            cooldownLabel = cooldownLabel,
+            showTrainDayHint = cooldownLabel != null && entry.id in trainDayNudgeIds,
+            pending = entry.id in pending,
             onSetMuted = { muted -> vm.setMuted(entry.id, muted) },
-            onNudge = { vm.nudge(entry.id) },
+            onNudge = { vm.nudge(entry.id, overSheet = true) },
             onRemove = {
                 selectedId = null
-                scope.launch { vm.remove(entry.id) }
+                vm.remove(entry.id)
             },
             onBlock = {
                 selectedId = null
-                scope.launch { vm.block(entry.id) }
+                vm.block(entry.id)
             },
             onDismiss = { selectedId = null },
         )
+    }
+}
+
+@Composable
+private fun LazyItemScope.friendsItemMotion(reduced: Boolean, modifier: Modifier = Modifier): Modifier = modifier.animateItem(
+    fadeInSpec = if (reduced) snap() else ForgeMotion.effects(false),
+    placementSpec = if (reduced) snap() else ForgeMotion.spatial(false, visibilityThreshold = IntOffset.VisibilityThreshold),
+    fadeOutSpec = if (reduced) snap() else ForgeMotion.effects(false),
+)
+
+@Composable
+private fun rememberCooldownLabel(blockedUntil: Long?, nowSec: Long): String? {
+    if (blockedUntil == null || nowSec >= blockedUntil) return null
+    val context = LocalContext.current
+    return when (NudgeGate.labelKind(blockedUntil, nowSec)) {
+        NudgeGate.LabelKind.TOMORROW -> stringResource(R.string.v42_friends_nudge_tomorrow)
+        NudgeGate.LabelKind.AGAIN_AT -> {
+            val formatted = remember(blockedUntil) {
+                DateFormat.getTimeFormat(context).format(Date(blockedUntil * 1000L))
+            }
+            stringResource(R.string.v42_friends_nudge_again_at, formatted)
+        }
     }
 }
 
@@ -601,7 +745,7 @@ private fun WeekLine(data: FriendsUiData) {
 
 /** No friends yet: one encouraging line, then your username to share and the add field. */
 @Composable
-private fun EmptyFriends(me: Me, busy: Boolean, onSendInvite: suspend (String) -> String?) {
+private fun EmptyFriends(me: Me, onSendInvite: suspend (String) -> String?) {
     val c = Fit.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         IconCircle(Icons.Rounded.Group, c.teal, c.tealTrack, size = 56.dp)
@@ -615,7 +759,7 @@ private fun EmptyFriends(me: Me, busy: Boolean, onSendInvite: suspend (String) -
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         Spacer(Modifier.height(16.dp))
-        InviteHeaderCard(me = me, busy = busy, onSendInvite = onSendInvite)
+        InviteHeaderCard(me = me, onSendInvite = onSendInvite)
     }
 }
 
@@ -637,14 +781,17 @@ private fun LeaderboardRow(
     rank: Int,
     total: Int,
     entry: LeaderboardEntry,
-    nudged: Boolean,
-    busy: Boolean,
+    justSent: Boolean,
+    cooldownLabel: String?,
+    showTrainDayHint: Boolean,
     onOpen: () -> Unit,
     onNudge: () -> Unit,
     onScore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val c = Fit.colors
+    val haptic = LocalHapticFeedback.current
+    val reduced = LocalReducedMotion.current
     val isArabic = LocalConfiguration.current.locales[0].language == "ar"
     val statusWord = stringResource(entry.badge.labelRes)
     val status = if (entry.syncedThisWeek) "$statusWord · " + pluralStringResource(R.plurals.friends_done_count, entry.done, entry.done) else statusWord
@@ -699,36 +846,98 @@ private fun LeaderboardRow(
         val canNudge = !entry.isMe && entry.weekState != "hit"
         if (canNudge) {
             val nudgeStart = if (isArabic) 84.dp else 94.dp
-            Box(Modifier.padding(start = nudgeStart, end = 4.dp, bottom = 4.dp)) {
-                if (nudged) {
-                    Text(
-                        text = stringResource(R.string.friends_sent_today),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = c.textSecondary,
-                        modifier = Modifier.padding(vertical = 6.dp),
-                    )
+            val nudgeState = when {
+                justSent -> NudgeButtonState.SENT
+                cooldownLabel != null -> NudgeButtonState.COOLDOWN
+                else -> NudgeButtonState.READY
+            }
+            Column(Modifier.padding(start = nudgeStart, end = 4.dp, bottom = 4.dp)) {
+                val clickMod = if (nudgeState == NudgeButtonState.READY) {
+                    Modifier.clickable(role = Role.Button) {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        onNudge()
+                    }
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .clip(ForgeShape.Full)
-                            .clickable(enabled = !busy, role = Role.Button, onClick = onNudge)
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        Surface(
-                            shape = ForgeShape.Full,
-                            color = Color.Transparent,
-                            border = BorderStroke(1.dp, c.teal),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.friends_go_train),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = c.teal,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            )
+                    Modifier
+                }
+                Box(
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clip(ForgeShape.Full)
+                        .then(clickMod)
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    AnimatedContent(
+                        targetState = nudgeState,
+                        transitionSpec = {
+                            if (reduced) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                fadeIn(tween(ForgeMotion.Duration.SHORT4, easing = FastOutSlowInEasing)) togetherWith
+                                    fadeOut(tween(ForgeMotion.Duration.SHORT3, easing = FastOutSlowInEasing))
+                            }
+                        },
+                        label = "nudgePill",
+                    ) { state ->
+                        when (state) {
+                            NudgeButtonState.READY -> Surface(
+                                shape = ForgeShape.Full,
+                                color = Color.Transparent,
+                                border = BorderStroke(1.dp, c.teal),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.friends_go_train),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = c.teal,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                )
+                            }
+                            NudgeButtonState.SENT -> Surface(
+                                shape = ForgeShape.Full,
+                                color = c.tealTrack,
+                                border = BorderStroke(1.dp, c.teal),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        tint = c.teal,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.friends_nudge_sent),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = c.teal,
+                                    )
+                                }
+                            }
+                            NudgeButtonState.COOLDOWN -> Surface(
+                                shape = ForgeShape.Full,
+                                color = Color.Transparent,
+                                border = BorderStroke(1.dp, c.divider),
+                            ) {
+                                Text(
+                                    text = cooldownLabel.orEmpty(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = c.textSecondary,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                )
+                            }
                         }
                     }
+                }
+                if (nudgeState == NudgeButtonState.COOLDOWN && showTrainDayHint) {
+                    Text(
+                        text = stringResource(R.string.v42_friends_nudge_train_day),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.textSecondary,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                    )
                 }
             }
         }
@@ -742,16 +951,21 @@ private fun InboxSheet(
     inbox: Inbox,
     unseenPingKeys: Set<String>,
     notifsAllowed: Boolean,
-    busy: Boolean,
+    pending: Set<String>,
+    hidden: Set<String>,
     onRequestNotifs: () -> Unit,
     onAccept: (String) -> Unit,
     onDecline: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    val enter = if (reduced) EnterTransition.None else expandVertically(ForgeMotion.spatial(false)) + fadeIn(ForgeMotion.effects(false))
+    val exit = if (reduced) ExitTransition.None else shrinkVertically(ForgeMotion.spatial(false)) + fadeOut(ForgeMotion.effects(false))
     val pings = remember(inbox.pings) { inbox.pings.sortedByDescending { it.createdAt } }
     val activity = remember(inbox.activity) { inbox.activity.sortedByDescending { it.at } }
-    val allEmpty = incoming.isEmpty() && pings.isEmpty() && activity.isEmpty()
+    val visibleIncoming = incoming.filter { it.id !in hidden }
+    val allEmpty = visibleIncoming.isEmpty() && pings.isEmpty() && activity.isEmpty()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -810,53 +1024,58 @@ private fun InboxSheet(
             }
 
             if (incoming.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.friends_incoming_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = c.textSecondary,
-                    modifier = Modifier.semantics { heading() },
-                )
+                AnimatedVisibility(visible = visibleIncoming.isNotEmpty(), enter = enter, exit = exit) {
+                    Text(
+                        text = stringResource(R.string.friends_incoming_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = c.textSecondary,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                }
                 incoming.forEach { person ->
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        itemVerticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(
-                            Modifier.weight(1f).defaultMinSize(minWidth = 180.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            FriendAvatar(person.shownName, person.photoUrl, size = 40.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(person.shownName, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                                Text(
-                                    stringResource(R.string.friends_wants_friends),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = c.textSecondary,
-                                )
-                            }
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(
-                                onClick = { onDecline(person.id) },
-                                enabled = !busy,
-                                modifier = Modifier.heightIn(min = 48.dp),
+                    key(person.id) {
+                        val itemPending = person.id in pending
+                        AnimatedVisibility(visible = person.id !in hidden, enter = enter, exit = exit) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                itemVerticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(stringResource(R.string.friends_decline), color = c.textSecondary)
-                            }
-                            Button(
-                                onClick = { onAccept(person.id) },
-                                enabled = !busy,
-                                shape = ForgeShape.Full,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                                ),
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            ) {
-                                Text(stringResource(R.string.friends_accept), style = MaterialTheme.typography.labelLarge)
+                                Row(
+                                    Modifier.weight(1f).defaultMinSize(minWidth = 180.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    FriendAvatar(person.shownName, person.photoUrl, size = 40.dp)
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(person.shownName, style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                                        Text(
+                                            stringResource(R.string.friends_wants_friends),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = c.textSecondary,
+                                        )
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(
+                                        onClick = { if (!itemPending) onDecline(person.id) },
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    ) {
+                                        Text(stringResource(R.string.friends_decline), color = c.textSecondary)
+                                    }
+                                    Button(
+                                        onClick = { if (!itemPending) onAccept(person.id) },
+                                        shape = ForgeShape.Full,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                                        ),
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    ) {
+                                        Text(stringResource(R.string.friends_accept), style = MaterialTheme.typography.labelLarge)
+                                    }
+                                }
                             }
                         }
                     }
@@ -864,7 +1083,7 @@ private fun InboxSheet(
             }
 
             if (pings.isNotEmpty()) {
-                if (incoming.isNotEmpty()) HorizontalDivider(color = c.divider)
+                if (visibleIncoming.isNotEmpty()) HorizontalDivider(color = c.divider)
                 Text(
                     text = stringResource(R.string.friends_inbox_pings_title),
                     style = MaterialTheme.typography.titleSmall,
@@ -882,7 +1101,7 @@ private fun InboxSheet(
             }
 
             if (activity.isNotEmpty()) {
-                if (incoming.isNotEmpty() || pings.isNotEmpty()) HorizontalDivider(color = c.divider)
+                if (visibleIncoming.isNotEmpty() || pings.isNotEmpty()) HorizontalDivider(color = c.divider)
                 Text(
                     text = stringResource(R.string.friends_inbox_activity_title),
                     style = MaterialTheme.typography.titleSmall,
@@ -1048,27 +1267,34 @@ private fun JoinFormCard(
 @Composable
 private fun InviteHeaderCard(
     me: Me,
-    busy: Boolean,
     onSendInvite: suspend (String) -> String?,
+    onInviteSuccess: () -> Unit = {},
 ) {
     val c = Fit.colors
     val context = LocalContext.current
     val clipboard = rememberTextClipboard()
     val scope = rememberCoroutineScope()
+    val reduced = LocalReducedMotion.current
     val handle = "@${me.username.orEmpty()}"
     val copiedMsg = stringResource(R.string.friends_username_copied)
     val shareMsg = stringResource(R.string.friends_share_message, me.username.orEmpty(), Usernames.SHARE_URL)
-    val sentMsg = stringResource(R.string.friends_invite_sent)
     var nameInput by rememberSaveable { mutableStateOf("") }
-    val canSend = Usernames.normalize(nameInput) != null && !busy
+    var inviteState by remember { mutableStateOf(InviteButtonState.IDLE) }
+    val validName = Usernames.normalize(nameInput) != null
 
     fun submitInvite() {
-        if (!canSend) return
+        if (!validName || inviteState != InviteButtonState.IDLE) return
+        inviteState = InviteButtonState.SENDING
         scope.launch {
             val err = onSendInvite(nameInput)
             if (err == null) {
                 nameInput = ""
-                context.toast(sentMsg)
+                inviteState = InviteButtonState.SENT
+                delay(if (reduced) 300L else 850L)
+                inviteState = InviteButtonState.IDLE
+                onInviteSuccess()
+            } else {
+                inviteState = InviteButtonState.IDLE
             }
         }
     }
@@ -1143,13 +1369,58 @@ private fun InviteHeaderCard(
             )
             TextButton(
                 onClick = { submitInvite() },
-                enabled = canSend,
-                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
+                enabled = validName || inviteState != InviteButtonState.IDLE,
+                modifier = Modifier.defaultMinSize(minWidth = 76.dp, minHeight = 48.dp),
             ) {
+                AnimatedContent(
+                    targetState = inviteState,
+                    transitionSpec = {
+                        if (reduced) {
+                            EnterTransition.None togetherWith ExitTransition.None
+                        } else {
+                            fadeIn(tween(ForgeMotion.Duration.SHORT4, easing = FastOutSlowInEasing)) togetherWith
+                                fadeOut(tween(ForgeMotion.Duration.SHORT3, easing = FastOutSlowInEasing))
+                        }
+                    },
+                    contentAlignment = Alignment.Center,
+                    label = "inviteButton",
+                ) { state ->
+                    when (state) {
+                        InviteButtonState.IDLE -> Text(
+                            text = stringResource(R.string.friends_add_button),
+                            color = if (validName) c.teal else c.textSecondary,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        InviteButtonState.SENDING -> CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = c.teal,
+                        )
+                        InviteButtonState.SENT -> Icon(
+                            Icons.Rounded.Check,
+                            contentDescription = stringResource(R.string.friends_invite_sent),
+                            tint = c.teal,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = inviteState == InviteButtonState.SENT,
+            enter = if (reduced) EnterTransition.None else expandVertically(ForgeMotion.spatial(false)) + fadeIn(ForgeMotion.effects(false)),
+            exit = if (reduced) ExitTransition.None else shrinkVertically(ForgeMotion.spatial(false)) + fadeOut(ForgeMotion.effects(false)),
+        ) {
+            Row(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal, modifier = Modifier.size(16.dp))
                 Text(
-                    text = stringResource(R.string.friends_add_button),
-                    color = if (canSend) c.teal else c.textSecondary,
-                    style = MaterialTheme.typography.labelLarge,
+                    text = stringResource(R.string.friends_invite_sent),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = c.teal,
                 )
             }
         }
@@ -1186,7 +1457,7 @@ internal fun FriendAvatar(name: String, photoUrl: String?, size: Dp) {
 }
 
 @Composable
-private fun OutgoingRow(person: Person, busy: Boolean, onCancel: () -> Unit) {
+private fun OutgoingRow(person: Person, inProgress: Boolean, onCancel: () -> Unit) {
     val c = Fit.colors
     Row(
         modifier = Modifier
@@ -1202,7 +1473,7 @@ private fun OutgoingRow(person: Person, busy: Boolean, onCancel: () -> Unit) {
             color = c.textPrimary,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onCancel, enabled = !busy, modifier = Modifier.size(48.dp)) {
+        IconButton(onClick = { if (!inProgress) onCancel() }, modifier = Modifier.size(48.dp)) {
             Icon(
                 Icons.Rounded.Close,
                 contentDescription = stringResource(R.string.friends_cancel_invite, Usernames.ltr(person.shownName)),
@@ -1237,22 +1508,26 @@ private fun FriendDetailSheet(
     entry: LeaderboardEntry,
     myWeekState: String?,
     unit: WeightUnit,
-    nudgedToday: Boolean,
-    busy: Boolean,
+    justSent: Boolean,
+    cooldownLabel: String?,
+    showTrainDayHint: Boolean,
+    pending: Boolean,
     onSetMuted: (Boolean) -> Unit,
-    onNudge: suspend () -> String?,
+    onNudge: () -> Unit,
     onRemove: () -> Unit,
     onBlock: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val c = Fit.colors
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val sentMsg = stringResource(R.string.friends_nudge_sent)
+    val haptic = LocalHapticFeedback.current
+    val reduced = LocalReducedMotion.current
     var confirmRemove by remember { mutableStateOf(false) }
     var confirmBlock by remember { mutableStateOf(false) }
-    var alreadyNudgedNote by remember(entry.id) { mutableStateOf(false) }
-    val nudged = nudgedToday || alreadyNudgedNote
+    val nudgeState = when {
+        justSent -> NudgeButtonState.SENT
+        cooldownLabel != null -> NudgeButtonState.COOLDOWN
+        else -> NudgeButtonState.READY
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1308,29 +1583,65 @@ private fun FriendDetailSheet(
             }
 
             if (entry.weekState != "hit") {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            when (onNudge()) {
-                                null -> context.toast(sentMsg)
-                                "already_nudged" -> alreadyNudgedNote = true
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Button(
+                        onClick = {
+                            if (nudgeState == NudgeButtonState.READY) {
+                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                onNudge()
+                            }
+                        },
+                        enabled = nudgeState != NudgeButtonState.COOLDOWN,
+                        shape = ForgeShape.Full,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                    ) {
+                        AnimatedContent(
+                            targetState = nudgeState,
+                            transitionSpec = {
+                                if (reduced) {
+                                    EnterTransition.None togetherWith ExitTransition.None
+                                } else {
+                                    fadeIn(tween(ForgeMotion.Duration.SHORT4, easing = FastOutSlowInEasing)) togetherWith
+                                        fadeOut(tween(ForgeMotion.Duration.SHORT3, easing = FastOutSlowInEasing))
+                                }
+                            },
+                            label = "detailNudge",
+                        ) { state ->
+                            when (state) {
+                                NudgeButtonState.READY -> Text(
+                                    text = stringResource(R.string.friends_go_train),
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                                NudgeButtonState.SENT -> Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Text(
+                                        text = stringResource(R.string.friends_nudge_sent),
+                                        style = MaterialTheme.typography.labelLarge,
+                                    )
+                                }
+                                NudgeButtonState.COOLDOWN -> Text(
+                                    text = cooldownLabel.orEmpty(),
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
                             }
                         }
-                    },
-                    enabled = !nudged && !busy,
-                    shape = ForgeShape.Full,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp),
-                ) {
-                    Text(
-                        text = if (nudged) stringResource(R.string.friends_sent_today) else stringResource(R.string.friends_go_train),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
+                    }
+                    if (nudgeState == NudgeButtonState.COOLDOWN && showTrainDayHint) {
+                        Text(
+                            text = stringResource(R.string.v42_friends_nudge_train_day),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textSecondary,
+                        )
+                    }
                 }
             }
 
@@ -1407,10 +1718,10 @@ private fun FriendDetailSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                TextButton(onClick = { confirmRemove = true }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                TextButton(onClick = { confirmRemove = true }, enabled = !pending, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.friends_remove), color = c.textSecondary)
                 }
-                TextButton(onClick = { confirmBlock = true }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                TextButton(onClick = { confirmBlock = true }, enabled = !pending, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.friends_block), color = c.coral)
                 }
             }

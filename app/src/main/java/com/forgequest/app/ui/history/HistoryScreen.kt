@@ -489,7 +489,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     }
 
     noteFor?.let { set ->
-        SetNoteDialog(set.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(set, it); noteFor = null })
+        SetNoteDialog(set.note, isPain = set.effort == com.forgequest.app.domain.SetEffort.PAIN.name, onDismiss = { noteFor = null }, onSave = { vm.setNote(set, it); noteFor = null })
     }
 
     pendingSetDelete?.let { set ->

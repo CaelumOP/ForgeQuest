@@ -598,7 +598,7 @@ export async function addSet(sessionId: number, itemPosition: number): Promise<v
   const last = existing.reduce<SetRow | null>((m, s) => (!m || s.setIndex > m.setIndex ? s : m), null);
   if (!last) return;
   const { id: _id, ...rest } = last;
-  await putSet({ ...rest, setIndex: last.setIndex + 1, done: false, isPr: false });
+  await putSet({ ...rest, setIndex: last.setIndex + 1, done: false, isPr: false, autoTicked: false });
 }
 
 export async function addExercise(sessionId: number, exerciseId: string): Promise<void> {
@@ -627,15 +627,29 @@ export async function swapExercise(sessionId: number, itemPosition: number, newE
   if (fresh.length) await db.sets.bulkAdd(fresh);
 }
 
-/** A harder version replaces an easy move: today's sets at its positions, and the plan day the workout came from. */
-export async function stepUp(sessionId: number, oldId: string, newId: string): Promise<void> {
+/**
+ * A harder version replaces an easy move: today's sets at positions with no done sets, and the plan day the
+ * workout came from. Positions that already have a done set keep today's work; returns the number of swapped
+ * positions so the UI can say the harder move starts next time when 0 were swapped.
+ */
+export async function stepUp(sessionId: number, oldId: string, newId: string): Promise<number> {
   const session = await db.sessions.get(sessionId);
-  const positions = [...new Set((await getSets(sessionId)).filter((s) => s.exerciseId === oldId).map((s) => s.itemPosition))];
-  for (const p of positions) await swapExercise(sessionId, p, newId);
-  if (session?.planDayId == null) return;
-  for (const item of await db.planItems.where('dayId').equals(session.planDayId).toArray()) {
-    if (item.exerciseId === oldId) await swapPlanItem(item, newId);
+  const allSets = await getSets(sessionId);
+  const positions = [...new Set(allSets.filter((s) => s.exerciseId === oldId).map((s) => s.itemPosition))];
+  let swapped = 0;
+  if (await db.exercises.get(newId)) {
+    for (const p of positions) {
+      if (allSets.some((s) => s.itemPosition === p && s.done)) continue;
+      await swapExercise(sessionId, p, newId);
+      swapped++;
+    }
   }
+  if (session?.planDayId != null) {
+    for (const item of await db.planItems.where('dayId').equals(session.planDayId).toArray()) {
+      if (item.exerciseId === oldId) await swapPlanItem(item, newId);
+    }
+  }
+  return swapped;
 }
 
 /**
@@ -678,7 +692,7 @@ export function finishSession(sessionId: number, tickAll = false): Promise<Finis
       const isWarmupSet = (s: SetRow) => (s.setType ?? 'WORKING') === 'WARMUP' || isExtraBlock(s.block);
       const toTick = mine.filter((s) => !s.done && !(hasWork && isWarmupSet(s)));
       const toDrop = mine.filter((s) => !s.done && hasWork && isWarmupSet(s));
-      if (toTick.length) await db.sets.bulkPut(toTick.map((s) => ({ ...s, done: true, doneAt: now })));
+      if (toTick.length) await db.sets.bulkPut(toTick.map((s) => ({ ...s, done: true, doneAt: now, autoTicked: true })));
       if (toDrop.length) await db.sets.bulkDelete(toDrop.map((s) => s.id!));
     } else {
       await db.sets.bulkDelete(mine.filter((s) => !s.done).map((s) => s.id!));
@@ -736,6 +750,10 @@ export async function finishedSessions(): Promise<SessionRow[]> {
   return (await db.sessions.filter((s) => s.finishedAt != null).toArray()).sort((a, b) => b.finishedAt! - a.finishedAt!);
 }
 export const useFinishedSessions = (): SessionRow[] => useLive(finishedSessions, [], []);
+
+/** Whether at least one workout has been finished. */
+export const hasFinishedSession = async (): Promise<boolean> =>
+  (await db.sessions.filter((s) => s.finishedAt != null).count()) > 0;
 
 export const getSession = (id: number): Promise<SessionRow | undefined> => db.sessions.get(id);
 export const useSession = (id: number): SessionRow | undefined => useLive(() => getSession(id), [id], undefined);

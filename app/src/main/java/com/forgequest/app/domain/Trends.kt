@@ -43,7 +43,7 @@ object Trends {
      * for the deload check. Ending yesterday keeps a Mon/Wed/Fri week whole on a Monday morning.
      */
     fun rollingWeeklySets(sets: List<SetEntity>, sessionDay: Map<Long, Long>, weeks: Int, today: Long): List<Int> {
-        val days = sets.filterNot { it.block.equals("Warm-up", ignoreCase = true) }.mapNotNull { sessionDay[it.sessionId] }
+        val days = sets.filter { countsForScore(it) }.mapNotNull { sessionDay[it.sessionId] }
         return (weeks - 1 downTo 0).map { back -> val end = today - 1 - 7L * back; days.count { it in end - 6..end } }
     }
 
@@ -51,7 +51,7 @@ object Trends {
     fun weeklySets(sets: List<SetEntity>, sessionDay: Map<Long, Long>, weeks: Int, today: Long): List<Int> {
         val thisWeek = Dates.weekStart(today)
         val starts = (weeks - 1 downTo 0).map { thisWeek - 7L * it }
-        val days = sets.filterNot { WorkoutScore.isExtra(it.block) }.mapNotNull { sessionDay[it.sessionId] }
+        val days = sets.filter { countsForScore(it) }.mapNotNull { sessionDay[it.sessionId] }
         return starts.map { ws -> days.count { it in ws..ws + 6 } }
     }
 
@@ -72,7 +72,7 @@ object Trends {
      * beats everything before it (the first day never is). Filter by range afterwards so records stay truthful.
      */
     fun bestSetSeries(sets: List<SetEntity>, kind: ExerciseKind, sessionDay: Map<Long, Long>): List<TrendPoint> {
-        val byDay = sets.groupBy { sessionDay[it.sessionId] ?: return@groupBy -1L }.filterKeys { it >= 0 }
+        val byDay = sets.filter { countsForScore(it) }.groupBy { sessionDay[it.sessionId] ?: return@groupBy -1L }.filterKeys { it >= 0 }
         var best = Float.NEGATIVE_INFINITY
         var first = true
         return byDay.keys.sorted().map { day ->
@@ -137,17 +137,20 @@ object Trends {
 
     data class Lifetime(val workouts: Int, val reps: Int, val minutes: Int, val records: Int, val kgLifted: Float)
 
-    fun lifetime(sessions: List<SessionEntity>, sets: List<SetEntity>): Lifetime = Lifetime(
-        workouts = sessions.map { it.epochDay }.distinct().size,
-        reps = sets.sumOf { it.reps ?: 0 },
-        minutes = sessions.sumOf { s -> s.finishedAt?.let { ((it - s.startedAt) / 60_000).toInt().coerceIn(1, 300) } ?: 0 },
-        records = sets.count { it.isPr },
-        kgLifted = sets.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat(),
-    )
+    fun lifetime(sessions: List<SessionEntity>, sets: List<SetEntity>): Lifetime {
+        val working = sets.filter { countsForScore(it) }
+        return Lifetime(
+            workouts = sessions.map { it.epochDay }.distinct().size,
+            reps = working.sumOf { it.reps ?: 0 },
+            minutes = sessions.sumOf { s -> s.finishedAt?.let { ((it - s.startedAt) / 60_000).toInt().coerceIn(1, 300) } ?: 0 },
+            records = working.count { it.isPr && countsForPR(it) },
+            kgLifted = working.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat(),
+        )
+    }
 
-    /** Exercise ids by how often they appear in done sets, most first. */
+    /** Exercise ids by how often they appear in done working sets, most first. */
     fun topExercises(sets: List<SetEntity>, n: Int): List<String> =
-        sets.groupingBy { it.exerciseId }.eachCount().entries.sortedByDescending { it.value }.take(n).map { it.key }
+        sets.filter { countsForScore(it) }.groupingBy { it.exerciseId }.eachCount().entries.sortedByDescending { it.value }.take(n).map { it.key }
 
     /** Percent change between two values, rounded, or null when the base is zero. */
     fun percentChange(then: Float, now: Float): Int? = if (then == 0f) null else ((now - then) / then * 100f).roundToInt()
@@ -186,7 +189,7 @@ object Trends {
         val windowStart = today - PLATEAU_WINDOW_DAYS
         val recentSets = doneSets.filter { s ->
             val d = sessionDay[s.sessionId] ?: return@filter false
-            d in windowStart..today && !s.block.equals("Warm-up", ignoreCase = true)
+            d in windowStart..today && countsForScore(s)
         }
 
         val stalled = mutableListOf<StalledLift>()

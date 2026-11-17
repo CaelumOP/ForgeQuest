@@ -64,6 +64,18 @@ describe('TrendsTest', () => {
     expect(lifetime(sessions, sets)).toEqual({ workouts: 1, reps: 15, minutes: 45, records: 1, kgLifted: 140 })
   })
 
+  it('lifetimeSkipsWarmUpsAndAutoTickedRecords', () => {
+    const sessions = [session(1, today, 0, 45 * 60_000)]
+    const sets: SetEntity[] = [
+      set(1, 8, true),
+      { ...set(1, 7), weightKg: 20 },
+      { ...set(1, 10), weightKg: 10, setType: 'WARMUP' }, // auto warm-up in Main
+      { ...set(1, 5), weightKg: 10, block: 'Warm-up' },
+      { ...set(1, 6, true), autoTicked: true }, // counts as reps, never as a record
+    ]
+    expect(lifetime(sessions, sets)).toEqual({ workouts: 1, reps: 21, minutes: 45, records: 1, kgLifted: 140 })
+  })
+
   it('proteinDaysAndPercent', () => {
     const nutrition: [number, number][] = [[sunday, 150], [sunday + 1, 90], [sunday - 7, 160]]
     expect(proteinDaysPerWeek(nutrition, 140, 2, today)).toEqual([1, 1])
@@ -161,9 +173,22 @@ describe('audit 2026-10-24', () => {
 
   it('warm-ups are not counted and a held plank is not a stalled lift', () => {
     const warmups = sessions.map((s) => lift(s.id, 'bench', 'Warm-up'))
+    const mainWarmups = sessions.map((s) => ({ ...lift(s.id, 'bench', 'Main'), setType: 'WARMUP', weightKg: 200 }))
     const planks = sessions.map((s) => ({ ...set(s.id, 0, false, 'plank'), reps: null, seconds: 60 }))
-    const report = analyzeFatigueAndPlateaus(sessions, [...doneSets, ...warmups, ...planks], lib, monday)
+    const report = analyzeFatigueAndPlateaus(sessions, [...doneSets, ...warmups, ...mainWarmups, ...planks], lib, monday)
     expect(report.trainingLoadPct).toBe(100)
     expect(report.stalledLifts.map((s) => s.exerciseId)).not.toContain('plank')
+  })
+
+  it('bestSetSeries excludes setType WARMUP even when block is Main', () => {
+    const sessionDay = new Map([[1, today - 10], [2, today]])
+    const series = bestSetSeries([
+      { ...set(1, 6), setType: 'WORKING' },
+      { ...set(1, 50), setType: 'WARMUP' },
+      { ...set(2, 8), setType: 'WORKING' },
+      { ...set(2, 40), setType: 'WARMUP' },
+    ], 'REPS', sessionDay)
+    expect(series.map((p) => p.value)).toEqual([6, 8])
+    expect(series.map((p) => p.isRecord)).toEqual([false, true])
   })
 })

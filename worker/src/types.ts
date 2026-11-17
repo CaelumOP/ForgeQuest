@@ -47,11 +47,13 @@ export interface SnapshotInput {
   prs: PrItem[] | null;
   /** This week's result (shared streak); omitted by older builds. */
   weekState?: "hit" | "free" | "open";
+  /** 4.2: planned training weekdays, ISO 1 (Mon) .. 7 (Sun). Drives the 4-hour "Go train" cooldown. */
+  trainDays?: number[];
   /** Last week's final result, so a late sync still records it. */
   lastWeekState?: "hit" | "free" | "miss";
 }
 
-export interface Snapshot extends Omit<SnapshotInput, "weekState" | "lastWeekState"> {
+export interface Snapshot extends Omit<SnapshotInput, "weekState" | "lastWeekState" | "trainDays"> {
   scoreVersion: 1 | 2;
   breakdown: ReturnType<typeof snapshotScore>;
   updatedAt: number;
@@ -88,6 +90,8 @@ export interface Friend extends Person {
   sharedStreak: number;
   /** v4: I muted this friend's workout alerts. */
   muted: boolean;
+  /** 4.2: Unix seconds when I may send this friend "Go train" again; null = now. */
+  nudgeNextAt: number | null;
 }
 
 export interface NudgeView {

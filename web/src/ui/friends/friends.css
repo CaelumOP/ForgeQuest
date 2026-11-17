@@ -220,7 +220,7 @@ button.fr-board-row:active { background: var(--card-high); }
 
 .fr-board { padding: 8px 12px; }
 .fr-board-row { display: flex; flex-direction: column; }
-.fr-board-row + .fr-board-row { border-block-start: 1px solid var(--divider); }
+.fr-board-row-wrap + .fr-board-row-wrap { border-block-start: 1px solid var(--divider); }
 .fr-row-main { inline-size: 100%; min-inline-size: 0; display: flex; align-items: center; gap: 12px; min-block-size: 64px; padding: 8px 4px; background: none; color: var(--text); border: 0; border-radius: var(--r-sm); font: inherit; text-align: start; }
 button.fr-row-main { cursor: pointer; }
 button.fr-row-main:active { background: var(--card-high); }
@@ -235,7 +235,7 @@ button.fr-row-main:active { background: var(--card-high); }
   margin-inline: -4px;
   padding-inline: 4px;
 }
-.fr-board-me + .fr-board-row, .fr-board-row + .fr-board-me { border-block-start-color: transparent; }
+.fr-board-me + .fr-board-row-wrap, .fr-board-row-wrap + .fr-board-me, .fr-board-row-wrap.fq-leaving { border-block-start-color: transparent; }
 
 .fr-rank-badge {
   --rank-gold-bg: #f8f2df;
@@ -306,7 +306,10 @@ html[lang='ar'] .fr-nudge-row { padding-inline-start: 86px; }
 .fr-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-block-size: 48px;
+  min-inline-size: 104px;
   padding: 6px 14px;
   border: 0;
   border-radius: var(--r-full);
@@ -318,7 +321,12 @@ html[lang='ar'] .fr-nudge-row { padding-inline-start: 86px; }
   cursor: pointer;
 }
 .fr-pill:active { opacity: 0.85; }
-.fr-pill-done, .fr-pill:disabled {
+.fr-pill-sent {
+  background: var(--teal-track);
+  color: var(--teal);
+  cursor: default;
+}
+.fr-pill-done, .fr-pill:disabled:not(.fr-pill-sent) {
   background: var(--card-high);
   color: var(--text-2);
   cursor: default;
@@ -380,4 +388,71 @@ html[lang='ar'] .fr-nudge-row { padding-inline-start: 86px; }
 @media (max-width: 360px) {
   .fr-row-main { flex-wrap: wrap; }
   .fr-board-mid { flex-basis: 60%; }
+}
+
+/* Task 2 motion: leaving/entering rows, inline send spinner, and button content cross-fade. */
+.fq-row-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: opacity 180ms var(--ease-exit), grid-template-rows 220ms var(--ease-standard);
+}
+.fq-row-inner {
+  min-block-size: 0;
+}
+.fq-leaving {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+.fq-leaving > .fq-row-inner {
+  overflow: hidden;
+}
+.fq-row-enter {
+  animation: fq-row-in 180ms var(--ease-enter);
+}
+@keyframes fq-row-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+@keyframes fq-btn-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fr-btn-swap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  animation: fq-btn-fade 150ms var(--ease-standard);
+}
+.fr-send-btn {
+  min-inline-size: 96px;
+}
+.fr-send-btn.fr-send-sent {
+  background: var(--teal-track);
+  color: var(--teal);
+  pointer-events: none;
+}
+.fr-spinner {
+  display: inline-block;
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: var(--r-full);
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-block-start-color: currentColor;
+  animation: kit-spin 0.8s linear infinite;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fq-row-wrap,
+  .fq-row-enter,
+  .fr-btn-swap,
+  .fr-switch,
+  .fr-knob,
+  .fr-chev {
+    transition: none !important;
+    animation: none !important;
+  }
 }

@@ -12,12 +12,10 @@ import { CrashPrompt } from './ui/CrashPrompt'
 import { ScreenBoundary } from './ui/ErrorBoundary'
 import { UpdatePill } from './ui/UpdatePill'
 import { TopBar } from './ui/TopBar'
-import { quickStart } from './ui/onboarding/OnboardingScreen'
+import { OnboardingScreen } from './ui/onboarding/OnboardingScreen'
 
 // Decided once per load: an installed app never turns back into a Safari tab.
 const gated = needsInstallGate()
-let started = false
-const startOnce = () => { if (!started) { started = true; void quickStart().catch((e) => { started = false; console.error('quick start failed', e) }) } }
 
 export function App() {
   useLang() // re-render everything when the language changes
@@ -28,8 +26,14 @@ export function App() {
   if (gated && !catalogue) return <InstallGate />
   if (!settings) return <div class="shell" />
   setHapticsEnabled(settings.hapticsEnabled !== false)
-  // First run skips setup and lands on Home; first-visit tips appear next to the controls they explain.
-  if (!settings.onboarded && !catalogue) { startOnce(); return <div class="shell" /> }
+  if (!settings.onboarded && !catalogue) {
+    return (
+      <div class="shell">
+        <OnboardingScreen onDone={() => {}} />
+        <ToastHost />
+      </div>
+    )
+  }
   const { route, param } = matchRoute(path)
 
   if (route?.tab) {

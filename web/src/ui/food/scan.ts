@@ -77,6 +77,7 @@ const num = (v: unknown): number => {
   const n = typeof v === 'string' ? Number(v) : v;
   return typeof n === 'number' && Number.isFinite(n) ? n : 0;
 };
+const clamp = (n: number, min: number, max: number): number => Math.min(max, Math.max(min, n));
 
 /** Reads the Gemini food JSON. Null when it isn't JSON of the expected shape; items without a name are dropped. */
 export function parseScan(text: string): FoodScan | null {
@@ -91,7 +92,13 @@ export function parseScan(text: string): FoodScan | null {
     const r = raw as Record<string, unknown>;
     const name = typeof r.name === 'string' ? r.name.trim() : '';
     if (!name) continue;
-    items.push({ name, grams: Math.max(0, Math.round(num(r.grams))), kcal: Math.max(0, Math.round(num(r.kcal))), protein: Math.max(0, num(r.protein)), carbs: Math.max(0, num(r.carbs)) });
+    items.push({
+      name,
+      grams: clamp(Math.round(num(r.grams)), 0, 5000),
+      kcal: clamp(Math.round(num(r.kcal)), 0, 5000),
+      protein: clamp(num(r.protein), 0, 500),
+      carbs: clamp(num(r.carbs), 0, 500),
+    });
   }
   return {
     dish: typeof o.dish === 'string' && o.dish.trim() ? o.dish.trim() : 'Meal',
@@ -100,12 +107,16 @@ export function parseScan(text: string): FoodScan | null {
 }
 
 /** Sends the shrunk photo to Gemini with the Android scan prompt. Throws AiError. */
-export async function scanMeal(base64Jpeg: string, signal?: AbortSignal): Promise<FoodScan> {
+export async function scanMeal(base64Jpeg: string, signal?: AbortSignal, userHint = ''): Promise<FoodScan> {
   const s = await loadSettings();
   if (!isAiOn(s) || !s.apiKey.trim()) throw new AiError('no_key');
+  const hint = userHint.trim().slice(0, 300);
+  const prompt = hint
+    ? `Estimate this meal. User notes/context: ${hint}`
+    : 'Estimate this meal with realistic cooked weights and macro math.';
   const raw = await geminiGenerate({
     system: scanInstructions(s.handLengthCm, s.palmWidthCm),
-    parts: [textPart('Estimate this meal with realistic cooked weights and macro math.'), imagePart(base64Jpeg)],
+    parts: [textPart(prompt), imagePart(base64Jpeg)],
     json: true, lowThinking: true, models: scanModelsFor(s), signal,
   });
   const scan = parseScan(raw);
@@ -120,7 +131,7 @@ export async function estimateFoodText(description: string, signal?: AbortSignal
   if (!isAiOn(s) || !s.apiKey.trim()) throw new AiError('no_key');
   const raw = await geminiGenerate({
     system: scanInstructions(s.handLengthCm, s.palmWidthCm),
-    parts: [textPart(`There is no photo. Estimate one typical home-sized serving of what the user typed: ${description.slice(0, 200)}`)],
+    parts: [textPart(`There is no photo. Estimate one typical home-sized serving of what the user typed: ${description.trim().slice(0, 300)}`)],
     json: true, lowThinking: true, models: scanModelsFor(s), signal,
   });
   const scan = parseScan(raw);
@@ -163,13 +174,13 @@ export function parseLabelRead(text: string, barcode: string): BarcodeProduct | 
   try { root = JSON.parse(extractJson(text)); } catch { return null; }
   if (typeof root !== 'object' || root === null || Array.isArray(root)) return null;
   const o = root as Record<string, unknown>;
-  const kcal = num(o.kcal);
+  const kcal = clamp(num(o.kcal), 0, 5000);
   if (!(kcal > 0)) return null;
   const perServing = typeof o.basis === 'string' && o.basis.trim().toLowerCase() === 'serving';
-  const servingGrams = Math.max(0, num(o.servingGrams));
+  const servingGrams = clamp(num(o.servingGrams), 0, 5000);
   if (perServing && servingGrams <= 0) return null;
-  const protein = Math.max(0, num(o.protein));
-  const carbs = Math.max(0, num(o.carbs));
+  const protein = clamp(num(o.protein), 0, 500);
+  const carbs = clamp(num(o.carbs), 0, 500);
   const name = typeof o.name === 'string' ? o.name.trim() : '';
   return {
     code: barcode.trim(),

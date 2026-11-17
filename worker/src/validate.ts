@@ -118,6 +118,13 @@ export function validateSnapshot(
     throw new HttpError(400, "bad_snapshot");
   }
 
+  // 4.2, optional: planned training weekdays (ISO 1..7, unique).
+  const trainDays = body.trainDays;
+  if (trainDays !== undefined && trainDays !== null && (!Array.isArray(trainDays) || trainDays.length > 7 ||
+      !trainDays.every((d) => isIntInRange(d, 1, 7)) || new Set(trainDays).size !== trainDays.length)) {
+    throw new HttpError(400, "bad_snapshot");
+  }
+
   let validatedPrs: PrItem[] | null = null;
   if (prs !== null && prs !== undefined) {
     if (!Array.isArray(prs) || prs.length > 10) {
@@ -161,6 +168,7 @@ export function validateSnapshot(
     prs: validatedPrs,
     ...(typeof weekState === "string" ? { weekState: weekState as SnapshotInput["weekState"] } : {}),
     ...(typeof lastWeekState === "string" ? { lastWeekState: lastWeekState as SnapshotInput["lastWeekState"] } : {}),
+    ...(Array.isArray(trainDays) ? { trainDays: [...(trainDays as number[])].sort((a, b) => a - b) } : {}),
   };
 }
 

@@ -3,6 +3,7 @@ package com.forgequest.app.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -134,6 +137,9 @@ private fun MiniFigure(
     }
 }
 
+internal fun isMusclePartSelected(partMuscle: Muscle?, selected: Muscle?): Boolean =
+    selected != null && partMuscle != null && partMuscle == selected
+
 /** Compact front/back body-map sheet for tap-filtering exercises by muscle. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,6 +155,14 @@ fun MuscleFilterSheet(
     val art by produceState<BodyArt?>(initialValue = null, bodyType) {
         value = BodyArtLoader.load(context, bodyType)
     }
+    val tapHint = stringResource(R.string.v42_muscle_tap_hint)
+    val frontLabel = stringResource(R.string.v42_muscle_front)
+    val backLabel = stringResource(R.string.v42_muscle_back)
+    val pickMuscle: (Muscle) -> Unit = { m ->
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onSelect(if (selected == m) null else m)
+        onDismiss()
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -158,6 +172,7 @@ fun MuscleFilterSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = ForgeSpace.Gutter)
                 .navigationBarsPadding(),
         ) {
@@ -175,33 +190,58 @@ fun MuscleFilterSheet(
                     )
                 }
             }
+            Spacer(Modifier.height(4.dp))
+            Text(tapHint, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+            if (selected != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.v42_muscle_showing, selected.localLabel()),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = c.teal,
+                )
+            }
             Spacer(Modifier.height(12.dp))
             val loaded = art
             if (loaded != null) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     Row(
-                        Modifier.fillMaxWidth().height(260.dp),
+                        Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                     ) {
-                        FilterFigure(
-                            view = loaded.front,
-                            selected = selected,
-                            onTap = { m ->
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSelect(if (selected == m) null else m)
-                                onDismiss()
-                            },
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
-                        FilterFigure(
-                            view = loaded.back,
-                            selected = selected,
-                            onTap = { m ->
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSelect(if (selected == m) null else m)
-                                onDismiss()
-                            },
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            FilterFigure(
+                                view = loaded.front,
+                                selected = selected,
+                                description = "$frontLabel. $tapHint",
+                                onTap = pickMuscle,
+                                modifier = Modifier.fillMaxWidth().height(240.dp),
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(frontLabel, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                        }
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            FilterFigure(
+                                view = loaded.back,
+                                selected = selected,
+                                description = "$backLabel. $tapHint",
+                                onTap = pickMuscle,
+                                modifier = Modifier.fillMaxWidth().height(240.dp),
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(backLabel, style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Muscle.entries.forEach { m ->
+                        ChoiceChip(
+                            text = m.localLabel(),
+                            selected = m == selected,
+                            onClick = { pickMuscle(m) },
                         )
                     }
                 }
@@ -215,13 +255,17 @@ fun MuscleFilterSheet(
 private fun FilterFigure(
     view: BodyView,
     selected: Muscle?,
+    description: String,
     onTap: (Muscle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val c = Fit.colors
+    val silhouetteFill = c.cardHigh
+    val muscleFill = c.textSecondary.copy(alpha = 0.28f)
     Canvas(
         modifier
             .aspectRatio(view.width / view.height, matchHeightConstraintsFirst = true)
+            .semantics { contentDescription = description }
             .pointerInput(view) {
                 detectTapGestures { pos ->
                     val scale = minOf(size.width / view.width, size.height / view.height)
@@ -237,16 +281,22 @@ private fun FilterFigure(
         val dx = (size.width - view.width * scale) / 2f - view.minX * scale
         val dy = (size.height - view.height * scale) / 2f - view.minY * scale
         withTransform({ translate(dx, dy); scale(scale, scale, pivot = Offset.Zero) }) {
-            view.outline?.let { drawPath(it, c.cardHigh) }
+            view.outline?.let { drawPath(it, silhouetteFill) }
             view.parts.forEach { part ->
+                val muscle = part.muscle
+                val isSelected = isMusclePartSelected(muscle, selected)
                 val fill = when {
-                    part.muscle == null -> c.cardHigh
-                    part.muscle == selected -> c.blue
-                    else -> c.cardHigh
+                    muscle == null -> silhouetteFill
+                    isSelected -> c.teal
+                    else -> muscleFill
                 }
                 drawPath(part.path, fill)
-                if (part.muscle == selected) {
-                    drawPath(part.path, c.textPrimary, style = Stroke(width = 1.5.dp.toPx() / scale))
+                if (muscle != null) {
+                    drawPath(
+                        part.path,
+                        color = if (isSelected) c.textPrimary else c.divider,
+                        style = Stroke(width = (if (isSelected) 1.5f else 1f).dp.toPx() / scale),
+                    )
                 }
             }
             view.outline?.let { drawPath(it, c.divider, style = Stroke(width = 1.dp.toPx() / scale)) }

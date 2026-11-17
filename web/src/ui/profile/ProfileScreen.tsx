@@ -2,7 +2,7 @@
 // sections. Web leaves out Health Connect/Fitbit, reminders, app lock, the tour, Gemini bridge, APK updates
 // and the Drive Docs import. Backup (Drive + file) lives in BackupSection.tsx.
 import type { ComponentChildren } from 'preact'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { getLang, plural, setLang, t, useLang, type Lang, intlLocale } from '../../i18n'
 import { setTheme, useTheme, type Theme } from '../theme'
 import { isAiOn, DEFAULT_PLATE_INVENTORY, updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
@@ -74,7 +74,7 @@ function Group({ id, accent, icon, title, sum, open, onToggle, children }: {
   id: string; accent: Accent; icon: string; title: string; sum: string; open: boolean; onToggle: () => void; children: ComponentChildren
 }) {
   return (
-    <section class="pf-group">
+    <section class="pf-group" id={`pf-group-${id}`}>
       <button type="button" class="pf-ghead" aria-expanded={open} aria-controls={`pf-${id}`} onClick={onToggle}>
         <span class={`pf-ic pf-${accent}`}><Glyph name={icon} /></span>
         <span class="pf-gtext"><span class="pf-gtitle">{title}</span><span class="pf-gsum">{sum}</span></span>
@@ -241,7 +241,7 @@ function TargetDialog({
   )
 }
 
-export function ProfileScreen() {
+export function ProfileScreen({ param }: { param?: string }) {
   const settings = useSettings()
   const snap = useProgress()
   const friendsState = useFriends()
@@ -262,6 +262,14 @@ export function ProfileScreen() {
   }
   const openGroup = (id: string) => { if (!openIds.includes(id)) { const next = [...openIds, id]; setOpenIds(next); saveOpen(next) } }
   const isOpen = (id: string) => openIds.includes(id)
+  useEffect(() => {
+    if (param !== 'backup') return
+    openGroup('backup')
+    const frame = requestAnimationFrame(() => {
+      document.getElementById('pf-group-backup')?.scrollIntoView({ block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [param])
 
   const s = settings
   const ar = getLang() === 'ar'
@@ -534,6 +542,10 @@ export function ProfileScreen() {
       </Group>
 
       <PastePlanSheet open={pastePlanOpen} onClose={() => setPastePlanOpen(false)} onParsed={(draft) => { void applyPlan(draft, 'gemini').then(() => { setPastePlanOpen(false); toast(t('coach_plan_applied')); location.hash = '#/workouts' }) }} />
+
+      <Card padded={false}>
+        <ListRow title={t('v42_guide_title')} subtitle={t('v42_guide_row_sub')} icon={<Glyph name="about" />} href="#/guide" />
+      </Card>
 
       <Group id="about" accent="text" icon="about" title={t('settings_group_about')} open={isOpen('about')} onToggle={() => toggle('about')} sum={t('profile_credits')}>
         <Card padded={false}><ListRow title={t('settings_group_about')} subtitle={t('profile_credits_body')} icon={<Glyph name="about" />} href="#/about" /></Card>

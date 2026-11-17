@@ -1,4 +1,5 @@
 import { ForgeScoreButton, ForgeScoreInfoButton, ForgeScoreSheet } from './ForgeScoreSheet'
+import type { ComponentChildren } from 'preact'
 import { useEffect, useId, useRef, useState } from 'preact/hooks'
 import { getLang, intlLocale, plural, t, useLang, type Lang } from '../../i18n'
 import {
@@ -7,9 +8,11 @@ import {
   blockFriend,
   clearFriendsError,
   declineFriend,
+  effectiveNudgeNextAt,
   inviteFriend,
   joinFriends,
   markInboxSeen,
+  nudgeCooldownKind,
   nudgeFriend,
   refreshFriends,
   removeFriend,
@@ -37,7 +40,7 @@ import {
   ShareOutIcon,
   CheckIcon,
 } from '../icons'
-import { Button, Card, Dialog, IconButton, Sheet, TextField, toast } from '../kit'
+import { Button, Card, Dialog, IconButton, reducedMotion, Sheet, TextField, toast } from '../kit'
 import { useIsDark } from '../theme'
 import { Avatar } from './Avatar'
 import { RankBadge } from './RankBadge'
@@ -183,10 +186,77 @@ function statusLine(entry: LeaderboardEntry): string {
   return entry.syncedThisWeek ? `${word} · ${plural('friends_done_count', entry.done)}` : word
 }
 
+function formatNudgeCooldown(blockedUntil: number, lang: Lang, nowMs: number): string {
+  if (nudgeCooldownKind(blockedUntil, nowMs) === 'tomorrow') {
+    return t('v42_friends_nudge_tomorrow')
+  }
+  const time = new Intl.DateTimeFormat(intlLocale(lang), {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(blockedUntil * 1000))
+  return t('v42_friends_nudge_again_at', time)
+}
+
+function AnimatedRow({
+  leaving,
+  class: cls,
+  children,
+}: {
+  leaving: boolean
+  class?: string
+  children: ComponentChildren
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [gone, setGone] = useState(false)
+  const reduced = reducedMotion()
+
+  useEffect(() => {
+    if (!leaving) {
+      setGone(false)
+      return
+    }
+    if (reduced) {
+      setGone(true)
+      return
+    }
+    const timer = setTimeout(() => setGone(true), 300)
+    return () => clearTimeout(timer)
+  }, [leaving, reduced])
+
+  if (leaving && (gone || reduced)) return null
+
+  const wrapClass = [
+    'fq-row-wrap',
+    !leaving && 'fq-row-enter',
+    leaving && 'fq-leaving',
+    cls,
+  ].filter(Boolean).join(' ')
+
+  return (
+    <div
+      ref={ref}
+      class={wrapClass}
+      onTransitionEnd={(e) => {
+        if (leaving && e.target === ref.current && e.propertyName === 'grid-template-rows') {
+          setGone(true)
+        }
+      }}
+    >
+      <div class="fq-row-inner">{children}</div>
+    </div>
+  )
+}
+
 /** Your @username with Copy/Share, then the add-by-username field. Used in the Add sheet and the empty state. */
-function AddFriend({ username, busy, onDone }: { username: string; busy: boolean; onDone?: () => void }) {
+function AddFriend({ username, onDone }: { username: string; onDone?: () => void }) {
   const [nameInput, setNameInput] = useState('')
+  const [sendState, setSendState] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const addInputId = useId()
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
 
   const handleCopy = async () => {
     if (await copyText(`@${username}`)) toast(t('friends_username_copied'))
@@ -205,12 +275,21 @@ function AddFriend({ username, busy, onDone }: { username: string; busy: boolean
   }
   const handleInvite = async (e?: Event) => {
     e?.preventDefault()
-    if (normalizeUsername(nameInput) === null) return
+    if (sendState !== 'idle' || normalizeUsername(nameInput) === null) return
+    setSendState('sending')
     const res = await inviteFriend(nameInput)
     if (res.ok) {
       setNameInput('')
-      toast(t(res.data.status === 'accepted' ? 'friends_invite_accepted' : 'friends_invite_sent'))
-      onDone?.()
+      setSendState('sent')
+      if (res.data.status === 'accepted') toast(t('friends_invite_accepted'))
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null
+        setSendState('idle')
+        onDone?.()
+      }, reducedMotion() ? 250 : 750)
+    } else {
+      setSendState('idle')
     }
   }
 
@@ -238,15 +317,34 @@ function AddFriend({ username, busy, onDone }: { username: string; busy: boolean
             spellcheck={false}
             placeholder={t('friends_add_hint')}
             value={nameInput}
-            disabled={busy}
+            disabled={sendState === 'sending'}
             onInput={(e) => {
               clearFriendsError()
               setNameInput((e.target as HTMLInputElement).value)
             }}
           />
         </div>
-        <Button type="submit" variant="tonal" disabled={normalizeUsername(nameInput) === null || busy}>
-          {t('friends_add_button')}
+        <Button
+          type="submit"
+          variant="tonal"
+          class={sendState === 'sent' ? 'fr-send-btn fr-send-sent' : 'fr-send-btn'}
+          disabled={sendState === 'sending' || (sendState === 'idle' && normalizeUsername(nameInput) === null)}
+          aria-busy={sendState === 'sending' ? 'true' : undefined}
+        >
+          {sendState === 'sending' ? (
+            <span key="sending" class="fr-btn-swap">
+              <span class="fr-spinner" aria-hidden="true" />
+            </span>
+          ) : sendState === 'sent' ? (
+            <span key="sent" class="fr-btn-swap">
+              <CheckIcon size={16} />
+              <span>{t('friends_invite_sent')}</span>
+            </span>
+          ) : (
+            <span key="idle" class="fr-btn-swap">
+              {t('friends_add_button')}
+            </span>
+          )}
         </Button>
       </form>
     </div>
@@ -258,7 +356,7 @@ export function FriendsScreen({ param }: { param?: string }) {
   const state = useFriends()
   const settings = useSettings()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [scoreOpen, setScoreOpen] = useState(false)
+  const [scoreEntryId, setScoreEntryId] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [inboxOpen, setInboxOpen] = useState(false)
   const [unseenPings, setUnseenPings] = useState<Set<string>>(() => new Set())
@@ -266,7 +364,15 @@ export function FriendsScreen({ param }: { param?: string }) {
   const [confirmAction, setConfirmAction] = useState<{ kind: 'remove' | 'block'; person: Person } | null>(null)
   const [canPush, setCanPush] = useState(false)
   const [perm, setPerm] = useState(() => pushPermission())
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [nudgeSentIds, setNudgeSentIds] = useState<Set<string>>(() => new Set())
+  const nudgeTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const handledInboxRef = useRef(false)
+
+  useEffect(() => () => {
+    for (const timer of nudgeTimersRef.current.values()) clearTimeout(timer)
+    nudgeTimersRef.current.clear()
+  }, [])
 
   useEffect(() => {
     void pushSupported().then((ok) => {
@@ -308,13 +414,93 @@ export function FriendsScreen({ param }: { param?: string }) {
   const selectedEntry: LeaderboardEntry | null =
     selectedId != null ? state.leaderboard.find((e) => !e.isMe && e.person.id === selectedId) ?? null : null
   const selectedFriend = selectedEntry && view ? view.friends.find((f) => f.id === selectedEntry.person.id) ?? null : null
+  const scoreEntry: LeaderboardEntry | null =
+    scoreEntryId != null ? state.leaderboard.find((e) => e.person.id === scoreEntryId) ?? null : null
+
+  const nowSec = Math.floor(nowMs / 1000)
+  let minUntilSec: number | null = null
+  if (view) {
+    for (const f of view.friends) {
+      const until = effectiveNudgeNextAt(f.nudgeNextAt, state.nudgeNextAt[f.id], nowSec)
+      if (until !== null && (minUntilSec === null || until < minUntilSec)) {
+        minUntilSec = until
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (minUntilSec == null) return
+    const delay = Math.min(2_147_483_647, Math.max(50, minUntilSec * 1000 - Date.now() + 50))
+    const timer = setTimeout(() => setNowMs(Date.now()), delay)
+    return () => clearTimeout(timer)
+  }, [minUntilSec])
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible') setNowMs(Date.now())
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   const lang = getLang()
   const ar = lang === 'ar'
   const unit = weightUnit(settings)
+
+  const nudgeStateFor = (id: string) => {
+    const justSent = nudgeSentIds.has(id)
+    const friend = view?.friends.find((f) => f.id === id)
+    const blockedUntil = effectiveNudgeNextAt(friend?.nudgeNextAt, state.nudgeNextAt[id], nowSec)
+    return { justSent, blockedUntil, pending: state.pendingIds.has(id) }
+  }
+
   const nudge = async (p: Person) => {
+    const { justSent, blockedUntil, pending } = nudgeStateFor(p.id)
+    if (justSent || blockedUntil !== null || pending) return
+    setNudgeSentIds((prev) => {
+      const next = new Set(prev)
+      next.add(p.id)
+      return next
+    })
+    try { navigator.vibrate?.(15) } catch { /* unsupported */ }
+    const startedAt = Date.now()
     const res = await nudgeFriend(p.id)
-    if (res.ok) toast(t('friends_nudge_sent'))
+    if (res.ok) {
+      const wait = Math.max(0, 900 - (Date.now() - startedAt))
+      const old = nudgeTimersRef.current.get(p.id)
+      if (old) clearTimeout(old)
+      const timer = setTimeout(() => {
+        nudgeTimersRef.current.delete(p.id)
+        setNudgeSentIds((prev) => {
+          if (!prev.has(p.id)) return prev
+          const next = new Set(prev)
+          next.delete(p.id)
+          return next
+        })
+      }, wait)
+      nudgeTimersRef.current.set(p.id, timer)
+    } else {
+      setNudgeSentIds((prev) => {
+        if (!prev.has(p.id)) return prev
+        const next = new Set(prev)
+        next.delete(p.id)
+        return next
+      })
+      if (res.error !== 'already_nudged') {
+        toast(t('v42_friends_action_failed'))
+      }
+    }
+  }
+
+  const handleAccept = async (id: string) => {
+    const res = await acceptFriend(id)
+    if (res.ok) toast(t('v42_friends_now_friends'))
+    else toast(t('v42_friends_action_failed'))
+  }
+
+  const handleDecline = async (id: string) => {
+    const res = await declineFriend(id)
+    if (!res.ok) toast(t('v42_friends_action_failed'))
   }
 
   const today = view ? Math.max(view.today, todayEpochDay()) : 0
@@ -339,7 +525,7 @@ export function FriendsScreen({ param }: { param?: string }) {
       {!state.loading && state.status === 'joined' && view && (
         <>
           <div class="fr-actions">
-            <ForgeScoreInfoButton onClick={() => setScoreOpen(true)} />
+            <ForgeScoreInfoButton onClick={() => setScoreEntryId(myEntry?.person.id ?? view.me.id)} />
             <IconButton label={t('friends_add_title')} tone="tonal" onClick={() => setAddOpen(true)}><PersonAddIcon /></IconButton>
             <button
               type="button"
@@ -350,7 +536,7 @@ export function FriendsScreen({ param }: { param?: string }) {
               <BellIcon />
               {count > 0 && <span class="fr-bell-badge" aria-hidden="true">{count}</span>}
             </button>
-            <IconButton label={t('friends_refresh')} disabled={state.busy} onClick={() => void refreshFriends(false)}><RefreshIcon /></IconButton>
+            <IconButton label={t('friends_refresh')} disabled={state.refreshing} onClick={() => void refreshFriends(false)}><RefreshIcon /></IconButton>
             <IconButton label={t('friends_settings')} onClick={openFriendsSettings}><SettingsIcon /></IconButton>
           </div>
 
@@ -361,7 +547,7 @@ export function FriendsScreen({ param }: { param?: string }) {
               <span class="fr-pitch-ic" aria-hidden="true"><GroupIcon size={28} /></span>
               <h2 class="fr-h2">{t('friends_empty_title')}</h2>
               <p class="fr-body">{t('friends_empty_board')}</p>
-              <AddFriend username={view.me.username ?? ''} busy={state.busy} />
+              <AddFriend username={view.me.username ?? ''} />
             </Card>
           ) : (
             <>
@@ -371,8 +557,15 @@ export function FriendsScreen({ param }: { param?: string }) {
               </div>
               <Card class="fr-board" padded={false}>
                 {state.leaderboard.map((entry, idx) => {
-                  const nudged = state.nudgedToday.has(entry.person.id)
+                  const { justSent, blockedUntil, pending } = nudgeStateFor(entry.person.id)
                   const canNudge = !entry.isMe && entry.weekState !== 'hit'
+                  const nudgeDisabled = justSent || blockedUntil !== null || pending
+                  const nudgeKey = justSent ? 'sent' : blockedUntil !== null ? 'cd' : 'go'
+                  const nudgeLabel = justSent
+                    ? t('friends_nudge_sent')
+                    : blockedUntil !== null
+                      ? formatNudgeCooldown(blockedUntil, lang, nowMs)
+                      : t('friends_go_train')
                   const displayName = entry.isMe ? t('friends_you') : shownName(entry.person)
                   const body = (
                     <>
@@ -397,27 +590,36 @@ export function FriendsScreen({ param }: { param?: string }) {
                     </>
                   )
                   return (
-                    <div key={entry.person.id} class={entry.isMe ? 'fr-board-row fr-board-me' : 'fr-board-row'}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-xs)' }}>
-                        {entry.isMe
-                          ? <div class="fr-row-main" style={{ flex: 1 }}>{body}</div>
-                          : <button type="button" class="fr-row-main" style={{ flex: 1 }} onClick={() => setSelectedId(entry.person.id)}>{body}</button>}
-                        <ForgeScoreButton score={entry.syncedThisWeek ? entry.score : null}
-                          done={entry.done} target={entry.target} onClick={() => setScoreOpen(true)} />
-                      </div>
-                      {canNudge && (
-                        <div class="fr-nudge-row">
-                          <button
-                            type="button"
-                            class={nudged ? 'fr-pill fr-pill-done' : 'fr-pill'}
-                            disabled={nudged || state.busy}
-                            onClick={() => void nudge(entry.person)}
-                          >
-                            {nudged ? t('friends_sent_today') : t('friends_go_train')}
-                          </button>
+                    <AnimatedRow
+                      key={entry.person.id}
+                      leaving={!entry.isMe && state.hiddenIds.has(entry.person.id)}
+                      class={entry.isMe ? 'fr-board-row-wrap fr-board-me' : 'fr-board-row-wrap'}
+                    >
+                      <div class="fr-board-row">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-xs)' }}>
+                          {entry.isMe
+                            ? <div class="fr-row-main" style={{ flex: 1 }}>{body}</div>
+                            : <button type="button" class="fr-row-main" style={{ flex: 1 }} onClick={() => setSelectedId(entry.person.id)}>{body}</button>}
+                          <ForgeScoreButton score={entry.syncedThisWeek ? entry.score : null}
+                            done={entry.done} target={entry.target} onClick={() => setScoreEntryId(entry.person.id)} />
                         </div>
-                      )}
-                    </div>
+                        {canNudge && (
+                          <div class="fr-nudge-row">
+                            <button
+                              type="button"
+                              class={justSent ? 'fr-pill fr-pill-sent' : blockedUntil !== null ? 'fr-pill fr-pill-done' : 'fr-pill'}
+                              disabled={nudgeDisabled}
+                              onClick={() => void nudge(entry.person)}
+                            >
+                              <span key={nudgeKey} class="fr-btn-swap">
+                                {justSent && <CheckIcon size={16} />}
+                                <span>{nudgeLabel}</span>
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </AnimatedRow>
                   )
                 })}
               </Card>
@@ -433,13 +635,19 @@ export function FriendsScreen({ param }: { param?: string }) {
               {outOpen && view.outgoing.map((p) => {
                 const name = shownName(p)
                 return (
-                  <div key={p.id} class="fr-out-row">
-                    <Avatar person={p} />
-                    <span class="fr-name fr-grow">{name}</span>
-                    <IconButton label={t('friends_cancel_invite', isolateLtr(name))} disabled={state.busy} onClick={() => void declineFriend(p.id)}>
-                      <CloseIcon size={20} />
-                    </IconButton>
-                  </div>
+                  <AnimatedRow key={p.id} leaving={state.hiddenIds.has(p.id)}>
+                    <div class="fr-out-row">
+                      <Avatar person={p} />
+                      <span class="fr-name fr-grow">{name}</span>
+                      <IconButton
+                        label={t('friends_cancel_invite', isolateLtr(name))}
+                        disabled={state.pendingIds.has(p.id)}
+                        onClick={() => void handleDecline(p.id)}
+                      >
+                        <CloseIcon size={20} />
+                      </IconButton>
+                    </div>
+                  </AnimatedRow>
                 )
               })}
             </div>
@@ -447,14 +655,14 @@ export function FriendsScreen({ param }: { param?: string }) {
         </>
       )}
 
-      <ForgeScoreSheet open={scoreOpen} onClose={() => setScoreOpen(false)}
-        done={myEntry?.done ?? 0} target={myEntry?.target ?? 0}
-        prCount={myEntry?.prCount ?? 0} proteinDays={myEntry?.proteinDays ?? 0}
-        breakdown={myEntry?.breakdown ?? { base: myEntry?.score ?? 0, prBonus: 0,
-          proteinBonus: 0, extraBonus: 0, bonus: 0, score: myEntry?.score ?? 0 }} />
+      <ForgeScoreSheet open={scoreEntryId !== null} onClose={() => setScoreEntryId(null)}
+        done={scoreEntry?.done ?? 0} target={scoreEntry?.target ?? 0}
+        prCount={scoreEntry?.prCount ?? 0} proteinDays={scoreEntry?.proteinDays ?? 0}
+        score={scoreEntry?.syncedThisWeek ? scoreEntry.score : null}
+        breakdown={scoreEntry?.breakdown ?? null} />
 
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title={t('friends_add_title')}>
-        {view && <AddFriend username={view.me.username ?? ''} busy={state.busy} onDone={() => setAddOpen(false)} />}
+        {view && <AddFriend username={view.me.username ?? ''} onDone={() => setAddOpen(false)} />}
         {state.error && <p class="fr-err" role="alert">{t('friends_error_line', state.error)}</p>}
       </Sheet>
 
@@ -482,19 +690,24 @@ export function FriendsScreen({ param }: { param?: string }) {
               {inboxIncoming.length > 0 && (
                 <section class="fr-inbox-sec">
                   <h3 class="fr-h3">{t('friends_incoming_title')}</h3>
-                  {inboxIncoming.map((p) => (
-                    <div key={p.id} class="fr-banner fr-req">
-                      <Avatar person={p} />
-                      <span class="fr-grow fr-req-text">
-                        <span class="fr-name">{shownName(p)}</span>
-                        <span class="fr-sub">{t('friends_wants_friends')}</span>
-                      </span>
-                      <span class="fr-req-actions">
-                        <Button variant="text" disabled={state.busy} onClick={() => void declineFriend(p.id)}>{t('friends_decline')}</Button>
-                        <Button variant="filled" disabled={state.busy} onClick={() => void acceptFriend(p.id)}>{t('friends_accept')}</Button>
-                      </span>
-                    </div>
-                  ))}
+                  {inboxIncoming.map((p) => {
+                    const rowPending = state.pendingIds.has(p.id)
+                    return (
+                      <AnimatedRow key={p.id} leaving={state.hiddenIds.has(p.id)}>
+                        <div class="fr-banner fr-req">
+                          <Avatar person={p} />
+                          <span class="fr-grow fr-req-text">
+                            <span class="fr-name">{shownName(p)}</span>
+                            <span class="fr-sub">{t('friends_wants_friends')}</span>
+                          </span>
+                          <span class="fr-req-actions">
+                            <Button variant="text" disabled={rowPending} onClick={() => void handleDecline(p.id)}>{t('friends_decline')}</Button>
+                            <Button variant="filled" disabled={rowPending} onClick={() => void handleAccept(p.id)}>{t('friends_accept')}</Button>
+                          </span>
+                        </div>
+                      </AnimatedRow>
+                    )
+                  })}
                 </section>
               )}
 
@@ -544,6 +757,14 @@ export function FriendsScreen({ param }: { param?: string }) {
           const name = shownName(selectedEntry.person)
           const iso = isolateLtr(name)
           const muted = selectedFriend?.muted ?? false
+          const { justSent, blockedUntil, pending } = nudgeStateFor(selectedEntry.person.id)
+          const nudgeDisabled = justSent || blockedUntil !== null || pending
+          const nudgeKey = justSent ? 'sent' : blockedUntil !== null ? 'cd' : 'go'
+          const nudgeLabel = justSent
+            ? t('friends_nudge_sent')
+            : blockedUntil !== null
+              ? formatNudgeCooldown(blockedUntil, lang, nowMs)
+              : t('friends_go_train')
           return (
             <div class="fr-sheet">
               <div class="fr-together">
@@ -561,16 +782,19 @@ export function FriendsScreen({ param }: { param?: string }) {
               <Button
                 variant="filled"
                 block
-                disabled={state.nudgedToday.has(selectedEntry.person.id) || state.busy}
+                disabled={nudgeDisabled}
                 onClick={() => void nudge(selectedEntry.person)}
               >
-                {state.nudgedToday.has(selectedEntry.person.id) ? t('friends_sent_today') : t('friends_go_train')}
+                <span key={nudgeKey} class="fr-btn-swap">
+                  {justSent && <CheckIcon size={16} />}
+                  <span>{nudgeLabel}</span>
+                </span>
               </Button>
 
               <SwitchRow
                 label={t('friends_alert_when_trains', iso)}
                 on={!muted}
-                disabled={state.busy}
+                disabled={pending}
                 onToggle={() => void setFriendMuted(selectedEntry.person.id, !muted)}
               />
 
@@ -607,7 +831,7 @@ export function FriendsScreen({ param }: { param?: string }) {
                 <Button
                   variant="text"
                   class="fr-neutral"
-                  disabled={state.busy}
+                  disabled={pending}
                   onClick={() => setConfirmAction({ kind: 'remove', person: selectedEntry.person })}
                 >
                   {t('friends_remove')}
@@ -615,7 +839,7 @@ export function FriendsScreen({ param }: { param?: string }) {
                 <Button
                   variant="text"
                   class="kit-danger"
-                  disabled={state.busy}
+                  disabled={pending}
                   onClick={() => setConfirmAction({ kind: 'block', person: selectedEntry.person })}
                 >
                   {t('friends_block')}
@@ -646,8 +870,12 @@ export function FriendsScreen({ param }: { param?: string }) {
           setConfirmAction(null)
           if (!target) return
           setSelectedId(null)
-          if (target.kind === 'block') void blockFriend(target.person.id)
-          else void removeFriend(target.person.id)
+          void (async () => {
+            const res = target.kind === 'block'
+              ? await blockFriend(target.person.id)
+              : await removeFriend(target.person.id)
+            if (!res.ok) toast(t('v42_friends_action_failed'))
+          })()
         }}
       />
     </div>

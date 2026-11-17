@@ -689,7 +689,9 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       harder={harder}
       onStepUp={(oldId, next) => {
         setHarder((m) => { const n = new Map(m); n.delete(oldId); return n })
-        void stepUp(sid, oldId, next.id).then(() => toast(t('harder_switched', next.name)))
+        void stepUp(sid, oldId, next.id).then((swapped) =>
+          toast(swapped > 0 ? t('harder_switched', next.name) : t('v42_harder_next_time', next.name)),
+        )
       }}
       onMenu={(position, swapOnly) => setMenu({ position, swapOnly })}
       onSwap={(position) => setPicker({ kind: 'swap', position })}

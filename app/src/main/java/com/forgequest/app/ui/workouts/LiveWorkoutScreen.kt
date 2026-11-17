@@ -615,7 +615,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 
     noteSet?.let { ns ->
         val live = sets.firstOrNull { it.id == ns.id } ?: ns
-        SetNoteDialog(live.note, onDismiss = { noteSet = null }, onSave = { vm.setNote(live, it); noteSet = null })
+        SetNoteDialog(live.note, isPain = true, onDismiss = { noteSet = null }, onSave = { vm.setNote(live, it); noteSet = null })
     }
 
     if (confirmExit) {
@@ -1054,7 +1054,12 @@ internal fun HarderNote(ex: ExerciseEntity, vm: LiveWorkoutViewModel) {
         if (next != null) {
             Spacer(Modifier.width(8.dp))
             val done = stringResource(R.string.harder_switched, next.name)
-            TextButton(onClick = { vm.stepUp(ex.id, next.id); context.toast(done) }) { Text(stringResource(R.string.harder_switch), color = c.teal) }
+            val nextTime = stringResource(R.string.v42_harder_next_time, next.name)
+            TextButton(onClick = {
+                vm.stepUp(ex.id, next.id) { swapped ->
+                    context.toast(if (swapped == 0) nextTime else done)
+                }
+            }) { Text(stringResource(R.string.harder_switch), color = c.teal) }
         }
     }
 }

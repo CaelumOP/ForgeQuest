@@ -23,3 +23,13 @@ export function isQuietHours(nowMs: number): boolean {
   const hour = Math.floor(msIntoDay / (60 * 60 * 1000));
   return hour >= 22 || hour < 7;
 }
+
+/** ISO weekday of a Riyadh epoch day: 1 = Monday .. 7 = Sunday (epoch day 0 was a Thursday). */
+export function isoWeekday(epochDay: number): number {
+  return ((((epochDay + 3) % 7) + 7) % 7) + 1;
+}
+
+/** Unix seconds of 00:00 Riyadh on `epochDay`. */
+export function riyadhDayStartSec(epochDay: number): number {
+  return epochDay * 86400 - RIYADH_OFFSET_MS / 1000;
+}

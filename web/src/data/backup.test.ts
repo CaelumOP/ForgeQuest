@@ -260,4 +260,18 @@ describe('backup', () => {
     expect(copies).toHaveLength(1);
     expect(decodeBackup(copies[0].json).plans).toHaveLength(1);
   });
+
+  it('defaults missing autoTicked to false and round-trips autoTicked true', async () => {
+    const f = fixture() as { sets: Record<string, unknown>[] };
+    delete f.sets[0].autoTicked;
+    f.sets[1] = { ...f.sets[0], id: 99, setIndex: 1, autoTicked: true };
+    const decoded = decodeBackup(JSON.stringify(f));
+    expect(decoded.sets[0].autoTicked).toBe(false);
+    expect(decoded.sets[1].autoTicked).toBe(true);
+
+    await applyBackup(decoded);
+    const out = await buildBackup(null);
+    expect(out.sets.find((s) => s.id === decoded.sets[0].id)?.autoTicked).toBe(false);
+    expect(out.sets.find((s) => s.id === 99)?.autoTicked).toBe(true);
+  });
 });

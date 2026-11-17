@@ -97,7 +97,7 @@ data class LifetimeTotals(val workouts: Int, val sets: Int, val reps: Int, val m
  */
 fun lifetimeTotals(sessions: List<SessionEntity>, sets: List<SetEntity>): LifetimeTotals {
     val ids = sessions.mapTo(HashSet()) { it.id }
-    val working = sets.filter { it.done && it.sessionId in ids && !WorkoutScore.isExtra(it.block) }
+    val working = sets.filter { it.done && it.sessionId in ids && countsForScore(it) }
     val withWork = working.mapTo(HashSet()) { it.sessionId }
     val counted = sessions.filter { it.id in withWork }
     return LifetimeTotals(
@@ -177,7 +177,7 @@ private class InsightContext(val input: InsightInput, val today: Long) {
     val sessions = input.sessions.sortedWith(compareBy({ it.epochDay }, { it.startedAt }, { it.id }))
     private val known = sessions.mapTo(HashSet()) { it.id }
     private val done = input.sets.filter { it.done && it.sessionId in known }
-    private val work = done.filterNot { WorkoutScore.isExtra(it.block) || it.exerciseId in ExerciseCatalog.STRETCH_IDS }
+    private val work = done.filter { countsForScore(it) && it.exerciseId !in ExerciseCatalog.STRETCH_IDS }
     private val workBySession = work.groupBy { it.sessionId }
     private val dayOf = sessions.associate { it.id to it.epochDay }
 

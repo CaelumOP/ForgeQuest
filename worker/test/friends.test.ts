@@ -823,7 +823,7 @@ describe("ForgeQuest Friends Worker", () => {
       // Without FCM_SA -> stored only, pushed: false
       const n1 = await req("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
       expect(n1.status).toBe(200);
-      expect(n1.json).toEqual({ pushed: false });
+      expect(n1.json).toMatchObject({ pushed: false });
 
       // Same Riyadh day -> 409 already_nudged
       const nDup = await req("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
@@ -876,7 +876,7 @@ describe("ForgeQuest Friends Worker", () => {
 
       const nFcm = await req("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session });
       expect(nFcm.status).toBe(200);
-      expect(nFcm.json).toEqual({ pushed: true });
+      expect(nFcm.json).toMatchObject({ pushed: true });
       expect(oauthCalls).toBe(1);
       expect(fcmBodies.length).toBe(2);
       expect(fcmBodies[0].message.data).toEqual({ type: "ping", fromId: alice.user.id, name: "alice" });
@@ -888,7 +888,7 @@ describe("ForgeQuest Friends Worker", () => {
       nowMs += 18 * 3600 * 1000;
       const nNextDay = await req("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session });
       expect(nNextDay.status).toBe(200);
-      expect(nNextDay.json).toEqual({ pushed: true });
+      expect(nNextDay.json).toMatchObject({ pushed: true });
       // 18 h later the cached 1 h OAuth token has expired -> exactly one refresh
       expect(oauthCalls).toBe(2);
 
@@ -1107,7 +1107,7 @@ describe("ForgeQuest Friends Worker", () => {
     it("v4 GET keeps pings unseen until POST /inbox/seen; legacy GET marks both; pings_off stores without pushing", async () => {
       nowMs = at(10);
       const { alice, bob, carol } = await trio();
-      expect((await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session })).json).toEqual({ pushed: true });
+      expect((await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session })).json).toMatchObject({ pushed: true });
 
       const v1 = await call("GET", "/v1/friends?v=4", { token: bob.session });
       expect(v1.json.inbox.pings).toEqual([
@@ -1136,14 +1136,14 @@ describe("ForgeQuest Friends Worker", () => {
       const before = fcmBodies.length;
       const quietPing = await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
       expect(quietPing.status).toBe(200);
-      expect(quietPing.json).toEqual({ pushed: false });
+      expect(quietPing.json).toMatchObject({ pushed: false });
       expect(fcmBodies.length).toBe(before);
       expect((await call("GET", "/v1/friends?v=4", { token: bob.session })).json.inbox.pings).toHaveLength(2);
 
       // Quiet hours: stored, not pushed.
       nowMs = at(48 + 23);
       const night = await call("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session });
-      expect(night.json).toEqual({ pushed: false });
+      expect(night.json).toMatchObject({ pushed: false });
       expect(fcmBodies.length).toBe(before);
 
       // Unfriended senders vanish from the inbox.
@@ -1166,6 +1166,56 @@ describe("ForgeQuest Friends Worker", () => {
       } else {
         expect((store as unknown as SqliteStore).rowsReferencing(alice.user.id)).toBe(0);
       }
+    });
+
+    it("4.2 Go train: every 4 hours on the friend's training day, once a day otherwise; server enforces, view shows nextAt", async () => {
+      nowMs = at(9);
+      const { alice, bob, carol } = await trio();
+      // Bob trains on Sundays (ISO 7) = today; Carol trains Mon/Wed only. Old clients send no trainDays.
+      const sun = { ...snapBody(1), trainDays: [7, 3] };
+      expect((await call("PUT", "/v1/snapshot", { token: bob.session, body: sun })).status).toBe(200);
+      expect((await call("PUT", "/v1/snapshot", { token: carol.session, body: { ...snapBody(1), trainDays: [1, 3] } })).status).toBe(200);
+      await settle();
+      // Bad trainDays are rejected.
+      for (const bad of [[0], [8], [1, 1], "7", [1, 2, 3, 4, 5, 6, 7, 1]]) {
+        expect((await call("PUT", "/v1/snapshot", { token: bob.session, body: { ...snapBody(1), trainDays: bad } })).status).toBe(400);
+      }
+
+      const first = await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
+      expect(first.status).toBe(200);
+      expect(first.json.nextAt).toBe(Math.floor(at(13) / 1000));
+      // 3h59 later: still cooling down.
+      nowMs = at(12, 59);
+      expect((await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session })).json).toEqual({ error: "already_nudged" });
+      let view = await call("GET", "/v1/friends?v=5", { token: alice.session });
+      expect(view.json.friends.find((f: any) => f.id === bob.user.id).nudgeNextAt).toBe(Math.floor(at(13) / 1000));
+      // Bob reads it (seen), then 4h after the first: allowed again, unseen again in his inbox, pushed again.
+      await call("POST", "/v1/inbox/seen", { token: bob.session });
+      nowMs = at(13);
+      view = await call("GET", "/v1/friends?v=5", { token: alice.session });
+      expect(view.json.friends.find((f: any) => f.id === bob.user.id).nudgeNextAt).toBeNull();
+      const pushesBefore = fcmBodies.filter((b) => b.message.token === "bob-t" && b.message.data.type === "ping").length;
+      const again = await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
+      expect(again.status).toBe(200);
+      expect(again.json.pushed).toBe(true);
+      expect(fcmBodies.filter((b) => b.message.token === "bob-t" && b.message.data.type === "ping").length).toBe(pushesBefore + 1);
+      const inbox = await call("GET", "/v1/friends?v=5", { token: bob.session });
+      expect(inbox.json.inbox.pings).toEqual([expect.objectContaining({ fromId: alice.user.id, seen: false, createdAt: Math.floor(at(13) / 1000) })]);
+      // Late in the day the cooldown stops at Riyadh midnight.
+      nowMs = at(21, 30);
+      const late = await call("POST", `/v1/nudges/${bob.user.id}`, { token: alice.session });
+      expect(late.json.nextAt).toBe(Math.floor(at(24) / 1000));
+
+      // Carol: not her training day -> once today, next allowed at midnight.
+      nowMs = at(9);
+      expect((await call("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session })).json.nextAt).toBe(Math.floor(at(24) / 1000));
+      nowMs = at(18);
+      expect((await call("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session })).status).toBe(409);
+      view = await call("GET", "/v1/friends?v=5", { token: alice.session });
+      expect(view.json.friends.find((f: any) => f.id === carol.user.id).nudgeNextAt).toBe(Math.floor(at(24) / 1000));
+      // Next day: allowed again.
+      nowMs = at(24 + 9);
+      expect((await call("POST", `/v1/nudges/${carol.user.id}`, { token: alice.session })).status).toBe(200);
     });
   });
 

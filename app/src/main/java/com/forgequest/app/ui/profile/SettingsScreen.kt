@@ -86,13 +86,14 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     val busy by vm.busy.collectAsState()
     val consent by vm.consent.collectAsState()
     val restorePreview by vm.restorePreview.collectAsState()
-    val remoteNewer by vm.remoteNewerPrompt.collectAsState()
+    val driveConflict by vm.driveConflict.collectAsState()
     val shareUri by vm.shareUri.collectAsState()
     val snackbar = LocalSnackbar.current
     UndoSnackbarEffect(vm.undo)
     val context = LocalContext.current
     val c = Fit.colors
     var keyDialog by remember { mutableStateOf(false) }
+    var confirmReplaceDrive by remember { mutableStateOf(false) }
 
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         vm.onConsentResult(r.resultCode == Activity.RESULT_OK, r.data)
@@ -152,7 +153,7 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
                     vm, nav, s, apiKey, aiOn, onGroup,
                     onOpenKeyDialog = { keyDialog = true },
                 )
-                if (id == null || id == "about") AboutSettingsGroup(vm, onGroup)
+                if (id == null || id == "about") AboutSettingsGroup(vm, onGroup) { nav.navigate(Routes.GUIDE) }
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -218,25 +219,52 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
         )
     }
 
-    if (remoteNewer) {
+    driveConflict?.let { kind ->
+        val isExists = kind == SettingsViewModel.DriveConflictKind.REMOTE_EXISTS
         AlertDialog(
-            onDismissRequest = { vm.remoteNewerPrompt.value = false },
+            onDismissRequest = { vm.driveConflict.value = null },
             containerColor = c.card,
-            title = { Text(stringResource(R.string.prog41_drive_remote_newer_title), color = c.textPrimary) },
-            text = { Text(stringResource(R.string.prog41_drive_remote_newer_body), color = c.textSecondary) },
+            title = {
+                Text(
+                    stringResource(if (isExists) R.string.v42_drive_remote_exists_title else R.string.prog41_drive_remote_newer_title),
+                    color = c.textPrimary,
+                )
+            },
+            text = {
+                Text(
+                    stringResource(if (isExists) R.string.v42_drive_remote_exists_body else R.string.prog41_drive_remote_newer_body),
+                    color = c.textSecondary,
+                )
+            },
             confirmButton = {
-                TextButton(onClick = { vm.remoteNewerPrompt.value = false; vm.restore() }) {
-                    Text(stringResource(R.string.action_restore), color = c.teal)
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+                    TextButton(onClick = { vm.driveConflict.value = null; vm.restore() }) {
+                        Text(stringResource(R.string.v42_drive_restore), color = c.teal)
+                    }
+                    TextButton(onClick = { vm.driveConflict.value = null; confirmReplaceDrive = true }) {
+                        Text(stringResource(R.string.v42_drive_keep_mine), color = c.coral)
+                    }
+                    TextButton(onClick = { vm.driveConflict.value = null }) {
+                        Text(stringResource(R.string.action_cancel), color = c.textSecondary)
+                    }
+                }
+            },
+        )
+    }
+
+    if (confirmReplaceDrive) {
+        AlertDialog(
+            onDismissRequest = { confirmReplaceDrive = false },
+            containerColor = c.card,
+            text = { Text(stringResource(R.string.v42_drive_keep_mine_confirm), color = c.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = { confirmReplaceDrive = false; vm.backupNow(forceOverwrite = true) }) {
+                    Text(stringResource(R.string.v42_drive_replace), color = c.coral)
                 }
             },
             dismissButton = {
-                Row {
-                    TextButton(onClick = { vm.remoteNewerPrompt.value = false; vm.backupNow(forceOverwrite = true) }) {
-                        Text(stringResource(R.string.drive_back_up_now), color = c.coral)
-                    }
-                    TextButton(onClick = { vm.remoteNewerPrompt.value = false }) {
-                        Text(stringResource(R.string.action_cancel), color = c.textSecondary)
-                    }
+                TextButton(onClick = { confirmReplaceDrive = false }) {
+                    Text(stringResource(R.string.action_cancel), color = c.textSecondary)
                 }
             },
         )

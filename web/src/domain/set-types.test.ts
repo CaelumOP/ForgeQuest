@@ -13,4 +13,11 @@ describe('set eligibility contract', () => {
       expect(helper({ setType: 'UNKNOWN' })).toBe(false);
     });
   }
+
+  it('excludes autoTicked sets from PRs while keeping them for score and progression', () => {
+    const autoSet = { block: 'Main', setType: 'WORKING', autoTicked: true };
+    expect(countsForPR(autoSet)).toBe(false);
+    expect(countsForScore(autoSet)).toBe(true);
+    expect(countsForProgression(autoSet)).toBe(true);
+  });
 });

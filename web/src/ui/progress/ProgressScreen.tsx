@@ -7,7 +7,7 @@ import { todayEpochDay } from '../../domain/dates'
 import type { PlanItemEntity, SetEntity, SessionEntity } from '../../domain/entities'
 import { muscleWeekTargets, pickInsights, recoverySplit } from '../../domain/insights'
 import type { ExerciseKind } from '../../domain/muscle'
-import { isExtraBlock } from '../../domain/pr-picker'
+import { countsForPR, countsForScore } from '../../domain/set-types'
 import {
   TREND_RANGE_DAYS, TREND_RANGES, analyzeFatigueAndPlateaus, bestSetSeries, consistencyGrid, lifetime, movingAverage, percentChange, proteinDaysPerWeek,
   thenNow, topExercises, trainingLoad, trendRangeFrom, weeklyCounts, weeklySets, type TrendPoint, type TrendRange,
@@ -38,14 +38,14 @@ function derive(s: ProgressSnapshot, range: TrendRange) {
   const firstDay = s.sessions.length ? Math.min(...s.sessions.map((x) => x.epochDay)) : today
   const days = TREND_RANGE_DAYS[range]
   const weeksInRange = Math.min(52, Math.max(4, days != null ? Math.trunc((days + 6) / 7) : Math.trunc((today - firstDay) / 7) + 1))
-  const workingSets = sets.filter((x) => !isExtraBlock(x.block))
+  const workingSets = sets.filter((x) => countsForScore(x))
   const sets12 = weeklySets(workingSets, sessionDay, 12, today)
   const topIds = topExercises(workingSets, 6)
   const series = new Map<string, TrendPoint[]>(topIds.map((id) => {
     const kind: ExerciseKind = s.exercises.get(id)?.kind ?? 'REPS'
-    return [id, bestSetSeries(sets.filter((x) => x.exerciseId === id), kind, sessionDay)]
+    return [id, bestSetSeries(workingSets.filter((x) => x.exerciseId === id), kind, sessionDay)]
   }))
-  const recordDays = new Set(sets.filter((x) => x.isPr).flatMap((x) => (sessionDay.has(x.sessionId) ? [sessionDay.get(x.sessionId)!] : [])))
+  const recordDays = new Set(sets.filter((x) => x.isPr && countsForPR(x)).flatMap((x) => (sessionDay.has(x.sessionId) ? [sessionDay.get(x.sessionId)!] : [])))
   const weightPoints: TrendPoint[] = s.weights.map((w) => ({ epochDay: w.epochDay, value: w.kg, isRecord: false }))
   return {
     today, from, sessionDay, workoutDays, weeklySets: sets12, topIds, series,

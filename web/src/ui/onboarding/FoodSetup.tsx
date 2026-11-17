@@ -3,22 +3,14 @@ import { t } from '../../i18n'
 import { logWeight } from '../../data/progress'
 import { updateSettings, type Settings } from '../../data/settings'
 import { todayEpochDay } from '../../domain/dates'
-import { unitFromCodeOrLabel } from '../../domain/units'
 import { Button } from '../kit'
 import { StepBody, StepGoal } from './OnboardingScreen'
-import { bodyStatsReady, foodTargetsPatch, initialState, withSuggestions, type OnbState } from './logic'
+import { bodyStatsReady, foodSetupInitialState, foodTargetsPatch, type OnbState } from './logic'
 import './onboarding.css'
 
 /** The body and food-goal steps that used to sit in onboarding, offered from Home after the first workout. */
 export function FoodSetup({ settings, latestWeight, onClose }: { settings: Settings; latestWeight: number | null; onClose: () => void }) {
-  const [s, setS] = useState<OnbState>(() => withSuggestions({
-    ...initialState(),
-    step: 0,
-    bodyType: settings.bodyType,
-    unit: unitFromCodeOrLabel(settings.unit),
-    weightKg: latestWeight ?? 75,
-    daysPerWeek: settings.weeklyTargetOverride > 0 ? settings.weeklyTargetOverride : 3,
-  }))
+  const [s, setS] = useState<OnbState>(() => foodSetupInitialState(settings, latestWeight))
   const [saving, setSaving] = useState(false)
   const update = (f: (c: OnbState) => OnbState) => setS(f)
 

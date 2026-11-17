@@ -12,6 +12,7 @@ import { nextPrefill, progressionInputs, type ProgressionInputs, type Progressio
 import { recordScore } from './progress'
 import { percentChange, type FatigueAndPlateauReport } from './trends'
 import type { WeightUnit } from './units'
+import { countsForPR, countsForScore } from './set-types'
 import {
   SAME_WEIGHT_KG, isWarmUp, prKindOf, trend as trendOf, trendStats,
   type PrKind, type Trend, type TrendStats, type WorkoutScoreResult,
@@ -85,7 +86,7 @@ export type DebriefResult = {
   footnote: boolean
 }
 
-type DebriefSet = Pick<SetEntity, 'sessionId' | 'exerciseId' | 'itemPosition' | 'block' | 'setIndex' | 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort' | 'note'>
+type DebriefSet = Pick<SetEntity, 'sessionId' | 'exerciseId' | 'itemPosition' | 'block' | 'setIndex' | 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort' | 'note' | 'setType' | 'autoTicked'>
 type DebriefItem = Pick<PlanItemEntity, 'exerciseId' | 'block' | 'sets' | 'repsMin' | 'repsMax' | 'seconds' | 'weightKg'>
 
 /** One exercise of the workout. */
@@ -140,9 +141,9 @@ export function computeDebrief(input: DebriefInput): DebriefResult {
   const score = input.score
   const exs: Ex[] = []
   for (const e of input.exercises) {
-    const working = e.done.filter((s) => !isWarmUp(s.block))
+    const working = e.done.filter((s) => countsForScore(s))
     if (!working.length) continue
-    const lastWorking = e.last.filter((s) => !isWarmUp(s.block))
+    const lastWorking = e.last.filter((s) => countsForScore(s))
     const fromScore = score.exercises?.find((x) => x.exerciseId === e.exerciseId)
     const pain = working.some((s) => effort(s) === 'PAIN')
     exs.push({
@@ -150,7 +151,7 @@ export function computeDebrief(input: DebriefInput): DebriefResult {
       trend: fromScore?.trend ?? (lastWorking.length ? trendOf(e.kind, e.exerciseId, working, lastWorking) : null),
       // Pain read from notes too, the same way Progression reads it.
       forgiven: (fromScore?.forgiven ?? false) || pain,
-      pr: fromScore?.pr ?? (e.done.some((s) => s.isPr) ? prKindOf(e.kind) : null),
+      pr: fromScore?.pr ?? (working.some((s) => s.isPr && countsForPR(s)) ? prKindOf(e.kind) : null),
       pain,
       painLast: lastWorking.some((s) => effort(s) === 'PAIN'),
       now: trendStats(e.kind, e.exerciseId, working),
@@ -201,7 +202,7 @@ function wins(input: DebriefInput, exs: Ex[], headline: Headline): Win[] {
   const candidates: Win[] = []
   // 1. Records: weight > reps > hold, breaking ties by highest best-set score (e1RM for weighted lifts).
   for (const x of exs.filter((x) => x.pr != null).sort((a, b) => PR_ORDER[a.pr!] - PR_ORDER[b.pr!] || b.now.best - a.now.best)) {
-    const pool = x.working.filter((s) => s.isPr)
+    const pool = x.working.filter((s) => s.isPr && countsForPR(s))
     let top = (pool.length ? pool : x.working)[0]
     for (const s of pool.length ? pool : x.working) {
       if (recordScore(x.e.kind, s.reps, s.seconds, s.weightKg, x.id) > recordScore(x.e.kind, top.reps, top.seconds, top.weightKg, x.id)) top = s
