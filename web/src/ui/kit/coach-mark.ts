@@ -3,10 +3,14 @@
 // never gets the tips again. Every storage access is guarded for private-browsing / blocked-storage contexts.
 
 export const TOUR_SEEN_KEY = 'fq_tour_seen'
-export const COACH_STEPS = ['coach_home', 'coach_plan', 'coach_food', 'coach_tick'] as const
+export const COACH_SKIP_TOAST_KEY = 'fq_coach_skip_toast'
+export const COACH_STEPS = ['coach_home', 'coach_plan', 'coach_food', 'coach_tick', 'coach_profile', 'coach_progress'] as const
 export type CoachStep = (typeof COACH_STEPS)[number]
+export const COACH_RESET_KEYS: readonly string[] = [
+  ...new Set<string>([...COACH_STEPS, 'coach_profile', 'coach_progress', TOUR_SEEN_KEY, COACH_SKIP_TOAST_KEY]),
+]
 
-export type CoachStore = Pick<Storage, 'getItem' | 'setItem'>
+export type CoachStore = Pick<Storage, 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
 
 const defaultStore = (): CoachStore | null => {
   try { return typeof localStorage !== 'undefined' ? localStorage : null } catch { return null }
@@ -18,6 +22,13 @@ function getFlag(key: string, store: CoachStore | null = defaultStore()): boolea
 
 function setFlag(key: string, store: CoachStore | null = defaultStore()): void {
   try { store?.setItem(key, '1') } catch { /* storage blocked: shown again next visit */ }
+}
+
+function clearFlag(key: string, store: CoachStore | null = defaultStore()): void {
+  try {
+    if (store?.removeItem) store.removeItem(key)
+    else store?.setItem(key, '')
+  } catch { /* storage blocked: ignore */ }
 }
 
 export function tourSeen(store?: CoachStore | null): boolean {
@@ -55,6 +66,18 @@ export function skipTour(store?: CoachStore | null): void {
   markTourSeen(store)
 }
 export const skip = skipTour
+
+/** Returns true the first time tips are skipped (so the reminder toast shows once), then false until reset. */
+export function markSkipToastOnce(store?: CoachStore | null): boolean {
+  if (getFlag(COACH_SKIP_TOAST_KEY, store)) return false
+  setFlag(COACH_SKIP_TOAST_KEY, store)
+  return true
+}
+
+/** Clears every coach-mark flag so tips appear again ("Show tips again" in Guide). */
+export function resetCoachMarks(store?: CoachStore | null): void {
+  for (const key of COACH_RESET_KEYS) clearFlag(key, store)
+}
 
 // ---------------------------------------------------------------- Single active tip queue
 

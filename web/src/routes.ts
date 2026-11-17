@@ -14,6 +14,7 @@ import { PlanBuilderScreen } from './ui/plan/PlanBuilderScreen'
 import { ProfileScreen } from './ui/profile/ProfileScreen'
 import { BadgesScreen } from './ui/progress/BadgesScreen'
 import { CsvImportScreen } from './ui/profile/CsvImportScreen'
+import { GuideScreen } from './ui/profile/GuideScreen'
 import { ProgressScreen } from './ui/progress/ProgressScreen'
 import { AboutScreen } from './ui/screens'
 import { ExerciseDetailScreen } from './ui/workouts/ExerciseDetailScreen'
@@ -42,6 +43,7 @@ export const routes: Record<string, Route> = {
   '/progress': { title: 'tab_progress', Screen: ProgressScreen, tab: true },
   '/badges': { title: 'tab_profile', Screen: BadgesScreen },
   '/import-csv': { title: 'prog41_csv_import_title', Screen: CsvImportScreen },
+  '/guide': { title: 'v42_guide_title', Screen: GuideScreen },
   '/scan': { title: 'tab_food', Screen: ScanScreen, bare: true },
   '/about': { title: 'settings_group_about', Screen: AboutScreen },
   // Hidden design catalogue (DESIGN.md). Not linked from any menu.

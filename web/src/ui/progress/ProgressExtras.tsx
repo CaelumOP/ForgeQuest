@@ -9,7 +9,7 @@ import { todayEpochDay } from '../../domain/dates'
 import { countsForScore } from '../../domain/set-types'
 import { trendRangeFrom, type TrendRange } from '../../domain/trends'
 import { fromKg, loadStep, toKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
-import { Button, Card, ChipGroup, LineChart, NumberField, Sheet, Stepper, toast } from '../kit'
+import { Button, Card, ChipGroup, CoachMark, LineChart, NumberField, Sheet, Stepper, toast } from '../kit'
 import { VolumeBodyMap } from './BodyMap'
 import { epley1Rm, epleyPercentages, strengthToBodyweight, weeklyMuscleVolume } from './metrics'
 
@@ -167,7 +167,9 @@ export function MeasurementsCard({ range }: { range: TrendRange }) {
             <h3 class="pg-h3">{t('prog41_meas_title')}</h3>
             <p class="pg-hint" style={{ marginBlockEnd: 0 }}>{t('prog41_meas_hint')}</p>
           </div>
-          <Button variant="tonal" onClick={openLog}>{t('prog41_meas_log')}</Button>
+          <CoachMark id="coach_progress" title={t('v42_coach_progress_t')} body={t('v42_coach_progress_b')} below>
+            <Button variant="tonal" onClick={openLog}>{t('prog41_meas_log')}</Button>
+          </CoachMark>
         </div>
         <div style={{ marginBlock: '10px 8px' }}>
           <ChipGroup

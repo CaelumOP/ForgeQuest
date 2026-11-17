@@ -4,15 +4,24 @@ import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.forgequest.app.data.ActivePlan
+import com.forgequest.app.data.PlanDayWithItems
 import com.forgequest.app.data.ProgressRepository
 import com.forgequest.app.data.WorkoutRepository
 import com.forgequest.app.data.db.AppDatabase
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.data.db.MealEntity
+import com.forgequest.app.data.db.PlanDayEntity
+import com.forgequest.app.data.db.PlanEntity
+import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.domain.Dates
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +34,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
@@ -84,6 +95,93 @@ class FriendsSnapshotTest {
             assertEquals(17, restored.state.value!!.mySnapshot!!.score)
             cache.save(FriendsView(me, today, ws, mySnapshot = null))
             assertNull(FriendsRepository(context, api, session, cache, progress).state.value!!.mySnapshot)
+        } finally {
+            scope.cancel()
+            db.close()
+            cache.clear()
+            session.clear()
+        }
+    }
+
+    @Test
+    fun snapshotJsonIncludesSortedTrainDaysWhenPlanHasDaysAndNullWhenNone() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val session = FriendsSession(context).also { it.clear() }
+        val cache = FriendsCache(context).also { it.clear() }
+        try {
+            val progress = ProgressRepository(db, SettingsRepository(context), WorkoutRepository(db), scope)
+            val api = FriendsApi(OkHttpClient(), { "https://example.invalid" }, { null })
+            val repo = FriendsRepository(context, api, session, cache, progress)
+            val today = LocalDate.of(2026, 11, 18).toEpochDay()
+            val initial = progress.freshSnapshot()
+
+            val noPlanSnap = repo.buildSnapshot(initial.copy(plan = null), sharePrs = false, today = today, zone = ZoneOffset.UTC)
+            assertNull(noPlanSnap.trainDays)
+            val noPlanJson = FriendsApi.json.parseToJsonElement(
+                FriendsApi.json.encodeToString(Snapshot.serializer(), noPlanSnap),
+            ).jsonObject
+            assertTrue(noPlanJson["trainDays"]?.jsonPrimitive?.content == "null" || noPlanJson["trainDays"] == null)
+
+            fun itemFor(dayId: Long) = PlanItemEntity(
+                dayId = dayId, position = 0, exerciseId = "bench", block = "Main", circuit = false, sets = 3,
+            )
+            val activePlan = ActivePlan(
+                plan = PlanEntity(id = 1, name = "PPL", source = "manual", active = true, createdAt = 0L),
+                days = listOf(
+                    PlanDayWithItems(PlanDayEntity(id = 1, planId = 1, dayOfWeek = 5, title = "Fri", isRest = false), listOf(itemFor(1))),
+                    PlanDayWithItems(PlanDayEntity(id = 2, planId = 1, dayOfWeek = 1, title = "Mon", isRest = false), listOf(itemFor(2))),
+                    PlanDayWithItems(PlanDayEntity(id = 3, planId = 1, dayOfWeek = 3, title = "Wed", isRest = true), listOf(itemFor(3))),
+                    PlanDayWithItems(PlanDayEntity(id = 4, planId = 1, dayOfWeek = 7, title = "Sun", isRest = false), emptyList()),
+                ),
+            )
+            val withPlanSnap = repo.buildSnapshot(initial.copy(plan = activePlan), sharePrs = false, today = today, zone = ZoneOffset.UTC)
+            assertEquals(listOf(1, 5), withPlanSnap.trainDays)
+            val withPlanJson = FriendsApi.json.parseToJsonElement(
+                FriendsApi.json.encodeToString(Snapshot.serializer(), withPlanSnap),
+            ).jsonObject
+            assertEquals(listOf(1, 5), withPlanJson["trainDays"]!!.jsonArray.map { it.jsonPrimitive.int })
+        } finally {
+            scope.cancel()
+            db.close()
+            cache.clear()
+            session.clear()
+        }
+    }
+
+    @Test
+    fun legacyNudgedKeysMigrateOnceAndExpiredEntriesArePruned() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val session = FriendsSession(context).also { it.clear() }
+        val cache = FriendsCache(context).also { it.clear() }
+        val prefs = context.getSharedPreferences(FriendsSession.PREFS_NAME, Context.MODE_PRIVATE)
+        try {
+            val today = Dates.today()
+            val zone = ZoneId.systemDefault()
+            val nowSec = LocalDateTime.of(
+                LocalDate.ofEpochDay(today),
+                java.time.LocalTime.of(12, 0),
+            ).atZone(zone).toEpochSecond()
+            val midnight = NudgeGate.localMidnightSec(nowSec, zone)
+            prefs.edit()
+                .putLong("nudged_day", today)
+                .putStringSet("nudged_ids", setOf("f_legacy"))
+                .putString("nudge_next_at", """{"f_expired":${nowSec - 10},"f_active":${nowSec + 1800}}""")
+                .commit()
+
+            val progress = ProgressRepository(db, SettingsRepository(context), WorkoutRepository(db), scope)
+            val api = FriendsApi(OkHttpClient(), { "https://example.invalid" }, { null })
+            val repo = FriendsRepository(context, api, session, cache, progress) { nowSec }
+
+            assertEquals(
+                mapOf("f_active" to nowSec + 1800L, "f_legacy" to midnight),
+                repo.nudgeLocal.value,
+            )
+            assertFalse(prefs.contains("nudged_day"))
+            assertFalse(prefs.contains("nudged_ids"))
         } finally {
             scope.cancel()
             db.close()

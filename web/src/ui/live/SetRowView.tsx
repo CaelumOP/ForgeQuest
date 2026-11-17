@@ -107,7 +107,7 @@ export function SetRowView(p: SetRowProps) {
   const { set, kind, unit, exercise } = p
   const ar = getLang() === 'ar'
   const u = unitLabel(unit, ar)
-  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteMode, setNoteMode] = useState<'normal' | 'pain' | null>(null)
   const [typeOpen, setTypeOpen] = useState(false)
   const [plateBreakdown, setPlateBreakdown] = useState<PlateBreakdown | null>(null)
   const timer = useRef<number | undefined>(undefined)
@@ -118,7 +118,7 @@ export function SetRowView(p: SetRowProps) {
     haptics.tick()
     const next = pickEffort(set, e)
     save(next)
-    if (next.effort === 'PAIN') setNoteOpen(true)
+    if (next.effort === 'PAIN') setNoteMode('pain')
     else p.onDismissEffort?.()
   }
   const setType = parseSetType(set.setType)
@@ -157,9 +157,9 @@ export function SetRowView(p: SetRowProps) {
   return (
     <div class="lw-setwrap">
       <div class={`lw-set${set.done ? ' lw-set-done' : ''}${set.done && (set.isPr || p.pr) ? ' lw-set-pr' : ''}`}
-        onPointerDown={() => { clear(); timer.current = window.setTimeout(() => setNoteOpen(true), 550) }}
+        onPointerDown={() => { clear(); timer.current = window.setTimeout(() => setNoteMode('normal'), 550) }}
         onPointerUp={clear} onPointerLeave={clear} onPointerCancel={clear}
-        onContextMenu={(e) => { e.preventDefault(); setNoteOpen(true) }}>
+        onContextMenu={(e) => { e.preventDefault(); setNoteMode('normal') }}>
         <button
           type="button"
           class="lw-num-btn"
@@ -261,12 +261,12 @@ export function SetRowView(p: SetRowProps) {
               </svg>
             </button>
           </div>
-          {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}
+          {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteMode('pain')}>{t('live_add_note')}</Button>}
         </div>
       )}
 
-      <NoteSheet open={noteOpen} initial={set.note} onClose={() => setNoteOpen(false)}
-        onSave={(v) => { save({ note: v.trim().slice(0, 120) }); setNoteOpen(false); if (p.showEffort) p.onDismissEffort?.() }} />
+      <NoteSheet open={noteMode != null} pain={noteMode === 'pain'} initial={set.note} onClose={() => setNoteMode(null)}
+        onSave={(v) => { save({ note: v.trim().slice(0, 120) }); setNoteMode(null); if (p.showEffort) p.onDismissEffort?.() }} />
 
       <SetTypeSheet
         open={typeOpen}
@@ -371,25 +371,32 @@ function PlateBreakdownSheet({
   )
 }
 
-function NoteSheet({ open, initial, onClose, onSave }: { open: boolean; initial: string; onClose: () => void; onSave: (v: string) => void }) {
-  return <Sheet open={open} onClose={onClose} title={t('live_note_title')}><NoteBody initial={initial} onClose={onClose} onSave={onSave} /></Sheet>
+function NoteSheet({ open, pain, initial, onClose, onSave }: { open: boolean; pain: boolean; initial: string; onClose: () => void; onSave: (v: string) => void }) {
+  const title = pain ? t('v42_pain_note_title') : t('live_note_title')
+  return <Sheet open={open} onClose={onClose} title={title}><NoteBody pain={pain} title={title} initial={initial} onClose={onClose} onSave={onSave} /></Sheet>
 }
 
-function NoteBody({ initial, onClose, onSave }: { initial: string; onClose: () => void; onSave: (v: string) => void }) {
+function NoteBody({ pain, title, initial, onClose, onSave }: { pain: boolean; title: string; initial: string; onClose: () => void; onSave: (v: string) => void }) {
   const [text, setText] = useState(initial)
-  const tags: [string, string][] = [
-    [t('live_tag_easy'), t('live_tag_easy')], [t('live_tag_solid'), t('live_tag_solid')],
-    [t('live_tag_max'), t('live_tag_max_note')], [t('live_tag_joint'), t('live_tag_joint_note')],
-  ]
+  const tags: [string, string][] = pain
+    ? [
+        [t('v42_pain_tag_sharp'), t('v42_pain_tag_sharp')],
+        [t('v42_pain_tag_ache'), t('v42_pain_tag_ache')],
+        [t('v42_pain_tag_joint'), t('v42_pain_tag_joint')],
+      ]
+    : []
   const toggle = (value: string) => {
     const active = text.toLowerCase().includes(value.toLowerCase())
-    setText(active ? text.replace(value, '').trim().replace(/^[·, ]+|[·, ]+$/g, '')
+    const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    setText(active ? text.replace(new RegExp(escaped, 'gi'), '').trim().replace(/^[·, ]+|[·, ]+$/g, '')
       : !text.trim() ? value : `${value} · ${text}`.slice(0, 120))
   }
   return (
     <div class="lw-notebody">
-      <div class="lw-tags">{tags.map(([label, value]) => <Chip key={label} label={label} selected={text.toLowerCase().includes(value.toLowerCase())} onClick={() => toggle(value)} />)}</div>
-      <TextField label={t('live_note_title')} value={text} placeholder={t('live_note_hint')} onInput={(v) => setText(v.slice(0, 120))} />
+      {tags.length > 0 && (
+        <div class="lw-tags">{tags.map(([label, value]) => <Chip key={label} label={label} selected={text.toLowerCase().includes(value.toLowerCase())} onClick={() => toggle(value)} />)}</div>
+      )}
+      <TextField label={title} value={text} placeholder={pain ? t('v42_pain_note_hint') : t('v42_note_hint')} onInput={(v) => setText(v.slice(0, 120))} />
       <div class="lw-actions">
         {initial && <Button variant="text" class="kit-danger" onClick={() => onSave('')}>{t('action_clear')}</Button>}
         <Button variant="text" onClick={onClose}>{t('action_cancel')}</Button>

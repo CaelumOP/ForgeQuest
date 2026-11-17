@@ -1,27 +1,30 @@
-import type { Settings } from '../../data/settings'
+import { t } from '../../i18n'
+import type { BodyType, Settings } from '../../data/settings'
 import { BODYWEIGHT_INDEX, DUMBBELLS_INDEX, GYM_SPLIT_INDEX } from '../../data/seed/starter-plans'
+import type { ExerciseEntity, PlanDraft } from '../../domain/entities'
 import { encodePreset, presetEquipment, type EquipmentPreset } from '../../domain/exercise-swap-engine'
 import {
   calorieFloor, DAY_BASE, proteinPerKgFor, suggestedKcal, suggestedProtein, type CutPace, type DayActivity, type GainPace, type NutritionGoal,
 } from '../../domain/nutrition'
+import { buildPlan, spreadDays, type Experience, type TrainGoal } from '../../domain/plan-builder'
 import type { WeightUnit } from '../../domain/units'
-import { unitCode } from '../../domain/units'
-import type { BodyType } from '../../data/settings'
-import type { Experience } from '../../domain/plan-builder'
+import { unitCode, unitFromCodeOrLabel } from '../../domain/units'
+import { localizeBuiltPlan } from '../plan/helpers'
 
-export const LAST_STEP = 2 // language, name, plan (equipment + days)
-export const DAY_OPTIONS = [2, 3, 4, 5] as const
+export const LAST_STEP = 5 // 0=language, 1=welcome, 2=about, 3=goal, 4=training, 5=weight
+export const DAY_OPTIONS = [2, 3, 4, 5, 6] as const
 export const DEFAULT_DAYS = 3
 
-/** Body and goal fields are only used by the food-targets setup that Home offers after the first workout. */
+/** Body and goal fields are also used by the food-targets setup that Home offers after the first workout. */
 export type OnbState = {
   step: number
   name: string
   bodyType: BodyType
   daysPerWeek: number
-  /** "Just log my training" picked on the plan step: no streaks, levels, badges or readiness. */
+  /** "Just log my training" picked on the goal step: no plan, streaks, levels, badges or readiness. */
   justLog: boolean
   weightKg: number
+  weightTouched: boolean
   unit: WeightUnit
   heightCm: number
   age: number
@@ -38,6 +41,54 @@ export type OnbState = {
   builtForMe: boolean
 }
 
+/** Maps onboarding nutrition goal to PlanBuilder's TrainGoal. */
+export function trainGoalFor(goal: NutritionGoal): TrainGoal {
+  switch (goal) {
+    case 'GAIN': return 'MUSCLE'
+    case 'CUT': return 'FAT_LOSS'
+    case 'MAINTAIN': return 'GENERAL'
+  }
+}
+
+/** Builds and localizes the "Built for me" plan draft (Android OnboardingScreen.kt localizeBuiltPlan). */
+export function localizeOnboardingPlan(
+  s: Pick<OnbState, 'goal' | 'daysPerWeek' | 'preset' | 'experience'>,
+  library: readonly ExerciseEntity[],
+  tr: (key: string, ...args: (string | number)[]) => string = t,
+): PlanDraft {
+  const trainGoal = trainGoalFor(s.goal)
+  const built = buildPlan(
+    {
+      goal: trainGoal,
+      days: spreadDays(s.daysPerWeek),
+      minutes: 45,
+      equipment: presetEquipment(s.preset),
+      experience: s.experience,
+    },
+    library,
+  )
+  return localizeBuiltPlan(built, trainGoal, tr)
+}
+
+/** Next onboarding step (skips step 4 Training when justLog is active). */
+export function nextStep(s: Pick<OnbState, 'step' | 'justLog'>): number {
+  if (s.step === 3 && s.justLog) return 5
+  return Math.min(LAST_STEP, s.step + 1)
+}
+
+/** Previous onboarding step (skips step 4 Training when justLog is active). */
+export function prevStep(s: Pick<OnbState, 'step' | 'justLog'>): number {
+  if (s.step === 5 && s.justLog) return 3
+  return Math.max(0, s.step - 1)
+}
+
+/** 1-based progress index/total for steps after language. */
+export function progressStep(s: Pick<OnbState, 'step' | 'justLog'>): { current: number; total: number } {
+  const steps = s.justLog ? [1, 2, 3, 5] : [1, 2, 3, 4, 5]
+  const idx = steps.indexOf(s.step)
+  return { current: (idx >= 0 ? idx : 0) + 1, total: steps.length }
+}
+
 /**
  * The starter plan to show as chosen for [days] a week and the picked equipment. Plans: 0 Hemo (5 days), 1 bodyweight and
  * 2 dumbbells (both 3 days), 3 gym split (6 days). 5 gets Hemo (bodyweight when there is nothing to hang from); 2, 3 and
@@ -49,11 +100,26 @@ export function planForDays(days: number, preset: EquipmentPreset): number {
 }
 
 export const initialState = (): OnbState => ({
-  step: 0, name: '', bodyType: 'MALE', daysPerWeek: DEFAULT_DAYS, justLog: false, weightKg: 75, unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
+  step: 0, name: '', bodyType: 'MALE', daysPerWeek: DEFAULT_DAYS, justLog: false, weightKg: 75, weightTouched: false,
+  unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
   goalsTouched: false, goal: 'MAINTAIN', dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD',
   planIndex: planForDays(DEFAULT_DAYS, 'CALISTHENICS_PARK'), preset: 'CALISTHENICS_PARK',
   experience: 'SOME', builtForMe: true,
 })
+
+/** Pre-fills the later food-targets setup from Settings (preserving the saved nutritionGoal). */
+export function foodSetupInitialState(settings: Settings, latestWeight: number | null): OnbState {
+  return withSuggestions({
+    ...initialState(),
+    step: 0,
+    bodyType: settings.bodyType,
+    unit: unitFromCodeOrLabel(settings.unit),
+    weightKg: latestWeight ?? 75,
+    weightTouched: latestWeight != null,
+    daysPerWeek: settings.weeklyTargetOverride > 0 ? settings.weeklyTargetOverride : DEFAULT_DAYS,
+    goal: settings.nutritionGoal,
+  })
+}
 
 /** The equipment to show after picking starter plan [index]: the gym split needs a gym, the dumbbell plan dumbbells. */
 export function presetForPlan(index: number, current: EquipmentPreset): EquipmentPreset {
@@ -80,6 +146,13 @@ export function withSuggestions(s: OnbState): OnbState {
   return { ...next, kcal: kcalFor(next) }
 }
 
+/** Goal card picked. "Just log" is Maintain with no plan (as Android), so a Gain/Cut picked before it never sticks. */
+export function pickGoal(s: OnbState, v: NutritionGoal | 'JUST_LOG'): OnbState {
+  return v === 'JUST_LOG'
+    ? withSuggestions({ ...s, goal: 'MAINTAIN', justLog: true })
+    : withSuggestions({ ...s, goal: v, justLog: false })
+}
+
 export const setWeight = (s: OnbState, kg: number): OnbState =>
   withSuggestions({ ...s, weightKg: Math.min(250, Math.max(30, kg)) })
 
@@ -90,6 +163,8 @@ export function settingsPatch(s: OnbState): (c: Settings) => Settings {
     onboarded: true,
     name: s.name.trim(),
     bodyType: s.bodyType,
+    unit: unitCode(s.unit),
+    nutritionGoal: s.goal,
     equipment: encodePreset(s.preset),
     weeklyTargetOverride: s.daysPerWeek,
     justLog: s.justLog,

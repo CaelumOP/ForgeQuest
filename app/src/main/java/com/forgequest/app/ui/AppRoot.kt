@@ -1,5 +1,6 @@
 package com.forgequest.app.ui
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
@@ -119,6 +120,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val SETTINGS_GROUP = "settings/{id}"
     const val CSV_IMPORT = "csv_import"
+    const val GUIDE = "guide"
     fun settingsGroup(id: String) = "settings/$id"
     fun exercise(id: String, fromLive: Boolean = false) = "exercise/$id?fromLive=$fromLive"
     fun session(id: Long) = "session/$id"
@@ -166,12 +168,41 @@ fun AppRoot() {
         return
     }
     if (!current.onboarded) {
-        // Tour only: a first run skips setup (language follows the phone) and lands on Home, where the tips run.
-        LaunchedEffect(Unit) { com.forgequest.app.ui.onboarding.quickStart(context.container) }
-        Box(Modifier.fillMaxSize().background(Fit.colors.background))
+        var langDone by remember { mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.languageChosen(context)) }
+        if (!langDone) {
+            com.forgequest.app.ui.onboarding.LanguageChoice(onChosen = { langDone = true })
+            return
+        }
+        OnboardingScaffold()
         return
     }
     MainScaffold()
+}
+
+@Composable
+private fun OnboardingScaffold() {
+    val nav = rememberNavController()
+    val snackbar = remember { SnackbarHostState() }
+    val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    CompositionLocalProvider(LocalSnackbar provides snackbar) {
+        Scaffold(
+            containerColor = c.background,
+            snackbarHost = { SnackbarHost(snackbar) },
+        ) { _ ->
+            NavHost(
+                navController = nav,
+                startDestination = "onboarding",
+                enterTransition = { fadeIn(navFade(reduced)) },
+                exitTransition = { fadeOut(navFade(reduced)) },
+                popEnterTransition = { fadeIn(navFade(reduced)) },
+                popExitTransition = { fadeOut(navFade(reduced)) },
+            ) {
+                composable("onboarding") { OnboardingScreen(onImportCsv = { nav.navigate(Routes.CSV_IMPORT) }) }
+                composable(Routes.CSV_IMPORT) { com.forgequest.app.ui.profile.CsvImportScreen(nav) }
+            }
+        }
+    }
 }
 
 @Composable
@@ -273,6 +304,7 @@ private fun MainScaffold() {
                     com.forgequest.app.ui.profile.SettingsScreen(nav, entry.arguments?.getString("id"))
                 }
                 composable(Routes.CSV_IMPORT) { com.forgequest.app.ui.profile.CsvImportScreen(nav) }
+                composable(Routes.GUIDE) { com.forgequest.app.ui.profile.GuideScreen(nav) }
                 composable(Routes.LIBRARY) { ExerciseLibraryScreen(nav) }
                 composable(Routes.PROGRESS) { ProgressScreen(nav) }
                 composable(Routes.SESSION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->

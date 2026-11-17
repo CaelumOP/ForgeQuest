@@ -77,4 +77,11 @@ class FoundationBackupTest {
         val encoded = backupJson.encodeToString(BackupSettings.serializer(), BackupSettings.from(restored))
         assertFalse(encoded.contains("driveEmail")); assertFalse(encoded.contains("restoreOfferShown"))
     }
+
+    @Test fun oldSetJsonWithoutAutoTickedDecodesToFalse() {
+        val raw = """{"sessionId":1,"exerciseId":"bench","itemPosition":0,"block":"Main","circuit":false,"setIndex":0,"targetLabel":"8","reps":8,"weightKg":60.0,"done":true}"""
+        val decoded = backupJson.decodeFromString(com.forgequest.app.data.db.SetEntity.serializer(), raw)
+        assertFalse(decoded.autoTicked)
+        assertTrue(countsForPR(decoded))
+    }
 }

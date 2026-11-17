@@ -14,4 +14,7 @@ fun countsForProgression(set: SetEntity): Boolean = when (set.setType) {
 }
 
 fun countsForScore(set: SetEntity): Boolean = countsForProgression(set)
-fun countsForPR(set: SetEntity): Boolean = countsForProgression(set)
+
+/** A set the user actually trained, for "N sets" labels: drop/rest-pause/failure count, warm-ups and cool-downs don't. */
+fun countsAsWorkingSet(set: SetEntity): Boolean = set.setType != SetType.WARMUP.name && !WorkoutScore.isExtra(set.block)
+fun countsForPR(set: SetEntity): Boolean = !set.autoTicked && countsForProgression(set)

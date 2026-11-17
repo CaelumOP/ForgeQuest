@@ -7,10 +7,10 @@ import { toKg, type WeightUnit } from './units'
 import { computeWorkoutScore, scoresForSessions } from './workout-score'
 
 // The same scenario table as Android WorkoutDebriefMathTest.
-type SetOpts = { effort?: string; note?: string; block?: string; isPr?: boolean; seconds?: number | null }
+type SetOpts = { effort?: string; note?: string; block?: string; setType?: string; isPr?: boolean; seconds?: number | null }
 const s = (reps: number | null, kg: number | null = null, o: SetOpts = {}) => ({
   sessionId: 0, exerciseId: '', itemPosition: 0, setIndex: 0, reps, seconds: o.seconds ?? null, weightKg: kg,
-  block: o.block ?? 'Main', isPr: o.isPr ?? false, effort: o.effort ?? '', note: o.note ?? '',
+  block: o.block ?? 'Main', setType: o.setType, isPr: o.isPr ?? false, effort: o.effort ?? '', note: o.note ?? '',
 })
 type S = ReturnType<typeof s>
 const n = (count: number, reps: number | null, kg: number | null = null, o: SetOpts = {}) => Array.from({ length: count }, () => s(reps, kg, o))
@@ -335,5 +335,16 @@ describe("Gemini's 8 cases", () => {
       { type: 'HARDER', exerciseId: 'push_up', harderName: 'Diamond push-up' },
       { type: 'PLUS_REP', exerciseId: 'db_lunge', reps: 11, weightKg: 15 },
     ])
+  })
+
+  it('excludes setType WARMUP even when block is Main', () => {
+    const heavyWarmup = s(20, 200, { block: 'Main', setType: 'WARMUP', isPr: true })
+    const work = n(3, 8, 60)
+    const r = run([ex('bench', 'WEIGHTED', [heavyWarmup, ...work], n(3, 8, 60))])
+    expect(r.headline.type).toBe('ALL_SAME')
+    expect(r.wins.some((w) => w.type === 'PR' || w.type === 'BEST_GAIN' || w.type === 'MORE_WORK')).toBe(false)
+
+    const warmupOnly = ex('bench', 'WEIGHTED', [heavyWarmup])
+    expect(run([warmupOnly]).headline.type).toBe('ONLY_WARM_UPS')
   })
 })

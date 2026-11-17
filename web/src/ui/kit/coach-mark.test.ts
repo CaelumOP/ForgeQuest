@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  COACH_STEPS, TOUR_SEEN_KEY, acquireTip, allSeen, placeTip, releaseTip, resetTipSlot,
-  seen, shouldShow, skipTour, stepSeen, tourSeen, waitForTipSlot, type CoachStore,
+  COACH_RESET_KEYS, COACH_STEPS, TOUR_SEEN_KEY, acquireTip, allSeen, markSkipToastOnce, placeTip,
+  releaseTip, resetCoachMarks, resetTipSlot, seen, shouldShow, skipTour, stepSeen, tourSeen, waitForTipSlot,
+  type CoachStore,
 } from './coach-mark'
 
 const memoryStore = (): CoachStore & { data: Map<string, string> } => {
@@ -10,6 +11,7 @@ const memoryStore = (): CoachStore & { data: Map<string, string> } => {
     data,
     getItem: (k) => data.get(k) ?? null,
     setItem: (k, v) => { data.set(k, v) },
+    removeItem: (k) => { data.delete(k) },
   }
 }
 
@@ -36,17 +38,39 @@ describe('coach mark tour state', () => {
     }
   })
 
-  it('ends the tour when all four steps have been seen', () => {
+  it('ends the tour when all steps have been seen', () => {
     const store = memoryStore()
-    for (const id of COACH_STEPS.slice(0, 3)) {
+    for (const id of COACH_STEPS.slice(0, -1)) {
       stepSeen(id, store)
       expect(allSeen(store)).toBe(false)
       expect(tourSeen(store)).toBe(false)
     }
-    stepSeen(COACH_STEPS[3], store)
+    stepSeen(COACH_STEPS[COACH_STEPS.length - 1], store)
     expect(allSeen(store)).toBe(true)
     expect(tourSeen(store)).toBe(true)
     expect(store.data.get(TOUR_SEEN_KEY)).toBe('1')
+  })
+
+  it('includes coach_profile and coach_progress and resets all coach-mark keys', () => {
+    expect(COACH_STEPS).toContain('coach_profile')
+    expect(COACH_STEPS).toContain('coach_progress')
+    expect(COACH_RESET_KEYS).toEqual(
+      expect.arrayContaining([...COACH_STEPS, 'coach_profile', 'coach_progress', TOUR_SEEN_KEY]),
+    )
+
+    const store = memoryStore()
+    for (const id of COACH_STEPS) stepSeen(id, store)
+    expect(markSkipToastOnce(store)).toBe(true)
+    expect(markSkipToastOnce(store)).toBe(false)
+    expect(tourSeen(store)).toBe(true)
+
+    resetCoachMarks(store)
+    for (const key of COACH_RESET_KEYS) {
+      expect(store.data.has(key)).toBe(false)
+    }
+    expect(tourSeen(store)).toBe(false)
+    expect(shouldShow('coach_progress', true, store)).toBe(true)
+    expect(markSkipToastOnce(store)).toBe(true)
   })
 
   it('skipTour ends the tour for good so remaining steps never show', () => {

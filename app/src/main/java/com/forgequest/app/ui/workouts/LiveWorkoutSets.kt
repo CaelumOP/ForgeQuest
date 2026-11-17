@@ -160,7 +160,12 @@ internal fun SetRow(
     var plateBreakdown by remember { mutableStateOf<PlateMath.Breakdown?>(null) }
 
     if (noteDialog) {
-        SetNoteDialog(set.note, onDismiss = { noteDialog = false }, onSave = { vm.setNote(set, it); noteDialog = false })
+        SetNoteDialog(
+            initial = set.note,
+            isPain = set.effort == SetEffort.PAIN.name,
+            onDismiss = { noteDialog = false },
+            onSave = { vm.setNote(set, it); noteDialog = false },
+        )
     }
     val setType = parseSetType(set.setType)
     if (typeSheet) {
@@ -602,48 +607,58 @@ internal fun EffortGroup(selected: String, onSelect: (SetEffort) -> Unit) {
     }
 }
 
-/** Long-press a set to jot something down or tap a quick RPE/RIR chip for automatic load progression & recovery tuning. */
+/** Long-press a set to jot something down, or add a pain location note after tapping "It hurt". */
 @Composable
-fun SetNoteDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+fun SetNoteDialog(initial: String, isPain: Boolean = false, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     val c = Fit.colors
     var text by remember { mutableStateOf(initial) }
-    val quickTags = listOf(
-        stringResource(R.string.live_tag_easy) to stringResource(R.string.live_tag_easy),
-        stringResource(R.string.live_tag_solid) to stringResource(R.string.live_tag_solid),
-        stringResource(R.string.live_tag_max) to stringResource(R.string.live_tag_max_note),
-        stringResource(R.string.live_tag_joint) to stringResource(R.string.live_tag_joint_note),
-    )
+    val quickTags = if (isPain) {
+        listOf(
+            stringResource(R.string.v42_pain_tag_sharp) to stringResource(R.string.v42_pain_tag_sharp),
+            stringResource(R.string.v42_pain_tag_ache) to stringResource(R.string.v42_pain_tag_ache),
+            stringResource(R.string.v42_pain_tag_joint) to stringResource(R.string.v42_pain_tag_joint),
+        )
+    } else {
+        emptyList()
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = c.card,
-        title = { Text(stringResource(R.string.live_note_title), color = c.textPrimary) },
+        title = {
+            Text(
+                stringResource(if (isPain) R.string.v42_pain_note_title else R.string.live_note_title),
+                color = c.textPrimary,
+            )
+        },
         text = {
             Column {
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    quickTags.forEach { (chipLabel, tagValue) ->
-                        val active = text.contains(tagValue, ignoreCase = true)
-                        ChoiceChip(
-                            text = chipLabel,
-                            selected = active,
-                            onClick = {
-                                text = if (active) {
-                                    text.replace(tagValue, "").trim().trim('·', ',', ' ')
-                                } else if (text.isBlank()) {
-                                    tagValue
-                                } else {
-                                    "$tagValue · $text".take(120)
-                                }
-                            },
-                        )
+                if (quickTags.isNotEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        quickTags.forEach { (chipLabel, tagValue) ->
+                            val active = text.contains(tagValue, ignoreCase = true)
+                            ChoiceChip(
+                                text = chipLabel,
+                                selected = active,
+                                onClick = {
+                                    text = if (active) {
+                                        text.replace(tagValue, "").trim().trim('·', ',', ' ')
+                                    } else if (text.isBlank()) {
+                                        tagValue
+                                    } else {
+                                        "$tagValue · $text".take(120)
+                                    }
+                                },
+                            )
+                        }
                     }
+                    Spacer(Modifier.height(12.dp))
                 }
-                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = text, onValueChange = { text = it.take(120) }, singleLine = true, shape = ForgeShape.Md,
-                    placeholder = { Text(stringResource(R.string.live_note_hint)) },
+                    placeholder = { Text(stringResource(if (isPain) R.string.v42_pain_note_hint else R.string.v42_note_hint)) },
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = c.teal, unfocusedBorderColor = c.divider, focusedTextColor = c.textPrimary, unfocusedTextColor = c.textPrimary),
                     modifier = Modifier.fillMaxWidth(),
                 )

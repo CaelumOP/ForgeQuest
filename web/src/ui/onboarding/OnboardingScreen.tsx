@@ -1,20 +1,26 @@
-import { useState } from 'preact/hooks'
-import { getLang, intlLocale, plural, setLang, t, type Lang } from '../../i18n'
+import { useMemo, useState } from 'preact/hooks'
+import { getLang, intlLocale, listSep, plural, setLang, t, type Lang } from '../../i18n'
+import { logWeight } from '../../data/progress'
 import { updateSettings } from '../../data/settings'
 import { applyPlan, seedLibrary } from '../../data/workouts'
 import { db } from '../../data/db'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { ONBOARDING_PLAN_COUNT, STARTER_PLANS, localizePlan, type PlanDraft } from '../../data/seed/starter-plans'
-import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment, type EquipmentPreset } from '../../domain/exercise-swap-engine'
-import { buildPlan, spreadDays, type Experience } from '../../domain/plan-builder'
+import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
+import { type Experience } from '../../domain/plan-builder'
 import {
-  allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, DAY_BASE, dailyBurn, GAIN_PACE, GAIN_PACES, NUTRITION_GOALS, type CutPace, type GainPace,
+  allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, DAY_BASE, dailyBurn, GAIN_PACE, GAIN_PACES, NUTRITION_GOALS, type CutPace, type GainPace, type NutritionGoal,
 } from '../../domain/nutrition'
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, Card, Chip, ChipGroup, Segmented, Sheet, Stat, Stepper, TextField, parseNumber } from '../kit'
+import { RestaurantIcon, TabIcon } from '../icons'
+import { Button, Card, ChipGroup, Segmented, Sheet, Stat, Stepper, TextField, parseNumber } from '../kit'
 import { CsvImportScreen } from '../profile/CsvImportScreen'
-import { CheckCircleIcon, FireIcon } from '../home/glyphs'
-import { DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, planForDays, presetForPlan, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
+import { CheckCircleIcon, DumbbellIcon, FireIcon } from '../home/glyphs'
+import { markGettingStartedEligible } from '../home/getting-started'
+import {
+  DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, localizeOnboardingPlan, nextStep, planForDays,
+  pickGoal, presetForPlan, prevStep, progressStep, setWeight, settingsPatch, withSuggestions, type OnbState,
+} from './logic'
 import './onboarding.css'
 
 const emptyPlan = (): PlanDraft => ({
@@ -25,38 +31,54 @@ const emptyPlan = (): PlanDraft => ({
 /** Tour-only first run (no setup screens): no starting plan, 3 days a week target, everything editable later in Profile. */
 export async function quickStart(): Promise<void> {
   await seedLibrary(getLang())
+  markGettingStartedEligible()
   await updateSettings((c) => ({ ...c, onboarded: true, weeklyTargetOverride: 3, calorieV2Seen: true }))
 }
 
 /** Training days of starter plan [i], for its "N days a week" label. */
 const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 0
 
-/** First-run setup: language, name, starter plan. Full screen, no tab bar. */
+/** First-run setup: language, welcome, about you, goal, training, weight. Full screen, no tab bar. */
 export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [s, setS] = useState<OnbState>(initialState)
   const [saving, setSaving] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
   const update = (f: (c: OnbState) => OnbState) => setS(f)
-  const go = (d: number) => update((c) => ({ ...c, step: Math.min(LAST_STEP, Math.max(0, c.step + d)) }))
+  const goNext = () => update((c) => ({ ...c, step: nextStep(c) }))
+  const goBack = () => update((c) => ({ ...c, step: prevStep(c) }))
 
-  const finish = async () => {
+  const skipSetup = async () => {
+    if (saving) return
+    setSaving(true)
+    try {
+      await quickStart()
+      onDone()
+    } catch (e) {
+      console.error('skip setup failed', e)
+      setSaving(false)
+    }
+  }
+
+  const finish = async (logEnteredWeight = true) => {
     if (saving) return
     setSaving(true)
     try {
       await seedLibrary(getLang())
-      if (s.builtForMe) {
-        const lib = await db.exercises.toArray()
-        const built = buildPlan(
-          { goal: 'GENERAL', days: spreadDays(s.daysPerWeek), minutes: 45, equipment: presetEquipment(s.preset), experience: s.experience },
-          lib,
-        )
-        await applyPlan(built.draft, 'builder')
-      } else {
-        const chosen = STARTER_PLANS[s.planIndex]
-        const plan = chosen ? localizePlan(chosen, getLang()) : emptyPlan()
-        const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
-        await applyPlan(adapted, chosen ? 'starter' : 'manual')
+      if (!s.justLog) {
+        if (s.builtForMe) {
+          const lib = await db.exercises.toArray()
+          await applyPlan(localizeOnboardingPlan(s, lib), 'builder')
+        } else {
+          const chosen = STARTER_PLANS[s.planIndex]
+          const plan = chosen ? localizePlan(chosen, getLang()) : emptyPlan()
+          const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
+          await applyPlan(adapted, chosen ? 'starter' : 'manual')
+        }
       }
+      if (logEnteredWeight && s.weightTouched) {
+        await logWeight(s.weightKg)
+      }
+      markGettingStartedEligible()
       await updateSettings(settingsPatch(s))
       onDone()
     } catch (e) {
@@ -65,28 +87,41 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
     }
   }
 
+  const prog = progressStep(s)
+
   return (
     <main class="onb">
-      <div class="onb-top">
-        <div class="onb-bar" role="progressbar" aria-valuemin={1} aria-valuemax={LAST_STEP + 1} aria-valuenow={s.step + 1} aria-label={t('onb_web_step', s.step + 1, LAST_STEP + 1)}>
-          <div class="onb-bar-fill" style={{ inlineSize: `${((s.step + 1) / (LAST_STEP + 1)) * 100}%` }} />
+      {s.step > 0 && (
+        <div class="onb-top">
+          <div class="onb-bar" role="progressbar" aria-valuemin={1} aria-valuemax={prog.total} aria-valuenow={prog.current} aria-label={t('v42_onb_step', prog.current, prog.total)}>
+            <div class="onb-bar-fill" style={{ inlineSize: `${(prog.current / prog.total) * 100}%` }} />
+          </div>
         </div>
-      </div>
+      )}
       <div class="onb-body" key={s.step}>
-        {s.step === 0 && <StepLanguage onNext={() => go(1)} />}
-        {s.step === 1 && <StepWelcome s={s} update={update} onImportCsv={() => setCsvOpen(true)} />}
-        {s.step === 2 && <StepPlan s={s} update={update} />}
+        {s.step === 0 && <StepLanguage onNext={() => update((c) => ({ ...c, step: 1 }))} />}
+        {s.step === 1 && <StepWelcome onStart={goNext} onSkip={skipSetup} onImportCsv={() => setCsvOpen(true)} saving={saving} />}
+        {s.step === 2 && <StepAbout s={s} update={update} onEnter={goNext} />}
+        {s.step === 3 && <StepGoalSetup s={s} update={update} />}
+        {s.step === 4 && <StepTraining s={s} update={update} />}
+        {s.step === 5 && <StepWeight s={s} update={update} />}
       </div>
       <Sheet open={csvOpen} onClose={() => setCsvOpen(false)} title={t('prog41_csv_import_title')}>
         <CsvImportScreen onDone={() => setCsvOpen(false)} />
       </Sheet>
       {s.step > 0 && (
         <div class="onb-foot">
-          <Button variant="text" onClick={() => go(-1)}>{t('action_back')}</Button>
+          <Button variant="text" onClick={goBack} disabled={saving}>{t('action_back')}</Button>
           <span class="onb-spacer" />
-          {s.step < LAST_STEP
-            ? <Button onClick={() => go(1)} disabled={s.step === 1 && !s.name.trim()}>{t('action_continue')}</Button>
-            : <Button onClick={finish} loading={saving}>{t('onb_finish')}</Button>}
+          {s.step >= 2 && s.step < LAST_STEP && (
+            <Button onClick={goNext}>{t('action_continue')}</Button>
+          )}
+          {s.step === LAST_STEP && (
+            <>
+              <Button variant="text" onClick={() => void finish(false)} disabled={saving}>{t('v42_onb_skip_step')}</Button>
+              <Button onClick={() => void finish(true)} loading={saving}>{t('onb_finish')}</Button>
+            </>
+          )}
         </div>
       )}
     </main>
@@ -119,20 +154,182 @@ function StepLanguage({ onNext }: { onNext: () => void }) {
 
 export type StepProps = { s: OnbState; update: (f: (c: OnbState) => OnbState) => void }
 
-function StepWelcome({ s, update, onImportCsv }: StepProps & { onImportCsv?: () => void }) {
+function StepWelcome({ onStart, onSkip, onImportCsv, saving }: { onStart: () => void; onSkip: () => void; onImportCsv: () => void; saving: boolean }) {
+  const values = [
+    { key: 'v42_onb_value_train', icon: <DumbbellIcon size={22} /> },
+    { key: 'v42_onb_value_food', icon: <RestaurantIcon size={22} /> },
+    { key: 'v42_onb_value_progress', icon: <TabIcon name="chart" filled={false} /> },
+  ]
   return (
     <>
-      <Title title={t('onb_welcome_title')} body={t('onb_welcome_body')} />
-      <TextField label={t('onb_your_name')} value={s.name} autocomplete="given-name" onInput={(v) => update((c) => ({ ...c, name: v.slice(0, 24) }))} />
+      <Title title={t('v42_onb_welcome_title')} body={t('v42_onb_welcome_body')} />
+      <ul class="onb-values">
+        {values.map((v) => (
+          <li key={v.key} class="onb-value">
+            <span class="onb-value-ic" aria-hidden="true">{v.icon}</span>
+            <span class="onb-value-text">{t(v.key)}</span>
+          </li>
+        ))}
+      </ul>
+      <div class="onb-welcome-actions">
+        <Button block onClick={onStart} disabled={saving}>{t('v42_onb_get_started')}</Button>
+        <Button block variant="tonal" onClick={onSkip} loading={saving}>{t('v42_onb_skip_setup')}</Button>
+      </div>
+      <div class="onb-csv">
+        <p class="onb-note">{t('prog41_onb_import_csv')}</p>
+        <Button variant="text" onClick={onImportCsv}>{t('prog41_csv_import_title')}</Button>
+      </div>
+    </>
+  )
+}
+
+function StepAbout({ s, update, onEnter }: StepProps & { onEnter: () => void }) {
+  return (
+    <>
+      <Title title={t('v42_onb_about_title')} body={t('v42_onb_about_body')} />
+      <div onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement)?.tagName === 'INPUT') { e.preventDefault(); onEnter() } }}>
+        <TextField label={t('v42_onb_name_optional')} value={s.name} autocomplete="given-name" onInput={(v) => update((c) => ({ ...c, name: v.slice(0, 24) }))} />
+      </div>
       <h2 class="onb-h2">{t('onb_web_body_type')}</h2>
       <ChipGroup label={t('onb_web_body_type')} value={s.bodyType} onChange={(v) => update((c) => ({ ...c, bodyType: v }))}
         options={[{ value: 'MALE', label: t('body_male') }, { value: 'FEMALE', label: t('body_female') }]} />
-      {onImportCsv && (
-        <div style={{ marginBlockStart: '12px' }}>
-          <p class="onb-note">{t('prog41_onb_import_csv')}</p>
-          <Button variant="text" onClick={onImportCsv}>{t('prog41_csv_import_title')}</Button>
-        </div>
-      )}
+      <h2 class="onb-h2">{t('v42_onb_units')}</h2>
+      <ChipGroup label={t('v42_onb_units')} value={s.unit} onChange={(v: WeightUnit) => update((c) => ({ ...c, unit: v }))}
+        options={[{ value: 'KG', label: t('unit_kilograms') }, { value: 'LB', label: t('unit_pounds') }]} />
+    </>
+  )
+}
+
+type GoalChoice = NutritionGoal | 'JUST_LOG'
+
+function StepGoalSetup({ s, update }: StepProps) {
+  const goalChoice: GoalChoice = s.justLog ? 'JUST_LOG' : s.goal
+  const choose = (v: GoalChoice) => update((c) => pickGoal(c, v))
+  return (
+    <>
+      <Title title={t('v42_onb_goal_title')} body={t('v42_onb_goal_body')} />
+      <RadioCards<GoalChoice>
+        label={t('v42_onb_goal_title')}
+        value={goalChoice}
+        onPick={choose}
+        options={[
+          { v: 'GAIN', name: t('v42_onb_goal_muscle'), desc: t('v42_onb_goal_muscle_desc') },
+          { v: 'CUT', name: t('v42_onb_goal_fat'), desc: t('v42_onb_goal_fat_desc') },
+          { v: 'MAINTAIN', name: t('v42_onb_goal_fit'), desc: t('v42_onb_goal_fit_desc') },
+          { v: 'JUST_LOG', name: t('v42_onb_goal_log'), desc: t('v42_onb_goal_log_desc') },
+        ]}
+      />
+      <h2 class="onb-h2">{t('v42_onb_experience')}</h2>
+      <ChipGroup
+        label={t('v42_onb_experience')}
+        value={s.experience}
+        onChange={(experience: Experience) => update((c) => ({ ...c, experience }))}
+        options={[
+          { value: 'NEW', label: t('v42_onb_exp_new') },
+          { value: 'SOME', label: t('v42_onb_exp_some') },
+          { value: 'SEASONED', label: t('v42_onb_exp_pro') },
+        ]}
+      />
+    </>
+  )
+}
+
+function StepTraining({ s, update }: StepProps) {
+  const lang = getLang()
+  const ar = lang === 'ar'
+  const plans = STARTER_PLANS.slice(0, ONBOARDING_PLAN_COUNT).map((p) => localizePlan(p, lang))
+  const options = [...plans.map((p) => ({ name: p.name, desc: p.description })), { name: t('onb_start_empty'), desc: t('onb_start_empty_desc') }]
+  const builtPreview = useMemo(
+    () => localizeOnboardingPlan(s, EXERCISE_CATALOG),
+    [s.goal, s.daysPerWeek, s.preset, s.experience, lang],
+  )
+  const previewDays = builtPreview.days.map((d) => d.title).join(listSep(lang))
+
+  return (
+    <>
+      <Title title={t('v42_onb_train_title')} body={t('v42_onb_train_body')} />
+      <div class="onb-days-head">
+        <span class="onb-badge"><FireIcon /></span>
+        <span class="onb-days-text">
+          <span class="onb-days-title">{t('v42_onb_days_week')}</span>
+          <span class="onb-note">{t('onb_days_hint')}</span>
+        </span>
+      </div>
+      <Segmented
+        label={t('v42_onb_days_week')}
+        value={String(s.daysPerWeek)}
+        onChange={(v) => update((c) => ({ ...c, daysPerWeek: Number(v), planIndex: planForDays(Number(v), c.preset) }))}
+        options={DAY_OPTIONS.map((d) => ({ value: String(d), label: new Intl.NumberFormat(intlLocale()).format(d) }))}
+      />
+      <h2 class="onb-h2">{t('v42_onb_where_train')}</h2>
+      <ChipGroup
+        label={t('v42_onb_where_train')}
+        value={s.preset}
+        onChange={(p) => update((c) => ({ ...c, preset: p, planIndex: planForDays(c.daysPerWeek, p) }))}
+        options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn }))}
+      />
+      <p class="onb-note">{t('onb_equipment_hint')}</p>
+      <div class="onb-plans" role="radiogroup" aria-label={t('v42_onb_train_title')}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={s.builtForMe}
+          class={`onb-plan${s.builtForMe ? ' on' : ''}`}
+          onClick={() => update((c) => ({ ...c, builtForMe: true }))}
+        >
+          <span class="onb-plan-text">
+            <span class="onb-plan-name">{t('onb_built_title')}</span>
+            <span class="onb-plan-days">{builtPreview.name}</span>
+            <span class="onb-plan-desc">{t('onb_built_body', s.daysPerWeek)}</span>
+            {previewDays && <span class="onb-preview">{previewDays}</span>}
+          </span>
+          <span class={`onb-radio${s.builtForMe ? ' on' : ''}`} aria-label={s.builtForMe ? t('onb_web_plan_selected') : undefined}>
+            {s.builtForMe && <CheckCircleIcon />}
+          </span>
+        </button>
+        {options.map((o, i) => {
+          const on = !s.builtForMe && s.planIndex === i
+          return (
+            <button
+              key={i}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              class={`onb-plan${on ? ' on' : ''}`}
+              onClick={() => update((c) => ({ ...c, builtForMe: false, planIndex: i, preset: presetForPlan(i, c.preset) }))}
+            >
+              <span class="onb-plan-text">
+                <span class="onb-plan-name">{o.name}</span>
+                {trainingDaysOf(i) > 0 && <span class="onb-plan-days">{plural('onb_plan_days', trainingDaysOf(i))}</span>}
+                <span class="onb-plan-desc">{o.desc}</span>
+              </span>
+              <span class={`onb-radio${on ? ' on' : ''}`} aria-label={on ? t('onb_web_plan_selected') : undefined}>{on && <CheckCircleIcon />}</span>
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function StepWeight({ s, update }: StepProps) {
+  const ar = getLang() === 'ar'
+  const unit = s.unit
+  const shownWeight = Math.round(fromKg(unit, s.weightKg) * 10) / 10
+  return (
+    <>
+      <Title title={t('v42_onb_weight_title')} body={t('v42_onb_weight_body')} />
+      <Row label={t('weight_body')}>
+        <Stepper
+          label={t('weight_body')}
+          value={shownWeight}
+          step={bodyStep(unit)}
+          min={fromKg(unit, 30)}
+          max={fromKg(unit, 250)}
+          format={(n) => (s.weightTouched ? `${n.toFixed(1)} ${unitLabel(unit, ar)}` : '–')}
+          onChange={(v) => update((c) => setWeight({ ...c, weightTouched: true }, toKg(unit, v)))}
+        />
+      </Row>
     </>
   )
 }
@@ -181,7 +378,7 @@ function RowNumber({ label, unit, value, min, max, onChange }: { label: string; 
   )
 }
 
-/** Step 2: units, weight, height and age, one calm row each. */
+/** Food-targets Step 1: units, weight, height and age, one calm row each. */
 export function StepBody({ s, update }: StepProps) {
   const ar = getLang() === 'ar'
   const unit = s.unit
@@ -206,7 +403,7 @@ export function StepBody({ s, update }: StepProps) {
   )
 }
 
-/** Step 4 (after the plan, so the target counts its training days): the goal and the calculated target. */
+/** Food-targets Step 2 (after the plan, so the target counts its training days): the goal and the calculated target. */
 export function StepGoal({ s, update }: StepProps) {
   return (
     <>
@@ -274,84 +471,5 @@ function Target({ s, update }: StepProps) {
       <p class="onb-note">{s.goal === 'MAINTAIN' ? t('target_web_burn_only', num(burn)) : t('target_web_burn', num(burn), num(s.kcal), diff)}</p>
       <p class="onb-note">{s.goalsTouched ? t('onb_web_target_custom') : t('target_web_from', s.daysPerWeek, t(`day_web_${s.dayActivity.toLowerCase()}`))}</p>
     </Card>
-  )
-}
-
-/** Weekly target first (full-width control), then equipment, then plans that name how many days a week they ask for. */
-function StepPlan({ s, update }: StepProps) {
-  const ar = getLang() === 'ar'
-  const plans = STARTER_PLANS.slice(0, ONBOARDING_PLAN_COUNT).map((p) => localizePlan(p, getLang()))
-  const options = [...plans.map((p) => ({ name: p.name, desc: p.description })), { name: t('onb_start_empty'), desc: t('onb_start_empty_desc') }]
-  return (
-    <>
-      <Title title={t('onb_plan_title')} body={t('onb_plan_body')} />
-      {/* Habit (streaks, levels, badges) or just counting the training; Profile can change it later. */}
-      <Segmented label={t('just_log_title')} value={s.justLog ? 'log' : 'habit'}
-        onChange={(v) => update((c) => ({ ...c, justLog: v === 'log' }))}
-        options={[{ value: 'habit', label: t('onb_mode_habit') }, { value: 'log', label: t('onb_mode_just_log') }]} />
-      <div class="onb-days-head">
-        <span class="onb-badge"><FireIcon /></span>
-        <span class="onb-days-text">
-          <span class="onb-days-title">{t('onb_days_title')}</span>
-          <span class="onb-note">{t('onb_days_hint')}</span>
-        </span>
-      </div>
-      <Segmented label={t('onb_days_title')} value={String(s.daysPerWeek)}
-        onChange={(v) => update((c) => ({ ...c, daysPerWeek: Number(v), planIndex: planForDays(Number(v), c.preset) }))}
-        options={DAY_OPTIONS.map((d) => ({ value: String(d), label: new Intl.NumberFormat(intlLocale()).format(d) }))} />
-      <h2 class="onb-h2">{t('prog41_onb_quick_place')}</h2>
-      <div class="kit-chips" role="group" aria-label={t('prog41_onb_quick_place')}>
-        {([
-          ['FULL_GYM', 'prog41_onb_place_gym'],
-          ['HOME_GYM', 'prog41_onb_place_home'],
-          ['BODYWEIGHT_ONLY', 'prog41_onb_place_bw'],
-        ] as [EquipmentPreset, string][]).map(([preset, k]) => (
-          <Chip
-            key={preset}
-            label={t(k)}
-            selected={s.preset === preset}
-            onClick={() => update((c) => ({ ...c, preset, planIndex: planForDays(c.daysPerWeek, preset) }))}
-          />
-        ))}
-      </div>
-      <h2 class="onb-h2">{t('prog41_onb_exp_title')}</h2>
-      <Segmented
-        label={t('prog41_onb_exp_title')}
-        value={s.experience}
-        onChange={(experience: Experience) => update((c) => ({ ...c, experience }))}
-        options={[
-          { value: 'NEW', label: t('prog41_onb_exp_new') },
-          { value: 'SOME', label: t('prog41_onb_exp_some') },
-          { value: 'SEASONED', label: t('prog41_onb_exp_seasoned') },
-        ]}
-      />
-      <h2 class="onb-h2">{t('onb_available_equipment')}</h2>
-      <ChipGroup label={t('onb_available_equipment')} value={s.preset} onChange={(p) => update((c) => ({ ...c, preset: p, planIndex: planForDays(c.daysPerWeek, p) }))}
-        options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn }))} />
-      <div class="onb-plans" role="radiogroup" aria-label={t('onb_plan_title')}>
-        <button type="button" role="radio" aria-checked={s.builtForMe} class={`onb-plan${s.builtForMe ? ' on' : ''}`}
-          onClick={() => update((c) => ({ ...c, builtForMe: true }))}>
-          <span class="onb-plan-text">
-            <span class="onb-plan-name">{t('onb_built_title')}</span>
-            <span class="onb-plan-desc">{t('onb_built_body', s.daysPerWeek)}</span>
-          </span>
-          <span class={`onb-radio${s.builtForMe ? ' on' : ''}`}>{s.builtForMe && <CheckCircleIcon />}</span>
-        </button>
-        {options.map((o, i) => {
-          const on = !s.builtForMe && s.planIndex === i
-          return (
-            <button key={i} type="button" role="radio" aria-checked={on} class={`onb-plan${on ? ' on' : ''}`}
-              onClick={() => update((c) => ({ ...c, builtForMe: false, planIndex: i, preset: presetForPlan(i, c.preset) }))}>
-              <span class="onb-plan-text">
-                <span class="onb-plan-name">{o.name}</span>
-                {trainingDaysOf(i) > 0 && <span class="onb-plan-days">{plural('onb_plan_days', trainingDaysOf(i))}</span>}
-                <span class="onb-plan-desc">{o.desc}</span>
-              </span>
-              <span class={`onb-radio${on ? ' on' : ''}`} aria-label={on ? t('onb_web_plan_selected') : undefined}>{on && <CheckCircleIcon />}</span>
-            </button>
-          )
-        })}
-      </div>
-    </>
   )
 }

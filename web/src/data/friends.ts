@@ -5,12 +5,12 @@ import { todayEpochDay, weekStart } from '../domain/dates'
 import {
   buildLeaderboard,
   computeForgeWeek,
+  scoreBreakdown,
   scoreReachedAt,
   type ForgeScoreEvent,
   normalizeUsername,
   type LeaderboardEntry,
   type Pr,
-  type Snapshot,
 } from '../domain/forge-score'
 import { countsForPR } from '../domain/set-types'
 import { db } from './db'
@@ -22,6 +22,7 @@ import {
   type InviteResult,
   type Me,
   type ProfileInput,
+  type Snapshot,
 } from './friends-api'
 import { getProgressSnapshot } from './progress'
 import { syncPushToken } from './push'
@@ -35,6 +36,8 @@ export interface FriendsAuth {
   sessionToken: string
   pushToken?: string | null
   lastSnapshotHash?: string | null
+  nudgeNextAt?: Record<string, number>
+  /** Legacy 4.0/4.1 fields migrated once on load. */
   nudgedTodayDay?: number
   nudgedTodayIds?: string[]
 }
@@ -51,11 +54,14 @@ export interface FriendsState {
   status: FriendsStatus
   loading: boolean
   busy: boolean
+  refreshing: boolean
   error: string | null
   auth: FriendsAuth | null
   view: CachedView | null
   leaderboard: LeaderboardEntry[]
-  nudgedToday: Set<string>
+  nudgeNextAt: Record<string, number>
+  pendingIds: Set<string>
+  hiddenIds: Set<string>
   dismissedNudgeIds: Set<string>
   demoMode: boolean
 }
@@ -96,11 +102,14 @@ function initialState(): FriendsState {
     status: 'signed_out',
     loading: true,
     busy: false,
+    refreshing: false,
     error: null,
     auth: null,
     view: null,
     leaderboard: [],
-    nudgedToday: new Set(),
+    nudgeNextAt: {},
+    pendingIds: new Set(),
+    hiddenIds: new Set(),
     dismissedNudgeIds: new Set(),
     demoMode: false,
   }
@@ -118,6 +127,19 @@ function notify(): void {
 function setState(patch: Partial<FriendsState>): void {
   state = { ...state, ...patch }
   notify()
+}
+
+function withId(set: Set<string>, id: string): Set<string> {
+  const next = new Set(set)
+  next.add(id)
+  return next
+}
+
+function withoutId(set: Set<string>, id: string): Set<string> {
+  if (!set.has(id)) return set
+  const next = new Set(set)
+  next.delete(id)
+  return next
 }
 
 export const nudgeKey = (n: { fromId: string; day: number }) => `${n.fromId}:${n.day}`
@@ -185,24 +207,101 @@ function placeholderView(me: Me, now = Date.now()): CachedView {
 export const SHARE_URL = 'https://caelumop.github.io/ForgeQuest/'
 export const shareText = (username: string) => `Add me on ForgeQuest: @${username} — ${SHARE_URL}`
 
-function nudgedSetForToday(auth: FriendsAuth | null, now = Date.now()): Set<string> {
-  if (!auth) return new Set()
-  const today = todayEpochDay(new Date(now))
-  if (auth.nudgedTodayDay !== today || !Array.isArray(auth.nudgedTodayIds)) return new Set()
-  return new Set(auth.nudgedTodayIds)
+/** Local midnight (start of tomorrow in the device's timezone) in Unix seconds. */
+export function localMidnightSec(nowMs = Date.now()): number {
+  const d = new Date(nowMs)
+  d.setHours(24, 0, 0, 0)
+  return Math.floor(d.getTime() / 1000)
+}
+
+/** Drops expired or invalid cooldown entries from a friendId -> blockedUntil map. */
+export function pruneNudgeMap(
+  map: Record<string, number> | undefined,
+  nowSec = Math.floor(Date.now() / 1000),
+): Record<string, number> {
+  const out: Record<string, number> = {}
+  if (!map) return out
+  for (const [id, until] of Object.entries(map)) {
+    if (typeof until === 'number' && Number.isFinite(until) && until > nowSec) {
+      out[id] = until
+    }
+  }
+  return out
+}
+
+/** Migrates legacy nudgedTodayDay/nudgedTodayIds once on load and prunes expired cooldowns. */
+export function migrateNudgeAuth(
+  auth: FriendsAuth | null,
+  nowMs = Date.now(),
+): { auth: FriendsAuth | null; map: Record<string, number>; changed: boolean } {
+  if (!auth) return { auth: null, map: {}, changed: false }
+  const nowSec = Math.floor(nowMs / 1000)
+  const map = pruneNudgeMap(auth.nudgeNextAt, nowSec)
+  let changed = auth.nudgeNextAt !== undefined && Object.keys(auth.nudgeNextAt).length !== Object.keys(map).length
+  if (auth.nudgedTodayDay !== undefined || auth.nudgedTodayIds !== undefined) {
+    changed = true
+    if (auth.nudgedTodayDay === todayEpochDay(new Date(nowMs)) && Array.isArray(auth.nudgedTodayIds)) {
+      const midnight = localMidnightSec(nowMs)
+      for (const id of auth.nudgedTodayIds) {
+        if (typeof id === 'string' && id.length > 0 && midnight > nowSec) {
+          map[id] = Math.max(map[id] ?? 0, midnight)
+        }
+      }
+    }
+  }
+  if (!changed) return { auth, map, changed: false }
+  const { nudgedTodayDay: _day, nudgedTodayIds: _ids, nudgeNextAt: _old, ...rest } = auth
+  const nextAuth: FriendsAuth = Object.keys(map).length > 0 ? { ...rest, nudgeNextAt: map } : rest
+  return { auth: nextAuth, map, changed: true }
+}
+
+/** Effective cooldown end (Unix seconds), or null when nudging is allowed now. */
+export function effectiveNudgeNextAt(
+  serverNextAt: number | null | undefined,
+  localNextAt: number | undefined,
+  nowSec = Math.floor(Date.now() / 1000),
+): number | null {
+  const server = typeof serverNextAt === 'number' && Number.isFinite(serverNextAt) ? serverNextAt : 0
+  const local = typeof localNextAt === 'number' && Number.isFinite(localNextAt) ? localNextAt : 0
+  const until = Math.max(server, local)
+  return until > nowSec ? until : null
+}
+
+/** Chooses "tomorrow" when blockedUntil >= start of tomorrow local, else "again_at". */
+export function nudgeCooldownKind(blockedUntil: number, nowMs = Date.now()): 'tomorrow' | 'again_at' {
+  return blockedUntil >= localMidnightSec(nowMs) ? 'tomorrow' : 'again_at'
 }
 
 function buildDemoView(now = Date.now()): CachedView {
   const today = todayEpochDay(new Date(now))
   const ws = weekStart(today)
+  const nowSec = Math.floor(now / 1000)
   const snap = (
-    score: number,
+    done: number,
+    target: number,
     badge: Snapshot['badge'],
     streakWeeks: number,
     proteinDays: number,
     prs: Pr[] | null,
+    prCount = prs?.length ?? 0,
     w = ws,
-  ): Snapshot => ({ weekStart: w, done: Math.round(score / 25), due: 4, score, badge, streakWeeks, proteinDays, prs })
+  ): Snapshot => {
+    const breakdown = scoreBreakdown(done, target, prCount, proteinDays)
+    return {
+      weekStart: w,
+      done,
+      due: target,
+      target,
+      prCount,
+      score: breakdown.score,
+      scoreVersion: 2,
+      breakdown,
+      badge,
+      streakWeeks,
+      proteinDays,
+      prs,
+    }
+  }
   const person = (id: string) => ({ id: `demo_${id}`, username: id, name: id, photoUrl: null })
   return normalizeView({
     me: {
@@ -219,33 +318,66 @@ function buildDemoView(now = Date.now()): CachedView {
     },
     today,
     weekStart: ws,
-    mySnapshot: { ...snap(86, 'trained', 6, 5, [
-      { exercise: 'Barbell Bench Press', kg: 90, reps: 5 },
-      { exercise: 'Back Squat', kg: 120, reps: 5 },
-    ]), weekState: 'hit' },
+    mySnapshot: {
+      ...snap(3, 4, 'trained', 6, 5, [
+        { exercise: 'Barbell Bench Press', kg: 90, reps: 5 },
+        { exercise: 'Back Squat', kg: 120, reps: 5 },
+      ]),
+      weekState: 'hit',
+    },
     friends: [
       {
         ...person('omar'),
-        snapshot: { ...snap(100, 'trained', 9, 6, [
-          { exercise: 'Barbell Bench Press', kg: 100, reps: 5 },
-          { exercise: 'Deadlift', kg: 160, reps: 3 },
-        ]), weekState: 'hit' },
+        snapshot: {
+          ...snap(4, 4, 'trained', 9, 6, [
+            { exercise: 'Barbell Bench Press', kg: 100, reps: 5 },
+            { exercise: 'Deadlift', kg: 160, reps: 3 },
+          ]),
+          weekState: 'hit',
+        },
         sharedStreak: 6,
         muted: false,
       },
-      { ...person('lina'), snapshot: { ...snap(92, 'on_track', 4, 5, [{ exercise: 'Romanian Deadlift', kg: 85, reps: 8 }]), weekState: 'open' }, sharedStreak: 4, muted: false },
-      { ...person('zaid'), snapshot: { ...snap(75, 'rest', 3, 4, [{ exercise: 'Overhead Press', kg: 55, reps: 6 }]), weekState: 'open' }, sharedStreak: 2, muted: false },
-      { ...person('sami'), snapshot: { ...snap(45, 'slacking', 1, 2, null), weekState: 'open' }, sharedStreak: 0, muted: false },
-      { ...person('noor'), snapshot: { ...snap(100, 'trained', 5, 3, null, ws - 7), weekState: null }, sharedStreak: 0, muted: false },
+      {
+        ...person('lina'),
+        snapshot: {
+          ...snap(3, 4, 'on_track', 4, 5, [{ exercise: 'Romanian Deadlift', kg: 85, reps: 8 }]),
+          weekState: 'open',
+        },
+        sharedStreak: 4,
+        muted: false,
+      },
+      {
+        ...person('zaid'),
+        snapshot: {
+          ...snap(2, 4, 'rest', 3, 4, [{ exercise: 'Overhead Press', kg: 55, reps: 6 }]),
+          weekState: 'open',
+        },
+        sharedStreak: 2,
+        muted: false,
+        nudgeNextAt: nowSec + 2 * 3600,
+      },
+      {
+        ...person('sami'),
+        snapshot: { ...snap(1, 4, 'slacking', 1, 2, null), weekState: 'open' },
+        sharedStreak: 0,
+        muted: false,
+      },
+      {
+        ...person('noor'),
+        snapshot: { ...snap(4, 4, 'trained', 5, 3, null, 0, ws - 7), weekState: null },
+        sharedStreak: 0,
+        muted: false,
+      },
     ],
     incoming: [person('karim')],
     outgoing: [person('maya')],
     nudges: [],
     inbox: {
-      pings: [{ fromId: 'demo_omar', name: 'omar', username: 'omar', day: today, createdAt: Math.floor(now / 1000) - 15 * 60, seen: false }],
+      pings: [{ fromId: 'demo_omar', name: 'omar', username: 'omar', day: today, createdAt: nowSec - 15 * 60, seen: false }],
       activity: [
-        { userId: 'demo_omar', name: 'omar', username: 'omar', at: Math.floor(now / 1000) - 2 * 3600 },
-        { userId: 'demo_lina', name: 'lina', username: 'lina', at: Math.floor(now / 1000) - 5 * 3600 },
+        { userId: 'demo_omar', name: 'omar', username: 'omar', at: nowSec - 2 * 3600 },
+        { userId: 'demo_lina', name: 'lina', username: 'lina', at: nowSec - 5 * 3600 },
       ],
     },
   })
@@ -279,7 +411,9 @@ async function clearLocalSession(): Promise<void> {
     auth: null,
     view: null,
     leaderboard: [],
-    nudgedToday: new Set(),
+    nudgeNextAt: {},
+    pendingIds: new Set(),
+    hiddenIds: new Set(),
     dismissedNudgeIds: new Set(),
   })
 }
@@ -316,12 +450,17 @@ export async function ensureFriendsLoaded(): Promise<void> {
           view,
           leaderboard: computeBoard(view),
           auth: { sessionToken: 'demo' },
-          nudgedToday: new Set(),
+          nudgeNextAt: {},
+          pendingIds: new Set(),
+          hiddenIds: new Set(),
         })
         return
       }
 
-      const auth = (authRow?.value as FriendsAuth | undefined) ?? null
+      const rawAuth = (authRow?.value as FriendsAuth | undefined) ?? null
+      const migrated = migrateNudgeAuth(rawAuth)
+      const auth = migrated.auth
+      if (migrated.changed && auth) await saveAuth(auth)
       const cached = (cacheRow?.value as CachedView | undefined) ?? null
       // Drop caches written by the pre-contract build (no weekStart / username fields).
       const view =
@@ -336,7 +475,9 @@ export async function ensureFriendsLoaded(): Promise<void> {
           auth,
           view,
           leaderboard: computeBoard(view),
-          nudgedToday: nudgedSetForToday(auth),
+          nudgeNextAt: migrated.map,
+          pendingIds: new Set(),
+          hiddenIds: new Set(),
         })
       } else if (auth?.sessionToken) {
         setState({
@@ -345,7 +486,9 @@ export async function ensureFriendsLoaded(): Promise<void> {
           auth,
           view: null,
           leaderboard: [],
-          nudgedToday: nudgedSetForToday(auth),
+          nudgeNextAt: migrated.map,
+          pendingIds: new Set(),
+          hiddenIds: new Set(),
         })
         // Session but no usable cache (cleared, or written by an older build): ask the server whether we already joined.
         void resumeFromServer(auth)
@@ -461,6 +604,10 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
     })
   }
 
+  const trainDays = [...scheduledDays]
+    .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7)
+    .sort((a, b) => a - b)
+
   return {
     weekStart: week.weekStart,
     done: week.done,
@@ -473,12 +620,13 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
     streakWeeks: Math.min(520, Math.max(0, progress.streak.weeks)),
     proteinDays: week.proteinDays,
     prs,
+    ...(trainDays.length > 0 ? { trainDays } : {}),
     weekState: progress.streak.hitThisWeek ? 'hit' : progress.streak.freeWeek ? 'free' : 'open',
     ...(progress.streak.lastWeekState ? { lastWeekState: progress.streak.lastWeekState } : {}),
   }
 }
 
-async function hashSnapshot(s: Snapshot): Promise<string> {
+export async function hashSnapshot(s: Snapshot): Promise<string> {
   const canonical = JSON.stringify({
     weekStart: s.weekStart,
     done: s.done,
@@ -491,6 +639,7 @@ async function hashSnapshot(s: Snapshot): Promise<string> {
     streakWeeks: s.streakWeeks,
     proteinDays: s.proteinDays,
     prs: s.prs,
+    trainDays: s.trainDays ?? null,
     weekState: s.weekState ?? null,
     lastWeekState: s.lastWeekState ?? null,
   })
@@ -561,11 +710,29 @@ export async function signInWithIdToken(idToken: string): Promise<ActionResult> 
     if (res.user.joined && res.user.username) {
       const view = placeholderView(res.user)
       await saveCache(view)
-      setState({ auth, status: 'joined', view, leaderboard: computeBoard(view), nudgedToday: new Set(), busy: false })
+      setState({
+        auth,
+        status: 'joined',
+        view,
+        leaderboard: computeBoard(view),
+        nudgeNextAt: {},
+        pendingIds: new Set(),
+        hiddenIds: new Set(),
+        busy: false,
+      })
       await refreshFriends(true)
     } else {
       await saveCache(null)
-      setState({ auth, status: 'needs_join', view: null, leaderboard: [], nudgedToday: new Set(), busy: false })
+      setState({
+        auth,
+        status: 'needs_join',
+        view: null,
+        leaderboard: [],
+        nudgeNextAt: {},
+        pendingIds: new Set(),
+        hiddenIds: new Set(),
+        busy: false,
+      })
     }
     return { ok: true, data: undefined }
   } catch (err) {
@@ -649,7 +816,7 @@ export async function refreshFriends(silent = false): Promise<ActionResult> {
   const token = state.auth?.sessionToken
   if (!token) return { ok: false, error: 'unauthorized' }
 
-  if (!silent) setState({ busy: true, error: null })
+  if (!silent) setState({ refreshing: true, error: null })
   try {
     try {
       await uploadSnapshot(false)
@@ -662,15 +829,16 @@ export async function refreshFriends(silent = false): Promise<ActionResult> {
       status: 'joined',
       view,
       leaderboard: computeBoard(view),
+      nudgeNextAt: pruneNudgeMap(state.nudgeNextAt),
       dismissedNudgeIds: new Set(),
-      busy: false,
+      refreshing: false,
       error: null,
     })
     void syncPushToken()
     return { ok: true, data: undefined }
   } catch (err) {
     const code = await handleApiError(err)
-    if (!silent) setState({ busy: false })
+    if (!silent) setState({ refreshing: false })
     return { ok: false, error: code }
   }
 }
@@ -792,99 +960,193 @@ export async function inviteFriend(rawUsername: string): Promise<ActionResult<In
   // Bad syntax never reaches the server, so typos don't count toward the 5-per-15-min lookup lock.
   const username = normalizeUsername(rawUsername)
   if (!username) return fail('bad_username')
-  if (state.demoMode) return { ok: true, data: { status: 'sent' } }
+  if (state.demoMode) {
+    const view = state.view
+    if (view && !view.outgoing.some((p) => p.username === username) && !view.friends.some((p) => p.username === username)) {
+      const nextView: CachedView = {
+        ...view,
+        outgoing: [...view.outgoing, { id: `demo_${username}`, username, name: username, photoUrl: null }],
+      }
+      setState({ view: nextView, error: null })
+    }
+    return { ok: true, data: { status: 'sent' } }
+  }
   const token = state.auth?.sessionToken
   if (!token) return { ok: false, error: 'unauthorized' }
 
-  setState({ busy: true, error: null })
+  setState({ error: null })
   try {
     const result = await friendsApi.invite(token, username)
     await refreshFriends(true)
-    setState({ busy: false })
     return { ok: true, data: result }
   } catch (err) {
     const code = await handleApiError(err)
-    setState({ busy: false })
     return { ok: false, error: code }
   }
 }
 
-async function runFriendMutation(fn: (token: string) => Promise<unknown>): Promise<ActionResult> {
+async function runOptimisticMutation(
+  id: string,
+  fn: (token: string) => Promise<unknown>,
+  demoUpdate?: (view: CachedView) => CachedView,
+): Promise<ActionResult> {
   await ensureFriendsLoaded()
-  if (state.demoMode) return { ok: true, data: undefined }
-  const token = state.auth?.sessionToken
-  if (!token) return { ok: false, error: 'unauthorized' }
+  if (state.pendingIds.has(id)) return { ok: false, error: 'pending' }
 
-  setState({ busy: true, error: null })
+  setState({
+    pendingIds: withId(state.pendingIds, id),
+    hiddenIds: withId(state.hiddenIds, id),
+    error: null,
+  })
+
+  if (state.demoMode) {
+    await new Promise((r) => setTimeout(r, 240))
+    const nextView = demoUpdate && state.view ? demoUpdate(state.view) : state.view
+    setState({
+      ...(nextView ? { view: nextView, leaderboard: computeBoard(nextView) } : {}),
+      pendingIds: withoutId(state.pendingIds, id),
+      hiddenIds: withoutId(state.hiddenIds, id),
+    })
+    return { ok: true, data: undefined }
+  }
+
+  const token = state.auth?.sessionToken
+  if (!token) {
+    setState({
+      pendingIds: withoutId(state.pendingIds, id),
+      hiddenIds: withoutId(state.hiddenIds, id),
+    })
+    return { ok: false, error: 'unauthorized' }
+  }
+
   try {
     await fn(token)
     await refreshFriends(true)
-    setState({ busy: false })
+    setState({
+      pendingIds: withoutId(state.pendingIds, id),
+      hiddenIds: withoutId(state.hiddenIds, id),
+    })
     return { ok: true, data: undefined }
   } catch (err) {
+    setState({
+      pendingIds: withoutId(state.pendingIds, id),
+      hiddenIds: withoutId(state.hiddenIds, id),
+    })
     const code = await handleApiError(err)
-    setState({ busy: false })
     return { ok: false, error: code }
   }
 }
 
 export const acceptFriend = (fromId: string) =>
-  runFriendMutation((t) => friendsApi.accept(t, fromId))
+  runOptimisticMutation(
+    fromId,
+    (t) => friendsApi.accept(t, fromId),
+    (view) => {
+      const person = view.incoming.find((p) => p.id === fromId)
+      return {
+        ...view,
+        incoming: view.incoming.filter((p) => p.id !== fromId),
+        friends: person
+          ? [...view.friends, { ...person, snapshot: null, sharedStreak: 0, muted: false }]
+          : view.friends,
+      }
+    },
+  )
 
 export const declineFriend = (fromId: string) =>
-  runFriendMutation((t) => friendsApi.decline(t, fromId))
+  runOptimisticMutation(
+    fromId,
+    (t) => friendsApi.decline(t, fromId),
+    (view) => ({
+      ...view,
+      incoming: view.incoming.filter((p) => p.id !== fromId),
+      outgoing: view.outgoing.filter((p) => p.id !== fromId),
+    }),
+  )
 
 export const removeFriend = (id: string) =>
-  runFriendMutation((t) => friendsApi.remove(t, id))
+  runOptimisticMutation(
+    id,
+    (t) => friendsApi.remove(t, id),
+    (view) => ({ ...view, friends: view.friends.filter((f) => f.id !== id) }),
+  )
 
 export const blockFriend = (id: string) =>
-  runFriendMutation((t) => friendsApi.block(t, id))
+  runOptimisticMutation(
+    id,
+    (t) => friendsApi.block(t, id),
+    (view) => ({ ...view, friends: view.friends.filter((f) => f.id !== id) }),
+  )
 
-export const unblockFriend = (id: string) =>
-  runFriendMutation((t) => friendsApi.unblock(t, id))
+export async function unblockFriend(id: string): Promise<ActionResult> {
+  await ensureFriendsLoaded()
+  if (state.demoMode) return { ok: true, data: undefined }
+  const token = state.auth?.sessionToken
+  if (!token) return { ok: false, error: 'unauthorized' }
+
+  setState({ pendingIds: withId(state.pendingIds, id), error: null })
+  try {
+    await friendsApi.unblock(token, id)
+    await refreshFriends(true)
+    setState({ pendingIds: withoutId(state.pendingIds, id) })
+    return { ok: true, data: undefined }
+  } catch (err) {
+    setState({ pendingIds: withoutId(state.pendingIds, id) })
+    const code = await handleApiError(err)
+    return { ok: false, error: code }
+  }
+}
+
+async function saveNudgeCooldown(toId: string, blockedUntil: number, nowMs = Date.now()): Promise<void> {
+  const nowSec = Math.floor(nowMs / 1000)
+  const nextMap = pruneNudgeMap(state.nudgeNextAt, nowSec)
+  if (blockedUntil > nowSec) {
+    nextMap[toId] = Math.max(nextMap[toId] ?? 0, blockedUntil)
+  }
+  if (state.auth && !state.demoMode) {
+    const nextAuth: FriendsAuth = { ...state.auth, nudgeNextAt: nextMap }
+    await saveAuth(nextAuth)
+    setState({ auth: nextAuth, nudgeNextAt: nextMap })
+  } else {
+    setState({ nudgeNextAt: nextMap })
+  }
+}
 
 export async function nudgeFriend(toId: string): Promise<ActionResult> {
   await ensureFriendsLoaded()
-  if (state.nudgedToday.has(toId)) {
+  const nowMs = Date.now()
+  const nowSec = Math.floor(nowMs / 1000)
+  const friend = state.view?.friends.find((f) => f.id === toId)
+  if (effectiveNudgeNextAt(friend?.nudgeNextAt, state.nudgeNextAt[toId], nowSec) !== null) {
     return { ok: false, error: 'already_nudged' }
   }
-  const markNudged = async () => {
-    const today = todayEpochDay()
-    const nextSet = new Set(state.nudgedToday)
-    nextSet.add(toId)
-    if (state.auth) {
-      const nextAuth: FriendsAuth = {
-        ...state.auth,
-        nudgedTodayDay: today,
-        nudgedTodayIds: [...nextSet],
-      }
-      await saveAuth(nextAuth)
-      setState({ auth: nextAuth, nudgedToday: nextSet })
-    } else {
-      setState({ nudgedToday: nextSet })
-    }
+  if (state.pendingIds.has(toId)) {
+    return { ok: false, error: 'pending' }
   }
 
   if (state.demoMode) {
-    await markNudged()
+    await saveNudgeCooldown(toId, localMidnightSec(nowMs), nowMs)
     return { ok: true, data: undefined }
   }
 
   const token = state.auth?.sessionToken
   if (!token) return { ok: false, error: 'unauthorized' }
 
-  setState({ busy: true, error: null })
+  setState({ pendingIds: withId(state.pendingIds, toId), error: null })
   try {
-    await friendsApi.nudge(token, toId)
-    await markNudged()
-    setState({ busy: false })
+    const res = await friendsApi.nudge(token, toId)
+    await saveNudgeCooldown(toId, res.nextAt ?? localMidnightSec())
+    setState({ pendingIds: withoutId(state.pendingIds, toId) })
     return { ok: true, data: undefined }
   } catch (err) {
-    if (err instanceof FriendsError && (err.code === 'already_nudged')) {
-      await markNudged()
+    setState({ pendingIds: withoutId(state.pendingIds, toId) })
+    if (err instanceof FriendsError && err.code === 'already_nudged') {
+      await refreshFriends(true)
+      const refreshed = state.view?.friends.find((f) => f.id === toId)
+      await saveNudgeCooldown(toId, refreshed?.nudgeNextAt ?? localMidnightSec())
+      return { ok: false, error: 'already_nudged' }
     }
     const code = await handleApiError(err)
-    setState({ busy: false })
     return { ok: false, error: code }
   }
 }
@@ -948,3 +1210,6 @@ export function _resetFriendsForTest(): void {
   loadPromise = null
   gisInitialized = false
 }
+
+/** Read current friends store state (useful in tests). */
+export const getFriendsState = (): FriendsState => state

@@ -33,9 +33,9 @@ import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PanTool
@@ -172,11 +172,6 @@ internal fun AppSettingsGroup(
     val settings = s.settings
     val exercises by vm.exercises.collectAsState()
     var showExUnits by remember { mutableStateOf(false) }
-    val canLock = remember {
-        androidx.biometric.BiometricManager.from(context).canAuthenticate(
-            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
-        ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
-    }
 
     SettingsGroup(
         Icons.Rounded.Palette, c.teal, c.tealTrack, stringResource(R.string.settings_group_app),
@@ -184,7 +179,6 @@ internal fun AppSettingsGroup(
             stringResource(when (settings.theme) { "light" -> R.string.theme_light; "dark" -> R.string.theme_dark; else -> R.string.theme_system }),
             when (com.forgequest.app.AppLocale.current(context)) { "en" -> "English"; "ar" -> "العربية"; else -> stringResource(R.string.language_system) },
             settings.weightUnit.label,
-            if (settings.biometricLock && canLock) stringResource(R.string.summary_lock_on) else null,
             when {
                 settings.justLog -> stringResource(R.string.just_log_title)
                 settings.reminderHour < 0 -> stringResource(R.string.summary_reminder_off)
@@ -227,13 +221,6 @@ internal fun AppSettingsGroup(
                 if (settings.weightUnit == WeightUnit.LB) 1 else 0,
                 onSelect = { vm.setUnit(if (it == 1) "lb" else "kg") },
             )
-        }
-        FitCard {
-            SwitchHeader(
-                Icons.Rounded.Lock, c.teal, c.tealTrack, stringResource(R.string.profile_app_lock),
-                stringResource(if (!canLock) R.string.profile_lock_unavailable else if (settings.biometricLock) R.string.profile_lock_on else R.string.profile_lock_off),
-                settings.biometricLock && canLock, enabled = canLock,
-            ) { vm.setLock(it) }
         }
         val justLog = settings.justLog
         FitCard {
@@ -513,6 +500,7 @@ internal fun BackupSettingsGroup(
 internal fun AboutSettingsGroup(
     vm: SettingsViewModel,
     toggleGroup: (String) -> Unit,
+    onOpenGuide: () -> Unit,
 ) {
     val c = Fit.colors
     val context = LocalContext.current
@@ -522,6 +510,14 @@ internal fun AboutSettingsGroup(
         stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),
         onToggle = { toggleGroup("about") },
     ) {
+        SettingsRow(
+            Icons.AutoMirrored.Rounded.HelpOutline,
+            c.teal,
+            c.tealTrack,
+            stringResource(R.string.v42_guide_title),
+            stringResource(R.string.v42_guide_row_sub),
+            onClick = onOpenGuide,
+        )
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)

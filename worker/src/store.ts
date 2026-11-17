@@ -123,6 +123,13 @@ export interface Store {
   unblockUser(blocker: string, blocked: string): Promise<void>;
 
   createNudgeIfAbsent(fromId: string, toId: string, day: number, nowSec: number): Promise<boolean>;
+  /**
+   * 4.2: re-sends today's nudge row (new time, unseen again) when it was created at or before [sentBeforeSec].
+   * Atomic, so two racing taps can't both win. False when there is no such row or it is too recent.
+   */
+  rearmNudge(fromId: string, toId: string, day: number, nowSec: number, sentBeforeSec: number): Promise<boolean>;
+  /** 4.2: my nudge rows for [day], as recipient id -> created_at. */
+  outgoingNudges(fromId: string, day: number): Promise<Map<string, number>>;
   upsertPushToken(token: string, userId: string, platform: PushPlatform, nowSec: number): Promise<void>;
   deletePushTokenForUser(token: string, userId: string): Promise<void>;
   getPushTokens(userId: string): Promise<string[]>;
@@ -771,6 +778,31 @@ export class D1Store implements Store {
       .bind(fromId, toId, day, nowSec)
       .run();
     return (res.meta?.changes ?? 0) > 0;
+  }
+
+  async rearmNudge(
+    fromId: string,
+    toId: string,
+    day: number,
+    nowSec: number,
+    sentBeforeSec: number,
+  ): Promise<boolean> {
+    const res = await this.db
+      .prepare(
+        `UPDATE nudges SET created_at = ?4, seen = 0, seen_v4 = 0
+         WHERE from_id = ?1 AND to_id = ?2 AND day = ?3 AND created_at <= ?5`,
+      )
+      .bind(fromId, toId, day, nowSec, sentBeforeSec)
+      .run();
+    return (res.meta?.changes ?? 0) > 0;
+  }
+
+  async outgoingNudges(fromId: string, day: number): Promise<Map<string, number>> {
+    const rows = await this.db
+      .prepare("SELECT to_id, created_at FROM nudges WHERE from_id = ?1 AND day = ?2")
+      .bind(fromId, day)
+      .all<{ to_id: string; created_at: number }>();
+    return new Map((rows.results ?? []).map((r) => [r.to_id, r.created_at]));
   }
 
   async upsertPushToken(

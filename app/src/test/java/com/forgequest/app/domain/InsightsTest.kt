@@ -440,4 +440,19 @@ class InsightsTest {
         )
         assertEquals(mapOf(Muscle.CHEST to 5, Muscle.UPPER_BACK to 4), t)
     }
+
+    @Test fun autoWarmupSetsInMainBlockAreExcludedFromInsightsAndTotals() {
+        val a = session(today - 3)
+        val b = session(today)
+        val warmup = set(b, "bench", reps = 10, kg = 200f).copy(setType = SetType.WARMUP.name)
+        val workSet = set(b, "bench", reps = 5, kg = 60f)
+        val prior = set(a, "bench", reps = 5, kg = 60f)
+        val t = lifetimeTotals(listOf(b), listOf(warmup, workSet))
+        assertEquals(1, t.sets)
+        assertEquals(5, t.reps)
+        assertEquals(300.0, t.kgLifted, 0.001)
+        // Only the 200 kg WARMUP set would beat prior 60 kg; with WARMUP excluded, near-record still sees 55 kg vs 60 kg.
+        val near = input(listOf(a, b), listOf(prior, warmup, set(b, "bench", reps = 5, kg = 57.5f)))
+        fires(InsightKind.NEAR_RECORD_WEIGHT, near)
+    }
 }

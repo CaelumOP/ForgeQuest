@@ -78,6 +78,7 @@ import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.domain.WorkoutScore
+import com.forgequest.app.domain.countsAsWorkingSet
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import androidx.compose.material3.SnackbarDuration
@@ -340,7 +341,7 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
                     }
                 }
                 Text(
-                    listOfNotNull(pluralStringResource(R.plurals.hist_sets, sets.count { !WorkoutScore.isExtra(it.block) }, sets.count { !WorkoutScore.isExtra(it.block) }), minutes?.let { stringResource(R.string.hist_minutes, it) }).joinToString(" · "),
+                    listOfNotNull(sets.count(::countsAsWorkingSet).let { n -> pluralStringResource(R.plurals.hist_sets, n, n) }, minutes?.let { stringResource(R.string.hist_minutes, it) }).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                 )
                 if (names.isNotEmpty()) {
@@ -424,7 +425,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Column(Modifier.weight(1f)) {
                 Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(session.title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(listOfNotNull(date, minutes?.let { stringResource(R.string.hist_minutes, it) }, pluralStringResource(R.plurals.hist_sets, sets.count { !WorkoutScore.isExtra(it.block) }, sets.count { !WorkoutScore.isExtra(it.block) })).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                Text(listOfNotNull(date, minutes?.let { stringResource(R.string.hist_minutes, it) }, sets.count(::countsAsWorkingSet).let { n -> pluralStringResource(R.plurals.hist_sets, n, n) }).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textSecondary) }
@@ -489,7 +490,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     }
 
     noteFor?.let { set ->
-        SetNoteDialog(set.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(set, it); noteFor = null })
+        SetNoteDialog(set.note, isPain = set.effort == com.forgequest.app.domain.SetEffort.PAIN.name, onDismiss = { noteFor = null }, onSave = { vm.setNote(set, it); noteFor = null })
     }
 
     pendingSetDelete?.let { set ->

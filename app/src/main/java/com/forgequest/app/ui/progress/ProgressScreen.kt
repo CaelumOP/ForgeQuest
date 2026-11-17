@@ -117,12 +117,12 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
     val weeklySets = Trends.weeklySets(s.doneSets, sessionDay, 12, today)
     val weeklyWorkouts = Trends.weeklyCounts(workoutDays, weeksInRange, today)
     val load = Trends.trainingLoad(weeklySets)
-    val topIds = Trends.topExercises(s.doneSets.filterNot { WorkoutScore.isExtra(it.block) }, 6)
+    val topIds = Trends.topExercises(s.doneSets.filter { com.forgequest.app.domain.countsForScore(it) }, 6)
     val series: Map<String, List<TrendPoint>> = topIds.associateWith { id ->
         val kind = s.exercises[id]?.kind ?: ExerciseKind.REPS
         Trends.bestSetSeries(s.doneSets.filter { it.exerciseId == id }, kind, sessionDay)
     }
-    val recordDays = s.doneSets.filter { it.isPr }.mapNotNull { sessionDay[it.sessionId] }.toSet()
+    val recordDays = s.doneSets.filter { it.isPr && com.forgequest.app.domain.countsForPR(it) }.mapNotNull { sessionDay[it.sessionId] }.toSet()
     val grid = Trends.consistencyGrid(workoutDays, recordDays, weeksInRange, today)
     val weightPoints = s.weights.map { TrendPoint(it.epochDay, it.kg) }
     val weightAvg = Trends.movingAverage(weightPoints)
@@ -133,6 +133,11 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
     val workoutDaysInRange = workoutDays.count { it >= from }
 
     fun inRange(points: List<TrendPoint>) = points.filter { it.epochDay >= from }
+}
+
+/** One-shot request from Home's Getting Started card to open the measurement logger when Progress opens. */
+object ProgressMeasureLink {
+    var openAdd by mutableStateOf(false)
 }
 
 @Composable
@@ -151,6 +156,7 @@ fun ProgressScreen(nav: NavHostController) {
     val datePattern = stringResource(R.string.progress_date_pattern)
     val dateFmt = remember(datePattern) { DateTimeFormatter.ofPattern(datePattern) }
     val dateLabel: (Long) -> String = { LocalDate.ofEpochDay(it).format(dateFmt) }
+    val openMeasureAdd = ProgressMeasureLink.openAdd
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -169,7 +175,9 @@ fun ProgressScreen(nav: NavHostController) {
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
+                MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement, openMeasureAdd) {
+                    ProgressMeasureLink.openAdd = false
+                }
                 Spacer(Modifier.height(12.dp))
                 OneRmCalculatorCard(s, unit)
                 Spacer(Modifier.height(32.dp))
@@ -199,7 +207,9 @@ fun ProgressScreen(nav: NavHostController) {
             OneRmCalculatorCard(s, unit)
             Spacer(Modifier.height(12.dp))
 
-            MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
+            MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement, openMeasureAdd) {
+                ProgressMeasureLink.openAdd = false
+            }
             Spacer(Modifier.height(12.dp))
 
             if (d.weightPoints.size >= 2) {

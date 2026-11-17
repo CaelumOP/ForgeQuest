@@ -93,3 +93,24 @@ button.home-day { cursor: pointer; }
 .home41-avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; }
 .home41-badge { position: absolute; inset-inline-end: 0; inset-block-end: 0; min-inline-size: 22px; block-size: 22px; padding-inline: 4px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-full); background: var(--blue-track); color: var(--blue); font-weight: 700; font-size: 11px; border: 1.5px solid var(--bg); }
 .home41-gear { position: absolute; inset-inline-end: 0; inset-block-start: 0; inline-size: 20px; block-size: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-full); background: var(--card); color: var(--teal); border: 1px solid var(--divider); }
+
+/* Getting started checklist (GettingStarted.tsx). */
+.home-gs { display: flex; flex-direction: column; gap: 12px; }
+.home-gs-head { display: flex; align-items: center; gap: 12px; }
+.home-gs-head-text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: 2px; }
+.home-gs-head-text .home-t { margin: 0; }
+.home-gs-count { font-variant-numeric: tabular-nums; }
+.home-gs-close { color: var(--text-2); margin-inline-end: -8px; }
+.home-gs-bar { block-size: 6px; border-radius: var(--r-full); background: var(--card-high); overflow: hidden; }
+.home-gs-bar-fill { block-size: 100%; border-radius: var(--r-full); background: var(--teal); transition: inline-size var(--dur-medium) var(--ease-standard); }
+.home-gs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.home-gs-item { display: flex; align-items: center; gap: 12px; min-block-size: 44px; padding-block: 6px; padding-inline: 8px; margin-inline: -8px; border-radius: var(--r-md); color: var(--text); text-decoration: none; }
+.home-gs-item:active { background: var(--card-high); }
+.home-gs-item.done .home-gs-label { color: var(--text-2); }
+.home-gs-check { inline-size: 24px; block-size: 24px; display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--text-2); }
+.home-gs-check.on { color: var(--teal); }
+.home-gs-ring { inline-size: 18px; block-size: 18px; border-radius: var(--r-full); border: 2px solid var(--divider); box-sizing: border-box; }
+.home-gs-label { flex: 1; min-inline-size: 0; font-size: 14px; line-height: 20px; font-weight: 500; }
+.home-gs-chev { flex: none; display: inline-flex; color: var(--text-2); }
+.home-gs-done { display: flex; align-items: center; gap: 10px; padding-block: 4px; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--teal); }
+@media (prefers-reduced-motion: reduce) { .home-gs-bar-fill { transition: none; } }

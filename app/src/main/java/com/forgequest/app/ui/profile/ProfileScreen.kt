@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.Settings
@@ -169,6 +170,18 @@ fun ProfileScreen(nav: NavHostController) {
                 IconCircle(Icons.Rounded.Settings, c.teal, c.tealTrack)
                 Spacer(Modifier.width(12.dp))
                 Text(stringResource(R.string.settings_section_settings), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f).semantics { heading() })
+                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.GUIDE) }) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.AutoMirrored.Rounded.HelpOutline, c.teal, c.tealTrack)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.v42_guide_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
+                    Text(stringResource(R.string.v42_guide_row_sub), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = c.textSecondary)
             }
         }

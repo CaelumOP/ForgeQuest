@@ -32,11 +32,26 @@ import com.forgequest.app.ui.theme.Fit
  * people who finished the old tour don't get the tips again.
  */
 object TourPrefs {
-    private const val PREFS = "ui_prefs"
-    fun languageChosen(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("language_chosen", false)
-    fun setLanguageChosen(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("language_chosen", true).apply()
-    fun tourSeen(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("tour_seen", false)
-    fun setTourSeen(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("tour_seen", true).apply()
+    internal const val PREFS = "ui_prefs"
+    const val KEY_LANGUAGE_CHOSEN = "language_chosen"
+    const val KEY_TOUR_SEEN = "tour_seen"
+    const val KEY_GS_ELIGIBLE = "gs_eligible"
+    const val KEY_GS_DISMISSED = "gs_dismissed"
+    const val KEY_GS_FRIEND_DONE = "gs_friend_done"
+
+    private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun languageChosen(c: Context) = prefs(c).getBoolean(KEY_LANGUAGE_CHOSEN, false)
+    fun setLanguageChosen(c: Context) = prefs(c).edit().putBoolean(KEY_LANGUAGE_CHOSEN, true).apply()
+    fun tourSeen(c: Context) = prefs(c).getBoolean(KEY_TOUR_SEEN, false)
+    fun setTourSeen(c: Context) = prefs(c).edit().putBoolean(KEY_TOUR_SEEN, true).apply()
+
+    fun gsEligible(c: Context) = prefs(c).getBoolean(KEY_GS_ELIGIBLE, false)
+    fun setGsEligible(c: Context) = prefs(c).edit().putBoolean(KEY_GS_ELIGIBLE, true).apply()
+    fun gsDismissed(c: Context) = prefs(c).getBoolean(KEY_GS_DISMISSED, false)
+    fun setGsDismissed(c: Context) = prefs(c).edit().putBoolean(KEY_GS_DISMISSED, true).apply()
+    fun gsFriendDone(c: Context) = prefs(c).getBoolean(KEY_GS_FRIEND_DONE, false)
+    fun setGsFriendDone(c: Context) = prefs(c).edit().putBoolean(KEY_GS_FRIEND_DONE, true).apply()
 }
 
 /**
@@ -50,17 +65,30 @@ object AppTour {
     const val WORKOUTS = "coach_plan"
     const val FOOD = "coach_food"
     const val SET_TICK = "coach_tick"
-    private val steps = listOf(HOME, WORKOUTS, FOOD, SET_TICK)
-    private const val PREFS = "ui_prefs"
+    const val PROFILE = "coach_profile"
+    const val PROGRESS = "coach_progress"
+    val ALL_COACH_KEYS = listOf(HOME, WORKOUTS, FOOD, SET_TICK, PROFILE, PROGRESS)
 
     /** Called after a tip was shown: once every step has been seen, the tour is marked finished for good. */
     fun stepSeen(c: Context) {
-        val prefs = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (steps.all { prefs.getBoolean(it, false) }) TourPrefs.setTourSeen(c)
+        val prefs = c.getSharedPreferences(TourPrefs.PREFS, Context.MODE_PRIVATE)
+        if (ALL_COACH_KEYS.all { prefs.getBoolean(it, false) }) TourPrefs.setTourSeen(c)
     }
 
-    /** "Skip tips" on any tip: no more of them. */
-    fun skip(c: Context) = TourPrefs.setTourSeen(c)
+    /** "Skip tips" on any tip: no more of them. Returns true if tips were not already skipped. */
+    fun skip(c: Context): Boolean {
+        val newlySkipped = !TourPrefs.tourSeen(c)
+        TourPrefs.setTourSeen(c)
+        return newlySkipped
+    }
+
+    /** Clears all coach-mark seen keys and `tour_seen` so tips appear again on first visit. */
+    fun resetTips(c: Context) {
+        val editor = c.getSharedPreferences(TourPrefs.PREFS, Context.MODE_PRIVATE).edit()
+        ALL_COACH_KEYS.forEach { editor.remove(it) }
+        editor.remove(TourPrefs.KEY_TOUR_SEEN)
+        editor.apply()
+    }
 }
 
 /** The very first screen: both languages side by side, since the person may not read the phone's language yet. */

@@ -46,6 +46,10 @@ If you turn on Health Connect in Settings, ForgeQuest reads your daily steps, ca
 
 ForgeQuest's use of information received from Google APIs adheres to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
 
+## Update check (Android)
+
+When you tap "Check for updates" in Settings, the app downloads a small version file from this project's GitHub repository, and, if you choose to install, the new APK from its GitHub Releases. GitHub sees your IP address, as with any web request. Nothing about you or your data is sent.
+
 ## Sharing and selling
 
 ForgeQuest does not sell or share your data, show ads, or use analytics or tracking.

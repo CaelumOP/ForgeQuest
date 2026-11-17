@@ -23,6 +23,8 @@ import com.forgequest.app.domain.Recovery
 import com.forgequest.app.domain.StreakCalculator
 import com.forgequest.app.domain.WeeklyStreak
 import com.forgequest.app.domain.Xp
+import com.forgequest.app.domain.countsForPR
+import com.forgequest.app.domain.countsForScore
 import com.forgequest.app.domain.lifetimeTotals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -157,7 +159,7 @@ class ProgressRepository(
             Xp.total(
                 r.sessions.size,
                 Xp.cappedSets(r.sets.groupingBy { it.sessionId }.eachCount(), r.sessions.associate { it.id to it.epochDay }),
-                r.sets.count { it.isPr },
+                r.sets.count { it.isPr && countsForPR(it) },
                 r.badges.size,
             )
         )
@@ -179,7 +181,7 @@ class ProgressRepository(
         val bestSeconds = mutableMapOf<String, Int>()
         val bestWeight = mutableMapOf<String, Float>()
         for (s in r.sets) {
-            if (s.exerciseId in ExerciseCatalog.STRETCH_IDS) continue
+            if (!countsForScore(s) || s.exerciseId in ExerciseCatalog.STRETCH_IDS) continue
             s.reps?.let { bestReps.merge(s.exerciseId, it, ::maxOf) }
             s.seconds?.let { bestSeconds.merge(s.exerciseId, it, ::maxOf) }
             s.weightKg?.takeIf { it > 0f }?.let { bestWeight.merge(s.exerciseId, it, ::maxOf) }

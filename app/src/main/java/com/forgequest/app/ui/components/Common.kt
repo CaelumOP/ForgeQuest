@@ -542,7 +542,7 @@ fun NumberStepper(
     fun commit(v: Float) {
         val rounded = if (decimals <= 0) kotlin.math.round(v) else kotlin.math.round(v * 10f.pow(decimals)) / 10f.pow(decimals)
         val next = rounded.coerceIn(min, max)
-        if (next == local) return
+        if (next == local && placeholder == null) return
         local = next
         lastCommit = android.os.SystemClock.uptimeMillis()
         // A light tick per step unless the caller brings its own.

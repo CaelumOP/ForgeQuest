@@ -30,4 +30,18 @@ describe('insights & recoverySplit', () => {
     const cooled = pickInsights({ sessions, sets, exercises: ex }, 'FIRST_ROUND_REPS:0:102', 103, 2);
     expect(cooled.some((i) => i.kind === 'FIRST_ROUND_REPS')).toBe(false);
   });
+
+  it('excludes setType WARMUP even when block is Main', () => {
+    const sessions: SessionEntity[] = [
+      { id: 1, title: 'A', epochDay: 100, startedAt: 1, finishedAt: 2, planDayId: null, note: '', debrief: '' },
+      { id: 2, title: 'B', epochDay: 102, startedAt: 1, finishedAt: 2, planDayId: null, note: '', debrief: '' },
+    ];
+    const sets: SetEntity[] = [
+      { id: 1, sessionId: 1, exerciseId: 'push_up', itemPosition: 0, block: 'Main', circuit: false, setIndex: 0, reps: 10, seconds: null, weightKg: null, done: true, isPr: false, note: '', effort: '', doneAt: null, targetLabel: '', restSeconds: 60, setType: 'WORKING' },
+      { id: 2, sessionId: 2, exerciseId: 'push_up', itemPosition: 0, block: 'Main', circuit: false, setIndex: 0, reps: 25, seconds: null, weightKg: null, done: true, isPr: false, note: '', effort: '', doneAt: null, targetLabel: '', restSeconds: 60, setType: 'WARMUP' },
+      { id: 3, sessionId: 2, exerciseId: 'push_up', itemPosition: 0, block: 'Main', circuit: false, setIndex: 1, reps: 12, seconds: null, weightKg: null, done: true, isPr: false, note: '', effort: '', doneAt: null, targetLabel: '', restSeconds: 60, setType: 'WORKING' },
+    ];
+    const picked = pickInsights({ sessions, sets, exercises: ex }, '', 102, 5);
+    expect(picked.some((i) => i.kind === 'FIRST_ROUND_REPS')).toBe(false);
+  });
 });

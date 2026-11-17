@@ -4,14 +4,26 @@ import { buildBackup, DEFAULT_BACKUP_SETTINGS, encodeBackup } from './backup'
 import { db } from './db'
 import {
   _resetFriendsForTest,
+  acceptFriend,
   badgeCount,
+  blockFriend,
   buildMySnapshot,
-  refreshFriends,
+  declineFriend,
+  effectiveNudgeNextAt,
   ensureFriendsLoaded,
   FRIENDS_AUTH_KEY,
   FRIENDS_CACHE_KEY,
   FRIENDS_DEMO_KEY,
+  getFriendsState,
+  hashSnapshot,
+  localMidnightSec,
   markInboxSeen,
+  migrateNudgeAuth,
+  nudgeCooldownKind,
+  nudgeFriend,
+  pruneNudgeMap,
+  refreshFriends,
+  removeFriend,
   renderGoogleSignInButton,
   setFriendMuted,
   shownName,
@@ -335,5 +347,190 @@ describe('friends persistence and backup isolation', () => {
       width: 240,
       locale: 'ar',
     })
+  })
+
+  it('includes sorted trainDays in buildMySnapshot and changes hashSnapshot when trainDays changes', async () => {
+    const now = new Date(2026, 10, 18, 12).getTime()
+    await db.plans.put({ id: 1, name: 'Test', description: '', source: 'manual', active: true, createdAt: now })
+    await db.planDays.bulkPut([
+      { id: 10, planId: 1, dayOfWeek: 5, title: 'Fri', isRest: false, note: '' },
+      { id: 11, planId: 1, dayOfWeek: 1, title: 'Mon', isRest: false, note: '' },
+      { id: 12, planId: 1, dayOfWeek: 3, title: 'Rest', isRest: true, note: '' },
+      { id: 13, planId: 1, dayOfWeek: 6, title: 'Empty', isRest: false, note: '' },
+    ])
+    await db.planItems.bulkPut([
+      { id: 100, dayId: 10, position: 0, exerciseId: 'squat', block: 'Main', circuit: false, sets: 3, repsMin: 5, repsMax: 5, seconds: null, weightKg: null, restSeconds: 60, note: '' },
+      { id: 101, dayId: 11, position: 0, exerciseId: 'bench', block: 'Main', circuit: false, sets: 3, repsMin: 5, repsMax: 5, seconds: null, weightKg: null, restSeconds: 60, note: '' },
+    ])
+
+    const snap = await buildMySnapshot(false, now)
+    expect(snap.trainDays).toEqual([1, 5])
+
+    const h1 = await hashSnapshot(snap)
+    const h2 = await hashSnapshot({ ...snap, trainDays: [1, 3, 5] })
+    const h3 = await hashSnapshot({ ...snap, trainDays: undefined })
+    expect(h1).not.toBe(h2)
+    expect(h1).not.toBe(h3)
+  })
+
+  it('nudge cooldown helpers handle allowed/blocked, max, pruning, legacy migration, and label choice', () => {
+    const nowMs = new Date(2026, 10, 18, 14, 0, 0).getTime()
+    const nowSec = Math.floor(nowMs / 1000)
+    const midnight = localMidnightSec(nowMs)
+
+    expect(effectiveNudgeNextAt(null, undefined, nowSec)).toBeNull()
+    expect(effectiveNudgeNextAt(nowSec, nowSec - 10, nowSec)).toBeNull()
+    expect(effectiveNudgeNextAt(nowSec + 100, nowSec + 300, nowSec)).toBe(nowSec + 300)
+    expect(effectiveNudgeNextAt(nowSec + 500, nowSec + 300, nowSec)).toBe(nowSec + 500)
+
+    expect(pruneNudgeMap({ old: nowSec - 1, eq: nowSec, active: nowSec + 60 }, nowSec)).toEqual({
+      active: nowSec + 60,
+    })
+
+    expect(nudgeCooldownKind(nowSec + 3600, nowMs)).toBe('again_at')
+    expect(nudgeCooldownKind(midnight, nowMs)).toBe('tomorrow')
+    expect(nudgeCooldownKind(midnight + 60, nowMs)).toBe('tomorrow')
+
+    const migrated = migrateNudgeAuth(
+      {
+        sessionToken: 'tok',
+        nudgeNextAt: { expired: nowSec - 5, keep: nowSec + 100 },
+        nudgedTodayDay: todayEpochDay(new Date(nowMs)),
+        nudgedTodayIds: ['u_legacy', 'keep'],
+      },
+      nowMs,
+    )
+    expect(migrated.changed).toBe(true)
+    expect(migrated.map).toEqual({
+      keep: midnight,
+      u_legacy: midnight,
+    })
+    expect(migrated.auth?.nudgedTodayDay).toBeUndefined()
+    expect(migrated.auth?.nudgedTodayIds).toBeUndefined()
+  })
+
+  it('nudgeFriend handles server nextAt, old-server fallback, 409 refresh, and error rollback', async () => {
+    const future = Math.floor(Date.now() / 1000) + 3600
+    const view = {
+      me: { id: 'u1', username: 'tariq', name: 'tariq', photoUrl: null, sharePhoto: true, sharePrs: true, joined: true },
+      today: todayEpochDay(),
+      weekStart: weekStart(todayEpochDay()),
+      mySnapshot: null,
+      friends: [
+        { id: 'u2', username: 'omar', name: 'omar', photoUrl: null, snapshot: null, nudgeNextAt: null },
+        { id: 'u3', username: 'lina', name: 'lina', photoUrl: null, snapshot: null },
+      ],
+      incoming: [],
+      outgoing: [],
+      nudges: [],
+    }
+    await db.kv.bulkPut([
+      { key: FRIENDS_AUTH_KEY, value: { sessionToken: 'tok_nudge' } },
+      { key: FRIENDS_CACHE_KEY, value: view },
+    ])
+    await ensureFriendsLoaded()
+
+    // 1. Server returns nextAt
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ pushed: true, nextAt: future }))))
+    await expect(nudgeFriend('u2')).resolves.toEqual({ ok: true, data: undefined })
+    let saved = (await db.kv.get(FRIENDS_AUTH_KEY))?.value as { nudgeNextAt?: Record<string, number> }
+    expect(saved.nudgeNextAt?.u2).toBe(future)
+
+    // 2. Network error does not record cooldown
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+    await expect(nudgeFriend('u3')).resolves.toEqual({ ok: false, error: 'network' })
+    saved = (await db.kv.get(FRIENDS_AUTH_KEY))?.value as { nudgeNextAt?: Record<string, number> }
+    expect(saved.nudgeNextAt?.u3).toBeUndefined()
+
+    // 3. 409 already_nudged refreshes view and picks up friend.nudgeNextAt
+    const serverNext = Math.floor(Date.now() / 1000) + 7200
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/v1/nudges/')) {
+        return Promise.resolve(new Response(JSON.stringify({ error: 'already_nudged' }), { status: 409 }))
+      }
+      if (url.includes('/v1/friends')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...view,
+          friends: [view.friends[0], { ...view.friends[1], nudgeNextAt: serverNext }],
+        })))
+      }
+      return Promise.resolve(new Response(null, { status: 204 }))
+    }))
+    await expect(nudgeFriend('u3')).resolves.toEqual({ ok: false, error: 'already_nudged' })
+    saved = (await db.kv.get(FRIENDS_AUTH_KEY))?.value as { nudgeNextAt?: Record<string, number> }
+    expect(saved.nudgeNextAt?.u3).toBe(serverNext)
+
+    // 4. Old server without nextAt falls back to local midnight
+    await db.kv.put({ key: FRIENDS_AUTH_KEY, value: { sessionToken: 'tok_nudge' } })
+    _resetFriendsForTest()
+    await ensureFriendsLoaded()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ pushed: true }))))
+    await expect(nudgeFriend('u2')).resolves.toEqual({ ok: true, data: undefined })
+    saved = (await db.kv.get(FRIENDS_AUTH_KEY))?.value as { nudgeNextAt?: Record<string, number> }
+    expect(saved.nudgeNextAt?.u2).toBeGreaterThanOrEqual(Math.floor(Date.now() / 1000))
+  })
+
+  it('optimistic friend mutations track per-item pending/hidden and roll back on error', async () => {
+    const view = {
+      me: { id: 'u1', username: 'tariq', name: 'tariq', photoUrl: null, sharePhoto: true, sharePrs: true, joined: true },
+      today: todayEpochDay(),
+      weekStart: weekStart(todayEpochDay()),
+      mySnapshot: null,
+      friends: [{ id: 'u2', username: 'omar', name: 'omar', photoUrl: null, snapshot: null }],
+      incoming: [{ id: 'u3', username: 'karim', name: 'karim', photoUrl: null }],
+      outgoing: [{ id: 'u4', username: 'maya', name: 'maya', photoUrl: null }],
+      nudges: [],
+    }
+    await db.kv.bulkPut([
+      { key: FRIENDS_AUTH_KEY, value: { sessionToken: 'tok_opt' } },
+      { key: FRIENDS_CACHE_KEY, value: view },
+    ])
+    await ensureFriendsLoaded()
+
+    let rejectAccept!: (err: unknown) => void
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => new Promise((_, rej) => { rejectAccept = rej })))
+
+    // Start acceptFriend, verify pendingIds/hiddenIds set immediately while global busy stays false
+    const pAccept = acceptFriend('u3')
+    await Promise.resolve()
+    expect(getFriendsState().busy).toBe(false)
+    expect(getFriendsState().pendingIds.has('u3')).toBe(true)
+    expect(getFriendsState().hiddenIds.has('u3')).toBe(true)
+    // Second call while pending returns 'pending' immediately
+    await expect(acceptFriend('u3')).resolves.toEqual({ ok: false, error: 'pending' })
+    rejectAccept(new TypeError('offline'))
+    await expect(pAccept).resolves.toEqual({ ok: false, error: 'network' })
+    expect(getFriendsState().pendingIds.has('u3')).toBe(false)
+    expect(getFriendsState().hiddenIds.has('u3')).toBe(false)
+
+    // After rollback, u3 can be retried and succeeds
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/v1/friends')) return Promise.resolve(new Response(JSON.stringify({ ...view, incoming: [] })))
+      return Promise.resolve(new Response(null, { status: 204 }))
+    }))
+    await expect(acceptFriend('u3')).resolves.toEqual({ ok: true, data: undefined })
+    await expect(declineFriend('u4')).resolves.toEqual({ ok: true, data: undefined })
+    await expect(removeFriend('u2')).resolves.toEqual({ ok: true, data: undefined })
+    await expect(blockFriend('u2')).resolves.toEqual({ ok: true, data: undefined })
+  })
+
+  it('demo mode provides valid breakdowns, a friend with nudgeNextAt, and local demo nudges', async () => {
+    await db.kv.put({ key: FRIENDS_DEMO_KEY, value: true })
+    await ensureFriendsLoaded()
+    const st = getFriendsState()
+    expect(st.demoMode).toBe(true)
+    expect(st.view?.friends.length).toBeGreaterThan(0)
+    for (const f of st.view?.friends ?? []) {
+      if (f.snapshot) {
+        expect(f.snapshot.breakdown).toBeTruthy()
+        expect(f.snapshot.breakdown?.score).toBe(f.snapshot.score)
+      }
+    }
+    const cooling = st.view?.friends.find((f) => typeof f.nudgeNextAt === 'number' && f.nudgeNextAt > Math.floor(Date.now() / 1000))
+    expect(cooling).toBeTruthy()
+
+    const target = st.view!.friends.find((f) => f.nudgeNextAt == null && f.snapshot?.weekState !== 'hit')!
+    await expect(nudgeFriend(target.id)).resolves.toEqual({ ok: true, data: undefined })
+    expect(getFriendsState().nudgeNextAt[target.id]).toBeGreaterThan(Math.floor(Date.now() / 1000))
   })
 })

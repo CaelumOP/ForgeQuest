@@ -203,4 +203,26 @@ class FriendsModelsTest {
         // Activity never counts toward the badge; only the one unseen ping does.
         assertEquals(1, view.badgeCount)
     }
+
+    @Test
+    fun decodeV42NudgeCadenceFieldsWithLegacyFallback() {
+        val withFields = json.decodeFromString(
+            NudgeResult.serializer(),
+            """{"pushed":true,"nextAt":1700014400}""",
+        )
+        assertTrue(withFields.pushed)
+        assertEquals(1700014400L, withFields.nextAt)
+
+        val legacyNudge = json.decodeFromString(NudgeResult.serializer(), """{"pushed":true}""")
+        assertNull(legacyNudge.nextAt)
+
+        val friendWithNextAt = json.decodeFromString(
+            Friend.serializer(),
+            """{"id":"u2","username":"omar","nudgeNextAt":1700014400}""",
+        )
+        assertEquals(1700014400L, friendWithNextAt.nudgeNextAt)
+
+        val legacyFriend = json.decodeFromString(Friend.serializer(), """{"id":"u2","username":"omar"}""")
+        assertNull(legacyFriend.nudgeNextAt)
+    }
 }

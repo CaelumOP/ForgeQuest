@@ -175,9 +175,25 @@ class TrendsTest {
         val sets = listOf(
             set(1, 10).copy(block = "Warm-up"),
             set(1, 10).copy(block = "Warm-up"),
+            set(1, 10).copy(block = "Main", setType = SetType.WARMUP.name),
             set(1, 8).copy(block = "Main"),
             set(1, 30).copy(block = "Cool-down"),
         )
         assertEquals(listOf(1), Trends.weeklySets(sets, sessionDay, 1, today))
+    }
+
+    @Test
+    fun warmupSetTypeInMainBlockIsExcludedFromStrengthSeriesAndTopExercises() {
+        val sessionDay = mapOf(1L to today - 7, 2L to today)
+        val sets = listOf(
+            set(1, 6).copy(weightKg = 50f),
+            set(2, 8).copy(weightKg = 60f),
+            set(2, 10).copy(weightKg = 150f, block = "Main", setType = SetType.WARMUP.name),
+            set(2, 12).copy(exerciseId = "squat", block = "Main", setType = SetType.WARMUP.name),
+        )
+        val series = Trends.bestSetSeries(sets.filter { it.exerciseId == "pull_up" }, ExerciseKind.WEIGHTED, sessionDay)
+        assertEquals(2, series.size)
+        assertEquals(76f, series[1].value, 0.5f)
+        assertEquals(listOf("pull_up"), Trends.topExercises(sets, 5))
     }
 }

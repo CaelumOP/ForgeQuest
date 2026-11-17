@@ -80,6 +80,38 @@ describe('friendsApi (contract v2 routes)', () => {
     expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({ ...base, weekState: 'open' })
   })
 
+  it('PUT /v1/snapshot sends target/prCount/reachedAt only when all three are numbers, and sends trainDays when present', async () => {
+    const mockFetch = vi.fn().mockImplementation(empty(200))
+    vi.stubGlobal('fetch', mockFetch)
+    const base = { weekStart: 20772, done: 2, due: 3, score: 77, badge: 'on_track' as const, streakWeeks: 1, proteinDays: 1, prs: null }
+    await friendsApi.putSnapshot('s', {
+      ...base,
+      target: 3,
+      prCount: 2,
+      reachedAt: 1794700000,
+      trainDays: [1, 3, 5],
+    })
+    await friendsApi.putSnapshot('s', {
+      ...base,
+      target: 3,
+      prCount: 2,
+    })
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({
+      ...base,
+      target: 3,
+      prCount: 2,
+      reachedAt: 1794700000,
+      trainDays: [1, 3, 5],
+    })
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual(base)
+  })
+
+  it('POST /v1/nudges/{id} returns { pushed, nextAt }', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(json({ pushed: true, nextAt: 1794714400 })))
+    await expect(friendsApi.nudge('s', 'u2')).resolves.toEqual({ pushed: true, nextAt: 1794714400 })
+  })
+
   it('POST /v1/invites {username}; error field becomes FriendsError.code', async () => {
     const mockFetch = vi.fn().mockImplementation(json({ error: 'username_not_found' }, 404))
     vi.stubGlobal('fetch', mockFetch)

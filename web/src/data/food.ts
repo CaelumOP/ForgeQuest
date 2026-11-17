@@ -136,6 +136,9 @@ export function recentOneOffsOf(meals: readonly MealRow[]): MealRow[] {
 export const getRecentOneOffs = async (): Promise<MealRow[]> => recentOneOffsOf(await db.meals.filter((m) => m.foodId == null).toArray());
 export const useRecentOneOffs = (): MealRow[] => useLive(getRecentOneOffs, [], []);
 
+/** Whether at least one meal has been logged. */
+export const hasAnyMeal = async (): Promise<boolean> => (await db.meals.count()) > 0;
+
 // ---------------------------------------------------------------- Barcode lookup helpers & offline cache
 
 export type CachedBarcodeProduct = {

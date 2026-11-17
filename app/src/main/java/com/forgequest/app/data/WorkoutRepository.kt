@@ -728,10 +728,18 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         sessions.insertSets(fresh)
     }
 
-    /** A harder version replaces an easy move: today's sets at [positions], and the plan day the workout came from. */
-    suspend fun stepUp(session: SessionEntity, positions: List<Int>, oldId: String, newId: String) = db.withTransaction {
-        positions.forEach { swapExercise(session.id, it, newId) }
+    /** Positions for [stepUp] that have no done sets yet, so completed today's work is never deleted. */
+    internal fun swappableStepUpPositions(positions: List<Int>, sets: List<SetEntity>): List<Int> {
+        val donePositions = sets.filter { it.done }.mapTo(HashSet()) { it.itemPosition }
+        return positions.distinct().filter { it !in donePositions }
+    }
+
+    /** A harder version replaces an easy move: today's sets at unticked [positions], and the plan day the workout came from. Returns swapped position count. */
+    suspend fun stepUp(session: SessionEntity, positions: List<Int>, oldId: String, newId: String): Int = db.withTransaction {
+        val swappable = swappableStepUpPositions(positions, sessions.sets(session.id))
+        swappable.forEach { swapExercise(session.id, it, newId) }
         session.planDayId?.let { dayId -> plans.items(dayId).filter { it.exerciseId == oldId }.forEach { swapPlanItem(it, newId) } }
+        swappable.size
     }
 
     suspend fun discardSession(sessionId: Long) = db.withTransaction {
@@ -746,8 +754,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
     suspend fun finishSession(sessionId: Long, tickAll: Boolean = false): FinishResult = db.withTransaction {
         val session = sessions.byId(sessionId) ?: return@withTransaction FinishResult("", 0, emptyList(), 0)
         val wasAlreadyFinished = session.finishedAt != null
-        // Sets ticked only by "tick all" are not real work, so they can't be records.
-        val unticked = if (tickAll) sessions.sets(sessionId).filter { !it.done }.map { it.id }.toSet() else emptySet()
+        // Sets ticked only by "tick all" are flagged autoTicked=1 so countsForPR excludes them now and forever.
         if (tickAll) {
             sessions.markAllSetsDone(sessionId, System.currentTimeMillis())
         } else {
@@ -769,7 +776,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 .maxOfOrNull { Records.score(ex.kind, it.reps, it.seconds, it.weightKg, ex.id) }
                 ?.let { previousBest[exerciseId] = it }
         }
-        val prIds = PrPicker.pick(done.filter { it.id !in unticked }, { kinds[it] ?: ExerciseKind.REPS }, previousBest)
+        val prIds = PrPicker.pick(done, { kinds[it] ?: ExerciseKind.REPS }, previousBest)
         val prNames = mutableListOf<String>()
         for (s in done.filter { it.id in prIds }) {
             sessions.updateSet(s.copy(isPr = true))

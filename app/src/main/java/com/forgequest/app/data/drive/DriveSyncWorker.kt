@@ -21,6 +21,9 @@ class DriveSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
         return try {
             app.drive.backup(token)
             Result.success()
+        } catch (e: DriveError.RemoteNewer) {
+            // Unseen or newer remote backup requires an explicit user choice; skip silently and try again on the next scheduled run.
+            Result.success()
         } catch (e: DriveError.Offline) {
             Result.retry()
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {

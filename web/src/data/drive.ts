@@ -58,9 +58,19 @@ export function shouldOfferRestore(
   return hasRemoteBackup && isDeviceEmpty(local) && !restoreOfferShown.includes(normalizeAccountKey(email))
 }
 
-export function isRemoteNewer(knownModifiedTime: string | null, remoteModifiedTime: string | null | undefined): boolean {
-  if (!knownModifiedTime || !remoteModifiedTime) return false
+export function needsChoice(
+  knownModifiedTime: string | null,
+  remoteExists: boolean,
+  remoteModifiedTime?: string | null,
+): boolean {
+  if (!remoteExists) return false
+  if (!knownModifiedTime) return true
+  if (!remoteModifiedTime) return false
   return remoteModifiedTime !== knownModifiedTime
+}
+
+export function isRemoteNewer(knownModifiedTime: string | null, remoteModifiedTime: string | null | undefined): boolean {
+  return needsChoice(knownModifiedTime, remoteModifiedTime != null, remoteModifiedTime)
 }
 
 function getKnownRemoteMod(accountKey: string): string | null {
@@ -162,7 +172,7 @@ async function backupInternal(token: string, accountKey: string, forceOverwrite 
   const file = await buildBackup()
   const existing = await findBackupInfo(token)
   if (existing && isDeviceEmpty(file)) return false
-  if (!forceOverwrite && existing && isRemoteNewer(getKnownRemoteMod(accountKey), existing.modifiedTime)) {
+  if (!forceOverwrite && existing && needsChoice(getKnownRemoteMod(accountKey), true, existing.modifiedTime)) {
     throw new DriveError('remote-newer')
   }
   const boundary = `fq${Date.now().toString(36)}`
@@ -202,36 +212,51 @@ export function backupNow(token: string, forceOverwrite = false): Promise<boolea
   })
 }
 
-async function fetchByInfo(token: string, info: RemoteFileInfo, accountKey: string): Promise<BackupFile> {
-  const file = decodeBackup(await (await call(token, `${API}/files/${info.id}?alt=media`)).text())
-  setKnownRemoteMod(accountKey, info.modifiedTime)
-  return file
+async function fetchByInfo(token: string, info: RemoteFileInfo): Promise<BackupFile> {
+  return decodeBackup(await (await call(token, `${API}/files/${info.id}?alt=media`)).text())
 }
 
-/** Downloads the Drive backup without applying it, so the person can see what's in it first. */
-export function fetchDriveBackup(token: string): Promise<BackupFile> {
+export type DriveBackupPreview = { file: BackupFile; accountKey: string; modifiedTime: string | null }
+export type DriveRestoreMeta = { accountKey?: string; modifiedTime: string | null }
+
+/** Downloads the Drive backup without applying it or marking it seen, so the person can preview it first. */
+export function fetchDriveBackupPreview(token: string): Promise<DriveBackupPreview> {
   return withSyncLock(async () => {
     const info = await findBackupInfo(token)
     if (!info) throw new DriveError('no-backup')
     const s = await loadSettings()
-    return fetchByInfo(token, info, normalizeAccountKey(s.driveEmail))
+    const file = await fetchByInfo(token, info)
+    return { file, accountKey: normalizeAccountKey(s.driveEmail), modifiedTime: info.modifiedTime ?? null }
   })
 }
 
-/** Serializes restoring a backup against any background or manual upload. */
-export function restoreSerialized(file: BackupFile): Promise<unknown> {
-  return withSyncLock(() => applyBackup(file))
+/** Downloads the Drive backup without applying it, so the person can see what's in it first. */
+export async function fetchDriveBackup(token: string): Promise<BackupFile> {
+  return (await fetchDriveBackupPreview(token)).file
+}
+
+/** Serializes restoring a backup against any background or manual upload. Records Drive modifiedTime only on confirmed Drive restores. */
+export function restoreSerialized(file: BackupFile, driveMeta?: DriveRestoreMeta): Promise<unknown> {
+  return withSyncLock(async () => {
+    const res = await applyBackup(file)
+    if (driveMeta?.modifiedTime) {
+      const key = driveMeta.accountKey ?? normalizeAccountKey((await loadSettings()).driveEmail)
+      setKnownRemoteMod(key, driveMeta.modifiedTime)
+    }
+    return res
+  })
 }
 
 // ---------------------------------------------------------------- Flows
 
 export type ConnectResult =
   | { kind: 'backed-up'; backedUp: boolean; autoBackupOn: boolean }
-  | { kind: 'offer-restore'; file: BackupFile }
+  | { kind: 'offer-restore'; file: BackupFile; accountKey: string; modifiedTime: string | null }
+  | { kind: 'conflict' }
 
 /**
  * Connect from a tap: sign in, remember the account, inspect remote backup, offer one-tap restore once per
- * account/device when empty, and only then upload (respecting autoBackup / opt-out).
+ * account/device when empty, surface a conflict when an unseen remote exists and an upload would follow, and only then upload.
  */
 export function connectDrive(): Promise<ConnectResult> {
   return withSyncLock(async () => {
@@ -243,8 +268,13 @@ export function connectDrive(): Promise<ConnectResult> {
 
     if (shouldOfferRestore(local, existing != null, accountKey, updated.restoreOfferShown)) {
       await markRestoreOfferShown(accountKey)
-      const file = await fetchByInfo(token, existing!, accountKey)
-      return { kind: 'offer-restore', file }
+      const file = await fetchByInfo(token, existing!)
+      return { kind: 'offer-restore', file, accountKey, modifiedTime: existing!.modifiedTime ?? null }
+    }
+
+    // Only when an upload would follow: never overwrite a remote this device has not seen without asking.
+    if (existing && autoBackupEffective(updated) && needsChoice(getKnownRemoteMod(accountKey), true, existing.modifiedTime)) {
+      return { kind: 'conflict' }
     }
 
     if (autoBackupEffective(updated)) {
@@ -279,6 +309,7 @@ export async function autoBackup(reason: 'open' | 'workout'): Promise<void> {
   try {
     await withSyncLock(() => backupInternal(token, normalizeAccountKey(s.driveEmail), false))
   } catch (e) {
+    if (e instanceof DriveError && e.kind === 'remote-newer') return
     console.warn('auto backup failed', e)
   }
 }

@@ -1,7 +1,16 @@
 import { FRIENDS_BASE } from '../config'
-import type { Friend, Person, Snapshot } from '../domain/forge-score'
+import type { Friend as BaseFriend, Person, Snapshot as BaseSnapshot } from '../domain/forge-score'
 
-export type { Friend, Person, Pr, Snapshot } from '../domain/forge-score'
+export type { Person, Pr } from '../domain/forge-score'
+
+/** Weekly snapshot with optional 4.2 planned training weekdays (ISO 1=Mon..7=Sun). */
+export type Snapshot = BaseSnapshot & { trainDays?: number[] }
+
+/** Friend entry with optional 4.2 nudge cooldown timestamp (Unix seconds). */
+export type Friend = Omit<BaseFriend, 'snapshot'> & {
+  snapshot: Snapshot | null
+  nudgeNextAt?: number | null
+}
 
 // Shapes follow the Friends contract v4 (.claude/scratch/v4/friends-contract.md) and Android FriendsModels.kt.
 
@@ -69,6 +78,7 @@ export interface InviteResult {
 
 export interface NudgeResult {
   pushed: boolean
+  nextAt?: number | null
 }
 
 export interface ProfileInput {
@@ -153,8 +163,12 @@ export const friendsApi = {
 
   deleteMe: (token: string) => request<void>('/v1/me', { method: 'DELETE', token }),
 
-  putSnapshot: (token: string, s: Snapshot) =>
-    request<void>('/v1/snapshot', {
+  putSnapshot: (token: string, s: Snapshot) => {
+    const hasRaw =
+      Number.isFinite(s.target) &&
+      Number.isFinite(s.prCount) &&
+      Number.isFinite(s.reachedAt)
+    return request<void>('/v1/snapshot', {
       method: 'PUT',
       token,
       body: {
@@ -166,10 +180,13 @@ export const friendsApi = {
         streakWeeks: s.streakWeeks,
         proteinDays: s.proteinDays,
         prs: s.prs,
+        ...(hasRaw ? { target: s.target, prCount: s.prCount, reachedAt: s.reachedAt } : {}),
+        ...(s.trainDays !== undefined ? { trainDays: s.trainDays } : {}),
         ...(s.weekState ? { weekState: s.weekState } : {}),
         ...(s.lastWeekState ? { lastWeekState: s.lastWeekState } : {}),
       },
-    }),
+    })
+  },
 
   getFriends: (token: string) => request<FriendsView>('/v1/friends?v=4', { method: 'GET', token }),
 

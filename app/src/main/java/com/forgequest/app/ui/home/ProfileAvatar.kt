@@ -13,6 +13,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,8 +48,16 @@ internal fun ProfileAvatar(name: String, photoUrl: String?, rankMark: String?, o
     val c = Fit.colors
     val label = stringResource(R.string.home41_profile_cd)
     Box(
-        modifier.size(56.dp).clip(CircleShape)
-            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick),
+        // No clip here: the gear dot and rank badge sit on the square's corners, outside a 56dp circle, so a circle clip
+        // cut them in half. The ripple stays round through an unbounded 28dp ripple instead.
+        modifier.size(56.dp)
+            .clickable(
+                interactionSource = null,
+                indication = ripple(bounded = false, radius = 28.dp),
+                onClickLabel = label,
+                role = Role.Button,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.size(48.dp).clip(CircleShape).background(c.tealTrack), contentAlignment = Alignment.Center) {

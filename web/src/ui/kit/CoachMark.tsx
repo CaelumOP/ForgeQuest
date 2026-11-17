@@ -2,8 +2,9 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { t, useLang } from '../../i18n'
 import { Button } from './basics'
+import { toast } from './Overlays'
 import {
-  acquireTip, placeTip, releaseTip, shouldShow, skipTour, stepSeen, waitForTipSlot, type CoachStep,
+  acquireTip, markSkipToastOnce, placeTip, releaseTip, shouldShow, skipTour, stepSeen, waitForTipSlot, type CoachStep,
 } from './coach-mark'
 
 export * from './coach-mark'
@@ -38,6 +39,7 @@ export function CoachMark({ id, title, body, enabled = true, below = false, chil
 
   const onSkip = () => {
     skipTour()
+    if (markSkipToastOnce()) toast(t('v42_coach_skipped'))
     close()
   }
 

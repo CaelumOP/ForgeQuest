@@ -49,6 +49,19 @@ data class FoodScan(
     val note: String = "",
 )
 
+private fun clampMacro(value: Float): Float = if (value.isFinite()) value.coerceIn(0f, 500f) else 0f
+
+internal fun clampFoodScan(scan: FoodScan): FoodScan = scan.copy(
+    items = scan.items.map { item ->
+        item.copy(
+            grams = item.grams.coerceIn(0, 5000),
+            kcal = item.kcal.coerceIn(0, 5000),
+            protein = clampMacro(item.protein),
+            carbs = clampMacro(item.carbs),
+        )
+    },
+)
+
 class FoodRepository(
     private val context: Context,
     private val db: AppDatabase,
@@ -206,10 +219,11 @@ class FoodRepository(
         if (!settings.isAiOn() || key.isBlank()) throw AiError.MissingKey
         val image = withContext(Dispatchers.IO) { File(photoPath).readBytes() }
         val m = models.current()
-        val userPrompt = if (userHint.isBlank()) {
+        val hint = userHint.take(300)
+        val userPrompt = if (hint.isBlank()) {
             "Estimate this meal with realistic cooked weights and macro math."
         } else {
-            "Estimate this meal. User notes/context: $userHint"
+            "Estimate this meal. User notes/context: $hint"
         }
         // Route meal scans to full Flash (m.fast) first with lowThinking = true (~1024 thinking budget)
         // so the model calculates spatial geometry, density, and macro math before writing JSON.
@@ -225,7 +239,7 @@ class FoodRepository(
         val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
             ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
         if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
-        return scan
+        return clampFoodScan(scan)
     }
 
     /** Reads calories, protein and carbs off a photo of a nutrition label (per 100 g, or per serving converted to 100 g). */
@@ -263,7 +277,7 @@ class FoodRepository(
         val scan = runCatching { json.decodeFromString<FoodScan>(extractJson(raw)) }.getOrNull()
             ?: throw AiError.Unreadable(R.string.scan_err_unreadable)
         if (scan.items.isEmpty()) throw AiError.Unreadable(R.string.scan_err_no_food)
-        return scan
+        return clampFoodScan(scan)
     }
 
     private suspend fun scanInstructions(): String {
@@ -295,7 +309,7 @@ class FoodRepository(
 
     /** Reads an answer copied from another AI app. Null when it isn't a meal estimate in the expected format. */
     fun parseScan(text: String): FoodScan? =
-        runCatching { json.decodeFromString<FoodScan>(extractJson(text)) }.getOrNull()?.takeIf { it.items.isNotEmpty() }
+        runCatching { json.decodeFromString<FoodScan>(extractJson(text)) }.getOrNull()?.takeIf { it.items.isNotEmpty() }?.let(::clampFoodScan)
 
     /** A shareable copy of a meal photo for other apps; the private file itself stays out of reach. */
     suspend fun shareablePhoto(photoPath: String): Uri = withContext(Dispatchers.IO) {

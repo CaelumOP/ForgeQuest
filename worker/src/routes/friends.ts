@@ -20,6 +20,8 @@ import {
   UserRow,
 } from "../types";
 import { normalizeUsername, readJsonObject } from "../validate";
+import { isTrainDay, nudgeNextAt } from "../nudge-rule";
+import { readScore } from "../score";
 
 const FRIEND_CAP = 50;
 
@@ -54,6 +56,7 @@ export async function handleGetFriends(
     m.set(w.week_start, w.state as WeekState);
   }
   const mySnapshot = await ctx.store.getSnapshot(user.id);
+  const sentToday = await ctx.store.outgoingNudges(user.id, today);
   const mine = statesByUser.get(user.id) ?? new Map<number, WeekState>();
   return {
     me: toMe(user),
@@ -71,6 +74,8 @@ export async function handleGetFriends(
         snapshot: snapshot ? toSnapshot(snapshot, friend.share_prs === 1, weekState) : null,
         sharedStreak: sharedStreak({ friendsSinceSec: friendsSince, today, mine, theirs }),
         muted: muted.has(friend.id),
+        nudgeNextAt: nudgeNextAt(sentToday.get(friend.id) ?? null,
+          snapshot ? isTrainDay(readScore(snapshot).trainDays, today) : false, today, ctx.nowSec),
       };
     }).sort((a, b) => {
       const current = (f: Friend) => f.snapshot && f.snapshot.weekStart >= weekStart ? f.snapshot : null;

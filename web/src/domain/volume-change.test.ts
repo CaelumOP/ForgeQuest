@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { volumeChangePercent, volumeChangeVsLastTime } from './volume-change';
+import { volumeChangePercent, volumeChangeVsLastTime, workingVolume } from './volume-change';
 import type { SessionEntity, SetEntity } from './entities';
 
 const mkSet = (sessionId: number, weightKg: number, reps: number, block = 'Main'): SetEntity => ({
@@ -12,6 +12,13 @@ describe('volumeChange', () => {
     const prev = [mkSet(1, 50, 10, 'Warm-up'), mkSet(1, 100, 10)];
     const now = [mkSet(2, 110, 10)];
     expect(volumeChangePercent(now, prev)).toBe(10);
+  });
+
+  it('excludes WARMUP set types even inside the Main block', () => {
+    const prev = [{ ...mkSet(1, 60, 10), setType: 'WARMUP' }, mkSet(1, 100, 10)];
+    const now = [{ ...mkSet(2, 60, 10), setType: 'WARMUP' }, mkSet(2, 110, 10)];
+    expect(volumeChangePercent(now, prev)).toBe(10);
+    expect(workingVolume([{ ...mkSet(1, 60, 10), setType: 'WARMUP' }, { ...mkSet(1, 50, 5), setType: 'FAILURE' }])).toBe(250);
   });
 
   it('compares against the previous session of the same plan day', () => {

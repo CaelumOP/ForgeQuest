@@ -1,7 +1,7 @@
 import { t } from '../../i18n'
-import { muscleFromSlug, type Muscle } from '../../domain/muscle'
+import { MUSCLES, muscleFromSlug, type Muscle } from '../../domain/muscle'
 import art from '../progress/body_map.json'
-import { Button, Sheet, haptics } from './index'
+import { Button, Chip, Sheet, haptics } from './index'
 
 type View = { viewBox: number[]; outline: string | null; parts: [string, string][] }
 type Art = Record<'male' | 'female', Record<'front' | 'back', View>>
@@ -44,25 +44,42 @@ export function MuscleMapMini({ primary, secondary, bodyType = 'MALE' }: {
   )
 }
 
-function FilterSvg({ view, selected, onTap }: { view: View; selected: Muscle | null; onTap: (m: Muscle) => void }) {
+function FilterSvg({ view, selected, onTap, figureLabel }: { view: View; selected: Muscle | null; onTap: (m: Muscle) => void; figureLabel: string }) {
   const [x, y, w, h] = view.viewBox
   return (
-    <svg class="kit-mm-filter-svg" viewBox={`${x} ${y} ${w} ${h}`} aria-hidden="true" focusable="false">
+    <svg class="kit-mm-filter-svg" viewBox={`${x} ${y} ${w} ${h}`} role="group" aria-label={figureLabel}>
       {view.outline && <path d={view.outline} style={{ fill: 'var(--card-high)' }} />}
       {view.parts.map(([slug, d], i) => {
         const m = muscleFromSlug(slug)
-        const isSel = m != null && selected === m
+        if (!m) {
+          return <path key={i} d={d} style={{ fill: 'var(--card-high)', stroke: 'none', cursor: 'default' }} />
+        }
+        const isSel = selected != null && m === selected
+        const name = t(`muscle_${m.toLowerCase()}`)
         return (
           <path
             key={i}
             d={d}
+            role="button"
+            tabIndex={0}
+            aria-label={name}
+            aria-pressed={isSel}
+            vector-effect="non-scaling-stroke"
             style={{
-              fill: isSel ? 'var(--blue)' : 'var(--card-high)',
-              stroke: isSel ? 'var(--text)' : 'none',
-              strokeWidth: isSel ? 1.5 : 0,
-              cursor: m ? 'pointer' : 'default',
+              fill: isSel ? 'var(--teal)' : 'color-mix(in srgb, var(--text-2) 28%, transparent)',
+              stroke: isSel ? 'var(--text)' : 'var(--divider)',
+              strokeWidth: isSel ? 1.5 : 1,
+              cursor: 'pointer',
             }}
-            onClick={m ? (e) => { e.stopPropagation(); haptics.lightTick(); onTap(m) } : undefined}
+            onClick={(e) => { e.stopPropagation(); haptics.lightTick(); onTap(m) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                e.stopPropagation()
+                haptics.lightTick()
+                onTap(m)
+              }
+            }}
           />
         )
       })}
@@ -83,16 +100,37 @@ export function MuscleFilterSheet({ open, selected, bodyType = 'MALE', onSelect,
     onSelect(selected === m ? null : m)
     onClose()
   }
+  const selectedName = selected ? t(`muscle_${selected.toLowerCase()}`) : null
   return (
     <Sheet open={open} onClose={onClose} title={t('picker_map_filter')}>
-      {selected && (
-        <div style={{ marginBlockEnd: '12px' }}>
-          <Button variant="tonal" onClick={() => { onSelect(null); onClose() }}>{t('picker_clear_filter')}</Button>
-        </div>
-      )}
+      <div class="kit-mm-filter-head">
+        <p class="kit-mm-filter-hint">{t('v42_muscle_tap_hint')}</p>
+        {selectedName && (
+          <div class="kit-mm-filter-status">
+            <span class="kit-mm-filter-showing">{t('v42_muscle_showing', selectedName)}</span>
+            <Button variant="tonal" onClick={() => { onSelect(null); onClose() }}>{t('picker_clear_filter')}</Button>
+          </div>
+        )}
+      </div>
       <div class="kit-mm-filter-row" dir="ltr">
-        <FilterSvg view={body.front} selected={selected} onTap={pick} />
-        <FilterSvg view={body.back} selected={selected} onTap={pick} />
+        <div class="kit-mm-filter-col">
+          <FilterSvg view={body.front} selected={selected} onTap={pick} figureLabel={t('v42_muscle_front')} />
+          <span class="kit-mm-filter-lbl">{t('v42_muscle_front')}</span>
+        </div>
+        <div class="kit-mm-filter-col">
+          <FilterSvg view={body.back} selected={selected} onTap={pick} figureLabel={t('v42_muscle_back')} />
+          <span class="kit-mm-filter-lbl">{t('v42_muscle_back')}</span>
+        </div>
+      </div>
+      <div class="kit-chips kit-mm-filter-chips" role="group" aria-label={t('muscles_all')}>
+        {MUSCLES.map((m) => (
+          <Chip
+            key={m}
+            label={t(`muscle_${m.toLowerCase()}`)}
+            selected={selected === m}
+            onClick={() => { haptics.lightTick(); pick(m) }}
+          />
+        ))}
       </div>
     </Sheet>
   )

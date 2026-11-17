@@ -206,7 +206,7 @@ interface SessionDao {
     @Update
     suspend fun updateSets(sets: List<SetEntity>)
 
-    @Query("UPDATE sets SET done = 1, doneAt = :now WHERE sessionId = :sessionId AND done = 0")
+    @Query("UPDATE sets SET done = 1, doneAt = :now, autoTicked = 1 WHERE sessionId = :sessionId AND done = 0")
     suspend fun markAllSetsDone(sessionId: Long, now: Long)
 
     /** Latest tick time among a session's done sets, or null when none has one. */

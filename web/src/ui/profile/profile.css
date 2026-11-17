@@ -80,3 +80,8 @@
 @media (max-width: 300px) { .pf-friends-signin { margin-inline-start: 0; } }
 .pf-username { display: flex; flex-direction: column; gap: 4px; margin-block-end: 8px; }
 .pf-offline-line { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-block-start: 10px; }
+
+.pf-guide-row { display: flex; align-items: flex-start; gap: 16px; }
+.pf-guide-body { margin: 4px 0 0; line-height: 20px; }
+.pf-guide-foot { display: flex; justify-content: flex-end; margin-block-start: 8px; }
+.pf-guide-show { text-decoration: none; margin-inline-end: -16px; }

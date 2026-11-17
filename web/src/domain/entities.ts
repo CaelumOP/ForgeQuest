@@ -73,6 +73,7 @@ export type SetEntity = {
   /** When the set was ticked (epoch ms); null while unticked or for sets done before this existed. */
   doneAt?: number | null
   setType?: string
+  autoTicked?: boolean
 }
 
 // kept for backup compatibility (readiness removed in 4.1)

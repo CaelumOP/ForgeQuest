@@ -486,4 +486,15 @@ class WorkoutDebriefMathTest {
         assertEquals(emptyList<Watch>(), r.watch)
         assertEquals(listOf(Next.Harder("push_up", "Diamond push-up"), Next.PlusRep("db_lunge", 11, 15f)), r.next)
     }
+
+    @Test
+    fun autoWarmupSetsInMainBlockAreExcludedFromDebriefAndVolume() {
+        val autoWarmup = s(reps = 10, kg = 200f, block = "Main", pr = true).copy(setType = SetType.WARMUP.name)
+        val workingNow = listOf(autoWarmup, s(reps = 8, kg = 60f))
+        val workingLast = n(1, 8, 60f)
+        val r = run(listOf(ex("bench", ExerciseKind.WEIGHTED, workingNow, workingLast)))
+        assertEquals(Headline.ALL_SAME, r.headline.type)
+        assertTrue(r.wins.none { it is Win.Pr || it is Win.BestGain })
+        assertEquals(480.0, WorkoutDebriefMath.volume(workingNow), 0.001)
+    }
 }

@@ -236,7 +236,7 @@ function QuickLogSheet({ open, initial, carbsOn, aiReady, onLog, onClose }: { op
       </div>
       {carbsOn && <NumberField label={t('label_carbs_g')} value={carbs} onChange={setCarbs} min={0} max={9999} decimal />}
       <CategoryTabs value={cat} onChange={setCat} label={t('scan_meal')} />
-      <Button block disabled={!name.trim() || kcal == null} onClick={() => onLog(name.trim(), cat, Math.round(kcal ?? 0), protein ?? 0, carbs ?? 0)}>{t('food_log_it')}</Button>
+      <Button block disabled={!name.trim()} onClick={() => onLog(name.trim(), cat, Math.max(0, Math.round(kcal ?? 0)), protein ?? 0, carbs ?? 0)}>{t('food_log_it')}</Button>
     </Sheet>
   )
 }
@@ -257,7 +257,8 @@ function FoodEditorSheet({ food, places, carbsOn, aiReady, onSave, onDelete, onC
   const seen = useRef<FoodRow | null>(null)
   if (food && seen.current !== food) {
     seen.current = food
-    setName(food.name); setKcal(numText(food.kcal)); setProtein(numText(food.protein)); setCarbs(numText(food.carbs)); setServing(food.serving); setCat(food.category); setPinned(food.pinned)
+    const isNewBlank = !food.id && !food.name && food.kcal === 0
+    setName(food.name); setKcal(isNewBlank ? null : food.kcal); setProtein(numText(food.protein)); setCarbs(numText(food.carbs)); setServing(food.serving); setCat(food.category); setPinned(food.pinned)
     setPlace(food.place ?? ''); setParts(food.parts ?? []); setEditParts(false); setEstimating(false); setBasis('')
   }
   const onParts = parts.filter((p) => p.on)
@@ -305,7 +306,7 @@ function FoodEditorSheet({ food, places, carbsOn, aiReady, onSave, onDelete, onC
       <div class="food-switch-row"><span>{t('food_pin_top')}</span><Switch on={pinned} onChange={setPinned} label={t('food_w_pinned_switch')} /></div>
       <div class="food-sheet-actions">
         {food?.id ? <Button variant="text" class="kit-danger" onClick={onDelete}>{t('action_delete')}</Button> : <span />}
-        <Button disabled={!name.trim() || (kcal == null && !onParts.length)} onClick={() => food && onSave(withParts({ ...food, name: name.trim(), kcal: Math.round(kcal ?? 0), protein: protein ?? 0, carbs: carbs ?? 0, serving: serving.trim(), category: cat, pinned, place: place.trim() }, parts))}>{t('action_save')}</Button>
+        <Button disabled={!name.trim()} onClick={() => food && onSave(withParts({ ...food, name: name.trim(), kcal: Math.max(0, Math.round(kcal ?? 0)), protein: protein ?? 0, carbs: carbs ?? 0, serving: serving.trim(), category: cat, pinned, place: place.trim() }, parts))}>{t('action_save')}</Button>
       </div>
       <PartsSheet open={editParts} foodName={name || food?.name || ''} parts={parts} carbsOn={carbsOn} onSave={(p) => { setParts(p); setEditParts(false) }} onClose={() => setEditParts(false)} />
     </Sheet>

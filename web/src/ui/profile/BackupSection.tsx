@@ -4,7 +4,8 @@ import { plural, t, intlLocale } from '../../i18n'
 import { backupCounts, buildBackup, decodeBackup, encodeBackup, listSafetyCopies, type BackupFile } from '../../data/backup'
 import { requestPersistence } from '../../data/db'
 import {
-  backupNow, connectDrive, disconnectDrive, DriveError, fetchDriveBackup, preloadGis, restoreSerialized, tokenForTap, validToken,
+  backupNow, connectDrive, disconnectDrive, DriveError, fetchDriveBackupPreview, preloadGis, restoreSerialized, tokenForTap, validToken,
+  type DriveRestoreMeta,
 } from '../../data/drive'
 import { useLive } from '../../data/live'
 import { autoBackupEffective, setAutoBackup, type Settings } from '../../data/settings'
@@ -27,7 +28,7 @@ export function driveErrorText(e: unknown): string {
   return t('backup_restore_failed')
 }
 
-type Pending = { file: BackupFile; source: string; isAutoOffer?: boolean }
+type Pending = { file: BackupFile; source: string; isAutoOffer?: boolean; driveMeta?: DriveRestoreMeta }
 
 const contents = (f: BackupFile) => {
   const c = backupCounts(f)
@@ -38,7 +39,8 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
   const [busy, setBusy] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [noticeOpen, setNoticeOpen] = useState(false)
-  const [remoteNewerOpen, setRemoteNewerOpen] = useState(false)
+  const [conflictKind, setConflictKind] = useState<'exists' | 'newer' | null>(null)
+  const [confirmKeepMine, setConfirmKeepMine] = useState(false)
   const [online, setOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true))
   const [persisted, setPersisted] = useState<boolean | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -61,7 +63,7 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
       await job()
     } catch (e) {
       if (e instanceof DriveError && e.kind === 'remote-newer') {
-        setRemoteNewerOpen(true)
+        setConflictKind('newer')
       } else {
         console.warn('backup action failed', e)
         toast(driveErrorText(e))
@@ -74,7 +76,9 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
   const connect = () => run(t('drive_connecting'), async () => {
     const r = await connectDrive()
     if (r.kind === 'offer-restore') {
-      setPending({ file: r.file, source: t('restore_src_drive'), isAutoOffer: true })
+      setPending({ file: r.file, source: t('restore_src_drive'), isAutoOffer: true, driveMeta: { accountKey: r.accountKey, modifiedTime: r.modifiedTime } })
+    } else if (r.kind === 'conflict') {
+      setConflictKind('exists')
     } else if (!r.autoBackupOn) {
       toast(t('prog41_drive_connected_auto_off'))
     } else {
@@ -87,7 +91,8 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
   })
 
   const fromDrive = () => run(t('drive_reading_backup'), async () => {
-    setPending({ file: await fetchDriveBackup(await tokenForTap()), source: t('restore_src_drive') })
+    const preview = await fetchDriveBackupPreview(await tokenForTap())
+    setPending({ file: preview.file, source: t('restore_src_drive'), driveMeta: { accountKey: preview.accountKey, modifiedTime: preview.modifiedTime } })
   })
 
   const saveFile = () => run(t('backup_preparing'), async () => {
@@ -117,7 +122,7 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
   const restore = () => {
     const p = pending
     setPending(null)
-    if (p) void run(t('backup_restoring'), async () => { await restoreSerialized(p.file); toast(t('backup_restored_from', p.source)) })
+    if (p) void run(t('backup_restoring'), async () => { await restoreSerialized(p.file, p.driveMeta); toast(t('backup_restored_from', p.source)) })
   }
 
   const protectStorage = async () => {
@@ -203,12 +208,23 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
         onCancel={() => setPending(null)}
       />
       <Dialog
-        open={remoteNewerOpen}
-        title={t('prog41_drive_remote_newer_title')}
-        message={t('prog41_drive_remote_newer_body')}
-        confirmLabel={t('drive_web_restore_confirm')}
-        onConfirm={() => { setRemoteNewerOpen(false); void fromDrive() }}
-        onCancel={() => setRemoteNewerOpen(false)}
+        open={conflictKind != null}
+        title={conflictKind === 'exists' ? t('v42_drive_remote_exists_title') : t('prog41_drive_remote_newer_title')}
+        message={conflictKind === 'exists' ? t('v42_drive_remote_exists_body') : t('prog41_drive_remote_newer_body')}
+        confirmLabel={conflictKind === 'exists' ? t('v42_drive_restore') : t('drive_web_restore_confirm')}
+        secondaryLabel={t('v42_drive_keep_mine')}
+        onConfirm={() => { setConflictKind(null); void fromDrive() }}
+        onSecondary={() => { setConflictKind(null); setConfirmKeepMine(true) }}
+        onCancel={() => setConflictKind(null)}
+      />
+      <Dialog
+        open={confirmKeepMine}
+        title={t('v42_drive_keep_mine')}
+        message={t('v42_drive_keep_mine_confirm')}
+        confirmLabel={t('v42_drive_replace')}
+        destructive
+        onConfirm={() => { setConfirmKeepMine(false); void backUp(true) }}
+        onCancel={() => setConfirmKeepMine(false)}
       />
     </>
   )

@@ -1,6 +1,8 @@
 package com.forgequest.app.data.friends
 
 import kotlinx.serialization.Serializable
+import java.time.Instant
+import java.time.ZoneId
 
 /** Current user's Friends profile and settings. */
 @Serializable
@@ -65,6 +67,8 @@ data class Snapshot(
     val scoreVersion: Int? = null,
     val breakdown: com.forgequest.app.domain.ForgeScoreBreakdown? = null,
     val updatedAt: Long = 0,
+    /** 4.2: user's planned training weekdays (ISO 1=Mon..7=Sun), sorted, or null when none. */
+    val trainDays: List<Int>? = null,
 )
 
 /** A friend together with their latest synced snapshot, if any. */
@@ -79,6 +83,8 @@ data class Friend(
     val sharedStreak: Int = 0,
     /** v4: I muted this friend's workout alerts. */
     val muted: Boolean = false,
+    /** 4.2: Unix seconds when this sender may nudge this friend again; null = can nudge now. */
+    val nudgeNextAt: Long? = null,
 ) {
     val shownName: String get() = username?.takeIf { it.isNotBlank() } ?: name
 }
@@ -158,4 +164,48 @@ data class InviteResult(
 @Serializable
 data class NudgeResult(
     val pushed: Boolean,
+    val nextAt: Long? = null,
 )
+
+/** Pure nudge cooldown gate and label helper (effective = max(server, local)). */
+object NudgeGate {
+    enum class LabelKind { AGAIN_AT, TOMORROW }
+
+    /**
+     * Effective cooldown expiry (Unix seconds), or null when nudging is allowed at [nowSec].
+     * Uses `max(server ?: 0, local ?: 0)` and allows nudging when `nowSec >= effective`.
+     */
+    fun blockedUntil(server: Long?, local: Long?, nowSec: Long): Long? {
+        val effective = maxOf(server ?: 0L, local ?: 0L)
+        return if (nowSec >= effective) null else effective
+    }
+
+    /** Start of tomorrow (00:00:00) in [zone] for the instant [nowSec]. */
+    fun localMidnightSec(nowSec: Long, zone: ZoneId = ZoneId.systemDefault()): Long =
+        Instant.ofEpochSecond(nowSec).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toEpochSecond()
+
+    /** Cooldown expiry after a nudge attempt, falling back to local midnight when the server omits `nextAt`. */
+    fun nextBlockedUntil(serverNextAt: Long?, nowSec: Long, zone: ZoneId = ZoneId.systemDefault()): Long =
+        serverNextAt ?: localMidnightSec(nowSec, zone)
+
+    /** Returns [LabelKind.TOMORROW] when [blockedUntilSec] is at or past the start of tomorrow in [zone]. */
+    fun labelKind(blockedUntilSec: Long, nowSec: Long, zone: ZoneId = ZoneId.systemDefault()): LabelKind =
+        if (blockedUntilSec >= localMidnightSec(nowSec, zone)) LabelKind.TOMORROW else LabelKind.AGAIN_AT
+
+    /** Removes cooldown entries that have already expired (`value <= nowSec`). */
+    fun prune(entries: Map<String, Long>, nowSec: Long): Map<String, Long> =
+        entries.filterValues { it > nowSec }
+
+    /** Merges server `Friend.nudgeNextAt` values with the persisted local map, keeping active cooldowns (> [nowSec]). */
+    fun effectiveMap(friends: List<Friend>, local: Map<String, Long>, nowSec: Long): Map<String, Long> {
+        val result = LinkedHashMap<String, Long>()
+        for ((id, until) in local) {
+            if (until > nowSec) result[id] = until
+        }
+        for (f in friends) {
+            val blocked = blockedUntil(f.nudgeNextAt, result[f.id], nowSec)
+            if (blocked != null) result[f.id] = blocked
+        }
+        return result
+    }
+}

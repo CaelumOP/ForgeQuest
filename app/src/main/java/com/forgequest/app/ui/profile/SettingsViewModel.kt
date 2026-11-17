@@ -44,10 +44,17 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     val busy = MutableStateFlow<String?>(null)
     val consent = MutableStateFlow<android.app.PendingIntent?>(null)
 
-    /** A backup waiting for the person to confirm: where it came from, and its contents. */
-    data class RestorePreview(@androidx.annotation.StringRes val source: Int, val file: BackupFile, val isAutoOffer: Boolean = false)
+    enum class DriveConflictKind { REMOTE_EXISTS, REMOTE_NEWER }
+
+    /** A backup waiting for the person to confirm: where it came from, its contents, and optional Drive modifiedTime. */
+    data class RestorePreview(
+        @param:androidx.annotation.StringRes val source: Int,
+        val file: BackupFile,
+        val isAutoOffer: Boolean = false,
+        val remoteModifiedTime: String? = null,
+    )
     val restorePreview = MutableStateFlow<RestorePreview?>(null)
-    val remoteNewerPrompt = MutableStateFlow(false)
+    val driveConflict = MutableStateFlow<DriveConflictKind?>(null)
     val shareUri = MutableStateFlow<Uri?>(null)
     val safetyCopies = MutableStateFlow(app.backup.safetyCopies())
     val exercises: StateFlow<List<ExerciseEntity>> =
@@ -141,8 +148,6 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         app.settings.update { it.copy(reminderHour = hour) }
         ReminderWorker.schedule(app.appContext, hour)
     }
-
-    fun setLock(on: Boolean) = viewModelScope.launch { app.settings.update { it.copy(biometricLock = on) } }
 
     fun setTheme(theme: String) = viewModelScope.launch { app.settings.update { it.copy(theme = theme) } }
     fun setUnit(unit: String) = viewModelScope.launch { app.settings.update { it.copy(unit = WeightUnit.fromCodeOrLabel(unit).code) } }
@@ -270,7 +275,11 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         when (val outcome = app.drive.connectAndInspect(token)) {
             is DriveConnectOutcome.OfferRestore -> {
                 DriveSyncWorker.syncScheduling(app.appContext, app.settings.current().autoBackupEffective)
-                restorePreview.value = RestorePreview(R.string.restore_src_drive, outcome.file, isAutoOffer = true)
+                restorePreview.value = RestorePreview(R.string.restore_src_drive, outcome.file, isAutoOffer = true, remoteModifiedTime = outcome.modifiedTime)
+            }
+            is DriveConnectOutcome.Conflict -> {
+                DriveSyncWorker.syncScheduling(app.appContext, app.settings.current().autoBackupEffective)
+                driveConflict.value = DriveConflictKind.REMOTE_EXISTS
             }
             is DriveConnectOutcome.Connected -> {
                 DriveSyncWorker.syncScheduling(app.appContext, outcome.autoBackupOn)
@@ -292,12 +301,13 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         try {
             message.value = app.str(if (app.drive.backup(token, forceOverwrite)) R.string.drive_backed_up else R.string.drive_err_nothing_to_back_up)
         } catch (_: DriveError.RemoteNewer) {
-            remoteNewerPrompt.value = true
+            driveConflict.value = DriveConflictKind.REMOTE_NEWER
         }
     }
 
     fun restore() = withDrive(app.str(R.string.drive_reading_backup)) { token ->
-        restorePreview.value = RestorePreview(R.string.restore_src_drive, app.drive.fetchBackup(token))
+        val fetched = app.drive.fetchBackup(token)
+        restorePreview.value = RestorePreview(R.string.restore_src_drive, fetched.file, remoteModifiedTime = fetched.modifiedTime)
     }
 
     // ------------------------------------------------------------ Local backup file
@@ -363,7 +373,13 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
         busy.value = app.str(R.string.backup_restoring)
         viewModelScope.launch {
             try {
-                app.drive.withSyncLock { app.backup.apply(preview.file) }
+                app.drive.withSyncLock {
+                    app.backup.apply(preview.file)
+                    if (preview.source == R.string.restore_src_drive && !preview.remoteModifiedTime.isNullOrBlank()) {
+                        val email = app.settings.current().driveEmail
+                        if (email.isNotBlank()) app.drive.markRestored(email, preview.remoteModifiedTime)
+                    }
+                }
                 DriveSyncWorker.syncScheduling(app.appContext, app.settings.current().autoBackupEffective)
                 safetyCopies.value = app.backup.safetyCopies()
                 message.value = app.str(R.string.backup_restored_from, app.str(preview.source))

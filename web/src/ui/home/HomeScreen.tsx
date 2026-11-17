@@ -22,6 +22,7 @@ import { RaadEgg } from './RaadEgg'
 import { shownName, useFriends } from '../../data/friends'
 import { Avatar } from '../friends/Avatar'
 import { CalorieCard } from './CalorieCard'
+import { GettingStarted } from './GettingStarted'
 import { FoodTargetsCard, TargetNudge } from './SetupCards'
 import './home.css'
 
@@ -95,6 +96,7 @@ export function HomeScreen(_: { param?: string }) {
       <Rings s={s} />
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {startOnTop && todayCard}
+      <GettingStarted />
       {unseen.length > 0 && !justLog && (
         <Card href="#/badges">
           <div class="home-row">

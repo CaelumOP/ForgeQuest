@@ -6,7 +6,7 @@ import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
 import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
-import { isExtraBlock } from '../../domain/volume-change'
+import { countsAsWorkingSet } from '../../domain/set-types'
 import { formatDay } from '../day-format'
 import { fromKg, unitLabel } from '../../domain/units'
 import type { WeightUnit } from '../../domain/units'
@@ -128,7 +128,7 @@ export function HistoryScreen(_: { param?: string }) {
                   <h3 class="hs-day" key={`d${day}`}>{formatDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                   {list.map((s) => {
                     const ss = bySession.get(s.id!) ?? []
-                    const workingCount = ss.filter((x) => !isExtraBlock(x.block)).length
+                    const workingCount = ss.filter(countsAsWorkingSet).length
                     const mins = minutesOf(s)
                     const ex = [...new Set(ss.map((x) => x.exerciseId))].map((id) => names.get(id)).filter((n): n is string => !!n)
                     const prc = ss.filter((x) => x.isPr).length

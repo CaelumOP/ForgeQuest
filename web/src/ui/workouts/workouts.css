@@ -461,16 +461,54 @@ html[dir='rtl'] .wk-lh-chev {
   block-size: 100%;
   inline-size: auto;
 }
+.kit-mm-filter-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kit-mm-filter-hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+.kit-mm-filter-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kit-mm-filter-showing {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--teal);
+}
 .kit-mm-filter-row {
   display: flex;
   justify-content: center;
   gap: 12px;
-  block-size: 260px;
+}
+.kit-mm-filter-col {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 .kit-mm-filter-svg {
-  flex: 1;
-  block-size: 100%;
-  inline-size: auto;
+  display: block;
+  block-size: 240px;
+  inline-size: 100%;
+}
+.kit-mm-filter-lbl {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.kit-mm-filter-chips {
+  padding-block-start: 4px;
 }
 
 .wk-search-row {

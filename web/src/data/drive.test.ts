@@ -3,25 +3,38 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fixtureText from './fixtures/android-backup.json?raw';
 import { db } from './db';
 import { applyBackup, decodeBackup } from './backup';
-import { BACKUP_NAME, DriveError, autoBackup, backupNow, connectDrive, disconnectDrive, fetchDriveBackup, isDeviceEmpty, lastActivityAt } from './drive';
+import {
+  BACKUP_NAME, DriveError, autoBackup, backupNow, connectDrive, disconnectDrive, fetchDriveBackup,
+  fetchDriveBackupPreview, isDeviceEmpty, isRemoteNewer, lastActivityAt, needsChoice, restoreSerialized,
+} from './drive';
 import { autoBackupEffective, loadSettings, setAutoBackup, updateSettings } from './settings';
 
 type Call = { url: string; method: string; body?: string };
 let calls: Call[];
+let store: Map<string, string>;
 
 /** A fake Drive: `existing` is the backup file id already in appDataFolder (or null), `stored` its text. */
-function fakeDrive(existing: string | null, stored = '') {
+function fakeDrive(existing: string | null, stored = '', modifiedTime = '2026-11-10T00:00:00Z') {
   calls = [];
   vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
     calls.push({ url, method: init.method ?? 'GET', body: init.body as string | undefined });
-    if (url.includes('/files?spaces=appDataFolder')) return Response.json({ files: existing ? [{ id: existing }] : [] });
+    if (url.includes('/files?spaces=appDataFolder')) return Response.json({ files: existing ? [{ id: existing, modifiedTime }] : [] });
     if (url.includes('alt=media')) return new Response(stored);
-    if (url.includes('/upload/')) return Response.json({ id: existing ?? 'new' });
+    if (url.includes('/upload/')) return Response.json({ id: existing ?? 'new', modifiedTime });
     return new Response('', { status: 404 });
   });
 }
 
-beforeEach(async () => { await Promise.all(db.tables.map((t) => t.clear())); });
+beforeEach(async () => {
+  await Promise.all(db.tables.map((t) => t.clear()));
+  store = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { store.set(k, v); },
+    removeItem: (k: string) => { store.delete(k); },
+    clear: () => { store.clear(); },
+  });
+});
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('drive backup', () => {
@@ -151,5 +164,74 @@ describe('drive backup', () => {
     });
     store.set('fq.drive.remoteMod.sync@example.com', '2026-11-10T00:00:00Z');
     await expect(backupNow('tok')).rejects.toMatchObject({ kind: 'remote-newer' });
+  });
+
+  it('needsChoice / isRemoteNewer treats unseen existing remote (known=null) as needing a choice', () => {
+    expect(needsChoice(null, false)).toBe(false);
+    expect(needsChoice(null, true, '2026-11-10T00:00:00Z')).toBe(true);
+    expect(needsChoice(null, true, undefined)).toBe(true);
+    expect(needsChoice('2026-11-10T00:00:00Z', true, '2026-11-10T00:00:00Z')).toBe(false);
+    expect(needsChoice('2026-11-10T00:00:00Z', true, '2026-11-12T00:00:00Z')).toBe(true);
+    expect(isRemoteNewer(null, '2026-11-10T00:00:00Z')).toBe(true);
+    expect(isRemoteNewer('2026-11-10T00:00:00Z', '2026-11-10T00:00:00Z')).toBe(false);
+  });
+
+  it('restore preview does not mark remote as seen; only confirmed Drive restore or upload does, never local file restore', async () => {
+    await updateSettings((s) => ({ ...s, driveEmail: 'sync@example.com' }));
+    fakeDrive('abc', fixtureText, '2026-11-12T00:00:00Z');
+
+    const preview = await fetchDriveBackupPreview('tok');
+    expect(store.has('fq.drive.remoteMod.sync@example.com')).toBe(false);
+
+    // Local file restore never sets knownRemoteMod
+    await restoreSerialized(preview.file);
+    expect(store.has('fq.drive.remoteMod.sync@example.com')).toBe(false);
+
+    // Confirming Drive restore marks knownRemoteMod
+    await restoreSerialized(preview.file, { accountKey: preview.accountKey, modifiedTime: preview.modifiedTime });
+    expect(store.get('fq.drive.remoteMod.sync@example.com')).toBe('2026-11-12T00:00:00Z');
+  });
+
+  it('connectDrive returns conflict instead of overwriting an unseen remote backup when local is non-empty, and autoBackup skips silently', async () => {
+    await applyBackup(decodeBackup(fixtureText));
+    let uploads = 0;
+    vi.stubGlobal('fetch', async (url: string) => {
+      if (url.includes('/about')) return Response.json({ user: { emailAddress: 'Sync@Example.com' } });
+      if (url.includes('/files?spaces=appDataFolder')) return Response.json({ files: [{ id: 'abc', modifiedTime: '2026-11-12T00:00:00Z' }] });
+      if (url.includes('/upload/')) {
+        uploads++;
+        return Response.json({ id: 'abc', modifiedTime: '2026-11-13T00:00:00Z' });
+      }
+      return new Response('', { status: 404 });
+    });
+    vi.stubGlobal('window', {
+      google: {
+        accounts: {
+          oauth2: {
+            initTokenClient: (c: { callback: (r: { access_token: string; expires_in: number }) => void }) => ({
+              requestAccessToken: () => c.callback({ access_token: 'tok1', expires_in: 3600 }),
+            }),
+            revoke: () => undefined,
+          },
+        },
+      },
+    });
+
+    const res = await connectDrive();
+    expect(res).toEqual({ kind: 'conflict' });
+    expect(uploads).toBe(0);
+
+    // autoBackup skips silently on conflict
+    store.set('fq.drive.token', JSON.stringify({ token: 'tok1', exp: Date.now() + 3_600_000 }));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await autoBackup('workout');
+    expect(uploads).toBe(0);
+    expect(warn).not.toHaveBeenCalled();
+
+    // Explicit force overwrite succeeds and records the new modifiedTime
+    await expect(backupNow('tok1', false)).rejects.toMatchObject({ kind: 'remote-newer' });
+    expect(await backupNow('tok1', true)).toBe(true);
+    expect(uploads).toBe(1);
+    expect(store.get('fq.drive.remoteMod.sync@example.com')).toBe('2026-11-13T00:00:00Z');
   });
 });

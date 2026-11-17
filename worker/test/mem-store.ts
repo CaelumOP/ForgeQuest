@@ -446,6 +446,21 @@ export class MemStore implements Store {
     return true;
   }
 
+  async rearmNudge(fromId: string, toId: string, day: number, nowSec: number, sentBeforeSec: number): Promise<boolean> {
+    const n = this.nudges.get(this.nudgeKey(fromId, toId, day));
+    if (!n || n.created_at > sentBeforeSec) return false;
+    n.created_at = nowSec;
+    n.seen = 0;
+    n.seen_v4 = 0;
+    return true;
+  }
+
+  async outgoingNudges(fromId: string, day: number): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    for (const n of this.nudges.values()) if (n.from_id === fromId && n.day === day) out.set(n.to_id, n.created_at);
+    return out;
+  }
+
   async upsertPushToken(
     token: string,
     userId: string,

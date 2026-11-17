@@ -99,4 +99,19 @@ describe('parseLabelRead (Gemini nutrition label JSON)', () => {
     expect(parseLabelRead('{"kcal":0}', '12345678')).toBeNull();
     expect(parseLabelRead('{"basis":"serving","servingGrams":0,"kcal":100}', '12345678')).toBeNull();
   });
+
+  it('clamps out-of-range AI numbers and turns NaN/Infinity into 0', () => {
+    const scan = parseScan(JSON.stringify({
+      dish: 'Feast',
+      items: [
+        { name: 'Huge', grams: 99999, kcal: 25000, protein: 1200, carbs: 999 },
+        { name: 'Bogus', grams: 'NaN', kcal: 'Infinity', protein: -10, carbs: 'abc' },
+      ],
+    }))!;
+    expect(scan.items[0]).toEqual({ name: 'Huge', grams: 5000, kcal: 5000, protein: 500, carbs: 500 });
+    expect(scan.items[1]).toEqual({ name: 'Bogus', grams: 0, kcal: 0, protein: 0, carbs: 0 });
+
+    const label = parseLabelRead('{"name":"Powder","basis":"serving","servingGrams":9000,"kcal":9999,"protein":800,"carbs":700}', '1111');
+    expect(label).toMatchObject({ kcal: 5000, protein: 500, carbs: 500, serving: '5000 g' });
+  });
 });

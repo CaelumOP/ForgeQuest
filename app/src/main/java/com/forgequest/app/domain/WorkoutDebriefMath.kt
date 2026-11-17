@@ -155,9 +155,9 @@ object WorkoutDebriefMath {
     fun compute(input: Input): Result {
         val score = input.score
         val exs = input.exercises.mapNotNull { e ->
-            val working = e.done.filterNot { WorkoutScore.isExtra(it.block) }
+            val working = e.done.filter { countsForScore(it) }
             if (working.isEmpty()) return@mapNotNull null
-            val lastWorking = e.last.filterNot { WorkoutScore.isExtra(it.block) }
+            val lastWorking = e.last.filter { countsForScore(it) }
             val fromScore = score.exercises.firstOrNull { it.exerciseId == e.exerciseId }
             val pain = working.any { effort(it) == SetEffort.PAIN }
             Ex(
@@ -167,7 +167,7 @@ object WorkoutDebriefMath {
                 trend = fromScore?.trend ?: if (lastWorking.isEmpty()) null else WorkoutScore.trend(e.kind, e.exerciseId, working, lastWorking),
                 // Pain read from notes too, the same way Progression reads it.
                 forgiven = (fromScore?.forgiven ?: false) || pain,
-                pr = fromScore?.pr ?: if (e.done.any { it.isPr }) WorkoutScore.prKindOf(e.kind) else null,
+                pr = fromScore?.pr ?: if (e.done.any { it.isPr && countsForPR(it) }) WorkoutScore.prKindOf(e.kind) else null,
                 pain = pain,
                 painLast = lastWorking.any { effort(it) == SetEffort.PAIN },
             )
@@ -426,7 +426,7 @@ object WorkoutDebriefMath {
 
     /** Total weight x reps over working sets; bodyweight sets and holds count 0, as everywhere else. */
     fun volume(sets: List<SetEntity>): Double =
-        sets.filterNot { WorkoutScore.isExtra(it.block) }.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }
+        sets.filter { countsForScore(it) }.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }
 
     /** Whole-percent change of [now] against [was]; null when either has no volume to compare. */
     fun volumeChangePercent(now: List<SetEntity>, was: List<SetEntity>): Int? {

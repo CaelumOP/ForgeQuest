@@ -9,6 +9,8 @@ import { useLive } from './live';
 import { BADGES, type BadgeDef, type BadgeStats } from '../domain/badges';
 import { todayEpochDay } from '../domain/dates';
 import type { SetEntity } from '../domain/entities';
+import { countsForPR, countsForScore } from '../domain/set-types';
+import { STRETCH_IDS } from './seed/exercise-catalog';
 import type { Muscle } from '../domain/muscle';
 import {
   cappedSets, computeRecovery, MAX_RECOVERY_WINDOW_HOURS, computeStreak, dayTagMap, fullTarget, levelFor, sessionHits, totalXp, weeksToLock,
@@ -91,7 +93,7 @@ export async function getProgressSnapshot(now = Date.now(), save = true): Promis
   const setsBySession = new Map<number, number>();
   for (const s of sets) setsBySession.set(s.sessionId, (setsBySession.get(s.sessionId) ?? 0) + 1);
   const xpSets = cappedSets(setsBySession, new Map(sessions.map((s) => [s.id!, s.epochDay])));
-  const level = levelFor(totalXp(sessions.length, xpSets, sets.filter((s) => s.isPr).length, badges.length));
+  const level = levelFor(totalXp(sessions.length, xpSets, sets.filter((s) => s.isPr && countsForPR(s)).length, badges.length));
   return {
     settings, plan, streak, level, recovery, badges, today: todayNutrition, nutritionByDay, weights, sessions,
     doneSets: sets, exercises, stats, dayTags,
@@ -109,6 +111,7 @@ function statsFor(
   const bestSeconds: Record<string, number> = {};
   const bestWeight: Record<string, number> = {};
   for (const s of sets) {
+    if (!countsForScore(s) || STRETCH_IDS.has(s.exerciseId)) continue; // warm-ups and stretches never earn badges (as Android)
     if (s.reps != null) bestReps[s.exerciseId] = Math.max(bestReps[s.exerciseId] ?? 0, s.reps);
     if (s.seconds != null) bestSeconds[s.exerciseId] = Math.max(bestSeconds[s.exerciseId] ?? 0, s.seconds);
     if (s.weightKg != null && s.weightKg > 0) bestWeight[s.exerciseId] = Math.max(bestWeight[s.exerciseId] ?? 0, s.weightKg);
@@ -149,6 +152,9 @@ export async function markBadgesSeen(): Promise<void> {
 export async function logWeight(kg: number): Promise<void> {
   await putWeight({ epochDay: todayEpochDay(), kg: Math.trunc(kg * 10) / 10, loggedAt: Date.now() });
 }
+
+/** Whether at least one body weight entry has been logged. */
+export const hasAnyWeight = async (): Promise<boolean> => (await db.weights.count()) > 0;
 
 
 /** Excuses `epochDay` (today or up to 3 days back); null `tag` takes the excuse away. */

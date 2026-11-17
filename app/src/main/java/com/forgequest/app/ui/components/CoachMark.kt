@@ -82,7 +82,11 @@ fun CoachMarkBox(key: String, title: Int, body: Int, enabled: Boolean = true, be
                 action = {
                     androidx.compose.foundation.layout.Row {
                         // Leaves the tour for good; "Got it" only closes this tip.
-                        TextButton(onClick = { com.forgequest.app.ui.onboarding.AppTour.skip(context); scope.launch { state.dismiss() } }) { Text(stringResource(R.string.coach_skip), color = c.textSecondary) }
+                        TextButton(onClick = {
+                            val newlySkipped = com.forgequest.app.ui.onboarding.AppTour.skip(context)
+                            scope.launch { state.dismiss() }
+                            if (newlySkipped) context.toast(context.getString(R.string.v42_coach_skipped))
+                        }) { Text(stringResource(R.string.coach_skip), color = c.textSecondary) }
                         TextButton(onClick = { scope.launch { state.dismiss() } }) { Text(stringResource(R.string.coach_got_it), color = c.teal) }
                     }
                 },

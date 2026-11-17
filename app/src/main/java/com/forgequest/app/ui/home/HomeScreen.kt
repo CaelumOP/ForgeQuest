@@ -129,10 +129,28 @@ fun HomeScreen(nav: NavHostController) {
     val friendsName by vm.friendsName.collectAsState()
     val open by vm.openSession.collectAsState()
     val c = Fit.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val health by vm.health.collectAsState()
+    val hasMeasurement by vm.hasMeasurement.collectAsState()
+    val hasFriendOrOutgoing by vm.hasFriendOrOutgoing.collectAsState()
+    var gsEligible by remember { mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.gsEligible(context)) }
+    var gsDismissed by remember { mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.gsDismissed(context)) }
+    var gsFriendDone by remember { mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.gsFriendDone(context)) }
+    LaunchedEffect(hasFriendOrOutgoing) {
+        if (hasFriendOrOutgoing && !gsFriendDone) {
+            com.forgequest.app.ui.onboarding.TourPrefs.setGsFriendDone(context)
+            gsFriendDone = true
+        }
+    }
     // Re-read Health Connect (steps, calories burned, weight) on resume; update notice refreshes every 6 hours.
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.checkBadges(); vm.app.updateNotice.refresh(); onPauseOrDispose {} }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        vm.resumeHealth(); vm.checkBadges(); vm.app.updateNotice.refresh()
+        gsEligible = com.forgequest.app.ui.onboarding.TourPrefs.gsEligible(context)
+        gsDismissed = com.forgequest.app.ui.onboarding.TourPrefs.gsDismissed(context)
+        gsFriendDone = com.forgequest.app.ui.onboarding.TourPrefs.gsFriendDone(context) || hasFriendOrOutgoing
+        onPauseOrDispose {}
+    }
     val updateBanner by vm.app.updateNotice.banner.collectAsState()
     val whatsNew by vm.app.updateNotice.whatsNew.collectAsState()
     var weightSheet by remember { mutableStateOf(false) }
@@ -217,7 +235,23 @@ fun HomeScreen(nav: NavHostController) {
     val hasCalorieCard = remember(s, health) { com.forgequest.app.ui.CalorieUi.card(s, health) } != null
     val friends by vm.friends.collectAsState()
     val friendsShown = !justLog && friends.isNotEmpty()
-    val extras = listOf(unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs, friendsShown).count { it }
+    val gsState = remember(s.sessions, s.stats.mealsLogged, s.weights, hasMeasurement, gsFriendDone) {
+        computeGettingStarted(
+            GettingStartedInput(
+                hasWorkout = s.sessions.isNotEmpty(),
+                hasMeal = s.stats.mealsLogged > 0,
+                hasWeight = s.weights.isNotEmpty(),
+                hasMeasurement = hasMeasurement,
+                friendDone = gsFriendDone,
+            )
+        )
+    }
+    val gsAllDoneNow = gsEligible && !gsDismissed && gsState.allDone
+    val gsVisible = isGettingStartedVisible(gsEligible, gsDismissed, gsState.allDone, showingAllDoneVisit = gsAllDoneNow)
+    LaunchedEffect(gsAllDoneNow) {
+        if (gsAllDoneNow) com.forgequest.app.ui.onboarding.TourPrefs.setGsDismissed(context)
+    }
+    val extras = listOf(unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs, friendsShown, gsVisible).count { it }
 
     // One screen, no scrolling, at normal text on a common phone (about 412 x 919 dp: 780 dp between the status bar and
     // the tab bar). Height budget in dp: header 80, rings 210 + stats 54, streak + month 161, today's workout 154 (+57
@@ -248,6 +282,24 @@ fun HomeScreen(nav: NavHostController) {
             }
             whatsNew?.let { WhatsNewDialog(it, onDismiss = vm.app.updateNotice::dismissWhatsNew) }
             CrashCard(Modifier.padding(top = ForgeSpace.Xs))
+            if (gsVisible) {
+                GettingStartedCard(
+                    state = gsState,
+                    onDismiss = {
+                        com.forgequest.app.ui.onboarding.TourPrefs.setGsDismissed(context)
+                        gsDismissed = true
+                    },
+                    onWorkout = { nav.goToTab(Routes.WORKOUTS) },
+                    onFood = { nav.goToTab(Routes.FOOD) },
+                    onWeight = { nav.goToTab(Routes.PROGRESS) },
+                    onMeasure = {
+                        com.forgequest.app.ui.progress.ProgressMeasureLink.openAdd = true
+                        nav.goToTab(Routes.PROGRESS)
+                    },
+                    onFriend = { nav.goToTab(Routes.FRIENDS) },
+                    modifier = Modifier.padding(top = ForgeSpace.Sm),
+                )
+            }
             FlexGap(weighted = !fallbackScroll)
             Hero(s, fit, onFood = { nav.goToTab(Routes.FOOD) }, onWeight = { weightSheet = true })
             FlexGap(weighted = !fallbackScroll)

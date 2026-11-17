@@ -98,7 +98,7 @@ export class ForgeQuestDb extends Dexie {
     }));
     this.plans.hook('reading', (row) => row && ({ scheduleMode: 'WEEKDAY', rotationCursor: 0, ...row }));
     this.planItems.hook('reading', (row) => row && ({ supersetGroup: null, autoWarmup: false, progressionMode: 'DOUBLE', ...row }));
-    this.sets.hook('reading', (row) => row && ({ setType: 'WORKING', ...row }));
+    this.sets.hook('reading', (row) => row && ({ setType: 'WORKING', autoTicked: false, ...row }));
   }
 }
 

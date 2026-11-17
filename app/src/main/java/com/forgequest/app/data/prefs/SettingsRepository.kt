@@ -93,7 +93,6 @@ data class Settings(
     val hapticsEnabled: Boolean = true,
     val unit: String = "kg",
     val reminderHour: Int = -1,
-    val biometricLock: Boolean = false,
     /** Optional, for the calorie estimate. 0 means not given. */
     val heightCm: Float = 0f,
     val birthYear: Int = 0,
@@ -194,7 +193,6 @@ class SettingsRepository(private val context: Context) {
         val haptics = booleanPreferencesKey("haptics_enabled")
         val unit = stringPreferencesKey("weight_unit")
         val reminderHour = intPreferencesKey("reminder_hour")
-        val biometric = booleanPreferencesKey("biometric_lock")
         val height = floatPreferencesKey("height_cm")
         val birthYear = intPreferencesKey("birth_year")
         val trackCarbs = booleanPreferencesKey("track_carbs")
@@ -278,7 +276,6 @@ class SettingsRepository(private val context: Context) {
             hapticsEnabled = this[K.haptics] ?: true,
             unit = normalizedUnit,
             reminderHour = this[K.reminderHour] ?: -1,
-            biometricLock = this[K.biometric] ?: false,
             heightCm = this[K.height] ?: 0f,
             birthYear = this[K.birthYear] ?: 0,
             trackCarbs = this[K.trackCarbs] ?: false,
@@ -345,7 +342,6 @@ class SettingsRepository(private val context: Context) {
             p[K.haptics] = s.hapticsEnabled
             p[K.unit] = WeightUnit.fromCodeOrLabel(s.unit).code
             p[K.reminderHour] = s.reminderHour
-            p[K.biometric] = s.biometricLock
             p[K.height] = s.heightCm
             p[K.birthYear] = s.birthYear
             p[K.trackCarbs] = s.trackCarbs
