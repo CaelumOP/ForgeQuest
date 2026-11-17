@@ -52,7 +52,7 @@ describe('debrief text', () => {
       wins: [{ type: 'MORE_WORK', exerciseId: 'squat', kind: 'REPS', from: 20, to: 24 }, { type: 'ALL_SETS', sets: 2 }, { type: 'ALL_SETS', sets: 5 }],
     }
     const ar = debriefLines(d, 'ar', name, (kg) => `${kg}`)
-    expect(ar.wins[0]).toContain('من 20 إلى 24 تكراراً'.replace('تكراراً', 'تكرارًا'))
+    expect(ar.wins[0]).toContain('من 20 إلى 24 عدّةً')
     expect(ar.wins[1]).toContain('مجموعتين')
     expect(ar.wins[2]).toContain('5 مجموعات')
     expect(ar.wins.join(' ')).not.toMatch(/[→←]/)

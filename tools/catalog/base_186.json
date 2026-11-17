@@ -1,0 +1,3789 @@
+[
+  {
+    "id": "jumping_jacks",
+    "name": "Jumping jacks",
+    "ar": "القفز مع فتح الذراعين",
+    "kind": "REPS",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": "hemo(D1, 120)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=120s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CARRY_CONDITIONING",
+    "historicalAr": [
+      "القفز مع فتح الذراعين"
+    ]
+  },
+  {
+    "id": "plank_shoulder_taps",
+    "name": "Plank shoulder taps",
+    "ar": "البلانك مع لمس الكتفين",
+    "kind": "REPS",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "SHOULDERS",
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_ANTI_EXTENSION",
+    "historicalAr": [
+      "البلانك مع لمس الكتفين"
+    ]
+  },
+  {
+    "id": "burpee",
+    "name": "Burpee",
+    "ar": "البيربي",
+    "kind": "REPS",
+    "primary": [
+      "QUADS",
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CARRY_CONDITIONING",
+    "historicalAr": [
+      "البيربي"
+    ]
+  },
+  {
+    "id": "incline_hollow_plank",
+    "name": "Incline hollow plank",
+    "ar": "البلانك المجوّف المائل",
+    "kind": "HOLD",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "SHOULDERS",
+      "CHEST"
+    ],
+    "videoExprKt": "hemo(D1, 136)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=136s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_ANTI_EXTENSION",
+    "historicalAr": [
+      "البلانك المجوّف المائل"
+    ]
+  },
+  {
+    "id": "incline_reverse_plank",
+    "name": "Incline reverse plank",
+    "ar": "البلانك العكسي المائل",
+    "kind": "HOLD",
+    "primary": [
+      "GLUTES",
+      "LOWER_BACK"
+    ],
+    "secondary": [
+      "SHOULDERS",
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": "hemo(D3, 150)",
+    "videoUrl": "https://www.youtube.com/watch?v=jgfyxLtte1g&t=150s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "البلانك العكسي المائل"
+    ]
+  },
+  {
+    "id": "hip_bridge",
+    "name": "Hip bridge",
+    "ar": "جسر الورك",
+    "kind": "REPS",
+    "primary": [
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS",
+      "LOWER_BACK"
+    ],
+    "videoExprKt": "hemo(D1, 150)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=150s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "جسر الورك"
+    ]
+  },
+  {
+    "id": "crunch",
+    "name": "Crunch",
+    "ar": "الكرانش",
+    "kind": "REPS",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "OBLIQUES"
+    ],
+    "videoExprKt": "hemo(D1, 164)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=164s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "الكرانش",
+      "الطحن البطني"
+    ]
+  },
+  {
+    "id": "superman_hold",
+    "name": "Superman hold",
+    "ar": "ثبات سوبرمان",
+    "kind": "HOLD",
+    "primary": [
+      "LOWER_BACK"
+    ],
+    "secondary": [
+      "GLUTES",
+      "TRAPS"
+    ],
+    "videoExprKt": "hemo(D1, 182)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=182s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "ثبات سوبرمان"
+    ]
+  },
+  {
+    "id": "knee_scapular_push_up",
+    "name": "Knee scapular push-up",
+    "ar": "ضغط لوح الكتف على الركبتين",
+    "kind": "REPS",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "CHEST",
+      "TRAPS"
+    ],
+    "videoExprKt": "hemo(D1, 202)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=202s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط لوح الكتف على الركبتين"
+    ]
+  },
+  {
+    "id": "scapular_australian_pull_up",
+    "name": "Scapular Australian pull-up",
+    "ar": "سحب أسترالي للوح الكتف",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "TRAPS"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": "hemo(D1, 210)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=210s",
+    "stretch": false,
+    "equipment": "LOW_BAR",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "سحب أسترالي للوح الكتف"
+    ]
+  },
+  {
+    "id": "bent_leg_bench_dip",
+    "name": "Bent-leg bench dip",
+    "ar": "متوازي على المقعد بركبتين مثنيتين",
+    "kind": "REPS",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "videoExprKt": "hemo(D1, 222)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=222s",
+    "stretch": false,
+    "equipment": "FLAT_BENCH",
+    "pattern": "DIP_PUSH",
+    "historicalAr": [
+      "متوازي على المقعد بركبتين مثنيتين"
+    ]
+  },
+  {
+    "id": "scapular_australian_chin_up",
+    "name": "Scapular Australian chin-up",
+    "ar": "سحب أسترالي عكسي للوح الكتف",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "TRAPS"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": "hemo(D1, 230)",
+    "videoUrl": "https://www.youtube.com/watch?v=--W5i-fWBvY&t=230s",
+    "stretch": false,
+    "equipment": "LOW_BAR",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "سحب أسترالي عكسي للوح الكتف"
+    ]
+  },
+  {
+    "id": "knee_push_up",
+    "name": "Knee push-up",
+    "ar": "ضغط على الركبتين",
+    "kind": "REPS",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": "hemo(D2, 134)",
+    "videoUrl": "https://www.youtube.com/watch?v=OZY8i8OTCYA&t=134s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط على الركبتين"
+    ]
+  },
+  {
+    "id": "australian_pull_up",
+    "name": "Australian pull-up",
+    "ar": "السحب الأسترالي",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "TRAPS",
+      "FOREARMS"
+    ],
+    "videoExprKt": "hemo(D2, 148)",
+    "videoUrl": "https://www.youtube.com/watch?v=OZY8i8OTCYA&t=148s",
+    "stretch": false,
+    "equipment": "LOW_BAR",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "السحب الأسترالي"
+    ]
+  },
+  {
+    "id": "reverse_grip_bench_dip",
+    "name": "Reverse-grip bent-leg bench dip",
+    "ar": "متوازي على المقعد بقبضة عكسية",
+    "kind": "REPS",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [
+      "SHOULDERS",
+      "CHEST"
+    ],
+    "videoExprKt": "hemo(D2, 158)",
+    "videoUrl": "https://www.youtube.com/watch?v=OZY8i8OTCYA&t=158s",
+    "stretch": false,
+    "equipment": "FLAT_BENCH",
+    "pattern": "DIP_PUSH",
+    "historicalAr": [
+      "متوازي على المقعد بقبضة عكسية"
+    ]
+  },
+  {
+    "id": "australian_chin_up",
+    "name": "Australian chin-up",
+    "ar": "السحب الأسترالي بقبضة عكسية",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": "hemo(D2, 166)",
+    "videoUrl": "https://www.youtube.com/watch?v=OZY8i8OTCYA&t=166s",
+    "stretch": false,
+    "equipment": "LOW_BAR",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "السحب الأسترالي بقبضة عكسية"
+    ]
+  },
+  {
+    "id": "wide_knee_push_up",
+    "name": "Wide knee push-up",
+    "ar": "ضغط واسع على الركبتين",
+    "kind": "REPS",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS",
+      "TRICEPS"
+    ],
+    "videoExprKt": "hemo(D4, 190)",
+    "videoUrl": "https://www.youtube.com/watch?v=PD6y0qK1pDk&t=190s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط واسع على الركبتين"
+    ]
+  },
+  {
+    "id": "dead_hang",
+    "name": "Dead hang",
+    "ar": "التعلّق الحر",
+    "kind": "HOLD",
+    "primary": [
+      "FOREARMS"
+    ],
+    "secondary": [
+      "UPPER_BACK",
+      "SHOULDERS"
+    ],
+    "videoExprKt": "hemo(D4, 198)",
+    "videoUrl": "https://www.youtube.com/watch?v=PD6y0qK1pDk&t=198s",
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "التعلّق الحر"
+    ]
+  },
+  {
+    "id": "incline_diamond_knee_push_up",
+    "name": "Incline diamond knee push-up",
+    "ar": "ضغط الماسة المائل على الركبتين",
+    "kind": "REPS",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "videoExprKt": "hemo(D5, 136)",
+    "videoUrl": "https://www.youtube.com/watch?v=JX3G94SyBeU&t=136s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "ELBOW_EXTENSION",
+    "historicalAr": [
+      "ضغط الماسة المائل على الركبتين"
+    ]
+  },
+  {
+    "id": "half_squat",
+    "name": "Half-rep squat",
+    "ar": "نصف سكوات",
+    "kind": "REPS",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": "hemo(D3, 192)",
+    "videoUrl": "https://www.youtube.com/watch?v=jgfyxLtte1g&t=192s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "نصف سكوات"
+    ]
+  },
+  {
+    "id": "half_wide_squat",
+    "name": "Half-rep wide squat",
+    "ar": "نصف سكوات واسع",
+    "kind": "REPS",
+    "primary": [
+      "QUADS",
+      "ADDUCTORS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": "hemo(D3, 202)",
+    "videoUrl": "https://www.youtube.com/watch?v=jgfyxLtte1g&t=202s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "نصف سكوات واسع"
+    ]
+  },
+  {
+    "id": "half_narrow_squat",
+    "name": "Half-rep narrow squat",
+    "ar": "نصف سكوات ضيق",
+    "kind": "REPS",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": "hemo(D3, 210)",
+    "videoUrl": "https://www.youtube.com/watch?v=jgfyxLtte1g&t=210s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "نصف سكوات ضيق"
+    ]
+  },
+  {
+    "id": "calf_raise_turned_out",
+    "name": "Calf raise, feet turned out",
+    "ar": "رفع السمانة بقدمين متباعدتي الأطراف",
+    "kind": "REPS",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [],
+    "videoExprKt": "hemo(D3, 234)",
+    "videoUrl": "https://www.youtube.com/watch?v=jgfyxLtte1g&t=234s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "رفع السمانة بقدمين متباعدتي الأطراف"
+    ]
+  },
+  {
+    "id": "calf_raise",
+    "name": "Calf raise",
+    "ar": "رفع السمانة",
+    "kind": "REPS",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [],
+    "videoExprKt": "hemo(D3, 242)",
+    "videoUrl": "https://www.youtube.com/watch?v=jgfyxLtte1g&t=242s",
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "رفع السمانة"
+    ]
+  },
+  {
+    "id": "push_up",
+    "name": "Push-up",
+    "ar": "الضغط",
+    "kind": "REPS",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "الضغط"
+    ]
+  },
+  {
+    "id": "diamond_push_up",
+    "name": "Diamond push-up",
+    "ar": "ضغط الماسة",
+    "kind": "REPS",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "ELBOW_EXTENSION",
+    "historicalAr": [
+      "ضغط الماسة"
+    ]
+  },
+  {
+    "id": "pike_push_up",
+    "name": "Pike push-up",
+    "ar": "ضغط الحربة",
+    "kind": "REPS",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "ضغط الحربة"
+    ]
+  },
+  {
+    "id": "pull_up",
+    "name": "Pull-up",
+    "ar": "العقلة",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "FOREARMS",
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "العقلة"
+    ]
+  },
+  {
+    "id": "chin_up",
+    "name": "Chin-up",
+    "ar": "العقلة بقبضة عكسية",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "العقلة بقبضة عكسية"
+    ]
+  },
+  {
+    "id": "negative_pull_up",
+    "name": "Negative pull-up",
+    "ar": "العقلة السلبية",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "العقلة السلبية"
+    ]
+  },
+  {
+    "id": "dip",
+    "name": "Parallel bar dip",
+    "ar": "المتوازي",
+    "kind": "REPS",
+    "primary": [
+      "TRICEPS",
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DIP_STATION",
+    "pattern": "DIP_PUSH",
+    "historicalAr": [
+      "المتوازي"
+    ]
+  },
+  {
+    "id": "squat",
+    "name": "Bodyweight squat",
+    "ar": "سكوات بوزن الجسم",
+    "kind": "REPS",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "سكوات بوزن الجسم"
+    ]
+  },
+  {
+    "id": "lunge",
+    "name": "Lunge",
+    "ar": "الطعن",
+    "kind": "REPS",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_UNILATERAL",
+    "historicalAr": [
+      "الطعن"
+    ]
+  },
+  {
+    "id": "bulgarian_split_squat",
+    "name": "Bulgarian split squat",
+    "ar": "سكوات بلغاري",
+    "kind": "REPS",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS",
+      "ADDUCTORS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "FLAT_BENCH",
+    "pattern": "SQUAT_UNILATERAL",
+    "historicalAr": [
+      "سكوات بلغاري"
+    ]
+  },
+  {
+    "id": "pistol_squat",
+    "name": "Pistol squat",
+    "ar": "سكوات بستل",
+    "kind": "REPS",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "CALVES",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_UNILATERAL",
+    "historicalAr": [
+      "سكوات بستل",
+      "سكوات البستل"
+    ]
+  },
+  {
+    "id": "nordic_curl",
+    "name": "Nordic hamstring curl",
+    "ar": "الثني النوردي للفخذ الخلفية",
+    "kind": "REPS",
+    "primary": [
+      "HAMSTRINGS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "KNEE_FLEXION",
+    "historicalAr": [
+      "الثني النوردي للفخذ الخلفية"
+    ]
+  },
+  {
+    "id": "plank",
+    "name": "Plank",
+    "ar": "البلانك",
+    "kind": "HOLD",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "SHOULDERS",
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_ANTI_EXTENSION",
+    "historicalAr": [
+      "البلانك"
+    ]
+  },
+  {
+    "id": "hollow_hold",
+    "name": "Hollow body hold",
+    "ar": "ثبات الجسم المجوّف",
+    "kind": "HOLD",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_ANTI_EXTENSION",
+    "historicalAr": [
+      "ثبات الجسم المجوّف"
+    ]
+  },
+  {
+    "id": "hanging_knee_raise",
+    "name": "Hanging knee raise",
+    "ar": "رفع الركبتين معلّقًا",
+    "kind": "REPS",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "FOREARMS",
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "رفع الركبتين معلّقًا"
+    ]
+  },
+  {
+    "id": "hanging_leg_raise",
+    "name": "Hanging leg raise",
+    "ar": "رفع الساقين معلّقًا",
+    "kind": "REPS",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "OBLIQUES",
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "رفع الساقين معلّقًا"
+    ]
+  },
+  {
+    "id": "muscle_up",
+    "name": "Muscle-up",
+    "ar": "المسل أب",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "TRICEPS"
+    ],
+    "secondary": [
+      "CHEST",
+      "BICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "المسل أب"
+    ]
+  },
+  {
+    "id": "l_sit",
+    "name": "L-sit",
+    "ar": "جلسة L",
+    "kind": "HOLD",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "QUADS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DIP_STATION",
+    "pattern": "CORE_ANTI_EXTENSION",
+    "historicalAr": [
+      "جلسة L"
+    ]
+  },
+  {
+    "id": "handstand_hold",
+    "name": "Handstand hold",
+    "ar": "الثبات على اليدين",
+    "kind": "HOLD",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "TRAPS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "الثبات على اليدين"
+    ]
+  },
+  {
+    "id": "handstand_push_up",
+    "name": "Handstand push-up",
+    "ar": "الضغط على اليدين مقلوبًا",
+    "kind": "REPS",
+    "primary": [
+      "SHOULDERS",
+      "TRICEPS"
+    ],
+    "secondary": [
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "الضغط على اليدين مقلوبًا"
+    ]
+  },
+  {
+    "id": "tuck_planche",
+    "name": "Tuck planche",
+    "ar": "البلانش المضموم",
+    "kind": "HOLD",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "CHEST",
+      "ABS",
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "البلانش المضموم"
+    ]
+  },
+  {
+    "id": "pseudo_planche_push_up",
+    "name": "Pseudo planche push-up",
+    "ar": "ضغط البلانش التمهيدي",
+    "kind": "REPS",
+    "primary": [
+      "SHOULDERS",
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط البلانش التمهيدي"
+    ]
+  },
+  {
+    "id": "tuck_front_lever",
+    "name": "Tuck front lever",
+    "ar": "الفرونت ليفر المضموم",
+    "kind": "HOLD",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "ABS",
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "الفرونت ليفر المضموم"
+    ]
+  },
+  {
+    "id": "front_lever_row",
+    "name": "Tuck front lever row",
+    "ar": "سحب الفرونت ليفر المضموم",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "سحب الفرونت ليفر المضموم"
+    ]
+  },
+  {
+    "id": "back_lever_tuck",
+    "name": "Tuck back lever",
+    "ar": "الباك ليفر المضموم",
+    "kind": "HOLD",
+    "primary": [
+      "SHOULDERS",
+      "CHEST"
+    ],
+    "secondary": [
+      "BICEPS",
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "UPPER_BACK_PULL",
+    "historicalAr": [
+      "الباك ليفر المضموم"
+    ]
+  },
+  {
+    "id": "weighted_pull_up",
+    "name": "Weighted pull-up",
+    "ar": "العقلة بوزن إضافي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "FOREARMS",
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "العقلة بوزن إضافي"
+    ]
+  },
+  {
+    "id": "weighted_chin_up",
+    "name": "Weighted chin-up",
+    "ar": "العقلة العكسية بوزن إضافي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK",
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "العقلة العكسية بوزن إضافي"
+    ]
+  },
+  {
+    "id": "weighted_dip",
+    "name": "Weighted dip",
+    "ar": "المتوازي بوزن إضافي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "TRICEPS",
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DIP_STATION",
+    "pattern": "DIP_PUSH",
+    "historicalAr": [
+      "المتوازي بوزن إضافي"
+    ]
+  },
+  {
+    "id": "weighted_push_up",
+    "name": "Weighted push-up",
+    "ar": "الضغط بوزن إضافي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "الضغط بوزن إضافي"
+    ]
+  },
+  {
+    "id": "bench_press",
+    "name": "Bench press",
+    "ar": "ضغط البنش",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL,FLAT_BENCH",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط البنش"
+    ]
+  },
+  {
+    "id": "incline_db_press",
+    "name": "Incline dumbbell press",
+    "ar": "ضغط الدمبل المائل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS,ADJ_BENCH",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط الدمبل المائل"
+    ]
+  },
+  {
+    "id": "overhead_press",
+    "name": "Overhead press",
+    "ar": "الضغط فوق الرأس",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "الضغط فوق الرأس"
+    ]
+  },
+  {
+    "id": "lateral_raise",
+    "name": "Lateral raise",
+    "ar": "الرفرفة الجانبية",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "LATERAL_RAISE",
+    "historicalAr": [
+      "الرفرفة الجانبية"
+    ]
+  },
+  {
+    "id": "face_pull",
+    "name": "Face pull",
+    "ar": "السحب للوجه",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS",
+      "TRAPS"
+    ],
+    "secondary": [
+      "UPPER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "UPPER_BACK_PULL",
+    "historicalAr": [
+      "السحب للوجه"
+    ]
+  },
+  {
+    "id": "barbell_row",
+    "name": "Barbell row",
+    "ar": "التجديف بالبار",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "LOWER_BACK",
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "التجديف بالبار"
+    ]
+  },
+  {
+    "id": "lat_pulldown",
+    "name": "Lat pulldown",
+    "ar": "السحب العلوي للظهر",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "LAT_PULLDOWN",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "السحب العلوي للظهر"
+    ]
+  },
+  {
+    "id": "seated_cable_row",
+    "name": "Seated cable row",
+    "ar": "التجديف جالسًا بالكابل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SEATED_ROW_MACHINE",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "التجديف جالسًا بالكابل"
+    ]
+  },
+  {
+    "id": "deadlift",
+    "name": "Deadlift",
+    "ar": "الرفعة الميتة",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS",
+      "GLUTES",
+      "LOWER_BACK"
+    ],
+    "secondary": [
+      "TRAPS",
+      "FOREARMS",
+      "QUADS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الرفعة الميتة"
+    ]
+  },
+  {
+    "id": "romanian_deadlift",
+    "name": "Romanian deadlift",
+    "ar": "الرفعة الميتة الرومانية",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الرفعة الميتة الرومانية"
+    ]
+  },
+  {
+    "id": "back_squat",
+    "name": "Back squat",
+    "ar": "سكوات بالبار خلفًا",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS",
+      "LOWER_BACK",
+      "ADDUCTORS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL,SQUAT_RACK",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "سكوات بالبار خلفًا"
+    ]
+  },
+  {
+    "id": "leg_press",
+    "name": "Leg press",
+    "ar": "ضغط الأرجل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [
+      "GLUTES",
+      "ADDUCTORS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "LEG_PRESS",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "ضغط الأرجل"
+    ]
+  },
+  {
+    "id": "leg_extension",
+    "name": "Leg extension",
+    "ar": "مدّ الأرجل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "LEG_EXTENSION",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "مدّ الأرجل"
+    ]
+  },
+  {
+    "id": "leg_curl",
+    "name": "Leg curl",
+    "ar": "ثني الأرجل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "LEG_CURL",
+    "pattern": "KNEE_FLEXION",
+    "historicalAr": [
+      "ثني الأرجل"
+    ]
+  },
+  {
+    "id": "hip_thrust",
+    "name": "Hip thrust",
+    "ar": "دفع الورك",
+    "kind": "WEIGHTED",
+    "primary": [
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL,FLAT_BENCH",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "دفع الورك"
+    ]
+  },
+  {
+    "id": "standing_calf_raise",
+    "name": "Standing calf raise (machine)",
+    "ar": "رفع السمانة واقفًا (جهاز)",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CALF_MACHINE",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "رفع السمانة واقفًا (جهاز)"
+    ]
+  },
+  {
+    "id": "bicep_curl",
+    "name": "Dumbbell curl",
+    "ar": "ثني الذراع بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني الذراع بالدمبل"
+    ]
+  },
+  {
+    "id": "hammer_curl",
+    "name": "Hammer curl",
+    "ar": "ثني المطرقة",
+    "kind": "WEIGHTED",
+    "primary": [
+      "BICEPS",
+      "FOREARMS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني المطرقة"
+    ]
+  },
+  {
+    "id": "tricep_pushdown",
+    "name": "Triceps pushdown",
+    "ar": "دفع الترايسبس للأسفل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "ELBOW_EXTENSION",
+    "historicalAr": [
+      "دفع الترايسبس للأسفل"
+    ]
+  },
+  {
+    "id": "skull_crusher",
+    "name": "Skull crusher",
+    "ar": "تمديد الترايسبس مستلقيًا",
+    "kind": "WEIGHTED",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL,FLAT_BENCH",
+    "pattern": "ELBOW_EXTENSION",
+    "historicalAr": [
+      "تمديد الترايسبس مستلقيًا",
+      "تمرين الجمجمة"
+    ]
+  },
+  {
+    "id": "shrug",
+    "name": "Shrug",
+    "ar": "هزّ الكتفين",
+    "kind": "WEIGHTED",
+    "primary": [
+      "TRAPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "UPPER_BACK_PULL",
+    "historicalAr": [
+      "هزّ الكتفين"
+    ]
+  },
+  {
+    "id": "cable_crunch",
+    "name": "Cable crunch",
+    "ar": "الكرانش بالكابل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "الكرانش بالكابل",
+      "الطحن البطني بالكابل"
+    ]
+  },
+  {
+    "id": "tibialis_raise",
+    "name": "Tibialis raise",
+    "ar": "رفع مقدمة القدم",
+    "kind": "REPS",
+    "primary": [
+      "TIBIALIS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "رفع مقدمة القدم"
+    ]
+  },
+  {
+    "id": "heel_walk",
+    "name": "Heel walk",
+    "ar": "المشي على الكعبين",
+    "kind": "HOLD",
+    "primary": [
+      "TIBIALIS"
+    ],
+    "secondary": [
+      "CALVES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "المشي على الكعبين"
+    ]
+  },
+  {
+    "id": "band_dorsiflexion",
+    "name": "Band dorsiflexion",
+    "ar": "ثني القدم للأعلى بالحزام المطاطي",
+    "kind": "REPS",
+    "primary": [
+      "TIBIALIS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BAND",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "ثني القدم للأعلى بالحزام المطاطي"
+    ]
+  },
+  {
+    "id": "copenhagen_plank_short",
+    "name": "Copenhagen plank, short lever",
+    "ar": "بلانك كوبنهاغن بذراع قصيرة",
+    "kind": "HOLD",
+    "primary": [
+      "ADDUCTORS"
+    ],
+    "secondary": [
+      "OBLIQUES",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "FLAT_BENCH",
+    "pattern": "HIP_ADDUCTION",
+    "historicalAr": [
+      "بلانك كوبنهاغن بذراع قصيرة"
+    ]
+  },
+  {
+    "id": "copenhagen_plank_long",
+    "name": "Copenhagen plank, long lever",
+    "ar": "بلانك كوبنهاغن بذراع طويلة",
+    "kind": "HOLD",
+    "primary": [
+      "ADDUCTORS"
+    ],
+    "secondary": [
+      "OBLIQUES",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "FLAT_BENCH",
+    "pattern": "HIP_ADDUCTION",
+    "historicalAr": [
+      "بلانك كوبنهاغن بذراع طويلة"
+    ]
+  },
+  {
+    "id": "side_lying_hip_adduction",
+    "name": "Side-lying hip adduction",
+    "ar": "ضمّ الورك مستلقيًا على الجانب",
+    "kind": "REPS",
+    "primary": [
+      "ADDUCTORS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HIP_ADDUCTION",
+    "historicalAr": [
+      "ضمّ الورك مستلقيًا على الجانب"
+    ]
+  },
+  {
+    "id": "cossack_squat",
+    "name": "Cossack squat",
+    "ar": "سكوات قوزاقي",
+    "kind": "REPS",
+    "primary": [
+      "ADDUCTORS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "QUADS",
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_UNILATERAL",
+    "historicalAr": [
+      "سكوات قوزاقي",
+      "سكوات كوزاك"
+    ]
+  },
+  {
+    "id": "band_hip_adduction",
+    "name": "Band hip adduction",
+    "ar": "ضمّ الورك بالحزام المطاطي",
+    "kind": "REPS",
+    "primary": [
+      "ADDUCTORS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BAND",
+    "pattern": "HIP_ADDUCTION",
+    "historicalAr": [
+      "ضمّ الورك بالحزام المطاطي"
+    ]
+  },
+  {
+    "id": "side_plank",
+    "name": "Side plank",
+    "ar": "البلانك الجانبي",
+    "kind": "HOLD",
+    "primary": [
+      "OBLIQUES"
+    ],
+    "secondary": [
+      "ABS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_ANTI_EXTENSION",
+    "historicalAr": [
+      "البلانك الجانبي"
+    ]
+  },
+  {
+    "id": "bicycle_crunch",
+    "name": "Bicycle crunch",
+    "ar": "كرانش الدراجة",
+    "kind": "REPS",
+    "primary": [
+      "OBLIQUES",
+      "ABS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "كرانش الدراجة"
+    ]
+  },
+  {
+    "id": "wrist_curl",
+    "name": "Wrist curl",
+    "ar": "ثني المعصم",
+    "kind": "WEIGHTED",
+    "primary": [
+      "FOREARMS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني المعصم"
+    ]
+  },
+  {
+    "id": "kb_swing",
+    "name": "Kettlebell swing",
+    "ar": "أرجحة الكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "GLUTES",
+      "HAMSTRINGS"
+    ],
+    "secondary": [
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "أرجحة الكيتل بيل"
+    ]
+  },
+  {
+    "id": "goblet_squat",
+    "name": "Goblet squat",
+    "ar": "سكوات الكأس",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "ABS",
+      "ADDUCTORS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "سكوات الكأس",
+      "غوبلت سكوات"
+    ]
+  },
+  {
+    "id": "kb_deadlift",
+    "name": "Kettlebell deadlift",
+    "ar": "الرفعة الميتة بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الرفعة الميتة بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "kb_clean",
+    "name": "Kettlebell clean",
+    "ar": "الكلين بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "GLUTES",
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الكلين بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "kb_press",
+    "name": "Kettlebell press",
+    "ar": "الضغط العلوي بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "الضغط العلوي بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "kb_snatch",
+    "name": "Kettlebell snatch",
+    "ar": "الخطف بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "الخطف بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "kb_row",
+    "name": "Kettlebell row",
+    "ar": "التجديف بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "التجديف بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "turkish_get_up",
+    "name": "Turkish get-up",
+    "ar": "النهوض التركي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS",
+      "ABS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "CARRY_CONDITIONING",
+    "historicalAr": [
+      "النهوض التركي"
+    ]
+  },
+  {
+    "id": "farmers_carry",
+    "name": "Farmer's carry",
+    "ar": "مشية المزارع",
+    "kind": "WEIGHTED",
+    "primary": [
+      "FOREARMS",
+      "TRAPS"
+    ],
+    "secondary": [
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "CARRY_CONDITIONING",
+    "historicalAr": [
+      "مشية المزارع"
+    ]
+  },
+  {
+    "id": "db_bench_press",
+    "name": "Dumbbell bench press",
+    "ar": "ضغط الصدر بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS,FLAT_BENCH",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط الصدر بالدمبل"
+    ]
+  },
+  {
+    "id": "db_shoulder_press",
+    "name": "Dumbbell shoulder press",
+    "ar": "الضغط العلوي بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "الضغط العلوي بالدمبل"
+    ]
+  },
+  {
+    "id": "db_row",
+    "name": "Dumbbell row",
+    "ar": "التجديف بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "التجديف بالدمبل"
+    ]
+  },
+  {
+    "id": "db_lunge",
+    "name": "Dumbbell lunge",
+    "ar": "الطعن بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "SQUAT_UNILATERAL",
+    "historicalAr": [
+      "الطعن بالدمبل"
+    ]
+  },
+  {
+    "id": "russian_twist",
+    "name": "Russian twist",
+    "ar": "الالتواء الروسي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "OBLIQUES"
+    ],
+    "secondary": [
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "الالتواء الروسي"
+    ]
+  },
+  {
+    "id": "seated_leg_curl",
+    "name": "Seated leg curl",
+    "ar": "منحنى الأرجل جالسًا",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "LEG_CURL",
+    "pattern": "KNEE_FLEXION",
+    "historicalAr": [
+      "منحنى الأرجل جالسًا"
+    ]
+  },
+  {
+    "id": "single_leg_rdl",
+    "name": "Single-leg Romanian deadlift",
+    "ar": "الرفعة الرومانية بساق واحدة",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الرفعة الرومانية بساق واحدة"
+    ]
+  },
+  {
+    "id": "db_romanian_deadlift",
+    "name": "Dumbbell Romanian deadlift",
+    "ar": "الرفعة الرومانية بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الرفعة الرومانية بالدمبل"
+    ]
+  },
+  {
+    "id": "good_morning",
+    "name": "Good morning",
+    "ar": "تمرين صباح الخير بالبار",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS",
+      "LOWER_BACK"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL,SQUAT_RACK",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "تمرين صباح الخير بالبار"
+    ]
+  },
+  {
+    "id": "band_leg_curl",
+    "name": "Band leg curl",
+    "ar": "ثني الساق بالحزام المطاطي",
+    "kind": "REPS",
+    "primary": [
+      "HAMSTRINGS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BAND",
+    "pattern": "KNEE_FLEXION",
+    "historicalAr": [
+      "ثني الساق بالحزام المطاطي"
+    ]
+  },
+  {
+    "id": "barbell_curl",
+    "name": "Barbell curl",
+    "ar": "ثني الذراع بالبار",
+    "kind": "WEIGHTED",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني الذراع بالبار"
+    ]
+  },
+  {
+    "id": "incline_db_curl",
+    "name": "Incline dumbbell curl",
+    "ar": "ثني الذراع بالدمبل على مقعد مائل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS,ADJ_BENCH",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني الذراع بالدمبل على مقعد مائل"
+    ]
+  },
+  {
+    "id": "concentration_curl",
+    "name": "Concentration curl",
+    "ar": "ثني التركيز بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني التركيز بالدمبل"
+    ]
+  },
+  {
+    "id": "preacher_curl",
+    "name": "Preacher curl (machine)",
+    "ar": "ثني الذراع على مقعد القس",
+    "kind": "WEIGHTED",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PREACHER_CURL_MACHINE",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني الذراع على مقعد القس"
+    ]
+  },
+  {
+    "id": "cable_curl",
+    "name": "Cable curl",
+    "ar": "ثني الذراع بالكيبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني الذراع بالكيبل"
+    ]
+  },
+  {
+    "id": "band_curl",
+    "name": "Band curl",
+    "ar": "ثني الذراع بالحزام المطاطي",
+    "kind": "REPS",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BAND",
+    "pattern": "ELBOW_FLEXION",
+    "historicalAr": [
+      "ثني الذراع بالحزام المطاطي"
+    ]
+  },
+  {
+    "id": "seated_calf_raise",
+    "name": "Seated calf raise (machine)",
+    "ar": "رفع السمانة جالسًا",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CALF_MACHINE",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "رفع السمانة جالسًا"
+    ]
+  },
+  {
+    "id": "single_leg_calf_raise",
+    "name": "Single-leg calf raise",
+    "ar": "رفع السمانة بساق واحدة",
+    "kind": "REPS",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "رفع السمانة بساق واحدة"
+    ]
+  },
+  {
+    "id": "db_calf_raise",
+    "name": "Dumbbell calf raise",
+    "ar": "رفع السمانة بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "ANKLE_FLEXION",
+    "historicalAr": [
+      "رفع السمانة بالدمبل"
+    ]
+  },
+  {
+    "id": "back_extension",
+    "name": "Back extension",
+    "ar": "تمديد الظهر",
+    "kind": "REPS",
+    "primary": [
+      "LOWER_BACK"
+    ],
+    "secondary": [
+      "GLUTES",
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "ROMAN_CHAIR",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "تمديد الظهر"
+    ]
+  },
+  {
+    "id": "bird_dog",
+    "name": "Bird dog",
+    "ar": "الكلب والطائر",
+    "kind": "REPS",
+    "primary": [
+      "LOWER_BACK"
+    ],
+    "secondary": [
+      "GLUTES",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CORE_ANTI_EXTENSION",
+    "historicalAr": [
+      "الكلب والطائر"
+    ]
+  },
+  {
+    "id": "cable_pull_through",
+    "name": "Cable pull-through",
+    "ar": "السحب عبر الساقين بالكيبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "GLUTES",
+      "HAMSTRINGS"
+    ],
+    "secondary": [
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "السحب عبر الساقين بالكيبل"
+    ]
+  },
+  {
+    "id": "pallof_press",
+    "name": "Pallof press",
+    "ar": "ضغطة بالوف بالكيبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "OBLIQUES"
+    ],
+    "secondary": [
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "ضغطة بالوف بالكيبل"
+    ]
+  },
+  {
+    "id": "cable_woodchop",
+    "name": "Cable woodchop",
+    "ar": "قطع الحطب بالكيبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "OBLIQUES"
+    ],
+    "secondary": [
+      "ABS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "قطع الحطب بالكيبل"
+    ]
+  },
+  {
+    "id": "db_side_bend",
+    "name": "Dumbbell side bend",
+    "ar": "الانحناء الجانبي بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "OBLIQUES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "الانحناء الجانبي بالدمبل"
+    ]
+  },
+  {
+    "id": "mountain_climber",
+    "name": "Mountain climber",
+    "ar": "تسلق الجبل",
+    "kind": "REPS",
+    "primary": [
+      "ABS"
+    ],
+    "secondary": [
+      "OBLIQUES",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "CARRY_CONDITIONING",
+    "historicalAr": [
+      "تسلق الجبل"
+    ]
+  },
+  {
+    "id": "cable_fly",
+    "name": "Cable fly",
+    "ar": "فتح الصدر بالكيبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "فتح الصدر بالكيبل"
+    ]
+  },
+  {
+    "id": "pec_deck",
+    "name": "Pec deck",
+    "ar": "جهاز فتح الصدر",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PEC_DECK",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "جهاز فتح الصدر"
+    ]
+  },
+  {
+    "id": "chest_press_machine",
+    "name": "Chest press machine",
+    "ar": "جهاز ضغط الصدر",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CHEST_PRESS_MACHINE",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "جهاز ضغط الصدر"
+    ]
+  },
+  {
+    "id": "shoulder_press_machine",
+    "name": "Shoulder press machine",
+    "ar": "جهاز ضغط الكتف",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SHOULDER_PRESS_MACHINE",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "جهاز ضغط الكتف"
+    ]
+  },
+  {
+    "id": "cable_lateral_raise",
+    "name": "Cable lateral raise",
+    "ar": "رفع جانبي بالكيبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "LATERAL_RAISE",
+    "historicalAr": [
+      "رفع جانبي بالكيبل"
+    ]
+  },
+  {
+    "id": "reverse_pec_deck",
+    "name": "Reverse pec deck",
+    "ar": "جهاز الفتح العكسي للكتف الخلفي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS",
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PEC_DECK",
+    "pattern": "UPPER_BACK_PULL",
+    "historicalAr": [
+      "جهاز الفتح العكسي للكتف الخلفي"
+    ]
+  },
+  {
+    "id": "straight_arm_pulldown",
+    "name": "Straight-arm pulldown",
+    "ar": "السحب بذراعين مستقيمتين",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "السحب بذراعين مستقيمتين"
+    ]
+  },
+  {
+    "id": "overhead_cable_triceps_extension",
+    "name": "Overhead cable triceps extension",
+    "ar": "تمديد الترايسبس فوق الرأس بالكيبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "ELBOW_EXTENSION",
+    "historicalAr": [
+      "تمديد الترايسبس فوق الرأس بالكيبل"
+    ]
+  },
+  {
+    "id": "band_pull_apart",
+    "name": "Band pull-apart",
+    "ar": "فتح الحزام المطاطي للخلف",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BAND",
+    "pattern": "UPPER_BACK_PULL",
+    "historicalAr": [
+      "فتح الحزام المطاطي للخلف"
+    ]
+  },
+  {
+    "id": "band_row",
+    "name": "Band row",
+    "ar": "التجديف بالحزام المطاطي",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BAND",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "التجديف بالحزام المطاطي"
+    ]
+  },
+  {
+    "id": "band_chest_press",
+    "name": "Band chest press",
+    "ar": "ضغط الصدر بالحزام المطاطي",
+    "kind": "REPS",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BAND",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط الصدر بالحزام المطاطي"
+    ]
+  },
+  {
+    "id": "kb_sumo_deadlift",
+    "name": "Kettlebell sumo deadlift",
+    "ar": "الرفعة الميتة سومو بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "GLUTES",
+      "HAMSTRINGS"
+    ],
+    "secondary": [
+      "ADDUCTORS",
+      "QUADS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الرفعة الميتة سومو بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "kb_halo",
+    "name": "Kettlebell halo",
+    "ar": "هالة الكتف بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "هالة الكتف بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "kb_windmill",
+    "name": "Kettlebell windmill",
+    "ar": "طاحونة الهواء بالكيتل بيل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "OBLIQUES",
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "HAMSTRINGS",
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "KETTLEBELL",
+    "pattern": "CORE_FLEXION_ROTATION",
+    "historicalAr": [
+      "طاحونة الهواء بالكيتل بيل"
+    ]
+  },
+  {
+    "id": "smith_squat",
+    "name": "Smith machine squat",
+    "ar": "سكوات جهاز سميث",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SMITH_MACHINE",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "سكوات جهاز سميث"
+    ]
+  },
+  {
+    "id": "smith_bench_press",
+    "name": "Smith machine bench press",
+    "ar": "ضغط الصدر على جهاز سميث",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SMITH_MACHINE,FLAT_BENCH",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط الصدر على جهاز سميث"
+    ]
+  },
+  {
+    "id": "smith_incline_press",
+    "name": "Smith machine incline press",
+    "ar": "ضغط الصدر المائل على جهاز سميث",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SMITH_MACHINE,ADJ_BENCH",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط الصدر المائل على جهاز سميث"
+    ]
+  },
+  {
+    "id": "smith_overhead_press",
+    "name": "Smith machine overhead press",
+    "ar": "ضغط الكتفين على جهاز سميث",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SMITH_MACHINE",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "ضغط الكتفين على جهاز سميث"
+    ]
+  },
+  {
+    "id": "smith_row",
+    "name": "Smith machine row",
+    "ar": "تجديف على جهاز سميث",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SMITH_MACHINE",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "تجديف على جهاز سميث"
+    ]
+  },
+  {
+    "id": "smith_romanian_deadlift",
+    "name": "Smith machine Romanian deadlift",
+    "ar": "الرفعة الرومانية على جهاز سميث",
+    "kind": "WEIGHTED",
+    "primary": [
+      "HAMSTRINGS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "LOWER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SMITH_MACHINE",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "الرفعة الرومانية على جهاز سميث"
+    ]
+  },
+  {
+    "id": "scapular_pull_up",
+    "name": "Scapular pull-up",
+    "ar": "عقلة لوح الكتف",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "TRAPS",
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "عقلة لوح الكتف"
+    ]
+  },
+  {
+    "id": "flexed_arm_hang",
+    "name": "Flexed-arm hang",
+    "ar": "التعلّق بذراعين مثنيتين",
+    "kind": "HOLD",
+    "primary": [
+      "UPPER_BACK",
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "التعلّق بذراعين مثنيتين"
+    ]
+  },
+  {
+    "id": "band_assisted_pull_up",
+    "name": "Band-assisted pull-up",
+    "ar": "عقلة بمساعدة الحزام المطاطي",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR,BAND",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "عقلة بمساعدة الحزام المطاطي"
+    ]
+  },
+  {
+    "id": "neutral_grip_pull_up",
+    "name": "Neutral-grip pull-up",
+    "ar": "عقلة بقبضة محايدة",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "BICEPS"
+    ],
+    "secondary": [
+      "FOREARMS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "عقلة بقبضة محايدة"
+    ]
+  },
+  {
+    "id": "wide_grip_pull_up",
+    "name": "Wide-grip pull-up",
+    "ar": "عقلة بقبضة واسعة",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "عقلة بقبضة واسعة"
+    ]
+  },
+  {
+    "id": "archer_pull_up",
+    "name": "Archer pull-up",
+    "ar": "عقلة الرامي",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "عقلة الرامي"
+    ]
+  },
+  {
+    "id": "l_sit_pull_up",
+    "name": "L-sit pull-up",
+    "ar": "عقلة بوضعية L",
+    "kind": "REPS",
+    "primary": [
+      "UPPER_BACK",
+      "ABS"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "PULL_UP_BAR",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "عقلة بوضعية L"
+    ]
+  },
+  {
+    "id": "incline_push_up",
+    "name": "Incline push-up",
+    "ar": "ضغط مائل (اليدان مرتفعتان)",
+    "kind": "REPS",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط مائل (اليدان مرتفعتان)"
+    ]
+  },
+  {
+    "id": "decline_push_up",
+    "name": "Decline push-up",
+    "ar": "ضغط منحدر (القدمان مرتفعتان)",
+    "kind": "REPS",
+    "primary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط منحدر (القدمان مرتفعتان)"
+    ]
+  },
+  {
+    "id": "archer_push_up",
+    "name": "Archer push-up",
+    "ar": "ضغط الرامي",
+    "kind": "REPS",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "SHOULDERS",
+      "ABS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط الرامي"
+    ]
+  },
+  {
+    "id": "single_arm_cable_row",
+    "name": "Single-arm cable row",
+    "ar": "تجديف بالكابل بذراع واحدة",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "SEATED_ROW_MACHINE",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "تجديف بالكابل بذراع واحدة"
+    ]
+  },
+  {
+    "id": "cable_rear_delt_fly",
+    "name": "Cable rear-delt fly",
+    "ar": "رفرفة خلفية بالكابل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS",
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "UPPER_BACK_PULL",
+    "historicalAr": [
+      "رفرفة خلفية بالكابل"
+    ]
+  },
+  {
+    "id": "cable_crossover_high_to_low",
+    "name": "High-to-low cable crossover",
+    "ar": "تقاطع الكابل من الأعلى إلى الأسفل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "تقاطع الكابل من الأعلى إلى الأسفل"
+    ]
+  },
+  {
+    "id": "cable_crossover_low_to_high",
+    "name": "Low-to-high cable crossover",
+    "ar": "تقاطع الكابل من الأسفل إلى الأعلى",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "تقاطع الكابل من الأسفل إلى الأعلى"
+    ]
+  },
+  {
+    "id": "cable_glute_kickback",
+    "name": "Cable glute kickback",
+    "ar": "ركلة خلفية للأرداف بالكابل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "CABLE_MACHINE",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "ركلة خلفية للأرداف بالكابل"
+    ]
+  },
+  {
+    "id": "step_up",
+    "name": "Step-up",
+    "ar": "الصعود على الدرج",
+    "kind": "REPS",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS",
+      "CALVES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_UNILATERAL",
+    "historicalAr": [
+      "الصعود على الدرج"
+    ]
+  },
+  {
+    "id": "reverse_lunge",
+    "name": "Reverse lunge",
+    "ar": "الطعن الخلفي",
+    "kind": "REPS",
+    "primary": [
+      "QUADS",
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "SQUAT_UNILATERAL",
+    "historicalAr": [
+      "الطعن الخلفي"
+    ]
+  },
+  {
+    "id": "single_leg_hip_thrust",
+    "name": "Single-leg hip thrust",
+    "ar": "دفع الورك بساق واحدة",
+    "kind": "REPS",
+    "primary": [
+      "GLUTES"
+    ],
+    "secondary": [
+      "HAMSTRINGS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BODYWEIGHT",
+    "pattern": "HIP_HINGE",
+    "historicalAr": [
+      "دفع الورك بساق واحدة"
+    ]
+  },
+  {
+    "id": "single_arm_db_press",
+    "name": "Single-arm dumbbell press",
+    "ar": "ضغط الكتف بدمبل واحد",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS",
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "VERTICAL_PUSH",
+    "historicalAr": [
+      "ضغط الكتف بدمبل واحد"
+    ]
+  },
+  {
+    "id": "single_arm_lat_pulldown",
+    "name": "Single-arm lat pulldown",
+    "ar": "سحب عالٍ بذراع واحدة",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "LAT_PULLDOWN",
+    "pattern": "VERTICAL_PULL",
+    "historicalAr": [
+      "سحب عالٍ بذراع واحدة"
+    ]
+  },
+  {
+    "id": "incline_bench_press",
+    "name": "Incline barbell bench press",
+    "ar": "ضغط الصدر المائل بالبار",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST",
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "TRICEPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL,ADJ_BENCH",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "ضغط الصدر المائل بالبار"
+    ]
+  },
+  {
+    "id": "front_squat",
+    "name": "Front squat",
+    "ar": "السكوات الأمامي",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [
+      "GLUTES",
+      "ABS",
+      "UPPER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "BARBELL,SQUAT_RACK",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "السكوات الأمامي"
+    ]
+  },
+  {
+    "id": "hack_squat",
+    "name": "Hack squat (machine)",
+    "ar": "هاك سكوات (جهاز)",
+    "kind": "WEIGHTED",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "HACK_SQUAT",
+    "pattern": "SQUAT_BILATERAL",
+    "historicalAr": [
+      "هاك سكوات (جهاز)"
+    ]
+  },
+  {
+    "id": "chest_supported_row",
+    "name": "Chest-supported dumbbell row",
+    "ar": "تجديف بالدمبل مع إسناد الصدر",
+    "kind": "WEIGHTED",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "BICEPS",
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS,ADJ_BENCH",
+    "pattern": "HORIZONTAL_PULL",
+    "historicalAr": [
+      "تجديف بالدمبل مع إسناد الصدر"
+    ]
+  },
+  {
+    "id": "db_fly",
+    "name": "Dumbbell fly",
+    "ar": "رفرفة الصدر بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS,FLAT_BENCH",
+    "pattern": "HORIZONTAL_PUSH",
+    "historicalAr": [
+      "رفرفة الصدر بالدمبل"
+    ]
+  },
+  {
+    "id": "rear_delt_db_fly",
+    "name": "Rear-delt dumbbell fly",
+    "ar": "رفرفة خلفية بالدمبل",
+    "kind": "WEIGHTED",
+    "primary": [
+      "SHOULDERS",
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "TRAPS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": false,
+    "equipment": "DUMBBELLS",
+    "pattern": "UPPER_BACK_PULL",
+    "historicalAr": [
+      "رفرفة خلفية بالدمبل"
+    ]
+  },
+  {
+    "id": "quad_stretch",
+    "name": "Standing quad stretch",
+    "ar": "تمدد الفخذ الأمامي واقفًا",
+    "kind": "HOLD",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد الفخذ الأمامي واقفًا"
+    ]
+  },
+  {
+    "id": "hamstring_stretch",
+    "name": "Hamstring stretch",
+    "ar": "تمدد خلفية الفخذ",
+    "kind": "HOLD",
+    "primary": [
+      "HAMSTRINGS"
+    ],
+    "secondary": [
+      "CALVES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد خلفية الفخذ"
+    ]
+  },
+  {
+    "id": "hip_flexor_stretch",
+    "name": "Kneeling hip flexor stretch",
+    "ar": "تمدد ثنيات الورك من وضع الركوع",
+    "kind": "HOLD",
+    "primary": [
+      "QUADS"
+    ],
+    "secondary": [
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد ثنيات الورك من وضع الركوع"
+    ]
+  },
+  {
+    "id": "pigeon_stretch",
+    "name": "Pigeon stretch",
+    "ar": "تمدد وضع الحمامة",
+    "kind": "HOLD",
+    "primary": [
+      "GLUTES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد وضع الحمامة"
+    ]
+  },
+  {
+    "id": "figure_four_stretch",
+    "name": "Figure-four stretch",
+    "ar": "تمدد المقعدة بوضع الرقم أربعة",
+    "kind": "HOLD",
+    "primary": [
+      "GLUTES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد المقعدة بوضع الرقم أربعة"
+    ]
+  },
+  {
+    "id": "calf_stretch",
+    "name": "Wall calf stretch",
+    "ar": "تمدد السمانة على الحائط",
+    "kind": "HOLD",
+    "primary": [
+      "CALVES"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد السمانة على الحائط"
+    ]
+  },
+  {
+    "id": "childs_pose",
+    "name": "Child’s pose",
+    "ar": "وضع الطفل",
+    "kind": "HOLD",
+    "primary": [
+      "LOWER_BACK"
+    ],
+    "secondary": [
+      "UPPER_BACK",
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "وضع الطفل"
+    ]
+  },
+  {
+    "id": "chest_doorway_stretch",
+    "name": "Doorway chest stretch",
+    "ar": "تمدد الصدر عند الباب",
+    "kind": "HOLD",
+    "primary": [
+      "CHEST"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد الصدر عند الباب"
+    ]
+  },
+  {
+    "id": "cross_body_shoulder_stretch",
+    "name": "Cross-body shoulder stretch",
+    "ar": "تمدد الكتف بسحب الذراع أمام الصدر",
+    "kind": "HOLD",
+    "primary": [
+      "SHOULDERS"
+    ],
+    "secondary": [
+      "UPPER_BACK"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد الكتف بسحب الذراع أمام الصدر"
+    ]
+  },
+  {
+    "id": "triceps_overhead_stretch",
+    "name": "Overhead triceps stretch",
+    "ar": "تمدد الترايسبس فوق الرأس",
+    "kind": "HOLD",
+    "primary": [
+      "TRICEPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد الترايسبس فوق الرأس"
+    ]
+  },
+  {
+    "id": "biceps_wall_stretch",
+    "name": "Wall biceps stretch",
+    "ar": "تمدد البايسبس على الحائط",
+    "kind": "HOLD",
+    "primary": [
+      "BICEPS"
+    ],
+    "secondary": [
+      "CHEST"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد البايسبس على الحائط"
+    ]
+  },
+  {
+    "id": "neck_side_stretch",
+    "name": "Neck side stretch",
+    "ar": "تمدد الرقبة جانبيًا",
+    "kind": "HOLD",
+    "primary": [
+      "TRAPS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد الرقبة جانبيًا"
+    ]
+  },
+  {
+    "id": "thread_the_needle",
+    "name": "Thread the needle",
+    "ar": "تمدد تمرير الإبرة",
+    "kind": "HOLD",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "SHOULDERS"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد تمرير الإبرة"
+    ]
+  },
+  {
+    "id": "butterfly_stretch",
+    "name": "Butterfly stretch",
+    "ar": "تمدد الفراشة",
+    "kind": "HOLD",
+    "primary": [
+      "ADDUCTORS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد الفراشة"
+    ]
+  },
+  {
+    "id": "frog_stretch",
+    "name": "Frog stretch",
+    "ar": "تمدد الضفدع",
+    "kind": "HOLD",
+    "primary": [
+      "ADDUCTORS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد الضفدع"
+    ]
+  },
+  {
+    "id": "wrist_flexor_stretch",
+    "name": "Wrist flexor stretch",
+    "ar": "تمدد مثنيات الرسغ",
+    "kind": "HOLD",
+    "primary": [
+      "FOREARMS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد مثنيات الرسغ"
+    ]
+  },
+  {
+    "id": "seated_spinal_twist",
+    "name": "Seated spinal twist",
+    "ar": "التواء العمود الفقري جالسًا",
+    "kind": "HOLD",
+    "primary": [
+      "OBLIQUES"
+    ],
+    "secondary": [
+      "LOWER_BACK",
+      "GLUTES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "التواء العمود الفقري جالسًا"
+    ]
+  },
+  {
+    "id": "lat_stretch",
+    "name": "Standing lat stretch",
+    "ar": "تمدد عضلة الظهر العريضة واقفًا",
+    "kind": "HOLD",
+    "primary": [
+      "UPPER_BACK"
+    ],
+    "secondary": [
+      "OBLIQUES"
+    ],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد عضلة الظهر العريضة واقفًا"
+    ]
+  },
+  {
+    "id": "shin_stretch",
+    "name": "Kneeling shin stretch",
+    "ar": "تمدد قصبة الساق من وضع الركوع",
+    "kind": "HOLD",
+    "primary": [
+      "TIBIALIS"
+    ],
+    "secondary": [],
+    "videoExprKt": null,
+    "videoUrl": null,
+    "stretch": true,
+    "equipment": "BODYWEIGHT",
+    "pattern": "MOBILITY",
+    "historicalAr": [
+      "تمدد قصبة الساق من وضع الركوع"
+    ]
+  }
+]

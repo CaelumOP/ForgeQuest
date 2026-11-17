@@ -149,7 +149,7 @@
     <string name="badge_streak_52_title">سنة كاملة</string>
     <string name="badge_streak_52_desc">حقّق هدفك الأسبوعي 52 أسبوعًا متتاليًا</string>
     <string name="badge_skill_muscle_up_title">أول مسل أب (Muscle-up)</string>
-    <string name="badge_skill_muscle_up_desc">سجّل تكرار مسل أب واحدًا</string>
+    <string name="badge_skill_muscle_up_desc">سجّل عدّة مسل أب واحدة</string>
     <string name="badge_skill_pistol_title">البستل (قرفصاء بساق واحدة)</string>
     <string name="badge_skill_pistol_desc">سجّل قرفصاء بستل واحدة</string>
     <string name="badge_skill_l_sit_title">جلسة L لمدة 10 ث</string>
@@ -173,7 +173,7 @@
     <string name="badge_str_pull_10_title">عقلة 10</string>
     <string name="badge_str_pull_10_desc">10 عقلات في مجموعة واحدة</string>
     <string name="badge_str_dip_15_title">متوازي 15</string>
-    <string name="badge_str_dip_15_desc">15 تكرار متوازي في مجموعة واحدة</string>
+    <string name="badge_str_dip_15_desc">15 عدّة متوازي في مجموعة واحدة</string>
     <string name="badge_str_weighted_pull_20_title">عقلة بوزن إضافي 20 كغ</string>
     <string name="badge_str_weighted_pull_20_desc">عقلة بوزن إضافي 20 كغ</string>
     <string name="badge_str_weighted_dip_30_title">متوازي بوزن إضافي 30 كغ</string>
@@ -220,35 +220,35 @@
     <string name="badge_kcal_days_30_desc">أنهِ 30 يوماً ضمن 10 بالمئة من هدف السعرات</string>
     <string name="muscle_chest">الصدر</string>
     <string name="muscle_shoulders">الأكتاف</string>
-    <string name="muscle_biceps">ذات الرأسين</string>
-    <string name="muscle_triceps">ثلاثية الرؤوس</string>
-    <string name="muscle_forearms">الساعد</string>
+    <string name="muscle_biceps">البايسبس</string>
+    <string name="muscle_triceps">الترايسبس</string>
+    <string name="muscle_forearms">السواعد</string>
     <string name="muscle_abs">البطن</string>
     <string name="muscle_obliques">الجوانب</string>
-    <string name="muscle_traps">شبه المنحرفة</string>
-    <string name="muscle_upper_back">الظهريات وأعلى الظهر</string>
+    <string name="muscle_traps">الترابيس</string>
+    <string name="muscle_upper_back">الظهر العلوي</string>
     <string name="muscle_lower_back">أسفل الظهر</string>
     <string name="muscle_glutes">الأرداف</string>
-    <string name="muscle_quads">مقدمة الفخذ</string>
-    <string name="muscle_hamstrings">خلفية الفخذ</string>
-    <string name="muscle_adductors">باطن الفخذ</string>
-    <string name="muscle_calves">بطّة الساق</string>
-    <string name="muscle_tibialis">قصبة الساق</string>
+    <string name="muscle_quads">الأماميات (مقدمة الفخذ)</string>
+    <string name="muscle_hamstrings">الخلفيات (خلفية الفخذ)</string>
+    <string name="muscle_adductors">العضلة الضامة</string>
+    <string name="muscle_calves">البطات (السمانة)</string>
+    <string name="muscle_tibialis">مقدمة الساق (قصبة الساق)</string>
     <string name="badge_cat_consistency">الالتزام</string>
     <string name="badge_cat_skill">المهارات</string>
     <string name="badge_cat_strength">القوة</string>
     <string name="badge_cat_nutrition">التغذية</string>
     <string name="rx_seconds">%1$d ث</string>
-    <string name="rx_rep_range">⁦%1$d–%2$d⁩ تكرار</string>
+    <string name="rx_rep_range">⁦%1$d–%2$d⁩ عدّة</string>
     <plurals name="rx_reps">
-        <item quantity="zero">%1$d تكرار</item>
-        <item quantity="one">تكرار واحد</item>
-        <item quantity="two">تكراران</item>
-        <item quantity="few">%1$d تكرارات</item>
-        <item quantity="many">%1$d تكرارًا</item>
-        <item quantity="other">%1$d تكرار</item>
+        <item quantity="zero">%1$d عدّة</item>
+        <item quantity="one">عدّة واحدة</item>
+        <item quantity="two">عدّتان</item>
+        <item quantity="few">%1$d عدّات</item>
+        <item quantity="many">%1$d عدّةً</item>
+        <item quantity="other">%1$d عدّة</item>
     </plurals>
-    <string name="rx_reps_only">تكرارات</string>
+    <string name="rx_reps_only">عدّات</string>
     <string name="rx_sets_times">%1$d × %2$s</string>
     <string name="workouts_title">التمارين</string>
     <string name="cd_workout_history">السجل</string>
@@ -679,8 +679,8 @@
     <string name="hist_edit_hint">اضغط رقمًا لتغييره، واضغط مطوّلًا على مجموعة لإضافة ملاحظة. يُعاد حساب الأرقام القياسية بعد كل تعديل.</string>
     <string name="cd_add_note">إضافة ملاحظة</string>
     <string name="stepper_hold_time">مدة الثبات</string>
-    <string name="stepper_reps">التكرارات</string>
-    <string name="unit_reps">تكرار</string>
+    <string name="stepper_reps">العدّات</string>
+    <string name="unit_reps">عدّة</string>
     <string name="stepper_weight">الوزن</string>
     <string name="cd_drag_reorder">اسحب لإعادة الترتيب</string>
     <string name="cd_remove_set">حذف المجموعة</string>
@@ -802,15 +802,15 @@
     <string name="lib_delete_body">لا يمكن الحذف إلا إذا لم يستخدمه أي تمرين أو خطة؛ وإلا فادمجه في تمرين آخر ليبقى سجلك سليمًا.</string>
     <string name="lib_custom">مخصص</string>
     <string name="detail_bad_link">هذا ليس رابط ويب. الصق رابطًا يبدأ بـ ⁦https://⁩</string>
-    <string name="metric_max_reps">أقصى تكرارات</string>
-    <string name="metric_total_reps">مجموع التكرارات</string>
+    <string name="metric_max_reps">أقصى عدّات</string>
+    <string name="metric_total_reps">مجموع العدّات</string>
     <string name="metric_max_hold">أطول ثبات</string>
     <string name="unit_s">ث</string>
     <string name="metric_total_time">مجموع الوقت</string>
     <string name="metric_best_set">أفضل مجموعة</string>
-    <string name="metric_est_1rm">%1$s · 1RM تقديري</string>
+    <string name="metric_est_1rm">%1$s · أقصى وزن لعدّة واحدة تقديريًا (1RM)</string>
     <string name="metric_max_weight">أقصى وزن</string>
-    <string name="metric_volume">الحجم</string>
+    <string name="metric_volume">إجمالي الأوزان</string>
     <string name="detail_add_link">إضافة رابط فيديو</string>
     <string name="detail_change_link">تغيير الرابط</string>
     <string name="detail_progress">التقدّم</string>
@@ -859,8 +859,8 @@
     <string name="plan_read">قراءة الخطة</string>
     <string name="plan_day_name">اسم اليوم</string>
     <string name="plan_rounds">الجولات</string>
-    <string name="plan_reps_min">التكرارات (الأدنى)</string>
-    <string name="plan_reps_max">التكرارات (الأقصى)</string>
+    <string name="plan_reps_min">العدّات (الأدنى)</string>
+    <string name="plan_reps_max">العدّات (الأقصى)</string>
     <string name="plan_part_circuit">ضمن تمرين دائري</string>
     <string name="plan_circuit_hint">تُؤدّى جولةً جولة مع تمارين التمرين الدائري الأخرى في «%1$s»</string>
     <string name="plan_order">الترتيب</string>
@@ -902,11 +902,11 @@
         <item quantity="other">%1$d تمرين في الخطة. اضغط للبدء.</item>
     </plurals>
     <string name="quick_workout_title">تمرين سريع</string>
-    <string name="rx_reps_n">%1$d تكرار</string>
+    <string name="rx_reps_n">%1$d عدّة</string>
     <string name="unit_g">غ</string>
     <string name="unit_kcal">سعرة</string>
     <string name="unit_cm">سم</string>
-    <string name="block_warm_up">إحماء</string>
+    <string name="block_warm_up">تسخين</string>
     <string name="block_core">الجذع والبطن</string>
     <string name="block_main">الأساسي</string>
     <string name="block_legs">الأرجل</string>
@@ -936,7 +936,7 @@
     <string name="progress_vs_last_week">%1$s عن الأسبوع الماضي</string>
     <string name="progress_first_week">أسبوعك الأول</string>
     <string name="progress_tile_best">%1$s · أفضل مجموعة</string>
-    <string name="progress_tile_est_max">%1$s · الحد الأقصى التقديري (تكرار واحد)</string>
+    <string name="progress_tile_est_max">%1$s · أقصى وزن تقديري (عدّة واحدة)</string>
     <string name="progress_tile_weight">الوزن · متوسط 7 أيام</string>
     <string name="progress_tile_protein">البروتين · أيام على الهدف</string>
     <string name="progress_tile_workouts">أيام التمرين · أسبوعيًا</string>
@@ -946,7 +946,7 @@
     <string name="progress_holding">ثابت</string>
     <string name="progress_on_target">على الهدف</string>
     <string name="progress_strength">القوة</string>
-    <string name="progress_strength_hint">أفضل مجموعة في كل جلسة (للأثقال: أقصى تكرار واحد تقديريًا) · النقاط الذهبية أرقام قياسية · الخط المتقطع أفضل أرقامك</string>
+    <string name="progress_strength_hint">أفضل مجموعة في كل جلسة (للأثقال: أقصى عدّة واحدة تقديريًا) · النقاط الذهبية أرقام قياسية · الخط المتقطع أفضل أرقامك</string>
     <string name="progress_weight_hint">إدخالات يومية مع خط متوسط 7 أيام · اسحب للقراءة</string>
     <string name="progress_consistency">الانتظام</string>
     <plurals name="progress_workout_days"><item quantity="zero">لا أيام تمرين في هذه الفترة</item><item quantity="one">يوم تمرين واحد في هذه الفترة</item><item quantity="two">يوما تمرين في هذه الفترة</item><item quantity="few">%d أيام تمرين في هذه الفترة</item><item quantity="many">%d يومَ تمرين في هذه الفترة</item><item quantity="other">%d يوم تمرين في هذه الفترة</item></plurals>
@@ -965,7 +965,7 @@
         <item quantity="many">يومَ تمرين</item>
         <item quantity="other">يوم تمرين</item>
     </plurals>
-    <string name="progress_total_reps">التكرارات</string>
+    <string name="progress_total_reps">العدّات</string>
     <string name="progress_total_hours">ساعات التدريب</string>
     <string name="progress_total_records">الأرقام القياسية</string>
     <string name="progress_total_lifted">رُفعت إجمالًا</string>
@@ -1032,7 +1032,7 @@
     <string name="call_steady_b2">جاهزيتك كافية للتمرين. أدِّ التمارين الأساسية واترك الإضافات.</string>
     <string name="call_steady_b3">يوم عادي. تمرّن وتوقّف قبل المجموعات الإضافية.</string>
     <string name="call_ease_b2">التعافي منخفض. أبقِ التمرين واحذف مجموعة من كل تمرين.</string>
-    <string name="call_ease_b3">خفّف اليوم: أوزان أخف ولا تصل إلى الإجهاد التام.</string>
+    <string name="call_ease_b3">خفّف اليوم: أوزان أخف ولا تصل إلى الفشل العضلي.</string>
     <string name="call_recover_b2">جسمك لم يتعافَ بعد. المشي اليوم يكفي.</string>
     <string name="call_recover_b3">تجنّب الجهد الشديد اليوم. تمدّد وامشِ ونم مبكرًا.</string>
     <string name="call_legs_peak_b2">يوم الأرجل وأنت في كامل طاقتك. اسعَ إلى مجموعة ثقيلة.</string>
@@ -1150,9 +1150,9 @@
     <string name="journal_volume">رُفع %1$s</string>
     <string name="journal_add_note">+ أضف ملاحظة</string>
     <string name="live_now">الآن: %1$s</string>
-    <string name="live_warmup_not_counted">إحماء · لا يُحتسب ضمن المجموعات</string>
-    <string name="live_mark_warmup_done">تحديد الإحماء كمنجز</string>
-    <string name="live_warmup_done">تم الإحماء ✓</string>
+    <string name="live_warmup_not_counted">تسخين · لا يُحتسب ضمن المجموعات</string>
+    <string name="live_mark_warmup_done">تحديد التسخين كمنجز</string>
+    <string name="live_warmup_done">تم التسخين ✓</string>
     <string name="live_effort_caption">كيف كانت هذه المجموعة؟</string>
     <string name="live_swap_confirm_title">استبدال %1$s؟</string>
     <plurals name="live_swap_confirm_body">
@@ -1239,7 +1239,7 @@
     <string name="debrief_win_pr_reps_weight">%1$s: رقم قياسي جديد، %2$s بوزن %3$s</string>
     <string name="debrief_win_pr_hold">%1$s: رقم قياسي جديد، ثبات لمدة %2$s</string>
     <string name="debrief_win_best_gain">%1$s: تحسّنت أفضل مجموعة بنسبة %2$d%%</string>
-    <string name="debrief_win_more_reps">%1$s: تكرارات إجمالية أكثر، من %2$d إلى %3$s</string>
+    <string name="debrief_win_more_reps">%1$s: عدّات إجمالية أكثر، من %2$d إلى %3$s</string>
     <string name="debrief_win_more_secs">%1$s: زمن إجمالي أطول، من %2$d إلى %3$s</string>
     <string name="debrief_win_effort">%1$s: الأرقام نفسها، وكان الأداء أسهل</string>
     <string name="debrief_win_all_sets">أتممتَ كل المجموعات المخططة (%1$s)</string>
@@ -1271,7 +1271,7 @@
     <string name="debrief_h2_1">يسعدنا عودتك. الحضور بعد الانقطاع هو الإنجاز الأكبر.</string>
     <string name="debrief_h2_2">عدتَ إلى إيقاعك. تمرين اليوم يمهّد لأسابيعك القادمة.</string>
     <string name="debrief_h2_3">أنهيتَ فترة الانقطاع وعدتَ إلى التمرين، وهذا هو المهم.</string>
-    <string name="debrief_h3_1">اكتمل الإحماء، وهو أفضل بكثير من ترك اليوم دون تمرين.</string>
+    <string name="debrief_h3_1">اكتمل التسخين، وهو أفضل بكثير من ترك اليوم دون تمرين.</string>
     <string name="debrief_h3_2">هيّأتَ جسمك وحافظتَ على خطتك.</string>
     <string name="debrief_h4_1">سُجّلت تمارين جديدة، وتحدّدت أرقامك المبدئية.</string>
     <string name="debrief_h4_2">تمارين جديدة في سجلّك. المرة القادمة تبني على هذه الأرقام.</string>
@@ -1311,12 +1311,12 @@
         <item quantity="other">أتممتَ كل المجموعات المعدّلة (%1$d) بما يناسب تعافيك اليوم</item>
     </plurals>
     <plurals name="debrief_n_reps">
-        <item quantity="zero">0 تكرار</item>
-        <item quantity="one">تكرار واحد</item>
-        <item quantity="two">تكرارين</item>
-        <item quantity="few">%1$d تكرارات</item>
-        <item quantity="many">%1$d تكرارًا</item>
-        <item quantity="other">%1$d تكرار</item>
+        <item quantity="zero">0 عدّة</item>
+        <item quantity="one">عدّة واحدة</item>
+        <item quantity="two">عدّتين</item>
+        <item quantity="few">%1$d عدّات</item>
+        <item quantity="many">%1$d عدّةً</item>
+        <item quantity="other">%1$d عدّة</item>
     </plurals>
     <plurals name="debrief_n_seconds">
         <item quantity="zero">0 ثانية</item>
@@ -1807,11 +1807,11 @@
     </plurals>
     <plurals name="insight_first_round_reps_3">
         <item quantity="zero">رقم مستدير في %1$s: %2$d تكرارات في مجموعة واحدة.</item>
-        <item quantity="one">رقم مستدير في %1$s: تكرار واحد في مجموعة واحدة.</item>
-        <item quantity="two">رقم مستدير في %1$s: تكرارين في مجموعة واحدة.</item>
-        <item quantity="few">رقم مستدير في %1$s: %2$d تكرارات في مجموعة واحدة.</item>
-        <item quantity="many">رقم مستدير في %1$s: %2$d تكرارًا في مجموعة واحدة.</item>
-        <item quantity="other">رقم مستدير في %1$s: %2$d تكرار في مجموعة واحدة.</item>
+        <item quantity="one">رقم مستدير في %1$s: عدّة واحدة في مجموعة واحدة.</item>
+        <item quantity="two">رقم مستدير في %1$s: عدّتين في مجموعة واحدة.</item>
+        <item quantity="few">رقم مستدير في %1$s: %2$d عدّات في مجموعة واحدة.</item>
+        <item quantity="many">رقم مستدير في %1$s: %2$d عدّةً في مجموعة واحدة.</item>
+        <item quantity="other">رقم مستدير في %1$s: %2$d عدّة في مجموعة واحدة.</item>
     </plurals>
     <string name="insight_first_round_hold_1">%1$s: ثبتَّ مدة %2$s لأول مرة.</string>
     <string name="insight_first_round_hold_2">أول ثبات لك لمدة %2$s في %1$s.</string>
@@ -1846,9 +1846,9 @@
     <string name="insight_near_record_weight_1">أنت على بُعد %2$s من أفضل رقم لك في %1$s.</string>
     <string name="insight_near_record_weight_2">تفصلك %2$s فقط عن رقمك القياسي في %1$s.</string>
     <string name="insight_near_record_weight_3">كان %1$s أقل من رقمك القياسي بمقدار %2$s، وهو في المتناول.</string>
-    <string name="insight_near_record_reps_1">تكرار واحد إضافي في %1$s يعادل أفضل رقم لك.</string>
-    <string name="insight_near_record_reps_2">نقصك تكرار واحد في %1$s لتعادل أفضل رقم لك.</string>
-    <string name="insight_near_record_reps_3">أنت على بُعد تكرار واحد من أفضل رقم لك في %1$s.</string>
+    <string name="insight_near_record_reps_1">عدّة واحدة إضافية في %1$s تعادل أفضل رقم لك.</string>
+    <string name="insight_near_record_reps_2">تنقصك عدّة واحدة في %1$s لتعادل أفضل رقم لك.</string>
+    <string name="insight_near_record_reps_3">أنت على بُعد عدّة واحدة من أفضل رقم لك في %1$s.</string>
     <plurals name="insight_cross_hours_1">
         <item quantity="zero">مجموع تدريبك منذ البداية: %1$d ساعات.</item>
         <item quantity="one">مجموع تدريبك منذ البداية: ساعة واحدة.</item>
@@ -1906,28 +1906,28 @@
         <item quantity="other">الإجمالي منذ بدايتك: %1$d مجموعة.</item>
     </plurals>
     <plurals name="insight_cross_reps_1">
-        <item quantity="zero">أنجزتَ حتى الآن ما مجموعه %1$d تكرارات.</item>
-        <item quantity="one">أنجزتَ حتى الآن ما مجموعه تكرار واحد.</item>
-        <item quantity="two">أنجزتَ حتى الآن ما مجموعه تكرارين.</item>
-        <item quantity="few">أنجزتَ حتى الآن ما مجموعه %1$d تكرارات.</item>
-        <item quantity="many">أنجزتَ حتى الآن ما مجموعه %1$d تكرارًا.</item>
-        <item quantity="other">أنجزتَ حتى الآن ما مجموعه %1$d تكرار.</item>
+        <item quantity="zero">أنجزتَ حتى الآن ما مجموعه %1$d عدّات.</item>
+        <item quantity="one">أنجزتَ حتى الآن ما مجموعه عدّة واحدة.</item>
+        <item quantity="two">أنجزتَ حتى الآن ما مجموعه عدّتين.</item>
+        <item quantity="few">أنجزتَ حتى الآن ما مجموعه %1$d عدّات.</item>
+        <item quantity="many">أنجزتَ حتى الآن ما مجموعه %1$d عدّةً.</item>
+        <item quantity="other">أنجزتَ حتى الآن ما مجموعه %1$d عدّة.</item>
     </plurals>
     <plurals name="insight_cross_reps_2">
-        <item quantity="zero">إجمالي ما أنجزته حتى الآن: %1$d تكرارات.</item>
-        <item quantity="one">إجمالي ما أنجزته حتى الآن: تكرار واحد.</item>
-        <item quantity="two">إجمالي ما أنجزته حتى الآن: تكرارين.</item>
-        <item quantity="few">إجمالي ما أنجزته حتى الآن: %1$d تكرارات.</item>
-        <item quantity="many">إجمالي ما أنجزته حتى الآن: %1$d تكرارًا.</item>
-        <item quantity="other">إجمالي ما أنجزته حتى الآن: %1$d تكرار.</item>
+        <item quantity="zero">إجمالي ما أنجزته حتى الآن: %1$d عدّات.</item>
+        <item quantity="one">إجمالي ما أنجزته حتى الآن: عدّة واحدة.</item>
+        <item quantity="two">إجمالي ما أنجزته حتى الآن: عدّتين.</item>
+        <item quantity="few">إجمالي ما أنجزته حتى الآن: %1$d عدّات.</item>
+        <item quantity="many">إجمالي ما أنجزته حتى الآن: %1$d عدّةً.</item>
+        <item quantity="other">إجمالي ما أنجزته حتى الآن: %1$d عدّة.</item>
     </plurals>
     <plurals name="insight_cross_reps_3">
-        <item quantity="zero">الإجمالي منذ بدايتك: %1$d تكرارات.</item>
-        <item quantity="one">الإجمالي منذ بدايتك: تكرار واحد.</item>
-        <item quantity="two">الإجمالي منذ بدايتك: تكرارين.</item>
-        <item quantity="few">الإجمالي منذ بدايتك: %1$d تكرارات.</item>
-        <item quantity="many">الإجمالي منذ بدايتك: %1$d تكرارًا.</item>
-        <item quantity="other">الإجمالي منذ بدايتك: %1$d تكرار.</item>
+        <item quantity="zero">الإجمالي منذ بدايتك: %1$d عدّات.</item>
+        <item quantity="one">الإجمالي منذ بدايتك: عدّة واحدة.</item>
+        <item quantity="two">الإجمالي منذ بدايتك: عدّتين.</item>
+        <item quantity="few">الإجمالي منذ بدايتك: %1$d عدّات.</item>
+        <item quantity="many">الإجمالي منذ بدايتك: %1$d عدّةً.</item>
+        <item quantity="other">الإجمالي منذ بدايتك: %1$d عدّة.</item>
     </plurals>
     <plurals name="insight_back_after_gap_1">
         <item quantity="zero">هذا أول تمرين لك منذ %1$d أيام. أهلًا بعودتك.</item>
