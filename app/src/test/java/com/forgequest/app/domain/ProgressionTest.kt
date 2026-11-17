@@ -16,8 +16,7 @@ class ProgressionTest {
         last: List<Progression.PastSet>,
         previous: List<Progression.PastSet> = emptyList(),
         unit: WeightUnit = WeightUnit.KG,
-        low: Boolean = false,
-    ) = Progression.next(kind, target, last, previous, unit, low, warmup = false)
+    ) = Progression.next(kind, target, last, previous, unit, warmup = false)
 
     @Test
     fun rangeTopAddsOneStepAndResets() {
@@ -47,15 +46,13 @@ class ProgressionTest {
     }
 
     @Test
-    fun hardPainAndLowReadinessHoldOrBackOff() {
+    fun hardAndPainHoldOrBackOff() {
         val t = Progression.Target(3, 8, 12, null, 40f)
         val hard = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.HARD))
         assertEquals(40f, hard.sets[0].weightKg!!, 0.01f)
         assertEquals(12, hard.sets[0].reps)
         val pain = next(ExerciseKind.WEIGHTED, t, sets(3, 10, 40f, effort = SetEffort.PAIN))
         assertEquals(37.5f, pain.sets[0].weightKg!!, 0.01f)
-        val low = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f), low = true)
-        assertEquals(40f, low.sets[0].weightKg!!, 0.01f)
         // bodyweight move with pain: reps stay
         val bw = next(ExerciseKind.REPS, Progression.Target(3, 8, 12, null, null), sets(3, 10, null, effort = SetEffort.PAIN))
         assertEquals(10, bw.sets[0].reps)
@@ -122,8 +119,8 @@ class ProgressionTest {
 
     private fun reason(
         kind: ExerciseKind, t: Progression.Target, last: List<Progression.PastSet>,
-        previous: List<Progression.PastSet> = emptyList(), low: Boolean = false, warmup: Boolean = false,
-    ) = Progression.next(kind, t, last, previous, WeightUnit.KG, low, warmup).reason
+        previous: List<Progression.PastSet> = emptyList(), warmup: Boolean = false,
+    ) = Progression.next(kind, t, last, previous, WeightUnit.KG, warmup).reason
 
     @Test
     fun reasonLoadUpMoreRepsMoreTime() {
@@ -142,14 +139,13 @@ class ProgressionTest {
     }
 
     @Test
-    fun reasonHardPainMissedLowReadiness() {
+    fun reasonHardPainMissed() {
         val t = Progression.Target(3, 8, 12, null, 40f)
         assertEquals(Progression.Reason.HARD, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.HARD)))
         assertEquals(Progression.Reason.PAIN, reason(ExerciseKind.WEIGHTED, t, sets(3, 10, 40f, effort = SetEffort.PAIN)))
         // pain on a bodyweight move: no weight drop, so it reads as hard
         assertEquals(Progression.Reason.HARD, reason(ExerciseKind.REPS, Progression.Target(3, 8, 12, null, null), sets(3, 10, null, effort = SetEffort.PAIN)))
         assertEquals(Progression.Reason.MISSED, reason(ExerciseKind.WEIGHTED, t, sets(2, 12, 40f)))
-        assertEquals(Progression.Reason.LOW_READINESS, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f), low = true))
     }
 
     @Test
@@ -177,7 +173,7 @@ class ProgressionTest {
     @Test
     fun deloadHalvesSetsRoundedUpAndHoldsTheWeight() {
         val target = Progression.Target(3, 8, 12, null, 40f)
-        val r = Progression.next(ExerciseKind.WEIGHTED, target, sets(3, 12, 40f), emptyList(), WeightUnit.KG, lowReadiness = false, warmup = false, deload = true)
+        val r = Progression.next(ExerciseKind.WEIGHTED, target, sets(3, 12, 40f), emptyList(), WeightUnit.KG, warmup = false, deload = true)
         assertEquals(2, r.sets.size)
         assertTrue(r.sets.all { it.weightKg == 40f })
         assertEquals(2, Progression.deloadSets(4))
@@ -188,9 +184,9 @@ class ProgressionTest {
     fun afterADeloadSessionProgressIsNotStalled() {
         val target = Progression.Target(3, 8, 12, null, 40f)
         // A normal week with all 3 sets at the top steps up; the 2-set deload session would not.
-        val normal = Progression.next(ExerciseKind.WEIGHTED, target, sets(3, 12, 40f), emptyList(), WeightUnit.KG, false, false)
+        val normal = Progression.next(ExerciseKind.WEIGHTED, target, sets(3, 12, 40f), emptyList(), WeightUnit.KG, false)
         assertEquals(42.5f, normal.sets[0].weightKg!!, 0.01f)
-        val afterDeload = Progression.next(ExerciseKind.WEIGHTED, target, sets(2, 12, 40f), emptyList(), WeightUnit.KG, false, false)
+        val afterDeload = Progression.next(ExerciseKind.WEIGHTED, target, sets(2, 12, 40f), emptyList(), WeightUnit.KG, false)
         assertEquals(40f, afterDeload.sets[0].weightKg!!, 0.01f)
     }
 }

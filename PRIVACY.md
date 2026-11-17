@@ -6,7 +6,7 @@ ForgeQuest is a personal fitness app for Android, with a web app for iPhone at h
 
 ## What stays on your phone
 
-Your workouts, meals, body weight, goals, coach chat and readiness scores are stored on your phone. They are not sent to any ForgeQuest server, and its developer cannot see them. The only server is the optional Friends feature below, which receives a small weekly summary and nothing else.
+Your workouts, meals, body weight, goals and coach chat are stored on your phone. They are not sent to any ForgeQuest server, and its developer cannot see them. The only server is the optional Friends feature below, which receives a small weekly summary and nothing else.
 
 ## Friends (optional)
 
@@ -42,7 +42,7 @@ The web app works like the Android app, with these differences:
 
 ## Health Connect
 
-If you turn on Fitbit readiness, ForgeQuest reads sleep, heart rate, heart rate variability, breathing rate, steps, calories and weight from Health Connect on your phone. It only reads this data, uses it to calculate scores in the app, and does not send it anywhere except, if you turn on the Gemini bridge, inside the "ForgeQuest data" Doc in your own Google Drive.
+If you turn on Health Connect in Settings, ForgeQuest reads your daily steps, calories burned and body weight from Health Connect on your phone. It only reads this data to calculate your calorie target and log body weight in the app, and does not send it anywhere.
 
 ForgeQuest's use of information received from Google APIs adheres to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
 

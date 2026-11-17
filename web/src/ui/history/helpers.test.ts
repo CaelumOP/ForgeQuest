@@ -30,13 +30,11 @@ describe('history helpers', () => {
     expect(minutesOf({ startedAt: 0, finishedAt: null })).toBeNull()
     expect(dayOfIso(isoOfDay(20000))).toBe(20000)
   })
-  it('journal facts line has no N/10, shows the recovery note when rough', () => {
+  it('journal facts line has no N/10, shows the pain note when rough', () => {
     const r: WorkoutScoreResult = { score: 8, doneSets: 12, plannedSets: 12, up: 3, compared: 4, prs: 1, rough: false, firstEver: false, afterBreak: false, showNumber: true }
     expect(scoreLine(r)).not.toContain('/10')
     expect(scoreLine(r)).not.toContain('8')
-    expect(scoreLine({ ...r, rough: true, lowRecovery: true })).toContain('Adjusted for recovery')
-    // A rough day from pain alone says pain.
-    expect(scoreLine({ ...r, rough: true, lowRecovery: false })).toContain('Adjusted for pain')
+    expect(scoreLine({ ...r, rough: true })).toContain('Adjusted for pain')
   })
   it('number is gold only from 8 up; first-ever and after-break show a sentence instead', () => {
     expect(scoreTone(10)).toBe('gold')

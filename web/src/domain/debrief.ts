@@ -24,7 +24,7 @@ const f = Math.fround
  * checked before MIXED but listed last, so the string keys (debrief_h<position>_<n>) keep their numbers.
  */
 export const HEADLINE_VARIANTS = {
-  FIRST_EVER: 3, AFTER_BREAK: 3, ONLY_WARM_UPS: 2, ALL_NEW: 2, ROUGH_HELD: 3, ROUGH_SCALED: 3, SHORT: 3,
+  FIRST_EVER: 3, AFTER_BREAK: 3, ONLY_WARM_UPS: 2, ALL_NEW: 2, SHORT: 3,
   PR_AND_UP: 3, MOSTLY_UP: 3, ALL_SAME: 3, MIXED: 3, MOSTLY_DOWN: 3, SOME_UP: 3,
 } as const
 export type Headline = keyof typeof HEADLINE_VARIANTS
@@ -158,8 +158,7 @@ export function computeDebrief(input: DebriefInput): DebriefResult {
     })
   }
   const rough = score.rough || exs.some((x) => x.pain)
-  const lowRecovery = score.lowRecovery ?? false
-  const headline = pickHeadline(input, exs, lowRecovery)
+  const headline = pickHeadline(input, exs)
   const { next, sameRest } = nextTime(input, exs)
   const variant = ((input.sessionId % HEADLINE_VARIANTS[headline]) + HEADLINE_VARIANTS[headline]) % HEADLINE_VARIANTS[headline]
   const compared = exs.filter((x) => x.trend != null)
@@ -171,12 +170,12 @@ export function computeDebrief(input: DebriefInput): DebriefResult {
     watch: watch(input, exs, headline, rough),
     next,
     sameRest,
-    footnote: input.healthOn || lowRecovery,
+    footnote: false,
   }
 }
 
-/** Headlines 5 and 6 only on a low-recovery day; pain alone forgives its own exercise and the normal order runs. */
-function pickHeadline(input: DebriefInput, exs: Ex[], lowRecovery: boolean): Headline {
+/** Picks the workout headline; pain alone forgives its own exercise and the normal order runs. */
+function pickHeadline(input: DebriefInput, exs: Ex[]): Headline {
   const score = input.score
   const compared = exs.filter((x) => x.trend != null)
   const up = compared.filter((x) => x.trend === 'UP').length
@@ -187,8 +186,6 @@ function pickHeadline(input: DebriefInput, exs: Ex[], lowRecovery: boolean): Hea
   if (score.afterBreak) return 'AFTER_BREAK'
   if (!exs.length) return 'ONLY_WARM_UPS'
   if (!compared.length) return 'ALL_NEW'
-  if (lowRecovery && !downs.length) return 'ROUGH_HELD'
-  if (lowRecovery && unforgiven === 0) return 'ROUGH_SCALED'
   if (effective != null && score.doneSets * 4 < effective * 3 && score.prs === 0) return 'SHORT'
   if (score.prs > 0 && up * 2 >= compared.length) return 'PR_AND_UP'
   if (up * 2 >= compared.length || score.prs > 0) return 'MOSTLY_UP'
@@ -300,7 +297,7 @@ function nextTime(input: DebriefInput, exs: Ex[]): { next: Next[]; sameRest: boo
     if (!x.e.newest) continue
     const p = progressionInputs(x.e.item, x.id, [...x.working, ...x.lastWorking])
     if (p.warmup) continue
-    const r = nextPrefill(x.e.kind, p.target, p.last, p.previous, input.unit, false, false)
+    const r = nextPrefill(x.e.kind, p.target, p.last, p.previous, input.unit, false)
     const line = nextLine(x, p, r)
     if (line) lines.push(line)
     else unchanged = true

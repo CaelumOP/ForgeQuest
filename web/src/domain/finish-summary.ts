@@ -16,7 +16,7 @@ export function dayType(score: WorkoutScoreResult, debrief: DebriefResult, insig
   }
   if (score.prs > 0 || debrief.wins.some((w) => w.type === 'PR')) return 'PR'
   if (insights.some((i) => MILESTONE_KINDS.has(i.kind))) return 'MILESTONE'
-  if (score.rough || score.lowRecovery) return 'ROUGH'
+  if (score.rough) return 'ROUGH'
   return 'ORDINARY'
 }
 

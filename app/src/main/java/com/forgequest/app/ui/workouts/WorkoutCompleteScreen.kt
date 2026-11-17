@@ -304,7 +304,7 @@ fun scoreReasons(r: WorkoutScore.Result): String {
     }
     val up = if (r.compared > 0) stringResource(R.string.score_up, r.up, r.compared) else null
     val prs = if (r.prs > 0) pluralStringResource(R.plurals.score_prs, r.prs, r.prs) else null
-    val adjusted = if (r.rough) stringResource(if (r.lowRecovery) R.string.score_adjusted else R.string.score_adjusted_pain) else null
+    val adjusted = if (r.rough) stringResource(R.string.score_adjusted_pain) else null
     return listOfNotNull(sets, up, prs, adjusted).joinToString(" · ")
 }
 

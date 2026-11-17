@@ -131,14 +131,8 @@ fun HomeScreen(nav: NavHostController) {
     val c = Fit.colors
     val scope = rememberCoroutineScope()
     val health by vm.health.collectAsState()
-    val refreshing by vm.refreshWatch.busy.collectAsState()
-    val refreshNote by vm.refreshWatch.note.collectAsState()
-    // Every time the app comes to the front (back from the Fitbit app too): Fitbit numbers through Health Connect, reused
-    // for a few minutes unless still waiting on last night; the update notice only goes online every 6 hours.
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.checkBadges(); vm.app.updateNotice.refresh(); onPauseOrDispose { vm.refreshWatch.pause() } }
-    val healthAccess = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
-    ) { vm.refreshHealth(force = true) }
+    // Re-read Health Connect (steps, calories burned, weight) on resume; update notice refreshes every 6 hours.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { vm.resumeHealth(); vm.checkBadges(); vm.app.updateNotice.refresh(); onPauseOrDispose {} }
     val updateBanner by vm.app.updateNotice.banner.collectAsState()
     val whatsNew by vm.app.updateNotice.whatsNew.collectAsState()
     var weightSheet by remember { mutableStateOf(false) }
@@ -148,7 +142,7 @@ fun HomeScreen(nav: NavHostController) {
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
 
     val today = s.plan?.day(Dates.todayDayOfWeek())
-    // "Just log" mode: no streak, levels, badges or readiness on Home; the data stays and comes back when it's turned off.
+    // "Just log" mode: no streak, levels, badges on Home; the data stays and comes back when it's turned off.
     val justLog = s.settings.justLog
     // The done state's line is the day's top insight; read-only here, so Home never starts a cooldown (the finish screen does).
     val res = androidx.compose.ui.platform.LocalContext.current.resources
@@ -166,37 +160,11 @@ fun HomeScreen(nav: NavHostController) {
             ).firstOrNull()?.let { com.forgequest.app.ui.workouts.insightText(it, res, s.exercises.mapValues { e -> e.value.name }, s.settings.weightUnit) }
         }.getOrNull()
     }
-    // What today's plan trains, so the readiness sentence can name it ("Legs today"); null on rest days and mixed days.
-    val todayFocus = if (today == null || today.day.isRest) null else com.forgequest.app.domain.Readiness.focusOf(
-        today.items.filter { !com.forgequest.app.domain.WorkoutScore.isExtra(it.block) }.flatMap { s.exercises[it.exerciseId]?.primary.orEmpty() },
-    )
-    // Good readiness news rides as the first row of Today's workout card; every other state keeps its own card above the calorie card.
-    val readyDay = (health as? HealthState.Ready)?.day?.takeIf { it.hasData && !justLog && s.settings.healthEnabled }
-    // The card's shape comes from the saved settings, which are there on the first frame, not from whether the health
-    // data has arrived: with a watch connected the row's place is held while it loads, so the first frames already have
-    // the final layout. With no watch there is no row and no gap.
-    val healthOn = !justLog && s.settings.healthEnabled && s.settings.healthConnected
-    val readinessLoading = healthOn && health == HealthState.Loading
-    val readinessInCard = readyDay != null || readinessLoading
-    // A finished workout or a rest (or excused) day changes what the sentence may ask for.
-    val todayState = when {
-        s.workoutDoneToday -> com.forgequest.app.domain.TodayState.DONE
-        s.excusedToday != null || (s.plan != null && (today == null || today.day.isRest)) -> com.forgequest.app.domain.TodayState.REST
-        else -> com.forgequest.app.domain.TodayState.TRAIN
-    }
     // A rest day says where the week stands and what comes next, instead of a fixed line.
     val nextTraining = (1..7).map { (Dates.todayDayOfWeek() + it - 1) % 7 + 1 }
         .firstNotNullOfOrNull { dow -> s.plan?.day(dow)?.takeIf { !it.day.isRest && it.items.isNotEmpty() }?.let { dow to com.forgequest.app.data.seed.StarterPlans.displayTitle(it.day.title) } }
     val restLine = nextTraining?.takeIf { s.streak.targetThisWeek > 0 && !justLog }
         ?.let { (dow, title) -> stringResource(R.string.today_rest_week, s.streak.doneThisWeek, s.streak.targetThisWeek, title, Dates.dayName(dow)) }
-    // The sentence under the verdict, and which of its wordings: the same all day, a different one next time.
-    val readyLine = readyDay?.let { com.forgequest.app.domain.readinessLine(it.call, todayFocus, it.sleepContext, com.forgequest.app.domain.HeartContext.from(it.hrv, it.hrvUsual, it.hrvTrend, it.rhr, it.rhrUsual, it.rhrTrend), todayState) }
-    val readyVariant = remember(readyLine, s.settings.insightHistory) {
-        readyLine?.let { com.forgequest.app.domain.dailyVariant(it.historyKind, it.variants, s.settings.insightHistory, Dates.today()) }
-    }
-    LaunchedEffect(readyLine, readyVariant) {
-        if (readyLine != null && readyVariant?.second == true) vm.noteReadinessLine(readyLine.historyKind, readyVariant.first)
-    }
     val todayCard: @Composable () -> Unit = {
         TodayCard(
             day = today,
@@ -209,11 +177,6 @@ fun HomeScreen(nav: NavHostController) {
             excused = s.excusedToday,
             onCantTrain = { tagDay = Dates.today() },
             showCantTrain = !justLog,
-            readiness = when {
-                readyDay != null -> ({ ReadinessRow(readyDay, todayFocus, note = refreshNote, onFeltGreat = vm::setFeltGreat, onOpen = { nav.navigate("readiness/${it.name}") }, line = readyLine ?: com.forgequest.app.domain.ReadinessLine.READY, variant = readyVariant?.first ?: 0) })
-                readinessLoading -> ({ ReadinessRowPlaceholder() })
-                else -> null
-            },
             onStart = {
                 scope.launch {
                     vm.startToday(today?.takeIf { !it.day.isRest })
@@ -252,11 +215,9 @@ fun HomeScreen(nav: NavHostController) {
             ?.takeIf { s.settings.onboarded && TargetNudge.show(s.settings.targetNudgeAnswered, it) }
     }.takeIf { !justLog }
     val hasCalorieCard = remember(s, health) { com.forgequest.app.ui.CalorieUi.card(s, health) } != null
-    // Readiness only shows once a Fitbit is connected, so it counts as an extra too.
-    val readinessShown = healthOn || (!justLog && s.settings.healthEnabled && health != HealthState.Unavailable && health != HealthState.Loading)
     val friends by vm.friends.collectAsState()
     val friendsShown = !justLog && friends.isNotEmpty()
-    val extras = listOf(readinessShown, unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs, friendsShown).count { it }
+    val extras = listOf(unseen.isNotEmpty(), needsFoodSetup, nudge != null, hasCalorieCard, s.settings.trackCarbs, friendsShown).count { it }
 
     // One screen, no scrolling, at normal text on a common phone (about 412 x 919 dp: 780 dp between the status bar and
     // the tab bar). Height budget in dp: header 80, rings 210 + stats 54, streak + month 161, today's workout 154 (+57
@@ -297,7 +258,7 @@ fun HomeScreen(nav: NavHostController) {
             }
             if (!justLog) {
                 StreakCard(
-                    s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY && !readinessInCard,
+                    s.streak, onDayClick = { day -> tagDay = day }, showHint = fit == HomeFit.ROOMY,
                     nudge = nudge, keepTarget = weeklyTarget, onNudge = vm::answerNudge, footer = monthRow,
                     friendsRow = if (friendsShown) { { FriendStreakRow(friends, onOpen = { nav.goToTab(Routes.FRIENDS) }) } } else null,
                 )
@@ -312,10 +273,6 @@ fun HomeScreen(nav: NavHostController) {
 
             // Everything above is for reading. What asks for a tap sits below, with today's workout last, by the thumb.
             if (fallbackScroll) Spacer(Modifier.height(ForgeSpace.Sm)) else Spacer(Modifier.weight(1f))
-            if (!justLog) ReadinessCard(
-                health, enabled = s.settings.healthEnabled, refreshing = refreshing, note = refreshNote,
-                onRefresh = vm.refreshWatch::tap, onReconnect = { healthAccess.launch(vm.app.health.requestPermissions()) },
-            )
             CalorieCardView(s, health, vm.app.settings)
             if (unseen.isNotEmpty()) {
                 FitCard(onClick = { nav.navigate(Routes.BADGES) }, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
@@ -804,7 +761,6 @@ private fun TodayCard(
     excused: DayTag?,
     onCantTrain: () -> Unit,
     showCantTrain: Boolean,
-    readiness: (@Composable () -> Unit)? = null,
     onStart: () -> Unit,
     onOpenPlan: () -> Unit,
     onTrainAnyway: () -> Unit = {},
@@ -831,12 +787,6 @@ private fun TodayCard(
     }
     // Last on Home, right above the tab bar: the one button that matters is where the thumb already is.
     FitCard(onClick = onOpenPlan, padding = PaddingValues(ForgeSpace.CardPaddingCompact)) {
-        readiness?.let {
-            it()
-            Spacer(Modifier.height(ForgeSpace.Xs))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(c.divider))
-            Spacer(Modifier.height(ForgeSpace.Sm))
-        }
         val cardTitle = stringResource(R.string.today_title)
         val title = when {
             hasOpenSession -> stringResource(R.string.today_in_progress)

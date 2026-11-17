@@ -544,7 +544,7 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
   const settings = await loadSettings();
   const unit = weightUnit(settings, ex?.unitOverride);
   const result = nextPrefill(
-    kind, input.target, input.last, input.previous, unit, false, input.warmup, deload,
+    kind, input.target, input.last, input.previous, unit, input.warmup, deload,
     input.mode, ex ? isLowerBodyExercise(ex.primary) : false,
   );
   const base = targetLabel(kind, item);
@@ -576,7 +576,7 @@ export async function progressionReasonFor(
   const input = progressionInputs(item, ex?.id, recent);
   const settings = await loadSettings();
   return nextPrefill(
-    kind, input.target, input.last, input.previous, weightUnit(settings, ex?.unitOverride), false, input.warmup, deload,
+    kind, input.target, input.last, input.previous, weightUnit(settings, ex?.unitOverride), input.warmup, deload,
     input.mode, ex ? isLowerBodyExercise(ex.primary) : false,
   ).reason;
 }
@@ -751,27 +751,25 @@ const plannedSetsOf = (items: PlanItemRow[]): number => items.reduce((n, i) => n
 
 /** The calculated score of every finished workout (domain/workout-score.ts): a few small reads, never one query per row. */
 export async function allWorkoutScores(only?: number): Promise<Map<number, WorkoutScoreResult>> {
-  const [sessions, doneSets, items, readiness, library, notes, plan] = await Promise.all([
-    finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(),
+  const [sessions, doneSets, items, library, notes, plan] = await Promise.all([
+    finishedSessions(), allDoneSets(), db.planItems.toArray(), getLibrary(),
     db.dayNotes.toArray(), getActivePlan(),
   ]);
   const byDay = new Map<number, PlanItemRow[]>();
   for (const i of items) byDay.set(i.dayId, [...(byDay.get(i.dayId) ?? []), i]);
   const planned = new Map([...byDay].map(([dayId, l]) => [dayId, plannedSetsOf(l)]));
-  // Ease off (34-49) and recover (below 34): Android Readiness.call is under 50.
-  const rough = new Set(readiness.filter((r) => r.recovery < 50).map((r) => r.epochDay));
   return scoresForSessions(
-    sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, rough, dayTagMap(notes), plan ? trainingDays(plan) : new Set(), only,
+    sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, dayTagMap(notes), plan ? trainingDays(plan) : new Set(), only,
   );
 }
 /**
  * The calculated debrief of one finished workout (domain/debrief.ts): this workout, each exercise's previous time, the
  * plan day's exercises, the weekly target, the plateau and deload report as of that day and the harder versions.
- * Null when the workout isn't finished or has no done sets. Never stored. No health data on the web, so healthOn is false.
+ * Null when the workout isn't finished or has no done sets. Never stored.
  */
 export async function workoutDebrief(sessionId: number): Promise<DebriefResult | null> {
-  const [sessions, doneSets, items, readiness, library, settings, plan, score] = await Promise.all([
-    finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(), loadSettings(),
+  const [sessions, doneSets, items, library, settings, plan, score] = await Promise.all([
+    finishedSessions(), allDoneSets(), db.planItems.toArray(), getLibrary(), loadSettings(),
     getActivePlan(), allWorkoutScores(sessionId).then((m) => m.get(sessionId)),
   ]);
   const session = sessions.find((s) => s.id === sessionId);
@@ -779,12 +777,11 @@ export async function workoutDebrief(sessionId: number): Promise<DebriefResult |
   const exercises = new Map(library.map((e) => [e.id, e]));
   const planItems = session.planDayId == null ? [] : items.filter((i) => i.dayId === session.planDayId);
   const weeklyTarget = fullTarget(plan ? trainingDays(plan) : new Set(), settings.weeklyTargetOverride);
-  // As of the workout's day: only workouts, sets and recovery on or before it, so an old workout keeps its own report.
+  // As of the workout's day: only workouts and sets on or before it, so an old workout keeps its own report.
   const upTo = sessions.filter((s) => s.epochDay <= session.epochDay);
   const upToIds = new Set(upTo.map((s) => s.id!));
   const report = analyzeFatigueAndPlateaus(
     upTo as never, doneSets.filter((s) => upToIds.has(s.sessionId)) as never, exercises as never, session.epochDay,
-    readiness.filter((r) => r.epochDay <= session.epochDay).sort((a, b) => a.epochDay - b.epochDay),
   );
   return debriefForSession(
     session, sessions, doneSets, exercises as never, score, planItems, weeklyTarget, report,

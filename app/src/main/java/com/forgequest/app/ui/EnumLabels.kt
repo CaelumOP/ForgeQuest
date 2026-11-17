@@ -7,7 +7,6 @@ import com.forgequest.app.R
 import com.forgequest.app.data.db.FoodCategory
 import com.forgequest.app.domain.BadgeCategory
 import com.forgequest.app.domain.BadgeDef
-import com.forgequest.app.domain.DayAdvice
 import com.forgequest.app.domain.DayTag
 import com.forgequest.app.domain.InsightKind
 import com.forgequest.app.domain.Muscle
@@ -542,61 +541,4 @@ val ScoreTier.labelRes: Int
         ScoreTier.STEP_FORWARD -> R.string.score_tier_step_forward
         ScoreTier.HELD_STEADY -> R.string.score_tier_held_steady
         ScoreTier.LIGHT_DAY -> R.string.score_tier_light_day
-    }
-
-/** The wording number [variant] of a readiness sentence (see [com.forgequest.app.domain.ReadinessLine]). */
-fun com.forgequest.app.domain.ReadinessLine.bodyRes(variant: Int): Int {
-    val all = when (this) {
-        com.forgequest.app.domain.ReadinessLine.PEAK -> intArrayOf(R.string.call_peak_b, R.string.call_peak_b2, R.string.call_peak_b3)
-        com.forgequest.app.domain.ReadinessLine.READY -> intArrayOf(R.string.call_ready_b, R.string.call_ready_b2, R.string.call_ready_b3)
-        com.forgequest.app.domain.ReadinessLine.STEADY -> intArrayOf(R.string.call_steady_b, R.string.call_steady_b2, R.string.call_steady_b3)
-        com.forgequest.app.domain.ReadinessLine.EASE_OFF -> intArrayOf(R.string.call_ease_b, R.string.call_ease_b2, R.string.call_ease_b3)
-        com.forgequest.app.domain.ReadinessLine.RECOVER -> intArrayOf(R.string.call_recover_b, R.string.call_recover_b2, R.string.call_recover_b3)
-        com.forgequest.app.domain.ReadinessLine.LEGS_PEAK -> intArrayOf(R.string.call_legs_peak_b, R.string.call_legs_peak_b2, R.string.call_legs_peak_b3)
-        com.forgequest.app.domain.ReadinessLine.LEGS_STEADY -> intArrayOf(R.string.call_legs_steady_b, R.string.call_legs_steady_b2, R.string.call_legs_steady_b3)
-        com.forgequest.app.domain.ReadinessLine.LEGS_EASE -> intArrayOf(R.string.call_legs_ease_b, R.string.call_legs_ease_b2, R.string.call_legs_ease_b3)
-        com.forgequest.app.domain.ReadinessLine.LEGS_RECOVER -> intArrayOf(R.string.call_legs_recover_b, R.string.call_legs_recover_b2, R.string.call_legs_recover_b3)
-        com.forgequest.app.domain.ReadinessLine.UPPER_EASE -> intArrayOf(R.string.call_upper_ease_b, R.string.call_upper_ease_b2, R.string.call_upper_ease_b3)
-        com.forgequest.app.domain.ReadinessLine.UPPER_RECOVER -> intArrayOf(R.string.call_upper_recover_b, R.string.call_upper_recover_b2, R.string.call_upper_recover_b3)
-        com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_NIGHTS -> intArrayOf(R.string.call_steady_short_nights, R.string.call_steady_short_nights2)
-        com.forgequest.app.domain.ReadinessLine.EASE_SHORT_SLEEP -> intArrayOf(R.string.call_ease_short_sleep, R.string.call_ease_short_sleep2)
-        com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_SLEEP -> intArrayOf(R.string.call_recover_short_sleep, R.string.call_recover_short_sleep2)
-        com.forgequest.app.domain.ReadinessLine.EASE_HRV -> intArrayOf(R.string.call_ease_hrv, R.string.call_ease_hrv2)
-        com.forgequest.app.domain.ReadinessLine.RECOVER_HRV -> intArrayOf(R.string.call_recover_hrv, R.string.call_recover_hrv2)
-        com.forgequest.app.domain.ReadinessLine.EASE_RHR -> intArrayOf(R.string.call_ease_rhr, R.string.call_ease_rhr2)
-        com.forgequest.app.domain.ReadinessLine.RECOVER_RHR -> intArrayOf(R.string.call_recover_rhr, R.string.call_recover_rhr2)
-        com.forgequest.app.domain.ReadinessLine.PEAK_HRV -> intArrayOf(R.string.call_peak_hrv, R.string.call_peak_hrv2)
-        com.forgequest.app.domain.ReadinessLine.LEGS_READY -> intArrayOf(R.string.call_legs_ready_b, R.string.call_legs_ready_b2, R.string.call_legs_ready_b3)
-        com.forgequest.app.domain.ReadinessLine.UPPER_PEAK -> intArrayOf(R.string.call_upper_peak_b, R.string.call_upper_peak_b2, R.string.call_upper_peak_b3)
-        com.forgequest.app.domain.ReadinessLine.UPPER_READY -> intArrayOf(R.string.call_upper_ready_b, R.string.call_upper_ready_b2, R.string.call_upper_ready_b3)
-        com.forgequest.app.domain.ReadinessLine.UPPER_STEADY -> intArrayOf(R.string.call_upper_steady_b, R.string.call_upper_steady_b2, R.string.call_upper_steady_b3)
-        com.forgequest.app.domain.ReadinessLine.STEADY_SHORT_SLEEP -> intArrayOf(R.string.call_steady_short_sleep, R.string.call_steady_short_sleep2)
-        com.forgequest.app.domain.ReadinessLine.EASE_SHORT_RUN -> intArrayOf(R.string.call_ease_short_run)
-        com.forgequest.app.domain.ReadinessLine.RECOVER_SHORT_RUN -> intArrayOf(R.string.call_recover_short_run)
-        com.forgequest.app.domain.ReadinessLine.STEADY_HRV -> intArrayOf(R.string.call_steady_hrv, R.string.call_steady_hrv2)
-        com.forgequest.app.domain.ReadinessLine.STEADY_RHR -> intArrayOf(R.string.call_steady_rhr, R.string.call_steady_rhr2)
-        com.forgequest.app.domain.ReadinessLine.READY_HRV -> intArrayOf(R.string.call_ready_hrv, R.string.call_ready_hrv2)
-        com.forgequest.app.domain.ReadinessLine.PEAK_SLEPT_WELL -> intArrayOf(R.string.call_peak_slept_well, R.string.call_peak_slept_well2)
-        com.forgequest.app.domain.ReadinessLine.READY_SLEPT_WELL -> intArrayOf(R.string.call_ready_slept_well, R.string.call_ready_slept_well2)
-        com.forgequest.app.domain.ReadinessLine.REST_CHARGED -> intArrayOf(R.string.call_rest_charged, R.string.call_rest_charged2, R.string.call_rest_charged3)
-        com.forgequest.app.domain.ReadinessLine.REST_STEADY -> intArrayOf(R.string.call_rest_steady, R.string.call_rest_steady2)
-        com.forgequest.app.domain.ReadinessLine.REST_LOW -> intArrayOf(R.string.call_rest_low, R.string.call_rest_low2, R.string.call_rest_low3)
-        com.forgequest.app.domain.ReadinessLine.REST_LOW_SLEEP -> intArrayOf(R.string.call_rest_low_sleep, R.string.call_rest_low_sleep2)
-        com.forgequest.app.domain.ReadinessLine.REST_LOW_HRV -> intArrayOf(R.string.call_rest_low_hrv, R.string.call_rest_low_hrv2)
-        com.forgequest.app.domain.ReadinessLine.DONE_GOOD -> intArrayOf(R.string.call_done_good, R.string.call_done_good2, R.string.call_done_good3)
-        com.forgequest.app.domain.ReadinessLine.DONE_LOW -> intArrayOf(R.string.call_done_low, R.string.call_done_low2)
-    }
-    return all[variant.coerceIn(0, all.lastIndex)]
-}
-
-/** The readiness sentence for a plan-aware [DayAdvice]. */
-@get:StringRes
-val DayAdvice.bodyRes: Int
-    get() = when (this) {
-        DayAdvice.LEGS_PEAK -> R.string.call_legs_peak_b
-        DayAdvice.LEGS_STEADY -> R.string.call_legs_steady_b
-        DayAdvice.LEGS_EASE -> R.string.call_legs_ease_b
-        DayAdvice.LEGS_RECOVER -> R.string.call_legs_recover_b
-        DayAdvice.UPPER_EASE -> R.string.call_upper_ease_b
-        DayAdvice.UPPER_RECOVER -> R.string.call_upper_recover_b
     }

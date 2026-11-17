@@ -268,9 +268,6 @@ private fun MainScaffold() {
                 }
                 composable(Routes.HISTORY) { HistoryScreen(nav) }
                 composable(Routes.BADGES) { BadgesScreen(nav) }
-                composable("readiness/{kind}") { entry ->
-                    com.forgequest.app.ui.home.ReadinessDetailScreen(nav, com.forgequest.app.ui.home.ReadinessKind.valueOf(entry.arguments?.getString("kind") ?: "RECOVERY"))
-                }
                 composable(Routes.SETTINGS) { com.forgequest.app.ui.profile.SettingsScreen(nav, null) }
                 composable(Routes.SETTINGS_GROUP, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     com.forgequest.app.ui.profile.SettingsScreen(nav, entry.arguments?.getString("id"))

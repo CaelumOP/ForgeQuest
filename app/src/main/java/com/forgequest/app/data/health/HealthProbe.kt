@@ -3,19 +3,9 @@ package com.forgequest.app.data.health
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
-import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
-import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
-import androidx.health.connect.client.records.RespiratoryRateRecord
-import androidx.health.connect.client.records.RestingHeartRateRecord
-import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
-import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -24,15 +14,12 @@ import java.time.temporal.ChronoUnit
 import kotlin.reflect.KClass
 
 /**
- * One-off look at what Health Connect actually holds on this phone (from Fitbit / Google Health or anything else),
- * saved as a JSON report the owner can share. It reads only; the real import is built on what this shows.
+ * One-off look at what Health Connect holds on this phone (steps, calories burned, weight).
  */
 class HealthProbe(private val context: Context) {
 
     val types: List<KClass<out Record>> = listOf(
-        StepsRecord::class, DistanceRecord::class, ActiveCaloriesBurnedRecord::class, TotalCaloriesBurnedRecord::class,
-        SleepSessionRecord::class, HeartRateRecord::class, RestingHeartRateRecord::class, HeartRateVariabilityRmssdRecord::class,
-        OxygenSaturationRecord::class, RespiratoryRateRecord::class, Vo2MaxRecord::class, WeightRecord::class, ExerciseSessionRecord::class,
+        StepsRecord::class, TotalCaloriesBurnedRecord::class, WeightRecord::class,
     )
     val permissions: Set<String> = types.map { HealthPermission.getReadPermission(it) }.toSet()
 

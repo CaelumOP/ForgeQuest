@@ -161,7 +161,7 @@ data class BackupFile(
     val settings: BackupSettings? = null,
     /** Excused days; older backups have none. */
     val dayNotes: List<DayNoteEntity> = emptyList(),
-    /** Fitbit readiness history and "I feel great" taps; backups before 2.8.0 have none. */
+    // kept for backup compatibility (readiness removed in 4.1)
     val readinessDays: List<ReadinessDayEntity> = emptyList(),
     /** Locked weekly streak targets (Sunday epoch day string -> days); older backups have none. */
     val weekTargets: Map<String, Int>? = null,

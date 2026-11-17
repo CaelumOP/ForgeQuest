@@ -258,7 +258,7 @@ data class DayNoteEntity(
     val updatedAt: Long,
 )
 
-/** One day's Fitbit readiness, saved so the formulas can later be tuned against workouts and "I feel great" taps. */
+// kept for backup compatibility (readiness removed in 4.1)
 @Serializable
 @Entity(tableName = "readiness_days")
 data class ReadinessDayEntity(

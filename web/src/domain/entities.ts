@@ -75,6 +75,7 @@ export type SetEntity = {
   setType?: string
 }
 
+// kept for backup compatibility (readiness removed in 4.1)
 export type ReadinessDayEntity = {
   epochDay: number
   recovery: number

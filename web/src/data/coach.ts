@@ -2,7 +2,6 @@
 // Port of Android data/CoachRepository.kt (prompting, PlanIntent, checkPlan helpers) and data/plan/{PlanJson,PlanSafety,Debrief}.kt.
 // The chat itself (sending, saving, applying) lives in coach-chat.ts.
 import { t } from '../i18n';
-import type { ReadinessDayRow } from './db';
 import type { ProgressSnapshot } from './progress';
 import type { PlanDraft } from './seed/starter-plans';
 import type { PlanDraftDay, PlanDraftItem, ExerciseEntity, SessionEntity } from '../domain/entities';
@@ -425,7 +424,6 @@ export function decodeDebriefFull(text: string): WorkoutDebrief | null {
 export type DebriefSet = { reps: number | null; seconds: number | null; weightKg: number | null; effort: string; note: string; isPr: boolean; setIndex: number };
 export type DebriefInput = {
   title: string; epochDay: number; minutes: number; goal: string; note: string
-  readiness?: { recovery: number; sleepMin: number } | null
   exercises: { name: string; done: DebriefSet[]; lastTime: DebriefSet[] }[]
   /** The calculated score, already worked out by the app (workout-score.ts). */
   score?: WorkoutScoreResult | null
@@ -459,7 +457,6 @@ export function debriefPayload(i: DebriefInput): string {
   const unit = i.unit ?? 'KG';
   const day = new Date(i.epochDay * 86_400_000).toISOString().slice(0, 10);
   let s = `Workout: ${i.title}, ${day}, ${i.minutes} min\nBody goal: ${i.goal}\n`;
-  if (i.readiness) s += `Readiness that day: recovery ${i.readiness.recovery}%, sleep ${i.readiness.sleepMin} min\n`;
   if (i.note.trim()) s += `Their note: ${i.note}\n`;
   if (i.score) s += scoreLine(i.score);
   for (const e of i.exercises) {
@@ -472,7 +469,7 @@ export function debriefPayload(i: DebriefInput): string {
 // ---------------------------------------------------------------- Prompts
 
 export const CORE_RULES = `You are the head performance and nutrition coach inside ForgeQuest (acting as a high-precision Sports Science, Calisthenics & Gym Coach).
-- Synthesize, do not just parrot stats back: connect the dots between Fitbit Readiness (recovery %, HRV vs baseline, resting HR, sleep debt, strain target), muscle recovery hours, training load / deload status, recent set performance, and daily protein/calorie intake.
+- Synthesize, do not just parrot stats back: connect the dots between muscle recovery hours, training load / deload status, recent set performance, and daily protein/calorie intake.
 - Give concrete, actionable prescriptions: when asked about today's session or progression, specify exact set/rep/hold/weight adjustments based on recovery state and their last logged sets. If a deload or lift plateau is flagged in the summary, proactively prescribe a structured deload (cutting sets by 35-40% for 1 week) or a biomechanical exercise variation.
 - Strict sports nutrition guardrails: NEVER prescribe a daily calorie target below ${MIN_SAFE_KCAL_MALE} kcal/day for men or ${MIN_SAFE_KCAL} for women (and never under 85% of their BMR), or a loss faster than 1% of body weight a week (a deficit over 30% of TDEE). Always maintain a protein floor of 1.6-2.2 g/kg and an essential dietary fat floor of at least 0.6-0.8 g/kg before allocating carbohydrates.
 - Keep normal replies focused and punchy (120-250 words), using **bold** and clean bullet points, and go deeper when the user asks for analysis or meal/workout breakdowns.
@@ -572,7 +569,7 @@ export function setLabel(kind: ExerciseKind | undefined, set: SetLike): string {
  * What the coach knows about the user: goals, equipment, this week, plan, recovery, fatigue/deload status, recent
  * sessions, 4-week trends, records, nutrition, badges and remembered facts. (Fitbit lines are left out: no Fitbit on the web.)
  */
-export function progressSummary(snap: ProgressSnapshot, today: number, readiness: readonly ReadinessDayRow[], equipment: ReadonlySet<Equipment>): string {
+export function progressSummary(snap: ProgressSnapshot, today: number, equipment: ReadonlySet<Equipment>): string {
   const s = snap.settings;
   const ex = snap.exercises;
   const dateText = new Date(today * 86_400_000).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
@@ -650,13 +647,10 @@ export function progressSummary(snap: ProgressSnapshot, today: number, readiness
   const recovering = [...snap.recovery.entries()].filter(([, r]) => r.fatigue >= 0.2).sort((a, b) => b[1].fatigue - a[1].fatigue).slice(0, 6);
   if (recovering.length) out += `- Muscle recovery: ${recovering.map(([m, r]) => `${MUSCLE_INFO[m].label} (${Math.round((1 - r.fatigue) * 100)}% recovered, ready in ${r.hoursUntilReady} h)`).join(', ')}\n`;
 
-  const rd = [...readiness].sort((a, b) => b.epochDay - a.epochDay).find((r) => r.epochDay >= today - 1);
-  if (rd) out += `- Readiness (${rd.epochDay === today ? 'today' : 'yesterday'}): recovery ${rd.recovery}%, sleep ${rd.sleepMin} min${rd.hrv > 0 ? `, HRV ${Math.round(rd.hrv)}` : ''}${rd.rhr > 0 ? `, resting HR ${Math.round(rd.rhr)}` : ''}\n`;
-
   const sessions = snap.sessions as unknown as SessionEntity[];
   const done = snap.doneSets;
   if (sessions.length) {
-    const load = analyzeFatigueAndPlateaus(sessions, done as never, ex, today, [...readiness].sort((a, b) => a.epochDay - b.epochDay).slice(-14));
+    const load = analyzeFatigueAndPlateaus(sessions, done as never, ex, today);
     out += `- Training load & deload status: weekly set volume is ${load.trainingLoadPct}% of 4-week average`;
     if (load.stalledLifts.length) out += `; stalled lifts (2+ weeks without progression): ${load.stalledLifts.slice(0, 4).map((l) => `${l.exerciseName} (${l.sessionsCount} sessions)`).join(', ')}`;
     if (load.needsDeload) out += `; DELOAD RECOMMENDED (${load.deloadReasons.join('; ')} — suggest reducing working sets by 35-40% or intensity by 10% for 1 week)`;

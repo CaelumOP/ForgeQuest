@@ -1,7 +1,6 @@
 package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
-import com.forgequest.app.data.db.ReadinessDayEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import kotlin.math.roundToInt
@@ -165,14 +164,13 @@ object Trends {
      *    neither the earlier best set nor the earlier best total ([WorkoutScore.stats], rule A1). Unweighted holds and
      *    jumping jacks are left out.
      * 2. Deload triggers: this week's sets >= 135 % of the busiest active week (6+ sets) among the previous 4
-     *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
+     *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger),
      *    or >= 2 stalled lifts at normal or higher load.
      */
     fun analyzeFatigueAndPlateaus(
         sessions: List<SessionEntity>,
         doneSets: List<SetEntity>,
         exercises: Map<String, ExerciseEntity>,
-        readinessDays: List<ReadinessDayEntity> = emptyList(),
         today: Long,
     ): FatigueAndPlateauReport {
         val sessionDay = sessions.associate { it.id to it.epochDay }
@@ -220,11 +218,6 @@ object Trends {
         val reasons = mutableListOf<String>()
         if (activePct != null && activePct >= 135 && currentWeekSets >= 18) {
             reasons += "acute weekly volume is $loadPct% of your 4-week average ($currentWeekSets sets)"
-        }
-        val recentReadiness = readinessDays.filter { it.epochDay in (today - 4)..today }
-        val lowRecoveryDays = recentReadiness.count { it.recovery in 1..44 }
-        if (lowRecoveryDays >= 3) {
-            reasons += "recovery has been below 45% on $lowRecoveryDays of the last ${recentReadiness.size} days"
         }
         if (stalled.size >= 2 && loadPct >= 95) {
             reasons += "${stalled.size} lifts have plateaued for 3+ weeks (${stalled.take(3).joinToString(", ") { it.exerciseName }})"

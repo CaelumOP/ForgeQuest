@@ -89,8 +89,6 @@ Everything is stored on your device. Nothing leaves it unless you turn on a feat
 - **Journal:** every week and workout, with notes, scores and details. You can delete a workout and undo it.
 - **43 badges** for consistency, skills, strength and nutrition, plus XP, levels and ranks (E to S).
 - **Weekly streak** that planned rest days and days you mark as sick, injured or travelling never break.
-- **Readiness from Health Connect** (Android only): sleep, heart rate and other data from your watch or
-  other apps, with a lighter-day suggestion on low-recovery mornings.
 
 ### Food
 
@@ -154,7 +152,7 @@ The app checks for new versions and can install them itself. You can also follow
 
 Open [caelumop.github.io/ForgeQuest](https://caelumop.github.io/ForgeQuest/) and add it to your Home Screen;
 the app asks you to do this first. After that it works offline. A few things are Android only:
-Health Connect readiness, the update installer and the rest-alarm notification.
+Health Connect (steps, calories burned and weight), the update installer and the rest-alarm notification.
 
 **Gemini key (optional):** create a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
 and paste it in Settings.

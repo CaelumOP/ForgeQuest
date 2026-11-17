@@ -495,7 +495,7 @@ fun dayType(score: WorkoutScore.Result, debrief: WorkoutDebriefMath.Result, insi
         DayType.FIRST_OR_BACK
     score.prs > 0 || debrief.wins.any { it is WorkoutDebriefMath.Win.Pr } -> DayType.PR
     insights.any { it.kind in MILESTONE_KINDS } -> DayType.MILESTONE
-    score.rough || score.lowRecovery -> DayType.ROUGH
+    score.rough -> DayType.ROUGH
     else -> DayType.ORDINARY
 }
 

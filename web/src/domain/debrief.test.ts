@@ -28,14 +28,14 @@ const ex = (id: string, kind: ExerciseKind, done: S[], last: S[] = [], o: ExOpts
   item: o.item === undefined ? null : o.item ? { ...o.item, exerciseId: id } : null, harderName: o.harder ?? null,
 })
 type RunOpts = {
-  planned?: number | null; low?: boolean; firstEver?: boolean; afterBreak?: boolean; plannedIds?: string[]
+  planned?: number | null; firstEver?: boolean; afterBreak?: boolean; plannedIds?: string[]
   weeklyTarget?: number; weekCount?: number; weekCountBefore?: number; report?: FatigueAndPlateauReport | null
   unit?: WeightUnit; healthOn?: boolean; sessionId?: number
 }
 const run = (exs: DebriefExercise[], o: RunOpts = {}) => {
   const score = computeWorkoutScore(
     exs.map((e) => ({ exerciseId: e.exerciseId, kind: e.kind, done: e.done, last: e.last })),
-    o.planned ?? null, o.low ?? false, o.firstEver ?? false, o.afterBreak ?? false,
+    o.planned ?? null, o.firstEver ?? false, o.afterBreak ?? false,
   )
   const input: DebriefInput = {
     sessionId: o.sessionId ?? 6, score, exercises: exs,
@@ -60,16 +60,12 @@ describe('debrief headlines', () => {
     expect(run([warm], { sessionId: 7 }).headline).toEqual({ type: 'ONLY_WARM_UPS', variant: 1 })
     expect(run([ex('a', 'WEIGHTED', n(3, 8, 50))], { sessionId: 4 }).headline).toEqual({ type: 'ALL_NEW', variant: 0 })
   })
-  it('5-6: a low-recovery day held steady, or scaled back smartly', () => {
-    expect(run([same('a'), up('b')], { low: true }).headline.type).toBe('ROUGH_HELD')
-    expect(run([same('a'), down('b')], { low: true }).headline.type).toBe('ROUGH_SCALED')
-    // Pain alone is not a rough-day headline: its exercise is forgiven and the normal order runs.
+  it('pain forgives only its own exercise in headlines', () => {
     const painDown = ex('a', 'WEIGHTED', [...n(2, 6, 40), s(6, 40, { effort: 'PAIN' })], n(3, 8, 50))
     expect(run([painDown, same('b')]).headline.type).toBe('ALL_SAME')
     expect(run([painDown, up('b')]).headline.type).toBe('MOSTLY_UP')
     // Pain forgives only its own exercise: another exercise's drop stays unforgiven.
     expect(run([painDown, down('b'), down('c')]).headline.type).toBe('MOSTLY_DOWN')
-    // The footnote is for low recovery (or health data on), not pain alone.
     expect(run([painDown, same('b')]).footnote).toBe(false)
   })
   it('7: under 75 % of the planned sets with no PR; a PR wins over it', () => {
@@ -119,12 +115,6 @@ describe('debrief wins', () => {
     // Only the workout that reaches the target: a second workout that day doesn't.
     expect(run([same('a')], { weeklyTarget: 3, weekCount: 3, weekCountBefore: 3 }).wins).toEqual([])
   })
-  it('a rough day: every adjusted set done (7 of 9, ceil(0.67 x 9) = 7), with the done count', () => {
-    const seven = [ex('a', 'WEIGHTED', n(4, 8, 50), n(4, 8, 50)), same('b')]
-    expect(run(seven, { planned: 9, low: true }).wins).toEqual([{ type: 'ALL_ADJUSTED_SETS', sets: 7 }])
-    expect(run([...seven, ex('c', 'WEIGHTED', n(2, 8, 50), n(2, 8, 50))], { planned: 9, low: true }).wins).toEqual([{ type: 'ALL_SETS', sets: 9 }])
-    expect(run([same('a'), same('b')], { planned: 9, low: true }).wins).toEqual([])
-  })
   it('back after 42+ days, or starting numbers for new exercises', () => {
     expect(run([ex('a', 'WEIGHTED', n(3, 8, 50), n(3, 8, 50), { gap: 50 })]).wins).toEqual([{ type: 'BACK_AFTER_GAP', exerciseId: 'a', days: 50 }])
     expect(run([ex('a', 'WEIGHTED', n(3, 8, 50), n(3, 8, 50), { gap: 41 })]).wins).toEqual([])
@@ -158,12 +148,10 @@ describe('debrief watch', () => {
   it('unforgiven drop, but not when the headline already says mostly down', () => {
     expect(run([down('a'), same('b'), same('c')]).watch).toEqual([{ type: 'DROP', exerciseId: 'a' }])
     expect(run([down('a'), down('b'), same('c')]).watch).toEqual([])
-    expect(run([down('a'), same('b')], { low: true }).watch).toEqual([])
   })
-  it('skipped exercise, not after a swap or on a rough day', () => {
+  it('skipped exercise, not after a swap', () => {
     expect(run([same('a'), same('b')], { plannedIds: ['a', 'b', 'c'] }).watch).toEqual([{ type: 'SKIPPED', exerciseId: 'c', count: 1 }])
     expect(run([same('a'), same('d')], { plannedIds: ['a', 'b', 'c'] }).watch).toEqual([])
-    expect(run([same('a'), same('b')], { plannedIds: ['a', 'b', 'c'], low: true }).watch).toEqual([])
     expect(run([same('a')], { plannedIds: ['a', 'b', 'c'], planned: 9 }).watch).toEqual([]) // headline 7 (short)
   })
 })
@@ -187,14 +175,12 @@ describe('debrief next time', () => {
     const hard = ex('bench', 'WEIGHTED', [...n(2, 12, 60), s(12, 60, { effort: 'HARD' })], n(3, 11, 60))
     expect(run([hard]).next).toEqual([{ type: 'HOLD_STEADY', exerciseId: 'bench', weightKg: 60, reps: 12, seconds: null }])
   })
-  it('everything else: same numbers; the footnote; newest = false hides next time', () => {
+  it('everything else: same numbers; newest = false hides next time', () => {
     const kept = ex('curl', 'WEIGHTED', [s(10, 12.5, { effort: 'HARD' }), ...n(2, 10, 12.5)], n(3, 10, 12.5))
     const r = run([ex('row', 'WEIGHTED', n(3, 10, 50), n(3, 10, 50)), kept])
     expect(r.next).toEqual([{ type: 'PLUS_REP', exerciseId: 'row', reps: 11, weightKg: 50 }])
     expect(r.sameRest).toBe(true)
     expect(r.footnote).toBe(false)
-    expect(run([same('a')], { healthOn: true }).footnote).toBe(true)
-    expect(run([same('a')], { low: true }).footnote).toBe(true)
     const old = run([ex('row', 'WEIGHTED', n(3, 10, 50), n(3, 10, 50), { newest: false })])
     expect(old.next).toEqual([])
     expect(old.sameRest).toBe(false)
@@ -233,13 +219,13 @@ describe('debriefForSession', () => {
       ({ ...s(reps, 50), sessionId, exerciseId: 'row', setIndex })
     const sets = [row(1, 0, 8), row(1, 1, 8), row(1, 2, 8), row(2, 0, 10), row(2, 1, 10), row(2, 2, 10)]
     const lib = new Map<string, ExerciseEntity>([['row', { id: 'row', name: 'Row', kind: 'WEIGHTED', primary: ['UPPER_BACK'], secondary: [] }]])
-    const score = scoresForSessions(sessions, sets, new Map([['row', 'WEIGHTED' as const]]), new Map(), new Set()).get(2)!
+    const score = scoresForSessions(sessions, sets, new Map([['row', 'WEIGHTED' as const]]), new Map()).get(2)!
     const r = debriefForSession(sessions[1], sessions, sets, lib, score, [], 0, null, 'KG', false, new Set())
     expect(r.headline.type).toBe('MOSTLY_UP')
     expect(r.wins).toEqual([{ type: 'BEST_GAIN', exerciseId: 'row', percent: 5 }])
     expect(r.next).toEqual([{ type: 'PLUS_REP', exerciseId: 'row', reps: 11, weightKg: 50 }])
     // The older workout is not the newest with the row, so it shows no next time.
-    const first = scoresForSessions(sessions, sets, new Map([['row', 'WEIGHTED' as const]]), new Map(), new Set()).get(1)!
+    const first = scoresForSessions(sessions, sets, new Map([['row', 'WEIGHTED' as const]]), new Map()).get(1)!
     const older = debriefForSession(sessions[0], sessions, sets, lib, first, [], 0, null, 'KG', false, new Set())
     expect(older.headline.type).toBe('FIRST_EVER')
     expect(older.next).toEqual([])
@@ -262,20 +248,6 @@ describe("Gemini's 8 cases", () => {
       { type: 'PLUS_REP', exerciseId: 'bench', reps: 9, weightKg: 42.5 },
     ])
     expect(r.sameRest).toBe(false)
-  })
-  it('2. rough day: deadlift drop forgiven, 6 of ceil(0.67 x 9) = 7 sets, missed sets keep the numbers', () => {
-    const r = run([
-      ex('deadlift', 'WEIGHTED', n(2, 8, 75), n(3, 8, 80), { item: range() }),
-      ex('row', 'WEIGHTED', n(2, 10, 45), n(3, 10, 45), { item: range() }),
-      ex('plank', 'HOLD', hold(2, 45, { effort: 'EASY' }), hold(3, 45), { item: holdItem(45) }),
-    ], { planned: 9, low: true })
-    expect(r.score.score).toBe(7)
-    expect(r.headline.type).toBe('ROUGH_SCALED')
-    expect(r.wins).toEqual([])
-    expect(r.watch).toEqual([])
-    expect(r.next).toEqual([])
-    expect(r.sameRest).toBe(true)
-    expect(r.footnote).toBe(true)
   })
   it('3. early stop for pain: forgiven, eased next time', () => {
     const r = run([

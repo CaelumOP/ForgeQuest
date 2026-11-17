@@ -7,7 +7,7 @@ class EffortScaleTest {
     private fun sets(effort: SetEffort, n: Int = 3) = List(n) { Progression.PastSet(8, null, 60f, effort) }
     private val target = Progression.Target(3, 8, null, null, 60f)
     private fun next(last: List<Progression.PastSet>, previous: List<Progression.PastSet> = emptyList()) =
-        Progression.next(ExerciseKind.WEIGHTED, target, last, previous, WeightUnit.KG, lowReadiness = false, warmup = false).sets[0].weightKg!!
+        Progression.next(ExerciseKind.WEIGHTED, target, last, previous, WeightUnit.KG, warmup = false).sets[0].weightKg!!
 
     @Test
     fun oldStoredValuesStillRead() {

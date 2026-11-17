@@ -23,7 +23,6 @@ import com.forgequest.app.domain.PrPicker
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.ProgressionMode
 import com.forgequest.app.domain.PlanShare
-import com.forgequest.app.domain.Readiness
 import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.Rotation
 import com.forgequest.app.domain.ScheduleMode
@@ -539,7 +538,6 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             last = input.last,
             previous = input.previous,
             unit = unit,
-            lowReadiness = s?.healthEnabled == true && lowReadinessToday(),
             warmup = input.warmup,
             deload = deload,
             mode = input.mode,
@@ -612,36 +610,28 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         return warmupEntities + workEntities
     }
 
-    /** Today's Fitbit recovery says ease off or recover (below 50); no data means train as normal. */
-    private suspend fun lowReadinessToday(): Boolean {
-        val day = db.readiness().get(Dates.today()) ?: return false
-        return Readiness.isLowRecovery(day.recovery)
-    }
-
-    /** The calculated score of every finished workout in [snap], from data already loaded plus two small queries (plan items, recovery). With [only], just that workout is scored. */
+    /** The calculated score of every finished workout in [snap], from data already loaded plus plan items. With [only], just that workout is scored. */
     suspend fun scores(snap: ProgressSnapshot, only: Long? = null): Map<Long, WorkoutScore.Result> {
         val planned = plans.allItems().groupBy { it.dayId }.mapValues { (_, items) -> plannedSetsOf(items) }
-        val rough = db.readiness().all().filter { Readiness.isLowRecovery(it.recovery) }.map { it.epochDay }.toSet()
         return WorkoutScore.forSessions(
-            snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned, rough,
+            snap.sessions, snap.doneSets, snap.exercises.mapValues { it.value.kind }, planned,
             snap.dayTags, snap.plan?.trainingDays ?: emptySet(), only,
         )
     }
 
     /**
      * The calculated debrief of one finished workout in [snap] ([WorkoutDebriefMath]): this workout, each exercise's
-     * previous time, the plan day's exercises, the weekly target, the plateau and deload report as of that day, the
-     * harder versions and the health switch. Null when the workout isn't in [snap] or has no done sets. Never stored.
+     * previous time, the plan day's exercises, the weekly target, the plateau and deload report as of that day, and the
+     * harder versions. Null when the workout isn't in [snap] or has no done sets. Never stored.
      */
     suspend fun debrief(snap: ProgressSnapshot, sessionId: Long): WorkoutDebriefMath.Result? {
         val session = snap.sessions.firstOrNull { it.id == sessionId } ?: return null
         val score = scores(snap, only = sessionId)[sessionId] ?: return null
         val planItems = session.planDayId?.let { day -> plans.allItems().filter { it.dayId == day } }.orEmpty()
-        // As of the workout's day: only workouts, sets and recovery on or before it, so an old workout keeps its own report.
-        val readiness = db.readiness().all().filter { it.epochDay <= session.epochDay }.sortedBy { it.epochDay }
+        // As of the workout's day: only workouts and sets on or before it, so an old workout keeps its own report.
         val upTo = snap.sessions.filter { it.epochDay <= session.epochDay }
         val upToIds = upTo.mapTo(HashSet()) { it.id }
-        val report = Trends.analyzeFatigueAndPlateaus(upTo, snap.doneSets.filter { it.sessionId in upToIds }, snap.exercises, readiness, session.epochDay)
+        val report = Trends.analyzeFatigueAndPlateaus(upTo, snap.doneSets.filter { it.sessionId in upToIds }, snap.exercises, session.epochDay)
         val weeklyTarget = StreakCalculator.fullTarget(snap.plan?.trainingDays ?: emptySet(), snap.settings.weeklyTargetOverride)
         return WorkoutDebriefMath.forSession(
             session = session,
@@ -653,11 +643,8 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             weeklyTarget = weeklyTarget,
             report = report,
             unit = snap.settings.weightUnit,
-            // The health switch defaults to on, so it alone doesn't mean health data: it must also have been read once.
-            healthOn = snap.settings.healthEnabled && snap.settings.healthConnected,
             equipment = snap.settings.configuredEquipment,
             variations = variations(snap, report.stalledLifts),
-            recoveryKnown = readiness.any { it.epochDay == session.epochDay && it.recovery > 0 },
         )
     }
 

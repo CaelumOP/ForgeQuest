@@ -20,7 +20,7 @@ object WorkoutDebriefMath {
      * before [MIXED] but listed last, so the string keys (debrief_h<position>_<n>) keep their numbers.
      */
     enum class Headline(val variants: Int) {
-        FIRST_EVER(3), AFTER_BREAK(3), ONLY_WARM_UPS(2), ALL_NEW(2), ROUGH_HELD(3), ROUGH_SCALED(3), SHORT(3),
+        FIRST_EVER(3), AFTER_BREAK(3), ONLY_WARM_UPS(2), ALL_NEW(2), SHORT(3),
         PR_AND_UP(3), MOSTLY_UP(3), ALL_SAME(3), MIXED(3), MOSTLY_DOWN(3), SOME_UP(3),
     }
 
@@ -91,10 +91,6 @@ object WorkoutDebriefMath {
         val next: List<Next>,
         /** "Everything else: same numbers": some exercise shown for next time keeps its numbers. */
         val sameRest: Boolean,
-        /** "The app eases off by itself on a low-recovery day." True exactly when [note] is [Footnote.LOW_RECOVERY]. */
-        val footnote: Boolean,
-        /** The small print under the debrief, or null for none. */
-        val note: Footnote? = null,
         /** Whole-percent total volume change vs the previous workout of the same plan day; null when not comparable. */
         val volumeChange: Int? = null,
     )
@@ -130,22 +126,9 @@ object WorkoutDebriefMath {
         val weekCountBefore: Int,
         val report: FatigueAndPlateauReport?,
         val unit: WeightUnit,
-        val healthOn: Boolean,
-        /** With health on: whether the watch had a recovery number for the workout's day. */
-        val recoveryKnown: Boolean = true,
         /** Stalled exercise id to the variation to try instead ([VariationCycle.next]); empty when there is none. */
         val variations: Map<String, String> = emptyMap(),
     )
-
-    /**
-     * The debrief's small print, by what the app knows about recovery:
-     * a watch is connected and recovery was low ([LOW_RECOVERY], the app eased off); a watch is connected but had no
-     * number for the day ([NUMBERS_ONLY]); no watch ([CONNECT_WATCH], shown only now and then).
-     */
-    enum class Footnote { LOW_RECOVERY, NUMBERS_ONLY, CONNECT_WATCH }
-
-    /** Without a watch, the "connect a watch" hint shows on one workout in this many. */
-    const val CONNECT_HINT_EVERY = 5L
 
     /** An exercise back after this many days or more is a win. */
     const val BACK_AFTER_DAYS = 42
@@ -190,8 +173,7 @@ object WorkoutDebriefMath {
             )
         }
         val rough = score.rough || exs.any { it.pain }
-        val lowRecovery = score.lowRecovery
-        val headline = headline(input, exs, lowRecovery)
+        val headline = headline(input, exs)
         val (next, sameRest) = nextTime(input, exs)
         val variant = input.sessionId.mod(headline.variants.toLong()).toInt()
         val compared = exs.filter { it.trend != null }
@@ -205,19 +187,11 @@ object WorkoutDebriefMath {
             watch = watch(input, exs, headline, rough),
             next = next,
             sameRest = sameRest,
-            footnote = lowRecovery,
-            note = when {
-                lowRecovery -> Footnote.LOW_RECOVERY
-                input.healthOn && !input.recoveryKnown -> Footnote.NUMBERS_ONLY
-                // No watch: recovery is never mentioned, apart from this hint every few workouts.
-                !input.healthOn && input.sessionId % CONNECT_HINT_EVERY == 0L -> Footnote.CONNECT_WATCH
-                else -> null
-            },
         )
     }
 
-    /** Headlines 5 and 6 only on a low-recovery day; pain alone forgives its own exercise and the normal order runs. */
-    private fun headline(input: Input, exs: List<Ex>, lowRecovery: Boolean): Headline {
+    /** Picks the workout headline; pain alone forgives its own exercise and the normal order runs. */
+    private fun headline(input: Input, exs: List<Ex>): Headline {
         val score = input.score
         val compared = exs.filter { it.trend != null }
         val up = compared.count { it.trend == WorkoutScore.Trend.UP }
@@ -229,8 +203,6 @@ object WorkoutDebriefMath {
             score.afterBreak -> Headline.AFTER_BREAK
             exs.isEmpty() -> Headline.ONLY_WARM_UPS
             compared.isEmpty() -> Headline.ALL_NEW
-            lowRecovery && downs.isEmpty() -> Headline.ROUGH_HELD
-            lowRecovery && unforgiven == 0 -> Headline.ROUGH_SCALED
             effective != null && score.doneSets * 4 < effective * 3 && score.prs == 0 -> Headline.SHORT
             score.prs > 0 && up * 2 >= compared.size -> Headline.PR_AND_UP
             up * 2 >= compared.size || score.prs > 0 -> Headline.MOSTLY_UP
@@ -349,7 +321,7 @@ object WorkoutDebriefMath {
             if (!x.e.newest) continue
             val p = Progression.inputs(x.e.item, x.id, x.working + x.lastWorking)
             if (p.warmup) continue
-            val r = Progression.next(x.e.kind, p.target, p.last, p.previous, input.unit, lowReadiness = false, warmup = false)
+            val r = Progression.next(x.e.kind, p.target, p.last, p.previous, input.unit, warmup = false)
             val line = nextLine(x, p, r)
             if (line == null) unchanged = true else lines += line
         }
@@ -410,10 +382,8 @@ object WorkoutDebriefMath {
         weeklyTarget: Int,
         report: FatigueAndPlateauReport?,
         unit: WeightUnit,
-        healthOn: Boolean,
         equipment: Set<Equipment>,
         variations: Map<String, String> = emptyMap(),
-        recoveryKnown: Boolean = true,
     ): Result {
         val byId = sessions.associateBy { it.id }
         fun earlier(o: SessionEntity, s: SessionEntity) = o.epochDay < s.epochDay || (o.epochDay == s.epochDay && o.startedAt < s.startedAt)
@@ -449,9 +419,7 @@ object WorkoutDebriefMath {
                 weekCountBefore = before.size,
                 report = report,
                 unit = unit,
-                healthOn = healthOn,
                 variations = variations,
-                recoveryKnown = recoveryKnown,
             ),
         ).copy(volumeChange = volumeChangeVsLastTime(session, sessions, doneSets, mine))
     }

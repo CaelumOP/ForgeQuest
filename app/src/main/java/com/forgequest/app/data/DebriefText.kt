@@ -33,8 +33,6 @@ object DebriefText {
         Headline.AFTER_BREAK to intArrayOf(R.string.debrief_h2_1, R.string.debrief_h2_2, R.string.debrief_h2_3),
         Headline.ONLY_WARM_UPS to intArrayOf(R.string.debrief_h3_1, R.string.debrief_h3_2),
         Headline.ALL_NEW to intArrayOf(R.string.debrief_h4_1, R.string.debrief_h4_2),
-        Headline.ROUGH_HELD to intArrayOf(R.string.debrief_h5_1, R.string.debrief_h5_2, R.string.debrief_h5_3),
-        Headline.ROUGH_SCALED to intArrayOf(R.string.debrief_h6_1, R.string.debrief_h6_2, R.string.debrief_h6_3),
         Headline.SHORT to intArrayOf(R.string.debrief_h7_1, R.string.debrief_h7_2, R.string.debrief_h7_3),
         Headline.PR_AND_UP to intArrayOf(R.string.debrief_h8_1, R.string.debrief_h8_2, R.string.debrief_h8_3),
         Headline.MOSTLY_UP to intArrayOf(R.string.debrief_h9_1, R.string.debrief_h9_2, R.string.debrief_h9_3),
@@ -60,11 +58,7 @@ object DebriefText {
             watch = d.watch.map { w -> watch(w, res, name, weight, ::reps, ::seconds) },
             next = d.next.mapNotNull { n -> next(n, res, name, weight, ::reps, ::seconds) }.map { res.getString(R.string.debrief_next_time, it) },
             sameRest = if (d.sameRest) res.getString(R.string.debrief_same_rest) else null,
-            footnote = when (d.note) {
-                WorkoutDebriefMath.Footnote.NUMBERS_ONLY -> res.getString(R.string.debrief_footnote_numbers)
-                WorkoutDebriefMath.Footnote.CONNECT_WATCH -> res.getString(R.string.debrief_footnote_connect)
-                else -> if (d.footnote) res.getString(R.string.debrief_footnote) else null
-            },
+            footnote = null,
         )
     }
 

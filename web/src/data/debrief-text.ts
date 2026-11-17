@@ -87,7 +87,11 @@ export function debriefLines(d: DebriefResult, lang: Lang, name: (id: string) =>
     }
   }
 
-  const order = Object.keys(HEADLINE_VARIANTS).indexOf(d.headline.type) + 1
+  const HEADLINE_ORDER: Record<keyof typeof HEADLINE_VARIANTS, number> = {
+    FIRST_EVER: 1, AFTER_BREAK: 2, ONLY_WARM_UPS: 3, ALL_NEW: 4, SHORT: 7,
+    PR_AND_UP: 8, MOSTLY_UP: 9, ALL_SAME: 10, MIXED: 11, MOSTLY_DOWN: 12, SOME_UP: 13,
+  }
+  const order = HEADLINE_ORDER[d.headline.type]
   const variants = HEADLINE_VARIANTS[d.headline.type]
   const variant = Math.min(Math.max(d.headline.variant, 0), variants - 1)
   return {
@@ -97,6 +101,6 @@ export function debriefLines(d: DebriefResult, lang: Lang, name: (id: string) =>
     watch: d.watch.map(watch),
     next: d.next.map(next).filter((x): x is string => x != null).map((x) => t('debrief_next_time', x)),
     sameRest: d.sameRest ? t('debrief_same_rest') : null,
-    footnote: d.footnote ? t('debrief_footnote') : null,
+    footnote: null,
   }
 }

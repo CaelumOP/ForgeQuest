@@ -94,9 +94,6 @@ class ProgressViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val measurements: StateFlow<List<com.forgequest.app.data.db.BodyMeasurementEntity>> =
         measurementsRepo.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    /** Fitbit readiness saved day by day; empty when the Fitbit isn't connected. */
-    val readiness: StateFlow<List<com.forgequest.app.data.db.ReadinessDayEntity>> =
-        app.db.readiness().observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** Stalled lifts and the deload check, computed off the main thread. */
     val report: StateFlow<com.forgequest.app.domain.FatigueAndPlateauReport?> = app.progress.snapshot
         .map { s -> Trends.analyzeFatigueAndPlateaus(s.sessions, s.doneSets, s.exercises, today = Dates.today()) }
@@ -143,7 +140,6 @@ fun ProgressScreen(nav: NavHostController) {
     val vm = appViewModel { ProgressViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val measurements by vm.measurements.collectAsState()
-    val readiness by vm.readiness.collectAsState()
     val report by vm.report.collectAsState()
     val c = Fit.colors
     var rangeIndex by rememberSaveable { mutableIntStateOf(1) }
@@ -221,8 +217,6 @@ fun ProgressScreen(nav: NavHostController) {
                 Spacer(Modifier.height(12.dp))
             }
 
-            RecoveryTrendCard(readiness, d, reveal, dateLabel)
-
             FitCard {
                 Text(stringResource(R.string.progress_consistency), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Text(pluralStringResource(R.plurals.progress_workout_days, d.workoutDaysInRange, d.workoutDaysInRange), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
@@ -257,33 +251,6 @@ fun ProgressScreen(nav: NavHostController) {
             Spacer(Modifier.height(32.dp))
         }
     }
-}
-
-/** Recovery, HRV and sleep from the Fitbit over the chosen range, once there are a few days to show. */
-@Composable
-private fun RecoveryTrendCard(rows: List<com.forgequest.app.data.db.ReadinessDayEntity>, d: Derived, reveal: Float, dateLabel: (Long) -> String) {
-    val c = Fit.colors
-    val days = rows.filter { it.epochDay >= d.from && (it.sleepMin > 0 || it.hrv > 0f) }
-    if (days.size < 3) return
-    val recovery = days.map { TrendPoint(it.epochDay, it.recovery.toFloat()) }
-    val hrv = days.filter { it.hrv > 0f }.map { it.hrv }
-    val sleep = days.filter { it.sleepMin > 0 }.map { it.sleepMin }
-    FitCard {
-        Text(stringResource(R.string.progress_recovery_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-        Text(stringResource(R.string.progress_recovery_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        Spacer(Modifier.height(8.dp))
-        TrendChart(
-            recovery, com.forgequest.app.ui.home.recoveryTint(recovery.map { it.value }.average().roundToInt()), reveal = reveal,
-            average = Trends.movingAverage(recovery), showRecords = false, format = { "${it.roundToInt()}%" }, dateLabel = dateLabel,
-        )
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth()) {
-            Total("${recovery.map { it.value }.average().roundToInt()}%", stringResource(R.string.progress_avg_recovery), Modifier.weight(1f))
-            Total(if (hrv.isEmpty()) "—" else "${hrv.average().roundToInt()} ms", stringResource(R.string.progress_avg_hrv), Modifier.weight(1f))
-            Total(if (sleep.isEmpty()) "—" else sleep.average().roundToInt().let { stringResource(R.string.dur_hm, it / 60, it % 60) }, stringResource(R.string.progress_avg_sleep), Modifier.weight(1f))
-        }
-    }
-    Spacer(Modifier.height(12.dp))
 }
 
 @Composable

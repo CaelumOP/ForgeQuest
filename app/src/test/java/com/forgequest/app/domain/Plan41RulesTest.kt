@@ -50,15 +50,14 @@ class Plan41RulesTest {
     @Test fun progressionModesRespectSafetyAndCanonicalKilograms() {
         val target = Progression.Target(3, 5, 5, null, 100f)
         val last = List(3) { Progression.PastSet(5, null, 100f, SetEffort.OK) }
-        fun next(mode: ProgressionMode, low: Boolean = false, deload: Boolean = false,
+        fun next(mode: ProgressionMode, deload: Boolean = false,
                  history: List<Progression.PastSet> = last) = Progression.next(
             ExerciseKind.WEIGHTED, target, history, emptyList(), WeightUnit.LB,
-            low, false, deload, mode, lowerBody = true,
+            false, deload, mode, lowerBody = true,
         )
         assertEquals(105f, next(ProgressionMode.LINEAR).sets[0].weightKg!!, 0.001f)
         assertEquals(102.5f, Progression.stepUpLinear(100f, WeightUnit.LB, false), 0.001f)
         assertEquals(100f, next(ProgressionMode.MAINTAIN).sets[0].weightKg!!, 0.001f)
-        assertEquals(100f, next(ProgressionMode.LINEAR, low = true).sets[0].weightKg!!, 0.001f)
         val deload = next(ProgressionMode.LINEAR, deload = true)
         assertEquals(2, deload.sets.size)
         assertEquals(100f, deload.sets[0].weightKg!!, 0.001f)

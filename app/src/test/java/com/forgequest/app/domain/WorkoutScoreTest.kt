@@ -34,7 +34,7 @@ class WorkoutScoreTest {
     private fun down() = work(sets(3, 6, 40f), sets(3, 8, 50f))
     private fun many(n: Int, f: () -> WorkoutScore.Work) = List(n) { f() }
 
-    private fun scoreOf(work: List<WorkoutScore.Work>, planned: Int?, low: Boolean = false) = WorkoutScore.compute(work, planned, low)
+    private fun scoreOf(work: List<WorkoutScore.Work>, planned: Int?) = WorkoutScore.compute(work, planned)
 
     private fun trend(done: List<SetEntity>, last: List<SetEntity>, kind: ExerciseKind = ExerciseKind.WEIGHTED) =
         WorkoutScore.trend(kind, "ex", done, last)
@@ -84,32 +84,11 @@ class WorkoutScoreTest {
     }
 
     @Test
-    fun roughDayHoldingSteadyOrDroppingIsEight() {
-        val r = scoreOf(many(4, ::same), planned = 12, low = true)
-        assertEquals(8, r.score)
-        assertTrue(r.rough)
-        assertTrue(r.lowRecovery)
-        assertEquals(8, scoreOf(listOf(down()) + many(3, ::same), planned = 12, low = true).score)
-        assertEquals(8, scoreOf(many(4, ::down), planned = 12, low = true).score)
-    }
-
-    @Test
-    fun roughDayNeedsTwoThirdsOfThePlannedSets() {
-        // ceil(0.67 × 12) = ceil(8.04) = 9, so 9 of 12 sets is full completion.
-        val w = many(3) { work(sets(2, 8, 40f), sets(3, 8, 50f)) } + down()
-        val r = scoreOf(w, planned = 12, low = true)
-        assertEquals(8, r.score)
-        assertEquals(9, r.doneSets)
-        assertEquals(7, scoreOf(w.drop(1), planned = 12, low = true).score)
-    }
-
-    @Test
     fun painForgivesOnlyItsOwnExerciseAndCutsThePlannedSets() {
         val painDown = work(sets(2, 8, 40f) + set(8, 40f, effort = "PAIN"), sets(3, 8, 50f))
         val r = scoreOf(many(3, ::down) + painDown, planned = 12)
         assertEquals(6, r.score)
         assertTrue(r.rough)
-        assertFalse(r.lowRecovery)
         val stopped = work(listOf(set(8, 40f, effort = "PAIN")), sets(3, 8, 50f))
         assertEquals(8, scoreOf(listOf(stopped) + many(3, ::same), planned = 12).score)
     }
@@ -195,7 +174,7 @@ class WorkoutScoreTest {
     @Test
     fun batchFindsLastTimeAndTheFirstEverHidesTheNumber() {
         val sets = listOf(set(8, 50f, session = 1), set(10, 50f, session = 2))
-        val r = WorkoutScore.forSessions(listOf(session(1, 100), session(2, 102)), sets, kinds, mapOf(7L to 1), emptySet())
+        val r = WorkoutScore.forSessions(listOf(session(1, 100), session(2, 102)), sets, kinds, mapOf(7L to 1))
         val first = r.getValue(1)
         assertEquals(8, first.score)
         assertTrue(first.firstEver)
@@ -210,7 +189,7 @@ class WorkoutScoreTest {
     fun savedPlannedSetsWinOverThePlanAsItIsNow() {
         fun done(s: Long) = List(9) { set(8, 50f, session = s) }
         val sessions = listOf(session(1, 100, 9), session(2, 102, 9), session(3, 104))
-        val r = WorkoutScore.forSessions(sessions, done(1) + done(2) + done(3), kinds, mapOf(7L to 15), emptySet())
+        val r = WorkoutScore.forSessions(sessions, done(1) + done(2) + done(3), kinds, mapOf(7L to 15))
         assertEquals(9, r.getValue(2).plannedSets)
         assertEquals(8, r.getValue(2).score)
         assertEquals(15, r.getValue(3).plannedSets)
@@ -221,19 +200,11 @@ class WorkoutScoreTest {
     fun afterASickDayTheNumberIsHidden() {
         val sets = listOf(set(8, 50f, session = 1), set(8, 50f, session = 2), set(8, 50f, session = 3))
         val r = WorkoutScore.forSessions(
-            listOf(session(1, 100), session(2, 103), session(3, 104)), sets, kinds, mapOf(7L to 1), emptySet(), mapOf(101L to DayTag.SICK),
+            listOf(session(1, 100), session(2, 103), session(3, 104)), sets, kinds, mapOf(7L to 1), mapOf(101L to DayTag.SICK),
         )
         assertTrue(r.getValue(2).afterBreak)
         assertFalse(r.getValue(2).showNumber)
         assertEquals(8, r.getValue(2).score)
         assertFalse(r.getValue(3).afterBreak)
-    }
-
-    @Test
-    fun lowRecoveryDaysAreRough() {
-        val sets = listOf(set(8, 50f, session = 1), set(6, 50f, session = 2))
-        val r = WorkoutScore.forSessions(listOf(session(1, 100), session(2, 102)), sets, kinds, mapOf(7L to 1), setOf(102L))
-        assertTrue(r.getValue(2).rough)
-        assertEquals(8, r.getValue(2).score)
     }
 }

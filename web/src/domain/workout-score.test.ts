@@ -16,7 +16,7 @@ const up = () => work(sets(3, 10, 50), sets(3, 8, 50))
 // A real drop: fewer reps at a lighter weight.
 const down = () => work(sets(3, 6, 40), sets(3, 8, 50))
 const many = (f: () => ScoreWork, n: number) => Array.from({ length: n }, f)
-const score = (w: ScoreWork[], planned: number | null, low = false) => computeWorkoutScore(w, planned, low)
+const score = (w: ScoreWork[], planned: number | null) => computeWorkoutScore(w, planned)
 
 describe('workout score v2', () => {
   it('all SAME, all sets is 8 (TC-1.1)', () => {
@@ -43,20 +43,9 @@ describe('workout score v2', () => {
   it('a free workout with 2 UP of 2 is 9', () => {
     expect(score(many(up, 2), null)).toMatchObject({ score: 9, plannedSets: null })
   })
-  it('a rough day: all SAME is 8, 1 DOWN + 3 SAME is 8, all DOWN is 8 (TC-2.1)', () => {
-    expect(score(many(same, 4), 12, true)).toMatchObject({ score: 8, rough: true, lowRecovery: true })
-    expect(score([down(), ...many(same, 3)], 12, true).score).toBe(8)
-    expect(score(many(down, 4), 12, true).score).toBe(8)
-  })
-  it('a rough day needs only ceil(0.67 × planned) sets (TC-2.2)', () => {
-    // 9 of 12 sets, all DOWN, recovery under 50: ceil(0.67 × 12) = ceil(8.04) = 9, so 9 / 9 is full completion.
-    const w = [...many(() => work(sets(2, 8, 40), sets(3, 8, 50)), 3), down()]
-    expect(score(w, 12, true)).toMatchObject({ score: 8, doneSets: 9 })
-    expect(score(w.slice(1), 12, true).score).toBe(7)
-  })
   it('PAIN forgives only its own exercise (TC-2.3) and cuts the planned sets (TC-2.4)', () => {
     const painDown = work([...sets(2, 8, 40), set(8, 40, { effort: 'PAIN' })], sets(3, 8, 50))
-    expect(score([...many(down, 3), painDown], 12)).toMatchObject({ score: 6, rough: true, lowRecovery: false })
+    expect(score([...many(down, 3), painDown], 12)).toMatchObject({ score: 6, rough: true })
     const stopped = work([set(8, 40, { effort: 'PAIN' })], sets(3, 8, 50))
     expect(score([stopped, ...many(same, 3)], 12).score).toBe(8)
   })
@@ -119,16 +108,16 @@ describe('scoresForSessions', () => {
   const kinds = new Map([['ex', 'WEIGHTED' as const]])
 
   it('finds last time and the planned sets; the first-ever workout hides the number', () => {
-    const r = scoresForSessions([sess(1, 100), sess(2, 102)], [row(1, 8), row(2, 10)], kinds, new Map([[7, 1]]), new Set())
+    const r = scoresForSessions([sess(1, 100), sess(2, 102)], [row(1, 8), row(2, 10)], kinds, new Map([[7, 1]]))
     expect(r.get(1)).toMatchObject({ score: 8, firstEver: true, afterBreak: false, showNumber: false })
     expect(r.get(2)).toMatchObject({ score: 9, firstEver: false, showNumber: true })
   })
   it('only: scores just that workout, the same as the full run', () => {
     const sessions = [sess(1, 100), sess(2, 102), sess(3, 102), sess(4, 105)]
     const sets = [row(1, 8), row(2, 10), row(3, 6), row(4, 12)]
-    const full = scoresForSessions(sessions, sets, kinds, new Map([[7, 1]]), new Set())
+    const full = scoresForSessions(sessions, sets, kinds, new Map([[7, 1]]))
     for (const id of [1, 2, 3, 4]) {
-      const one = scoresForSessions(sessions, sets, kinds, new Map([[7, 1]]), new Set(), new Map(), new Set(), id)
+      const one = scoresForSessions(sessions, sets, kinds, new Map([[7, 1]]), new Map(), new Set(), id)
       expect([...one.keys()]).toEqual([id])
       expect(one.get(id)).toEqual(full.get(id))
     }
@@ -136,19 +125,15 @@ describe('scoresForSessions', () => {
   it('a saved plannedSets wins over the plan as it is now (TC-6.4)', () => {
     const done = (id: number) => Array.from({ length: 9 }, () => row(id, 8))
     const sessions = [sess(1, 100, { plannedSets: 9 }), sess(2, 102, { plannedSets: 9 }), sess(3, 104)]
-    const r = scoresForSessions(sessions, [...done(1), ...done(2), ...done(3)], kinds, new Map([[7, 15]]), new Set())
+    const r = scoresForSessions(sessions, [...done(1), ...done(2), ...done(3)], kinds, new Map([[7, 15]]))
     expect(r.get(2)).toMatchObject({ score: 8, plannedSets: 9 })
     expect(r.get(3)).toMatchObject({ plannedSets: 15, score: 4 })
   })
   it('after a sick day since the last workout, afterBreak is true and the number is hidden', () => {
     const tags = new Map<number, DayTag>([[101, 'SICK']])
-    const r = scoresForSessions([sess(1, 100), sess(2, 103), sess(3, 104)], [row(1, 8), row(2, 8), row(3, 8)], kinds, new Map([[7, 1]]), new Set(), tags)
+    const r = scoresForSessions([sess(1, 100), sess(2, 103), sess(3, 104)], [row(1, 8), row(2, 8), row(3, 8)], kinds, new Map([[7, 1]]), tags)
     expect(r.get(2)).toMatchObject({ afterBreak: true, showNumber: false, score: 8 })
     expect(r.get(3)).toMatchObject({ afterBreak: false, showNumber: true })
-  })
-  it('low recovery days are rough', () => {
-    const r = scoresForSessions([sess(1, 100), sess(2, 102)], [row(1, 8), row(2, 6)], kinds, new Map([[7, 1]]), new Set([102]))
-    expect(r.get(2)).toMatchObject({ rough: true, score: 8 })
   })
 
   it('never counts WARMUP, DROPSET, or RESTPAUSE sets in workout score', () => {

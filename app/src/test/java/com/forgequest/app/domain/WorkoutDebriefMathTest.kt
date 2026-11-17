@@ -74,11 +74,9 @@ class WorkoutDebriefMathTest {
         weekCountBefore: Int = 0,
         report: FatigueAndPlateauReport? = null,
         unit: WeightUnit = WeightUnit.KG,
-        healthOn: Boolean = false,
         sessionId: Long = 6,
-        recoveryKnown: Boolean = true,
     ): Run {
-        val score = WorkoutScore.compute(exs.map { WorkoutScore.Work(it.exerciseId, it.kind, it.done, it.last) }, planned, low, firstEver, afterBreak)
+        val score = WorkoutScore.compute(exs.map { WorkoutScore.Work(it.exerciseId, it.kind, it.done, it.last) }, planned, firstEver, afterBreak)
         val input = WorkoutDebriefMath.Input(
             sessionId = sessionId,
             score = score,
@@ -89,8 +87,6 @@ class WorkoutDebriefMathTest {
             weekCountBefore = weekCountBefore,
             report = report,
             unit = unit,
-            healthOn = healthOn,
-            recoveryKnown = recoveryKnown,
         )
         return Run(WorkoutDebriefMath.compute(input), score)
     }
@@ -115,17 +111,12 @@ class WorkoutDebriefMathTest {
     }
 
     @Test
-    fun headlinesFiveAndSixLowRecoveryDays() {
-        assertEquals(Headline.ROUGH_HELD, run(listOf(same("a"), up("b")), low = true).headline.type)
-        assertEquals(Headline.ROUGH_SCALED, run(listOf(same("a"), down("b")), low = true).headline.type)
-        // Pain alone is not a rough-day headline: its exercise is forgiven and the normal order runs.
+    fun painForgivesOnlyItsOwnExerciseInHeadlines() {
         val painDown = ex("a", ExerciseKind.WEIGHTED, n(2, 6, 40f) + s(6, 40f, effort = "PAIN"), n(3, 8, 50f))
         assertEquals(Headline.ALL_SAME, run(listOf(painDown, same("b"))).headline.type)
         assertEquals(Headline.MOSTLY_UP, run(listOf(painDown, up("b"))).headline.type)
         // Pain forgives only its own exercise: another exercise's drop stays unforgiven.
         assertEquals(Headline.MOSTLY_DOWN, run(listOf(painDown, down("b"), down("c"))).headline.type)
-        // The footnote is for low recovery not pain alone.
-        assertFalse(run(listOf(painDown, same("b"))).result.footnote)
     }
 
     @Test
@@ -192,18 +183,6 @@ class WorkoutDebriefMathTest {
     }
 
     @Test
-    fun roughDayEveryAdjustedSetDoneWithTheDoneCount() {
-        // 7 of 9, ceil(0.67 x 9) = 7.
-        val seven = listOf(ex("a", ExerciseKind.WEIGHTED, n(4, 8, 50f), n(4, 8, 50f)), same("b"))
-        assertEquals(listOf(Win.AllAdjustedSets(7)), run(seven, planned = 9, low = true).wins)
-        assertEquals(
-            listOf(Win.AllSets(9)),
-            run(seven + ex("c", ExerciseKind.WEIGHTED, n(2, 8, 50f), n(2, 8, 50f)), planned = 9, low = true).wins,
-        )
-        assertEquals(emptyList<Win>(), run(listOf(same("a"), same("b")), planned = 9, low = true).wins)
-    }
-
-    @Test
     fun backAfterAGapOrStartingNumbers() {
         assertEquals(listOf(Win.BackAfterGap("a", 50)), run(listOf(ex("a", ExerciseKind.WEIGHTED, n(3, 8, 50f), n(3, 8, 50f), gap = 50))).wins)
         assertEquals(emptyList<Win>(), run(listOf(ex("a", ExerciseKind.WEIGHTED, n(3, 8, 50f), n(3, 8, 50f), gap = 41))).wins)
@@ -250,14 +229,12 @@ class WorkoutDebriefMathTest {
     fun unforgivenDropButNotWhenMostlyDown() {
         assertEquals(listOf(Watch.Drop("a")), run(listOf(down("a"), same("b"), same("c"))).watch)
         assertEquals(emptyList<Watch>(), run(listOf(down("a"), down("b"), same("c"))).watch)
-        assertEquals(emptyList<Watch>(), run(listOf(down("a"), same("b")), low = true).watch)
     }
 
     @Test
-    fun skippedExerciseNotAfterASwapOrOnARoughDay() {
+    fun skippedExerciseNotAfterASwapOrShort() {
         assertEquals(listOf(Watch.Skipped("c", 1)), run(listOf(same("a"), same("b")), plannedIds = listOf("a", "b", "c")).watch)
         assertEquals(emptyList<Watch>(), run(listOf(same("a"), same("d")), plannedIds = listOf("a", "b", "c")).watch)
-        assertEquals(emptyList<Watch>(), run(listOf(same("a"), same("b")), plannedIds = listOf("a", "b", "c"), low = true).watch)
         // Headline 7 (short).
         assertEquals(emptyList<Watch>(), run(listOf(same("a")), plannedIds = listOf("a", "b", "c"), planned = 9).watch)
     }
@@ -284,14 +261,11 @@ class WorkoutDebriefMathTest {
     }
 
     @Test
-    fun sameRestFootnoteAndNewestFalseHidesNextTime() {
+    fun sameRestAndNewestFalseHidesNextTime() {
         val kept = ex("curl", ExerciseKind.WEIGHTED, listOf(s(10, 12.5f, effort = "HARD")) + n(2, 10, 12.5f), n(3, 10, 12.5f))
         val r = run(listOf(ex("row", ExerciseKind.WEIGHTED, n(3, 10, 50f), n(3, 10, 50f)), kept))
         assertEquals(listOf(Next.PlusRep("row", 11, 50f)), r.next)
         assertTrue(r.result.sameRest)
-        assertFalse(r.result.footnote)
-        assertFalse(run(listOf(same("a")), healthOn = true).result.footnote)
-        assertTrue(run(listOf(same("a")), low = true).result.footnote)
         val old = run(listOf(ex("row", ExerciseKind.WEIGHTED, n(3, 10, 50f), n(3, 10, 50f), newest = false)))
         assertEquals(emptyList<Next>(), old.next)
         assertFalse(old.result.sameRest)
@@ -345,13 +319,13 @@ class WorkoutDebriefMathTest {
         fun row(session: Long, index: Int, reps: Int) = s(reps, 50f).copy(sessionId = session, exerciseId = "row", setIndex = index)
         val sets = listOf(row(1, 0, 8), row(1, 1, 8), row(1, 2, 8), row(2, 0, 10), row(2, 1, 10), row(2, 2, 10))
         val lib = mapOf("row" to ExerciseEntity("row", "Row", ExerciseKind.WEIGHTED, listOf(Muscle.UPPER_BACK), emptyList()))
-        val scores = WorkoutScore.forSessions(sessions, sets, mapOf("row" to ExerciseKind.WEIGHTED), emptyMap(), emptySet())
-        val r = WorkoutDebriefMath.forSession(sessions[1], sessions, sets, lib, scores.getValue(2), emptyList(), 0, null, WeightUnit.KG, false, emptySet())
+        val scores = WorkoutScore.forSessions(sessions, sets, mapOf("row" to ExerciseKind.WEIGHTED), emptyMap())
+        val r = WorkoutDebriefMath.forSession(sessions[1], sessions, sets, lib, scores.getValue(2), emptyList(), 0, null, WeightUnit.KG, emptySet())
         assertEquals(Headline.MOSTLY_UP, r.headline.type)
         assertEquals(listOf(Win.BestGain("row", 5)), r.wins)
         assertEquals(listOf(Next.PlusRep("row", 11, 50f)), r.next)
         // The older workout is not the newest with the row, so it shows no next time.
-        val older = WorkoutDebriefMath.forSession(sessions[0], sessions, sets, lib, scores.getValue(1), emptyList(), 0, null, WeightUnit.KG, false, emptySet())
+        val older = WorkoutDebriefMath.forSession(sessions[0], sessions, sets, lib, scores.getValue(1), emptyList(), 0, null, WeightUnit.KG, emptySet())
         assertEquals(Headline.FIRST_EVER, older.headline.type)
         assertEquals(emptyList<Next>(), older.next)
     }
@@ -384,8 +358,8 @@ class WorkoutDebriefMathTest {
         fun change(planDay: Long?, otherPlanDay: Long?): Int? {
             val sessions = listOf(session(1, 100, otherPlanDay), session(2, 103, planDay))
             val sets = listOf(row(1, 0, 8), row(1, 1, 8), row(2, 0, 10), row(2, 1, 10))
-            val scores = WorkoutScore.forSessions(sessions, sets, mapOf("row" to ExerciseKind.WEIGHTED), emptyMap(), emptySet())
-            return WorkoutDebriefMath.forSession(sessions[1], sessions, sets, lib, scores.getValue(2), emptyList(), 0, null, WeightUnit.KG, false, emptySet()).volumeChange
+            val scores = WorkoutScore.forSessions(sessions, sets, mapOf("row" to ExerciseKind.WEIGHTED), emptyMap())
+            return WorkoutDebriefMath.forSession(sessions[1], sessions, sets, lib, scores.getValue(2), emptyList(), 0, null, WeightUnit.KG, emptySet()).volumeChange
         }
         assertEquals(25, change(planDay = 7, otherPlanDay = 7))
         assertEquals(null, change(planDay = 7, otherPlanDay = 8))
@@ -413,26 +387,6 @@ class WorkoutDebriefMathTest {
     }
 
     @Test
-    fun gemini2RoughDayForgivenDrop() {
-        val r = run(
-            listOf(
-                ex("deadlift", ExerciseKind.WEIGHTED, n(2, 8, 75f), n(3, 8, 80f), item = range()),
-                ex("row", ExerciseKind.WEIGHTED, n(2, 10, 45f), n(3, 10, 45f), item = range()),
-                ex("plank", ExerciseKind.HOLD, hold(2, 45, effort = "EASY"), hold(3, 45), item = holdItem(45)),
-            ),
-            planned = 9,
-            low = true,
-        )
-        assertEquals(7, r.score.score)
-        assertEquals(Headline.ROUGH_SCALED, r.headline.type)
-        assertEquals(emptyList<Win>(), r.wins)
-        assertEquals(emptyList<Watch>(), r.watch)
-        assertEquals(emptyList<Next>(), r.next)
-        assertTrue(r.result.sameRest)
-        assertTrue(r.result.footnote)
-    }
-
-    @Test
     fun gemini3EarlyStopForPain() {
         val r = run(
             listOf(
@@ -447,8 +401,6 @@ class WorkoutDebriefMathTest {
         assertEquals(listOf(Win.Pr("lat_pulldown", WorkoutScore.PrKind.WEIGHT, 50f, 11, null)), r.wins)
         assertEquals(listOf(Watch.PainEased("overhead_press")), r.watch)
         assertEquals(listOf(Next.Lighter("overhead_press", 32.5f, 8), Next.PlusRep("lat_pulldown", 12, 50f)), r.next)
-        // No footnote: pain alone is not low recovery.
-        assertFalse(r.result.footnote)
     }
 
     @Test
@@ -533,18 +485,5 @@ class WorkoutDebriefMathTest {
         assertEquals(listOf(Win.EffortMastery("push_up"), Win.AllSets(6)), r.wins)
         assertEquals(emptyList<Watch>(), r.watch)
         assertEquals(listOf(Next.Harder("push_up", "Diamond push-up"), Next.PlusRep("db_lunge", 11, 15f)), r.next)
-    }
-
-    @Test fun footnoteFollowsWhatTheAppKnowsAboutRecovery() {
-        // A watch and low recovery: the app eased off.
-        assertEquals(WorkoutDebriefMath.Footnote.LOW_RECOVERY, run(listOf(same("a")), low = true, healthOn = true).result.note)
-        // A watch but no number for the day: judged on the numbers alone.
-        assertEquals(WorkoutDebriefMath.Footnote.NUMBERS_ONLY, run(listOf(same("a")), healthOn = true, recoveryKnown = false).result.note)
-        // A watch and a normal day: nothing to add.
-        assertNull(run(listOf(same("a")), healthOn = true).result.note)
-        // No watch: recovery is never mentioned, apart from a hint on one workout in five.
-        assertNull(run(listOf(same("a")), sessionId = 6).result.note)
-        assertEquals(WorkoutDebriefMath.Footnote.CONNECT_WATCH, run(listOf(same("a")), sessionId = 10).result.note)
-        assertFalse(run(listOf(same("a")), sessionId = 10).result.footnote)
     }
 }

@@ -47,14 +47,14 @@ object Progression {
     data class Prefill(val reps: Int?, val seconds: Int?, val weightKg: Float?)
 
     /** Why today's numbers are what they are, for the one-line note on the live card. */
-    enum class Reason { LOAD_UP, MORE_REPS, MORE_TIME, ONCE_MORE, SAME, HARD, PAIN, MISSED, LOW_READINESS }
+    enum class Reason { LOAD_UP, MORE_REPS, MORE_TIME, ONCE_MORE, SAME, HARD, PAIN, MISSED }
 
     data class Result(val sets: List<Prefill>, val holdCeilingReached: Boolean = false, val reason: Reason? = null)
 
     const val HOLD_STEP_SEC = 5
     const val HOLD_CEILING = 1.5f
 
-    /** What [next] needs for one exercise, apart from the unit and the readiness. */
+    /** What [next] needs for one exercise, apart from the unit. */
     data class Inputs(
         val target: Target?,
         val last: List<PastSet>,
@@ -115,7 +115,6 @@ object Progression {
         last: List<PastSet>,
         previous: List<PastSet>,
         unit: WeightUnit,
-        lowReadiness: Boolean,
         warmup: Boolean,
         deload: Boolean = false,
         mode: ProgressionMode = target?.mode ?: ProgressionMode.DOUBLE,
@@ -136,7 +135,7 @@ object Progression {
         val allEasy = last.isNotEmpty() && last.all { it.effort == SetEffort.EASY }
         // "Completed" means every set was done without a hard or painful one; only then may anything go up.
         val completed = !warmup && last.size >= count && !strained
-        val mayProgress = completed && !lowReadiness && !deload && mode != ProgressionMode.MAINTAIN
+        val mayProgress = completed && !deload && mode != ProgressionMode.MAINTAIN
 
         fun hitTop(session: List<PastSet>) = session.size >= count && when (kind) {
             ExerciseKind.HOLD -> session.all { (it.seconds ?: 0) >= holdTarget }
@@ -205,7 +204,6 @@ object Progression {
             warmup || last.isEmpty() || ceilingReached -> null
             strained -> if (pain && nextTop < lastTop - 0.1f) Reason.PAIN else Reason.HARD
             last.size < count -> Reason.MISSED
-            lowReadiness && completed -> Reason.LOW_READINESS
             deload || mode == ProgressionMode.MAINTAIN -> Reason.SAME
             nextTop > lastTop + 0.1f -> Reason.LOAD_UP
             kind == ExerciseKind.HOLD && (sets.firstOrNull()?.seconds ?: 0) > (last.firstOrNull()?.seconds ?: 0) -> Reason.MORE_TIME

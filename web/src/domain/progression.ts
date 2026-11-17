@@ -35,7 +35,7 @@ export function isLowerBodyExercise(primary: readonly Muscle[]): boolean {
 export type PastSet = { reps: number | null; seconds: number | null; weightKg: number | null; effort: SetEffort }
 export type Target = { sets: number; repsMin: number | null; repsMax: number | null; seconds: number | null; weightKg: number | null }
 export type Prefill = { reps: number | null; seconds: number | null; weightKg: number | null }
-export type ProgressionReason = 'LOAD_UP' | 'MORE_REPS' | 'MORE_TIME' | 'ONCE_MORE' | 'SAME' | 'HARD' | 'PAIN' | 'MISSED' | 'LOW_READINESS'
+export type ProgressionReason = 'LOAD_UP' | 'MORE_REPS' | 'MORE_TIME' | 'ONCE_MORE' | 'SAME' | 'HARD' | 'PAIN' | 'MISSED'
 export type ProgressionResult = { sets: Prefill[]; holdCeilingReached: boolean; reason: ProgressionReason | null }
 
 /** Every 4th week since the plan was made is a lighter one: half the sets, same weights. `createdAt` is ms. */
@@ -80,7 +80,6 @@ export function nextPrefill(
   last: readonly PastSet[],
   previous: readonly PastSet[],
   unit: WeightUnit,
-  lowReadiness: boolean,
   warmup: boolean,
   deload = false,
   mode: ProgressionMode = 'DOUBLE',
@@ -102,7 +101,7 @@ export function nextPrefill(
   const allEasy = last.length > 0 && last.every((s) => s.effort === 'EASY')
   // "Completed" means every set was done without a hard or painful one; only then may anything go up.
   const completed = !warmup && last.length >= count && !strained
-  const mayProgress = completed && !lowReadiness && !deload && mode !== 'MAINTAIN'
+  const mayProgress = completed && !deload && mode !== 'MAINTAIN'
 
   const hitTop = (session: readonly PastSet[]) =>
     session.length >= count &&
@@ -165,7 +164,6 @@ export function nextPrefill(
   if (!warmup && last.length > 0 && !ceilingReached) {
     if (strained) reason = pain && nextTop < lastTop - 0.1 ? 'PAIN' : 'HARD'
     else if (last.length < count) reason = 'MISSED'
-    else if (lowReadiness && completed) reason = 'LOW_READINESS'
     else if (deload || mode === 'MAINTAIN') reason = 'SAME'
     else if (nextTop > lastTop + 0.1) reason = 'LOAD_UP'
     else if (kind === 'HOLD' && (sets[0]?.seconds ?? 0) > (last[0]?.seconds ?? 0)) reason = 'MORE_TIME'

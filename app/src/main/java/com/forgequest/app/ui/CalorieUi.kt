@@ -129,8 +129,7 @@ object CalorieUi {
         }
 
         val day = (health as? HealthState.Ready)?.day
-        val lowRecoveryDays = day?.week?.takeLast(5)?.count { (it.recovery ?: 0) in 1..44 } ?: 0
-        val deload = Trends.analyzeFatigueAndPlateaus(snap.sessions, snap.doneSets, snap.exercises, today = today).stalledLifts.size >= 2 || lowRecoveryDays >= 3
+        val deload = Trends.analyzeFatigueAndPlateaus(snap.sessions, snap.doneSets, snap.exercises, today = today).stalledLifts.size >= 2
         val signals = CalorieCheck.signals(
             s.nutritionGoal, s.cutPace, s.goalSetDay, today, weights, CalorieCheck.loggedShare(intake, today, bmr),
             day?.dailySteps.orEmpty(), deload, s.targetWeightKg,
