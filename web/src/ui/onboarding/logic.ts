@@ -9,7 +9,7 @@ import { unitCode } from '../../domain/units'
 import type { BodyType } from '../../data/settings'
 import type { Experience } from '../../domain/plan-builder'
 
-export const LAST_STEP = 3 // language, name, plan (equipment + days), key
+export const LAST_STEP = 2 // language, name, plan (equipment + days)
 export const DAY_OPTIONS = [2, 3, 4, 5] as const
 export const DEFAULT_DAYS = 3
 
@@ -83,8 +83,8 @@ export function withSuggestions(s: OnbState): OnbState {
 export const setWeight = (s: OnbState, kg: number): OnbState =>
   withSuggestions({ ...s, weightKg: Math.min(250, Math.max(30, kg)) })
 
-/** Settings written when onboarding finishes. The key is only kept when it was checked and works. */
-export function settingsPatch(s: OnbState, key: string | null): (c: Settings) => Settings {
+/** Settings written when onboarding finishes. */
+export function settingsPatch(s: OnbState): (c: Settings) => Settings {
   return (c) => ({
     ...c,
     onboarded: true,
@@ -95,7 +95,6 @@ export function settingsPatch(s: OnbState, key: string | null): (c: Settings) =>
     justLog: s.justLog,
     // a new person starts on the new suggestion, so the one-time "more accurate target" card never shows
     calorieV2Seen: true,
-    apiKey: key ?? c.apiKey,
   })
 }
 

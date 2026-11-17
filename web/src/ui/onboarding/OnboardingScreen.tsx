@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { getLang, plural, setLang, t, type Lang, intlLocale } from '../../i18n'
+import { getLang, intlLocale, plural, setLang, t, type Lang } from '../../i18n'
 import { updateSettings } from '../../data/settings'
 import { applyPlan, seedLibrary } from '../../data/workouts'
 import { db } from '../../data/db'
@@ -13,23 +13,9 @@ import {
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
 import { Button, Card, Chip, ChipGroup, Segmented, Sheet, Stat, Stepper, TextField, parseNumber } from '../kit'
 import { CsvImportScreen } from '../profile/CsvImportScreen'
-import { CheckCircleIcon, FireIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
+import { CheckCircleIcon, FireIcon } from '../home/glyphs'
 import { DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, planForDays, presetForPlan, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
 import './onboarding.css'
-
-const GEMINI_MODELS = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
-type KeyCheck = { busy: boolean; ok: boolean; msg: string | null }
-
-/** Straight from the browser, like the AI check screen. Only a working key is saved. */
-async function checkKey(key: string): Promise<KeyCheck> {
-  try {
-    const r = await fetch(GEMINI_MODELS, { headers: { 'x-goog-api-key': key } })
-    if (r.ok) return { busy: false, ok: true, msg: t('onb_key_works') }
-    return { busy: false, ok: false, msg: r.status === 400 || r.status === 401 || r.status === 403 ? t('onb_web_key_rejected') : t('onb_key_check_failed') }
-  } catch {
-    return { busy: false, ok: false, msg: t('onb_key_check_failed') }
-  }
-}
 
 const emptyPlan = (): PlanDraft => ({
   name: t('onb_my_plan'), description: t('onb_my_plan_desc'),
@@ -45,11 +31,9 @@ export async function quickStart(): Promise<void> {
 /** Training days of starter plan [i], for its "N days a week" label. */
 const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 0
 
-/** First-run setup: language, name, goals, starter plan, optional Gemini key. Full screen, no tab bar. */
+/** First-run setup: language, name, starter plan. Full screen, no tab bar. */
 export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [s, setS] = useState<OnbState>(initialState)
-  const [key, setKey] = useState('')
-  const [check, setCheck] = useState<KeyCheck>({ busy: false, ok: false, msg: null })
   const [saving, setSaving] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
   const update = (f: (c: OnbState) => OnbState) => setS(f)
@@ -73,17 +57,12 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
         await applyPlan(adapted, chosen ? 'starter' : 'manual')
       }
-      await updateSettings(settingsPatch(s, check.ok ? key.trim() : null))
+      await updateSettings(settingsPatch(s))
       onDone()
     } catch (e) {
       console.error('onboarding failed', e)
       setSaving(false)
     }
-  }
-
-  const runCheck = async () => {
-    setCheck({ busy: true, ok: false, msg: null })
-    setCheck(await checkKey(key.trim()))
   }
 
   return (
@@ -97,9 +76,6 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         {s.step === 0 && <StepLanguage onNext={() => go(1)} />}
         {s.step === 1 && <StepWelcome s={s} update={update} onImportCsv={() => setCsvOpen(true)} />}
         {s.step === 2 && <StepPlan s={s} update={update} />}
-        {s.step === 3 && (
-          <StepKey value={key} onInput={(v) => { setKey(v.trim()); setCheck({ busy: false, ok: false, msg: null }) }} check={check} onCheck={runCheck} />
-        )}
       </div>
       <Sheet open={csvOpen} onClose={() => setCsvOpen(false)} title={t('prog41_csv_import_title')}>
         <CsvImportScreen onDone={() => setCsvOpen(false)} />
@@ -110,7 +86,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
           <span class="onb-spacer" />
           {s.step < LAST_STEP
             ? <Button onClick={() => go(1)} disabled={s.step === 1 && !s.name.trim()}>{t('action_continue')}</Button>
-            : <Button onClick={finish} loading={saving}>{check.ok ? t('onb_lets_go') : t('onb_finish')}</Button>}
+            : <Button onClick={finish} loading={saving}>{t('onb_finish')}</Button>}
         </div>
       )}
     </main>
@@ -376,33 +352,6 @@ function StepPlan({ s, update }: StepProps) {
           )
         })}
       </div>
-    </>
-  )
-}
-
-function StepKey({ value, onInput, check, onCheck }: { value: string; onInput: (v: string) => void; check: KeyCheck; onCheck: () => void }) {
-  return (
-    <>
-      <div class="onb-optional">
-        <span class="onb-badge"><SparkleIcon /></span>
-        <span>{t('onb_optional')}</span>
-      </div>
-      <Title title={t('onb_ai_title')} body={t('onb_ai_body')} />
-      <ol class="onb-steps">
-        {['onb_ai_step1', 'onb_ai_step2', 'onb_ai_step3'].map((k, i) => (
-          <li key={k}><span class="onb-num" aria-hidden="true">{new Intl.NumberFormat(intlLocale()).format(i + 1)}</span><span>{t(k)}</span></li>
-        ))}
-      </ol>
-      <a class="kit-btn kit-btn-tonal onb-getkey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">
-        <OpenIcon size={18} /><span class="kit-btn-label">{t('onb_get_key')}</span>
-      </a>
-      <TextField label={t('onb_key_label')} type="password" value={value} autocomplete="off" onInput={onInput} />
-      <div class="onb-check">
-        <Button onClick={onCheck} loading={check.busy} disabled={!value}>{check.busy ? t('onb_checking') : t('onb_check_key')}</Button>
-        {check.msg && <span class={`onb-msg ${check.ok ? 'ok' : 'bad'}`} role="status">{check.msg}</span>}
-      </div>
-      <p class="onb-note">{t('onb_privacy')}</p>
-      <p class="onb-note">{t('onb_groq_hint')}</p>
     </>
   )
 }

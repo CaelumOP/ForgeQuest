@@ -26,13 +26,12 @@ describe('onboarding logic', () => {
     expect(setWeight(initialState(), 10).weightKg).toBe(30)
     expect(setWeight(initialState(), 999).weightKg).toBe(250)
   })
-  it('writes only name, body type, equipment, weekly target and key on finish', () => {
+  it('writes name, body type, equipment, weekly target and justLog on finish', () => {
     const s = { ...initialState(), name: '  Sam ', daysPerWeek: 4 }
-    const out = settingsPatch(s, null)({ ...DEFAULT_SETTINGS, apiKey: 'old' })
-    expect(out).toMatchObject({ onboarded: true, name: 'Sam', weeklyTargetOverride: 4, calorieV2Seen: true, apiKey: 'old', heightCm: 0, kcalGoal: 2200 })
-    expect(settingsPatch(s, 'k')(DEFAULT_SETTINGS).apiKey).toBe('k')
+    const out = settingsPatch(s)({ ...DEFAULT_SETTINGS })
+    expect(out).toMatchObject({ onboarded: true, name: 'Sam', weeklyTargetOverride: 4, calorieV2Seen: true, heightCm: 0, kcalGoal: 2200 })
     expect(out.justLog).toBe(false)
-    expect(settingsPatch({ ...s, justLog: true }, null)(DEFAULT_SETTINGS).justLog).toBe(true)
+    expect(settingsPatch({ ...s, justLog: true })(DEFAULT_SETTINGS).justLog).toBe(true)
   })
   it('writes the body and goal fields when the food targets are saved', () => {
     const s = { ...initialState(), unit: 'LB' as const, age: 30, heightCm: 175, kcal: 900, protein: 20 }
