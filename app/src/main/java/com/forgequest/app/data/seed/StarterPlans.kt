@@ -262,7 +262,7 @@ object StarterPlans {
     val arabic = mapOf(
         "Hemo · Foundation level" to "هيمو · المستوى التأسيسي",
         "Hemo Calisthenics' 5-day foundation routine. Jumping jacks to warm up, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target."
-            to "روتين Hemo Calisthenics التأسيسي على خمسة أيام: قفز مع فتح الذراعين للإحماء، ثم كل مجموعة تمارين في دائرة من ⁦3–4⁩ جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.",
+            to "روتين Hemo Calisthenics التأسيسي على خمسة أيام: قفز مع فتح الذراعين للتسخين، ثم كل مجموعة تمارين في دائرة من ⁦3–4⁩ جولات. أدِّ ما تستطيع من عدّات؛ فالرقم هدف لا شرط.",
         "Full body · 3 days" to "الجسم كاملًا · 3 أيام",
         "Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home." to "خطة بسيطة للجسم كاملًا: الاثنين والأربعاء والجمعة، تصلح للنادي أو المنزل.",
         "Full body · 3 days · bodyweight" to "الجسم كاملًا · 3 أيام · وزن الجسم",
@@ -283,7 +283,7 @@ object StarterPlans {
         "Legs" to "أرجل",
         "Full rest. Hemo recommends a complete break after day 3." to "راحة تامة؛ يوصي Hemo براحة كاملة بعد اليوم الثالث.",
         "Full body · 3 days · gym" to "الجسم كاملًا · 3 أيام · النادي",
-        "Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session." to "خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة قرفصاء أو انثناء للورك، ثم تمرين دفع وآخر سحب.",
+        "Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session." to "خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة سكوات أو انثناء للورك، ثم تمرين دفع وآخر سحب.",
         "Upper / lower · 4 days · gym" to "علوي / سفلي · 4 أيام · النادي",
         "4-day gym split: upper body on Monday and Thursday, lower body on Tuesday and Friday." to "تقسيم على أربعة أيام في النادي: الجزء العلوي الاثنين والخميس، والجزء السفلي الثلاثاء والجمعة.",
         "Upper / lower · 4 days · dumbbells" to "علوي / سفلي · 4 أيام · دمبل",
@@ -300,6 +300,35 @@ object StarterPlans {
         "Pull + legs" to "سحب وأرجل",
         "Full rest, then repeat the week. Once this feels easy, try a harder variation of each move." to "راحة تامة، ثم كرّر الأسبوع. متى صار هذا سهلًا فجرّب نسخة أصعب من كل تمرين.",
     )
+
+    private val extraArabic = mapOf(
+        "General fitness plan" to "خطة لياقة عامة",
+        "Strength plan" to "خطة القوة",
+        "Build muscle plan" to "خطة بناء العضلات",
+        "Lose fat plan" to "خطة خسارة الدهون",
+        "Endurance plan" to "خطة التحمّل",
+        "Quick workout" to "تمرين سريع",
+        "Workout" to "تمرين",
+        "Upper" to "الجزء العلوي",
+        "Lower" to "الجزء السفلي",
+        "Conditioning" to "اللياقة",
+    )
+
+    private val toEnglish: Map<String, String> by lazy {
+        buildMap {
+            for ((en, ar) in extraArabic) put(ar, en)
+            // StarterPlans entries win for shared Arabic labels ("الجزء العلوي" -> "Upper body", "الجزء السفلي" -> "Lower body").
+            for ((en, ar) in arabic) put(ar, en)
+            put("خطة اللياقة العامة", "General fitness plan")
+            put("لياقة وتحمّل", "Conditioning")
+            put("الساقان", "Legs")
+        }
+    }
+
+    /** Translates known starter or builder plan/day/session titles at display time in either direction. */
+    fun displayTitle(title: String): String =
+        if (java.util.Locale.getDefault().language == "ar") arabic[title] ?: extraArabic[title] ?: title
+        else toEnglish[title] ?: title
 
     private fun localize(p: PlanDraft): PlanDraft {
         if (java.util.Locale.getDefault().language != "ar") return p

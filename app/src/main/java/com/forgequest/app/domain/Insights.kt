@@ -384,7 +384,7 @@ private class InsightContext(val input: InsightInput, val today: Long) {
 
     private fun hardTwice(): List<Slot>? = focusExercises.firstNotNullOfOrNull { (id, _) ->
         val runs = lastWith(id, 2)
-        if (runs.size == 2 && runs.all { sets -> sets.all { effortOf(it) == SetEffort.HARD } }) listOf(Slot.Exercise(id)) else null
+        if (runs.size == 2 && runs.all { sets -> sets.all { effortOf(it)?.isStrain == true } }) listOf(Slot.Exercise(id)) else null
     }
 
     /** Weeks in a row, ending with the focus workout's week, with a workout on the same weekday (4 or more). */
@@ -495,7 +495,7 @@ fun dayType(score: WorkoutScore.Result, debrief: WorkoutDebriefMath.Result, insi
         DayType.FIRST_OR_BACK
     score.prs > 0 || debrief.wins.any { it is WorkoutDebriefMath.Win.Pr } -> DayType.PR
     insights.any { it.kind in MILESTONE_KINDS } -> DayType.MILESTONE
-    score.rough || score.lowRecovery -> DayType.ROUGH
+    score.rough -> DayType.ROUGH
     else -> DayType.ORDINARY
 }
 

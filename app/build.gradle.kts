@@ -22,8 +22,8 @@ android {
         applicationId = "com.forgequest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 40
-        versionName = "4.0.0"
+        versionCode = 41
+        versionName = "4.1.0"
 
         // QA only: `-PgeminiBase=http://10.0.2.2:8765/v1beta` points a build at a local test server.
         val geminiBase = (project.findProperty("geminiBase") as String?) ?: "https://generativelanguage.googleapis.com/v1beta"
@@ -131,6 +131,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.1")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
+    // FCM push for Friends (4.1). Initialised from res/values/firebase.xml, no google-services plugin.
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-messaging")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.credentials:credentials:1.5.0")

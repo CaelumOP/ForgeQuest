@@ -1,9 +1,5 @@
 package com.forgequest.app.ui.workouts
 
-import com.forgequest.app.ui.theme.ForgeShape
-import com.forgequest.app.ui.theme.tabular
-import com.forgequest.app.ui.theme.itemMotion
-import com.forgequest.app.container
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -18,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,14 +33,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -50,52 +51,72 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.flow.map
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavHostController
 import com.forgequest.app.R
+import com.forgequest.app.container
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
-import com.forgequest.app.domain.Progression
-import com.forgequest.app.domain.WeightUnit
-import kotlinx.coroutines.launch
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.SetEffort
+import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.domain.WorkoutScore
+import com.forgequest.app.domain.countsForScore
+import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.blockLabel
-import com.forgequest.app.ui.exerciseCues
 import com.forgequest.app.ui.components.FitCard
-import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.TonalPill
+import com.forgequest.app.ui.components.toast
+import com.forgequest.app.ui.exerciseCues
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.itemMotion
+import com.forgequest.app.ui.theme.tabular
 import java.util.Locale
 
-/** One visual group: a circuit block (shown round by round) or a single straight-sets exercise. */
+/** One visual group: a circuit/superset block (shown round by round) or a single straight-sets exercise. */
 internal sealed interface Group {
     data class Straight(val position: Int, val block: String, val sets: List<SetEntity>) : Group
-    data class Circuit(val block: String, val positions: List<Int>, val rounds: List<List<SetEntity>>) : Group
+    data class Circuit(
+        val block: String,
+        val positions: List<Int>,
+        val rounds: List<List<SetEntity>>,
+        val supersetGroup: Int? = null,
+    ) : Group
 }
 
 internal val Group.allSets: List<SetEntity> get() = when (this) { is Group.Straight -> sets; is Group.Circuit -> rounds.flatten() }
@@ -116,22 +137,49 @@ internal fun pickNextSet(groups: List<Group>): SetEntity? {
     return groups.flatMap { it.allSets }.firstOrNull { !it.done }
 }
 
-internal fun group(sets: List<SetEntity>): List<Group> {
+internal fun group(
+    sets: List<SetEntity>,
+    supersetGroupOf: (Int) -> Int? = { null },
+): List<Group> {
     val byPosition = sets.groupBy { it.itemPosition }.toSortedMap()
     val result = mutableListOf<Group>()
     var pendingCircuit: MutableList<Int>? = null
     var circuitBlock = ""
+    var pendingSuperset: Int? = null
     fun flush() {
         val positions = pendingCircuit ?: return
-        val maxRounds = positions.maxOf { p -> byPosition[p]?.size ?: 0 }
-        val rounds = (0 until maxRounds).map { r -> positions.mapNotNull { p -> byPosition[p]?.sortedBy { it.setIndex }?.getOrNull(r) } }
-        result += Group.Circuit(circuitBlock, positions, rounds)
+        if (pendingSuperset != null && positions.size < 2) {
+            val p = positions.first()
+            val list = byPosition[p].orEmpty().sortedBy { it.setIndex }
+            result += Group.Straight(p, list.firstOrNull()?.block.orEmpty(), list)
+        } else {
+            val maxRounds = positions.maxOf { p -> byPosition[p]?.size ?: 0 }
+            val rounds = (0 until maxRounds).map { r ->
+                positions.mapNotNull { p -> byPosition[p]?.sortedBy { it.setIndex }?.getOrNull(r) }
+            }
+            result += Group.Circuit(circuitBlock, positions, rounds, supersetGroup = pendingSuperset)
+        }
         pendingCircuit = null
+        pendingSuperset = null
     }
     for ((position, list) in byPosition) {
         val first = list.first()
-        if (first.circuit) {
-            if (pendingCircuit == null || circuitBlock != first.block) { flush(); pendingCircuit = mutableListOf(); circuitBlock = first.block }
+        val sg = supersetGroupOf(position)
+        if (sg != null) {
+            if (pendingCircuit == null || pendingSuperset != sg) {
+                flush()
+                pendingCircuit = mutableListOf()
+                circuitBlock = first.block
+                pendingSuperset = sg
+            }
+            pendingCircuit!!.add(position)
+        } else if (first.circuit) {
+            if (pendingCircuit == null || pendingSuperset != null || circuitBlock != first.block) {
+                flush()
+                pendingCircuit = mutableListOf()
+                circuitBlock = first.block
+                pendingSuperset = null
+            }
             pendingCircuit!!.add(position)
         } else {
             flush()
@@ -155,43 +203,94 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val sets by vm.sets.collectAsState()
     val exercises by vm.exercises.collectAsState()
     val library by vm.library.collectAsState()
+    val settings by vm.settings.collectAsState()
     val userEquipment by vm.userEquipment.collectAsState()
+    val supersetGroups by vm.supersetGroups.collectAsState()
+    val recentHistory by vm.recentHistory.collectAsState()
     val rest by vm.rest.collectAsState()
     val now by vm.now.collectAsState()
     val summary by vm.summary.collectAsState()
     val finishing by vm.finishing.collectAsState()
     val context = LocalContext.current
     val c = Fit.colors
-    // While this screen is in front, "rest is over" is a buzz and a short tone, not a notification over the set list.
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+
+    // Foreground-only TTS engine (lazily initialized only when ttsCues is enabled).
+    val tts = remember(context) { LiveWorkoutTts(context) }
+    DisposableEffect(tts) { onDispose { tts.shutdown() } }
+
+    // While this screen is in front, "rest is over" is a buzz and a short tone (or TTS), not a notification over the set list.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
         val alert = context.container.restAlert
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+        val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> alert.screenVisible = true
-                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> alert.screenVisible = false
+                Lifecycle.Event.ON_RESUME -> alert.screenVisible = true
+                Lifecycle.Event.ON_PAUSE -> {
+                    alert.screenVisible = false
+                    tts.stop()
+                }
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer); alert.screenVisible = false }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            alert.screenVisible = false
+            tts.stop()
+        }
     }
-    val view = androidx.compose.ui.platform.LocalView.current
-    androidx.compose.runtime.DisposableEffect(Unit) {
+
+    LaunchedEffect(settings.ttsCues) {
+        if (settings.ttsCues) {
+            tts.ensureInitialized(Locale.getDefault().language == "ar")
+        } else {
+            tts.stop()
+        }
+    }
+    LaunchedEffect(vm, tts) {
+        vm.ttsEvents.collect { cue ->
+            val currentSettings = vm.settings.value
+            val foreground = context.container.restAlert.screenVisible
+            val arabic = Locale.getDefault().language == "ar"
+            val text = when (cue) {
+                is TtsCue.RestOver -> if (cue.nextExercise.isNullOrBlank()) {
+                    vm.app.str(R.string.live41_tts_rest_over)
+                } else {
+                    vm.app.str(R.string.live41_tts_rest_over_next, cue.nextExercise)
+                }
+                is TtsCue.Hold -> tts.holdCueText(cue.event) { id -> vm.app.str(id) }
+            }
+            tts.speak(text, arabic, currentSettings.ttsCues, foreground) {
+                // Fallback chime when no voice is available (for rest-over, RestAlert already chimes on screen).
+                if (cue is TtsCue.Hold) {
+                    runCatching {
+                        val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 75)
+                        tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 120)
+                    }
+                }
+            }
+        }
+    }
+
+    val view = LocalView.current
+    DisposableEffect(Unit) {
         view.keepScreenOn = true
         onDispose { view.keepScreenOn = false }
     }
 
     var confirmExit by remember { mutableStateOf(false) }
     var confirmFinish by remember { mutableStateOf(false) }
-    // Asked only when the user taps "remind me" on the finish screen; the rest countdown in the shade uses it too.
-    // "Reminder is on" shows only once it really is: after a grant, or at once when permission is already there.
+    var pendingSwap by remember { mutableStateOf<Pair<Int, ExerciseEntity>?>(null) }
     var reminded by remember { mutableStateOf(false) }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) { vm.remindMe(); reminded = true } }
     var picker by remember { mutableStateOf<PickerMode?>(null) }
+    var swapAnchors by remember { mutableStateOf(mapOf<Int, String>()) }
+    var peekExerciseId by remember { mutableStateOf<String?>(null) }
+    var setupNoteExercise by remember { mutableStateOf<ExerciseEntity?>(null) }
+    var unitExercise by remember { mutableStateOf<ExerciseEntity?>(null) }
 
     summary?.let { sum ->
-        WorkoutCompleteScreen(sum, reminded = reminded, onRemind = { if (Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else { vm.remindMe(); reminded = true } }, onDone ={ nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
+        WorkoutCompleteScreen(sum, reminded = reminded, onRemind = { if (Build.VERSION.SDK_INT >= 33 && !vm.app.notifier.canPost()) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else { vm.remindMe(); reminded = true } }, onDone = { nav.popBackStack(Routes.HOME, inclusive = false).also { ok -> if (!ok) nav.navigate(Routes.HOME) } })
         return
     }
     val s = sessionState?.session
@@ -203,19 +302,47 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     BackHandler { nav.popBackStack() }
 
     val doneCount = sets.count { it.done }
-    // Text counts leave out warm-up and cool-down sets; the progress bar counts them all.
-    val workSets = sets.filterNot { WorkoutScore.isExtra(it.block) }
+    // Text counts leave out warm-ups, dropsets, rest-pause and cool-downs; the progress bar counts them all.
+    val workSets = remember(sets) { sets.filter { countsForScore(it) } }
     val workDone = workSets.count { it.done }
     val elapsed = ((now - s.startedAt) / 1000).coerceAtLeast(0)
-    val groups = remember(sets) { group(sets) }
+    val groups = remember(sets, supersetGroups) { group(sets) { pos -> supersetGroups[pos] } }
+    val supersetLetters = remember(groups) {
+        var idx = 0
+        groups.filterIsInstance<Group.Circuit>()
+            .filter { it.supersetGroup != null }
+            .associate { g -> g.key to ('A' + (idx++ % 26)).toString() }
+    }
     // In display order, so circuits go exercise by exercise within a round.
     val nextSet = remember(groups) { pickNextSet(groups) }
     val current = groups.indexOfFirst { g -> g.allSets.any { it.id == nextSet?.id } }
-    val unit by vm.unit.collectAsState()
-    val nextLabel = nextSet?.let { n -> exercises[n.exerciseId]?.let { ex -> "${ex.name} · ${setSummary(n, ex.kind, unit)}" } }
+    val nextLabel = nextSet?.let { n ->
+        exercises[n.exerciseId]?.let { ex ->
+            val u = settings.weightUnitFor(ex.unitOverride)
+            "${ex.name} · ${setSummary(n, ex.kind, u)}"
+        }
+    }
+    val copySource = remember(nextSet, sets) { vm.copySourceFor(nextSet) }
+
     // List or focus mode, remembered between workouts.
     val prefs = remember { context.getSharedPreferences("live", android.content.Context.MODE_PRIVATE) }
     var focus by remember { mutableStateOf(prefs.getBoolean("focus", false)) }
+    val expandedWarmups = remember { mutableStateMapOf<String, Boolean>() }
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = current.coerceAtLeast(0)) { groups.size.coerceAtLeast(1) }
+    val nowExerciseId = remember(groups, nextSet, focus, pager.currentPage) {
+        if (focus && groups.isNotEmpty()) {
+            val active = groups.getOrNull(pager.currentPage)
+            when (active) {
+                is Group.Straight -> active.sets.firstOrNull()?.exerciseId
+                is Group.Circuit -> nextSet?.takeIf { n -> active.allSets.any { it.id == n.id } }?.exerciseId
+                    ?: active.allSets.firstOrNull { !it.done }?.exerciseId
+                    ?: active.allSets.firstOrNull()?.exerciseId
+                null -> nextSet?.exerciseId
+            }
+        } else {
+            nextSet?.exerciseId
+        }
+    }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     // Follow along: after a tick, bring the exercise of the next set into view.
     var lastDone by remember { mutableStateOf(doneCount) }
@@ -226,14 +353,28 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     // How did that set feel? One strip above the rest bar, so a tick never pushes the next set down.
     val effortSetId by vm.effortSetId.collectAsState()
     val effortSet = sets.firstOrNull { it.id == effortSetId && it.done }
-    var noteSet by remember { mutableStateOf<com.forgequest.app.data.db.SetEntity?>(null) }
+    var noteSet by remember { mutableStateOf<SetEntity?>(null) }
     var menu by remember { mutableStateOf(false) }
-    val bottomPad = (if (rest != null) 260.dp else 160.dp) + (if (effortSet != null) 64.dp else 0.dp)
+    val bottomPad = (if (rest != null) 310.dp else 160.dp) + (if (effortSet != null) 88.dp else 0.dp)
+    val openPeek: (String) -> Unit = { id ->
+        vm.loadQuickPeekHistory(id)
+        peekExerciseId = id
+    }
     val cardFor: @Composable (Group, Boolean) -> Unit = { g, forceOpen ->
-        GroupCard(g, exercises, vm, forceOpen,
+        GroupCard(
+            g = g,
+            exercises = exercises,
+            vm = vm,
+            forceOpen = forceOpen,
+            supersetLetter = supersetLetters[g.key],
+            warmupExpanded = expandedWarmups[g.key] == true,
+            onToggleWarmup = { expandedWarmups[g.key] = !(expandedWarmups[g.key] == true) },
             onVideo = { openFormVideo(context, it) },
             onSwap = { picker = PickerMode.Swap(it) },
-            onDetail = { nav.navigate(Routes.exercise(it)) })
+            onPeek = openPeek,
+            onEditSetupNote = { ex -> setupNoteExercise = ex },
+            onEditUnit = { ex -> unitExercise = ex },
+        )
     }
 
     Box(Modifier.fillMaxSize().background(c.background)) {
@@ -243,17 +384,22 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                 Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_minimize), tint = c.textPrimary) }
                     Column(Modifier.weight(1f)) {
-                        Text(s.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(s.title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(pluralStringResource(R.plurals.live_header, workSets.size, elapsed / 60, elapsed % 60, workDone, workSets.size), style = MaterialTheme.typography.bodySmall.tabular(), color = c.textSecondary)
-                        nextSet?.let { n -> exercises[n.exerciseId]?.let { Text(stringResource(R.string.live_now, it.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
+                        nowExerciseId?.let { exercises[it]?.let { ex -> Text(stringResource(R.string.live_now, ex.name), style = MaterialTheme.typography.labelMedium, color = c.teal, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
                     }
                     Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_more), tint = c.textPrimary) }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(if (focus) R.string.cd_list_mode else R.string.cd_focus_mode), color = c.textPrimary) },
                                 leadingIcon = { Icon(if (focus) Icons.Rounded.ViewAgenda else Icons.Rounded.CenterFocusStrong, contentDescription = null, tint = c.textPrimary) },
                                 onClick = { menu = false; focus = !focus; prefs.edit().putBoolean("focus", focus).apply() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.live41_tts_toggle), color = c.textPrimary) },
+                                trailingIcon = if (settings.ttsCues) ({ Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal) }) else null,
+                                onClick = { menu = false; vm.toggleTtsCues() },
                             )
                             DropdownMenuItem(text = { Text(stringResource(R.string.live_discard), color = c.textPrimary) }, onClick = { menu = false; confirmExit = true })
                         }
@@ -278,25 +424,23 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             }
             if (focus && groups.isNotEmpty()) {
                 // Focus mode: one exercise per page with larger text; moves on by itself when an exercise is finished.
-                val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = current.coerceAtLeast(0)) { groups.size }
                 LaunchedEffect(current) { if (current >= 0 && current != pager.currentPage) pager.animateScrollToPage(current) }
                 Text(
                     stringResource(R.string.live_exercise_of, pager.currentPage + 1, groups.size), style = MaterialTheme.typography.labelLarge, color = c.textSecondary,
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
-                val density = androidx.compose.ui.platform.LocalDensity.current
-                // The pager cards are the live screen's focus, so their text runs 15 % larger than the app's.
+                val density = LocalDensity.current
                 androidx.compose.foundation.pager.HorizontalPager(
-                    pager, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp, key = { groups[it].key },
+                    pager, Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp, key = { groups[it].key },
                 ) { i ->
-                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * LIVE_TEXT_BOOST)) {
+                    androidx.compose.runtime.CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * LIVE_TEXT_BOOST)) {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = bottomPad)) { cardFor(groups[i], true) }
                     }
                 }
             } else LazyColumn(
                 Modifier.weight(1f),
                 state = listState,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(groups, key = { it.key }) { g -> Box(itemMotion()) { cardFor(g, false) } }
@@ -308,14 +452,19 @@ fun LiveWorkoutScreen(nav: NavHostController) {
 
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             AnimatedVisibility(effortSet != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
-                // Keep the last set while it animates out, so the strip does not blank mid-exit.
                 val shown = remember { mutableStateOf(effortSet) }
                 if (effortSet != null) shown.value = effortSet
                 shown.value?.let { es ->
-                    Row(Modifier.fillMaxWidth().background(c.background).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        EffortGroup(selected = es.effort, onSelect = { vm.setEffort(es, it) })
-                        if (es.effort == SetEffort.PAIN.name) {
-                            TextButton(onClick = { noteSet = es }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
+                    Column(Modifier.fillMaxWidth().background(c.background).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Text(stringResource(R.string.live_effort_caption), style = MaterialTheme.typography.labelMedium, color = c.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            EffortGroup(selected = es.effort, onSelect = {
+                                vm.setEffort(es, it)
+                                if (it == SetEffort.PAIN) noteSet = es
+                            })
+                            if (es.effort == SetEffort.PAIN.name) {
+                                TextButton(onClick = { noteSet = es }) { Text(stringResource(R.string.live_add_note), color = c.coral) }
+                            }
                         }
                     }
                 }
@@ -323,18 +472,35 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             AnimatedVisibility(rest != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
                 rest?.let { r ->
                     val left = ((r.endsAt - now) / 1000).coerceAtLeast(0)
-                    RestBar(left.toInt(), r.totalSeconds, nextLabel, onAdd = { vm.addRest(15) }, onRemove = { if (left > 15) vm.addRest(-15) else vm.skipRest() }, onSkip = vm::skipRest)
+                    val copiedText = stringResource(R.string.live41_copied_last_set)
+                    RestBar(
+                        secondsLeft = left.toInt(),
+                        total = r.totalSeconds,
+                        next = nextLabel,
+                        isRestPause = r.isRestPause,
+                        canCopyLastSet = nextSet != null && copySource != null,
+                        onAdd = { vm.addRest(15) },
+                        onRemove = { if (left > 15) vm.addRest(-15) else vm.skipRest() },
+                        onSelectPreset = { sec -> vm.setRestPreset(sec) },
+                        onCopyLastSet = {
+                            nextSet?.let { target ->
+                                vm.copyLastSetTo(target)
+                                context.toast(copiedText)
+                            }
+                        },
+                        onSkip = vm::skipRest,
+                    )
                 }
             }
             Box(Modifier.fillMaxWidth().background(c.background).navigationBarsPadding().padding(16.dp)) {
+                val finishChecks = if (workSets.isNotEmpty()) workSets else sets
                 PillButton(
                     if (finishing) stringResource(R.string.live_saving) else stringResource(R.string.live_finish_workout),
-                    onClick = { if (sets.any { !it.done }) confirmFinish = true else vm.finish() },
+                    onClick = { if (finishChecks.any { !it.done }) confirmFinish = true else vm.finish() },
                     enabled = doneCount > 0 && !finishing,
                     modifier = Modifier.fillMaxWidth(),
-                    // Quiet until every set is ticked, so it does not compete with the tick or invite an early tap.
-                    container = if (sets.all { it.done }) c.teal else c.cardHigh,
-                    content = if (sets.all { it.done }) c.onTeal else c.textPrimary,
+                    container = if (finishChecks.all { it.done }) c.teal else c.cardHigh,
+                    content = if (finishChecks.all { it.done }) c.onTeal else c.textPrimary,
                 )
             }
         }
@@ -344,9 +510,67 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     }
 
     val prMessage by vm.prMessage.collectAsState()
-    val snackbar = com.forgequest.app.ui.LocalSnackbar.current
-    // Cleared only after the snackbar has gone: clearing first would restart this effect and cancel the snackbar.
-    androidx.compose.runtime.LaunchedEffect(prMessage) { prMessage?.let { snackbar.showSnackbar(it); vm.prMessage.value = null } }
+    val snackbar = LocalSnackbar.current
+    LaunchedEffect(prMessage) { prMessage?.let { snackbar.showSnackbar(it); vm.prMessage.value = null } }
+
+    peekExerciseId?.let { exId ->
+        val ex = exercises[exId]
+        if (ex != null) {
+            val exUnit = settings.weightUnitFor(ex.unitOverride)
+            val canUseLast = !vm.previous.collectAsState().value[exId].isNullOrEmpty() &&
+                sets.any { it.exerciseId == exId && !it.done }
+            val appliedMsg = stringResource(R.string.live41_peek_used_last)
+            QuickExercisePeekSheet(
+                exercise = ex,
+                unit = exUnit,
+                history = recentHistory[exId].orEmpty(),
+                canUseLastTime = canUseLast,
+                onDismiss = { peekExerciseId = null },
+                onWatchForm = { openFormVideo(context, ex) },
+                onEditSetupNote = {
+                    peekExerciseId = null
+                    setupNoteExercise = ex
+                },
+                onUseLastTime = {
+                    if (vm.useLastSessionFor(exId)) {
+                        context.toast(appliedMsg)
+                        peekExerciseId = null
+                    }
+                },
+                onFullStats = {
+                    peekExerciseId = null
+                    nav.navigate(Routes.exercise(exId, fromLive = true))
+                },
+            )
+        }
+    }
+
+    setupNoteExercise?.let { ex ->
+        val liveEx = exercises[ex.id] ?: ex
+        SetupNoteDialog(
+            exerciseName = liveEx.name,
+            initial = liveEx.setupNote,
+            onDismiss = { setupNoteExercise = null },
+            onSave = { note ->
+                vm.updateSetupNote(liveEx.id, note)
+                setupNoteExercise = null
+            },
+        )
+    }
+
+    unitExercise?.let { ex ->
+        val liveEx = exercises[ex.id] ?: ex
+        ExerciseUnitDialog(
+            exerciseName = liveEx.name,
+            currentOverride = liveEx.unitOverride,
+            defaultUnit = settings.weightUnit,
+            onDismiss = { unitExercise = null },
+            onSelect = { code ->
+                vm.setExerciseUnitOverride(liveEx.id, code)
+                unitExercise = null
+            },
+        )
+    }
 
     val offerExactAlarm by vm.offerExactAlarm.collectAsState()
     if (offerExactAlarm) {
@@ -366,21 +590,21 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     }
 
     if (confirmFinish) {
-        val left = sets.count { !it.done }
+        val finishPool = if (workSets.isNotEmpty()) workSets else sets
+        val left = finishPool.count { !it.done }
+        val doneInPool = finishPool.count { it.done }
         AlertDialog(
             onDismissRequest = { confirmFinish = false },
             containerColor = c.card,
             title = { Text(pluralStringResource(R.plurals.live_finish_unticked_title, left, left), color = c.textPrimary) },
             text = { Text(pluralStringResource(R.plurals.live_finish_unticked_body, left, left), color = c.textSecondary) },
-            // Three choices stacked, so none of them wraps onto a row of its own.
             confirmButton = {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
                     androidx.compose.material3.Button(
                         onClick = { confirmFinish = false; vm.finish() },
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = c.teal, contentColor = c.onTeal),
                     ) { Text(stringResource(R.string.live_finish)) }
-                    // Only offered once at least half the sets are ticked, so it can't turn an empty workout into a full one.
-                    if (sets.count { it.done } * 2 >= sets.size) {
+                    if (doneInPool * 2 >= finishPool.size) {
                         TextButton(onClick = { confirmFinish = false; vm.tickAllAndFinish() }) { Text(stringResource(R.string.live_tick_all_finish), color = c.teal) }
                     }
                     TextButton(onClick = { confirmFinish = false }) { Text(stringResource(R.string.live_keep_going), color = c.textSecondary) }
@@ -406,26 +630,154 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     }
 
     picker?.let { mode ->
-        val swappingEx = (mode as? PickerMode.Swap)?.let { m ->
-            sets.firstOrNull { it.itemPosition == m.position }?.let { exercises[it.exerciseId] }
-        }
+        val currentExId = (mode as? PickerMode.Swap)?.let { m -> sets.firstOrNull { it.itemPosition == m.position }?.exerciseId }
+        val anchorExId = (mode as? PickerMode.Swap)?.let { m -> swapAnchors[m.position] ?: currentExId }
+        val swappingEx = anchorExId?.let { exercises[it] }
         ExercisePickerSheet(
             title = if (mode is PickerMode.Swap) stringResource(R.string.live_swap_exercise) else stringResource(R.string.live_add_exercise),
             library = library,
             onPick = { ex ->
-                if (mode is PickerMode.Swap) vm.swap(mode.position, ex.id) else vm.addExercise(ex.id)
+                if (mode is PickerMode.Swap) {
+                    if (currentExId != null && mode.position !in swapAnchors) {
+                        swapAnchors = swapAnchors + (mode.position to currentExId)
+                    }
+                    if (sets.any { it.itemPosition == mode.position && it.done }) {
+                        pendingSwap = mode.position to ex
+                    } else {
+                        vm.swap(mode.position, ex.id)
+                    }
+                } else {
+                    vm.addExercise(ex.id)
+                }
                 picker = null
             },
             onCreate = { name, kind, muscle ->
-                vm.createExercise(name, kind, muscle) { id -> if (mode is PickerMode.Swap) vm.swap(mode.position, id) else vm.addExercise(id) }
+                if (mode is PickerMode.Swap && currentExId != null && mode.position !in swapAnchors) {
+                    swapAnchors = swapAnchors + (mode.position to currentExId)
+                }
+                if (mode is PickerMode.Swap && sets.any { it.itemPosition == mode.position && it.done }) {
+                    vm.createExercise(name, kind, muscle) { id ->
+                        val created = exercises[id] ?: ExerciseEntity(id, name, kind, listOf(muscle), emptyList(), custom = true)
+                        pendingSwap = mode.position to created
+                    }
+                } else {
+                    vm.createExercise(name, kind, muscle) { id -> if (mode is PickerMode.Swap) vm.swap(mode.position, id) else vm.addExercise(id) }
+                }
                 picker = null
             },
             onDismiss = { picker = null },
             initialMuscle = swappingEx?.primary?.firstOrNull(),
             sourceExercise = swappingEx,
             userEquipment = userEquipment,
+            currentExerciseId = currentExId,
         )
     }
+
+    pendingSwap?.let { (pos, newEx) ->
+        val oldExName = sets.firstOrNull { it.itemPosition == pos }?.let { exercises[it.exerciseId]?.name } ?: ""
+        val doneInGroup = sets.count { it.itemPosition == pos && it.done }
+        AlertDialog(
+            onDismissRequest = { pendingSwap = null },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.live_swap_confirm_title, oldExName), color = c.textPrimary) },
+            text = { Text(pluralStringResource(R.plurals.live_swap_confirm_body, doneInGroup, doneInGroup, newEx.name), color = c.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = { vm.swap(pos, newEx.id); pendingSwap = null }) {
+                    Text(stringResource(R.string.live_swap_confirm_action), color = c.coral)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSwap = null }) {
+                    Text(stringResource(R.string.action_cancel), color = c.textSecondary)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun SetupNoteDialog(
+    exerciseName: String,
+    initial: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    val c = Fit.colors
+    var text by remember(initial) { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        title = { Text("${stringResource(R.string.live41_setup_note_label)} · $exerciseName", color = c.textPrimary) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it.take(120) },
+                singleLine = true,
+                shape = ForgeShape.Md,
+                placeholder = { Text(stringResource(R.string.live41_setup_note_hint)) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = c.teal,
+                    unfocusedBorderColor = c.divider,
+                    focusedTextColor = c.textPrimary,
+                    unfocusedTextColor = c.textPrimary,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text(stringResource(R.string.action_save), color = c.teal) } },
+        dismissButton = {
+            Row {
+                if (initial.isNotBlank()) TextButton(onClick = { onSave("") }) { Text(stringResource(R.string.action_clear), color = c.coral) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) }
+            }
+        },
+    )
+}
+
+@Composable
+private fun ExerciseUnitDialog(
+    exerciseName: String,
+    currentOverride: String,
+    defaultUnit: WeightUnit,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val c = Fit.colors
+    val normalized = currentOverride.trim().lowercase(Locale.ROOT)
+    val options = listOf(
+        "" to stringResource(R.string.live41_unit_default, defaultUnit.label),
+        "kg" to stringResource(R.string.live41_unit_kg),
+        "lb" to stringResource(R.string.live41_unit_lb),
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.card,
+        title = { Text("${stringResource(R.string.live41_unit_title)} · $exerciseName", color = c.textPrimary) },
+        text = {
+            Column {
+                options.forEach { (code, label) ->
+                    val selected = normalized == code
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(ForgeShape.Sm)
+                            .clickable { onSelect(code) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = { onSelect(code) },
+                            colors = RadioButtonDefaults.colors(selectedColor = c.teal, unselectedColor = c.textSecondary),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = c.textSecondary) } },
+    )
 }
 
 internal sealed interface PickerMode {
@@ -433,28 +785,50 @@ internal sealed interface PickerMode {
     data class Swap(val position: Int) : PickerMode
 }
 
-/** An exercise or circuit card; once every set is ticked it folds into one line (tap to open it again). */
+/** An exercise or circuit/superset card; once every set is ticked it folds into one line (tap to open it again). */
 @Composable
 internal fun GroupCard(
     g: Group,
     exercises: Map<String, ExerciseEntity>,
     vm: LiveWorkoutViewModel,
     forceOpen: Boolean,
+    supersetLetter: String? = null,
+    warmupExpanded: Boolean = false,
+    onToggleWarmup: () -> Unit = {},
     onVideo: (ExerciseEntity?) -> Unit,
     onSwap: (Int) -> Unit,
-    onDetail: (String) -> Unit,
+    onPeek: (String) -> Unit,
+    onEditSetupNote: (ExerciseEntity) -> Unit,
+    onEditUnit: (ExerciseEntity) -> Unit,
 ) {
     val c = Fit.colors
     val all = g.allSets
     val allDone = all.isNotEmpty() && all.all { it.done }
     var open by remember(allDone) { mutableStateOf(!allDone) }
     if (g is Group.Straight && WorkoutScore.isWarmUp(g.block)) {
-        WarmupCard(g, exercises[g.sets.first().exerciseId], vm)
+        WarmupCard(
+            g = g,
+            ex = exercises[g.sets.first().exerciseId],
+            vm = vm,
+            expanded = forceOpen || warmupExpanded,
+            onToggleExpand = onToggleWarmup,
+            onSwap = { onSwap(g.position) },
+            onPeek = { onPeek(g.sets.first().exerciseId) },
+        )
         return
     }
     if (!open && !forceOpen) {
-        val title = if (g is Group.Straight) exercises[g.sets.first().exerciseId]?.name ?: g.sets.first().exerciseId else blockLabel((g as Group.Circuit).block)
-        FitCard(onClick = { open = true }, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+        val title = when (g) {
+            is Group.Straight -> exercises[g.sets.first().exerciseId]?.name ?: g.sets.first().exerciseId
+            is Group.Circuit -> if (g.supersetGroup != null) {
+                g.positions.mapNotNull { pos ->
+                    g.allSets.firstOrNull { it.itemPosition == pos }?.let { exercises[it.exerciseId]?.name ?: it.exerciseId }
+                }.distinct().joinToString(" + ")
+            } else {
+                blockLabel(g.block)
+            }
+        }
+        FitCard(onClick = { open = true }, padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Check, contentDescription = null, tint = c.teal, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
@@ -467,31 +841,56 @@ internal fun GroupCard(
     }
     when (g) {
         is Group.Straight -> StraightCard(
-            g, exercises[g.sets.first().exerciseId], vm,
-            onVideo = onVideo, onSwap = { onSwap(g.position) }, onDetail = { onDetail(g.sets.first().exerciseId) },
+            g = g,
+            ex = exercises[g.sets.first().exerciseId],
+            vm = vm,
+            onVideo = onVideo,
+            onSwap = { onSwap(g.position) },
+            onPeek = { onPeek(g.sets.first().exerciseId) },
+            onEditSetupNote = onEditSetupNote,
+            onEditUnit = onEditUnit,
         )
-        is Group.Circuit -> CircuitCard(g, exercises, vm, onVideo = onVideo, onSwap = onSwap)
+        is Group.Circuit -> CircuitCard(
+            g = g,
+            exercises = exercises,
+            vm = vm,
+            supersetLetter = supersetLetter,
+            onVideo = onVideo,
+            onSwap = onSwap,
+            onPeek = onPeek,
+            onEditSetupNote = onEditSetupNote,
+            onEditUnit = onEditUnit,
+        )
     }
 }
 
 /** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutViewModel) {
+internal fun WarmupCard(
+    g: Group.Straight,
+    ex: ExerciseEntity?,
+    vm: LiveWorkoutViewModel,
+    expanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onSwap: () -> Unit,
+    onPeek: () -> Unit,
+) {
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
-    var expanded by remember { mutableStateOf(false) }
     val first = g.sets.first()
     val doneCount = g.sets.count { it.done }
     val allDone = doneCount == g.sets.size
     val each = if (ex?.kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, first.seconds ?: 0) else "${first.reps ?: 0}"
-    FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
+    FitCard(modifier = Modifier.animateContentSize(), padding = PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.weight(1f).clip(ForgeShape.Sm).clickable { expanded = !expanded }.padding(horizontal = 4.dp, vertical = 8.dp),
+                Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onToggleExpand).padding(horizontal = 4.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("${ex?.name ?: first.exerciseId} · ${g.sets.size} × $each", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                    Text(stringResource(R.string.live_warmup_not_counted), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                     if (doneCount > 0 && !allDone) Text("$doneCount/${g.sets.size}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
                 Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
@@ -499,10 +898,32 @@ internal fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutV
             Spacer(Modifier.width(8.dp))
             SetTick(allDone, pr = false) { vm.toggleAll(g.sets) }
         }
+        FlowRow(
+            Modifier.padding(start = 4.dp, top = 4.dp, end = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            TonalPill(stringResource(R.string.cues_title), onClick = onPeek, icon = Icons.Rounded.Info, tint = c.teal)
+            TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
+            TonalPill(
+                stringResource(if (allDone) R.string.live_warmup_done else R.string.live_mark_warmup_done),
+                onClick = { vm.toggleAll(g.sets) },
+                icon = Icons.Rounded.Check,
+                tint = if (allDone) c.teal else c.textPrimary,
+            )
+        }
         if (expanded) {
             Spacer(Modifier.height(4.dp))
             g.sets.forEach { set ->
-                SetRow(label = "${set.setIndex + 1}", sublabel = null, set = set, kind = ex?.kind ?: ExerciseKind.REPS, vm = vm, previous = prev[set.exerciseId]?.getOrNull(set.setIndex))
+                SetRow(
+                    label = "${set.setIndex + 1}",
+                    sublabel = null,
+                    set = set,
+                    kind = ex?.kind ?: ExerciseKind.REPS,
+                    exercise = ex,
+                    vm = vm,
+                    previous = prev[set.exerciseId]?.getOrNull(set.setIndex),
+                )
             }
         }
     }
@@ -510,10 +931,17 @@ internal fun WarmupCard(g: Group.Straight, ex: ExerciseEntity?, vm: LiveWorkoutV
 
 /** "12 reps · 10 kg" or "30 s", for the next-up lines. */
 @Composable
-internal fun setSummary(set: SetEntity, kind: ExerciseKind, unit: com.forgequest.app.domain.WeightUnit): String {
-    val main = if (kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, set.seconds ?: 0) else stringResource(R.string.rx_reps_n, set.reps ?: 0)
+internal fun setSummary(set: SetEntity, kind: ExerciseKind, unit: WeightUnit): String {
+    val reps = set.reps ?: 0
+    val main = if (kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, set.seconds ?: 0) else pluralStringResource(R.plurals.rx_reps, reps, reps)
     val kg = set.weightKg
     return if (kg != null && (kg > 0f || kind == ExerciseKind.WEIGHTED)) "$main · ${unit.format(kg)}" else main
+}
+
+internal fun localizeTargetLabel(raw: String, repsWord: String): String = when {
+    raw.endsWith(" reps") -> raw.removeSuffix("reps") + repsWord
+    raw.endsWith(" rep") -> raw.removeSuffix("rep") + repsWord
+    else -> raw
 }
 
 private fun whyRes(r: Progression.Reason) = when (r) {
@@ -525,7 +953,6 @@ private fun whyRes(r: Progression.Reason) = when (r) {
     Progression.Reason.HARD -> R.string.rx_why_hard
     Progression.Reason.PAIN -> R.string.rx_why_pain
     Progression.Reason.MISSED -> R.string.rx_why_missed
-    Progression.Reason.LOW_READINESS -> R.string.rx_why_low_readiness
 }
 
 @Composable
@@ -535,36 +962,72 @@ internal fun StraightCard(
     vm: LiveWorkoutViewModel,
     onVideo: (ExerciseEntity?) -> Unit,
     onSwap: () -> Unit,
-    onDetail: () -> Unit,
+    onPeek: () -> Unit,
+    onEditSetupNote: (ExerciseEntity) -> Unit,
+    onEditUnit: (ExerciseEntity) -> Unit,
 ) {
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
     val reasons by vm.reasons.collectAsState()
+    val settings by vm.settings.collectAsState()
     var menu by remember { mutableStateOf(false) }
-    // A set added or removed grows or shrinks the card smoothly instead of jumping.
-    FitCard(modifier = Modifier.animateContentSize(), padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
+    val exUnit = settings.weightUnitFor(ex?.unitOverride.orEmpty())
+
+    FitCard(modifier = Modifier.animateContentSize(), padding = PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onDetail).padding(horizontal = 4.dp)) {
+            Column(Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onPeek).padding(horizontal = 4.dp)) {
                 Text(ex?.name ?: g.sets.first().exerciseId, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                val target = g.sets.first().targetLabel
+                val target = localizeTargetLabel(g.sets.first().targetLabel, stringResource(R.string.rx_reps_only))
                 Text(if (target.isNotBlank()) stringResource(R.string.live_target, g.sets.size, target) else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 reasons[g.sets.first().exerciseId]?.let { Text(stringResource(whyRes(it)), style = MaterialTheme.typography.labelSmall, color = c.textSecondary) }
                 exerciseCues(g.sets.first().exerciseId)?.let { Text(stringResource(it.first), style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                if (!ex?.setupNote.isNullOrBlank()) {
+                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.PushPin, contentDescription = null, tint = c.blue, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            stringResource(R.string.live41_setup_note_prefix, ex!!.setupNote),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = c.blue,
+                        )
+                    }
+                }
             }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.cd_watch_form)) }, onClick = { menu = false; onVideo(ex) })
+                    if (ex != null) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.live41_setup_note_label)) }, onClick = { menu = false; onEditSetupNote(ex) })
+                        if (ex.kind == ExerciseKind.WEIGHTED) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.live41_unit_menu, exUnit.label)) },
+                                onClick = { menu = false; onEditUnit(ex) },
+                            )
+                        }
+                    }
                     DropdownMenuItem(text = { Text(stringResource(R.string.live_swap_exercise)) }, onClick = { menu = false; onSwap() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.live_add_set)) }, onClick = { menu = false; vm.addSet(g.position) })
                     DropdownMenuItem(text = { Text(stringResource(R.string.live_remove_last_set)) }, onClick = { menu = false; vm.removeLastSet(g.position) })
                 }
             }
         }
+        Row(Modifier.padding(start = 4.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TonalPill(stringResource(R.string.cues_title), onClick = onPeek, icon = Icons.Rounded.Info, tint = c.teal)
+            TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
+        }
         ex?.let { HarderNote(it, vm) }
         Spacer(Modifier.height(4.dp))
         g.sets.forEach { set ->
-            SetRow(label = "${set.setIndex + 1}", sublabel = null, set = set, kind = ex?.kind ?: ExerciseKind.REPS, vm = vm, previous = prev[set.exerciseId]?.getOrNull(set.setIndex))
+            SetRow(
+                label = "${set.setIndex + 1}",
+                sublabel = null,
+                set = set,
+                kind = ex?.kind ?: ExerciseKind.REPS,
+                exercise = ex,
+                vm = vm,
+                previous = prev[set.exerciseId]?.getOrNull(set.setIndex),
+            )
         }
     }
 }
@@ -575,7 +1038,7 @@ internal fun HarderNote(ex: ExerciseEntity, vm: LiveWorkoutViewModel) {
     val c = Fit.colors
     val hints by vm.harder.collectAsState()
     val hint = hints[ex.id] ?: return
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     Row(
         Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp).clip(ForgeShape.Sm).background(c.tealTrack).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -601,20 +1064,53 @@ internal fun CircuitCard(
     g: Group.Circuit,
     exercises: Map<String, ExerciseEntity>,
     vm: LiveWorkoutViewModel,
+    supersetLetter: String? = null,
     onVideo: (ExerciseEntity?) -> Unit,
     onSwap: (Int) -> Unit,
+    onPeek: (String) -> Unit,
+    onEditSetupNote: (ExerciseEntity) -> Unit,
+    onEditUnit: (ExerciseEntity) -> Unit,
 ) {
     val c = Fit.colors
-    FitCard(padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 12.dp)) {
+    val settings by vm.settings.collectAsState()
+    val isSuperset = g.supersetGroup != null
+    val letter = supersetLetter ?: "A"
+    val posLabel = remember(g.positions, letter, isSuperset) {
+        if (!isSuperset) emptyMap()
+        else g.positions.mapIndexed { idx, pos -> pos to "$letter${idx + 1}" }.toMap()
+    }
+    FitCard(padding = PaddingValues(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(blockLabel(g.block), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Text(
+                if (isSuperset) stringResource(R.string.live41_superset) else blockLabel(g.block),
+                style = MaterialTheme.typography.titleMedium,
+                color = c.textPrimary,
+            )
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Rounded.Repeat, contentDescription = null, tint = c.teal, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text(stringResource(R.string.live_circuit), style = MaterialTheme.typography.labelMedium, color = c.teal)
+            Text(
+                if (isSuperset) g.positions.indices.joinToString("/") { "$letter${it + 1}" } else stringResource(R.string.live_circuit),
+                style = MaterialTheme.typography.labelMedium,
+                color = c.teal,
+            )
         }
-        Text(stringResource(R.string.live_circuit_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        g.rounds.firstOrNull().orEmpty().mapNotNull { exercises[it.exerciseId] }.distinctBy { it.id }.forEach { HarderNote(it, vm) }
+        Text(
+            if (isSuperset) stringResource(R.string.live41_superset_hint, "${letter}1", "${letter}${g.positions.size}") else stringResource(R.string.live_circuit_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = c.textSecondary,
+        )
+        val distinctEx = g.rounds.firstOrNull().orEmpty().mapNotNull { exercises[it.exerciseId] }.distinctBy { it.id }
+        distinctEx.forEach { ex ->
+            if (!ex.setupNote.isBlank()) {
+                Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.PushPin, contentDescription = null, tint = c.blue, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("${ex.name}: ${ex.setupNote}", style = MaterialTheme.typography.labelSmall, color = c.blue)
+                }
+            }
+            HarderNote(ex, vm)
+        }
         val prev by vm.previous.collectAsState()
         g.rounds.forEachIndexed { r, round ->
             val roundDone = round.all { it.done }
@@ -627,18 +1123,33 @@ internal fun CircuitCard(
             round.forEach { set ->
                 val ex = exercises[set.exerciseId]
                 var menu by remember { mutableStateOf(false) }
+                val slotTag = posLabel[set.itemPosition]
+                val exName = ex?.name ?: set.exerciseId
+                val rowSublabel = if (slotTag != null) "$slotTag · $exName" else exName
                 Box {
                     SetRow(
-                        label = null,
-                        sublabel = ex?.name ?: set.exerciseId,
+                        label = slotTag,
+                        sublabel = rowSublabel,
                         set = set,
                         kind = ex?.kind ?: ExerciseKind.REPS,
+                        exercise = ex,
                         vm = vm,
                         onLabelClick = { menu = true },
                         previous = prev[set.exerciseId]?.getOrNull(r),
                     )
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.cues_title)) }, onClick = { menu = false; onPeek(set.exerciseId) })
                         DropdownMenuItem(text = { Text(stringResource(R.string.cd_watch_form)) }, onClick = { menu = false; onVideo(ex) })
+                        if (ex != null) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.live41_setup_note_label)) }, onClick = { menu = false; onEditSetupNote(ex) })
+                            if (ex.kind == ExerciseKind.WEIGHTED) {
+                                val exUnit = settings.weightUnitFor(ex.unitOverride)
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.live41_unit_menu, exUnit.label)) },
+                                    onClick = { menu = false; onEditUnit(ex) },
+                                )
+                            }
+                        }
                         DropdownMenuItem(text = { Text(stringResource(R.string.live_swap_exercise)) }, onClick = { menu = false; onSwap(set.itemPosition) })
                     }
                 }

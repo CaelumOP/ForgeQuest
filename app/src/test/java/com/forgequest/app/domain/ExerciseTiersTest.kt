@@ -15,11 +15,11 @@ class ExerciseTiersTest {
     private val gym = Equipment.entries.toSet()
 
     @Test fun tierCounts() {
-        assertEquals(186, all.size)
+        assertEquals(861, all.size)
         val counts = all.groupingBy { ExerciseTiers.of(it) }.eachCount()
-        assertEquals(133, counts[Tier.FOUNDATION])
-        assertEquals(33, counts[Tier.INTERMEDIATE])
-        assertEquals(20, counts[Tier.ADVANCED])
+        assertEquals(531, counts[Tier.FOUNDATION])
+        assertEquals(267, counts[Tier.INTERMEDIATE])
+        assertEquals(63, counts[Tier.ADVANCED])
         assertNull(ExerciseTiers.of(ex("push_up").copy(id = "my_push_up", custom = true)))
     }
 
@@ -27,13 +27,13 @@ class ExerciseTiersTest {
         fun next(id: String, eq: Set<Equipment> = gym) = ExerciseTiers.harderVersion(ex(id), all, eq)?.id
         assertEquals("push_up", next("wide_knee_push_up", bodyweight))
         assertEquals("squat", next("half_squat", bodyweight))
-        assertEquals("lunge", next("squat", bodyweight))
-        assertEquals("bulgarian_split_squat", next("lunge"))
-        assertEquals("negative_pull_up", next("australian_chin_up"))
+        assertEquals("weighted_squat", next("squat", bodyweight))
+        assertEquals("reverse_lunge", next("lunge"))
+        assertEquals("rope_climb", next("australian_chin_up"))
         assertEquals("pull_up", next("negative_pull_up"))
-        assertEquals("diamond_push_up", next("incline_diamond_knee_push_up", bodyweight))
+        assertEquals("body_up", next("incline_diamond_knee_push_up", bodyweight))
         assertNull(next("calf_raise", bodyweight)) // no harder version yet: the screen suggests a slower tempo
-        assertEquals("cossack_squat", next("lunge", bodyweight)) // the split squat needs a bench or chair
+        assertEquals("reverse_lunge", next("lunge", bodyweight)) // the split squat needs a bench or chair
         assertNull(next("bench_press")) // weighted moves add load instead
     }
 

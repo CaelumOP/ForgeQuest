@@ -371,6 +371,8 @@ fun Stepper(
     onValueClick: (() -> Unit)? = null,
     /** Extra TalkBack semantics on the value, e.g. a range so a swipe adjusts it. */
     valueSemantics: (SemanticsPropertyReceiver.() -> Unit)? = null,
+    /** Spoken value for accessibility descriptions (e.g. Arabic plural forms); defaults to [value]. */
+    spokenValue: String = value,
 ) {
     val c = Fit.colors
     val typeLabel = stringResource(R.string.cd_type_value)
@@ -385,12 +387,12 @@ fun Stepper(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(48.dp).clip(CircleShape).repeatingClickable { direction = -1; onMinus() }, contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
+            Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, spokenValue), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
         Box(
             Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
                 // TalkBack hears the value ("82.5 kg") as the control's state, once.
-                .semantics(mergeDescendants = true) { stateDescription = value; valueSemantics?.invoke(this) }
+                .semantics(mergeDescendants = true) { stateDescription = spokenValue; valueSemantics?.invoke(this) }
                 .let { if (onValueClick != null) it.clip(ForgeShape.Sm).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }
                 .padding(horizontal = 2.dp),
             contentAlignment = Alignment.Center,
@@ -417,7 +419,7 @@ fun Stepper(
             }
         }
         Box(Modifier.size(48.dp).clip(CircleShape).repeatingClickable { direction = 1; onPlus() }, contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, value), tint = c.textSecondary, modifier = Modifier.size(22.dp))
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.cd_increase, spokenValue), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
     }
     }
@@ -525,9 +527,12 @@ fun NumberStepper(
     onTick: (() -> Unit)? = null,
     /** Shown instead of the number until a value is set (e.g. "– cm"). */
     placeholder: String? = null,
+    /** Optional plural string resource (expecting the integer count as %1$d) for spoken accessibility descriptions. */
+    @androidx.annotation.PluralsRes unitPlurals: Int? = null,
 ) {
     var editing by remember { mutableStateOf(false) }
-    val haptics = LocalContext.current.container.haptics
+    val context = LocalContext.current
+    val haptics = context.container.haptics
     // Shown value runs ahead of the stored one, so holding ± keeps counting even while the database write
     // for the previous step is still on its way back.
     var local by remember { mutableStateOf(value) }
@@ -545,6 +550,12 @@ fun NumberStepper(
         onValueChange(next)
     }
     val shown = placeholder ?: (formatNumber(local, decimals) + if (unit.isNotEmpty()) " $unit" else "")
+    val spoken = if (placeholder == null && unitPlurals != null) {
+        val count = local.roundToInt()
+        context.resources.getQuantityString(unitPlurals, count, count)
+    } else {
+        shown
+    }
     Stepper(
         value = shown,
         onMinus = { commit(local - step) },
@@ -558,6 +569,7 @@ fun NumberStepper(
             progressBarRangeInfo = ProgressBarRangeInfo(local.coerceIn(min, max), min..max, (((max - min) / step).roundToInt() - 1).coerceAtLeast(0))
             setProgress { target -> commit(min + ((target - min) / step).roundToInt() * step); true }
         },
+        spokenValue = spoken,
     )
     if (editing) {
         NumberEntryDialog(

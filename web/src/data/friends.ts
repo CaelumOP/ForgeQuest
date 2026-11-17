@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'preact/hooks'
+import { getLang } from '../i18n'
 import { GOOGLE_CLIENT_ID } from '../config'
 import { todayEpochDay, weekStart } from '../domain/dates'
 import {
   buildLeaderboard,
   computeForgeWeek,
+  scoreReachedAt,
+  type ForgeScoreEvent,
   normalizeUsername,
   type LeaderboardEntry,
   type Pr,
   type Snapshot,
 } from '../domain/forge-score'
+import { countsForPR } from '../domain/set-types'
 import { db } from './db'
 import { preloadGis } from './drive'
 import {
@@ -20,6 +24,7 @@ import {
   type ProfileInput,
 } from './friends-api'
 import { getProgressSnapshot } from './progress'
+import { syncPushToken } from './push'
 import { trainingDays } from './workouts'
 
 export const FRIENDS_AUTH_KEY = 'friendsAuth'
@@ -28,14 +33,16 @@ export const FRIENDS_DEMO_KEY = 'friendsDemo'
 
 export interface FriendsAuth {
   sessionToken: string
-  /** Name from Google (server `user.name` at sign-in), pre-fills Join. */
-  suggestedName?: string
+  pushToken?: string | null
   lastSnapshotHash?: string | null
   nudgedTodayDay?: number
   nudgedTodayIds?: string[]
 }
 
-/** What we keep in kv `friendsCache`: the last GET /friends plus my own last uploaded snapshot. */
+export const shownName = (p: { username?: string | null; name?: string | null }): string =>
+  p.username || p.name || ''
+
+/** What we keep in kv `friendsCache`: the last GET /friends including my server-calculated snapshot. */
 export type CachedView = FriendsView & { mySnapshot: Snapshot | null }
 
 export type FriendsStatus = 'signed_out' | 'needs_join' | 'joined'
@@ -121,14 +128,58 @@ function computeBoard(view: CachedView | null): LeaderboardEntry[] {
   return buildLeaderboard(view.weekStart, me, view.mySnapshot, view.friends)
 }
 
-function withMine(view: FriendsView, mySnapshot: Snapshot | null): CachedView {
-  return { ...view, mySnapshot }
+function withMine(view: FriendsView, _mySnapshot: Snapshot | null): CachedView {
+  return { ...view, mySnapshot: view.mySnapshot ?? null }
+}
+
+function normalizeMe(me: Me): Me {
+  return {
+    ...me,
+    name: shownName(me),
+    alertsOn: me.alertsOn ?? true,
+    shareWorkouts: me.shareWorkouts ?? true,
+    pingsOn: me.pingsOn ?? true,
+  }
+}
+
+export function normalizeView(view: CachedView): CachedView {
+  return {
+    ...view,
+    me: normalizeMe(view.me),
+    friends: Array.isArray(view.friends)
+      ? view.friends.map((f) => ({ ...f, name: shownName(f), muted: f.muted ?? false }))
+      : [],
+    incoming: Array.isArray(view.incoming) ? view.incoming : [],
+    outgoing: Array.isArray(view.outgoing) ? view.outgoing : [],
+    nudges: Array.isArray(view.nudges) ? view.nudges : [],
+    inbox: {
+      pings: Array.isArray(view.inbox?.pings) ? view.inbox.pings : [],
+      activity: Array.isArray(view.inbox?.activity) ? view.inbox.activity : [],
+    },
+  }
+}
+
+export function badgeCount(view: Pick<FriendsView, 'incoming' | 'inbox'> | null | undefined): number {
+  if (!view) return 0
+  const incoming = view.incoming?.length ?? 0
+  const unseenPings = view.inbox?.pings?.filter((p) => !p.seen).length ?? 0
+  return incoming + unseenPings
 }
 
 /** Local view right after sign-in/join, before the first GET /friends. */
 function placeholderView(me: Me, now = Date.now()): CachedView {
   const today = todayEpochDay(new Date(now))
-  return { me, today, weekStart: weekStart(today), friends: [], incoming: [], outgoing: [], nudges: [], mySnapshot: null }
+  return normalizeView({
+    me,
+    today,
+    weekStart: weekStart(today),
+    friends: [],
+    incoming: [],
+    outgoing: [],
+    nudges: [],
+    inbox: { pings: [], activity: [] },
+    mySnapshot: null,
+  })
 }
 
 export const SHARE_URL = 'https://caelumop.github.io/ForgeQuest/'
@@ -152,9 +203,20 @@ function buildDemoView(now = Date.now()): CachedView {
     prs: Pr[] | null,
     w = ws,
   ): Snapshot => ({ weekStart: w, done: Math.round(score / 25), due: 4, score, badge, streakWeeks, proteinDays, prs })
-  const person = (id: string, name: string) => ({ id: `demo_${id}`, username: id, name, photoUrl: null })
-  return {
-    me: { id: 'demo_me', username: 'tariq', name: 'Tariq', photoUrl: null, sharePhoto: true, sharePrs: true, joined: true },
+  const person = (id: string) => ({ id: `demo_${id}`, username: id, name: id, photoUrl: null })
+  return normalizeView({
+    me: {
+      id: 'demo_me',
+      username: 'tariq',
+      name: 'tariq',
+      photoUrl: null,
+      sharePhoto: true,
+      sharePrs: true,
+      joined: true,
+      alertsOn: true,
+      shareWorkouts: true,
+      pingsOn: true,
+    },
     today,
     weekStart: ws,
     mySnapshot: { ...snap(86, 'trained', 6, 5, [
@@ -163,27 +225,40 @@ function buildDemoView(now = Date.now()): CachedView {
     ]), weekState: 'hit' },
     friends: [
       {
-        ...person('omar', 'Omar'),
+        ...person('omar'),
         snapshot: { ...snap(100, 'trained', 9, 6, [
           { exercise: 'Barbell Bench Press', kg: 100, reps: 5 },
           { exercise: 'Deadlift', kg: 160, reps: 3 },
         ]), weekState: 'hit' },
         sharedStreak: 6,
+        muted: false,
       },
-      { ...person('lina', 'Lina'), snapshot: { ...snap(92, 'on_track', 4, 5, [{ exercise: 'Romanian Deadlift', kg: 85, reps: 8 }]), weekState: 'open' }, sharedStreak: 4 },
-      { ...person('zaid', 'Zaid'), snapshot: { ...snap(75, 'rest', 3, 4, [{ exercise: 'Overhead Press', kg: 55, reps: 6 }]), weekState: 'open' }, sharedStreak: 2 },
-      { ...person('sami', 'Sami'), snapshot: { ...snap(45, 'slacking', 1, 2, null), weekState: 'open' }, sharedStreak: 0 },
-      { ...person('noor', 'Noor'), snapshot: { ...snap(100, 'trained', 5, 3, null, ws - 7), weekState: null }, sharedStreak: 0 },
+      { ...person('lina'), snapshot: { ...snap(92, 'on_track', 4, 5, [{ exercise: 'Romanian Deadlift', kg: 85, reps: 8 }]), weekState: 'open' }, sharedStreak: 4, muted: false },
+      { ...person('zaid'), snapshot: { ...snap(75, 'rest', 3, 4, [{ exercise: 'Overhead Press', kg: 55, reps: 6 }]), weekState: 'open' }, sharedStreak: 2, muted: false },
+      { ...person('sami'), snapshot: { ...snap(45, 'slacking', 1, 2, null), weekState: 'open' }, sharedStreak: 0, muted: false },
+      { ...person('noor'), snapshot: { ...snap(100, 'trained', 5, 3, null, ws - 7), weekState: null }, sharedStreak: 0, muted: false },
     ],
-    incoming: [person('karim', 'Karim')],
-    outgoing: [person('maya', 'Maya')],
-    nudges: [{ fromId: 'demo_omar', name: 'Omar', username: 'omar', day: today }],
-  }
+    incoming: [person('karim')],
+    outgoing: [person('maya')],
+    nudges: [],
+    inbox: {
+      pings: [{ fromId: 'demo_omar', name: 'omar', username: 'omar', day: today, createdAt: Math.floor(now / 1000) - 15 * 60, seen: false }],
+      activity: [
+        { userId: 'demo_omar', name: 'omar', username: 'omar', at: Math.floor(now / 1000) - 2 * 3600 },
+        { userId: 'demo_lina', name: 'lina', username: 'lina', at: Math.floor(now / 1000) - 5 * 3600 },
+      ],
+    },
+  })
 }
 
 async function saveAuth(auth: FriendsAuth | null): Promise<void> {
   if (auth) {
-    await db.kv.put({ key: FRIENDS_AUTH_KEY, value: auth })
+    let next = auth
+    if (next.pushToken === undefined) {
+      const existing = (await db.kv.get(FRIENDS_AUTH_KEY))?.value as FriendsAuth | undefined
+      if (existing?.pushToken !== undefined) next = { ...next, pushToken: existing.pushToken }
+    }
+    await db.kv.put({ key: FRIENDS_AUTH_KEY, value: next })
   } else {
     await db.kv.delete(FRIENDS_AUTH_KEY)
   }
@@ -240,7 +315,7 @@ export async function ensureFriendsLoaded(): Promise<void> {
           status: 'joined',
           view,
           leaderboard: computeBoard(view),
-          auth: { sessionToken: 'demo', suggestedName: view.me.name },
+          auth: { sessionToken: 'demo' },
           nudgedToday: new Set(),
         })
         return
@@ -249,7 +324,10 @@ export async function ensureFriendsLoaded(): Promise<void> {
       const auth = (authRow?.value as FriendsAuth | undefined) ?? null
       const cached = (cacheRow?.value as CachedView | undefined) ?? null
       // Drop caches written by the pre-contract build (no weekStart / username fields).
-      const view = cached && typeof cached.weekStart === 'number' && 'username' in (cached.me ?? {}) ? cached : null
+      const view =
+        cached && typeof cached.weekStart === 'number' && 'username' in (cached.me ?? {})
+          ? normalizeView(cached)
+          : null
 
       if (auth?.sessionToken && view?.me?.joined) {
         setState({
@@ -290,10 +368,6 @@ async function resumeFromServer(auth: FriendsAuth): Promise<void> {
       await saveCache(view)
       setState({ status: 'joined', view, leaderboard: computeBoard(view) })
       await refreshFriends(true)
-    } else if (!auth.suggestedName && me.name) {
-      const next = { ...auth, suggestedName: me.name }
-      await saveAuth(next)
-      setState({ auth: next })
     }
   } catch (err) {
     // Offline: stay on Join; an expired session drops back to signed out.
@@ -334,19 +408,31 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
   const progress = await getProgressSnapshot(now, true)
 
   const scheduledDays = progress.plan ? trainingDays(progress.plan) : new Set<number>()
-  const trainedDays = new Set(
-    progress.sessions.filter((s) => s.planDayId != null).map((s) => s.epochDay),
-  )
-
-  const proteinGoal = progress.settings.proteinGoal
-  const proteinDaysSet =
-    proteinGoal > 0
-      ? new Set(
-          progress.nutritionByDay.filter((d) => d.protein >= proteinGoal).map((d) => d.epochDay),
-        )
-      : new Set<number>()
-
-  const week = computeForgeWeek(today, scheduledDays, trainedDays, proteinDaysSet)
+  const sessions = progress.sessions.filter(s => s.finishedAt != null && s.epochDay >= ws && s.epochDay <= today)
+  const byId = new Map(sessions.map(s => [s.id!, s]))
+  const trainedDays = new Set(sessions.map(s => s.epochDay))
+  const eligiblePrs = progress.doneSets.filter(s => s.done && s.isPr && countsForPR(s) && byId.has(s.sessionId))
+  const events: ForgeScoreEvent[] = sessions.map(s => ({ at: Math.floor(s.finishedAt! / 1000), workoutDay: s.epochDay }))
+  for (const set of eligiblePrs) events.push({ at: Math.floor(byId.get(set.sessionId)!.finishedAt! / 1000), pr: true })
+  const proteinDaysSet = new Set<number>()
+  const totals = new Map<number, number>()
+  if (progress.settings.proteinGoal > 0) {
+    const meals = await db.meals.where('epochDay').between(ws, today, true, true).toArray()
+    for (const meal of meals.sort((a, b) => a.loggedAt - b.loggedAt)) {
+      const total = (totals.get(meal.epochDay) ?? 0) + meal.protein
+      totals.set(meal.epochDay, total)
+      if (total >= progress.settings.proteinGoal && !proteinDaysSet.has(meal.epochDay)) {
+        proteinDaysSet.add(meal.epochDay)
+        events.push({ at: Math.floor(meal.loggedAt / 1000), proteinDay: meal.epochDay })
+      }
+    }
+  }
+  const week = computeForgeWeek(today, scheduledDays, trainedDays, proteinDaysSet,
+    progress.settings.weeklyTargetOverride, eligiblePrs.length)
+  const localSunday = new Date(now)
+  localSunday.setHours(0, 0, 0, 0)
+  localSunday.setDate(localSunday.getDate() - (today - ws))
+  const reachedAt = scoreReachedAt(week.target, events, Math.floor(localSunday.getTime() / 1000))
 
   let prs: Pr[] | null = null
   if (sharePrs) {
@@ -356,7 +442,7 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
         .map((s) => [s.id!, s]),
     )
     const prSets = progress.doneSets
-      .filter((s) => s.isPr && weekSessions.has(s.sessionId))
+      .filter((s) => s.isPr && countsForPR(s) && weekSessions.has(s.sessionId))
       .sort((a, b) => {
         const sa = weekSessions.get(a.sessionId)?.finishedAt ?? 0
         const sb = weekSessions.get(b.sessionId)?.finishedAt ?? 0
@@ -378,7 +464,10 @@ export async function buildMySnapshot(sharePrs: boolean, now = Date.now()): Prom
   return {
     weekStart: week.weekStart,
     done: week.done,
-    due: week.due,
+    due: week.target,
+    target: week.target,
+    prCount: eligiblePrs.length,
+    reachedAt,
     score: week.score,
     badge: week.badge,
     streakWeeks: Math.min(520, Math.max(0, progress.streak.weeks)),
@@ -394,6 +483,9 @@ async function hashSnapshot(s: Snapshot): Promise<string> {
     weekStart: s.weekStart,
     done: s.done,
     due: s.due,
+    target: s.target,
+    prCount: s.prCount,
+    reachedAt: s.reachedAt,
     score: s.score,
     badge: s.badge,
     streakWeeks: s.streakWeeks,
@@ -411,22 +503,23 @@ async function hashSnapshot(s: Snapshot): Promise<string> {
 
 export async function renderGoogleSignInButton(
   container: HTMLElement | null,
-  options?: { theme?: 'outline' | 'filled_blue' | 'filled_black'; width?: number },
+  options?: { theme?: 'outline' | 'filled_blue' | 'filled_black'; width?: number; locale?: string; signal?: AbortSignal },
 ): Promise<boolean> {
-  if (!container) return false
+  if (!container || options?.signal?.aborted) return false
   try {
     await preloadGis()
   } catch {
-    setState({ error: 'network' })
+    if (!options?.signal?.aborted) setState({ error: 'network' })
     return false
   }
+  if (options?.signal?.aborted) return false
   // Wait briefly in case accounts.oauth2 settled while accounts.id initializes on the same script tick.
   let idApi = gisId()
   if (!idApi) {
     await new Promise((r) => setTimeout(r, 50))
     idApi = gisId()
   }
-  if (!idApi) return false
+  if (!idApi || options?.signal?.aborted) return false
 
   if (!gisInitialized) {
     idApi.initialize({
@@ -442,13 +535,17 @@ export async function renderGoogleSignInButton(
     gisInitialized = true
   }
 
+  // Render into a fresh child element each time so GIS doesn't reuse the first-rendered locale on the parent node.
   container.innerHTML = ''
-  idApi.renderButton(container, {
+  const slot = document.createElement('div')
+  container.appendChild(slot)
+  idApi.renderButton(slot, {
     theme: options?.theme ?? 'outline',
     size: 'large',
     shape: 'pill',
     text: 'signin_with',
     width: options?.width,
+    locale: options?.locale ?? getLang(),
   })
   return true
 }
@@ -458,7 +555,7 @@ export async function signInWithIdToken(idToken: string): Promise<ActionResult> 
   setState({ busy: true, error: null })
   try {
     const res = await friendsApi.authGoogle(idToken)
-    const auth: FriendsAuth = { sessionToken: res.session, suggestedName: res.user.name, lastSnapshotHash: null }
+    const auth: FriendsAuth = { sessionToken: res.session, lastSnapshotHash: null }
     await saveAuth(auth)
 
     if (res.user.joined && res.user.username) {
@@ -479,7 +576,6 @@ export async function signInWithIdToken(idToken: string): Promise<ActionResult> 
 }
 
 export async function joinFriends(input: {
-  name: string
   username: string
   sharePhoto: boolean
   sharePrs: boolean
@@ -488,14 +584,12 @@ export async function joinFriends(input: {
   const token = state.auth?.sessionToken
   if (!token) return { ok: false, error: 'unauthorized' }
 
-  const name = input.name.trim()
-  if (name.length < 1 || name.length > 40) return fail('bad_profile')
   const username = normalizeUsername(input.username)
   if (!username) return fail('bad_username')
 
   setState({ busy: true, error: null })
   try {
-    const me = await friendsApi.putMe(token, { name, username, sharePhoto: input.sharePhoto, sharePrs: input.sharePrs })
+    const me = normalizeMe(await friendsApi.putMe(token, { username, sharePhoto: input.sharePhoto, sharePrs: input.sharePrs }))
     const view = placeholderView(me)
     await saveCache(view)
     setState({ status: 'joined', view, leaderboard: computeBoard(view) })
@@ -527,7 +621,7 @@ export async function uploadSnapshot(force = false): Promise<boolean> {
   await friendsApi.putSnapshot(auth.sessionToken, snap)
   const nextAuth: FriendsAuth = { ...auth, lastSnapshotHash: hash }
   await saveAuth(nextAuth)
-  const nextView: CachedView = { ...view, mySnapshot: snap }
+  const nextView: CachedView = { ...view }
   await saveCache(nextView)
   if (state.status === 'joined') {
     setState({
@@ -562,7 +656,7 @@ export async function refreshFriends(silent = false): Promise<ActionResult> {
     } catch {
       // Proceed to fetch latest friends board even if snapshot upload didn't run.
     }
-    const view = withMine(await friendsApi.getFriends(token), state.view?.mySnapshot ?? null)
+    const view = normalizeView(withMine(await friendsApi.getFriends(token), state.view?.mySnapshot ?? null))
     await saveCache(view)
     setState({
       status: 'joined',
@@ -572,6 +666,7 @@ export async function refreshFriends(silent = false): Promise<ActionResult> {
       busy: false,
       error: null,
     })
+    void syncPushToken()
     return { ok: true, data: undefined }
   } catch (err) {
     const code = await handleApiError(err)
@@ -594,30 +689,96 @@ async function putProfile(patch: Partial<ProfileInput>): Promise<ActionResult<Me
   const token = state.auth?.sessionToken
   if (!token) return { ok: false, error: 'unauthorized' }
 
-  setState({ busy: true, error: null })
+  const prevView = state.view
+  if (prevView) {
+    const optimisticMe: Me = { ...current, ...patch, username: patch.username ?? current.username }
+    const optimisticView: CachedView = { ...prevView, me: optimisticMe }
+    setState({ view: optimisticView, leaderboard: computeBoard(optimisticView), error: null })
+  } else {
+    setState({ error: null })
+  }
   try {
-    const me = await friendsApi.putMe(token, {
-      name: patch.name ?? current.name,
+    const me = normalizeMe(await friendsApi.putMe(token, {
       sharePhoto: patch.sharePhoto ?? current.sharePhoto,
       sharePrs: patch.sharePrs ?? current.sharePrs,
       ...(patch.username !== undefined ? { username: patch.username } : {}),
-    })
+      ...(patch.alertsOn !== undefined ? { alertsOn: patch.alertsOn } : {}),
+      ...(patch.shareWorkouts !== undefined ? { shareWorkouts: patch.shareWorkouts } : {}),
+      ...(patch.pingsOn !== undefined ? { pingsOn: patch.pingsOn } : {}),
+    }))
     if (state.view) {
       const nextView: CachedView = { ...state.view, me }
       await saveCache(nextView)
       setState({ view: nextView, leaderboard: computeBoard(nextView) })
     }
     if (patch.sharePrs !== undefined) await uploadSnapshot(true)
-    setState({ busy: false })
     return { ok: true, data: me }
   } catch (err) {
     const code = await handleApiError(err)
-    setState({ busy: false })
+    if (prevView) setState({ view: prevView, leaderboard: computeBoard(prevView) })
     return { ok: false, error: code }
   }
 }
 
 export const updateFriendsPreferences = (patch: { sharePhoto?: boolean; sharePrs?: boolean }) => putProfile(patch)
+
+export const updateFriendsAlerts = (patch: { alertsOn?: boolean; shareWorkouts?: boolean; pingsOn?: boolean }) =>
+  putProfile(patch)
+
+export async function markInboxSeen(): Promise<void> {
+  const view = state.view
+  if (!view) return
+  const pings = view.inbox?.pings ?? []
+  if (!pings.some((p) => !p.seen)) return
+
+  const nextView: CachedView = {
+    ...view,
+    inbox: {
+      ...view.inbox,
+      pings: pings.map((p) => (p.seen ? p : { ...p, seen: true })),
+    },
+  }
+  setState({ view: nextView })
+  if (state.demoMode) return
+
+  await saveCache(nextView)
+  const token = state.auth?.sessionToken
+  if (!token) return
+  try {
+    await friendsApi.inboxSeen(token)
+  } catch {
+    // ignore errors
+  }
+}
+
+export async function setFriendMuted(id: string, muted: boolean): Promise<ActionResult> {
+  await ensureFriendsLoaded()
+  const view = state.view
+  if (!view) return { ok: false, error: 'not_joined' }
+  const prevFriends = view.friends
+  const optimisticView: CachedView = {
+    ...view,
+    friends: prevFriends.map((f) => (f.id === id ? { ...f, muted } : f)),
+  }
+  setState({ view: optimisticView, error: null })
+  if (state.demoMode) return { ok: true, data: undefined }
+
+  const token = state.auth?.sessionToken
+  if (!token) {
+    setState({ view: { ...view, friends: prevFriends } })
+    return { ok: false, error: 'unauthorized' }
+  }
+  try {
+    await friendsApi.setMuted(token, id, muted)
+    await saveCache(optimisticView)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    const cur = state.view
+    if (cur) setState({ view: { ...cur, friends: prevFriends } })
+    const code = await handleApiError(err)
+    return { ok: false, error: code }
+  }
+}
 
 export async function changeUsername(raw: string): Promise<ActionResult<Me>> {
   const username = normalizeUsername(raw)
@@ -728,7 +889,19 @@ export async function nudgeFriend(toId: string): Promise<ActionResult> {
   }
 }
 
+async function deleteStoredPushToken(): Promise<void> {
+  try {
+    const stored = state.auth ?? ((await db.kv.get(FRIENDS_AUTH_KEY))?.value as FriendsAuth | undefined) ?? null
+    if (stored?.sessionToken && stored.pushToken && !state.demoMode) {
+      await friendsApi.deletePush(stored.sessionToken, stored.pushToken)
+    }
+  } catch {
+    // ignore errors
+  }
+}
+
 export async function signOutFriends(): Promise<void> {
+  await deleteStoredPushToken()
   gisId()?.disableAutoSelect?.()
   if (state.demoMode && import.meta.env.DEV) {
     await db.kv.delete(FRIENDS_DEMO_KEY)
@@ -744,6 +917,7 @@ export async function deleteFriendsAccount(): Promise<ActionResult> {
     await signOutFriends()
     return { ok: true, data: undefined }
   }
+  await deleteStoredPushToken()
   const token = state.auth?.sessionToken
   if (!token) {
     await clearLocalSession()

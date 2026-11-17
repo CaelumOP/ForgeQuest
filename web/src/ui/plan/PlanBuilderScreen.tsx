@@ -13,7 +13,6 @@ import {
 } from '../../domain/plan-builder'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { Button, Card, Chip, IconButton, Segmented, Stepper, haptics, toast } from '../kit'
-import { goBack } from '../nav'
 import { GearCustomizeRow, GearSheet, TrainingPlaceSelector } from '../profile/GearSheet'
 import { ExercisePicker } from '../workouts/ExercisePicker'
 import { SwapIcon } from '../workouts/glyphs'
@@ -24,7 +23,9 @@ import {
   initialAnswers, injuryKey, localizeBuiltPlan, repPrefKey, restPrefKey,
   rowSummaries, scheme, swapBuiltPlanItem, whyTagKey,
 } from './helpers'
+import { weeklyMuscleVolume } from '../../domain/plan-share'
 import './plan-builder.css'
+import './plan41.css'
 
 const TUNE_PATH = 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z'
 const REFRESH_PATH = 'M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'
@@ -97,7 +98,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
         weeklyTargetOverride: 0,
       }))
       toast(t('pb_saved'))
-      goBack()
+      location.hash = '#/workouts'
     } finally {
       setBusy(false)
     }
@@ -608,6 +609,7 @@ function ReviewSection({
     () => [...review.draft.days].sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek)),
     [review],
   )
+  const volume = useMemo(() => weeklyMuscleVolume(review.draft, byId), [review, byId])
 
   return (
     <div class="pb-review">
@@ -616,16 +618,28 @@ function ReviewSection({
           <p class="pb-hint">{t('pb_empty')}</p>
         </Card>
       ) : (
-        days.map((day) => (
-          <ReviewDay
-            key={day.dayOfWeek}
-            day={day}
-            review={review}
-            byId={byId}
-            lang={lang}
-            onSwap={onSwap}
-          />
-        ))
+        <>
+          {volume.length > 0 && (
+            <Card>
+              <div class="p41-vol-label" style={{ marginBlockStart: 0 }}>{t('plan41_weekly_volume')}</div>
+              <div class="p41-chips">
+                {volume.slice(0, 8).map((v) => (
+                  <span key={v.muscle} class="p41-data-chip">{t('plan41_muscle_sets_item', muscleLabel(v.muscle), v.sets)}</span>
+                ))}
+              </div>
+            </Card>
+          )}
+          {days.map((day) => (
+            <ReviewDay
+              key={day.dayOfWeek}
+              day={day}
+              review={review}
+              byId={byId}
+              lang={lang}
+              onSwap={onSwap}
+            />
+          ))}
+        </>
       )}
 
       <Button

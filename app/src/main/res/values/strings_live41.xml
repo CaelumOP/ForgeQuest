@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thumb-zone keypad -->
+    <string name="live41_keypad_last_time">Last time (%1$s)</string>
+    <string name="live41_keypad_done">Done</string>
+    <string name="live41_keypad_clear">Clear</string>
+    <string name="live41_keypad_backspace">Delete digit</string>
+    <string name="live41_keypad_decimal">Decimal point</string>
+
+    <!-- Plate calculator -->
+    <string name="live41_plates_side">%1$s / side</string>
+    <string name="live41_plates_bar_only">Bar only (%1$s)</string>
+    <string name="live41_plates_title">Plates per side</string>
+    <string name="live41_plates_target">Target: %1$s</string>
+    <string name="live41_plates_bar">Bar: %1$s</string>
+    <string name="live41_plates_loaded">Loaded: %1$s</string>
+    <string name="live41_plates_remainder">Nearest loadable (%1$s short)</string>
+    <string name="live41_plates_none_needed">Empty bar, no plates needed</string>
+    <string name="live41_plates_below_bar">Under bar weight (%1$s)</string>
+    <string name="live41_plates_breakdown_cd">Plate breakdown for %1$s</string>
+
+    <!-- Set types -->
+    <string name="live41_set_type_title">Set type</string>
+    <string name="live41_set_type_working">Working</string>
+    <string name="live41_set_type_working_desc">Counts toward progression, score, and PRs</string>
+    <string name="live41_set_type_warmup">Warm-up</string>
+    <string name="live41_set_type_warmup_desc">Skipped in auto-rest, progression, and PRs</string>
+    <string name="live41_set_type_dropset">Drop set</string>
+    <string name="live41_set_type_dropset_desc">Extra volume after a working set</string>
+    <string name="live41_set_type_failure">Failure</string>
+    <string name="live41_set_type_failure_desc">All-out set; counts toward progression and PRs</string>
+    <string name="live41_set_type_restpause">Rest-pause</string>
+    <string name="live41_set_type_restpause_desc">Short 15 s rest preset between bursts</string>
+    <string name="live41_tag_warmup">W</string>
+    <string name="live41_tag_dropset">D</string>
+    <string name="live41_tag_failure">F</string>
+    <string name="live41_tag_restpause">RP</string>
+    <string name="live41_set_badge_cd">Set %1$s, %2$s. Tap to change type</string>
+
+    <!-- Quick peek -->
+    <string name="live41_peek_tab_form">Form</string>
+    <string name="live41_peek_tab_history">Last 3 sessions</string>
+    <string name="live41_peek_start">Start</string>
+    <string name="live41_peek_finish">Finish</string>
+    <string name="live41_peek_no_media">No form photos available offline</string>
+    <string name="live41_peek_cues">Form cues</string>
+    <string name="live41_peek_mistake">Common mistake</string>
+    <string name="live41_peek_no_cues">No cues saved for this exercise</string>
+    <string name="live41_peek_no_history">No previous sessions recorded yet</string>
+    <string name="live41_peek_use_last">Use last time</string>
+    <string name="live41_peek_used_last">Applied last session numbers</string>
+    <string name="live41_peek_full_stats">Full stats</string>
+
+    <!-- Pinned setup note -->
+    <string name="live41_setup_note_label">Setup note</string>
+    <string name="live41_setup_note_hint">e.g. Seat 4, pin 3</string>
+    <string name="live41_setup_note_prefix">Setup: %1$s</string>
+    <string name="live41_setup_note_edit">Edit setup note</string>
+
+    <!-- Per-exercise weight unit -->
+    <string name="live41_unit_menu">Weight unit (%1$s)</string>
+    <string name="live41_unit_default">Profile default (%1$s)</string>
+    <string name="live41_unit_kg">kg</string>
+    <string name="live41_unit_lb">lb</string>
+    <string name="live41_unit_title">Weight unit for this exercise</string>
+
+    <!-- Rest bar -->
+    <string name="live41_rest_preset_s">%1$ds</string>
+    <string name="live41_copy_last_set">Copy last set</string>
+    <string name="live41_copied_last_set">Copied last set</string>
+
+    <!-- Superset display -->
+    <string name="live41_superset">Superset</string>
+    <string name="live41_superset_hint">Alternate %1$s and %2$s; full rest after %2$s</string>
+
+    <!-- Spoken cues -->
+    <string name="live41_tts_toggle">Spoken cues</string>
+    <string name="live41_tts_rest_over">Rest over</string>
+    <string name="live41_tts_rest_over_next">Rest over. Next: %1$s</string>
+    <string name="live41_tts_hold_start">Hold</string>
+    <string name="live41_tts_hold_halfway">Halfway</string>
+    <string name="live41_tts_hold_done">Done</string>
+
+    <!-- Shareable recap -->
+    <string name="live41_share_summary">Share summary</string>
+    <string name="live41_share_copied">Summary copied</string>
+    <plurals name="live41_recap_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
+    <string name="live41_recap_minutes">%1$d min</string>
+    <string name="live41_recap_total_lifted">Total lifted: %1$s</string>
+    <string name="live41_recap_best">best %1$s</string>
+    <string name="live41_recap_pr_tag">PR</string>
+    <string name="live41_recap_prs_header">PRs: %1$s</string>
+</resources>

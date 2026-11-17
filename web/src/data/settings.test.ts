@@ -4,7 +4,8 @@ import fixtureText from './fixtures/android-backup.json?raw';
 import { db } from './db';
 import { applyBackup, decodeBackup } from './backup';
 import {
-  DEFAULT_SETTINGS, clearWeekTargets, fromBackupSettings, loadSettings, migrateWeekTargets, saveWeekTargets,
+  autoBackupEffective, setAutoBackup, markRestoreOfferShown, weightUnit,
+  DEFAULT_SETTINGS, clearWeekTargets, fromBackupSettings, isAiOn, loadSettings, migrateWeekTargets, saveWeekTargets,
   shiftWeekTargetsRecord, toBackupSettings, updateSettings, weekTargets,
 } from './settings';
 
@@ -13,6 +14,25 @@ beforeEach(async () => {
 });
 
 describe('settings', () => {
+  it('keeps backup opt-out and account restore offers across reconnect and restore', async () => {
+    expect(autoBackupEffective(await loadSettings())).toBe(false);
+    await updateSettings((s) => ({ ...s, driveEmail: 'a@example.test' }));
+    expect(autoBackupEffective(await loadSettings())).toBe(true);
+    await setAutoBackup(false);
+    await markRestoreOfferShown('A@example.test');
+    await updateSettings((s) => ({ ...s, driveEmail: '' }));
+    await updateSettings((s) => ({ ...s, driveEmail: 'b@example.test' }));
+    await applyBackup(decodeBackup(fixtureText));
+    const s = await loadSettings();
+    expect(autoBackupEffective(s)).toBe(false);
+    expect(s.autoBackupOptedOut).toBe(true);
+    expect(s.restoreOfferShown).toEqual(['a@example.test']);
+    expect(toBackupSettings(s)).not.toHaveProperty('restoreOfferShown');
+    expect(toBackupSettings(s)).not.toHaveProperty('driveEmail');
+    expect(s.barWeightKg).toBe(20);
+    expect(s.plateInventory).toEqual([25, 20, 15, 10, 5, 2.5, 1.25]);
+    expect(weightUnit(s, 'lb')).toBe(weightUnit({ ...s, unit: 'lb' }));
+  });
   it('starts with the Android defaults', async () => {
     const s = await loadSettings();
     expect(s).toEqual(DEFAULT_SETTINGS);
@@ -95,5 +115,14 @@ describe('settings', () => {
       targets: new Map([[20499, 3]]),
       migrated: false,
     });
+  });
+
+  it('resolves isAiOn from aiOptIn or apiKey presence', async () => {
+    expect(isAiOn(DEFAULT_SETTINGS)).toBe(false);
+    expect(isAiOn({ aiOptIn: null, apiKey: 'key' })).toBe(true);
+    expect(isAiOn({ aiOptIn: false, apiKey: 'key' })).toBe(false);
+    expect(isAiOn({ aiOptIn: true, apiKey: '' })).toBe(true);
+    await updateSettings((s) => ({ ...s, aiOptIn: true }));
+    expect((await loadSettings()).aiOptIn).toBe(true);
   });
 });

@@ -37,3 +37,24 @@ export function useTheme(): Theme {
   }, [])
   return value
 }
+
+export function isDarkTheme(t: Theme = theme): boolean {
+  if (t === 'dark') return true
+  if (t === 'light') return false
+  try { return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches } catch { return false }
+}
+
+/** True when dark palette is active (explicit dark, or system matching dark). Re-renders on theme or OS changes. */
+export function useIsDark(): boolean {
+  const t = useTheme()
+  const [sysDark, setSysDark] = useState(() => isDarkTheme('system'))
+  useEffect(() => {
+    if (t !== 'system' || typeof matchMedia !== 'function') return
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    setSysDark(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setSysDark(e.matches)
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [t])
+  return t === 'dark' ? true : t === 'light' ? false : sysDark
+}

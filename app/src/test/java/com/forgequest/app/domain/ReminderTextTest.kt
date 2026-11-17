@@ -32,21 +32,4 @@ class ReminderTextTest {
         assertEquals(ReminderBody.Count(4), ReminderText.body("bench", 0f, 5f, 4))
         assertEquals(ReminderBody.Count(4), ReminderText.body(null, 60f, 62.5f, 4))
     }
-
-    @Test fun focusNeedsTwoThirds() {
-        assertEquals(TodayFocus.LEGS, Readiness.focusOf(listOf(Muscle.QUADS, Muscle.GLUTES, Muscle.CALVES, Muscle.CHEST)))
-        assertEquals(TodayFocus.UPPER, Readiness.focusOf(listOf(Muscle.CHEST, Muscle.TRICEPS, Muscle.SHOULDERS)))
-        assertNull(Readiness.focusOf(listOf(Muscle.QUADS, Muscle.CHEST)))
-        assertNull(Readiness.focusOf(listOf(Muscle.ABS)))
-        assertNull(Readiness.focusOf(emptyList()))
-    }
-
-    @Test fun adviceNamesTheDay() {
-        assertEquals(DayAdvice.LEGS_STEADY, Readiness.adviceFor(DayCall.STEADY, TodayFocus.LEGS))
-        assertEquals(DayAdvice.LEGS_RECOVER, Readiness.adviceFor(DayCall.RECOVER, TodayFocus.LEGS))
-        assertEquals(DayAdvice.UPPER_EASE, Readiness.adviceFor(DayCall.EASE_OFF, TodayFocus.UPPER))
-        assertNull(Readiness.adviceFor(DayCall.READY, TodayFocus.LEGS))
-        assertNull(Readiness.adviceFor(DayCall.STEADY, TodayFocus.UPPER))
-        assertNull(Readiness.adviceFor(DayCall.RECOVER, null))
-    }
 }

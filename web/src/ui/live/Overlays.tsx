@@ -4,8 +4,31 @@ import { Button } from '../kit'
 import { CloseIcon } from '../icons'
 import { clock, holdElapsed, holdPhase, restLeft, type HoldTimer, type RestTimer } from './timers'
 
-export function RestBar({ rest, now, nextLabel, onAdd, onRemove, onSkip }: { rest: RestTimer; now: number; nextLabel: string | null; onAdd: () => void; onRemove: () => void; onSkip: () => void }) {
+const REST_PRESETS = [60, 90, 120, 180] as const
+
+export function RestBar({
+  rest,
+  now,
+  nextLabel,
+  canCopyLastSet,
+  onAdd,
+  onRemove,
+  onSelectPreset,
+  onCopyLastSet,
+  onSkip,
+}: {
+  rest: RestTimer
+  now: number
+  nextLabel: string | null
+  canCopyLastSet: boolean
+  onAdd: () => void
+  onRemove: () => void
+  onSelectPreset: (seconds: number) => void
+  onCopyLastSet: () => void
+  onSkip: () => void
+}) {
   const left = restLeft(rest.endsAt, now)
+  const presets = rest.isRestPause ? [15, ...REST_PRESETS] : [...REST_PRESETS]
   return (
     <div class="lw-rest" role="timer" aria-label={t('live_rest')}>
       <div class="lw-rest-row">
@@ -16,6 +39,23 @@ export function RestBar({ rest, now, nextLabel, onAdd, onRemove, onSkip }: { res
         <Button variant="text" onClick={onSkip}>{t('live_skip')}</Button>
       </div>
       {nextLabel && <div class="lw-rest-next">{t('live_next', nextLabel)}</div>}
+      <div class="lw-rest-presets">
+        {presets.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            class={`lw-rest-chip${rest.totalSeconds === preset ? ' lw-rest-chip-on' : ''}`}
+            onClick={() => onSelectPreset(preset)}
+          >
+            {t('live41_rest_preset_s', preset)}
+          </button>
+        ))}
+        {canCopyLastSet && (
+          <button type="button" class="lw-rest-chip lw-rest-chip-copy" onClick={onCopyLastSet}>
+            {t('live41_copy_last_set')}
+          </button>
+        )}
+      </div>
       <WaveBar progress={rest.totalSeconds ? Math.min(1, left / rest.totalSeconds) : 0} />
     </div>
   )
@@ -43,7 +83,6 @@ function WaveBar({ progress }: { progress: number }) {
   }, [])
   const active = w * Math.max(0, Math.min(1, progress))
   const cy = WAVE_H / 2
-  // One half-wavelength per quadratic segment; the control point sits 2x the amplitude off the line, so the peak is the amplitude.
   let wave = `M ${-WAVE_LEN} ${cy} q ${WAVE_LEN / 4} ${-2 * WAVE_AMP} ${WAVE_LEN / 2} 0`
   for (let x = -WAVE_LEN / 2; x < active + WAVE_LEN; x += WAVE_LEN / 2) wave += ` t ${WAVE_LEN / 2} 0`
   const trackFrom = active > 0 ? active + WAVE_GAP + 2 : 2

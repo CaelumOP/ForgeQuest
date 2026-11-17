@@ -123,6 +123,20 @@ class FriendsModelsTest {
     }
 
     @Test
+    fun authoritativeSelfSnapshotRetainsV5Fields() {
+        val own = Snapshot(20000, 3, 3, 112, "trained", 1, 1,
+            target = 3, prCount = 2, reachedAt = 1728000123, scoreVersion = 2,
+            breakdown = com.forgequest.app.domain.ForgeScore.breakdown(3, 3, 2, 1))
+        val view = FriendsView(Me("me", sharePhoto = false, sharePrs = false, joined = true),
+            today = 20002, weekStart = 20000, mySnapshot = own)
+        val decoded = json.decodeFromString(FriendsView.serializer(), json.encodeToString(FriendsView.serializer(), view))
+        assertEquals(own, decoded.mySnapshot)
+        assertNull(json.decodeFromString(Snapshot.serializer(), """
+            {"weekStart":20000,"done":1,"due":1,"score":100,"badge":"trained","streakWeeks":0,"proteinDays":0}
+        """).target)
+    }
+
+    @Test
     fun encodeSnapshotExplicitNullPrs() {
         val snapshot = Snapshot(
             weekStart = 20497L,
@@ -141,5 +155,52 @@ class FriendsModelsTest {
         val expectedKeys = setOf("weekStart", "done", "due", "score", "badge", "streakWeeks", "proteinDays", "prs")
         assertTrue(obj.keys.containsAll(expectedKeys))
         assertEquals("trained", obj["badge"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun cached40ViewDecodesWithV4Defaults() {
+        // Exact shape a 4.0 client cached: no inbox, no muted, no v4 flags, old display names.
+        val cached = """
+            {"me":{"id":"u1","username":"tariq_99","name":"Tariq Old","photoUrl":null,"sharePhoto":true,"sharePrs":false,"joined":true},
+             "today":20500,"weekStart":20497,
+             "friends":[{"id":"u2","username":"omar","name":"Omar A","photoUrl":null,"snapshot":null,"sharedStreak":3}],
+             "incoming":[{"id":"u3","username":"karim","name":"Karim","photoUrl":null}],
+             "outgoing":[],
+             "nudges":[{"fromId":"u2","name":"Omar A","username":"omar","day":20500}]}
+        """.trimIndent()
+        val view = json.decodeFromString(FriendsView.serializer(), cached)
+        assertTrue(view.me.alertsOn)
+        assertTrue(view.me.shareWorkouts)
+        assertTrue(view.me.pingsOn)
+        assertFalse(view.friends.single().muted)
+        assertTrue(view.inbox.pings.isEmpty())
+        assertTrue(view.inbox.activity.isEmpty())
+        // One name only: the username wins over an old display name.
+        assertEquals("tariq_99", view.me.shownName)
+        assertEquals("omar", view.friends.single().shownName)
+        // Badge = incoming requests + unseen pings (none in a 4.0 cache).
+        assertEquals(1, view.badgeCount)
+    }
+
+    @Test
+    fun decodeV4InboxAndBadge() {
+        val payload = """
+            {"me":{"id":"u1","username":"tariq","name":"tariq","sharePhoto":true,"sharePrs":true,"joined":true,
+                   "alertsOn":false,"shareWorkouts":true,"pingsOn":false},
+             "today":20500,"weekStart":20497,
+             "friends":[{"id":"u2","username":"omar","name":"omar","snapshot":null,"sharedStreak":0,"muted":true}],
+             "incoming":[],"outgoing":[],"nudges":[],
+             "inbox":{"pings":[{"fromId":"u2","name":"omar","username":"omar","day":20500,"createdAt":1,"seen":false},
+                               {"fromId":"u2","name":"omar","username":"omar","day":20499,"createdAt":0,"seen":true}],
+                      "activity":[{"userId":"u2","name":"omar","username":"omar","at":5}]}}
+        """.trimIndent()
+        val view = json.decodeFromString(FriendsView.serializer(), payload)
+        assertFalse(view.me.alertsOn)
+        assertFalse(view.me.pingsOn)
+        assertTrue(view.friends.single().muted)
+        assertEquals(2, view.inbox.pings.size)
+        assertEquals(1, view.inbox.activity.size)
+        // Activity never counts toward the badge; only the one unseen ping does.
+        assertEquals(1, view.badgeCount)
     }
 }

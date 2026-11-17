@@ -10,9 +10,6 @@ import com.forgequest.app.domain.DayTag
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
-import com.forgequest.app.data.health.HealthState
-import com.forgequest.app.data.health.RefreshWatch
-import com.forgequest.app.data.health.showsYesterday
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,6 +22,16 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
         .map { d -> if (d?.view?.me?.joined == true) d.view.friends else emptyList() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Home avatar photo: the Friends sign-in photo (cache, no network). The Drive account photo has no getter yet. */
+    val profilePhoto: StateFlow<String?> = app.friends.state
+        .map { d -> pickAvatarPhoto(d?.view?.me?.photoUrl, null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Friends username/display name for the Home avatar initials fallback when Settings name is blank. */
+    val friendsName: StateFlow<String?> = app.friends.state
+        .map { d -> d?.view?.me?.shownName?.takeIf { it.isNotBlank() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     init {
         // Load the food list quietly, so the first food search isn't empty while it loads.
         viewModelScope.launch { delay(1500); app.catalog.warm() }
@@ -33,24 +40,9 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
     fun logWeight(kg: Float) = viewModelScope.launch { app.progress.logWeight(kg) }
     val health = app.health.state
     fun refreshHealth(force: Boolean = false) = viewModelScope.launch { app.health.refresh(force) }
-    val refreshWatch = RefreshWatch(viewModelScope) { app.health.refresh(force = true) }
 
-    /** Home is on screen: re-read Health Connect, and keep looking for a while if last night is still missing. */
-    fun resumeHealth() = viewModelScope.launch {
-        val found = app.health.refresh()
-        refreshWatch.resume(found, waiting = (app.health.state.value as? HealthState.Ready)?.day?.showsYesterday() == true)
-    }
-    /** Remembers which wording of a readiness sentence was shown today, so the wordings take turns ([dailyVariant]). */
-    fun noteReadinessLine(kind: String, variant: Int) = viewModelScope.launch {
-        val today = com.forgequest.app.domain.Dates.today()
-        app.settings.update { s ->
-            // Checked again inside the update: two frames can ask before the first write lands.
-            if (!com.forgequest.app.domain.dailyVariant(kind, variant + 1, s.insightHistory, today).second) s
-            else s.copy(insightHistory = com.forgequest.app.domain.appendHistory(s.insightHistory, kind, variant, today))
-        }
-    }
-
-    fun setFeltGreat(v: Boolean) = viewModelScope.launch { app.health.setFeltGreat(v) }
+    /** Home is on screen: re-read Health Connect (steps, calories burned, weight). */
+    fun resumeHealth() = viewModelScope.launch { app.health.refresh() }
 
     /** Catches badges a workout or meal earned but that were missed (they used to be checked against stale data). */
     fun checkBadges() = viewModelScope.launch { app.progress.evaluateBadges() }

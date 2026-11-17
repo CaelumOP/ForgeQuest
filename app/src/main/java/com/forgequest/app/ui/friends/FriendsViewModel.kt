@@ -46,8 +46,17 @@ class FriendsViewModel(val app: AppContainer) : ViewModel() {
 
     fun signIn(activity: Activity) = runBusy { app.friends.signIn(activity) }
 
-    fun join(name: String, username: String, sharePhoto: Boolean, sharePrs: Boolean) =
-        runBusy { app.friends.join(name, sharePhoto, sharePrs, username) }
+    fun join(username: String, sharePhoto: Boolean, sharePrs: Boolean) =
+        runBusy { app.friends.join(sharePhoto, sharePrs, username) }
+
+    /** Opening the inbox clears the badge (local first, then POST /v1/inbox/seen when needed). */
+    fun markInboxSeen() {
+        viewModelScope.launch { app.friends.markInboxSeen() }
+    }
+
+    fun setMuted(id: String, muted: Boolean) {
+        viewModelScope.launch { app.friends.setMuted(id, muted) }
+    }
 
     fun accept(id: String) = runBusy { app.friends.accept(id) }
 

@@ -6,14 +6,30 @@ import type { FoodCategory, FoodPart, FoodRow, MealRow } from '../../data/db'
 import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, placesOf, restoreMeal, saveFood, totalsOf, useFoodUsage, useFoods, useMealsOn, useRecentOneOffs, withParts } from '../../data/food'
 import { score } from '../../domain/food-search'
 import { scaledKcal } from '../../domain/nutrition'
+import { AiError, aiErrorKey } from '../../data/ai'
 import { evaluateBadges, useProgress } from '../../data/progress'
-import { loadSettings, useSettings } from '../../data/settings'
+import { isAiOn, loadSettings, useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
 import { Button, Card, Chip, CoachMark, Dialog, IconButton, NumberField, Ring, Sheet, SwipeRow, TextField, toast, useTweened } from '../kit'
 import { fmtQty, lastSevenDays, qtyMinus, qtyPlus } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { PartsSheet, PlaceField, partsCount } from './FoodParts'
+import { BarcodeSheet } from './BarcodeSheet'
+import { PasteMealSheet } from './PasteMealSheet'
+import { estimateFoodText, scanTotals, type FoodScan } from './scan'
+import { unlockAudio } from '../live/feedback'
 import './food.css'
+
+const ReplayIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+  </svg>
+)
+const BarcodeIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M2 6h2v12H2V6zm3 0h1v12H5V6zm2 0h3v12H7V6zm4 0h1v12h-1V6zm3 0h2v12h-2V6zm3 0h1v12h-1V6zm2 0h3v12h-3V6z" />
+  </svg>
+)
 
 const CATS: FoodCategory[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACKS', 'DRINKS']
 /** " · Badge unlocked: X" when logging just earned one, else "". */
@@ -151,7 +167,7 @@ function FoodItem({ food, qty, onToggle, onQty, onEdit, onParts }: { food: FoodR
   )
 }
 
-function MealItem({ meal, onDelete }: { meal: MealRow; onDelete: () => void }) {
+function MealItem({ meal, onAgain, onDelete }: { meal: MealRow; onAgain: () => void; onDelete: () => void }) {
   const q = meal.quantity !== 1 ? `${fmtQty(meal.quantity)} ` : ''
   return (
     <div class="food-meal">
@@ -163,6 +179,7 @@ function MealItem({ meal, onDelete }: { meal: MealRow; onDelete: () => void }) {
         <span class="food-kcal">{t('food_kcal', meal.kcal)}</span>
         <span class="food-prot">{t('food_g', Math.round(meal.protein))}</span>
       </div>
+      <IconButton label={`${t('food_log_again')} ${meal.name}`} onClick={onAgain}><ReplayIcon /></IconButton>
       <IconButton label={`${t('cd_remove')} ${meal.name}`} onClick={onDelete}><CloseIcon size={18} /></IconButton>
     </div>
   )
@@ -170,14 +187,31 @@ function MealItem({ meal, onDelete }: { meal: MealRow; onDelete: () => void }) {
 
 const numText = (n: number) => (n === 0 ? null : n)
 
-function QuickLogSheet({ open, initial, carbsOn, onLog, onClose }: { open: boolean; initial: FoodCategory; carbsOn: boolean; onLog: (n: string, c: FoodCategory, k: number, p: number, cb: number) => void; onClose: () => void }) {
+function QuickLogSheet({ open, initial, carbsOn, aiReady, onLog, onClose }: { open: boolean; initial: FoodCategory; carbsOn: boolean; aiReady: boolean; onLog: (n: string, c: FoodCategory, k: number, p: number, cb: number) => void; onClose: () => void }) {
   const recent = useRecentOneOffs()
   const [name, setName] = useState('')
   const [kcal, setKcal] = useState<number | null>(null)
   const [protein, setProtein] = useState<number | null>(null)
   const [carbs, setCarbs] = useState<number | null>(null)
   const [cat, setCat] = useState(initial)
-  useEffect(() => { if (open) { setName(''); setKcal(null); setProtein(null); setCarbs(null); setCat(initial) } }, [open])
+  const [estimating, setEstimating] = useState(false)
+  const [basis, setBasis] = useState('')
+  useEffect(() => { if (open) { setName(''); setKcal(null); setProtein(null); setCarbs(null); setCat(initial); setEstimating(false); setBasis('') } }, [open])
+  const estimate = async () => {
+    if (!name.trim() || estimating) return
+    setEstimating(true)
+    try {
+      const scan = await estimateFoodText(name.trim())
+      const tot = scanTotals(scan.items, 1, 0)
+      setKcal(tot.kcal)
+      setProtein(Math.round(tot.protein * 10) / 10)
+      setCarbs(Math.round(tot.carbs * 10) / 10)
+      setBasis(t('food_estimate_basis', scan.dish))
+    } catch (e) {
+      const err = e instanceof AiError ? aiErrorKey(e) : { key: 'ai_err_network', args: [] }
+      toast(t(err.key, ...err.args))
+    } finally { setEstimating(false) }
+  }
   return (
     <Sheet open={open} onClose={onClose} title={t('food_quick_log')}>
       <p class="food-note">{t('food_quick_log_hint')}</p>
@@ -192,6 +226,10 @@ function QuickLogSheet({ open, initial, carbsOn, onLog, onClose }: { open: boole
         </>
       )}
       <TextField label={t('food_what_was_it')} value={name} onInput={(v) => setName(v.slice(0, 48))} />
+      {aiReady && name.trim() !== '' && (
+        <Button variant="tonal" disabled={estimating} loading={estimating} onClick={() => void estimate()}>{t('food_estimate')}</Button>
+      )}
+      {basis && <p class="food-note">{basis}</p>}
       <div class="food-two">
         <NumberField label={t('home_legend_calories')} value={kcal} onChange={setKcal} min={0} max={99999} />
         <NumberField label={t('home_legend_protein')} value={protein} onChange={setProtein} min={0} max={9999} decimal />
@@ -203,7 +241,7 @@ function QuickLogSheet({ open, initial, carbsOn, onLog, onClose }: { open: boole
   )
 }
 
-function FoodEditorSheet({ food, places, carbsOn, onSave, onDelete, onClose }: { food: FoodRow | null; places: string[]; carbsOn: boolean; onSave: (f: FoodRow) => void; onDelete: () => void; onClose: () => void }) {
+function FoodEditorSheet({ food, places, carbsOn, aiReady, onSave, onDelete, onClose }: { food: FoodRow | null; places: string[]; carbsOn: boolean; aiReady: boolean; onSave: (f: FoodRow) => void; onDelete: () => void; onClose: () => void }) {
   const [name, setName] = useState('')
   const [kcal, setKcal] = useState<number | null>(null)
   const [protein, setProtein] = useState<number | null>(null)
@@ -214,17 +252,38 @@ function FoodEditorSheet({ food, places, carbsOn, onSave, onDelete, onClose }: {
   const [place, setPlace] = useState('')
   const [parts, setParts] = useState<FoodPart[]>([])
   const [editParts, setEditParts] = useState(false)
+  const [estimating, setEstimating] = useState(false)
+  const [basis, setBasis] = useState('')
   const seen = useRef<FoodRow | null>(null)
   if (food && seen.current !== food) {
     seen.current = food
     setName(food.name); setKcal(numText(food.kcal)); setProtein(numText(food.protein)); setCarbs(numText(food.carbs)); setServing(food.serving); setCat(food.category); setPinned(food.pinned)
-    setPlace(food.place ?? ''); setParts(food.parts ?? []); setEditParts(false)
+    setPlace(food.place ?? ''); setParts(food.parts ?? []); setEditParts(false); setEstimating(false); setBasis('')
   }
   const onParts = parts.filter((p) => p.on)
   if (!food) seen.current = null
+  const estimate = async () => {
+    if (!name.trim() || estimating) return
+    setEstimating(true)
+    try {
+      const scan = await estimateFoodText(name.trim())
+      const tot = scanTotals(scan.items, 1, 0)
+      setKcal(tot.kcal)
+      setProtein(Math.round(tot.protein * 10) / 10)
+      setCarbs(Math.round(tot.carbs * 10) / 10)
+      setBasis(t('food_estimate_basis', scan.dish))
+    } catch (e) {
+      const err = e instanceof AiError ? aiErrorKey(e) : { key: 'ai_err_network', args: [] }
+      toast(t(err.key, ...err.args))
+    } finally { setEstimating(false) }
+  }
   return (
     <Sheet open={food != null} onClose={onClose} title={food?.id ? t('food_edit_title') : t('food_add_title')}>
       <TextField label={t('label_name')} value={name} onInput={(v) => setName(v.slice(0, 48))} />
+      {parts.length === 0 && aiReady && name.trim() !== '' && (
+        <Button variant="tonal" disabled={estimating} loading={estimating} onClick={() => void estimate()}>{t('food_estimate')}</Button>
+      )}
+      {basis && <p class="food-note">{basis}</p>}
       {parts.length > 0 ? (
         // With parts, the numbers come from the ticked parts: change a part's grams instead of typing totals.
         <button type="button" class="food-parts-card" onClick={() => setEditParts(true)}>
@@ -268,9 +327,13 @@ export function FoodScreen(_: { param?: string }) {
   const [editing, setEditing] = useState<FoodRow | null>(null)
   const [confirmDel, setConfirmDel] = useState<FoodRow | null>(null)
   const [quick, setQuick] = useState(false)
+  const [barcodeOpen, setBarcodeOpen] = useState(false)
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [showAllMeals, setShowAllMeals] = useState(false)
   const [undo, setUndo] = useState<{ text: string; meal: MealRow } | null>(null)
   const meals = useMealsOn(day)
   const isToday = day === today
+  const aiReady = isAiOn(s) && s.apiKey.trim() !== ''
 
   // A tab left open overnight or brought back to the front moves on to the new day while the person is on "today".
   useEffect(() => {
@@ -335,21 +398,47 @@ export function FoodScreen(_: { param?: string }) {
     setQuick(false)
     toast(t('food_logged_name', name))
   }
+  const logAgain = async (m: MealRow) => {
+    await logOnce(m.name, m.category, m.kcal, m.protein, day, m.carbs)
+    toast(t('food_logged_name', m.name) + (await badgeSuffix()))
+  }
+  const logPasted = async (scan: FoodScan) => {
+    const tot = scanTotals(scan.items, 1, 0)
+    await logOnce(scan.dish, cat, tot.kcal, tot.protein, day, tot.carbs, true)
+    setPasteOpen(false)
+    toast(t('scan_logged_summary', scan.dish, tot.kcal, Math.round(tot.protein)) + (await badgeSuffix()))
+  }
   const removeMeal = async (m: MealRow) => { await deleteMeal(m.id!); setUndo({ text: t('food_removed', m.name), meal: m }) }
   const doUndo = async () => { if (undo) await restoreMeal(undo.meal); setUndo(null) }
   const openAdd = () => setEditing(blankFood(cat))
+  const visibleMeals = showAllMeals ? meals : meals.slice(0, 3)
 
   return (
     <div class={`content food${picked.length ? ' food-has-bar' : ''}`}>
       <div class="food-head">
         <span class="food-head-fill" />
         <Button icon={<CameraIcon size={20} />} onClick={() => { location.hash = '#/scan' }}>{t('food_scan_meal')}</Button>
+        <IconButton label={t('barcode_scan')} tone="tonal" onClick={() => { unlockAudio(); setBarcodeOpen(true) }}><BarcodeIcon /></IconButton>
         <IconButton label={t('food_add')} tone="tonal" onClick={openAdd}><AddIcon /></IconButton>
       </div>
       <DayPicker day={day} today={today} onShift={shift} onToday={() => { setDay(today); setFollowToday(true) }} />
       <Totals meals={meals} kcalGoal={s.kcalGoal} proteinGoal={s.proteinGoal} carbsGoal={s.carbsGoal} trackCarbs={s.trackCarbs} />
+      <div class="food-logged-head">
+        <h2>{isToday ? t('food_logged_today') : t('food_logged_that_day')}</h2>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <Button variant="tonal" onClick={() => setPasteOpen(true)}>{t('food_paste_meal')}</Button>
+          <Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setQuick(true)}>{t('food_quick_log')}</Button>
+        </div>
+      </div>
+      {meals.length === 0 && <p class="food-note">{isToday ? t('food_nothing_today') : t('food_nothing_that_day')}</p>}
+      {visibleMeals.map((m) => <SwipeRow key={m.id} label={t('action_delete')} onDelete={() => removeMeal(m)}><MealItem meal={m} onAgain={() => void logAgain(m)} onDelete={() => removeMeal(m)} /></SwipeRow>)}
+      {meals.length > 3 && (
+        <Button variant="text" onClick={() => setShowAllMeals(!showAllMeals)}>
+          {showAllMeals ? t('food_w_show_less') : t('food_show_all', meals.length)}
+        </Button>
+      )}
       {isToday && <WeekCard proteinGoal={s.proteinGoal} trackCarbs={s.trackCarbs} />}
-      <CoachMark id="coach_food" title={t('coach_food_t')} body={t(s.apiKey.trim() ? 'coach_food_b' : 'coach_food_b_noai')} below>
+      <CoachMark id="coach_food" title={t('coach_food_t')} body={t(aiReady ? 'coach_food_b' : 'coach_food_b_noai')} below>
         <div class="food-search">
           <SearchIcon size={20} />
           <input
@@ -377,31 +466,57 @@ export function FoodScreen(_: { param?: string }) {
             <RestaurantIcon size={32} />
             <h3>{t('food_none_in_category', catLabel(cat))}</h3>
             <p>{t('food_empty_hint')}</p>
-            <Button variant="tonal" icon={<AddIcon size={20} />} onClick={openAdd}>{t('food_add_a_food')}</Button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Button variant="tonal" icon={<CameraIcon size={20} />} onClick={() => { location.hash = '#/scan' }}>{t('food_scan_meal')}</Button>
+              <Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setQuick(true)}>{t('food_quick_log')}</Button>
+              <Button variant="tonal" icon={<AddIcon size={20} />} onClick={openAdd}>{t('food_add_a_food')}</Button>
+            </div>
           </div>
         </Card>
       )}
       {shown.map((f) => <FoodItem key={f.id} food={f} qty={sel[f.id!]?.qty} onToggle={() => setQty(f, sel[f.id!] == null ? 1 : 0)} onQty={(q) => setQty(f, q)} onEdit={() => setEditing(f)} onParts={f.parts?.length ? () => setPartsFor(f) : undefined} />)}
-      <div class="food-logged-head">
-        <h2>{isToday ? t('food_logged_today') : t('food_logged_that_day')}</h2>
-        <Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setQuick(true)}>{t('food_quick_log')}</Button>
-      </div>
-      {meals.length === 0 && <p class="food-note">{isToday ? t('food_nothing_today') : t('food_nothing_that_day')}</p>}
-      {meals.map((m) => <SwipeRow key={m.id} label={t('action_delete')} onDelete={() => removeMeal(m)}><MealItem meal={m} onDelete={() => removeMeal(m)} /></SwipeRow>)}
 
       {picked.length > 0 && (
         <div class="food-bar"><Button block onClick={logSelected}>{plural('food_log_selection', picked.length, picked.length, fmtInt(selKcal), selProtein)}</Button></div>
       )}
       {undo && <div class="food-snack" role="status"><span>{undo.text}</span><button type="button" onClick={doUndo}>{t('action_undo')}</button></div>}
 
-      <QuickLogSheet open={quick} initial={cat} carbsOn={s.trackCarbs} onLog={quickLog} onClose={() => setQuick(false)} />
+      <QuickLogSheet open={quick} initial={cat} carbsOn={s.trackCarbs} aiReady={aiReady} onLog={quickLog} onClose={() => setQuick(false)} />
       <PartsSheet open={partsFor != null} foodName={partsFor?.name ?? ''} parts={partsFor?.parts ?? []} carbsOn={s.trackCarbs}
         onSave={async (p) => { if (partsFor) await saveFood(withParts(partsFor, p)); setPartsFor(null) }} onClose={() => setPartsFor(null)} />
       <FoodEditorSheet
-        food={editing} places={places} carbsOn={s.trackCarbs} onClose={() => setEditing(null)}
+        food={editing} places={places} carbsOn={s.trackCarbs} aiReady={aiReady} onClose={() => setEditing(null)}
         onSave={async (f) => { await saveFood(f); setEditing(null) }}
         onDelete={() => { setConfirmDel(editing); setEditing(null) }}
       />
+      <BarcodeSheet
+        open={barcodeOpen}
+        aiReady={aiReady}
+        onClose={() => setBarcodeOpen(false)}
+        onFound={(p) => {
+          setBarcodeOpen(false)
+          setEditing({ ...blankFood(cat), name: p.name || t('barcode_unnamed', p.code), place: p.brand, serving: p.serving, kcal: p.kcal, protein: p.protein, carbs: p.carbs, barcode: p.code })
+        }}
+        onLogOwn={async (f) => {
+          setBarcodeOpen(false)
+          const sep = t('food_list_sep')
+          await logFoods([{ food: f, qty: 1, category: f.category === 'DRINKS' ? 'DRINKS' : cat, name: logName(f, (n, off) => t('food_without', n, off), sep) }], day)
+          toast(t('food_logged_name', f.name) + (await badgeSuffix()))
+        }}
+        onEditOwn={(f) => {
+          setBarcodeOpen(false)
+          setEditing(f)
+        }}
+        onCreateManual={(code) => {
+          setBarcodeOpen(false)
+          setEditing({ ...blankFood(cat), barcode: code })
+        }}
+        onLabelRead={(code) => {
+          setBarcodeOpen(false)
+          location.hash = `#/scan/label/${encodeURIComponent(code)}`
+        }}
+      />
+      <PasteMealSheet open={pasteOpen} onClose={() => setPasteOpen(false)} onParsed={(scan) => void logPasted(scan)} />
       <Dialog
         open={confirmDel != null} destructive title={t('food_delete_title', confirmDel?.name ?? '')} message={t('food_delete_body')} confirmLabel={t('action_delete')}
         onCancel={() => setConfirmDel(null)}

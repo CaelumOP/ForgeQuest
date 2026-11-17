@@ -1,18 +1,24 @@
 import { useMemo, useState } from 'preact/hooks'
 import { getLang, plural, t, intlLocale } from '../../i18n'
 import { useProgress, type ProgressSnapshot } from '../../data/progress'
-import { weightUnit } from '../../data/settings'
-import { trainingDays } from '../../data/workouts'
+import { configuredEquipment, updateSettings, weightUnit } from '../../data/settings'
+import { swapPlanItem, trainingDays } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
-import type { SetEntity, SessionEntity } from '../../domain/entities'
+import type { PlanItemEntity, SetEntity, SessionEntity } from '../../domain/entities'
+import { muscleWeekTargets, pickInsights, recoverySplit } from '../../domain/insights'
 import type { ExerciseKind } from '../../domain/muscle'
+import { isExtraBlock } from '../../domain/pr-picker'
 import {
-  TREND_RANGE_DAYS, TREND_RANGES, bestSetSeries, consistencyGrid, lifetime, movingAverage, percentChange, proteinDaysPerWeek,
+  TREND_RANGE_DAYS, TREND_RANGES, analyzeFatigueAndPlateaus, bestSetSeries, consistencyGrid, lifetime, movingAverage, percentChange, proteinDaysPerWeek,
   thenNow, topExercises, trainingLoad, trendRangeFrom, weeklyCounts, weeklySets, type TrendPoint, type TrendRange,
 } from '../../domain/trends'
+import { nextVariation, recentlyCycledIds, recordCycle } from '../../domain/variation-cycle'
 import { fromKg, toKg, unitLabel, weightNumber, formatWeight, type WeightUnit } from '../../domain/units'
-import { Card, Chip, ChipGroup, EmptyState, LineChart, Ring } from '../kit'
+import { Button, Card, Chip, ChipGroup, EmptyState, LineChart, Ring, toast } from '../kit'
 import { carbWeeks, formatDelta, formatValue, grouped } from './helpers'
+import { formatInsight } from './insightText'
+import { strengthToBodyweight } from './metrics'
+import { MeasurementsCard, OneRmCalculatorCard, WeeklyVolumeCard } from './ProgressExtras'
 import './progress.css'
 
 const RANGE_KEYS: Record<TrendRange, string> = {
@@ -32,8 +38,9 @@ function derive(s: ProgressSnapshot, range: TrendRange) {
   const firstDay = s.sessions.length ? Math.min(...s.sessions.map((x) => x.epochDay)) : today
   const days = TREND_RANGE_DAYS[range]
   const weeksInRange = Math.min(52, Math.max(4, days != null ? Math.trunc((days + 6) / 7) : Math.trunc((today - firstDay) / 7) + 1))
-  const sets12 = weeklySets(sets, sessionDay, 12, today)
-  const topIds = topExercises(sets, 6)
+  const workingSets = sets.filter((x) => !isExtraBlock(x.block))
+  const sets12 = weeklySets(workingSets, sessionDay, 12, today)
+  const topIds = topExercises(workingSets, 6)
   const series = new Map<string, TrendPoint[]>(topIds.map((id) => {
     const kind: ExerciseKind = s.exercises.get(id)?.kind ?? 'REPS'
     return [id, bestSetSeries(sets.filter((x) => x.exerciseId === id), kind, sessionDay)]
@@ -122,7 +129,7 @@ function Tiles({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: WeightUn
     const pair = thenNow(pts, d.from)
     const shown = inRange(d, pts)
     tiles.push({
-      label: t('progress_tile_best', ex.name), value: formatValue(pts[pts.length - 1].value, ex.kind, unit, sUnit, ar),
+      label: t(ex.kind === 'WEIGHTED' ? 'progress_tile_est_max' : 'progress_tile_best', ex.name), value: formatValue(pts[pts.length - 1].value, ex.kind, unit, sUnit, ar),
       delta: pair ? formatDelta(pair[1] - pair[0], ex.kind, unit, sUnit, uText) : null, positive: pair != null && pair[1] > pair[0],
       spark: (shown.length ? shown : pts).slice(-12).map((p) => p.value), color: '--chart-strength',
     })
@@ -170,6 +177,10 @@ function StrengthCard({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: W
   const kind = ex?.kind ?? 'REPS'
   const pts = inRange(d, d.series.get(selected) ?? [])
   const name = ex?.name ?? selected
+  const fullPts = d.series.get(selected) ?? []
+  const latestEst = fullPts.length ? fullPts[fullPts.length - 1].value : 0
+  const ratio = kind === 'WEIGHTED' && latestEst > 0 ? strengthToBodyweight(latestEst, s.latestWeight) : null
+  const ar = getLang() === 'ar'
   return (
     <Card>
       <h3 class="pg-h3">{t('progress_strength')}</h3>
@@ -182,6 +193,12 @@ function StrengthCard({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: W
         : <LineChart title={`${t('progress_strength')}: ${name}`} color="--chart-strength"
             data={pts.map((p) => ({ label: dateLabel(p.epochDay), value: kind === 'WEIGHTED' ? fromKg(unit, p.value) : p.value }))}
             format={(v) => (kind === 'WEIGHTED' ? weightNumber(unit, toKg(unit, v)) : v.toFixed(0))} />}
+      {kind === 'WEIGHTED' && latestEst > 0 && (
+        <div class="pg-str-meta">
+          <span class="pg-data-blue">{t('prog41_1rm_latest_est', formatWeight(unit, latestEst, ar, 1))}</span>
+          {ratio != null && <span class="pg-data-purple">{t('prog41_1rm_ratio_val', ratio.toFixed(2))}</span>}
+        </div>
+      )}
     </Card>
   )
 }
@@ -225,6 +242,89 @@ function Legend({ color, label, alpha }: { color: string; label: string; alpha?:
   return <span class="pg-leg"><i class="pg-dot" style={{ background: `var(${color})`, opacity: alpha ?? 1 }} />{label}</span>
 }
 
+function TodayCards({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: WeightUnit }) {
+  const ar = getLang() === 'ar'
+  const sUnit = t('unit_s')
+  const sep = t('list_separator')
+  const today = d.today
+  const sessions = s.sessions as SessionEntity[]
+  const sets = s.doneSets as SetEntity[]
+  const targets = muscleWeekTargets((s.plan ? s.plan.days.flatMap((x) => x.items) : []) as PlanItemEntity[], s.exercises)
+  const insights = pickInsights({ sessions, sets, exercises: s.exercises, streak: s.streak, muscleWeekTargets: targets }, s.settings.insightHistory, today, 3)
+    .map((ins) => formatInsight(ins, s.exercises, unit))
+  const { fresh, recovering } = recoverySplit(s.recovery)
+  const muscleLabel = (m: string) => t(`muscle_${m.toLowerCase()}`)
+  const report = analyzeFatigueAndPlateaus(sessions, sets, s.exercises, today)
+  const stalled = report.stalledLifts.slice(0, 3)
+  const library = [...s.exercises.values()]
+  const planIds = new Set(s.plan ? s.plan.days.flatMap((x) => x.items.map((it) => it.exerciseId)) : [])
+  const eq = configuredEquipment(s.settings)
+  const cycled = recentlyCycledIds(s.settings.cycleHistory, today)
+  const weekWorkouts = weeklyCounts(d.workoutDays, 1, today)[0] ?? 0
+  const weekSets = d.weeklySets[d.weeklySets.length - 1] ?? 0
+
+  const onSwitch = async (fromId: string, toId: string, toName: string) => {
+    if (!s.plan) return
+    const items = s.plan.days.flatMap((x) => x.items).filter((it) => it.exerciseId === fromId)
+    for (const item of items) await swapPlanItem(item, toId)
+    await updateSettings((cur) => ({ ...cur, cycleHistory: recordCycle(cur.cycleHistory, fromId, today) }))
+    toast(t('stalled_switch', toName))
+  }
+
+  return (
+    <>
+      {insights.length > 0 && (
+        <Card>
+          <h3 class="pg-h3">{t('progress_insights_title')}</h3>
+          {insights.map((line, i) => <p class="pg-hint" key={i}>{line}</p>)}
+        </Card>
+      )}
+      {(fresh.length > 0 || recovering.length > 0) && (
+        <Card>
+          <h3 class="pg-h3">{t('coach_today_recovery_title')}</h3>
+          {fresh.length > 0 && <p class="pg-hint">{t('coach_fresh', fresh.map(muscleLabel).join(sep))}</p>}
+          {recovering.length > 0 && <p class="pg-hint">{t('coach_recovering', recovering.map(muscleLabel).join(sep))}</p>}
+        </Card>
+      )}
+      {stalled.length > 0 && (
+        <Card>
+          <h3 class="pg-h3">{t('coach_stalled_title')}</h3>
+          {stalled.map((lift) => {
+            const ex = s.exercises.get(lift.exerciseId)
+            const name = ex?.name ?? lift.exerciseName
+            const peakText = ex
+              ? t('stalled_peak', name, t(ex.kind === 'WEIGHTED' ? 'peak_est_max' : 'peak_best', formatValue(lift.bestScore, ex.kind, unit, sUnit, ar)))
+              : name
+            const sug = planIds.has(lift.exerciseId) ? nextVariation(lift, library, eq, planIds, cycled)?.to ?? null : null
+            return (
+              <div key={lift.exerciseId} style={{ marginBlockStart: '8px' }}>
+                <p class="pg-hint">{peakText}</p>
+                {sug && (
+                  <div style={{ marginBlockStart: '6px' }}>
+                    <Button variant="tonal" onClick={() => void onSwitch(lift.exerciseId, sug.id, sug.name)}>
+                      {t('stalled_switch', sug.name)}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </Card>
+      )}
+      {report.needsDeload && (
+        <Card>
+          <p class="pg-hint">{t('coach_deload_hint')}</p>
+        </Card>
+      )}
+      {(weekWorkouts > 0 || weekSets > 0) && (
+        <Card>
+          <p class="pg-hint">{t('coach_week_line', weekWorkouts, weekSets)}</p>
+        </Card>
+      )}
+    </>
+  )
+}
+
 /** Trends, records and consistency over months (Android ProgressScreen without readiness / Fitbit). */
 export function ProgressScreen(_: { param?: string }) {
   const snap = useProgress()
@@ -239,12 +339,15 @@ export function ProgressScreen(_: { param?: string }) {
   )
   if (!snap || !d) return <div class="content">{head}</div>
   if (snap.sessions.length === 0) {
+    const unit = weightUnit(snap.settings)
     return (
       <div class="content">
         {head}
         <div class="pg-list">
           <Card><EmptyState title={t('progress_empty_title')} body={t('progress_empty_body')}
             icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" /></svg>} /></Card>
+          <MeasurementsCard range={range} />
+          <OneRmCalculatorCard s={snap} unit={unit} />
         </div>
       </div>
     )
@@ -257,11 +360,15 @@ export function ProgressScreen(_: { param?: string }) {
     <div class="content">
       {head}
       <div class="pg-list">
+        <TodayCards s={snap} d={d} unit={unit} />
         <ChipGroup label={t('progress_title')} value={range} onChange={(v) => setRangeIdx(TREND_RANGES.indexOf(v))}
           options={TREND_RANGES.map((r) => ({ value: r, label: t(RANGE_KEYS[r]) }))} />
         <LoadCard d={d} />
+        <WeeklyVolumeCard s={snap} />
         <Tiles s={snap} d={d} unit={unit} />
         <StrengthCard s={snap} d={d} unit={unit} />
+        <OneRmCalculatorCard s={snap} unit={unit} />
+        <MeasurementsCard range={range} />
         {d.weightPoints.length >= 2 && (
           <Card>
             <h3 class="pg-h3">{t('weight_body')}</h3>

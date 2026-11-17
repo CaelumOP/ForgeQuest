@@ -1,12 +1,13 @@
 // Port of app/.../data/WorkoutRepository.kt: library seeding, plans, the live session, history and records.
 // Live workout rule: every tap is its own one-row write (putSet / putSession), never a long transaction.
+import { getLang } from '../i18n';
 import {
   db, putSession, putSet, deleteSet,
   type ExerciseRow, type PlanDayRow, type PlanItemRow, type PlanRow, type SessionRow, type SetRow,
 } from './db';
 import { configuredEquipment, loadSettings, weightUnit } from './settings';
 import { EXERCISE_CATALOG } from './seed/exercise-catalog';
-import { EXERCISE_NAMES_AR } from './seed/exercise-names-ar';
+import { EXERCISE_NAMES_AR, PREVIOUS_EXERCISE_NAMES_AR } from './seed/exercise-names-ar';
 import { STARTER_PLANS_AR, type PlanDraft } from './seed/starter-plans';
 import { useLive } from './live';
 import { todayEpochDay } from '../domain/dates';
@@ -18,8 +19,13 @@ import { dayTagMap, fullTarget, personalRecords, recordScore, setsForXp, totalXp
 import { debriefForSession, type DebriefResult } from '../domain/debrief';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
-import { nextPrefill, progressionInputs, type PastSet } from '../domain/progression';
-import { isWarmUp, scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
+import { isDeloadWeek, isLowerBodyExercise, nextPrefill, parseProgressionMode, progressionInputs, type PastSet, type ProgressionReason } from '../domain/progression';
+import { isExtraBlock, pickPrs } from '../domain/pr-picker';
+import { cursorAfterPlanEdit, cursorOnFinish, parseScheduleMode, type ScheduleMode } from '../domain/rotation';
+import { countsForPR, countsForScore } from '../domain/set-types';
+import { normalizeDaySupersets, safeImportName, setPairWithNext as applyPairWithNext, type SharedPlan } from '../domain/plan-share';
+import { generateWarmupRamp, isHeavyBarbellCompound } from '../domain/warmup-ramp';
+import { scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
 export type ActivePlan = { plan: PlanRow; days: PlanDayWithItems[] };
@@ -62,27 +68,82 @@ export async function seedLibrary(lang: 'en' | 'ar' = 'en'): Promise<void> {
   const toPut: ExerciseRow[] = [];
   for (const b of EXERCISE_CATALOG) {
     const e = existing.get(b.id);
-    if (!e) { toPut.push({ ...b, videoUrl: b.videoUrl ?? null, custom: false }); continue; }
+    if (!e) {
+      toPut.push({
+        ...b,
+        name: arabic && EXERCISE_NAMES_AR[b.id] ? EXERCISE_NAMES_AR[b.id] : b.name,
+        videoUrl: b.videoUrl ?? null,
+        custom: false,
+      });
+      continue;
+    }
     if (e.custom) continue;
     const ar = EXERCISE_NAMES_AR[b.id];
     const wanted = arabic && ar ? ar : b.name;
-    const nameNeeds = e.name !== wanted && (e.name === ar || e.name === b.name);
+    const prevAr = PREVIOUS_EXERCISE_NAMES_AR[b.id] ?? [];
+    const recognizedName = e.name === ar || e.name === b.name || prevAr.includes(e.name);
+    const nameNeeds = e.name !== wanted && recognizedName;
     const videoNeeds = e.videoUrl == null && b.videoUrl != null;
-    if (nameNeeds || videoNeeds) toPut.push({ ...e, name: nameNeeds ? wanted : e.name, videoUrl: videoNeeds ? b.videoUrl! : e.videoUrl });
+    const nextEquipment = !e.equipment && b.equipment ? b.equipment : e.equipment;
+    const nextPattern = !e.pattern && b.pattern ? b.pattern : e.pattern;
+    const nextAliases = !e.aliases && b.aliases ? b.aliases : e.aliases;
+    const nextMediaKey = !e.mediaKey && b.mediaKey ? b.mediaKey : e.mediaKey;
+    const metaNeeds =
+      nextEquipment !== e.equipment ||
+      nextPattern !== e.pattern ||
+      nextAliases !== e.aliases ||
+      nextMediaKey !== e.mediaKey;
+    if (nameNeeds || videoNeeds || metaNeeds) {
+      toPut.push({
+        ...e,
+        name: nameNeeds ? wanted : e.name,
+        videoUrl: videoNeeds ? b.videoUrl! : e.videoUrl,
+        equipment: nextEquipment,
+        pattern: nextPattern,
+        aliases: nextAliases,
+        mediaKey: nextMediaKey,
+      });
+    }
   }
   if (toPut.length) await db.exercises.bulkPut(toPut);
 
-  // Starter plan texts follow the language (only rows whose text is exactly a starter text).
-  const swap = (s: string) => {
-    for (const [en, a] of Object.entries(STARTER_PLANS_AR)) {
-      const [from, to] = arabic ? [en, a] : [a, en];
-      if (s === from) return to;
-    }
-    return s;
+  // Starter plan & plan-builder texts follow the language (only rows whose text is an exact built-in title).
+  const EXTRA_PLAN_AR: Record<string, string> = {
+    'Build muscle plan': 'خطة بناء العضلات',
+    'Endurance plan': 'خطة التحمّل',
+    'Lose fat plan': 'خطة خسارة الدهون',
+    'General fitness plan': 'خطة اللياقة العامة',
+    'Strength plan': 'خطة القوة',
+    'Fat loss & fitness plan': 'خطة حرق الدهون واللياقة',
+    'Quick workout': 'تمرين سريع',
+    'Workout': 'تمرين',
+    'Upper': 'الجزء العلوي',
+    'Lower': 'الجزء السفلي',
+    'Conditioning': 'لياقة وتحمّل',
+    'Legs': 'الساقان',
+    'Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.':
+      'التدرّج: عند بلوغ الحد الأعلى من التكرارات في كل المجموعات، زد الحمل أو التكرارات. كل رابع أسبوع، خفّض المجموعات للنصف.',
   };
-  await db.transaction('rw', db.plans, db.planDays, async () => {
+  const ALIASES_TO_AR: Record<string, string> = {
+    'Muscle building plan': 'خطة بناء العضلات',
+  };
+  const ALIASES_TO_EN: Record<string, string> = {
+    'خطة لياقة عامة': 'General fitness plan',
+    'خطة قوة': 'Strength plan',
+    'اللياقة': 'Conditioning',
+  };
+  const allPairs = [...Object.entries(STARTER_PLANS_AR), ...Object.entries(EXTRA_PLAN_AR)];
+  const map = new Map<string, string>();
+  for (const [en, a] of allPairs) {
+    if (arabic) map.set(en, a);
+    else map.set(a, en);
+  }
+  for (const [from, to] of Object.entries(arabic ? ALIASES_TO_AR : ALIASES_TO_EN)) map.set(from, to);
+  const swap = (s: string) => map.get(s) ?? s;
+  await db.transaction('rw', db.plans, db.planDays, db.sessions, async () => {
     await db.plans.toCollection().modify((p) => { p.name = swap(p.name); p.description = swap(p.description); });
     await db.planDays.toCollection().modify((d) => { d.title = swap(d.title); d.note = swap(d.note); });
+    await db.sessions.toCollection().modify((s) => { s.title = swap(s.title); });
   });
 }
 
@@ -107,7 +168,7 @@ export const getAllPlans = async (): Promise<PlanRow[]> => (await db.plans.order
 export const useAllPlans = (): PlanRow[] => useLive(getAllPlans, [], []);
 
 /** Saves `draft` as the active plan, creating custom exercises for ids the library doesn't know. Returns the plan id. */
-export function applyPlan(draft: PlanDraft, source: string): Promise<number> {
+export function applyPlan(draft: PlanDraft, source: string, scheduleMode: ScheduleMode = 'WEEKDAY'): Promise<number> {
   return db.transaction('rw', [db.exercises, db.plans, db.planDays, db.planItems], async () => {
     for (const day of draft.days) {
       for (const item of day.items) {
@@ -130,22 +191,108 @@ export function applyPlan(draft: PlanDraft, source: string): Promise<number> {
       }
     }
     await db.plans.toCollection().modify({ active: false });
-    const planId = await db.plans.add({ name: draft.name, description: draft.description, source, active: true, createdAt: Date.now() });
+    const planId = await db.plans.add({
+      name: draft.name, description: draft.description, source, active: true, createdAt: Date.now(),
+      scheduleMode: parseScheduleMode(scheduleMode), rotationCursor: 0,
+    });
     for (let dow = 1; dow <= 7; dow++) {
       const day = draft.days.find((d) => d.dayOfWeek === dow);
       const dayId = await db.planDays.add({
         planId, dayOfWeek: dow, title: day?.title ?? REST_TITLE,
         isRest: !day || day.isRest || day.items.length === 0, note: day?.note ?? '',
       });
-      if (day) {
-        await db.planItems.bulkAdd(day.items.map((item, position): PlanItemRow => ({
-          dayId, position, exerciseId: item.exerciseId, block: item.block, circuit: item.circuit,
-          sets: Math.min(10, Math.max(1, item.sets)), repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds,
-          weightKg: item.weightKg, restSeconds: item.restSeconds, note: item.note,
-        })));
+      if (day && day.items.length > 0) {
+        const rows: PlanItemRow[] = [];
+        for (let position = 0; position < day.items.length; position++) {
+          const item = day.items[position];
+          const ex = await db.exercises.get(item.exerciseId);
+          const autoWarmup = !isExtraBlock(item.block) && isHeavyBarbellCompound(ex);
+          rows.push({
+            dayId, position, exerciseId: item.exerciseId, block: item.block, circuit: item.circuit,
+            sets: Math.min(10, Math.max(1, item.sets)), repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds,
+            weightKg: item.weightKg, restSeconds: item.restSeconds, note: item.note,
+            autoWarmup,
+          });
+        }
+        await db.planItems.bulkAdd(rows);
       }
     }
     return planId;
+  });
+}
+
+/** Safely imports a validated shared plan as a new active plan without overwriting any existing plans. */
+export function importSharedPlan(shared: SharedPlan): Promise<number> {
+  return db.transaction('rw', [db.exercises, db.plans, db.planDays, db.planItems], async () => {
+    const existingNames = (await db.plans.toArray()).map((p) => p.name);
+    const safeName = safeImportName(shared.name, existingNames);
+    for (const day of shared.days) {
+      for (const item of day.items) {
+        const ex = await db.exercises.get(item.exerciseId);
+        if (!ex) {
+          const kind: ExerciseKind = item.kind === 'HOLD' || item.kind === 'WEIGHTED' || item.kind === 'REPS'
+            ? item.kind : item.seconds != null ? 'HOLD' : item.weightKg != null ? 'WEIGHTED' : 'REPS';
+          const muscles = item.muscles.filter((m): m is Muscle => (MUSCLES as readonly string[]).includes(m));
+          const fallback = item.exerciseId.replace(/_/g, ' ');
+          await db.exercises.put({
+            id: item.exerciseId, name: item.name ?? fallback.charAt(0).toUpperCase() + fallback.slice(1), kind,
+            primary: muscles.slice(0, 2).length ? muscles.slice(0, 2) : ['ABS'], secondary: muscles.slice(2),
+            videoUrl: item.videoUrl, custom: true,
+          });
+        }
+      }
+    }
+    await db.plans.toCollection().modify({ active: false });
+    const planId = await db.plans.add({
+      name: safeName, description: shared.description, source: 'manual', active: true, createdAt: Date.now(),
+      scheduleMode: parseScheduleMode(shared.scheduleMode), rotationCursor: 0,
+    });
+    for (let dow = 1; dow <= 7; dow++) {
+      const day = shared.days.find((d) => d.dayOfWeek === dow);
+      const dayId = await db.planDays.add({
+        planId, dayOfWeek: dow, title: day?.title ?? REST_TITLE,
+        isRest: !day || day.isRest || day.items.length === 0, note: day?.note ?? '',
+      });
+      if (day && day.items.length > 0) {
+        const raw: PlanItemRow[] = day.items.map((item, position) => ({
+          dayId, position, exerciseId: item.exerciseId, block: item.block, circuit: item.circuit,
+          sets: Math.min(10, Math.max(1, item.sets)), repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds,
+          weightKg: item.weightKg, restSeconds: item.restSeconds, note: item.note,
+          supersetGroup: item.supersetGroup, autoWarmup: item.autoWarmup,
+          progressionMode: parseProgressionMode(item.progressionMode),
+        }));
+        await db.planItems.bulkAdd(normalizeDaySupersets(raw));
+      }
+    }
+    return planId;
+  });
+}
+
+async function clampRotationCursorForPlan(planId: number): Promise<void> {
+  const plan = await db.plans.get(planId);
+  if (!plan || parseScheduleMode(plan.scheduleMode) !== 'ROTATION') return;
+  const days = await db.planDays.where('planId').equals(planId).toArray();
+  let queueSize = 0;
+  for (const d of days) {
+    if (!d.isRest && (await db.planItems.where('dayId').equals(d.id!).count()) > 0) queueSize++;
+  }
+  const next = cursorAfterPlanEdit(plan.rotationCursor ?? 0, queueSize);
+  if (next !== (plan.rotationCursor ?? 0)) await db.plans.update(planId, { rotationCursor: next });
+}
+
+export function setPlanScheduleMode(planId: number, mode: ScheduleMode): Promise<void> {
+  return db.transaction('rw', [db.plans, db.planDays, db.planItems], async () => {
+    const plan = await db.plans.get(planId);
+    if (!plan) return;
+    const days = await db.planDays.where('planId').equals(planId).toArray();
+    let queueSize = 0;
+    for (const d of days) {
+      if (!d.isRest && (await db.planItems.where('dayId').equals(d.id!).count()) > 0) queueSize++;
+    }
+    const nextCursor = mode === 'ROTATION'
+      ? (parseScheduleMode(plan.scheduleMode) === 'ROTATION' ? cursorAfterPlanEdit(plan.rotationCursor ?? 0, queueSize) : 0)
+      : (plan.rotationCursor ?? 0);
+    await db.plans.update(planId, { scheduleMode: mode, rotationCursor: nextCursor });
   });
 }
 
@@ -177,7 +324,9 @@ export function movePlanItem(item: PlanItemRow, delta: number): Promise<void> {
     const target = index + delta;
     if (index < 0 || target < 0 || target >= items.length) return;
     items.splice(target, 0, items.splice(index, 1)[0]);
-    for (let i = 0; i < items.length; i++) if (items[i].position !== i) await db.planItems.update(items[i].id!, { position: i });
+    const reordered = items.map((it, i) => ({ ...it, position: i }));
+    const normalized = normalizeDaySupersets(reordered);
+    for (const next of normalized) await db.planItems.put(next);
   });
 }
 
@@ -194,11 +343,61 @@ export function swapPlanDays(planId: number, dayA: number, dayB: number): Promis
   });
 }
 
-export const updatePlanItem = async (item: PlanItemRow): Promise<void> => { await db.planItems.put(item); };
-export const deletePlanItem = (id: number): Promise<void> => db.planItems.delete(id);
+async function normalizeDaySupersetsInDb(dayId: number): Promise<void> {
+  const items = (await db.planItems.where('dayId').equals(dayId).toArray()).sort((a, b) => a.position - b.position);
+  const normalized = normalizeDaySupersets(items);
+  for (let i = 0; i < items.length; i++) {
+    if ((items[i].supersetGroup ?? null) !== (normalized[i].supersetGroup ?? null)) {
+      await db.planItems.put(normalized[i]);
+    }
+  }
+}
+
+export function setPairWithNext(dayId: number, itemId: number, pair: boolean): Promise<void> {
+  return db.transaction('rw', db.planItems, async () => {
+    const items = (await db.planItems.where('dayId').equals(dayId).toArray()).sort((a, b) => a.position - b.position);
+    const index = items.findIndex((i) => i.id === itemId);
+    if (index < 0) return;
+    const updated = applyPairWithNext(items, index, pair);
+    for (let i = 0; i < items.length; i++) {
+      if ((items[i].supersetGroup ?? null) !== (updated[i].supersetGroup ?? null)) {
+        await db.planItems.put(updated[i]);
+      }
+    }
+  });
+}
+
+export const updatePlanItem = (item: PlanItemRow): Promise<void> =>
+  db.transaction('rw', db.planItems, async () => {
+    await db.planItems.put(item);
+    await normalizeDaySupersetsInDb(item.dayId);
+  });
+
+export const deletePlanItem = (id: number): Promise<void> =>
+  db.transaction('rw', [db.plans, db.planDays, db.planItems], async () => {
+    const item = await db.planItems.get(id);
+    await db.planItems.delete(id);
+    if (item) {
+      await normalizeDaySupersetsInDb(item.dayId);
+      const day = await db.planDays.get(item.dayId);
+      if (day) await clampRotationCursorForPlan(day.planId);
+    }
+  });
+
 /** Puts a deleted item back with its original id (undo). */
-export const restorePlanItem = async (item: PlanItemRow): Promise<void> => { await db.planItems.put(item); };
-export const updatePlanDay = async (day: PlanDayRow): Promise<void> => { await db.planDays.put(day); };
+export const restorePlanItem = (item: PlanItemRow): Promise<void> =>
+  db.transaction('rw', [db.plans, db.planDays, db.planItems], async () => {
+    await db.planItems.put(item);
+    await normalizeDaySupersetsInDb(item.dayId);
+    const day = await db.planDays.get(item.dayId);
+    if (day) await clampRotationCursorForPlan(day.planId);
+  });
+
+export const updatePlanDay = (day: PlanDayRow): Promise<void> =>
+  db.transaction('rw', [db.plans, db.planDays, db.planItems], async () => {
+    await db.planDays.put(day);
+    await clampRotationCursorForPlan(day.planId);
+  });
 
 /** Swaps an exercise on a plan day, translating its prescription to the new exercise's kind. */
 export async function swapPlanItem(item: PlanItemRow, newExerciseId: string): Promise<void> {
@@ -209,16 +408,22 @@ export async function swapPlanItem(item: PlanItemRow, newExerciseId: string): Pr
 }
 
 export async function addPlanItem(dayId: number, exerciseId: string): Promise<void> {
-  const ex = await db.exercises.get(exerciseId);
-  if (!ex) return;
-  const existing = await db.planItems.where('dayId').equals(dayId).toArray();
-  await db.planItems.add({
-    dayId, position: existing.reduce((m, i) => Math.max(m, i.position), -1) + 1, exerciseId, block: 'Main', circuit: false,
-    sets: 3, repsMin: ex.kind === 'HOLD' ? null : 10, repsMax: null, seconds: ex.kind === 'HOLD' ? 30 : null,
-    weightKg: ex.kind === 'WEIGHTED' ? 0 : null, restSeconds: 90, note: '',
+  await db.transaction('rw', [db.exercises, db.plans, db.planDays, db.planItems], async () => {
+    const ex = await db.exercises.get(exerciseId);
+    if (!ex) return;
+    const existing = await db.planItems.where('dayId').equals(dayId).toArray();
+    await db.planItems.add({
+      dayId, position: existing.reduce((m, i) => Math.max(m, i.position), -1) + 1, exerciseId, block: 'Main', circuit: false,
+      sets: 3, repsMin: ex.kind === 'HOLD' ? null : 10, repsMax: null, seconds: ex.kind === 'HOLD' ? 30 : null,
+      weightKg: ex.kind === 'WEIGHTED' ? 0 : null, restSeconds: 90, note: '',
+    });
+    const day = await db.planDays.get(dayId);
+    const workoutFallback = getLang() === 'ar' ? 'تمرين' : 'Workout';
+    if (day) {
+      if (day.isRest) await db.planDays.update(dayId, { isRest: false, title: day.title === REST_TITLE || day.title === 'يوم راحة' ? workoutFallback : day.title });
+      await clampRotationCursorForPlan(day.planId);
+    }
   });
-  const day = await db.planDays.get(dayId);
-  if (day?.isRest) await db.planDays.update(dayId, { isRest: false, title: day.title === REST_TITLE ? 'Workout' : day.title });
 }
 
 // ---------------------------------------------------------------- Exercises
@@ -316,13 +521,16 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
   const open = await openSessionNow();
   if (open) return open.id!;
   const now = Date.now();
+  const quickTitle = getLang() === 'ar' ? 'تمرين سريع' : QUICK_TITLE;
   const id = await putSession({
-    planDayId: day?.day.id ?? null, title: day?.day.title ?? QUICK_TITLE, epochDay: todayEpochDay(), startedAt: now,
+    planDayId: day?.day.id ?? null, title: day?.day.title ?? quickTitle, epochDay: todayEpochDay(), startedAt: now,
     finishedAt: null, note: '', debrief: '',
   });
+  const activePlan = day ? await getActivePlan() : null;
+  const deload = activePlan ? isDeloadWeek(activePlan.plan.createdAt, todayEpochDay()) : false;
   const sets: SetRow[] = [];
   for (const item of day?.items ?? []) {
-    const built = await buildSetsFor(id, item.position, item, await db.exercises.get(item.exerciseId));
+    const built = await buildSetsFor(id, item.position, item, await db.exercises.get(item.exerciseId), deload);
     sets.push(...(lighter && built.length > 1 ? built.slice(0, -1) : built));
   }
   if (sets.length) await db.sets.bulkAdd(sets);
@@ -330,17 +538,47 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
 }
 
 /** Today's sets for one exercise from its last two finished workouts, through the Progression rules. */
-async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined): Promise<SetRow[]> {
+async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined, deload = false): Promise<SetRow[]> {
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
   const input = progressionInputs(item, ex?.id, ex ? await recentDoneSets(ex.id) : []);
-  const result = nextPrefill(kind, input.target, input.last, input.previous, weightUnit(await loadSettings()), false, input.warmup);
+  const settings = await loadSettings();
+  const unit = weightUnit(settings, ex?.unitOverride);
+  const result = nextPrefill(
+    kind, input.target, input.last, input.previous, unit, input.warmup, deload,
+    input.mode, ex ? isLowerBodyExercise(ex.primary) : false,
+  );
   const base = targetLabel(kind, item);
   const label = result.holdCeilingReached ? [base, HOLD_CEILING_NOTE].filter(Boolean).join(' · ') : base;
-  return result.sets.map((p, i): SetRow => ({
+  const firstWorkingKg = result.sets[0]?.weightKg ?? 0;
+  const ramp = item?.autoWarmup && !isExtraBlock(item.block) && kind === 'WEIGHTED'
+    ? generateWarmupRamp(firstWorkingKg, unit, settings.barWeightKg)
+    : [];
+  const warmupRows: SetRow[] = ramp.map((r, idx) => ({
     sessionId, exerciseId: ex?.id ?? item?.exerciseId ?? '', itemPosition: position, block: item?.block ?? 'Main',
-    circuit: item?.circuit ?? false, setIndex: i, targetLabel: label, reps: p.reps, seconds: p.seconds, weightKg: p.weightKg,
-    done: false, isPr: false, restSeconds: item?.restSeconds ?? 90, note: '', effort: '', doneAt: null,
+    circuit: item?.circuit ?? false, setIndex: idx, targetLabel: '', reps: r.reps, seconds: null, weightKg: r.weightKg,
+    done: false, isPr: false, restSeconds: 0, note: '', effort: '', doneAt: null, setType: 'WARMUP',
   }));
+  const workRows: SetRow[] = result.sets.map((p, i) => ({
+    sessionId, exerciseId: ex?.id ?? item?.exerciseId ?? '', itemPosition: position, block: item?.block ?? 'Main',
+    circuit: item?.circuit ?? false, setIndex: ramp.length + i, targetLabel: label, reps: p.reps, seconds: p.seconds, weightKg: p.weightKg,
+    done: false, isPr: false, restSeconds: item?.restSeconds ?? 90, note: '', effort: '', doneAt: null, setType: 'WORKING',
+  }));
+  return [...warmupRows, ...workRows];
+}
+
+export async function progressionReasonFor(
+  item: PlanItemRow | null,
+  ex: ExerciseRow | undefined,
+  recent: SetRow[],
+  deload = false,
+): Promise<ProgressionReason | null> {
+  const kind: ExerciseKind = ex?.kind ?? 'REPS';
+  const input = progressionInputs(item, ex?.id, recent);
+  const settings = await loadSettings();
+  return nextPrefill(
+    kind, input.target, input.last, input.previous, weightUnit(settings, ex?.unitOverride), input.warmup, deload,
+    input.mode, ex ? isLowerBodyExercise(ex.primary) : false,
+  ).reason;
 }
 
 /** The plan's target as short text, e.g. "8-12 reps" or "30 s". Plain English; screens may show their own wording. */
@@ -428,36 +666,66 @@ export function discardSession(sessionId: number): Promise<void> {
  * New personal records are flagged against workouts dated earlier only, so a backdated log compares with its own past.
  */
 export function finishSession(sessionId: number, tickAll = false): Promise<FinishResult> {
-  return db.transaction('rw', [db.sessions, db.sets, db.exercises, db.planItems], async () => {
+  return db.transaction('rw', [db.sessions, db.sets, db.exercises, db.planItems, db.plans, db.planDays], async () => {
     const session = await db.sessions.get(sessionId);
     if (!session) return { sessionTitle: '', doneSets: 0, prs: [], xpGained: 0, endedAt: Date.now(), clipped: false };
+    const wasAlreadyFinished = session.finishedAt != null;
     const mine = await db.sets.where('sessionId').equals(sessionId).toArray();
     const now = Date.now();
-    if (tickAll) await db.sets.bulkPut(mine.map((s) => (s.done ? s : { ...s, done: true, doneAt: now })));
-    else await db.sets.bulkDelete(mine.filter((s) => !s.done).map((s) => s.id!));
+    const unticked = tickAll ? new Set(mine.filter((s) => !s.done).map((s) => s.id!)) : new Set<number>();
+    const hasWork = mine.some((s) => countsForScore(s));
+    if (tickAll) {
+      const isWarmupSet = (s: SetRow) => (s.setType ?? 'WORKING') === 'WARMUP' || isExtraBlock(s.block);
+      const toTick = mine.filter((s) => !s.done && !(hasWork && isWarmupSet(s)));
+      const toDrop = mine.filter((s) => !s.done && hasWork && isWarmupSet(s));
+      if (toTick.length) await db.sets.bulkPut(toTick.map((s) => ({ ...s, done: true, doneAt: now })));
+      if (toDrop.length) await db.sets.bulkDelete(toDrop.map((s) => s.id!));
+    } else {
+      await db.sets.bulkDelete(mine.filter((s) => !s.done).map((s) => s.id!));
+    }
     const done = (await getSets(sessionId)).filter((s) => s.done);
 
     const earlier = new Set((await finishedSessions())
       .filter((s) => s.epochDay < session.epochDay || (s.epochDay === session.epochDay && s.startedAt < session.startedAt))
       .map((s) => s.id!));
-    const prs: string[] = [];
-    const byExercise = new Map<string, SetRow[]>();
-    for (const s of done) byExercise.set(s.exerciseId, [...(byExercise.get(s.exerciseId) ?? []), s]);
-    for (const [exerciseId, sets] of byExercise) {
+    const kinds = new Map<string, ExerciseKind>();
+    const previousBest = new Map<string, number>();
+    for (const exerciseId of new Set(done.map((s) => s.exerciseId))) {
       const ex = await db.exercises.get(exerciseId);
       if (!ex) continue;
-      const score = (s: SetRow) => recordScore(ex.kind, s.reps, s.seconds, s.weightKg, ex.id);
-      const previous = (await recentDoneSetsAll(exerciseId)).filter((s) => earlier.has(s.sessionId));
-      if (!previous.length) continue; // first time: nothing to beat yet
-      const previousBest = Math.max(...previous.map(score));
-      const best = sets.reduce((m, s) => (score(s) > score(m) ? s : m));
-      if (score(best) > previousBest) { await db.sets.put({ ...best, isPr: true }); prs.push(ex.name); }
+      kinds.set(exerciseId, ex.kind);
+      const prev = (await recentDoneSetsAll(exerciseId)).filter((s) => earlier.has(s.sessionId) && countsForPR(s));
+      if (prev.length) {
+        previousBest.set(exerciseId, Math.max(...prev.map((s) => recordScore(ex.kind, s.reps, s.seconds, s.weightKg, ex.id))));
+      }
+    }
+    const prIds = pickPrs(done.filter((s) => !unticked.has(s.id!)), (id) => kinds.get(id) ?? 'REPS', previousBest);
+    const prs: string[] = [];
+    for (const s of done.filter((x) => x.id != null && prIds.has(x.id))) {
+      await db.sets.put({ ...s, isPr: true });
+      const ex = await db.exercises.get(s.exerciseId);
+      if (ex) prs.push(ex.name);
     }
     // The plan day's sets as they are now, kept so a later plan edit can't change this workout's score.
     const planned = session.planDayId == null ? 0 : plannedSetsOf(await db.planItems.where('dayId').equals(session.planDayId).toArray());
     const endedAt = endTime(now, lastDoneAt(done));
+    const workingDone = done.filter((s) => countsForScore(s)).length;
     await db.sessions.put({ ...session, finishedAt: endedAt, plannedSets: planned > 0 ? planned : null });
-    return { sessionTitle: session.title, doneSets: done.length, prs, xpGained: totalXp(1, setsForXp(done.length, session.epochDay), prs.length, 0), endedAt, clipped: endedAt !== now };
+    // Advance ROTATION cursor atomically once when a qualifying (non-quick, previously unfinished) workout finishes.
+    if (!wasAlreadyFinished && session.planDayId != null) {
+      const planDayRow = await db.planDays.get(session.planDayId);
+      const plan = planDayRow ? await db.plans.get(planDayRow.planId) : undefined;
+      if (plan?.id != null) {
+        const allDays = (await db.planDays.where('planId').equals(plan.id).toArray()).sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+        const queueIds: number[] = [];
+        for (const d of allDays) {
+          if (!d.isRest && (await db.planItems.where('dayId').equals(d.id!).count()) > 0) queueIds.push(d.id!);
+        }
+        const nextCursor = cursorOnFinish(plan, queueIds, session, false);
+        if (nextCursor != null) await db.plans.update(plan.id, { rotationCursor: nextCursor });
+      }
+    }
+    return { sessionTitle: session.title, doneSets: workingDone, prs, xpGained: totalXp(1, setsForXp(done.length, session.epochDay), prs.length, 0), endedAt, clipped: endedAt !== now };
   });
 }
 
@@ -478,32 +746,30 @@ export async function allDoneSets(): Promise<SetRow[]> {
   return (await db.sets.filter((s) => s.done).toArray()).filter((s) => finished.has(s.sessionId));
 }
 
-/** A plan day's sets for the score: warm-ups left out. */
-const plannedSetsOf = (items: PlanItemRow[]): number => items.reduce((n, i) => n + (isWarmUp(i.block) ? 0 : i.sets), 0);
+/** A plan day's sets for the score: warm-ups and cool-downs left out. */
+const plannedSetsOf = (items: PlanItemRow[]): number => items.reduce((n, i) => n + (isExtraBlock(i.block) ? 0 : i.sets), 0);
 
 /** The calculated score of every finished workout (domain/workout-score.ts): a few small reads, never one query per row. */
 export async function allWorkoutScores(only?: number): Promise<Map<number, WorkoutScoreResult>> {
-  const [sessions, doneSets, items, readiness, library, notes, plan] = await Promise.all([
-    finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(),
+  const [sessions, doneSets, items, library, notes, plan] = await Promise.all([
+    finishedSessions(), allDoneSets(), db.planItems.toArray(), getLibrary(),
     db.dayNotes.toArray(), getActivePlan(),
   ]);
   const byDay = new Map<number, PlanItemRow[]>();
   for (const i of items) byDay.set(i.dayId, [...(byDay.get(i.dayId) ?? []), i]);
   const planned = new Map([...byDay].map(([dayId, l]) => [dayId, plannedSetsOf(l)]));
-  // Ease off (34-49) and recover (below 34): Android Readiness.call is under 50.
-  const rough = new Set(readiness.filter((r) => r.recovery < 50).map((r) => r.epochDay));
   return scoresForSessions(
-    sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, rough, dayTagMap(notes), plan ? trainingDays(plan) : new Set(), only,
+    sessions, doneSets, new Map(library.map((e) => [e.id, e.kind])), planned, dayTagMap(notes), plan ? trainingDays(plan) : new Set(), only,
   );
 }
 /**
  * The calculated debrief of one finished workout (domain/debrief.ts): this workout, each exercise's previous time, the
  * plan day's exercises, the weekly target, the plateau and deload report as of that day and the harder versions.
- * Null when the workout isn't finished or has no done sets. Never stored. No health data on the web, so healthOn is false.
+ * Null when the workout isn't finished or has no done sets. Never stored.
  */
 export async function workoutDebrief(sessionId: number): Promise<DebriefResult | null> {
-  const [sessions, doneSets, items, readiness, library, settings, plan, score] = await Promise.all([
-    finishedSessions(), allDoneSets(), db.planItems.toArray(), db.readinessDays.toArray(), getLibrary(), loadSettings(),
+  const [sessions, doneSets, items, library, settings, plan, score] = await Promise.all([
+    finishedSessions(), allDoneSets(), db.planItems.toArray(), getLibrary(), loadSettings(),
     getActivePlan(), allWorkoutScores(sessionId).then((m) => m.get(sessionId)),
   ]);
   const session = sessions.find((s) => s.id === sessionId);
@@ -511,12 +777,11 @@ export async function workoutDebrief(sessionId: number): Promise<DebriefResult |
   const exercises = new Map(library.map((e) => [e.id, e]));
   const planItems = session.planDayId == null ? [] : items.filter((i) => i.dayId === session.planDayId);
   const weeklyTarget = fullTarget(plan ? trainingDays(plan) : new Set(), settings.weeklyTargetOverride);
-  // As of the workout's day: only workouts, sets and recovery on or before it, so an old workout keeps its own report.
+  // As of the workout's day: only workouts and sets on or before it, so an old workout keeps its own report.
   const upTo = sessions.filter((s) => s.epochDay <= session.epochDay);
   const upToIds = new Set(upTo.map((s) => s.id!));
   const report = analyzeFatigueAndPlateaus(
     upTo as never, doneSets.filter((s) => upToIds.has(s.sessionId)) as never, exercises as never, session.epochDay,
-    readiness.filter((r) => r.epochDay <= session.epochDay).sort((a, b) => a.epochDay - b.epochDay),
   );
   return debriefForSession(
     session, sessions, doneSets, exercises as never, score, planItems, weeklyTarget, report,
@@ -574,9 +839,10 @@ export async function recomputeRecords(exerciseId: string): Promise<void> {
   const ex = await db.exercises.get(exerciseId);
   if (!ex) return;
   const all = await recentDoneSetsAll(exerciseId);
+  const eligible = all.filter((s) => countsForPR(s));
   const sess = new Map((await finishedSessions()).map((s) => [s.id!, s]));
   const groups = new Map<number, SetRow[]>();
-  for (const s of all) groups.set(s.sessionId, [...(groups.get(s.sessionId) ?? []), s]);
+  for (const s of eligible) groups.set(s.sessionId, [...(groups.get(s.sessionId) ?? []), s]);
   const ordered = [...groups.entries()].sort(([a], [b]) => {
     const x = sess.get(a); const y = sess.get(b);
     return (x?.epochDay ?? 0) - (y?.epochDay ?? 0) || (x?.startedAt ?? 0) - (y?.startedAt ?? 0) || (x?.finishedAt ?? 0) - (y?.finishedAt ?? 0);

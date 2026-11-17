@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.forgequest.app.domain.Equipment
@@ -34,6 +35,8 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+val DEFAULT_PLATE_INVENTORY = listOf(25f, 20f, 15f, 10f, 5f, 2.5f, 1.25f)
+
 enum class BodyType { MALE, FEMALE }
 
 /** AI is on if the person chose so; with no choice yet it is on only for people who already saved a key. */
@@ -41,11 +44,20 @@ fun resolveAiOn(optIn: Boolean?, hasKey: Boolean): Boolean = optIn ?: hasKey
 
 
 data class Settings(
+    val autoBackup: Boolean = true,
+    val autoBackupOptedOut: Boolean = false,
+    /** Device-local account identifiers; never portable authorization state. */
+    val restoreOfferShown: Set<String> = emptySet(),
+    val barWeightKg: Float = 20f,
+    val plateInventory: List<Float> = DEFAULT_PLATE_INVENTORY,
+    val ttsCues: Boolean = false,
     val onboarded: Boolean = false,
     val name: String = "",
     val bodyType: BodyType = BodyType.MALE,
     val kcalGoal: Int = 2200,
     val proteinGoal: Int = 140,
+    /** True when the user has explicitly saved a calorie or protein target in DataStore. */
+    val foodTargetsSet: Boolean = false,
     /** Planned sessions per week that count as "hit". 0 means: use the plan's training days. */
     val weeklyTargetOverride: Int = 0,
     val handLengthCm: Float = 0f,
@@ -125,6 +137,12 @@ data class Settings(
     /** The plan builder's last answers as JSON (see PlanAnswers), so a rebuild starts from them. Not part of backups. */
     val planBuilderAnswers: String? = null,
 ) {
+    val autoBackupEffective: Boolean
+        get() = autoBackup && !autoBackupOptedOut && driveEmail.isNotBlank()
+
+    fun weightUnitFor(unitOverride: String): WeightUnit =
+        if (unitOverride.isBlank()) weightUnit else WeightUnit.fromCodeOrLabel(unitOverride)
+
     val weightUnit: WeightUnit
         get() = WeightUnit.fromCodeOrLabel(unit)
 
@@ -139,6 +157,12 @@ private val Context.dataStore by preferencesDataStore("settings")
 class SettingsRepository(private val context: Context) {
 
     private object K {
+        val autoBackup = booleanPreferencesKey("auto_backup")
+        val autoBackupOptedOut = booleanPreferencesKey("auto_backup_opted_out")
+        val restoreOfferShown = stringSetPreferencesKey("restore_offer_shown")
+        val barWeightKg = floatPreferencesKey("bar_weight_kg")
+        val plateInventory = stringPreferencesKey("plate_inventory")
+        val ttsCues = booleanPreferencesKey("tts_cues")
         val onboarded = booleanPreferencesKey("onboarded")
         val name = stringPreferencesKey("name")
         val bodyType = stringPreferencesKey("body_type")
@@ -204,15 +228,30 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun current(): Settings = settings.first()
 
+    suspend fun setAutoBackup(enabled: Boolean) = update {
+        it.copy(autoBackup = enabled, autoBackupOptedOut = !enabled)
+    }
+
+    suspend fun markRestoreOfferShown(account: String) = update {
+        it.copy(restoreOfferShown = it.restoreOfferShown + account.trim().lowercase(java.util.Locale.ROOT))
+    }
+
     private fun Preferences.toSettings(): Settings {
         val rawUnit = this[K.unit] ?: "kg"
         val normalizedUnit = WeightUnit.fromCodeOrLabel(rawUnit).code
         return Settings(
+            autoBackup = this[K.autoBackup] ?: true,
+            autoBackupOptedOut = this[K.autoBackupOptedOut] ?: false,
+            restoreOfferShown = this[K.restoreOfferShown].orEmpty(),
+            barWeightKg = this[K.barWeightKg] ?: 20f,
+            plateInventory = this[K.plateInventory]?.split(",")?.mapNotNull { it.toFloatOrNull() } ?: DEFAULT_PLATE_INVENTORY,
+            ttsCues = this[K.ttsCues] ?: false,
             onboarded = this[K.onboarded] ?: false,
             name = this[K.name] ?: "",
             bodyType = runCatching { BodyType.valueOf(this[K.bodyType] ?: "MALE") }.getOrDefault(BodyType.MALE),
             kcalGoal = (this[K.kcal] ?: 2200).coerceAtLeast(1200),
             proteinGoal = this[K.protein] ?: 140,
+            foodTargetsSet = this[K.kcal] != null || this[K.protein] != null,
             weeklyTargetOverride = this[K.weeklyTarget] ?: 0,
             handLengthCm = this[K.hand] ?: 0f,
             palmWidthCm = this[K.palm] ?: 0f,
@@ -269,6 +308,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun update(transform: (Settings) -> Settings) {
         context.dataStore.edit { p ->
             val s = transform(p.toSettings())
+            p[K.autoBackup] = s.autoBackup
+            p[K.autoBackupOptedOut] = s.autoBackupOptedOut
+            p[K.restoreOfferShown] = s.restoreOfferShown
+            p[K.barWeightKg] = s.barWeightKg
+            p[K.plateInventory] = s.plateInventory.joinToString(",")
+            p[K.ttsCues] = s.ttsCues
             p[K.onboarded] = s.onboarded
             p[K.name] = s.name
             p[K.bodyType] = s.bodyType.name

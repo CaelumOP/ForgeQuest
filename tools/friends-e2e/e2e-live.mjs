@@ -192,7 +192,10 @@ async function main() {
     for (const bad of ["ab", "x".repeat(21), "has space", "dash-name", "دايت", ".dot", "dot.", "a..b", "admin", "Support", "forgequest_x", "\u212Aelvin"]) {
       expectRes(`bad username ${JSON.stringify(bad)}`, await put({ username: bad }), 400, "bad_username");
     }
-    expectRes("bad name (URL)", await put({ name: "visit https://x.io", username: a.username }), 400, "bad_profile");
+    // 4.1: one name only. `name` is ignored (4.0 clients still send it) and always equals the username.
+    const ignored = expectRes("name is ignored (contract v4)", await put({ name: "visit https://x.io", username: a.username }), 200);
+    check("name == username", ignored.json?.name === a.username, JSON.stringify(ignored.json));
+    expectRes("non-boolean alertsOn", await put({ username: a.username, alertsOn: "yes" }), 400, "bad_profile");
     const ok = await put({ username: `  @${a.username.toUpperCase()} ` });
     expectRes("join with @UPPERCASE username", ok, 200);
     check("stored lowercase", ok.json?.username === a.username, JSON.stringify(ok.json));
@@ -217,7 +220,7 @@ async function main() {
     expectRes("a -> b sent (case-insensitive, @)", sent, 200);
     check("status sent", sent.json?.status === "sent");
     const fb = await call("GET", "/v1/friends", { token: b.session });
-    check("b sees incoming a with @username", fb.json?.incoming?.some((p) => p.id === a.id && p.username === a.username && p.name === "Ali E2E"), JSON.stringify(fb.json?.incoming));
+    check("b sees incoming a with @username", fb.json?.incoming?.some((p) => p.id === a.id && p.username === a.username && p.name === a.username), JSON.stringify(fb.json?.incoming));
     const fa = await call("GET", "/v1/friends", { token: a.session });
     check("a sees outgoing b", fa.json?.outgoing?.some((p) => p.id === b.id));
     check("not friends until accepted", !fa.json?.friends?.some((f) => f.id === b.id));
@@ -368,6 +371,58 @@ async function main() {
     expectRes("b can nudge a back", await call("POST", `/v1/nudges/${a.id}`, { token: b.session }), 200);
   });
 
+  await group("v4 inbox, mutes, switches, workout events", async () => {
+    const { a, b, c } = users;
+    clearRates();
+    // b's GET above was a legacy read: it marked a's nudge seen for v4 too.
+    const fb = await call("GET", "/v1/friends?v=4", { token: b.session });
+    check("v4 GET has inbox", Array.isArray(fb.json?.inbox?.pings) && Array.isArray(fb.json?.inbox?.activity), JSON.stringify(fb.json?.inbox));
+    check("legacy read marked seen_v4", fb.json?.inbox?.pings?.some((p) => p.fromId === a.id && p.seen === true && p.name === a.username), JSON.stringify(fb.json?.inbox?.pings));
+    // b nudged a: v4 reads keep it unseen until POST /inbox/seen.
+    const fa1 = await call("GET", "/v1/friends?v=4", { token: a.session });
+    const fa2 = await call("GET", "/v1/friends?v=4", { token: a.session });
+    check("v4 GET does not mark seen", fa2.json?.inbox?.pings?.some((p) => p.fromId === b.id && p.seen === false) && fa1.json?.nudges?.length === fa2.json?.nudges?.length, JSON.stringify(fa2.json?.inbox));
+    expectRes("POST /inbox/seen", await call("POST", "/v1/inbox/seen", { token: a.session }), 200);
+    const fa3 = await call("GET", "/v1/friends?v=4", { token: a.session });
+    check("inbox seen after POST", fa3.json?.inbox?.pings?.every((p) => p.seen === true), JSON.stringify(fa3.json?.inbox));
+    check("legacy nudges list empty after seen", !fa3.json?.nudges?.some((n) => n.fromId === b.id));
+    // Mutes
+    expectRes("mute non-friend", await call("PUT", `/v1/mutes/${c.id}`, { token: a.session }), 404, "not_found");
+    expectRes("mute friend", await call("PUT", `/v1/mutes/${b.id}`, { token: a.session }), 200);
+    const fm = await call("GET", "/v1/friends?v=4", { token: a.session });
+    check("friend shows muted", fm.json?.friends?.some((f) => f.id === b.id && f.muted === true));
+    expectRes("unmute friend", await call("DELETE", `/v1/mutes/${b.id}`, { token: a.session }), 200);
+    const fu = await call("GET", "/v1/friends?v=4", { token: a.session });
+    check("friend unmuted", fu.json?.friends?.some((f) => f.id === b.id && f.muted === false));
+    // Switches: omitted keeps, false stores.
+    const sw = await call("PUT", "/v1/me", { token: b.session, body: { sharePhoto: true, sharePrs: true, pingsOn: false } });
+    check("pingsOn off, others kept", sw.json?.pingsOn === false && sw.json?.alertsOn === true && sw.json?.shareWorkouts === true, JSON.stringify(sw.json));
+    const sw2 = await call("PUT", "/v1/me", { token: b.session, body: { name: "legacy", sharePhoto: true, sharePrs: true } });
+    check("4.0-style PUT keeps v4 switches", sw2.json?.pingsOn === false && sw2.json?.name === b.username, JSON.stringify(sw2.json));
+    await call("PUT", "/v1/me", { token: b.session, body: { sharePhoto: true, sharePrs: true, pingsOn: true } });
+    // Workout event: a reports one more workout than stored.
+    const cur = sql(`SELECT week_start, done FROM snapshots WHERE user_id = '${a.id}'`)[0];
+    const ws = sundayOf(riyadhToday());
+    const done = cur && cur.week_start === ws ? Math.min(cur.done + 1, 7) : 1;
+    const snap = { weekStart: ws, done, due: 7, score: 50, badge: "on_track", streakWeeks: 1, proteinDays: 0, prs: null };
+    expectRes("snapshot with a new workout", await call("PUT", "/v1/snapshot", { token: a.session, body: snap }), 200);
+    const ev = sql(`SELECT COUNT(*) AS n FROM workout_events WHERE user_id = '${a.id}' AND done_count = ${done}`);
+    check("workout_events row recorded", cur && (cur.week_start !== ws || cur.done < 7) ? ev[0]?.n === 1 : true, JSON.stringify({ cur, ev }));
+    const fbA = await call("GET", "/v1/friends?v=4", { token: b.session });
+    check("b sees a's workout in inbox.activity", fbA.json?.inbox?.activity?.some((x) => x.userId === a.id && x.name === a.username), JSON.stringify(fbA.json?.inbox?.activity));
+    // Same snapshot again: no second event.
+    await call("PUT", "/v1/snapshot", { token: a.session, body: snap });
+    const ev2 = sql(`SELECT COUNT(*) AS n FROM workout_events WHERE user_id = '${a.id}'`);
+    check("same count never recorded twice", ev2[0]?.n === ev[0]?.n, JSON.stringify(ev2));
+    // Share off deletes the events and hides activity.
+    await call("PUT", "/v1/me", { token: a.session, body: { sharePhoto: true, sharePrs: true, shareWorkouts: false } });
+    const ev3 = sql(`SELECT COUNT(*) AS n FROM workout_events WHERE user_id = '${a.id}'`);
+    check("shareWorkouts=false deletes events", ev3[0]?.n === 0, JSON.stringify(ev3));
+    await call("PUT", "/v1/me", { token: a.session, body: { sharePhoto: true, sharePrs: true, shareWorkouts: true } });
+    // Leave a mute in place so the DELETE /me wipe below covers the mutes table.
+    await call("PUT", `/v1/mutes/${a.id}`, { token: b.session });
+  });
+
   await group("push tokens", async () => {
     const { a } = users;
     expectRes("bad platform", await call("PUT", "/v1/push", { token: a.session, body: { token: "t", platform: "ios" } }), 400, "bad_request");
@@ -391,10 +446,10 @@ async function main() {
     const fr = [];
     for (let i = 0; i < 49; i++) {
       const id = `e2edummy${RID}${String(i).padStart(2, "0")}`;
-      vals.push(`('${id}','sub-${id}','C${RID}${String(i).padStart(2, "0")}','d_${RID}_${i}','Dummy',NULL,1,1,1,${now})`);
+      vals.push(`('${id}','sub-${id}','C${RID}${String(i).padStart(2, "0")}','d_${RID}_${i}',NULL,1,1,1,${now})`);
       fr.push(`('${a.id}','${id}',${now})`, `('${id}','${a.id}',${now})`);
     }
-    sql(`INSERT INTO users (id, sub, code, username, name, google_photo, share_photo, share_prs, joined, created_at) VALUES ${vals.join(",")}`);
+    sql(`INSERT INTO users (id, sub, code, username, google_photo, share_photo, share_prs, joined, created_at) VALUES ${vals.join(",")}`);
     sql(`INSERT INTO friends (user_id, friend_id, created_at) VALUES ${fr.join(",")}`);
     const fa = await call("GET", "/v1/friends", { token: a.session });
     check("a now has 50 friends", fa.json?.friends?.length === 50, String(fa.json?.friends?.length));
@@ -505,6 +560,9 @@ function rowsFor(id) {
     `SELECT COUNT(*) AS n FROM nudges WHERE from_id = '${id}' OR to_id = '${id}'`,
     `SELECT COUNT(*) AS n FROM push_tokens WHERE user_id = '${id}'`,
     `SELECT COUNT(*) AS n FROM week_states WHERE user_id = '${id}'`,
+    `SELECT COUNT(*) AS n FROM mutes WHERE user_id = '${id}' OR muted_id = '${id}'`,
+    `SELECT COUNT(*) AS n FROM workout_events WHERE user_id = '${id}'`,
+    `SELECT COUNT(*) AS n FROM activity_push WHERE from_id = '${id}' OR to_id = '${id}'`,
   ];
   return q.reduce((sum, one) => sum + (sql(one)[0]?.n ?? 0), 0);
 }

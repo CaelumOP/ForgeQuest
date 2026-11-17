@@ -90,10 +90,10 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class ProgressViewModel(val app: AppContainer) : ViewModel() {
+    private val measurementsRepo = com.forgequest.app.data.MeasurementsRepository(app.db)
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-    /** Fitbit readiness saved day by day; empty when the Fitbit isn't connected. */
-    val readiness: StateFlow<List<com.forgequest.app.data.db.ReadinessDayEntity>> =
-        app.db.readiness().observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val measurements: StateFlow<List<com.forgequest.app.data.db.BodyMeasurementEntity>> =
+        measurementsRepo.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** Stalled lifts and the deload check, computed off the main thread. */
     val report: StateFlow<com.forgequest.app.domain.FatigueAndPlateauReport?> = app.progress.snapshot
         .map { s -> Trends.analyzeFatigueAndPlateaus(s.sessions, s.doneSets, s.exercises, today = Dates.today()) }
@@ -101,7 +101,9 @@ class ProgressViewModel(val app: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     /** "Switch" on a stalled lift: its variation takes its place in the plan. */
     fun switchVariation(from: String, to: String) = viewModelScope.launch { app.workouts.cycleVariation(from, to) }
-
+    fun logMeasurement(metric: com.forgequest.app.data.MeasurementMetric, valueCm: Float) =
+        viewModelScope.launch { measurementsRepo.log(metric, valueCm) }
+    fun deleteMeasurement(id: Long) = viewModelScope.launch { measurementsRepo.delete(id) }
 }
 
 /** Everything derived for one range, computed once per snapshot change. */
@@ -137,7 +139,7 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
 fun ProgressScreen(nav: NavHostController) {
     val vm = appViewModel { ProgressViewModel(it) }
     val snap by vm.snapshot.collectAsState()
-    val readiness by vm.readiness.collectAsState()
+    val measurements by vm.measurements.collectAsState()
     val report by vm.report.collectAsState()
     val c = Fit.colors
     var rangeIndex by rememberSaveable { mutableIntStateOf(1) }
@@ -160,10 +162,17 @@ fun ProgressScreen(nav: NavHostController) {
             }
         }
         if (s.sessions.isEmpty()) {
-            FitCard(Modifier.padding(16.dp)) {
-                EmptyState(Icons.AutoMirrored.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body)) {
-                    PillButton(stringResource(R.string.hist_go_workouts), onClick = { nav.goToTab(Routes.WORKOUTS) })
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
+                FitCard {
+                    EmptyState(Icons.AutoMirrored.Rounded.ShowChart, stringResource(R.string.progress_empty_title), stringResource(R.string.progress_empty_body)) {
+                        PillButton(stringResource(R.string.hist_go_workouts), onClick = { nav.goToTab(Routes.WORKOUTS) })
+                    }
                 }
+                Spacer(Modifier.height(12.dp))
+                MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
+                Spacer(Modifier.height(12.dp))
+                OneRmCalculatorCard(s, unit)
+                Spacer(Modifier.height(32.dp))
             }
             return
         }
@@ -178,10 +187,19 @@ fun ProgressScreen(nav: NavHostController) {
             LoadCard(d, reveal)
             Spacer(Modifier.height(12.dp))
 
+            WeeklyVolumeCard(s)
+            Spacer(Modifier.height(12.dp))
+
             TileGrid(s, d, unit, reveal)
             Spacer(Modifier.height(12.dp))
 
             StrengthCard(s, d, unit, reveal, dateLabel)
+            Spacer(Modifier.height(12.dp))
+
+            OneRmCalculatorCard(s, unit)
+            Spacer(Modifier.height(12.dp))
+
+            MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
             Spacer(Modifier.height(12.dp))
 
             if (d.weightPoints.size >= 2) {
@@ -198,8 +216,6 @@ fun ProgressScreen(nav: NavHostController) {
                 }
                 Spacer(Modifier.height(12.dp))
             }
-
-            RecoveryTrendCard(readiness, d, reveal, dateLabel)
 
             FitCard {
                 Text(stringResource(R.string.progress_consistency), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
@@ -235,33 +251,6 @@ fun ProgressScreen(nav: NavHostController) {
             Spacer(Modifier.height(32.dp))
         }
     }
-}
-
-/** Recovery, HRV and sleep from the Fitbit over the chosen range, once there are a few days to show. */
-@Composable
-private fun RecoveryTrendCard(rows: List<com.forgequest.app.data.db.ReadinessDayEntity>, d: Derived, reveal: Float, dateLabel: (Long) -> String) {
-    val c = Fit.colors
-    val days = rows.filter { it.epochDay >= d.from && (it.sleepMin > 0 || it.hrv > 0f) }
-    if (days.size < 3) return
-    val recovery = days.map { TrendPoint(it.epochDay, it.recovery.toFloat()) }
-    val hrv = days.filter { it.hrv > 0f }.map { it.hrv }
-    val sleep = days.filter { it.sleepMin > 0 }.map { it.sleepMin }
-    FitCard {
-        Text(stringResource(R.string.progress_recovery_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-        Text(stringResource(R.string.progress_recovery_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        Spacer(Modifier.height(8.dp))
-        TrendChart(
-            recovery, com.forgequest.app.ui.home.recoveryTint(recovery.map { it.value }.average().roundToInt()), reveal = reveal,
-            average = Trends.movingAverage(recovery), showRecords = false, format = { "${it.roundToInt()}%" }, dateLabel = dateLabel,
-        )
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth()) {
-            Total("${recovery.map { it.value }.average().roundToInt()}%", stringResource(R.string.progress_avg_recovery), Modifier.weight(1f))
-            Total(if (hrv.isEmpty()) "—" else "${hrv.average().roundToInt()} ms", stringResource(R.string.progress_avg_hrv), Modifier.weight(1f))
-            Total(if (sleep.isEmpty()) "—" else sleep.average().roundToInt().let { stringResource(R.string.dur_hm, it / 60, it % 60) }, stringResource(R.string.progress_avg_sleep), Modifier.weight(1f))
-        }
-    }
-    Spacer(Modifier.height(12.dp))
 }
 
 @Composable
@@ -379,6 +368,27 @@ private fun StrengthCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reve
                 dateLabel = dateLabel,
             )
         }
+        if (kind == ExerciseKind.WEIGHTED) {
+            val latestEst = d.series[selected].orEmpty().lastOrNull()?.value
+            if (latestEst != null && latestEst > 0f) {
+                val ratio = ProgressMetrics.strengthToBodyweight(latestEst, s.latestWeight)
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.prog41_1rm_latest_est, unit.format(latestEst, 1)),
+                        style = MaterialTheme.typography.labelLarge.tabular(),
+                        color = c.blue,
+                    )
+                    if (ratio != null) {
+                        Text(
+                            stringResource(R.string.prog41_1rm_ratio_val, String.format(Locale.US, "%.2f", ratio)),
+                            style = MaterialTheme.typography.labelLarge.tabular(),
+                            color = c.purple,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -469,7 +479,7 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
     val freshText = fresh.map { it.localLabel() }.joinToString(sep)
     val recoveringText = recovering.map { it.localLabel() }.joinToString(sep)
     val today = Dates.today()
-    val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }, 1, today).lastOrNull() ?: 0
+    val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }.distinct(), 1, today).lastOrNull() ?: 0
     val weekSets = Trends.weeklySets(s.doneSets, s.sessions.associate { it.id to it.epochDay }, 1, today).lastOrNull() ?: 0
     val stalled = report?.stalledLifts.orEmpty().take(3)
     if (insights.isNotEmpty()) {

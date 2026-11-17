@@ -384,3 +384,148 @@ html[dir='rtl'] .wk-lh-chev {
     white-space: normal;
   }
 }
+
+/* WP2 lib41: exercise thumbnails, 2-frame media pair, mini muscle map, swap v2 pills */
+.kit-ex-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 48px;
+  block-size: 48px;
+  border-radius: var(--r-sm);
+  background: var(--card-high);
+  color: var(--text-2);
+  overflow: hidden;
+  flex: none;
+}
+.kit-ex-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  display: block;
+}
+.kit-ex-nomedia {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 4px;
+}
+.kit-ex-nomedia-text {
+  font-size: 14px;
+  color: var(--text-2);
+}
+.kit-ex-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.kit-ex-frame {
+  flex: 1 1 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.kit-ex-frame-box {
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  background: var(--card-high);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+}
+.kit-ex-frame-box img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  display: block;
+}
+.kit-ex-frame-cap {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.kit-mm-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  max-inline-size: 320px;
+  margin-inline: auto;
+  block-size: 160px;
+}
+.kit-mm-svg {
+  flex: 1;
+  block-size: 100%;
+  inline-size: auto;
+}
+.kit-mm-filter-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  block-size: 260px;
+}
+.kit-mm-filter-svg {
+  flex: 1;
+  block-size: 100%;
+  inline-size: auto;
+}
+
+.wk-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wk-search-row .wk-search {
+  flex: 1;
+  min-inline-size: 0;
+}
+.wk-mapbtn {
+  inline-size: 48px;
+  block-size: 48px;
+  border-radius: var(--r-full);
+  border: 0;
+  background: var(--card-high);
+  color: var(--teal);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  cursor: pointer;
+}
+.wk-mapbtn.on {
+  background: var(--blue-track);
+  color: var(--blue);
+}
+.wk-prow.best {
+  background: var(--card-high);
+  margin-block: 3px;
+  padding-inline: 12px;
+}
+.wk-prow-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.wk-pill.easier,
+.wk-pill.current {
+  background: var(--blue-track);
+  color: var(--blue);
+}
+.wk-pill.same {
+  background: var(--purple-track);
+  color: var(--purple);
+}
+.wk-pill.harder {
+  background: var(--gold-track);
+  color: var(--gold);
+}
+.wk-chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+

@@ -21,5 +21,8 @@ object Usernames {
         return v
     }
 
+    /** Bidi-isolates a username (LRI..PDI) so a Latin handle never reorders an Arabic sentence around it. */
+    fun ltr(username: String): String = "\u2066$username\u2069"
+
     const val SHARE_URL = "https://caelumop.github.io/ForgeQuest/"
 }

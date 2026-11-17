@@ -4,7 +4,7 @@
 import {
   db, FOOD_CATEGORIES, type BadgeRow, type ChatRow, type DayNoteRow, type ExerciseRow, type FoodRow, type MealRow,
   type PlanDayRow, type PlanItemRow, type PlanRow, type ReadinessDayRow, type SessionRow, type SetRow,
-  type WeightRow,
+  type WeightRow, type BodyMeasurementRow,
 } from './db';
 import { fromBackupSettings, loadSettings, toBackupSettings, updateSettings, weekTargets } from './settings';
 import { SCANNED_NO_PHOTO } from './food';
@@ -25,6 +25,7 @@ export interface BackupSettings {
   dayActivity: string; cutPace: string; gainPace: string; targetWeightKg: number; targetSetDay: number;
   /** Added in 2.17.0; older backups have none and restore as false. */
   justLog: boolean;
+  barWeightKg?: number; plateInventory?: number[]; ttsCues?: boolean;
 }
 
 export const DEFAULT_BACKUP_SETTINGS: Readonly<BackupSettings> = Object.freeze({
@@ -34,7 +35,7 @@ export const DEFAULT_BACKUP_SETTINGS: Readonly<BackupSettings> = Object.freeze({
   carbsGoal: 250, proteinPerKg: 1.8, fatSharePct: 25, equipment: '', bodyFatPct: 0,
   nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true,
   dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
-  justLog: false,
+  justLog: false, barWeightKg: 20, plateInventory: [25, 20, 15, 10, 5, 2.5, 1.25], ttsCues: false,
 });
 
 export interface BackupFile {
@@ -54,6 +55,7 @@ export interface BackupFile {
   settings: BackupSettings | null;
   dayNotes: DayNoteRow[];
   readinessDays: ReadinessDayRow[];
+  bodyMeasurements?: BodyMeasurementRow[];
   weekTargets?: Record<string, number>;
   weekStart?: string;
 }
@@ -68,12 +70,13 @@ const REQ = Symbol('required');
 type Spec = Record<string, unknown>; // value = default, or REQ when Kotlin has no default
 
 const SPECS = {
-  exercises: { id: REQ, name: REQ, kind: REQ, primary: REQ, secondary: REQ, videoUrl: null, custom: false },
-  plans: { id: 0, name: REQ, description: '', source: REQ, active: REQ, createdAt: REQ },
+  exercises: { id: REQ, name: REQ, kind: REQ, primary: REQ, secondary: REQ, videoUrl: null, custom: false, equipment: '', pattern: '', setupNote: '', aliases: '', unitOverride: '', pinned: false, mediaKey: '' },
+  plans: { id: 0, name: REQ, description: '', source: REQ, active: REQ, createdAt: REQ, scheduleMode: 'WEEKDAY', rotationCursor: 0 },
   planDays: { id: 0, planId: REQ, dayOfWeek: REQ, title: REQ, isRest: REQ, note: '' },
   planItems: {
     id: 0, dayId: REQ, position: REQ, exerciseId: REQ, block: REQ, circuit: REQ, sets: REQ,
     repsMin: null, repsMax: null, seconds: null, weightKg: null, restSeconds: 60, note: '',
+    supersetGroup: null, autoWarmup: false, progressionMode: 'DOUBLE',
   },
   sessions: {
     id: 0, planDayId: REQ, title: REQ, epochDay: REQ, startedAt: REQ, finishedAt: null, note: '', debrief: '', plannedSets: null,
@@ -81,7 +84,7 @@ const SPECS = {
   sets: {
     id: 0, sessionId: REQ, exerciseId: REQ, itemPosition: REQ, block: REQ, circuit: REQ, setIndex: REQ,
     targetLabel: REQ, reps: null, seconds: null, weightKg: null, done: false, isPr: false, restSeconds: 60,
-    note: '', effort: '', doneAt: null,
+    note: '', effort: '', doneAt: null, setType: 'WORKING',
   },
   foods: {
     id: 0, name: REQ, category: REQ, kcal: REQ, protein: REQ, serving: '', carbs: 0, photoPath: null,
@@ -91,6 +94,7 @@ const SPECS = {
     id: 0, epochDay: REQ, loggedAt: REQ, name: REQ, category: REQ, kcal: REQ, protein: REQ, quantity: 1,
     carbs: 0, photoPath: null, foodId: null,
   },
+  bodyMeasurements: { id: 0, epochDay: REQ, metric: REQ, valueCm: REQ, loggedAt: REQ },
   weights: { epochDay: REQ, kg: REQ, loggedAt: REQ },
   chat: {
     id: 0, role: REQ, text: REQ, planJson: null, planApplied: false, kind: 'chat', createdAt: REQ, detail: '',
@@ -121,7 +125,7 @@ const REQ_TYPES: Record<string, ValueKind> = {
   planDayId: 'number', epochDay: 'number', startedAt: 'number', sessionId: 'number', itemPosition: 'number',
   setIndex: 'number', kcal: 'number', protein: 'number', loggedAt: 'number', kg: 'number', unlockedAt: 'number',
   updatedAt: 'number', recovery: 'number', sleepPerf: 'number', sleepMin: 'number', strain: 'number',
-  hrv: 'number', rhr: 'number',
+  hrv: 'number', rhr: 'number', metric: 'string', valueCm: 'number',
 };
 const ENUMS: Partial<Record<Section, Record<string, readonly string[]>>> = {
   exercises: { kind: EXERCISE_KINDS, primary: MUSCLES, secondary: MUSCLES },
@@ -171,6 +175,9 @@ function validateValue(section: Section, key: string, def: unknown, v: unknown, 
       throw new BackupUnreadableError(`${where}.${key} has invalid value`);
     }
   }
+  if (section === 'settings' && key === 'plateInventory' && Array.isArray(v) && v.some((p) => typeof p !== 'number' || !Number.isFinite(p))) {
+    throw new BackupUnreadableError(`${where}.plateInventory must contain numbers`);
+  }
   if (section === 'foods' && key === 'parts' && Array.isArray(v) && v.some((p) => !isObj(p))) {
     throw new BackupUnreadableError(`${where}.parts must contain objects`);
   }
@@ -185,7 +192,7 @@ function shape(spec: Spec, src: unknown, where: string, section: Section): Recor
     const v = key === 'barcode' && src[key] === null ? '' : src[key];
     if (v === undefined) {
       if (def === REQ) throw new BackupUnreadableError(`${where}.${key} is missing`);
-      out[key] = Array.isArray(def) ? [] : def; // a fresh list per row, never one shared array
+      out[key] = Array.isArray(def) ? [...def] : def; // a fresh list per row, never one shared array
     } else {
       validateValue(section, key, def, v, where);
       out[key] = v;
@@ -250,6 +257,7 @@ function shapeFile(src: unknown): BackupFile {
     settings,
     dayNotes: lists.dayNotes as DayNoteRow[],
     readinessDays: lists.readinessDays as ReadinessDayRow[],
+    bodyMeasurements: lists.bodyMeasurements as BodyMeasurementRow[],
   };
   if (targets !== undefined) out.weekTargets = targets;
   if (typeof src.weekStart === 'string') out.weekStart = src.weekStart;
@@ -260,7 +268,7 @@ function shapeFile(src: unknown): BackupFile {
 
 const TABLES = [
   'exercises', 'plans', 'planDays', 'planItems', 'sessions', 'sets', 'foods', 'meals', 'weights', 'chat',
-  'badges', 'dayNotes', 'readinessDays',
+  'badges', 'dayNotes', 'readinessDays', 'bodyMeasurements',
 ] as const;
 
 async function readAll(settings: BackupSettings | null): Promise<BackupFile> {
@@ -341,7 +349,7 @@ export async function applyBackup(
     const current = await readAll(before);
     if (
       current.sessions.length || current.meals.length || current.weights.length ||
-      current.plans.length || current.foods.length
+      current.plans.length || current.foods.length || current.bodyMeasurements?.length || current.exercises.some((e) => e.custom)
     ) {
       await db.safetyCopies.add({ createdAt: current.createdAt, json: encodeBackup(current) });
       const all = await db.safetyCopies.orderBy('createdAt').reverse().primaryKeys();
@@ -349,6 +357,7 @@ export async function applyBackup(
     }
     const rows: Record<(typeof TABLES)[number], unknown[]> = {
       ...f,
+      bodyMeasurements: f.bodyMeasurements ?? [],
       foods: f.foods.map((r) => ({ ...r, photoPath: null })),
       // Photos never come along; a scanned meal keeps a marker so the "Snap & log" badge still counts it.
       meals: f.meals.map((r) => ({ ...r, photoPath: r.photoPath == null ? null : SCANNED_NO_PHOTO })),

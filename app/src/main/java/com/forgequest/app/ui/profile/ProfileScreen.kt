@@ -82,6 +82,7 @@ fun ProfileScreen(nav: NavHostController) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
+            IconButton(onClick = { nav.navigate(com.forgequest.app.ui.Routes.SETTINGS) }) { Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.home41_settings_cd), tint = c.teal) }
         }
 
         if (aiOn && apiKey.isBlank()) {
@@ -130,8 +131,9 @@ fun ProfileScreen(nav: NavHostController) {
             )
             }
             Spacer(Modifier.height(12.dp))
+            val workoutDays = s.sessions.map { it.epochDay }.distinct().size
             Row(Modifier.fillMaxWidth()) {
-                com.forgequest.app.ui.components.StatColumn("${s.sessions.size}", stringResource(R.string.tab_workouts), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
+                com.forgequest.app.ui.components.StatColumn("$workoutDays", androidx.compose.ui.res.pluralStringResource(R.plurals.progress_total_workouts, workoutDays), c.teal, Modifier.weight(1f), onClick = { nav.navigate(com.forgequest.app.ui.Routes.HISTORY) })
                 if (!justLog) {
                     com.forgequest.app.ui.components.StatColumn("${s.streak.best}", stringResource(R.string.profile_best_streak), c.gold, Modifier.weight(1f))
                 }

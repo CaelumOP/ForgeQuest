@@ -33,14 +33,15 @@ export function App() {
   const { route, param } = matchRoute(path)
 
   if (route?.tab) {
+    const tabRoute = param ? path.slice(0, path.indexOf('/', 1)) : path
     return (
       <div class="shell">
         <TopBar title={t(route.title)} />
-        <main class="scroll"><ScreenBoundary key={path}><route.Screen /></ScreenBoundary></main>
+        <main class="scroll"><ScreenBoundary key={path}><route.Screen param={param} /></ScreenBoundary></main>
         <CrashPrompt />
         <UpdatePill />
         <BackupPill />
-        <TabBar route={path} />
+        <TabBar route={tabRoute} />
         <ToastHost />
       </div>
     )

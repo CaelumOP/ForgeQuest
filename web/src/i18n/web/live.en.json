@@ -6,8 +6,16 @@
   "live_web_progress": "Workout progress",
   "live_web_prev": "Previous exercise",
   "live_web_next": "Next exercise",
-  "live_web_view_workout": "View workout",
   "live_web_rest_over": "Rest over",
   "live_new_record": "New record: {1}",
-  "live_rank": "Rank {1} · {2}"
+  "live_rank": "Rank {1} · {2}",
+  "live_warmup_done": "Mark warm-up done",
+  "live_warmup_not_counted": "Warm-up · not in set count",
+  "live_effort_caption": "How did that set feel?",
+  "live_effort_skip": "Skip",
+  "live_finish_hint": "Tick at least one set to finish",
+  "live_xp_gained": {
+    "one": "+{1} XP",
+    "other": "+{1} XP"
+  }
 }

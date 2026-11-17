@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { getLang, plural, t, intlLocale } from '../../i18n'
 import { logWeight, setDayTag, useProgress, type ProgressSnapshot } from '../../data/progress'
 import { planDay, startSession, useOpenSession } from '../../data/workouts'
@@ -8,15 +8,18 @@ import { DAY_TAGS, type DayState, type DayTag } from '../../domain/progress'
 import { weeklyCounts } from '../../domain/trends'
 import { bodyStep, fromKg, toKg, unitLabel, weightNumber } from '../../domain/units'
 import { BADGES } from '../../domain/badges'
+import type { PlanItemEntity, SessionEntity, SetEntity } from '../../domain/entities'
+import { muscleWeekTargets, pickInsights } from '../../domain/insights'
 import { gramsLeft } from '../../domain/nutrition'
-import { Button, Card, Chip, CoachMark, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
+import { formatInsight } from '../progress/insightText'
+import { Button, Card, Chip, CoachMark, type CoachStep, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
-import { canExcuse, greetingKey } from './helpers'
+import { avatarInitial, canExcuse, greetingKey, pickAvatarName, pickAvatarPhoto } from './helpers'
 import { dayShort } from '../workouts/helpers'
 import { RaadEgg } from './RaadEgg'
-import { useFriends } from '../../data/friends'
+import { shownName, useFriends } from '../../data/friends'
 import { Avatar } from '../friends/Avatar'
 import { CalorieCard } from './CalorieCard'
 import { FoodTargetsCard, TargetNudge } from './SetupCards'
@@ -43,6 +46,33 @@ export function HomeScreen(_: { param?: string }) {
     await startSession(todayPlan && !todayPlan.day.isRest ? todayPlan : null)
     go('#/live')
   }
+  const nextTraining = [1, 2, 3, 4, 5, 6, 7]
+    .map((offset) => ((dayOfWeek(today) - 1 + offset) % 7) + 1)
+    .map((dow) => (plan ? planDay(plan, dow) : undefined))
+    .find((d) => d && !d.day.isRest && d.items.length > 0) ?? null
+  const trainAnyway = async () => {
+    await startSession(nextTraining)
+    go('#/live')
+  }
+  const restLine = nextTraining && s.streak.targetThisWeek > 0 && !justLog
+    ? t('today_rest_week', s.streak.doneThisWeek, s.streak.targetThisWeek, nextTraining.day.title,
+      new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', timeZone: 'UTC' }).format(dayDate(today + ((nextTraining.day.dayOfWeek - dayOfWeek(today) + 7) % 7))))
+    : null
+  const doneInsight = s.workoutDoneToday && !justLog
+    ? (() => {
+        const picked = pickInsights({
+          sessions: s.sessions as SessionEntity[], sets: s.doneSets as SetEntity[], exercises: s.exercises, streak: s.streak,
+          muscleWeekTargets: muscleWeekTargets((plan ? plan.days.flatMap((d) => d.items) : []) as PlanItemEntity[], s.exercises),
+        }, s.settings.insightHistory, today, 1)[0]
+        return picked ? formatInsight(picked, s.exercises, weightUnit(s.settings)) : null
+      })()
+    : null
+  const homeStatus = open ? 'IN_PROGRESS'
+    : s.workoutDoneToday ? 'DONE'
+    : s.excusedToday != null ? 'EXCUSED'
+    : !plan || !todayPlan ? 'NO_PLAN'
+    : todayPlan.day.isRest ? 'REST'
+    : 'TRAIN'
 
   // On a training day with the workout still to do (or one in progress, or no plan yet), today's card leads the page.
   const startOnTop = !!open || ((!plan || (!!todayPlan && !todayPlan.day.isRest)) && !s.workoutDoneToday && !s.excusedToday)
@@ -52,19 +82,21 @@ export function HomeScreen(_: { param?: string }) {
       s={s} title={todayPlan?.day.title ?? ''} isRest={!todayPlan || todayPlan.day.isRest} noPlan={!todayPlan}
       noActivePlan={!plan}
       note={todayPlan?.day.note ?? ''}
+      restLine={restLine}
+      doneLine={doneInsight}
       names={[...new Set((todayPlan?.items ?? []).map((i) => s.exercises.get(i.exerciseId)?.name).filter((n): n is string => !!n))]}
-      hasOpen={!!open} onStart={start} onCant={justLog ? undefined : () => setTagDay(today)}
+      hasOpen={!!open} onStart={start} onTrainAnyway={trainAnyway} onCant={justLog ? undefined : () => setTagDay(today)}
     />
   )
 
   return (
     <div class="content home">
-      <Header s={s} showRank={!justLog} />
+      <Header s={s} showRank={!justLog} status={homeStatus} dayTitle={todayPlan?.day.title ?? ''} />
       <Rings s={s} />
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {startOnTop && todayCard}
       {unseen.length > 0 && !justLog && (
-        <Card href="#/profile">
+        <Card href="#/badges">
           <div class="home-row">
             <span class="home-ic" style={{ background: 'var(--gold-track)', color: 'var(--gold)' }}><TrophyIcon /></span>
             <div class="home-grow">
@@ -92,25 +124,53 @@ function badgeTitle(id: string, fallback: string): string {
   return v === key ? fallback : v
 }
 
-function Header({ s, showRank }: { s: ProgressSnapshot; showRank: boolean }) {
+type HomeStatus = 'IN_PROGRESS' | 'TRAIN' | 'DONE' | 'EXCUSED' | 'REST' | 'NO_PLAN'
+
+function statusText(status: HomeStatus, dayTitle: string, s: ProgressSnapshot): string {
+  const day = status === 'IN_PROGRESS' ? t('home_status_in_progress')
+    : status === 'TRAIN' ? t('home_status_train', dayTitle)
+    : status === 'DONE' ? t('home_status_done')
+    : status === 'EXCUSED' ? t('home_status_excused')
+    : status === 'REST' ? t('home_status_rest')
+    : t('home_status_no_plan')
+  if (status === 'IN_PROGRESS') return day
+  const left = gramsLeft(s.settings.proteinGoal, s.today.protein)
+  const food = left <= 0 ? t('home_status_protein_met') : t('home_status_protein_left', left)
+  return `${day}\u00A0· ${food.replace(/ /g, '\u00A0')}`
+}
+
+function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRank: boolean; status: HomeStatus; dayTitle: string }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
   const date = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
   // Arabic has no use for a Latin letter: the level goes in the ring instead (Android RankInfo.mark).
-  const mark = getLang() === 'ar' ? String(s.level.level) : s.level.rank.letter
+  const ar = getLang() === 'ar'
+  const mark = ar ? String(s.level.level) : s.level.rank.letter
+  const f = useFriends()
+  const photo = pickAvatarPhoto(f.status === 'joined' ? f.view?.me.photoUrl : null)
+  const avatarName = pickAvatarName(name, f.status === 'joined' && f.view ? shownName(f.view.me) : null)
+  const [imgFailed, setImgFailed] = useState(false)
+  useEffect(() => { setImgFailed(false) }, [photo])
   return (
     <div class="home-head">
       <div class="home-head-text">
-        <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
         <div class="home-date">{date}</div>
+        <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
+        <div class="home-status">{statusText(status, dayTitle, s)}</div>
       </div>
-      {showRank && (
-        <a class="home-rank" href="#/profile" aria-label={t('home_web_rank_cd', mark)}>
-          <Ring value={s.level.progress} color="--blue" track="--blue-track" size={44} stroke={3} label={mark}>
-            <span class="home-rank-letter">{mark}</span>
-          </Ring>
+      <CoachMark id={'coach_profile' as CoachStep} title={t('home41_profile_hint_t')} body={t('home41_profile_hint_b')} below>
+        <a class="home41-avatar-wrap" href="#/profile" aria-label={t('home41_profile_cd')}>
+          <span class="home41-avatar" aria-hidden="true">
+            {photo && !imgFailed
+              ? <img src={photo} alt="" referrerPolicy="no-referrer" onError={() => setImgFailed(true)} />
+              : avatarInitial(avatarName)}
+          </span>
+          {showRank && <span class="home41-badge" aria-hidden="true">{mark}</span>}
+          <span class="home41-gear" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M19.4 13a7.9 7.9 0 000-2l2-1.6a.5.5 0 00.1-.6l-1.9-3.3a.5.5 0 00-.6-.2l-2.4 1a7.4 7.4 0 00-1.7-1l-.4-2.5a.5.5 0 00-.5-.4h-3.8a.5.5 0 00-.5.4l-.4 2.5a7.4 7.4 0 00-1.7 1l-2.4-1a.5.5 0 00-.6.2L2.6 8.8a.5.5 0 00.1.6l2 1.6a7.9 7.9 0 000 2l-2 1.6a.5.5 0 00-.1.6l1.9 3.3c.1.2.4.3.6.2l2.4-1c.5.4 1.1.7 1.7 1l.4 2.5c0 .2.2.4.5.4h3.8c.3 0 .5-.2.5-.4l.4-2.5c.6-.3 1.2-.6 1.7-1l2.4 1c.2.1.5 0 .6-.2l1.9-3.3a.5.5 0 00-.1-.6zM12 15.5A3.5 3.5 0 1112 8.5a3.5 3.5 0 010 7z" /></svg>
+          </span>
         </a>
-      )}
+      </CoachMark>
     </div>
   )
 }
@@ -139,7 +199,8 @@ function Rings({ s }: { s: ProgressSnapshot }) {
   const size = 210
   const stroke = carbs ? 13 : 16
   const gap = stroke + 4
-  const proteinShown = Math.round(useTweened(Math.round(n.protein)))
+  const proteinLeft = Math.round(useTweened(gramsLeft(st.proteinGoal, n.protein)))
+  const proteinMet = proteinLeft <= 0
   const kcalShown = Math.round(useTweened(n.kcal))
   const specs = [
     { value: n.protein / goalProtein, color: '--teal', track: '--teal-track' },
@@ -153,8 +214,8 @@ function Rings({ s }: { s: ProgressSnapshot }) {
           {specs.map((p, i) => <Arc key={i} {...p} size={size} stroke={stroke} inset={i * gap} index={i} />)}
         </svg>
         <div class="home-rings-center">
-          <div class="home-rings-protein">{proteinShown}</div>
-          <div class="home-rings-cap">{t('home_center_protein')}</div>
+          <div class="home-rings-protein">{proteinMet ? t('home_done') : proteinLeft}</div>
+          <div class="home-rings-cap">{t(proteinMet ? 'food_protein_met' : 'home_center_protein')}</div>
           <div class="home-rings-kcal" style={{ color: `var(${kcalColor})` }}>{t('home_center_kcal', nf().format(kcalShown))}</div>
         </div>
       </div>
@@ -301,21 +362,21 @@ function FriendStreaks() {
 }
 
 function TodayCard(p: {
-  s: ProgressSnapshot; title: string; isRest: boolean; noPlan: boolean; noActivePlan: boolean; note: string; names: string[]
-  hasOpen: boolean; onStart: () => void
+  s: ProgressSnapshot; title: string; isRest: boolean; noPlan: boolean; noActivePlan: boolean; note: string; restLine?: string | null; doneLine?: string | null; names: string[]
+  hasOpen: boolean; onStart: () => void; onTrainAnyway: () => void
   /** Undefined in "Just log" mode: no streak to excuse a day from. */
   onCant?: () => void
 }) {
   const { s, isRest, noPlan, noActivePlan, hasOpen } = p
   const done = s.workoutDoneToday
   const excused = s.excusedToday
-  const head = hasOpen ? t('today_in_progress') : noPlan ? t('today_no_plan') : isRest ? t('today_rest_day') : p.title
+  const head = hasOpen ? t('today_in_progress') : noPlan ? t('today_no_plan') : isRest && done ? t('today_extra_done') : isRest ? t('today_rest_day') : p.title
   const sub = hasOpen ? t('today_resume_hint')
-    : done ? t('today_done')
+    : done ? (p.doneLine || t('today_done'))
     : excused ? t('today_excused', t(`daytag_${excused.toLowerCase()}`))
     : noActivePlan ? t('pb_entry_info')
     : noPlan ? t('today_no_plan_hint')
-    : isRest ? (p.note.trim() || t('today_rest_hint'))
+    : isRest ? (p.note.trim() || p.restLine || t('today_rest_hint'))
     : plural('today_exercises', p.names.length, p.names.length, p.names.slice(0, 3).join(t('list_separator')))
   const tone = noPlan && !hasOpen ? ['--teal', EditIcon] : isRest && !hasOpen ? ['--blue', MoonIcon] : ['--teal', DumbbellIcon]
   const Icon = tone[1] as typeof EditIcon
@@ -324,7 +385,7 @@ function TodayCard(p: {
     <Card>
       <div class="home-label">{t('today_title')}</div>
       <div class={`home-row home-today${noActivePlan && !hasOpen ? ' home-today-stack' : ''}`}>
-        <a class="home-row home-grow home-plan-link" href={noActivePlan ? '#/plan-builder' : '#/workouts'}>
+        <a class="home-row home-grow home-plan-link" href={done ? '#/history' : noActivePlan ? '#/plan-builder' : '#/workouts'}>
           <span class="home-ic" style={{ background: `var(${colour}-track)`, color: `var(${colour})` }}><Icon /></span>
           <span class="home-grow">
             <span class="home-t home-clip" style={{ display: 'block' }}>{head}</span>
@@ -339,10 +400,13 @@ function TodayCard(p: {
                 : noPlan ? <Button onClick={() => go('#/workouts')}>{t('action_set_up')}</Button>
                 : <Button onClick={p.onStart}>{t('action_start')}</Button>}
             </CoachMark>
-          ) : null}
+          ) : (excused == null ? <Button variant="tonal" onClick={p.onTrainAnyway}>{t('today_train_anyway')}</Button> : null)}
       </div>
       {p.onCant && !isRest && !hasOpen && !done && !excused && (
         <Button variant="text" class="home-cant" onClick={p.onCant}>{t('today_cant_train')}</Button>
+      )}
+      {done && !hasOpen && (
+        <Button variant="text" class="home-cant" onClick={isRest ? p.onTrainAnyway : p.onStart}>{t('today_train_again')}</Button>
       )}
     </Card>
   )

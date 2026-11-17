@@ -33,13 +33,13 @@ class AuditFixesTest {
 
     @Test fun defaultRangeResetsToEightAfterALoadStep() {
         val last = List(3) { Progression.PastSet(12, null, 60f, SetEffort.OK) }
-        val r = Progression.next(ExerciseKind.WEIGHTED, null, last, emptyList(), WeightUnit.KG, lowReadiness = false, warmup = false)
+        val r = Progression.next(ExerciseKind.WEIGHTED, null, last, emptyList(), WeightUnit.KG, warmup = false)
         assertEquals(List(3) { Progression.Prefill(8, null, 62.5f) }, r.sets)
     }
 
     @Test fun oneFailedSetStartsAtTheBottomOfTheRange() {
         val last = List(2) { Progression.PastSet(10, null, 60f, SetEffort.OK) } + Progression.PastSet(4, null, 60f, SetEffort.HARD)
-        val r = Progression.next(ExerciseKind.WEIGHTED, Progression.Target(3, 8, 12, null, 60f), last, emptyList(), WeightUnit.KG, false, false)
+        val r = Progression.next(ExerciseKind.WEIGHTED, Progression.Target(3, 8, 12, null, 60f), last, emptyList(), WeightUnit.KG, false)
         assertEquals(listOf(10, 10, 8), r.sets.map { it.reps })
     }
 
@@ -107,24 +107,5 @@ class AuditFixesTest {
         val (adapted, swaps) = ExerciseSwapEngine.adaptPlanToEquipment(draft, ExerciseCatalog.all.associateBy { it.id }, setOf(Equipment.BODYWEIGHT))
         assertEquals(0, swaps)
         assertEquals("bicep_curl", adapted.days.single().items.single().exerciseId)
-    }
-
-    @Test fun sleepOnlyFirstDaysDontCrashRecovery() {
-        // No HRV or resting-HR baseline yet and a 6 h night (75 %): 68 % (steady; the sleep factor takes one point), not a near-zero score.
-        assertEquals(68, Readiness.recovery(null, null, null, 75, null, null, null))
-        // With every input at its baseline the score is the middle of the scale: 75 %.
-        val base = Baseline(4.0, 0.1, 14)
-        assertEquals(75, Readiness.recovery(4.0, 60.0, 15.0, 85, base, Baseline(60.0, 2.0, 14), Baseline(15.0, 0.5, 14)))
-    }
-
-    @Test fun anotherAppsFullNightOverFitbitsTwoHalvesIsACopy() {
-        val zone = ZoneId.of("UTC")
-        fun at(s: String) = Instant.parse(s)
-        val pieces = listOf(
-            SleepPiece(at("2026-10-15T23:00:00Z"), at("2026-10-16T03:00:00Z"), 0, 0, 0, 0, 240, fromFitbit = true),
-            SleepPiece(at("2026-10-16T03:30:00Z"), at("2026-10-16T07:30:00Z"), 0, 0, 0, 0, 240, fromFitbit = true),
-            SleepPiece(at("2026-10-15T23:00:00Z"), at("2026-10-16T07:30:00Z"), 0, 0, 0, 0, 480, fromFitbit = false),
-        )
-        assertEquals(480, Readiness.nights(pieces, zone).getValue(LocalDate.of(2026, 10, 16)).asleepMin)
     }
 }

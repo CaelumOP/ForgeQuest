@@ -368,11 +368,11 @@ class InsightsTest {
 
     private fun score(
         total: Int = 8, done: Int = 10, planned: Int? = 10, up: Int = 0, compared: Int = 0, prs: Int = 0,
-        rough: Boolean = false, first: Boolean = false, back: Boolean = false, low: Boolean = false,
-    ) = WorkoutScore.Result(total, done, planned, up, compared, prs, rough, first, back, planned, emptyList(), low)
+        rough: Boolean = false, first: Boolean = false, back: Boolean = false,
+    ) = WorkoutScore.Result(total, done, planned, up, compared, prs, rough, first, back, planned, emptyList())
 
     private fun debrief(type: Headline = Headline.ALL_SAME, wins: List<WorkoutDebriefMath.Win> = emptyList()) =
-        WorkoutDebriefMath.Result(WorkoutDebriefMath.HeadlineLine(type, 0), wins, emptyList(), emptyList(), false, false)
+        WorkoutDebriefMath.Result(WorkoutDebriefMath.HeadlineLine(type, 0), wins, emptyList(), emptyList(), false)
 
     @Test fun scoreTiers() {
         assertEquals(ScoreTier.RECORD_DAY, scoreTier(score(prs = 1, up = 1, compared = 3)))
@@ -401,7 +401,6 @@ class InsightsTest {
         assertEquals(DayType.FIRST_OR_BACK, dayType(score(back = true, prs = 1), debrief(), none))
         assertEquals(DayType.FIRST_OR_BACK, dayType(score(), debrief(Headline.AFTER_BREAK), none))
         assertEquals(DayType.ROUGH, dayType(score(rough = true), debrief(), none))
-        assertEquals(DayType.ROUGH, dayType(score(low = true), debrief(), minor))
         assertEquals(DayType.MILESTONE, dayType(score(rough = true), debrief(), milestone))
     }
 

@@ -10,8 +10,10 @@ import org.junit.Test
 
 class ExerciseCuesTest {
 
-    private fun keys(path: String): Set<String> =
-        Regex("""<string name="(cue_[a-z0-9_]+)"""").findAll(File(path).readText()).map { it.groupValues[1] }.toSet()
+    private fun keys(vararg paths: String): Set<String> =
+        paths.flatMap { path ->
+            Regex("""<string name="(cue_[a-z0-9_]+)"""").findAll(File(path).readText()).map { it.groupValues[1] }
+        }.toSet()
 
     @Test fun everyCatalogIdHasACueEntry() {
         val missing = ExerciseCatalog.all.map { it.id }.filter { exerciseCues(it) == null }
@@ -25,7 +27,7 @@ class ExerciseCuesTest {
     }
 
     @Test fun englishFileHasThreeStringsPerCatalogId() {
-        val en = keys("src/main/res/values/strings_cues.xml")
+        val en = keys("src/main/res/values/strings_cues.xml", "src/main/res/values/strings_catalog.xml")
         for (e in ExerciseCatalog.all) {
             val k = e.id.replace(Regex("[^a-z0-9_]"), "_")
             for (suffix in listOf("1", "2", "mistake")) assertTrue("cue_${k}_$suffix missing", "cue_${k}_$suffix" in en)
@@ -35,13 +37,18 @@ class ExerciseCuesTest {
     }
 
     @Test fun arabicFileHasSameKeysInSameOrderAndShortText() {
-        val enText = File("src/main/res/values/strings_cues.xml").readText()
-        val arText = File("src/main/res/values-ar/strings_cues.xml").readText()
+        val enFiles = listOf("src/main/res/values/strings_cues.xml", "src/main/res/values/strings_catalog.xml")
+        val arFiles = listOf("src/main/res/values-ar/strings_cues.xml", "src/main/res/values-ar/strings_catalog.xml")
         val re = Regex("""<string name="(cue_[a-z0-9_]+)">(.*?)</string>""")
-        val en = re.findAll(enText).map { it.groupValues[1] }.toList()
-        val ar = re.findAll(arText).map { it.groupValues[1] to it.groupValues[2] }.toList()
-        assertEquals(en, ar.map { it.first })
-        assertEquals(keys("src/main/res/values/strings_cues.xml"), keys("src/main/res/values-ar/strings_cues.xml"))
-        for ((k, v) in ar) assertTrue("$k is empty or over 90 chars", v.isNotBlank() && v.length < 90)
+        for ((enPath, arPath) in enFiles.zip(arFiles)) {
+            val en = re.findAll(File(enPath).readText()).map { it.groupValues[1] }.toList()
+            val ar = re.findAll(File(arPath).readText()).map { it.groupValues[1] to it.groupValues[2] }.toList()
+            assertEquals("key order mismatch between $enPath and $arPath", en, ar.map { it.first })
+            for ((k, v) in ar) assertTrue("$k is empty or over 90 chars", v.isNotBlank() && v.length < 90)
+        }
+        assertEquals(
+            keys("src/main/res/values/strings_cues.xml", "src/main/res/values/strings_catalog.xml"),
+            keys("src/main/res/values-ar/strings_cues.xml", "src/main/res/values-ar/strings_catalog.xml"),
+        )
     }
 }

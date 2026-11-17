@@ -17,10 +17,11 @@ class BadgesV2Test {
     }
 
     @Test
-    fun liftsFallBackToFixedKgWithoutBodyweight() {
-        val s = BadgeStats(bestWeight = mapOf("bench_press" to 60f, "deadlift" to 100f))
-        assertTrue(ok("str_bench_1", s)); assertFalse(ok("str_bench_2", s))
-        assertTrue(ok("str_deadlift_2", s)); assertFalse(ok("str_squat_1", s))
+    fun liftsRequireLoggedBodyweight() {
+        val s = BadgeStats(bestWeight = mapOf("bench_press" to 120f, "back_squat" to 180f, "deadlift" to 200f))
+        assertFalse(ok("str_bench_1", s)); assertFalse(ok("str_bench_2", s))
+        assertFalse(ok("str_squat_1", s)); assertFalse(ok("str_squat_2", s))
+        assertFalse(ok("str_deadlift_1", s)); assertFalse(ok("str_deadlift_2", s))
     }
 
     @Test

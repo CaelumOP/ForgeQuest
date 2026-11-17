@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { ExerciseEntity, PlanDraftDay, PlanDraftItem, PlanItemEntity } from './entities'
 import {
-  ALL_ACTIVE_EQUIPMENT, EQUIPMENT_META, adaptPlanToEquipment, expandLegacyEquipment,
+  ALL_ACTIVE_EQUIPMENT, EQUIPMENT_META, adaptPlanToEquipment, compareSwapTier, expandLegacyEquipment,
   inferEquipmentFromText, matchTrainingPlace, parseEquipmentSet, presetEquipment,
-  profileFits, profileFor, rankSubstitutes, TRAINING_PLACE_INFO, translatePlanItem,
+  profileFits, profileFor, rankSubstitutes, rankSwapSheet, TRAINING_PLACE_INFO, translatePlanItem,
   type Equipment,
 } from './exercise-swap-engine'
 import { decodePlanAnswers, encodePlanAnswers, defaultPlanAnswers } from './plan-answers'
@@ -139,5 +139,36 @@ describe('audit 2026-10-24', () => {
     const [dropped, dropSwaps] = adaptPlanToEquipment({ name: 'P', days }, LIBRARY, set('BODYWEIGHT'), true)
     expect(dropSwaps).toBe(1)
     expect(dropped.days[0].items).toEqual([])
+  })
+})
+
+describe('swap v2 ordering, tier comparison and custom metadata', () => {
+  it('surfaces same-pattern EASIER options right after top 3 in rankSwapSheet', () => {
+    const pullUp = LIBRARY.get('pull_up')!
+    const ranked = rankSwapSheet(pullUp, CATALOG, new Set(ALL_ACTIVE_EQUIPMENT))
+    const best = ranked.filter((c) => c.matchesUserEquipment && c.score >= 45)
+    expect(best.length).toBeGreaterThan(4)
+    const afterTop3 = best.slice(3)
+    const firstNonEasier = afterTop3.findIndex(
+      (c) => c.profile.pattern !== 'VERTICAL_PULL' || c.difficulty !== 'EASIER',
+    )
+    expect(
+      firstNonEasier === -1 || afterTop3.slice(firstNonEasier).every(
+        (c) => c.profile.pattern !== 'VERTICAL_PULL' || c.difficulty !== 'EASIER',
+      ),
+    ).toBe(true)
+    expect(compareSwapTier(pullUp, LIBRARY.get('band_assisted_pull_up')!)).toBe('EASIER')
+  })
+
+  it('uses custom equipment and pattern in profileFor and returns null difficulty for custom', () => {
+    const pullUp = LIBRARY.get('pull_up')!
+    const customEx: ExerciseEntity = {
+      id: 'custom_pull', name: 'Custom Cable Pull', kind: 'WEIGHTED', primary: ['UPPER_BACK'], secondary: ['BICEPS'],
+      custom: true, equipment: 'CABLE_MACHINE', pattern: 'VERTICAL_PULL',
+    }
+    const prof = profileFor(customEx)
+    expect(prof.equipment).toBe('CABLE_MACHINE')
+    expect(prof.pattern).toBe('VERTICAL_PULL')
+    expect(compareSwapTier(pullUp, customEx)).toBeNull()
   })
 })

@@ -109,7 +109,7 @@ object Routes {
     const val LIVE = "live"
     const val PLAN = "plan?day={day}&paste={paste}&templates={templates}"
     const val SCAN = "scan"
-    const val EXERCISE = "exercise/{id}"
+    const val EXERCISE = "exercise/{id}?fromLive={fromLive}"
     const val HISTORY = "history"
     const val SESSION = "session/{id}"
     const val BADGES = "badges"
@@ -118,8 +118,9 @@ object Routes {
     const val PLAN_BUILDER = "plan_builder"
     const val SETTINGS = "settings"
     const val SETTINGS_GROUP = "settings/{id}"
+    const val CSV_IMPORT = "csv_import"
     fun settingsGroup(id: String) = "settings/$id"
-    fun exercise(id: String) = "exercise/$id"
+    fun exercise(id: String, fromLive: Boolean = false) = "exercise/$id?fromLive=$fromLive"
     fun session(id: Long) = "session/$id"
     /** The plan editor, opened on [day] (1 = Monday) or on today. */
     fun plan(day: Int = 0, paste: Boolean = false, templates: Boolean = false) = "plan?day=$day&paste=$paste&templates=$templates"
@@ -187,6 +188,9 @@ private fun MainScaffold() {
     val context = LocalContext.current
     val review by context.container.meals.review.collectAsState()
     LaunchedEffect(review) { if (review != null && route != Routes.SCAN) nav.navigate(Routes.SCAN) { launchSingleTop = true } }
+    // A tapped Friends push: go to the Friends tab; FriendsScreen opens the Inbox and clears the flag.
+    val openInbox = com.forgequest.app.ui.friends.FriendsInboxLink.pending
+    LaunchedEffect(openInbox) { if (openInbox && route != Routes.FRIENDS) nav.goToTab(Routes.FRIENDS) }
 
     // 600 dp and wider (tablets, unfolded foldables): the bar becomes a rail on the start edge and the content stays one
     // 640 dp column in the middle. Phones are unchanged.
@@ -259,18 +263,16 @@ private fun MainScaffold() {
                 }
                 composable(Routes.PLAN_BUILDER) { com.forgequest.app.ui.plan.PlanBuilderScreen(nav) }
                 composable(Routes.SCAN) { ScanScreen(nav) }
-                composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
-                    ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty())
+                composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType }, navArgument("fromLive") { type = NavType.BoolType; defaultValue = false })) { entry ->
+                    ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty(), entry.arguments?.getBoolean("fromLive") ?: false)
                 }
                 composable(Routes.HISTORY) { HistoryScreen(nav) }
                 composable(Routes.BADGES) { BadgesScreen(nav) }
-                composable("readiness/{kind}") { entry ->
-                    com.forgequest.app.ui.home.ReadinessDetailScreen(nav, com.forgequest.app.ui.home.ReadinessKind.valueOf(entry.arguments?.getString("kind") ?: "RECOVERY"))
-                }
                 composable(Routes.SETTINGS) { com.forgequest.app.ui.profile.SettingsScreen(nav, null) }
                 composable(Routes.SETTINGS_GROUP, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     com.forgequest.app.ui.profile.SettingsScreen(nav, entry.arguments?.getString("id"))
                 }
+                composable(Routes.CSV_IMPORT) { com.forgequest.app.ui.profile.CsvImportScreen(nav) }
                 composable(Routes.LIBRARY) { ExerciseLibraryScreen(nav) }
                 composable(Routes.PROGRESS) { ProgressScreen(nav) }
                 composable(Routes.SESSION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->

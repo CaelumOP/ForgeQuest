@@ -65,6 +65,9 @@ class ProgressRepository(
     private val workouts: WorkoutRepository,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
+    suspend fun mealsForScore(fromDay: Long): List<MealEntity> =
+        db.food().observeMealsSince(fromDay).first()
+
     private data class Raw(
         val sessions: List<SessionEntity>,
         val sets: List<SetEntity>,

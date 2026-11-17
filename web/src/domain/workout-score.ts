@@ -5,8 +5,9 @@ import type { SessionEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
 import { parseEffort } from './effort'
 import { recordScore, welcomeBack, type DayTag } from './progress'
+import { countsForPR, countsForScore } from './set-types'
 
-type Done = Pick<SetEntity, 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort'> & { block?: string }
+type Done = Pick<SetEntity, 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort'> & { block?: string; setType?: string }
 export type Trend = 'UP' | 'SAME' | 'DOWN'
 
 /** The block name the starter plans give warm-ups (the stored value, not the translated label). */
@@ -28,10 +29,8 @@ export type ScoreExercise = { exerciseId: string; trend: Trend | null; forgiven:
 export type ScoreWork = { exerciseId: string; kind: ExerciseKind; done: Done[]; last: Done[] }
 export type WorkoutScoreResult = {
   score: number; doneSets: number; plannedSets: number | null; up: number; compared: number; prs: number
-  /** Recovery under 50 or a PAIN set: drops count as holding steady and fewer sets are needed. */
+  /** A PAIN set: drops count as holding steady and fewer sets are needed. */
   rough: boolean
-  /** That day's recovery was under 50 (a rough day from low recovery, not just from pain). */
-  lowRecovery?: boolean
   /** The person's first finished workout with done sets. */
   firstEver: boolean
   /** The first workout after a break (the same rule as the Welcome back card, progress.ts welcomeBack). */
@@ -102,39 +101,39 @@ export function trend(kind: ExerciseKind, exerciseId: string, done: readonly Don
 }
 
 /**
- * `plannedSets` is null with no plan day (or an empty one); warm-ups are already left out of it. `lowReadiness`: that
- * day's recovery was under 50, so every drop counts as holding steady; a PAIN set does that for its own exercise only.
- * Either way the workout needs only two thirds of the planned sets. Warm-up sets count for nothing but a PR.
+ * `plannedSets` is null with no plan day (or an empty one); warm-ups are already left out of it. A PAIN set
+ * makes drops count as holding steady for its own exercise and the workout needs only two thirds of the planned sets.
+ * Warm-up sets count for nothing but a PR.
  */
 export function computeWorkoutScore(
-  work: ScoreWork[], plannedSets: number | null, lowReadiness: boolean, firstEver = false, afterBreak = false,
+  work: ScoreWork[], plannedSets: number | null, firstEver = false, afterBreak = false,
 ): WorkoutScoreResult {
-  const working = work.map((w) => ({ ...w, done: w.done.filter((s) => !isWarmUp(s.block)), last: w.last.filter((s) => !isWarmUp(s.block)) }))
+  const working = work.map((w) => ({ ...w, done: w.done.filter((s) => countsForScore(s)), last: w.last.filter((s) => countsForScore(s)) }))
   const sets = working.flatMap((w) => w.done)
   const pain = new Set(working.filter((w) => w.done.some((s) => parseEffort(s.effort) === 'PAIN')).map((w) => w.exerciseId))
-  const rough = lowReadiness || pain.size > 0
+  const rough = pain.size > 0
   const planned = plannedSets != null && plannedSets > 0 ? plannedSets : null
   // ceil(0.67 × planned) in whole numbers, so 0.67 × 100 can't round up to 68.
   const effective = planned == null ? null : rough ? Math.floor((67 * planned + 99) / 100) : planned
   // Twice the value of each exercise (UP 2, SAME 1, DOWN 0), so the sums stay whole numbers.
   let halves = 0; let up = 0; let compared = 0
   const exercises = working.map((w, i): ScoreExercise => {
-    const forgiven = lowReadiness || pain.has(w.exerciseId)
+    const forgiven = pain.has(w.exerciseId)
     const tr = w.done.length && w.last.length ? trend(w.kind, w.exerciseId, w.done, w.last) : null
     if (tr != null) compared++
     if (tr === 'UP') { up++; halves += 2 } else if (tr === 'SAME') halves += 1
     else if (tr === 'DOWN') halves += forgiven ? 1 : 0
-    return { exerciseId: w.exerciseId, trend: tr, forgiven, pr: work[i].done.some((s) => s.isPr) ? prKindOf(w.kind) : null }
+    return { exerciseId: w.exerciseId, trend: tr, forgiven, pr: work[i].done.some((s) => s.isPr && countsForPR(s)) ? prKindOf(w.kind) : null }
   })
   const ratio = effective == null ? 1 : sets.length / effective
   const completion = ratio >= 1 ? 3 : ratio >= 0.75 ? 2 : ratio >= 0.5 ? 1 : 0
   // min(3, floor(4 × sum / compared)) with sum = halves / 2; below 75 % of the sets, progress doesn't count.
   const progress = ratio < 0.75 ? 0 : compared === 0 ? 2 : Math.min(3, Math.floor((2 * halves) / compared))
-  const prs = work.reduce((n, w) => n + w.done.filter((s) => s.isPr).length, 0)
+  const prs = work.reduce((n, w) => n + w.done.filter((s) => s.isPr && countsForPR(s)).length, 0)
   const total = 3 + completion + progress + (prs > 0 ? 1 : 0)
   return {
     score: Math.min(10, Math.max(4, total)), doneSets: sets.length, plannedSets: planned, up, compared, prs,
-    rough, lowRecovery: lowReadiness, firstEver, afterBreak, showNumber: !(firstEver || afterBreak), effectiveSets: effective, exercises,
+    rough, firstEver, afterBreak, showNumber: !(firstEver || afterBreak), effectiveSets: effective, exercises,
   }
 }
 
@@ -149,7 +148,7 @@ type ScoreSet = Done & Pick<SetEntity, 'sessionId' | 'exerciseId'>
  */
 export function scoresForSessions(
   sessions: ScoreSession[], doneSets: ScoreSet[], kinds: Map<string, ExerciseKind>,
-  plannedByDay: Map<number, number>, lowReadinessDays: Set<number>,
+  plannedByDay: Map<number, number>,
   dayTags: ReadonlyMap<number, DayTag> = new Map(), trainingDays: ReadonlySet<number> = new Set(),
   only?: number,
 ): Map<number, WorkoutScoreResult> {
@@ -180,7 +179,7 @@ export function scoresForSessions(
     // The workout days known when this one started, as the Welcome back card saw them then.
     const afterBreak = welcomeBack(s.epochDay, earlierDays, dayTags, trainingDays, start ?? s.epochDay)
     const planned = s.plannedSets ?? (s.planDayId != null ? plannedByDay.get(s.planDayId) ?? null : null)
-    return computeWorkoutScore(work, planned, lowReadinessDays.has(s.epochDay), s.id === firstWithSets, afterBreak)
+    return computeWorkoutScore(work, planned, s.id === firstWithSets, afterBreak)
   }
   const out = new Map<number, WorkoutScoreResult>()
   if (only !== undefined) {

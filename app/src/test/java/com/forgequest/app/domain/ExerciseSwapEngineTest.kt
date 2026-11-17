@@ -69,10 +69,13 @@ class ExerciseSwapEngineTest {
     fun everyCatalogExerciseHasAnArabicNameAndASwapProfile() {
         val ids = ExerciseCatalog.all.map { it.id }
         assertEquals("duplicate ids", ids.size, ids.toSet().size)
-        ids.forEach {
-            assertTrue("no Arabic name: $it", it in com.forgequest.app.data.seed.ExerciseNamesAr.byId)
-            assertTrue("no swap profile: $it", it in ExerciseSwapEngine.catalogProfiles)
-            assertTrue("custom_ prefix: $it", !it.startsWith("custom_"))
+        ExerciseCatalog.all.forEach { ex ->
+            assertTrue("no Arabic name: ${ex.id}", ex.id in com.forgequest.app.data.seed.ExerciseNamesAr.byId)
+            val profile = ExerciseSwapEngine.profileFor(ex)
+            if (ex.id !in ExerciseSwapEngine.catalogProfiles && ex.pattern.isNotBlank()) {
+                assertEquals("pattern mismatch: ${ex.id}", ex.pattern, profile.pattern.name)
+            }
+            assertTrue("custom_ prefix: ${ex.id}", !ex.id.startsWith("custom_"))
         }
         ExerciseSwapEngine.catalogProfiles.forEach { (id, profile) ->
             profile.preferredSwaps.forEach { assertTrue("$id swaps to unknown $it", it in ids) }
@@ -85,8 +88,11 @@ class ExerciseSwapEngineTest {
         val lift = ExerciseCatalog.all.first { it.id == "romanian_deadlift" }
         assertTrue(ExerciseSwapEngine.rankSubstitutes(stretch, ExerciseCatalog.all).all { it.exercise.id in ExerciseCatalog.STRETCH_IDS })
         assertTrue(ExerciseSwapEngine.rankSubstitutes(lift, ExerciseCatalog.all).none { it.exercise.id in ExerciseCatalog.STRETCH_IDS })
-        assertTrue(ExerciseCatalog.STRETCH_IDS.all { ExerciseSwapEngine.catalogProfiles.getValue(it).pattern == MovementPattern.MOBILITY })
-        assertEquals(19, ExerciseCatalog.STRETCH_IDS.size)
+        assertTrue(ExerciseCatalog.STRETCH_IDS.all { id ->
+            val stretchEx = ExerciseCatalog.all.first { it.id == id }
+            ExerciseSwapEngine.profileFor(stretchEx).pattern == MovementPattern.MOBILITY
+        })
+        assertEquals(125, ExerciseCatalog.STRETCH_IDS.size)
     }
 
     @Test
@@ -136,5 +142,31 @@ class ExerciseSwapEngineTest {
                 profiles.any { eq == it.equipment || eq in it.requires },
             )
         }
+    }
+
+    @Test
+    fun swapSheetSurfacesSamePatternEasierAfterTopThreeAndComparesTiers() {
+        val pullUp = ExerciseCatalog.all.first { it.id == "pull_up" }
+        val ranked = ExerciseSwapEngine.rankSwapSheet(pullUp, ExerciseCatalog.all, Equipment.allActive)
+        val best = ranked.filter { it.matchesUserEquipment && it.score >= 45 }
+        assertTrue(best.size > 4)
+        // Top 3 stay in similarity order; any same-pattern EASIER options follow right after top 3.
+        val afterTop3 = best.drop(3)
+        val firstNonEasier = afterTop3.indexOfFirst {
+            it.profile.pattern != MovementPattern.VERTICAL_PULL || it.difficulty != SwapDifficulty.EASIER
+        }
+        assertTrue(
+            "expected same-pattern EASIER options right after top 3",
+            firstNonEasier == -1 || afterTop3.drop(firstNonEasier).none {
+                it.profile.pattern == MovementPattern.VERTICAL_PULL && it.difficulty == SwapDifficulty.EASIER
+            },
+        )
+        val bandPullUp = ExerciseCatalog.all.first { it.id == "band_assisted_pull_up" }
+        assertEquals(SwapDifficulty.EASIER, ExerciseSwapEngine.compareTier(pullUp, bandPullUp))
+        val customEx = pullUp.copy(id = "custom_pull", custom = true, equipment = "CABLE_MACHINE", pattern = "VERTICAL_PULL")
+        assertEquals(null, ExerciseSwapEngine.compareTier(pullUp, customEx))
+        val customProf = ExerciseSwapEngine.profileFor(customEx)
+        assertEquals(Equipment.CABLE_MACHINE, customProf.equipment)
+        assertEquals(MovementPattern.VERTICAL_PULL, customProf.pattern)
     }
 }

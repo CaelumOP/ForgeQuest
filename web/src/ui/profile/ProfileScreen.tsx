@@ -5,9 +5,11 @@ import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
 import { getLang, plural, setLang, t, useLang, type Lang, intlLocale } from '../../i18n'
 import { setTheme, useTheme, type Theme } from '../theme'
-import { updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
+import { isAiOn, DEFAULT_PLATE_INVENTORY, updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
+import { db, type ExerciseRow } from '../../data/db'
+import { foodSkillPrompt, PLAN_PROMPT } from '../../data/ai'
 import { logWeight, useProgress, type ProgressSnapshot } from '../../data/progress'
-import { trainingDays } from '../../data/workouts'
+import { applyPlan, seedLibrary, trainingDays, useLibrary } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
 import {
   ageFromBirthYear, allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, GAIN_PACE, GAIN_PACES, MAX_SAFE_KCAL, MIN_FAT_SHARE_PCT, MIN_PROTEIN_PER_KG, MIN_SAFE_KCAL,
@@ -17,9 +19,10 @@ import { calorieInputs, floorFor, setTarget } from '../../data/calories'
 import { bodyStep, fromKg, toKg, unitLabel } from '../../domain/units'
 import { BADGES, BADGES_BY_ID } from '../../domain/badges'
 import { EditIcon } from '../icons'
-import { Button, Card, ChipGroup, LineChart, ListRow, NumberField, Ring, SectionHeader, Segmented, Sheet, Stat, Stepper, TextField, toast } from '../kit'
+import { Button, Card, Chip, ChipGroup, LineChart, ListRow, Ring, SectionHeader, Segmented, Sheet, Stat, Stepper, TextField, toast } from '../kit'
+import { PastePlanSheet } from '../coach/PastePlanSheet'
 import {
-  addNote, applyNutrition, carbsFor, hasBodyStats, impliedFatPct, kcalFor, noteLines, proteinFor, removeNote, summary, type NutritionPatch,
+  applyNutrition, carbsFor, hasBodyStats, impliedFatPct, kcalFor, proteinFor, summary, type NutritionPatch,
   trainingDaysFor,
 } from './helpers'
 import { BackupSection, backupSummary } from './BackupSection'
@@ -248,7 +251,11 @@ export function ProfileScreen() {
   const [weightOpen, setWeightOpen] = useState(false)
   const [editingTarget, setEditingTarget] = useState<'PROTEIN' | 'CARBS' | null>(null)
   const [advOpen, setAdvOpen] = useState(false)
-  const [note, setNote] = useState('')
+  const [nameDraft, setNameDraft] = useState<string | null>(null)
+  const [pastePlanOpen, setPastePlanOpen] = useState(false)
+  const [exUnitsOpen, setExUnitsOpen] = useState(false)
+  const [exUnitsQuery, setExUnitsQuery] = useState('')
+  const library = useLibrary()
   const toggle = (id: string) => {
     const next = openIds.includes(id) ? openIds.filter((x) => x !== id) : [...openIds, id]
     setOpenIds(next); saveOpen(next)
@@ -281,7 +288,6 @@ export function ProfileScreen() {
   const fat = Math.max(s.fatSharePct, MIN_FAT_SHARE_PCT)
   const proteinSub = latestKg != null && latestKg > 0 ? t('you_protein_ratio', (s.proteinGoal / latestKg).toFixed(1)) : t('you_protein_tap')
   const carbsSub = t('you_carbs_ratio', impliedFatPct(s) ?? fat)
-  const notes = noteLines(s.coachNotes)
 
   return (
     <div class="content pf">
@@ -291,6 +297,13 @@ export function ProfileScreen() {
           <div class="pf-actions"><Button onClick={() => { openGroup('coach'); document.getElementById('pf-coach')?.scrollIntoView({ block: 'center' }) }}>{t('profile_add_key')}</Button></div>
         </Card>
       )}
+
+      <Card onClick={() => { document.getElementById('pf-settings')?.scrollIntoView({ block: 'start' }) }}>
+        <div class="pf-row">
+          <span class="pf-ic pf-teal"><Glyph name="app" /></span>
+          <span class="pf-grow"><span class="pf-h3 pf-block">{t('home41_settings_cd')}</span></span>
+        </div>
+      </Card>
 
       {snap && <RankCard snap={snap} name={s.name} justLog={s.justLog} />}
 
@@ -325,7 +338,7 @@ export function ProfileScreen() {
         <Card href="#/library"><span class="pf-short"><span class="pf-ic pf-teal"><Glyph name="training" /></span>{t('profile_exercise_library')}</span></Card>
       </div>
 
-      <SectionHeader title={t('settings_section_settings')} />
+      <div id="pf-settings"><SectionHeader title={t('settings_section_settings')} /></div>
 
       <Group id="app" accent="teal" icon="app" title={t('settings_group_app')} open={isOpen('app')} onToggle={() => toggle('app')}
         sum={summary(themeLabel(theme), lang === 'ar' ? 'العربية' : 'English', unitLabel(unit, ar), s.justLog ? t('just_log_title') : null)}>
@@ -335,7 +348,7 @@ export function ProfileScreen() {
           <ChipGroup label={t('profile_theme')} accent="teal" value={theme} onChange={changeTheme}
             options={(['system', 'light', 'dark'] as Theme[]).map((v) => ({ value: v, label: themeLabel(v) }))} />
           <span class="pf-t">{t('profile_language')}</span>
-          <ChipGroup label={t('profile_language')} accent="teal" value={lang} onChange={(v: Lang) => setLang(v)}
+          <ChipGroup label={t('profile_language')} accent="teal" value={lang} onChange={(v: Lang) => { setLang(v); void seedLibrary(v) }}
             options={[{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }]} />
           <span class="pf-t">{t('profile_weights')}</span>
           <ChipGroup label={t('profile_weights')} accent="teal" value={unit} onChange={(v) => void set({ unit: v === 'LB' ? 'lb' : 'kg' })}
@@ -347,6 +360,55 @@ export function ProfileScreen() {
         <Card>
           <Switch label={t('profile_vibration')} hint={t('profile_vibration_hint')} on={s.hapticsEnabled} onChange={(v) => void set({ hapticsEnabled: v })} />
         </Card>
+        <Card>
+          <Switch label={t('prog41_tts_title')} hint={t('prog41_tts_hint')} on={s.ttsCues} onChange={(v) => void set({ ttsCues: v })} />
+        </Card>
+        <Card>
+          <CardTitle icon="training" accent="teal" title={t('prog41_bar_weight_title')} hint={t('prog41_bar_weight_hint')} />
+          <div class="pf-actions">
+            {[20, 15, 10].map((kg) => (
+              <Chip
+                key={kg}
+                label={`${Math.round(fromKg(unit, kg))} ${unitLabel(unit, ar)}`}
+                selected={Math.abs(s.barWeightKg - kg) < 0.1}
+                onClick={() => void set({ barWeightKg: kg })}
+              />
+            ))}
+          </div>
+          <span class="pf-t" style={{ display: 'block', marginBlockStart: '12px' }}>{t('prog41_plates_title')}</span>
+          <span class="pf-s" style={{ display: 'block', marginBlockEnd: '6px' }}>{t('prog41_plates_hint')}</span>
+          <div class="pf-actions">
+            {DEFAULT_PLATE_INVENTORY.map((plateKg) => {
+              const on = s.plateInventory.some((p) => Math.abs(p - plateKg) < 0.01)
+              return (
+                <Chip
+                  key={plateKg}
+                  label={`${Number(fromKg(unit, plateKg).toFixed(2))} ${unitLabel(unit, ar)}`}
+                  selected={on}
+                  onClick={() => {
+                    const next = on
+                      ? s.plateInventory.filter((p) => Math.abs(p - plateKg) >= 0.01)
+                      : [...s.plateInventory, plateKg].sort((a, b) => b - a)
+                    void set({ plateInventory: next })
+                  }}
+                />
+              )
+            })}
+          </div>
+        </Card>
+        <Card padded={false}>
+          <ListRow
+            title={t('prog41_ex_units_title')}
+            subtitle={(() => {
+              const cnt = library.filter((e) => !!e.unitOverride).length
+              return cnt === 0
+                ? t('prog41_ex_units_summary_none', unitLabel(unit, ar))
+                : t('prog41_ex_units_summary_count', cnt)
+            })()}
+            icon={<span class="pf-ic pf-teal"><Glyph name="tune" /></span>}
+            onClick={() => { setExUnitsQuery(''); setExUnitsOpen(true) }}
+          />
+        </Card>
         <Card padded={false}>
           <ListRow title={t('pb_rebuild')} subtitle={t('pb_rebuild_hint')} icon={<span class="pf-ic pf-teal"><Glyph name="tune" /></span>} href="#/plan-builder" />
         </Card>
@@ -356,6 +418,7 @@ export function ProfileScreen() {
         sum={summary(!bodySet ? t('summary_body_not_set') : null, goalLabel(s.nutritionGoal), `${num(s.kcalGoal)} ${t('unit_kcal')}`, t('summary_protein', s.proteinGoal))}>
         <Card>
           <CardTitle icon="body" accent="teal" title={t('profile_about_you')} hint={t('profile_about_you_hint')} />
+          <TextField label={t('onb_your_name')} value={nameDraft ?? s.name} onInput={(v) => { const next = v.slice(0, 24); setNameDraft(next); void set({ name: next.trim() }) }} />
           <ChipGroup label={t('profile_about_you')} accent="teal" value={s.bodyType} onChange={(v) => void set({ bodyType: v })}
             options={[{ value: 'MALE', label: t('body_male') }, { value: 'FEMALE', label: t('body_female') }]} />
           <Setting label={t('profile_height')}>
@@ -369,14 +432,6 @@ export function ProfileScreen() {
             options={DAY_ACTIVITIES.map((d) => ({ value: d, label: t(`day_web_${d.toLowerCase()}`) }))} />
           <p class="pf-s">{t(`day_web_${s.dayActivity.toLowerCase()}_desc`)}</p>
           {!bodySet && <p class="pf-s pf-warn">{t('profile_body_not_set')}</p>}
-        </Card>
-
-        <Card>
-          <CardTitle icon="body" accent="teal" title={t('profile_hand_size')} hint={s.handLengthCm > 0 ? t('profile_hand_value', s.handLengthCm.toFixed(1), s.palmWidthCm.toFixed(1)) : t('profile_hand_hint')} />
-          <div class="pf-two">
-            <NumberField label={t('hand_length')} unit={t('unit_cm')} decimal min={5} max={40} value={s.handLengthCm > 0 ? s.handLengthCm : null} onChange={(v) => void set({ handLengthCm: v ?? 0 })} />
-            <NumberField label={t('hand_palm')} unit={t('unit_cm')} decimal min={3} max={20} value={s.palmWidthCm > 0 ? s.palmWidthCm : null} onChange={(v) => void set({ palmWidthCm: v ?? 0 })} />
-          </div>
         </Card>
 
         <Card>
@@ -452,37 +507,66 @@ export function ProfileScreen() {
       </Group>
 
       <Group id="coach" accent="teal" icon="coach" title={t('settings_group_coach')} open={isOpen('coach')} onToggle={() => toggle('coach')}
-        sum={summary(t(s.apiKey ? 'summary_gemini_on' : 'summary_gemini_off'))}>
-        <KeyField title={t('profile_ai_key')} value={s.apiKey} status={t(s.apiKey ? 'profile_key_connected' : 'profile_key_not_set')} body={`${t('profile_web_key_body')} ${t('key_dialog_privacy')}`}
-          link="https://aistudio.google.com/apikey" onSave={(k) => set({ apiKey: k })} onRemove={() => set({ apiKey: '' })} />
+        sum={isAiOn(s) ? t(s.apiKey ? 'summary_gemini_on' : 'summary_gemini_off') : t('summary_ai_off')}>
+        <h3 class="pf-h3">{t('settings_ai_gemini_title')}</h3>
+        <p class="pf-s">{t('settings_ai_gemini_body')}</p>
         <Card>
-          <span class="pf-h3">{t('coach_model_header')}</span>
-          <ChipGroup label={t('coach_model_header')} accent="teal" value={s.coachModel} onChange={(v) => void set({ coachModel: v })}
-            options={[
-              { value: 'auto', label: t('coach_model_auto') }, { value: 'lite', label: t('coach_model_lite') },
-              { value: 'flash', label: t('coach_model_flash') }, { value: 'pro', label: t('coach_model_pro') },
-            ]} />
-          <span class="pf-s">{t(`coach_model_${['lite', 'flash', 'pro'].includes(s.coachModel) ? s.coachModel : 'auto'}_hint`)}</span>
-        </Card>
-        <Card>
-          <CardTitle icon="coach" accent="teal" title={t('profile_coach_memory')} hint={notes.length === 0 ? t('profile_memory_empty') : t('profile_memory_hint')} />
-          {notes.map((n) => (
-            <button key={n} type="button" class="pf-note" onClick={() => void set({ coachNotes: removeNote(s.coachNotes, n) })} aria-label={`${t('cd_remove')}: ${n}`}>
-              <span class="pf-bullet" aria-hidden="true">•</span><span class="pf-grow">{n}</span><span class="pf-x" aria-hidden="true">×</span>
-            </button>
-          ))}
-          <TextField label={t('notes_dialog_title')} multiline value={note} onInput={setNote} hint={t('notes_dialog_body')} />
           <div class="pf-actions">
-            <Button variant="tonal" disabled={note.trim() === ''} onClick={() => { void set({ coachNotes: addNote(s.coachNotes, note) }); setNote('') }}>{t('action_add')}</Button>
+            <Button variant="tonal" onClick={() => { void navigator.clipboard?.writeText(PLAN_PROMPT); toast(t('plan_prompt_copied')) }}>{t('plan_gemini_copy')}</Button>
+            <Button variant="tonal" onClick={() => setPastePlanOpen(true)}>{t('plan_gemini_paste')}</Button>
           </div>
         </Card>
+        <Card>
+          <CardTitle icon="coach" accent="teal" title={t('meals_title')} hint={t('meals_hint')} />
+          <div class="pf-actions">
+            <Button variant="tonal" onClick={() => { void navigator.clipboard?.writeText(foodSkillPrompt(lang)); toast(t('bridge_prompt_copied')) }}>{t('meals_copy_gem')}</Button>
+          </div>
+        </Card>
+        <h3 class="pf-h3">{t('settings_ai_key_title')}</h3>
+        <p class="pf-s">{t('settings_ai_key_body')}</p>
+        <Card>
+          <Switch icon="coach" accent="teal" label={t('ai_toggle_title')} hint={t('ai_toggle_body')} on={isAiOn(s)} onChange={(on) => void set({ aiOptIn: on })} />
+        </Card>
+        {isAiOn(s) && (
+          <KeyField title={t('profile_ai_key')} value={s.apiKey} status={t(s.apiKey ? 'profile_key_connected' : 'profile_key_not_set')} body={`${t('profile_web_key_body')} ${t('key_dialog_privacy')}`}
+            link="https://aistudio.google.com/apikey" onSave={(k) => set({ apiKey: k, aiOptIn: true })} onRemove={() => set({ apiKey: '' })} />
+        )}
       </Group>
+
+      <PastePlanSheet open={pastePlanOpen} onClose={() => setPastePlanOpen(false)} onParsed={(draft) => { void applyPlan(draft, 'gemini').then(() => { setPastePlanOpen(false); toast(t('coach_plan_applied')); location.hash = '#/workouts' }) }} />
 
       <Group id="about" accent="text" icon="about" title={t('settings_group_about')} open={isOpen('about')} onToggle={() => toggle('about')} sum={t('profile_credits')}>
         <Card padded={false}><ListRow title={t('settings_group_about')} subtitle={t('profile_credits_body')} icon={<Glyph name="about" />} href="#/about" /></Card>
       </Group>
 
       <WeightSheet latest={latestKg} s={s} open={weightOpen} onClose={() => setWeightOpen(false)} />
+      <Sheet open={exUnitsOpen} onClose={() => setExUnitsOpen(false)} title={t('prog41_ex_units_title')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <TextField label={t('prog41_csv_search_hint')} type="search" value={exUnitsQuery} onInput={setExUnitsQuery} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxBlockSize: '320px', overflowY: 'auto' }}>
+            {(() => {
+              const q = exUnitsQuery.trim().toLowerCase()
+              const list = q
+                ? library.filter((e) => e.name.toLowerCase().includes(q) || (e.aliases ?? '').toLowerCase().includes(q))
+                : [...library].sort((a, b) => Number(!!b.unitOverride) - Number(!!a.unitOverride))
+              return list.slice(0, 35).map((ex: ExerciseRow) => (
+                <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span class="pf-t">{ex.name}</span>
+                  <div class="pf-actions" style={{ marginBlockStart: 0 }}>
+                    <Chip
+                      label={`${t('prog41_ex_units_default')} (${unitLabel(unit, ar)})`}
+                      selected={!ex.unitOverride}
+                      onClick={() => void db.exercises.update(ex.id, { unitOverride: '' })}
+                    />
+                    <Chip label="kg" selected={ex.unitOverride?.toLowerCase() === 'kg'} onClick={() => void db.exercises.update(ex.id, { unitOverride: 'kg' })} />
+                    <Chip label="lb" selected={ex.unitOverride?.toLowerCase() === 'lb'} onClick={() => void db.exercises.update(ex.id, { unitOverride: 'lb' })} />
+                  </div>
+                </div>
+              ))
+            })()}
+          </div>
+        </div>
+      </Sheet>
       {editingTarget === 'PROTEIN' && (() => {
         const hasKg = latestKg != null && latestKg > 0
         const initRatio = hasKg ? Math.min(2.5, Math.max(MIN_PROTEIN_PER_KG, Math.round((s.proteinGoal / latestKg!) * 10) / 10)) : null
@@ -547,17 +631,21 @@ export function ProfileScreen() {
 /** "Just log" mode: the name and workout count only; XP keeps adding up out of sight. */
 function RankCard({ snap, name, justLog }: { snap: ProgressSnapshot; name: string; justLog: boolean }) {
   const { level } = snap
+  const ar = getLang() === 'ar'
+  const mark = ar ? String(level.level) : level.rank.letter
+  const rankKey = `rank_${level.rank.title.toLowerCase()}`
+  const rankTitle = t(rankKey) === rankKey ? level.rank.title : t(rankKey)
   return (
     <Card>
       <div class="pf-row">
         {!justLog && (
-          <Ring value={level.progress} color="--blue" track="--blue-track" size={64} stroke={4} label={level.rank.letter}>
-            <span class="pf-rank">{level.rank.letter}</span>
+          <Ring value={level.progress} color="--blue" track="--blue-track" size={64} stroke={4} label={mark}>
+            <span class="pf-rank">{mark}</span>
           </Ring>
         )}
         <span class="pf-grow">
           <h2 class="pf-name">{name.trim() || t('profile_default_name')}</h2>
-          {!justLog && <span class="pf-s">{t('profile_rank_line', level.rank.letter, level.rank.title, level.level)}</span>}
+          {!justLog && <span class="pf-s">{t('profile_rank_line', level.rank.letter, rankTitle, level.level)}</span>}
         </span>
       </div>
       {!justLog && <>

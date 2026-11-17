@@ -39,7 +39,7 @@ object WorkoutScore {
         val up: Int,
         val compared: Int,
         val prs: Int,
-        /** Recovery under 50 or a PAIN set: drops count as holding steady and fewer sets are needed. */
+        /** A PAIN set: drops count as holding steady and fewer sets are needed. */
         val rough: Boolean = false,
         /** The person's first finished workout with done sets. */
         val firstEver: Boolean = false,
@@ -49,8 +49,6 @@ object WorkoutScore {
         val effectiveSets: Int? = null,
         /** Per exercise, in the order given. */
         val exercises: List<ExerciseResult> = emptyList(),
-        /** That day's recovery was under 50 (a rough day from low recovery, not just from pain). */
-        val lowRecovery: Boolean = false,
     ) {
         /** False on a first-ever or first-after-a-break workout: show the reasons without the number. */
         val showNumber: Boolean = !(firstEver || afterBreak)
@@ -108,15 +106,15 @@ object WorkoutScore {
     }
 
     /**
-     * [plannedSets] is null with no plan day (or an empty one); warm-ups are already left out of it. [lowReadiness]: that
-     * day's recovery was under 50, so every drop counts as holding steady; a PAIN set does that for its own exercise only.
-     * Either way the workout needs only two thirds of the planned sets. Warm-up sets count for nothing but a PR.
+     * [plannedSets] is null with no plan day (or an empty one); warm-ups are already left out of it. A PAIN set
+     * makes drops count as holding steady for its own exercise and the workout needs only two thirds of the planned sets.
+     * Warm-up sets count for nothing but a PR.
      */
-    fun compute(work: List<Work>, plannedSets: Int?, lowReadiness: Boolean, firstEver: Boolean = false, afterBreak: Boolean = false): Result {
-        val working = work.map { w -> Work(w.exerciseId, w.kind, w.done.filterNot { isExtra(it.block) }, w.last.filterNot { isExtra(it.block) }) }
+    fun compute(work: List<Work>, plannedSets: Int?, firstEver: Boolean = false, afterBreak: Boolean = false): Result {
+        val working = work.map { w -> Work(w.exerciseId, w.kind, w.done.filter { countsForScore(it) }, w.last.filter { countsForScore(it) }) }
         val sets = working.flatMap { it.done }
         val pain = working.filter { w -> w.done.any { SetEffort.parse(it.effort) == SetEffort.PAIN } }.map { it.exerciseId }.toSet()
-        val rough = lowReadiness || pain.isNotEmpty()
+        val rough = pain.isNotEmpty()
         val planned = plannedSets?.takeIf { it > 0 }
         // ceil(0.67 × planned) in whole numbers, so 0.67 × 100 can't round up to 68.
         val effective = planned?.let { if (rough) (67 * it + 99) / 100 else it }
@@ -125,7 +123,7 @@ object WorkoutScore {
         var up = 0
         var compared = 0
         val exercises = working.mapIndexed { i, w ->
-            val forgiven = lowReadiness || w.exerciseId in pain
+            val forgiven = w.exerciseId in pain
             val t = if (w.done.isNotEmpty() && w.last.isNotEmpty()) trend(w.kind, w.exerciseId, w.done, w.last) else null
             when (t) {
                 null -> {}
@@ -133,7 +131,7 @@ object WorkoutScore {
                 Trend.SAME -> { compared++; halves += 1 }
                 Trend.DOWN -> { compared++; halves += if (forgiven) 1 else 0 }
             }
-            val pr = if (work[i].done.any { it.isPr }) prKindOf(w.kind) else null
+            val pr = if (work[i].done.any { it.isPr && countsForPR(it) }) prKindOf(w.kind) else null
             ExerciseResult(w.exerciseId, t, forgiven, pr)
         }
         val ratio = if (effective == null) 1.0 else sets.size / effective.toDouble()
@@ -149,9 +147,9 @@ object WorkoutScore {
             compared == 0 -> 2
             else -> minOf(3, 2 * halves / compared)
         }
-        val prs = work.sumOf { w -> w.done.count { it.isPr } }
+        val prs = work.sumOf { w -> w.done.count { it.isPr && countsForPR(it) } }
         val total = 3 + completion + progress + if (prs > 0) 1 else 0
-        return Result(total.coerceIn(4, 10), sets.size, planned, up, compared, prs, rough, firstEver, afterBreak, effective, exercises, lowReadiness)
+        return Result(total.coerceIn(4, 10), sets.size, planned, up, compared, prs, rough, firstEver, afterBreak, effective, exercises)
     }
 
     fun prKindOf(kind: ExerciseKind): PrKind = when (kind) {
@@ -171,7 +169,6 @@ object WorkoutScore {
         doneSets: List<SetEntity>,
         kinds: Map<String, ExerciseKind>,
         plannedByDay: Map<Long, Int>,
-        lowReadinessDays: Set<Long>,
         dayTags: Map<Long, DayTag> = emptyMap(),
         trainingDays: Set<Int> = emptySet(),
         only: Long? = null,
@@ -195,7 +192,7 @@ object WorkoutScore {
             // The workout days known when this one started, as the Welcome back card saw them then.
             val afterBreak = Nudges.welcomeBack(s.epochDay, earlierDays, dayTags, trainingDays, start ?: s.epochDay)
             val planned = s.plannedSets ?: s.planDayId?.let { plannedByDay[it] }
-            return compute(work, planned, s.epochDay in lowReadinessDays, firstEver = s.id == firstWithSets, afterBreak = afterBreak)
+            return compute(work, planned, firstEver = s.id == firstWithSets, afterBreak = afterBreak)
         }
         if (only != null) {
             val s = byId[only] ?: return emptyMap()

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Swap v2 -->
+    <string name="swap_easier">Easier</string>
+    <string name="swap_same_level">Same level</string>
+    <string name="swap_harder">Harder</string>
+    <string name="swap_current">Current</string>
+
+    <!-- Picker & Library -->
+    <string name="picker_pinned">Pinned</string>
+    <string name="picker_recent">Recently used</string>
+    <string name="picker_map_filter">Filter by muscle map</string>
+    <string name="picker_clear_filter">Clear filter</string>
+    <string name="picker_pin_toggle">Pin exercise</string>
+    <string name="picker_unpin_toggle">Unpin exercise</string>
+
+    <!-- Exercise Detail -->
+    <string name="detail_start_pose">Start</string>
+    <string name="detail_finish_pose">Finish</string>
+    <string name="detail_muscles_specs">Muscles &amp; specs</string>
+    <string name="detail_main_muscles">Main</string>
+    <string name="detail_secondary_muscles">Also works</string>
+    <string name="detail_setup_note">Setup note</string>
+    <string name="detail_setup_note_hint">e.g. Seat 3, Pin 4</string>
+    <string name="detail_no_media">No demonstration photo yet</string>
+    <string name="detail_strength_bw">Strength / BW</string>
+    <string name="detail_variations">Similar &amp; variations</string>
+
+    <!-- Custom Exercise Editor -->
+    <string name="editor_equipment">Equipment</string>
+    <string name="editor_pattern">Movement pattern</string>
+    <string name="editor_secondary_muscles">Secondary muscles</string>
+    <string name="editor_unit_override">Weight unit</string>
+    <string name="editor_unit_default">App default</string>
+    <string name="editor_unit_kg">kg</string>
+    <string name="editor_unit_lb">lb</string>
+    <string name="editor_more_options">More details</string>
+</resources>

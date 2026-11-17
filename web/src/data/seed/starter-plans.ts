@@ -429,7 +429,7 @@ export const ONBOARDING_PLAN_COUNT = 4
 /** English starter texts and their formal Arabic versions (from StarterPlans.kt `arabic`). */
 export const STARTER_PLANS_AR: Record<string, string> = {
   'Hemo · Foundation level': 'هيمو · المستوى التأسيسي',
-  'Hemo Calisthenics\' 5-day foundation routine. Jumping jacks to warm up, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target.': 'روتين Hemo Calisthenics التأسيسي على خمسة أيام: قفز مع فتح الذراعين للإحماء، ثم كل مجموعة تمارين في دائرة من ⁦3–4⁩ جولات. أدِّ ما تستطيع من تكرارات؛ فالرقم هدف لا شرط.',
+  'Hemo Calisthenics\' 5-day foundation routine. Jumping jacks to warm up, then each block as a circuit for 3–4 rounds. Do the reps you can; the number is the target.': 'روتين Hemo Calisthenics التأسيسي على خمسة أيام: قفز مع فتح الذراعين للتسخين، ثم كل مجموعة تمارين في دائرة من ⁦3–4⁩ جولات. أدِّ ما تستطيع من عدّات؛ فالرقم هدف لا شرط.',
   'Full body · 3 days': 'الجسم كاملًا · 3 أيام',
   'Simple full-body plan: Monday, Wednesday, Friday. Good for gym or home.': 'خطة بسيطة للجسم كاملًا: الاثنين والأربعاء والجمعة، تصلح للنادي أو المنزل.',
   'Full body · 3 days · bodyweight': 'الجسم كاملًا · 3 أيام · وزن الجسم',
@@ -450,7 +450,7 @@ export const STARTER_PLANS_AR: Record<string, string> = {
   'Legs': 'أرجل',
   'Full rest. Hemo recommends a complete break after day 3.': 'راحة تامة؛ يوصي Hemo براحة كاملة بعد اليوم الثالث.',
   'Full body · 3 days · gym': 'الجسم كاملًا · 3 أيام · النادي',
-  'Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session.': 'خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة قرفصاء أو انثناء للورك، ثم تمرين دفع وآخر سحب.',
+  'Barbell and machine plan: Monday, Wednesday, Friday. A squat or hinge, a press and a pull every session.': 'خطة بالبار والأجهزة: الاثنين والأربعاء والجمعة، وفي كل حصة سكوات أو انثناء للورك، ثم تمرين دفع وآخر سحب.',
   'Upper / lower · 4 days · gym': 'علوي / سفلي · 4 أيام · النادي',
   '4-day gym split: upper body on Monday and Thursday, lower body on Tuesday and Friday.': 'تقسيم على أربعة أيام في النادي: الجزء العلوي الاثنين والخميس، والجزء السفلي الثلاثاء والجمعة.',
   'Upper / lower · 4 days · dumbbells': 'علوي / سفلي · 4 أيام · دمبل',

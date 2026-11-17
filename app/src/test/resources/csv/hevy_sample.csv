@@ -1,0 +1,5 @@
+title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe
+"Pull Day","10 Nov 2026, 17:00","10 Nov 2026, 17:50","","Lat Pulldown (Cable)",,"",0,warmup,35,12,,,
+"Pull Day","10 Nov 2026, 17:00","10 Nov 2026, 17:50","","Lat Pulldown (Cable)",,"",1,normal,60,10,,,8
+"Pull Day","10 Nov 2026, 17:00","10 Nov 2026, 17:50","","Lat Pulldown (Cable)",,"",2,dropset,45,12,,,9
+"Pull Day","10 Nov 2026, 17:00","10 Nov 2026, 17:50","","Weird Unknown Row",0,"",0,failure,50,10,,,10

@@ -1,7 +1,7 @@
 import { AppContext } from "../context";
-import { sendNudgePush } from "../fcm";
+import { sendPush } from "../fcm";
 import { enforceWriteRateLimit } from "../rate";
-import { riyadhEpochDay } from "../time";
+import { isQuietHours, riyadhEpochDay } from "../time";
 import { HttpError, UserRow } from "../types";
 
 export async function handleNudge(
@@ -28,14 +28,17 @@ export async function handleNudge(
     throw new HttpError(409, "already_nudged");
   }
 
+  // Always stored (it shows in the inbox). The push is skipped when the target turned "Do your workout" messages
+  // off or during quiet hours; the sender is never told which (privacy), they just see "Sent".
   let pushed = false;
-  if (ctx.env.FCM_SA) {
-    const tokens = await ctx.store.getPushTokens(targetId);
+  if (ctx.env.FCM_SA && !isQuietHours(ctx.nowMs)) {
+    const target = await ctx.store.getUserById(targetId);
+    const tokens = target && target.pings_on === 1 ? await ctx.store.getPushTokens(targetId) : [];
     if (tokens.length > 0) {
-      pushed = await sendNudgePush({
+      pushed = await sendPush({
         fcmSaRaw: ctx.env.FCM_SA,
         tokens,
-        fromName: user.name || "ForgeQuest",
+        data: { type: "ping", fromId: user.id, name: user.username ?? "ForgeQuest" },
         store: ctx.store,
         nowSec: ctx.nowSec,
         fetchFn: ctx.fetchFn,
@@ -44,4 +47,10 @@ export async function handleNudge(
   }
 
   return { pushed };
+}
+
+export async function handleInboxSeen(ctx: AppContext, user: UserRow): Promise<{ ok: true }> {
+  await enforceWriteRateLimit(ctx.store, user.id, ctx.nowSec);
+  await ctx.store.markInboxSeen(user.id);
+  return { ok: true };
 }

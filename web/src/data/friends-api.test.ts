@@ -28,14 +28,14 @@ describe('friendsApi (contract v2 routes)', () => {
     expect(init.body).toBe(JSON.stringify({ idToken: 'id_tok' }))
   })
 
-  it('PUT /v1/me sends the full profile with username', async () => {
+  it('PUT /v1/me sends the full profile with username and optional alert flags', async () => {
     const mockFetch = vi.fn().mockImplementation(json({}))
     vi.stubGlobal('fetch', mockFetch)
-    await friendsApi.putMe('s', { name: 'Tariq', sharePhoto: false, sharePrs: true, username: 'tariq' })
+    await friendsApi.putMe('s', { sharePhoto: false, sharePrs: true, username: 'tariq', alertsOn: false })
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe(`${FRIENDS_BASE}/v1/me`)
     expect(init.method).toBe('PUT')
-    expect(JSON.parse(init.body)).toEqual({ name: 'Tariq', sharePhoto: false, sharePrs: true, username: 'tariq' })
+    expect(JSON.parse(init.body)).toEqual({ sharePhoto: false, sharePrs: true, username: 'tariq', alertsOn: false })
   })
 
   it('PUT /v1/snapshot sends contract fields only (no updatedAt)', async () => {
@@ -124,6 +124,12 @@ describe('friendsApi (contract v2 routes)', () => {
     await friendsApi.accept('s', 'f1')
     await friendsApi.decline('s', 'f2')
     await friendsApi.nudge('s', 'n1')
+    await friendsApi.getFriends('s')
+    await friendsApi.inboxSeen('s')
+    await friendsApi.setMuted('s', 'f1', true)
+    await friendsApi.setMuted('s', 'f1', false)
+    await friendsApi.putPush('s', 'fcm_tok')
+    await friendsApi.deletePush('s', 'fcm_tok')
     const calls = mockFetch.mock.calls.map(([u, i]) => `${i.method} ${String(u).slice(FRIENDS_BASE.length)}`)
     expect(calls).toEqual([
       'DELETE /v1/friends/a%2Fb%3Fc',
@@ -132,6 +138,14 @@ describe('friendsApi (contract v2 routes)', () => {
       'POST /v1/invites/f1/accept',
       'POST /v1/invites/f2/decline',
       'POST /v1/nudges/n1',
+      'GET /v1/friends?v=4',
+      'POST /v1/inbox/seen',
+      'PUT /v1/mutes/f1',
+      'DELETE /v1/mutes/f1',
+      'PUT /v1/push',
+      'DELETE /v1/push',
     ])
+    expect(JSON.parse(mockFetch.mock.calls[10][1].body)).toEqual({ token: 'fcm_tok', platform: 'web' })
+    expect(JSON.parse(mockFetch.mock.calls[11][1].body)).toEqual({ token: 'fcm_tok' })
   })
 })

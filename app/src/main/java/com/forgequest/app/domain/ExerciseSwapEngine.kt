@@ -44,18 +44,19 @@ enum class Equipment(
     // Upper cables & machines
     CABLE_MACHINE("Cable machine", "جهاز كابل", EquipmentGroup.UPPER_MACHINES),
     LAT_PULLDOWN("Lat pulldown", "سحب علوي", EquipmentGroup.UPPER_MACHINES),
-    SEATED_ROW_MACHINE("Seated row", "تجديف جالس", EquipmentGroup.UPPER_MACHINES),
+    SEATED_ROW_MACHINE("Seated row machine", "جهاز تجديف جالس", EquipmentGroup.UPPER_MACHINES),
     SMITH_MACHINE("Smith machine", "جهاز سميث", EquipmentGroup.UPPER_MACHINES),
-    CHEST_PRESS_MACHINE("Chest press", "جهاز صدر", EquipmentGroup.UPPER_MACHINES),
-    SHOULDER_PRESS_MACHINE("Shoulder press", "جهاز أكتاف", EquipmentGroup.UPPER_MACHINES),
+    CHEST_PRESS_MACHINE("Chest press machine", "جهاز ضغط صدر", EquipmentGroup.UPPER_MACHINES),
+    SHOULDER_PRESS_MACHINE("Shoulder press machine", "جهاز ضغط أكتاف", EquipmentGroup.UPPER_MACHINES),
     PEC_DECK("Pec deck", "جهاز تفتيح", EquipmentGroup.UPPER_MACHINES),
-    PREACHER_CURL_MACHINE("Preacher curl", "جهاز بايسبس", EquipmentGroup.UPPER_MACHINES),
+    PREACHER_CURL_MACHINE("Preacher curl machine", "جهاز بايسبس", EquipmentGroup.UPPER_MACHINES),
+    MACHINE("Machine", "جهاز", EquipmentGroup.UPPER_MACHINES),
 
     // Lower machines
-    LEG_PRESS("Leg press", "دفع أرجل", EquipmentGroup.LOWER_MACHINES),
-    HACK_SQUAT("Hack squat", "هاك سكوات", EquipmentGroup.LOWER_MACHINES),
-    LEG_EXTENSION("Leg extension", "مد أرجل", EquipmentGroup.LOWER_MACHINES),
-    LEG_CURL("Leg curl", "ثني أرجل", EquipmentGroup.LOWER_MACHINES),
+    LEG_PRESS("Leg press machine", "جهاز دفع أرجل", EquipmentGroup.LOWER_MACHINES),
+    HACK_SQUAT("Hack squat machine", "جهاز هاك سكوات", EquipmentGroup.LOWER_MACHINES),
+    LEG_EXTENSION("Leg extension machine", "جهاز مد أرجل", EquipmentGroup.LOWER_MACHINES),
+    LEG_CURL("Leg curl machine", "جهاز ثني أرجل", EquipmentGroup.LOWER_MACHINES),
     CALF_MACHINE("Calf machine", "جهاز بطة", EquipmentGroup.LOWER_MACHINES),
 
     // Legacy grouped values preserved for old DataStore/backup decoding; never shown in pickers.
@@ -315,21 +316,21 @@ enum class MovementPattern(val labelEn: String, val labelAr: String) {
     HORIZONTAL_PUSH("Horizontal push", "دفع أفقي"),
     DIP_PUSH("Dip / decline push", "دفع سفلي / متوازي"),
     VERTICAL_PUSH("Vertical push", "دفع علوي"),
-    LATERAL_RAISE("Shoulder abduction", "رفرفة وكتف جانبي"),
+    LATERAL_RAISE("Side shoulder raise", "رفرفة كتف جانبية"),
     VERTICAL_PULL("Vertical pull", "سحب عمودي"),
     HORIZONTAL_PULL("Horizontal row", "سحب أفقي / تجديف"),
     UPPER_BACK_PULL("Upper back / rear delt", "أعلى الظهر والكتف الخلفي"),
-    SQUAT_BILATERAL("Bilateral squat", "قرفصاء ثنائية"),
-    SQUAT_UNILATERAL("Unilateral leg / split squat", "أرجل فردية / طعن"),
-    HIP_HINGE("Hip hinge / posterior chain", "مفصل الورك / السلسلة الخلفية"),
-    KNEE_FLEXION("Knee flexion (hamstrings)", "ثني الركبة (خلفية الفخذ)"),
-    ELBOW_FLEXION("Elbow flexion (biceps)", "ثني المرفق (بايسبس)"),
-    ELBOW_EXTENSION("Elbow extension (triceps)", "مدّ المرفق (ترايسبس)"),
-    CORE_ANTI_EXTENSION("Core anti-extension hold", "ثبات الجذع ومقاومة التمدد"),
-    CORE_FLEXION_ROTATION("Core flexion / rotation", "ثني والتواء البطن"),
-    ANKLE_FLEXION("Calf / ankle flexion", "بطة وقصبة الساق"),
-    CARRY_CONDITIONING("Loaded carry / conditioning", "حمل ولياقة عامة"),
-    HIP_ADDUCTION("Hip adduction (inner thigh)", "ضمّ الورك (باطن الفخذ)"),
+    SQUAT_BILATERAL("Two-leg squat", "سكوات بكلتا الساقين"),
+    SQUAT_UNILATERAL("One-leg squat / lunge", "سكوات بساق واحدة / طعن"),
+    HIP_HINGE("Hip hinge / back of legs", "انثناء الورك / السلسلة الخلفية"),
+    KNEE_FLEXION("Leg curl (hamstrings)", "ثني الركبة (خلفية الفخذ)"),
+    ELBOW_FLEXION("Biceps curl", "ثني المرفق (بايسبس)"),
+    ELBOW_EXTENSION("Triceps extension", "مدّ المرفق (ترايسبس)"),
+    CORE_ANTI_EXTENSION("Core stability", "ثبات الجذع"),
+    CORE_FLEXION_ROTATION("Abs crunch / twist", "تمارين البطن والالتواء"),
+    ANKLE_FLEXION("Calf / ankle raise", "السمانة والكاحل"),
+    CARRY_CONDITIONING("Carry / cardio", "حمل ولياقة"),
+    HIP_ADDUCTION("Inner thigh", "باطن الفخذ"),
     MOBILITY("Stretch / mobility", "تمدد ومرونة"),
 }
 
@@ -375,11 +376,14 @@ data class BiomechanicalProfile(
     }
 }
 
+enum class SwapDifficulty { EASIER, SAME, HARDER }
+
 data class SwapCandidate(
     val exercise: ExerciseEntity,
     val profile: BiomechanicalProfile,
     val score: Int,
     val matchesUserEquipment: Boolean,
+    val difficulty: SwapDifficulty? = null,
 )
 
 object ExerciseSwapEngine {
@@ -616,7 +620,15 @@ object ExerciseSwapEngine {
     fun profileFor(ex: ExerciseEntity): BiomechanicalProfile {
         catalogProfiles[ex.id]?.let { return it }
         val lower = (ex.id + " " + ex.name).lowercase()
-        val eq = when {
+        val parsedRequires = ex.equipment.split(",")
+            .mapNotNull { token ->
+                token.trim().takeIf { it.isNotEmpty() }?.let { raw ->
+                    runCatching { Equipment.valueOf(raw.uppercase()) }.getOrNull()
+                }
+            }
+            .toSet()
+            .let(::expandLegacyEquipment)
+        val eq = parsedRequires.firstOrNull() ?: when {
             "smith" in lower -> Equipment.SMITH_MACHINE
             "pulldown" in lower && "straight" !in lower -> Equipment.LAT_PULLDOWN
             "seated" in lower && "row" in lower -> Equipment.SEATED_ROW_MACHINE
@@ -629,7 +641,8 @@ object ExerciseSwapEngine {
             "leg_extension" in lower || "leg extension" in lower -> Equipment.LEG_EXTENSION
             "leg_curl" in lower || "leg curl" in lower -> Equipment.LEG_CURL
             "calf" in lower && ("machine" in lower || "standing_calf" in lower || "seated_calf" in lower) -> Equipment.CALF_MACHINE
-            "cable" in lower || "machine" in lower || "pushdown" in lower -> Equipment.CABLE_MACHINE
+            "cable" in lower || "pushdown" in lower -> Equipment.CABLE_MACHINE
+            "machine" in lower -> Equipment.MACHINE
             "barbell" in lower || "bench_press" in lower || "back_squat" in lower || "deadlift" in lower -> Equipment.BARBELL
             "kb_" in lower || "kettlebell" in lower -> Equipment.KETTLEBELL
             "db_" in lower || "dumbbell" in lower || "curl" in lower || "lateral" in lower -> Equipment.DUMBBELLS
@@ -643,7 +656,10 @@ object ExerciseSwapEngine {
             else -> Equipment.BODYWEIGHT
         }
         val mainMuscle = ex.primary.firstOrNull()
-        val pattern = when {
+        val parsedPattern = ex.pattern.trim().takeIf { it.isNotEmpty() }?.let { raw ->
+            runCatching { MovementPattern.valueOf(raw.uppercase()) }.getOrNull()
+        }
+        val pattern = parsedPattern ?: when {
             "pike" in lower || "handstand" in lower || "overhead" in lower || "shoulder_press" in lower -> MovementPattern.VERTICAL_PUSH
             "incline" in lower && "push" in lower -> MovementPattern.HORIZONTAL_PUSH
             "dip" in lower -> MovementPattern.DIP_PUSH
@@ -684,7 +700,12 @@ object ExerciseSwapEngine {
             MovementPattern.HIP_ADDUCTION -> JointAngle.FRONTAL_ADDUCTION
             MovementPattern.MOBILITY -> JointAngle.STRETCH
         }
-        return BiomechanicalProfile(eq, pattern, angle)
+        return BiomechanicalProfile(
+            equipment = eq,
+            pattern = pattern,
+            angle = angle,
+            requires = if (parsedRequires.isNotEmpty()) parsedRequires else setOf(eq),
+        )
     }
 
     fun rankSubstitutes(
@@ -718,6 +739,7 @@ object ExerciseSwapEngine {
                     profile = candProf,
                     score = totalScore,
                     matchesUserEquipment = hasEq,
+                    difficulty = compareTier(source, candidate),
                 )
             }
             .sortedWith(
@@ -725,6 +747,45 @@ object ExerciseSwapEngine {
                     .thenByDescending { it.score }
                     .thenBy { it.exercise.name }
             )
+    }
+
+    fun compareTier(source: ExerciseEntity, candidate: ExerciseEntity): SwapDifficulty? {
+        val srcTier = ExerciseTiers.of(source) ?: return null
+        val candTier = ExerciseTiers.of(candidate) ?: return null
+        return when {
+            candTier.ordinal < srcTier.ordinal -> SwapDifficulty.EASIER
+            candTier.ordinal > srcTier.ordinal -> SwapDifficulty.HARDER
+            else -> SwapDifficulty.SAME
+        }
+    }
+
+    /**
+     * Swap-sheet ordering: within the best-match group (fits user equipment and score >= 45),
+     * keeps the top 3 similarity matches first, then surfaces same-pattern EASIER options right after
+     * them so an easier alternative is always visible without scrolling.
+     */
+    fun rankSwapSheet(
+        source: ExerciseEntity,
+        library: List<ExerciseEntity>,
+        userEquipment: Set<Equipment> = Equipment.allActive,
+        topKeep: Int = 3,
+    ): List<SwapCandidate> {
+        val srcPattern = profileFor(source).pattern
+        val ranked = rankSubstitutes(source, library, userEquipment)
+        val best = ranked.filter { it.matchesUserEquipment && it.score >= 45 }
+        val rest = ranked.filterNot { it.matchesUserEquipment && it.score >= 45 }
+        if (best.size <= topKeep) return ranked
+        val head = best.take(topKeep)
+        val headIds = head.map { it.exercise.id }.toSet()
+        val tail = best.drop(topKeep)
+        val easierSamePattern = tail.filter {
+            it.exercise.id !in headIds &&
+                it.profile.pattern == srcPattern &&
+                it.difficulty == SwapDifficulty.EASIER
+        }
+        val easierIds = easierSamePattern.map { it.exercise.id }.toSet()
+        val remainingBest = tail.filter { it.exercise.id !in easierIds }
+        return head + easierSamePattern + remainingBest + rest
     }
 
     private fun areSynergisticPatterns(a: MovementPattern, b: MovementPattern): Boolean {

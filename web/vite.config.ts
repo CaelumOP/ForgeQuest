@@ -5,11 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Which sites the app may load from or talk to. Build only: the dev server needs its own websocket.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' https://accounts.google.com/gsi/client",
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
   "img-src 'self' blob: data: https://*.googleusercontent.com",
   "font-src 'self'",
-  "connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://raw.githubusercontent.com https://forgequest-friends.forgequest-worker.workers.dev",
+  "connect-src 'self' https://world.openfoodfacts.org https://generativelanguage.googleapis.com https://api.groq.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://raw.githubusercontent.com https://forgequest-friends.forgequest-worker.workers.dev https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com",
   "frame-src https://accounts.google.com",
   "object-src 'none'",
   "base-uri 'self'",
@@ -34,7 +34,7 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: false,
       includeAssets: ['icon.svg', 'icon-180.png'],
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}'] },
+      workbox: { maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, globPatterns: ['**/*.{js,css,html,svg,png,woff2,json,wasm}'], importScripts: ['push-sw.js'] },
       manifest: {
         name: 'ForgeQuest',
         short_name: 'ForgeQuest',

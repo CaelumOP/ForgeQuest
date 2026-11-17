@@ -33,7 +33,6 @@
   "onb_web_goal_cut_desc": "تناول أقل قليلًا مع الحفاظ على عضلاتك",
   "onb_web_goal_gain_desc": "تناول أكثر قليلًا لبناء العضلات",
   "onb_web_goal_maintain_desc": "حافظ على وزنك وازدد قوة",
-  "onb_web_key_rejected": "لم يُقبل هذا المفتاح.",
   "onb_web_lang_title": "اختر لغتك",
   "onb_web_plan_selected": "محدَّدة",
   "onb_web_step": "الخطوة {1} من {2}",
@@ -55,19 +54,5 @@
   "tour_web_page": "الصفحة {1} من {2}",
   "home_center_kcal": "{1} سعرة",
   "home_good_night": "طابت ليلتك",
-  "onb_ai_body": "يعمل تصوير الوجبات والمدرب على Google Gemini. المفتاح الشخصي مجاني، وإعداده يستغرق دقيقة تقريبًا.",
-  "onb_ai_step1": "افتح Google AI Studio وسجّل الدخول بحساب Google.",
-  "onb_ai_step2": "اضغط زر «Create API key» (إنشاء مفتاح)، ثم انسخ المفتاح.",
-  "onb_ai_step3": "الصقه أدناه.",
-  "onb_ai_title": "تفعيل ميزات الذكاء الاصطناعي",
-  "onb_check_key": "التحقق من المفتاح",
-  "onb_checking": "جارٍ التحقق…",
-  "onb_get_key": "الحصول على مفتاح مجاني",
-  "onb_groq_hint": "تريد ردودًا أسرع؟ أضف مفتاح Groq مجانيًا لاحقًا من الملف الشخصي.",
-  "onb_key_check_failed": "تعذّر التحقق من المفتاح.",
-  "onb_key_label": "مفتاح Gemini API",
-  "onb_key_works": "المفتاح يعمل، وميزات الذكاء الاصطناعي جاهزة.",
-  "onb_lets_go": "لنبدأ",
-  "onb_optional": "اختياري",
-  "onb_privacy": "يبقى مفتاحك مشفّرًا على هذا الهاتف. تُرسل صور الوجبات وبيانات تمرينك إلى Google Gemini بهذا المفتاح، والمفاتيح المجانية تتيح لـ Google استخدامها لتحسين نماذجها."
+  "today_rest_week": "هذا الأسبوع: {1} من {2} أيام تمرين. التالي: {3}، {4}."
 }

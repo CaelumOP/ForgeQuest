@@ -32,9 +32,9 @@ export function toKg(unit: WeightUnit, value: number): number {
 const shown = (unit: WeightUnit, kg: number, decimals: number): number =>
   unit === 'KG' && decimals === 1 && Math.round(fromKg(unit, kg) * 100) % 10 !== 0 ? 2 : decimals
 
-/** "72.5 kg" / "160.0 lb", isolated so the number and unit keep their order in right-to-left text. */
+/** "72.5 kg" / "160 lb", isolated so the number and unit keep their order in right-to-left text. */
 export function formatWeight(unit: WeightUnit, kg: number, arabic: boolean, decimals = 1): string {
-  const text = `${fromKg(unit, kg).toFixed(shown(unit, kg, decimals))} ${unitLabel(unit, arabic)}`
+  const text = `${weightNumber(unit, kg, decimals)} ${unitLabel(unit, arabic)}`
   return arabic ? `⁧${text}⁩` : `⁦${text}⁩`
 }
 

@@ -1,6 +1,6 @@
 // Everything the Progress screen shows, computed from sessions, sets, weights and meals. Same as Android Trends.kt.
 import { weekStart } from './dates'
-import type { ExerciseEntity, ReadinessDayEntity, SessionEntity, SetEntity } from './entities'
+import type { ExerciseEntity, SessionEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
 import { recordScore } from './progress'
 import { trendStats } from './workout-score'
@@ -175,7 +175,7 @@ export const PLATEAU_WINDOW_DAYS = 42
  *    neither the earlier best set nor the earlier best total (trendStats, rule A1). Unweighted holds and jumping jacks
  *    are left out.
  * 2. Deload triggers: this week's sets >= 135 % of the busiest active week (6+ sets) among the previous 4
- *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger), >= 3 of the last 5 readiness days below 45 % recovery,
+ *    (with >= 18 sets; fewer than 2 active weeks, no volume trigger),
  *    or >= 2 stalled lifts at normal or higher load.
  */
 export function analyzeFatigueAndPlateaus(
@@ -183,7 +183,6 @@ export function analyzeFatigueAndPlateaus(
   doneSets: readonly SetEntity[],
   exercises: ReadonlyMap<string, ExerciseEntity>,
   today: number,
-  readinessDays: readonly ReadinessDayEntity[] = [],
 ): FatigueAndPlateauReport {
   const sessionDay = new Map(sessions.map((s) => [s.id, s.epochDay]))
   // Rolling 7-day windows, not calendar weeks: on a Monday the calendar week has 0 sets and the check went blind.
@@ -235,11 +234,6 @@ export function analyzeFatigueAndPlateaus(
   const reasons: string[] = []
   if (activePct != null && activePct >= 135 && currentWeekSets >= 18) {
     reasons.push(`acute weekly volume is ${loadPct}% of your 4-week average (${currentWeekSets} sets)`)
-  }
-  const recentReadiness = readinessDays.filter((r) => r.epochDay >= today - 4 && r.epochDay <= today)
-  const lowRecoveryDays = recentReadiness.filter((r) => r.recovery >= 1 && r.recovery <= 44).length
-  if (lowRecoveryDays >= 3) {
-    reasons.push(`recovery has been below 45% on ${lowRecoveryDays} of the last ${recentReadiness.length} days`)
   }
   if (stalled.length >= 2 && loadPct >= 95) {
     reasons.push(`${stalled.length} lifts have plateaued for 3+ weeks (${stalled.slice(0, 3).map((s) => s.exerciseName).join(', ')})`)

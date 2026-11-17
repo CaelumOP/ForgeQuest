@@ -5,8 +5,9 @@ import { getSession, useWorkoutScore } from '../../data/workouts'
 import { useSettings, weightUnit } from '../../data/settings'
 import { deleteFinishedSet, deleteSession, moveSession, updateFinishedSet, useLibrary, useSession, useSets } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
+import { isExtraBlock } from '../../domain/volume-change'
 import { fromKg, loadStep, toKg, unitLabel } from '../../domain/units'
-import { Button, Card, Dialog, EmptyState, IconButton, ListRow, Sheet, Stepper, TextField } from '../kit'
+import { Button, Card, Chip, Dialog, EmptyState, IconButton, ListRow, Sheet, Stepper, TextField } from '../kit'
 import { CloseIcon, MoreIcon } from '../icons'
 import { musclesLabel } from '../workouts/helpers'
 import { dayOfIso, isoOfDay, minutesOf } from './helpers'
@@ -86,12 +87,20 @@ export function SessionScreen({ param }: { param?: string }) {
   const groups = [...groupMap.entries()].sort((a, b) => a[0] - b[0]).map(([, g]) => g.sort((a, b) => a.setIndex - b.setIndex))
   const today = todayEpochDay()
 
+  const workingCount = sets.filter((s) => !isExtraBlock(s.block)).length
+  const quickTags: [string, string][] = [
+    [t('live_tag_easy'), t('live_tag_easy')],
+    [t('live_tag_solid'), t('live_tag_solid')],
+    [t('live_tag_max'), t('live_tag_max_note')],
+    [t('live_tag_joint'), t('live_tag_joint_note')],
+  ]
+
   return (
     <div class="content">
       <div class="hs-toolbar">
         <div class="hs-toolbar-text">
           <h2 class="hs-title">{session.title}</h2>
-          <p class="hs-sub">{[date, mins != null ? t('hist_minutes', mins) : null, plural('hist_sets', sets.length)].filter(Boolean).join(' · ')}</p>
+          <p class="hs-sub">{[date, mins != null ? t('hist_minutes', mins) : null, plural('hist_sets', workingCount)].filter(Boolean).join(' · ')}</p>
         </div>
         <IconButton label={t('cd_more')} onClick={() => setMenu(true)}><MoreIcon /></IconButton>
       </div>
@@ -138,6 +147,28 @@ export function SessionScreen({ param }: { param?: string }) {
 
       <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={t('live_note_title')}>
         <div class="hs-sheet">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {quickTags.map(([chipLabel, tagValue]) => {
+              const active = noteText.toLowerCase().includes(tagValue.toLowerCase())
+              return (
+                <Chip
+                  key={chipLabel}
+                  label={chipLabel}
+                  selected={active}
+                  onClick={() => {
+                    if (active) {
+                      const escaped = tagValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                      setNoteText(noteText.replace(new RegExp(escaped, 'gi'), '').replace(/^[\s·,]+|[\s·,]+$/g, ''))
+                    } else if (!noteText.trim()) {
+                      setNoteText(tagValue)
+                    } else {
+                      setNoteText(`${tagValue} · ${noteText}`.slice(0, 120))
+                    }
+                  }}
+                />
+              )
+            })}
+          </div>
           <TextField label={t('live_note_title')} value={noteText} onInput={(v) => setNoteText(v.slice(0, 120))} placeholder={t('live_note_hint')} />
           <Button onClick={() => { if (noteFor) void updateFinishedSet({ ...noteFor, note: noteText.trim().slice(0, 120) }); setNoteFor(null) }}>{t('action_save')}</Button>
         </div>

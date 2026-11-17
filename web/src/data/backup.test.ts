@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import fixtureText from './fixtures/android-backup.json?raw';
+import fixture41 from './fixtures/backup-4.1.json?raw';
 import { db, putSession, putSet } from './db';
 import {
   applyBackup, BackupUnreadableError, buildBackup, decodeBackup, encodeBackup, listSafetyCopies,
@@ -19,12 +20,39 @@ beforeEach(async () => {
 });
 
 describe('backup', () => {
+  it('restores populated 4.1 fields and re-exports them through the database', async () => {
+    const input = decodeBackup(fixture41);
+    await applyBackup(input);
+    const output = decodeBackup(encodeBackup(await buildBackup()));
+    expect({ ...output, createdAt: input.createdAt }).toEqual(input);
+    expect(await db.bodyMeasurements.toArray()).toEqual(input.bodyMeasurements);
+    expect((await db.sessions.get(2))?.finishedAt).toBeNull();
+  });
+
+  it('retains a safety copy when measurements are the only user data', async () => {
+    await db.bodyMeasurements.add({ epochDay: 1, metric: 'WAIST', valueCm: 80, loggedAt: 1 });
+    await applyBackup(decodeBackup(fixtureText));
+    expect(decodeBackup((await listSafetyCopies())[0].json).bodyMeasurements).toHaveLength(1);
+    expect(await db.bodyMeasurements.count()).toBe(0);
+  });
+
+  it('fills 4.0 defaults on restore and direct legacy row reads', async () => {
+    await applyBackup(decodeBackup(fixtureText));
+    expect((await db.exercises.get('bench_press'))?.unitOverride).toBe('');
+    expect((await db.plans.get(1))?.scheduleMode).toBe('WEEKDAY');
+    expect((await db.planItems.get(1))?.supersetGroup).toBeNull();
+    const legacy = JSON.parse(fixtureText);
+    await db.sets.put(legacy.sets[0]);
+    expect((await db.sets.get(1))?.setType).toBe('WORKING');
+    expect((await db.sets.toCollection().raw().first())?.setType).toBeUndefined();
+    expect((await buildBackup()).bodyMeasurements).toEqual([]);
+  });
   it('round-trips the Android fixture unchanged except createdAt', async () => {
     const settings = await applyBackup(decodeBackup(fixtureText));
     const text = encodeBackup(await buildBackup(settings));
     const again = JSON.parse(text) as Record<string, unknown>;
-    expect(withoutCreatedAt(again)).toEqual(withoutCreatedAt(fixture()));
-    expect(Object.keys(again)).toEqual(Object.keys(fixture()));
+    expect(withoutCreatedAt(again)).toEqual(withoutCreatedAt(JSON.parse(encodeBackup(decodeBackup(fixtureText)))));
+    expect(Object.keys(again)).toEqual(Object.keys(JSON.parse(encodeBackup(decodeBackup(fixtureText)))));
     expect(typeof again.createdAt).toBe('number');
     expect(decodeBackup(text).version).toBe(2);
   });

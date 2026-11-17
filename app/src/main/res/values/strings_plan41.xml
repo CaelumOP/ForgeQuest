@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan41_schedule_mode">Schedule</string>
+    <string name="plan41_mode_weekday">Weekdays</string>
+    <string name="plan41_mode_rotation">Rotation</string>
+    <string name="plan41_schedule_weekday_hint">Each workout stays on its assigned weekday.</string>
+    <string name="plan41_schedule_rotation_hint">Advances to the next workout whenever you finish one.</string>
+    <string name="plan41_rotation_next">Next in rotation: %1$s</string>
+    <string name="plan41_rotation_tag">Next in rotation</string>
+    <string name="plan41_missed_yesterday">Missed yesterday: %1$s</string>
+    <string name="plan41_do_missed_today">Do it today</string>
+
+    <string name="plan41_pair_next">Pair with next (Superset)</string>
+    <string name="plan41_pair_hint_ready">Alternate sets with %1$s.</string>
+    <string name="plan41_pair_hint_active">Paired as superset with %1$s.</string>
+    <string name="plan41_pair_hint_prev">Already paired with %1$s.</string>
+    <string name="plan41_pair_hint_sets">Set count must match %1$s (%2$d sets).</string>
+    <string name="plan41_superset_tag">Superset</string>
+
+    <string name="plan41_auto_warmup">Auto warm-up sets</string>
+    <string name="plan41_auto_warmup_hint">Adds 2–3 ramp sets (50% / 70% / 85%) before set 1.</string>
+    <string name="plan41_auto_warmup_tag">Warm-up ramp</string>
+
+    <string name="plan41_prog_mode">Progression</string>
+    <string name="plan41_prog_double">Double</string>
+    <string name="plan41_prog_linear">Linear</string>
+    <string name="plan41_prog_maintain">Maintain</string>
+    <string name="plan41_prog_double_hint">Climb reps to the top of the range, then add weight.</string>
+    <string name="plan41_prog_linear_hint">Add 2.5 kg upper / 5 kg lower after every clean workout.</string>
+    <string name="plan41_prog_maintain_hint">Keep your current weights and reps steady.</string>
+
+    <string name="plan41_weekly_volume">Weekly working sets (est.)</string>
+    <string name="plan41_muscle_sets_item">%1$s %2$d</string>
+    <plurals name="plan41_days_per_week">
+        <item quantity="one">%1$d day/wk</item>
+        <item quantity="other">%1$d days/wk</item>
+    </plurals>
+
+    <string name="plan41_share_plan">Share plan</string>
+    <string name="plan41_share_plan_info">Copy or send this plan as validated JSON.</string>
+    <string name="plan41_copy_json">Copy plan JSON</string>
+    <string name="plan41_send_share">Share via…</string>
+    <string name="plan41_copied">Plan copied to clipboard</string>
+    <string name="plan41_import_plan">Import shared plan</string>
+    <string name="plan41_import_plan_info">Paste a shared ForgeQuest plan. Existing plans stay saved.</string>
+    <string name="plan41_import_hint">Paste shared plan JSON here</string>
+    <string name="plan41_import_preview">Preview import</string>
+    <string name="plan41_import_confirm">Import as new plan</string>
+    <string name="plan41_import_safe_note">Saved as a new plan. Your existing plans remain untouched.</string>
+    <string name="plan41_import_custom_note">Adds %1$d custom exercise(s): %2$s</string>
+    <string name="plan41_import_error">Could not read that plan: %1$s</string>
+    <string name="plan_ready_made">Switch to a ready-made plan</string>
+    <string name="plan_ready_made_info">Plans that come with the app, from beginner to advanced. Picking one replaces your current plan; the old one stays under Previous plans.</string>
+</resources>

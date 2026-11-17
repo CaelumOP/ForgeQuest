@@ -7,8 +7,9 @@ import {
 import type { WeightUnit } from '../../domain/units'
 import { unitCode } from '../../domain/units'
 import type { BodyType } from '../../data/settings'
+import type { Experience } from '../../domain/plan-builder'
 
-export const LAST_STEP = 3 // language, name, plan (equipment + days), key
+export const LAST_STEP = 2 // language, name, plan (equipment + days)
 export const DAY_OPTIONS = [2, 3, 4, 5] as const
 export const DEFAULT_DAYS = 3
 
@@ -33,6 +34,8 @@ export type OnbState = {
   gainPace: GainPace
   planIndex: number
   preset: EquipmentPreset
+  experience: Experience
+  builtForMe: boolean
 }
 
 /**
@@ -49,6 +52,7 @@ export const initialState = (): OnbState => ({
   step: 0, name: '', bodyType: 'MALE', daysPerWeek: DEFAULT_DAYS, justLog: false, weightKg: 75, unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
   goalsTouched: false, goal: 'MAINTAIN', dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD',
   planIndex: planForDays(DEFAULT_DAYS, 'CALISTHENICS_PARK'), preset: 'CALISTHENICS_PARK',
+  experience: 'SOME', builtForMe: true,
 })
 
 /** The equipment to show after picking starter plan [index]: the gym split needs a gym, the dumbbell plan dumbbells. */
@@ -79,8 +83,8 @@ export function withSuggestions(s: OnbState): OnbState {
 export const setWeight = (s: OnbState, kg: number): OnbState =>
   withSuggestions({ ...s, weightKg: Math.min(250, Math.max(30, kg)) })
 
-/** Settings written when onboarding finishes. The key is only kept when it was checked and works. */
-export function settingsPatch(s: OnbState, key: string | null): (c: Settings) => Settings {
+/** Settings written when onboarding finishes. */
+export function settingsPatch(s: OnbState): (c: Settings) => Settings {
   return (c) => ({
     ...c,
     onboarded: true,
@@ -91,7 +95,6 @@ export function settingsPatch(s: OnbState, key: string | null): (c: Settings) =>
     justLog: s.justLog,
     // a new person starts on the new suggestion, so the one-time "more accurate target" card never shows
     calorieV2Seen: true,
-    apiKey: key ?? c.apiKey,
   })
 }
 

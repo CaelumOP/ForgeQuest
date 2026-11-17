@@ -4,17 +4,20 @@ import { todayEpochDay } from '../../domain/dates'
 import { scaledKcal } from '../../domain/nutrition'
 import type { FoodCategory } from '../../data/db'
 import { AiError, aiErrorKey } from '../../data/ai'
-import { categoryForNow, logOnce, placesOf, saveMeal, useFoods, withParts } from '../../data/food'
+import { categoryForNow, logFoods, logOnce, placesOf, saveFood, saveMeal, useFoods, withParts } from '../../data/food'
 import type { FoodPart } from '../../data/db'
 import { PlaceField } from './FoodParts'
-import { useSettings } from '../../data/settings'
+import { PasteMealSheet } from './PasteMealSheet'
+import { isAiOn, useSettings } from '../../data/settings'
 import { CameraIcon, CheckIcon, PhotoLibraryIcon } from '../icons'
-import { Button, Card, ChipGroup, NumberField, Sheet, toast } from '../kit'
+import { Button, Card, ChipGroup, NumberField, Sheet, TextField, toast } from '../kit'
 import { goBack } from '../nav'
 import { TopBar } from '../TopBar'
 import { buzzError } from '../live/feedback'
 import { badgeSuffix, catLabel } from './FoodScreen'
-import { COOKING_FATS, PORTIONS, scanMeal, scanTotals, shrinkPhoto, withGrams, type FoodScan, type ScanItem } from './scan'
+import { cacheBarcodeProduct } from '../../data/food'
+import type { BarcodeProduct } from './barcode'
+import { COOKING_FATS, PORTIONS, readNutritionLabel, scanMeal, scanTotals, shrinkPhoto, withGrams, type FoodScan, type ScanItem } from './scan'
 import './food.css'
 
 const SCAN_LIMIT_MS = 25_000
@@ -26,6 +29,7 @@ type State =
   | { kind: 'pick' }
   | { kind: 'busy'; photo: Photo | null }
   | { kind: 'result'; photo: Photo; scan: FoodScan }
+  | { kind: 'label'; photo: Photo; product: BarcodeProduct }
   | { kind: 'failed'; photo: Photo | null; message: string; keyProblem: boolean }
 
 function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -135,7 +139,86 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
   )
 }
 
-export function ScanScreen(_: { param?: string }) {
+function LabelResult({ product, barcode, carbsOn, onRetake, onLogged }: {
+  product: BarcodeProduct; barcode: string; carbsOn: boolean; onRetake: () => void; onLogged: () => void
+}) {
+  const [name, setName] = useState(product.name || t('barcode_unnamed', barcode))
+  const [kcal, setKcal] = useState<number | null>(product.kcal)
+  const [protein, setProtein] = useState<number | null>(product.protein)
+  const [carbs, setCarbs] = useState<number | null>(product.carbs)
+  const [serving, setServing] = useState(product.serving)
+  const [cat, setCat] = useState<FoodCategory>(categoryForNow())
+  const [save, setSave] = useState(true)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async () => {
+    if (busy || !name.trim() || kcal == null) return
+    setBusy(true)
+    const cleanName = name.trim().slice(0, 48)
+    const cleanKcal = Math.max(0, Math.round(kcal))
+    const cleanProt = Math.max(0, protein ?? 0)
+    const cleanCarbs = Math.max(0, carbs ?? 0)
+    const cleanServing = serving.trim().slice(0, 32) || '100 g'
+    try {
+      await cacheBarcodeProduct({
+        code: barcode,
+        name: cleanName,
+        brand: '',
+        kcal: cleanKcal,
+        protein: cleanProt,
+        carbs: cleanCarbs,
+        serving: cleanServing,
+      })
+      if (save) {
+        const food = {
+          name: cleanName,
+          category: cat,
+          kcal: cleanKcal,
+          protein: cleanProt,
+          carbs: cleanCarbs,
+          serving: cleanServing,
+          photoPath: null,
+          pinned: false,
+          createdAt: Date.now(),
+          barcode,
+        }
+        const id = await saveFood(food)
+        await logFoods([{ food: { ...food, id }, qty: 1, category: cat, name: cleanName }], todayEpochDay())
+      } else {
+        await logOnce(cleanName, cat, cleanKcal, cleanProt, todayEpochDay(), cleanCarbs, true)
+      }
+      toast(t('food_logged_name', cleanName) + (await badgeSuffix()))
+      onLogged()
+    } catch {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <TextField label={t('label_name')} value={name} onInput={(v) => setName(v.slice(0, 48))} />
+      <div class="food-two">
+        <NumberField label={t('home_legend_calories')} value={kcal} onChange={setKcal} min={0} max={99999} />
+        <NumberField label={t('home_legend_protein')} value={protein} onChange={setProtein} min={0} max={9999} decimal />
+      </div>
+      {carbsOn && <NumberField label={t('label_carbs_g')} value={carbs} onChange={setCarbs} min={0} max={9999} decimal />}
+      <TextField label={t('food_serving_hint')} value={serving} onInput={(v) => setServing(v.slice(0, 32))} />
+      <p class="scan-label">{t('scan_meal')}</p>
+      <ChipGroup label={t('scan_meal')} value={cat} onChange={setCat} options={CATS.map((c) => ({ value: c, label: catLabel(c) }))} />
+      <div class="food-switch-row">
+        <span><span>{t('scan_save_to_foods')}</span><br /><span class="food-note">{t('scan_save_hint')}</span></span>
+        <Switch on={save} onChange={setSave} label={t('scan_save_to_foods')} />
+      </div>
+      <div class="scan-actions">
+        <Button variant="tonal" onClick={onRetake}>{t('scan_retake')}</Button>
+        <Button disabled={!name.trim() || kcal == null || busy} loading={busy} onClick={() => void submit()}>{t('food_w_barcode_label_save_log')}</Button>
+      </div>
+    </>
+  )
+}
+
+export function ScanScreen({ param }: { param?: string }) {
+  const labelCode = param?.startsWith('label/') ? param.slice(6).trim() : null
   const s = useSettings()
   const [state, setState] = useState<State>({ kind: 'pick' })
   const [step, setStep] = useState(0)
@@ -144,7 +227,8 @@ export function ScanScreen(_: { param?: string }) {
   const camera = useRef<HTMLInputElement>(null)
   const gallery = useRef<HTMLInputElement>(null)
   const runId = useRef(0)
-  const hasKey = s.apiKey.trim() !== ''
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const hasKey = isAiOn(s) && s.apiKey.trim() !== ''
 
   const drop = () => {
     abortRef.current?.abort()
@@ -169,12 +253,23 @@ export function ScanScreen(_: { param?: string }) {
     const timer = setTimeout(() => { slow = true; ctl.abort() }, SCAN_LIMIT_MS)
     setState({ kind: 'busy', photo })
     try {
-      const scan = await scanMeal(photo.base64, ctl.signal)
-      if (me === runId.current) setState({ kind: 'result', photo, scan })
+      if (labelCode) {
+        const product = await readNutritionLabel(photo.base64, labelCode, ctl.signal)
+        if (me === runId.current) setState({ kind: 'label', photo, product })
+      } else {
+        const scan = await scanMeal(photo.base64, ctl.signal)
+        if (me === runId.current) setState({ kind: 'result', photo, scan })
+      }
     } catch (e) {
       if (me !== runId.current) return
       buzzError()
-      const { key, args } = slow ? { key: 'scan_err_slow', args: [] } : e instanceof AiError ? aiErrorKey(e) : { key: 'scan_err_generic', args: [] }
+      const { key, args } = slow
+        ? { key: 'scan_err_slow', args: [] }
+        : e instanceof AiError
+          ? labelCode && e.kind === 'unreadable'
+            ? { key: 'barcode_err_label', args: [] }
+            : aiErrorKey(e)
+          : { key: 'scan_err_generic', args: [] }
       setState({ kind: 'failed', photo, message: t(key, ...args), keyProblem: e instanceof AiError && (e.kind === 'bad_key' || e.kind === 'no_key') })
     } finally { clearTimeout(timer) }
   }
@@ -201,7 +296,7 @@ export function ScanScreen(_: { param?: string }) {
 
   return (
     <>
-      <TopBar title={t('food_scan_meal')} onBack={goBack} />
+      <TopBar title={labelCode ? t('barcode_label_photo') : t('food_scan_meal')} onBack={goBack} />
       <div class="scroll">
         <div class="content scan">
           <input ref={camera} class="scan-file" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={onFile} />
@@ -210,16 +305,20 @@ export function ScanScreen(_: { param?: string }) {
 
           {state.kind === 'pick' && (hasKey ? (
             <div class="scan-start">
-              <p>{t('scan_frame_hint')}</p>
+              <p>{labelCode ? t('barcode_label_hint') : t('scan_frame_hint')}</p>
               <Button icon={<CameraIcon size={20} />} onClick={() => camera.current?.click()}>{t('food_w_take_photo')}</Button>
               <Button variant="tonal" icon={<PhotoLibraryIcon size={20} />} onClick={() => gallery.current?.click()}>{t('photo_choose_gallery')}</Button>
+              {!labelCode && <Button variant="text" onClick={() => setPasteOpen(true)}>{t('food_paste_meal')}</Button>}
               <p>{t('food_w_scan_privacy')}</p>
             </div>
           ) : (
             <Card>
               <div class="scan-nokey">
                 <p>{t('ai_key_needed_food')}</p>
-                <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>
+                <div class="scan-actions">
+                  {!labelCode && <Button variant="tonal" onClick={() => setPasteOpen(true)}>{t('food_paste_meal')}</Button>}
+                  <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>
+                </div>
               </div>
             </Card>
           ))}
@@ -227,14 +326,14 @@ export function ScanScreen(_: { param?: string }) {
           {state.kind === 'busy' && (
             <div class="scan-busy" role="status" aria-live="polite">
               <span class="kit-morph kit-morph-teal" aria-hidden="true" />
-              <span>{t(STEPS[step])}</span>
+              <span>{labelCode ? t('barcode_reading') : t(STEPS[step])}</span>
             </div>
           )}
 
           {state.kind === 'failed' && (
             <Card>
               <div class="scan-fail">
-                <h2>{t('scan_failed_title')}</h2>
+                <h2>{labelCode ? t('barcode_label_failed') : t('scan_failed_title')}</h2>
                 <p role="alert">{state.message}</p>
                 <div class="scan-actions">
                   <Button variant="tonal" onClick={retake}>{t('scan_retake')}</Button>
@@ -247,6 +346,10 @@ export function ScanScreen(_: { param?: string }) {
           )}
 
           {state.kind === 'result' && <Result scan={state.scan} carbsOn={s.trackCarbs} onRetake={retake} onLogged={goBack} />}
+          {state.kind === 'label' && labelCode && (
+            <LabelResult product={state.product} barcode={labelCode} carbsOn={s.trackCarbs} onRetake={retake} onLogged={goBack} />
+          )}
+          <PasteMealSheet open={pasteOpen} onClose={() => setPasteOpen(false)} onParsed={(scan) => { setPasteOpen(false); setState({ kind: 'result', photo: { url: '', base64: '' }, scan }) }} />
         </div>
       </div>
     </>

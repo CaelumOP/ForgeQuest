@@ -38,13 +38,25 @@ class FriendsApi(
 
     suspend fun me(): Me = get("/v1/me", Me.serializer())
 
-    /** PUT /v1/me. [username] is required on first join; null keeps the current one. */
-    suspend fun putMe(name: String, sharePhoto: Boolean, sharePrs: Boolean, username: String? = null): Me {
+    /**
+     * PUT /v1/me (contract v4: no display name). [username] is required on first join; null keeps the current one.
+     * The v4 flags are sent only when non-null (omitted = the server keeps the stored value).
+     */
+    suspend fun putMe(
+        sharePhoto: Boolean,
+        sharePrs: Boolean,
+        username: String? = null,
+        alertsOn: Boolean? = null,
+        shareWorkouts: Boolean? = null,
+        pingsOn: Boolean? = null,
+    ): Me {
         val body = buildJsonObject {
-            put("name", name)
             put("sharePhoto", sharePhoto)
             put("sharePrs", sharePrs)
             if (username != null) put("username", username)
+            if (alertsOn != null) put("alertsOn", alertsOn)
+            if (shareWorkouts != null) put("shareWorkouts", shareWorkouts)
+            if (pingsOn != null) put("pingsOn", pingsOn)
         }
         return put("/v1/me", body, Me.serializer())
     }
@@ -54,7 +66,18 @@ class FriendsApi(
         call("PUT", "/v1/snapshot", jsonBody(payload.toString()), auth = true)
     }
 
-    suspend fun friends(): FriendsView = get("/v1/friends", FriendsView.serializer())
+    suspend fun friends(): FriendsView = get("/v1/friends?v=4", FriendsView.serializer())
+
+    /** POST /v1/inbox/seen: marks every "Do your workout" message to me as seen. */
+    suspend fun inboxSeen() {
+        call("POST", "/v1/inbox/seen", EMPTY_BODY, auth = true)
+    }
+
+    /** PUT/DELETE /v1/mutes/{id}: silence (or restore) one friend's workout alerts. */
+    suspend fun setMuted(id: String, muted: Boolean) {
+        if (muted) call("PUT", "/v1/mutes/${enc(id)}", EMPTY_BODY, auth = true)
+        else call("DELETE", "/v1/mutes/${enc(id)}", null, auth = true)
+    }
 
     suspend fun invite(username: String): InviteResult =
         post("/v1/invites", buildJsonObject { put("username", username) }, InviteResult.serializer())

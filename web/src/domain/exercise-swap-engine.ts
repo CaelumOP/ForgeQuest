@@ -1,6 +1,7 @@
 // Equipment, biomechanical profiles and exercise substitution: same as Android ExerciseSwapEngine.kt.
 import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity, PlanDraftDay, PlanDraftItem, PlanItemEntity } from './entities'
+import { tierOf } from './exercise-tiers'
 import { isExerciseKind, isMuscle, type ExerciseKind } from './muscle'
 
 const f = Math.fround
@@ -33,7 +34,7 @@ export const EQUIPMENT = [
   'PULL_UP_BAR', 'DIP_STATION', 'LOW_BAR',
   // Upper cables & machines
   'CABLE_MACHINE', 'LAT_PULLDOWN', 'SEATED_ROW_MACHINE', 'SMITH_MACHINE',
-  'CHEST_PRESS_MACHINE', 'SHOULDER_PRESS_MACHINE', 'PEC_DECK', 'PREACHER_CURL_MACHINE',
+  'CHEST_PRESS_MACHINE', 'SHOULDER_PRESS_MACHINE', 'PEC_DECK', 'PREACHER_CURL_MACHINE', 'MACHINE',
   // Lower machines
   'LEG_PRESS', 'HACK_SQUAT', 'LEG_EXTENSION', 'LEG_CURL', 'CALF_MACHINE',
   // Legacy grouped values preserved for old DataStore/Dexie/backup decoding; never shown in pickers.
@@ -63,16 +64,17 @@ export const EQUIPMENT_META: Record<Equipment, EquipmentMeta> = {
   LOW_BAR: { en: 'Low bar', ar: 'بار منخفض', group: 'BARS' },
   CABLE_MACHINE: { en: 'Cable machine', ar: 'جهاز كابل', group: 'UPPER_MACHINES' },
   LAT_PULLDOWN: { en: 'Lat pulldown', ar: 'سحب علوي', group: 'UPPER_MACHINES' },
-  SEATED_ROW_MACHINE: { en: 'Seated row', ar: 'تجديف جالس', group: 'UPPER_MACHINES' },
+  SEATED_ROW_MACHINE: { en: 'Seated row machine', ar: 'جهاز تجديف جالس', group: 'UPPER_MACHINES' },
   SMITH_MACHINE: { en: 'Smith machine', ar: 'جهاز سميث', group: 'UPPER_MACHINES' },
-  CHEST_PRESS_MACHINE: { en: 'Chest press', ar: 'جهاز صدر', group: 'UPPER_MACHINES' },
-  SHOULDER_PRESS_MACHINE: { en: 'Shoulder press', ar: 'جهاز أكتاف', group: 'UPPER_MACHINES' },
+  CHEST_PRESS_MACHINE: { en: 'Chest press machine', ar: 'جهاز ضغط صدر', group: 'UPPER_MACHINES' },
+  SHOULDER_PRESS_MACHINE: { en: 'Shoulder press machine', ar: 'جهاز ضغط أكتاف', group: 'UPPER_MACHINES' },
   PEC_DECK: { en: 'Pec deck', ar: 'جهاز تفتيح', group: 'UPPER_MACHINES' },
-  PREACHER_CURL_MACHINE: { en: 'Preacher curl', ar: 'جهاز بايسبس', group: 'UPPER_MACHINES' },
-  LEG_PRESS: { en: 'Leg press', ar: 'دفع أرجل', group: 'LOWER_MACHINES' },
-  HACK_SQUAT: { en: 'Hack squat', ar: 'هاك سكوات', group: 'LOWER_MACHINES' },
-  LEG_EXTENSION: { en: 'Leg extension', ar: 'مد أرجل', group: 'LOWER_MACHINES' },
-  LEG_CURL: { en: 'Leg curl', ar: 'ثني أرجل', group: 'LOWER_MACHINES' },
+  PREACHER_CURL_MACHINE: { en: 'Preacher curl machine', ar: 'جهاز بايسبس', group: 'UPPER_MACHINES' },
+  MACHINE: { en: 'Machine', ar: 'جهاز', group: 'UPPER_MACHINES' },
+  LEG_PRESS: { en: 'Leg press machine', ar: 'جهاز دفع أرجل', group: 'LOWER_MACHINES' },
+  HACK_SQUAT: { en: 'Hack squat machine', ar: 'جهاز هاك سكوات', group: 'LOWER_MACHINES' },
+  LEG_EXTENSION: { en: 'Leg extension machine', ar: 'جهاز مد أرجل', group: 'LOWER_MACHINES' },
+  LEG_CURL: { en: 'Leg curl machine', ar: 'جهاز ثني أرجل', group: 'LOWER_MACHINES' },
   CALF_MACHINE: { en: 'Calf machine', ar: 'جهاز بطة', group: 'LOWER_MACHINES' },
   DIP_BARS_OR_BENCH: { en: 'Dip bars / rings / bench', ar: 'متوازي أو حلقات أو مقعد', group: null, legacy: true },
   BARBELL_RACK: { en: 'Barbell & rack', ar: 'بار وراك', group: null, legacy: true },
@@ -347,11 +349,14 @@ export function profileFits(profile: BiomechanicalProfile, available: ReadonlySe
   return req.every((r) => available.has(r) || (r === 'FLAT_BENCH' && available.has('ADJ_BENCH')))
 }
 
+export type SwapDifficulty = 'EASIER' | 'SAME' | 'HARDER'
+
 export type SwapCandidate = {
   exercise: ExerciseEntity
   profile: BiomechanicalProfile
   score: number
   matchesUserEquipment: boolean
+  difficulty?: SwapDifficulty | null
 }
 
 const prof = (equipment: Equipment, pattern: MovementPattern, angle: JointAngle, ...preferredSwaps: string[]): BiomechanicalProfile =>
@@ -576,7 +581,13 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
   if (known) return known
   const lower = (ex.id + ' ' + ex.name).toLowerCase()
   const has = (...parts: string[]) => parts.some((p) => lower.includes(p))
+  const rawRequires = (ex.equipment ?? '')
+    .split(',')
+    .map((t) => t.trim().toUpperCase())
+    .filter((t): t is Equipment => t.length > 0 && t in EQUIPMENT_META)
+  const parsedRequires = rawRequires.length > 0 ? [...expandLegacyEquipment(rawRequires)] : []
   const eq: Equipment =
+    parsedRequires[0] ?? (
     has('smith') ? 'SMITH_MACHINE'
     : has('pulldown') && !has('straight') ? 'LAT_PULLDOWN'
     : has('seated') && has('row') ? 'SEATED_ROW_MACHINE'
@@ -589,7 +600,8 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     : has('leg_extension', 'leg extension') ? 'LEG_EXTENSION'
     : has('leg_curl', 'leg curl') ? 'LEG_CURL'
     : has('calf') && has('machine', 'standing_calf', 'seated_calf') ? 'CALF_MACHINE'
-    : has('cable', 'machine', 'pushdown') ? 'CABLE_MACHINE'
+    : has('cable', 'pushdown') ? 'CABLE_MACHINE'
+    : has('machine') ? 'MACHINE'
     : has('barbell', 'bench_press', 'back_squat', 'deadlift') ? 'BARBELL'
     : has('kb_', 'kettlebell') ? 'KETTLEBELL'
     : has('db_', 'dumbbell', 'curl', 'lateral') ? 'DUMBBELLS'
@@ -600,9 +612,10 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     : has('bench', 'split') ? 'FLAT_BENCH'
     : has('row') ? 'SEATED_ROW_MACHINE'
     : ex.kind === 'WEIGHTED' ? 'DUMBBELLS'
-    : 'BODYWEIGHT'
+    : 'BODYWEIGHT')
   const main = ex.primary[0]
-  const pattern: MovementPattern =
+  const rawPattern = ex.pattern?.trim().toUpperCase()
+  const inferredPattern: MovementPattern =
     has('pike', 'handstand', 'overhead', 'shoulder_press') ? 'VERTICAL_PUSH'
     : has('incline') && has('push') ? 'HORIZONTAL_PUSH'
     : has('dip') ? 'DIP_PUSH'
@@ -642,7 +655,15 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
     HIP_ADDUCTION: 'FRONTAL_ADDUCTION',
     MOBILITY: 'STRETCH',
   }
-  return { equipment: eq, pattern, angle: angle[pattern], preferredSwaps: [], requires: [eq] }
+  const pattern: MovementPattern =
+    rawPattern && rawPattern in angle ? (rawPattern as MovementPattern) : inferredPattern
+  return {
+    equipment: eq,
+    pattern,
+    angle: angle[pattern],
+    preferredSwaps: [],
+    requires: parsedRequires.length > 0 ? parsedRequires : [eq],
+  }
 }
 
 const SYNERGISTIC: ReadonlyArray<readonly [MovementPattern, MovementPattern]> = [
@@ -700,11 +721,50 @@ export function rankSubstitutes(
         profile: cand,
         score: patternPts + anglePts + primaryPts + secondaryPts + kindPts + curatedBonus,
         matchesUserEquipment: profileFits(cand, effective),
+        difficulty: compareSwapTier(source, candidate),
       }
     })
   const good = (c: SwapCandidate) => (c.matchesUserEquipment && c.score >= 45 ? 1 : 0)
   return ranked.sort((a, b) =>
     good(b) - good(a) || b.score - a.score || (a.exercise.name < b.exercise.name ? -1 : a.exercise.name > b.exercise.name ? 1 : 0))
+}
+
+const TIER_RANK = { FOUNDATION: 0, INTERMEDIATE: 1, ADVANCED: 2 } as const
+
+export function compareSwapTier(source: ExerciseEntity, candidate: ExerciseEntity): SwapDifficulty | null {
+  const src = tierOf(source)
+  const cand = tierOf(candidate)
+  if (!src || !cand) return null
+  if (TIER_RANK[cand] < TIER_RANK[src]) return 'EASIER'
+  if (TIER_RANK[cand] > TIER_RANK[src]) return 'HARDER'
+  return 'SAME'
+}
+
+/**
+ * Swap-sheet ordering: within the best-match group (fits user equipment and score >= 45),
+ * keeps the top 3 similarity matches first, then surfaces same-pattern EASIER options right after
+ * them so an easier alternative is always visible without scrolling.
+ */
+export function rankSwapSheet(
+  source: ExerciseEntity,
+  library: readonly ExerciseEntity[],
+  userEquipment: ReadonlySet<Equipment> = allEquipment(),
+  topKeep = 3,
+): SwapCandidate[] {
+  const srcPattern = profileFor(source).pattern
+  const ranked = rankSubstitutes(source, library, userEquipment)
+  const best = ranked.filter((c) => c.matchesUserEquipment && c.score >= 45)
+  const rest = ranked.filter((c) => !(c.matchesUserEquipment && c.score >= 45))
+  if (best.length <= topKeep) return ranked
+  const head = best.slice(0, topKeep)
+  const headIds = new Set(head.map((c) => c.exercise.id))
+  const tail = best.slice(topKeep)
+  const easierSamePattern = tail.filter(
+    (c) => !headIds.has(c.exercise.id) && c.profile.pattern === srcPattern && c.difficulty === 'EASIER',
+  )
+  const easierIds = new Set(easierSamePattern.map((c) => c.exercise.id))
+  const remainingBest = tail.filter((c) => !easierIds.has(c.exercise.id))
+  return [...head, ...easierSamePattern, ...remainingBest, ...rest]
 }
 
 /** A plan item moved onto [newExercise]; a load never carries across exercises. */

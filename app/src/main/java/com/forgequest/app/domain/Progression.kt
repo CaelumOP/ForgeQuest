@@ -5,53 +5,82 @@ import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.seed.ExerciseCatalog
 import kotlin.math.roundToInt
 
+enum class ProgressionMode {
+    DOUBLE,
+    LINEAR,
+    MAINTAIN;
+
+    companion object {
+        fun parse(raw: String?): ProgressionMode =
+            entries.firstOrNull { it.name.equals(raw?.trim(), ignoreCase = true) } ?: DOUBLE
+    }
+}
+
 /**
  * Today's prefill for one exercise from the last two times it was done. Pure, so the rules are unit tested:
- * - Rep range (e.g. 8–12): top of the range on every set adds one load step and resets to the bottom.
- * - Single rep target (e.g. 3×8): load only goes up after hitting it in two sessions in a row at the same
- *   weight, so one good day never starts a climb every session.
- * - Holds: +5 s per session up to 1.5× the plan's target, then they stop and the screen suggests a harder version.
- * - Hard or Pain on any set, a missed set, or a low-readiness day keeps last session's numbers.
- *   Pain also takes the load back one step (bodyweight moves keep their reps).
- * - Load steps follow the person's unit: +2.5 kg or +5 lb, landing on numbers they can actually load.
+ * - DOUBLE (default): rep range climbs reps then adds one load step and resets to bottom; single rep target needs 2 clean sessions.
+ * - LINEAR: adds +2.5 kg upper / +5 kg lower (+5 lb / +10 lb) per clean session where every set hit repsMin.
+ * - MAINTAIN: holds last session's weight/reps/seconds on clean sessions.
+ * - Precedence: warm-up -> pain -> hard -> missed -> low readiness -> deload -> mode rules. No automatic 3-failure resets.
+ * - Uses WP1a [countsForProgression] so warm-up/drop/rest-pause sets never count.
  */
 object Progression {
+
+    private val LOWER_BODY_MUSCLES = setOf(
+        Muscle.QUADS, Muscle.HAMSTRINGS, Muscle.GLUTES, Muscle.ADDUCTORS, Muscle.CALVES, Muscle.TIBIALIS,
+    )
+
+    fun isLowerBody(primary: List<Muscle>): Boolean = primary.any { it in LOWER_BODY_MUSCLES }
 
     /** One finished set as the rules need it. */
     data class PastSet(val reps: Int?, val seconds: Int?, val weightKg: Float?, val effort: SetEffort)
 
-    data class Target(val sets: Int, val repsMin: Int?, val repsMax: Int?, val seconds: Int?, val weightKg: Float?)
+    data class Target(
+        val sets: Int,
+        val repsMin: Int?,
+        val repsMax: Int?,
+        val seconds: Int?,
+        val weightKg: Float?,
+        val mode: ProgressionMode = ProgressionMode.DOUBLE,
+    )
 
     data class Prefill(val reps: Int?, val seconds: Int?, val weightKg: Float?)
 
     /** Why today's numbers are what they are, for the one-line note on the live card. */
-    enum class Reason { LOAD_UP, MORE_REPS, MORE_TIME, ONCE_MORE, SAME, HARD, PAIN, MISSED, LOW_READINESS }
+    enum class Reason { LOAD_UP, MORE_REPS, MORE_TIME, ONCE_MORE, SAME, HARD, PAIN, MISSED }
 
     data class Result(val sets: List<Prefill>, val holdCeilingReached: Boolean = false, val reason: Reason? = null)
 
     const val HOLD_STEP_SEC = 5
     const val HOLD_CEILING = 1.5f
 
-    /** What [next] needs for one exercise, apart from the unit and the readiness. */
-    data class Inputs(val target: Target?, val last: List<PastSet>, val previous: List<PastSet>, val warmup: Boolean)
+    /** What [next] needs for one exercise, apart from the unit. */
+    data class Inputs(
+        val target: Target?,
+        val last: List<PastSet>,
+        val previous: List<PastSet>,
+        val warmup: Boolean,
+        val mode: ProgressionMode = target?.mode ?: ProgressionMode.DOUBLE,
+    )
 
     /**
      * The inputs to [next] for one exercise, shared by the prefill and the debrief so both read history the same way:
-     * the target from the plan [item] (null without one), the last two workouts in [recent] (done sets, newest workout
-     * first), each in set order with its effort read through [SetEffort.of], and the warm-up check (an item in the
-     * Warm-up block, or jumping jacks).
+     * filters [recent] through [countsForProgression] so warm-up, dropset, and rest-pause sets never skew progression.
      */
     fun inputs(item: PlanItemEntity?, exerciseId: String?, recent: List<SetEntity>): Inputs {
-        val sessionIds = recent.map { it.sessionId }.distinct()
-        fun past(id: Long?) = recent.filter { it.sessionId == id }.sortedBy { it.setIndex }
+        val eligible = recent.filter { countsForProgression(it) }
+        val sessionIds = eligible.map { it.sessionId }.distinct()
+        fun past(id: Long?) = eligible.filter { it.sessionId == id }.sortedBy { it.setIndex }
             .map { PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
         val warmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || exerciseId == "jumping_jacks" ||
             item?.block?.equals(PlanBuilder.COOL_DOWN_BLOCK, ignoreCase = true) == true || exerciseId in ExerciseCatalog.STRETCH_IDS
+        val mode = ProgressionMode.parse(item?.progressionMode)
         return Inputs(
-            target = item?.let { Target(it.sets, it.repsMin, it.repsMax, it.seconds, it.weightKg) },
+            target = item?.let { Target(it.sets, it.repsMin, it.repsMax, it.seconds, it.weightKg, mode) },
             last = past(sessionIds.getOrNull(0)),
             previous = past(sessionIds.getOrNull(1)),
             warmup = warmup,
+            mode = mode,
         )
     }
 
@@ -86,9 +115,10 @@ object Progression {
         last: List<PastSet>,
         previous: List<PastSet>,
         unit: WeightUnit,
-        lowReadiness: Boolean,
         warmup: Boolean,
         deload: Boolean = false,
+        mode: ProgressionMode = target?.mode ?: ProgressionMode.DOUBLE,
+        lowerBody: Boolean = false,
     ): Result {
         val count = (target?.sets ?: 3).let { if (deload) deloadSets(it) else it }
         val repsMin = target?.repsMin ?: 8
@@ -98,15 +128,20 @@ object Progression {
         val hasRange = repsMax > repsMin
 
         val pain = last.any { it.effort == SetEffort.PAIN }
-        val strained = pain || last.any { it.effort == SetEffort.HARD }
+        // Failure twice in a row (this workout and the one before) means the load is too heavy: back off like pain.
+        val failureStreak = last.any { it.effort == SetEffort.FAILURE } && previous.any { it.effort == SetEffort.FAILURE }
+        val strained = pain || last.any { it.effort.isStrain }
+        // Every set Easy (3+ reps left): add load without waiting for the top of the rep range.
+        val allEasy = last.isNotEmpty() && last.all { it.effort == SetEffort.EASY }
         // "Completed" means every set was done without a hard or painful one; only then may anything go up.
         val completed = !warmup && last.size >= count && !strained
-        val mayProgress = completed && !lowReadiness && !deload
+        val mayProgress = completed && !deload && mode != ProgressionMode.MAINTAIN
 
         fun hitTop(session: List<PastSet>) = session.size >= count && when (kind) {
             ExerciseKind.HOLD -> session.all { (it.seconds ?: 0) >= holdTarget }
             ExerciseKind.REPS, ExerciseKind.WEIGHTED -> session.all { (it.reps ?: 0) >= repsMax }
         }
+        fun hitLinearTarget(session: List<PastSet>) = session.size >= count && session.all { (it.reps ?: 0) >= repsMin }
         fun sessionWeight(session: List<PastSet>) = session.maxOfOrNull { it.weightKg ?: 0f } ?: 0f
 
         val holdCeiling = roundTo5((holdTarget * HOLD_CEILING).roundToInt()).coerceAtLeast(holdTarget)
@@ -126,20 +161,31 @@ object Progression {
                 ExerciseKind.WEIGHTED -> {
                     // One failed set (4 of 8) starts next time at the bottom of the range, not below it.
                     val baseReps = lastSet?.reps?.coerceAtLeast(repsMin) ?: target?.repsMin ?: 10
-                    val loadUp = mayProgress && lastWeight > 0f && hitTop(last) && (
-                        hasRange || (
-                            hitTop(previous) &&
-                                previous.none { it.effort == SetEffort.HARD || it.effort == SetEffort.PAIN } &&
-                                sameWeight(sessionWeight(previous), sessionWeight(last))
-                            )
-                        )
                     when {
-                        // Never below one load step: at 0 kg every load-up rule above is off, so the weight could never climb back.
-                        pain && lastWeight > 0f -> Prefill(baseReps, null, stepDown(lastWeight, unit).coerceAtLeast(minOf(lastWeight, unit.toKg(unit.loadStep))))
-                        loadUp && hasRange -> Prefill(repsMin, null, stepUp(lastWeight, unit))
-                        loadUp -> Prefill(baseReps, null, stepUp(lastWeight, unit))
-                        mayProgress && baseReps < repsMax -> Prefill(baseReps + 1, null, lastWeight)
-                        else -> Prefill(baseReps, null, lastWeight)
+                        // Precedence: pain/hard/missed/lowReadiness/deload first.
+                        (pain || failureStreak) && lastWeight > 0f -> Prefill(baseReps, null, stepDown(lastWeight, unit).coerceAtLeast(minOf(lastWeight, unit.toKg(unit.loadStep))))
+                        mode == ProgressionMode.MAINTAIN -> Prefill(lastSet?.reps ?: baseReps, null, lastWeight)
+                        mode == ProgressionMode.LINEAR -> {
+                            val linearUp = mayProgress && lastWeight > 0f && hitLinearTarget(last)
+                            if (linearUp) Prefill(repsMin, null, stepUpLinear(lastWeight, unit, lowerBody))
+                            else Prefill(baseReps, null, lastWeight)
+                        }
+                        else -> {
+                            val easyUp = mayProgress && allEasy && lastWeight > 0f && hitLinearTarget(last)
+                            val loadUp = easyUp || (mayProgress && lastWeight > 0f && hitTop(last) && (
+                                hasRange || (
+                                    hitTop(previous) &&
+                                        previous.none { it.effort.isStrain || it.effort == SetEffort.PAIN } &&
+                                        sameWeight(sessionWeight(previous), sessionWeight(last))
+                                    )
+                                ))
+                            when {
+                                loadUp && hasRange -> Prefill(repsMin, null, stepUp(lastWeight, unit))
+                                loadUp -> Prefill(baseReps, null, stepUp(lastWeight, unit))
+                                mayProgress && baseReps < repsMax -> Prefill(baseReps + 1, null, lastWeight)
+                                else -> Prefill(baseReps, null, lastWeight)
+                            }
+                        }
                     }
                 }
                 ExerciseKind.REPS -> {
@@ -158,14 +204,20 @@ object Progression {
             warmup || last.isEmpty() || ceilingReached -> null
             strained -> if (pain && nextTop < lastTop - 0.1f) Reason.PAIN else Reason.HARD
             last.size < count -> Reason.MISSED
-            lowReadiness && completed -> Reason.LOW_READINESS
+            deload || mode == ProgressionMode.MAINTAIN -> Reason.SAME
             nextTop > lastTop + 0.1f -> Reason.LOAD_UP
             kind == ExerciseKind.HOLD && (sets.firstOrNull()?.seconds ?: 0) > (last.firstOrNull()?.seconds ?: 0) -> Reason.MORE_TIME
             sets.firstOrNull()?.reps?.let { it > (last.firstOrNull()?.reps ?: 0) } == true -> Reason.MORE_REPS
-            kind == ExerciseKind.WEIGHTED && hitTop(last) && !hasRange -> Reason.ONCE_MORE
+            mode == ProgressionMode.DOUBLE && kind == ExerciseKind.WEIGHTED && hitTop(last) && !hasRange -> Reason.ONCE_MORE
             else -> Reason.SAME
         }
         return Result(sets, ceilingReached, reason)
+    }
+
+    /** Linear increments are canonical kilograms; display units do not change the prescription. */
+    @Suppress("UNUSED_PARAMETER")
+    fun stepUpLinear(kg: Float, unit: WeightUnit, lowerBody: Boolean): Float {
+        return (kg + if (lowerBody) 5f else 2.5f).coerceAtMost(999f)
     }
 
     /** One load step up in the person's unit, landing on a loadable number (0.25 kg or 2.5 lb). */

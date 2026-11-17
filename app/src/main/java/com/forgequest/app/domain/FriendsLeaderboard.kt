@@ -41,6 +41,12 @@ data class LeaderboardEntry(
     /** Weeks you and this friend both hit (0 for me). */
     val sharedStreak: Int = 0,
     val username: String? = null,
+    /** v4: I muted this friend's workout alerts. */
+    val muted: Boolean = false,
+    val target: Int = due,
+    val prCount: Int = 0,
+    val reachedAt: Long = Long.MAX_VALUE,
+    val breakdown: ForgeScoreBreakdown? = null,
 )
 
 object FriendsLeaderboard {
@@ -55,12 +61,12 @@ object FriendsLeaderboard {
         val entries = buildList {
             for (f in view.friends) {
                 if (f.id == view.me.id) continue
-                add(toEntry(f.id, f.name, f.photoUrl, isMe = false, snapshot = f.snapshot, weekStart = view.weekStart).copy(sharedStreak = f.sharedStreak, username = f.username))
+                add(toEntry(f.id, f.shownName, f.photoUrl, isMe = false, snapshot = f.snapshot, weekStart = view.weekStart).copy(sharedStreak = f.sharedStreak, username = f.username, muted = f.muted))
             }
             add(
                 toEntry(
                     id = view.me.id,
-                    name = view.me.name,
+                    name = view.me.shownName,
                     photoUrl = view.me.photoUrl,
                     isMe = true,
                     snapshot = meSnapshot,
@@ -70,9 +76,8 @@ object FriendsLeaderboard {
         }
         return entries.sortedWith(
             compareByDescending<LeaderboardEntry> { it.score }
-                .thenBy { it.name.lowercase(Locale.ROOT) }
-                .thenBy { it.name }
-                .thenByDescending { it.isMe }
+                .thenBy { it.reachedAt }
+                .thenBy { (it.username ?: it.name).lowercase(Locale.ROOT) }
                 .thenBy { it.id },
         )
     }
@@ -115,8 +120,35 @@ object FriendsLeaderboard {
                 streakWeeks = snapshot.streakWeeks,
                 prs = snapshot.prs.orEmpty(),
                 syncedThisWeek = true,
-                weekState = snapshot.weekState,
+                target = snapshot.target ?: snapshot.due,
+                prCount = snapshot.prCount ?: 0,
+                reachedAt = snapshot.reachedAt ?: snapshot.updatedAt.takeIf { it > 0 } ?: Long.MAX_VALUE,
+                breakdown = snapshot.breakdown,
+                weekState = effectiveWeekState(snapshot.weekState, snapshot.done, snapshot.due),
             )
         }
     }
+
+    /** Treats a week where [done] >= [due] (> 0) as "hit", even if the snapshot's weekState was omitted or still "open". */
+    fun effectiveWeekState(weekState: String?, done: Int, due: Int): String? = when {
+        weekState == "hit" || weekState == "free" -> weekState
+        due > 0 && done >= due -> "hit"
+        else -> weekState
+    }
+
+    /** English lowercase ordinal suffix ("st", "nd", "rd", "th") for [rank]. */
+    fun ordinalSuffix(rank: Int): String {
+        val abs = kotlin.math.abs(rank)
+        val mod100 = abs % 100
+        if (mod100 in 11..13) return "th"
+        return when (abs % 10) {
+            1 -> "st"
+            2 -> "nd"
+            3 -> "rd"
+            else -> "th"
+        }
+    }
+
+    /** Formats [rank] as an English ordinal (e.g. 1 -> "1st", 12 -> "12th"). */
+    fun ordinal(rank: Int): String = "$rank${ordinalSuffix(rank)}"
 }

@@ -13,3 +13,18 @@ export function greetingKey(hour: number): string {
 export function canExcuse(day: number, today: number, state: DayState): boolean {
   return day >= today - EXCUSE_BACK_DAYS && day <= today && state !== 'DONE' && state !== 'OFF'
 }
+
+/** Home avatar photo: the Friends sign-in photo first, else the Drive account photo; blank counts as none. */
+export function pickAvatarPhoto(friendsPhoto: string | null | undefined, drivePhoto?: string | null): string | null {
+  return friendsPhoto?.trim() ? friendsPhoto : drivePhoto?.trim() ? drivePhoto : null
+}
+
+/** Name for the photo-less Home avatar: Settings name first, else the Friends shownName; blank counts as none. */
+export function pickAvatarName(settingsName: string, friendsShownName?: string | null): string {
+  return settingsName.trim() || friendsShownName?.trim() || ''
+}
+
+/** First letter of the name for the photo-less avatar; "?" when there is no name. */
+export function avatarInitial(name: string): string {
+  return name.trim()[0]?.toUpperCase() ?? '?'
+}

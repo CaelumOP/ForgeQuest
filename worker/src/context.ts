@@ -9,4 +9,6 @@ export interface AppContext {
   nowSec: number;
   fetchFn: FetchFn;
   ip: string;
+  /** Runs work after the response (pushes); never slows or fails the request. */
+  waitUntil: (p: Promise<unknown>) => void;
 }

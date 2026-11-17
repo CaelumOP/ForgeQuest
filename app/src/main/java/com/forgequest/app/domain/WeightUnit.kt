@@ -22,11 +22,10 @@ enum class WeightUnit(
     fun fromKg(kg: Float): Float = kg * perKg
     fun toKg(value: Float): Float = value / perKg
 
-    /** "72.5 kg" / "160.0 lb" */
+    /** "72.5 kg" / "160 lb" */
     // Isolated so the number and unit keep their order: left-to-right "72.5 kg", right-to-left "72.5 كغ".
-    fun format(kg: Float, decimals: Int = 1): String = shown(kg, decimals).let { d ->
-        (if (isArabic) "\u2067%.${d}f %s\u2069" else "\u2066%.${d}f %s\u2069").format(Locale.US, fromKg(kg), label)
-    }
+    fun format(kg: Float, decimals: Int = 1): String =
+        (if (isArabic) "\u2067%s %s\u2069" else "\u2066%s %s\u2069").format(Locale.US, number(kg, decimals), label)
 
     /** Just the number, e.g. for compact "8×60" labels. */
     fun number(kg: Float, decimals: Int = 1): String = "%.${shown(kg, decimals)}f".format(Locale.US, fromKg(kg)).removeSuffix(".0")

@@ -291,7 +291,14 @@ fun FoodScreen(nav: NavHostController) {
                 SectionTitle(if (isToday) stringResource(R.string.food_logged_today) else stringResource(R.string.food_logged_that_day))
             }
             if (meals.isEmpty()) {
-                item { Text(if (isToday) stringResource(R.string.food_nothing_today) else stringResource(R.string.food_nothing_that_day), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
+                val emptyTextRes = when {
+                    !isToday -> R.string.food_nothing_that_day
+                    aiOn && foods.isNotEmpty() -> R.string.food_nothing_today
+                    aiOn -> R.string.food_nothing_today_no_saved_ai
+                    foods.isNotEmpty() -> R.string.food_nothing_today_no_ai
+                    else -> R.string.food_nothing_today_empty
+                }
+                item { Text(stringResource(emptyTextRes), style = MaterialTheme.typography.bodySmall, color = c.textSecondary) }
             }
             items(if (showAllMeals) newestMeals else newestMeals.take(MEALS_SHOWN), key = { "m${it.id}" }) { meal ->
                 SwipeToDelete(onDelete = { vm.deleteMeal(meal) }, modifier = itemMotion()) {
@@ -353,6 +360,15 @@ fun FoodScreen(nav: NavHostController) {
                             Text(stringResource(R.string.food_none_in_category, category.localLabel()), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
                             Spacer(Modifier.height(4.dp))
                             Text(stringResource(R.string.food_empty_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center)
+                            Spacer(Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (aiOn) {
+                                    TonalPill(stringResource(R.string.food_scan_meal), onClick = { nav.navigate(Routes.SCAN) }, icon = Icons.Rounded.CameraAlt, tint = c.teal)
+                                } else {
+                                    TonalPill(stringResource(R.string.barcode_scan), onClick = { scanningBarcode = true }, icon = Icons.Rounded.QrCodeScanner, tint = c.teal)
+                                }
+                                TonalPill(stringResource(R.string.food_quick_log), onClick = { quickLog = true }, icon = Icons.Rounded.Restaurant)
+                            }
                         }
                     }
                 }

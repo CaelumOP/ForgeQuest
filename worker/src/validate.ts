@@ -1,9 +1,8 @@
+import { snapshotScore } from "./score";
 import { isSunday } from "./time";
 import { Badge, HttpError, PrItem, PushPlatform, SnapshotInput } from "./types";
 
 const BADGES: ReadonlySet<string> = new Set<Badge>(["trained", "on_track", "slacking", "rest"]);
-const URL_PATTERN = /https?:\/\/|www\./i;
-const CONTROL_CHARS = /[\x00-\x1F\x7F]/;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v);
@@ -47,28 +46,27 @@ export function normalizeUsername(raw: string): string | null {
 }
 
 export function validateProfile(body: Record<string, unknown>): {
-  name: string;
   sharePhoto: boolean;
   sharePrs: boolean;
   /** Normalised username when the body carries one; undefined when omitted. */
   username: string | undefined;
+  /** v4 switches: undefined when omitted (keep the stored value). */
+  alertsOn: boolean | undefined;
+  shareWorkouts: boolean | undefined;
+  pingsOn: boolean | undefined;
 } {
-  if (
-    typeof body.name !== "string" ||
-    typeof body.sharePhoto !== "boolean" ||
-    typeof body.sharePrs !== "boolean"
-  ) {
+  // 4.1 keeps one name only (the username): `name` from 4.0 clients is accepted and ignored, never a 400.
+  if (typeof body.sharePhoto !== "boolean" || typeof body.sharePrs !== "boolean") {
     throw new HttpError(400, "bad_profile");
   }
-  const name = body.name.trim();
-  if (
-    name.length < 1 ||
-    name.length > 40 ||
-    URL_PATTERN.test(name) ||
-    CONTROL_CHARS.test(name)
-  ) {
-    throw new HttpError(400, "bad_profile");
-  }
+  const optionalFlag = (v: unknown): boolean | undefined => {
+    if (v === undefined) return undefined;
+    if (typeof v !== "boolean") throw new HttpError(400, "bad_profile");
+    return v;
+  };
+  const alertsOn = optionalFlag(body.alertsOn);
+  const shareWorkouts = optionalFlag(body.shareWorkouts);
+  const pingsOn = optionalFlag(body.pingsOn);
   let username: string | undefined;
   if (body.username !== undefined) {
     const normalized = typeof body.username === "string" ? normalizeUsername(body.username) : null;
@@ -78,25 +76,37 @@ export function validateProfile(body: Record<string, unknown>): {
     username = normalized;
   }
   return {
-    name,
     sharePhoto: body.sharePhoto,
     sharePrs: body.sharePrs,
     username,
+    alertsOn,
+    shareWorkouts,
+    pingsOn,
   };
 }
+
+/** Phones whose clock runs a little fast still sync; the stored time is clamped to the server's now. */
+const CLOCK_SKEW_SEC = 600;
 
 export function validateSnapshot(
   body: Record<string, unknown>,
   todayEpochDay: number,
+  nowSec = (todayEpochDay + 1) * 86400,
 ): SnapshotInput {
   const { weekStart, done, due, score, badge, streakWeeks, proteinDays, prs, weekState, lastWeekState } = body;
+  const rawInputs = body.target !== undefined || body.prCount !== undefined || body.reachedAt !== undefined;
+  if (rawInputs && (!isIntInRange(body.target, 0, 7) ||
+      !isIntInRange(body.prCount, 0, 1000000) ||
+      !isIntInRange(body.reachedAt, Math.max(0, Number(weekStart) * 86400 - 14 * 3600), nowSec + CLOCK_SKEW_SEC))) {
+    throw new HttpError(400, "bad_snapshot");
+  }
   if (
     !isIntInRange(weekStart, -100_000, 1_000_000) ||
     !isSunday(weekStart) ||
     Math.abs(weekStart - todayEpochDay) > 8 ||
     !isIntInRange(done, 0, 7) ||
     !isIntInRange(due, 0, 7) ||
-    !isIntInRange(score, 0, 100) ||
+    (!(rawInputs && score === undefined) && !isIntInRange(score, 0, rawInputs ? 120 : 100)) ||
     typeof badge !== "string" ||
     !BADGES.has(badge) ||
     !isIntInRange(streakWeeks, 0, 520) ||
@@ -143,7 +153,8 @@ export function validateSnapshot(
     weekStart,
     done,
     due,
-    score,
+    score: snapshotScore({ done, due, proteinDays, ...(rawInputs ? { target: body.target as number, prCount: body.prCount as number } : {}) }).score,
+    ...(rawInputs ? { target: body.target as number, prCount: body.prCount as number, reachedAt: Math.min(body.reachedAt as number, nowSec) } : {}),
     badge: badge as Badge,
     streakWeeks,
     proteinDays,

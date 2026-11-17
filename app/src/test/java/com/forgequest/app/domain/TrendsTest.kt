@@ -162,4 +162,22 @@ class TrendsTest {
         assertEquals(133, r.trainingLoadPct)
         assertEquals(false, r.needsDeload)
     }
+
+    @Test
+    fun weeklyCountsDeduplicatesMultipleSessionsOnSameDay() {
+        val days = listOf(sunday, sunday, sunday + 2, sunday + 2, sunday + 2)
+        assertEquals(listOf(0, 2), Trends.weeklyCounts(days, 2, today))
+    }
+
+    @Test
+    fun weeklySetsExcludesWarmUpAndCoolDownSets() {
+        val sessionDay = mapOf(1L to sunday)
+        val sets = listOf(
+            set(1, 10).copy(block = "Warm-up"),
+            set(1, 10).copy(block = "Warm-up"),
+            set(1, 8).copy(block = "Main"),
+            set(1, 30).copy(block = "Cool-down"),
+        )
+        assertEquals(listOf(1), Trends.weeklySets(sets, sessionDay, 1, today))
+    }
 }

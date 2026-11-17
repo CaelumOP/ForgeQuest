@@ -127,7 +127,7 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
     fun deleteWorkout(session: SessionEntity) = viewModelScope.launch {
         val sets = app.db.sessions().sets(session.id)
         app.workouts.deleteSession(session.id)
-        undo.offer(app.str(R.string.food_removed, session.title)) { app.workouts.restoreSession(session, sets) }
+        undo.offer(app.str(R.string.food_removed, com.forgequest.app.data.seed.StarterPlans.displayTitle(session.title))) { app.workouts.restoreSession(session, sets) }
     }
 
     /** The debrief sheet: which workout it is open for. */
@@ -254,7 +254,7 @@ private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Ma
         sheetState = com.forgequest.app.ui.components.rememberFullSheetState(),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
-            Text(session.title, style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+            Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(session.title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             Text(
                 LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
@@ -332,7 +332,7 @@ private fun SessionRow(session: SessionEntity, sets: List<SetEntity>, exercises:
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(session.title, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(session.title), style = MaterialTheme.typography.titleSmall, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (prs > 0) {
                         Spacer(Modifier.width(8.dp))
                         PrTag()
@@ -423,7 +423,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
         Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Column(Modifier.weight(1f)) {
-                Text(session.title, style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(session.title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(listOfNotNull(date, minutes?.let { stringResource(R.string.hist_minutes, it) }, pluralStringResource(R.plurals.hist_sets, sets.count { !WorkoutScore.isExtra(it.block) }, sets.count { !WorkoutScore.isExtra(it.block) })).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             Box {
@@ -468,9 +468,9 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 when (kind) {
                                     ExerciseKind.HOLD -> NumberStepper((set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, 5f, 0f, 3600f, unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp)
-                                    ExerciseKind.REPS -> NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp)
+                                    ExerciseKind.REPS -> NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, title = stringResource(R.string.stepper_reps), minValueWidth = 40.dp, unitPlurals = R.plurals.rx_reps)
                                     ExerciseKind.WEIGHTED -> {
-                                        NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp)
+                                        NumberStepper((set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, 1f, 0f, 999f, unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, unitPlurals = R.plurals.rx_reps)
                                         NumberStepper(unit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, unit.toKg(it)) }, unit.loadStep, 0f, unit.fromKg(999f), unit = unit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue)
                                     }
                                 }

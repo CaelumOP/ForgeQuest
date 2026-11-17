@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home41_profile_cd">الملف الشخصي والإعدادات</string>
+    <string name="home41_profile_hint_t">ملفك الشخصي</string>
+    <string name="home41_profile_hint_b">ملفك الشخصي وإعداداتك هنا</string>
+    <string name="home41_settings_cd">الإعدادات</string>
+</resources>

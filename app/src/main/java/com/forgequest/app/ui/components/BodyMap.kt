@@ -130,7 +130,7 @@ fun recoverySummaryDescription(recovery: Map<Muscle, MuscleRecovery>): String {
     else stringResource(
         R.string.map_cd_recovering,
         recovery.entries.sortedByDescending { it.value.fatigue }
-            .map { stringResource(R.string.map_cd_muscle_ready, it.key.localLabel(), it.value.hoursUntilReady) }
+            .map { androidx.compose.ui.res.pluralStringResource(R.plurals.map_cd_muscle_ready, it.value.hoursUntilReady, it.key.localLabel(), it.value.hoursUntilReady) }
             .joinToString(stringResource(R.string.list_separator)),
     )
     return "$base ${stringResource(R.string.map_tap_hint)}"

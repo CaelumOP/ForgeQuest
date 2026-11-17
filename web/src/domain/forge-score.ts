@@ -10,6 +10,8 @@ export interface ForgeWeek {
   score: number
   badge: ForgeBadge
   proteinDays: number
+  target: number
+  prCount: number
 }
 
 /** Public profile of a friend or invite counterpart (contract v2 `Person`). */
@@ -28,6 +30,12 @@ export interface Pr {
 
 /** Weekly snapshot exactly as PUT /v1/snapshot takes it (plus updatedAt on reads). */
 export interface Snapshot {
+  target?: number
+  prCount?: number
+  /** Unix seconds of the last event that changed the total. */
+  reachedAt?: number
+  scoreVersion?: 1 | 2
+  breakdown?: ForgeScoreBreakdown
   weekStart: number
   done: number
   due: number
@@ -44,7 +52,7 @@ export interface Snapshot {
 }
 
 /** sharedStreak (v3): consecutive weeks you and this friend both hit, computed by the server. */
-export type Friend = Person & { snapshot: Snapshot | null; sharedStreak?: number }
+export type Friend = Person & { snapshot: Snapshot | null; sharedStreak?: number; muted?: boolean }
 
 export interface LeaderboardEntry {
   person: Person
@@ -61,6 +69,10 @@ export interface LeaderboardEntry {
   weekState: 'hit' | 'free' | 'open' | null
   /** Weeks you and this friend both hit (0 for me). */
   sharedStreak: number
+  target: number
+  prCount: number
+  reachedAt: number
+  breakdown: ForgeScoreBreakdown | null
 }
 
 const RESERVED_USERNAMES = new Set([
@@ -84,29 +96,69 @@ export function normalizeUsername(raw: string): string | null {
 
 /**
  * Computes the user's weekly Forge Score from a Sunday-first week boundary.
- * Mirrors ForgeScore.kt and shared forge-score.vectors.json.
+ * Mirrors ForgeScore.kt and worker/test/forge-score-v2.vectors.json.
  */
+/** Event timestamps are Unix seconds; the caller filters to this Sunday week. */
+export interface ForgeScoreEvent { at: number; workoutDay?: number; proteinDay?: number; pr?: boolean }
+
+export function scoreReachedAt(target: number, events: ForgeScoreEvent[], weekStartedAt: number): number {
+  const workouts = new Set<number>(), protein = new Set<number>()
+  let prs = 0, score = 0, reached = weekStartedAt
+  const groups = new Map<number, ForgeScoreEvent[]>()
+  for (const event of events) groups.set(event.at, [...(groups.get(event.at) ?? []), event])
+  for (const [at, group] of [...groups].sort(([a], [b]) => a - b)) {
+    for (const event of group) {
+      if (event.workoutDay !== undefined) workouts.add(event.workoutDay)
+      if (event.proteinDay !== undefined) protein.add(event.proteinDay)
+      if (event.pr) prs++
+    }
+    const next = scoreBreakdown(workouts.size, target, prs, protein.size).score
+    if (next !== score) reached = at
+    score = next
+  }
+  return reached
+}
+
+export interface ForgeScoreBreakdown {
+  base: number
+  prBonus: number
+  proteinBonus: number
+  extraBonus: number
+  bonus: number
+  score: number
+}
+
+export function scoreBreakdown(done: number, target: number, prCount = 0, proteinDays = 0): ForgeScoreBreakdown {
+  if (![done, target, prCount, proteinDays].every(n => Number.isSafeInteger(n) && n >= 0)) throw new RangeError('Invalid score inputs')
+  const base = target === 0 ? 0 : Math.round(100 * Math.min(done, target) / target)
+  const prBonus = Math.min(prCount, 2) * 5
+  const proteinBonus = Math.min(proteinDays, 3) * 2
+  const extraBonus = done > target ? 5 : 0
+  const bonus = Math.min(20, prBonus + proteinBonus + extraBonus)
+  return { base, prBonus, proteinBonus, extraBonus, bonus, score: base + bonus }
+}
+
 export function computeForgeWeek(
   today: number,
   scheduledDays: Set<number>,
   trainedDays: Set<number>,
   proteinDays: Set<number> = new Set(),
+  weeklyTargetOverride = 0,
+  prCount = 0,
 ): ForgeWeek {
   const ws = weekStart(today)
   const trainedToday = trainedDays.has(today)
 
   let done = 0
-  let dueBeforeToday = 0
   let protein = 0
 
   for (let d = ws; d <= today; d++) {
     if (trainedDays.has(d)) done++
     if (proteinDays.has(d)) protein++
-    if (d < today && scheduledDays.has(dayOfWeek(d))) dueBeforeToday++
   }
 
-  const due = Math.max(dueBeforeToday + (trainedToday ? 1 : 0), done)
-  const score = due === 0 ? 100 : Math.round((100 * done) / due)
+  const target = weeklyTargetOverride > 0 ? Math.min(7, weeklyTargetOverride) : [...scheduledDays].filter(d => d >= 1 && d <= 7).length
+  const score = scoreBreakdown(done, target, prCount, protein).score
 
   let badge: ForgeBadge
   if (trainedToday) {
@@ -122,7 +174,9 @@ export function computeForgeWeek(
   return {
     weekStart: ws,
     done,
-    due,
+    due: target,
+    target,
+    prCount,
     score,
     badge,
     proteinDays: protein,
@@ -138,7 +192,7 @@ function toLeaderboardEntry(
 ): LeaderboardEntry {
   // Contract: a snapshot from an older week shows as neutral "not synced this week", score 0.
   if (snapshot === null || snapshot.weekStart < serverWeekStart) {
-    return { person, isMe, score: 0, badge: 'not_synced', streakWeeks: 0, proteinDays: 0, prs: [], syncedThisWeek: false, done: 0, weekState: null, sharedStreak }
+    return { person, isMe, score: 0, badge: 'not_synced', streakWeeks: 0, proteinDays: 0, prs: [], syncedThisWeek: false, done: 0, weekState: null, sharedStreak, target: 0, prCount: 0, reachedAt: Number.MAX_SAFE_INTEGER, breakdown: null }
   }
   return {
     person,
@@ -150,6 +204,10 @@ function toLeaderboardEntry(
     prs: snapshot.prs ?? [],
     syncedThisWeek: true,
     done: snapshot.done,
+    target: snapshot.target ?? snapshot.due,
+    prCount: snapshot.prCount ?? 0,
+    reachedAt: snapshot.reachedAt ?? snapshot.updatedAt ?? Number.MAX_SAFE_INTEGER,
+    breakdown: snapshot.breakdown ?? null,
     weekState: snapshot.weekState ?? null,
     sharedStreak,
   }
@@ -157,7 +215,7 @@ function toLeaderboardEntry(
 
 /**
  * Builds the weekly leaderboard from me + friends (server weekStart from GET /friends). Sorted by score desc,
- * then name asc; the user is included and flagged isMe.
+ * then reachedAt asc, then username asc; the user is included and flagged isMe.
  */
 export function buildLeaderboard(
   serverWeekStart: number,
@@ -173,8 +231,9 @@ export function buildLeaderboard(
   }
   entries.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score
-    const an = a.person.name.toLowerCase()
-    const bn = b.person.name.toLowerCase()
+    if (a.reachedAt !== b.reachedAt) return a.reachedAt - b.reachedAt
+    const an = (a.person.username ?? '').toLowerCase()
+    const bn = (b.person.username ?? '').toLowerCase()
     return an < bn ? -1 : an > bn ? 1 : 0
   })
   return entries

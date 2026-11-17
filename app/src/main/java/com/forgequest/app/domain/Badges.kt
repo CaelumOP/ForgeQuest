@@ -12,7 +12,7 @@ data class BadgeStats(
     val mealsLogged: Int = 0,
     val mealsScanned: Int = 0,
     val proteinGoalDaysInARow: Int = 0,
-    /** Latest logged body weight in kg; 0 when none, which switches the big-lift badges to fixed kg marks. */
+    /** Latest logged body weight in kg; 0 when none. */
     val bodyKg: Float = 0f,
     val lifetimeSets: Int = 0,
     val lifetimeHours: Int = 0,
@@ -41,10 +41,9 @@ object Badges {
     /** Best added weight across [ids]; a plain pull-up or dip logged with added weight counts too. */
     private fun loadAny(ids: List<String>, kg: Float): (BadgeStats) -> Boolean = { s -> ids.maxOf { s.bestWeight[it] ?: 0f } >= kg }
 
-    /** Best [id] weight reaching [bodyMult] x body weight, or [absKg] when no body weight is known. */
-    private fun lift(id: String, bodyMult: Float, absKg: Float): (BadgeStats) -> Boolean = { s ->
-        val need = if (s.bodyKg > 0f) s.bodyKg * bodyMult else absKg
-        (s.bestWeight[id] ?: 0f) >= need
+    /** Best [id] weight reaching [bodyMult] x body weight; requires a logged body weight (> 0). */
+    private fun lift(id: String, bodyMult: Float): (BadgeStats) -> Boolean = { s ->
+        s.bodyKg > 0f && (s.bestWeight[id] ?: 0f) >= s.bodyKg * bodyMult
     }
 
     /** Longest run of consecutive days in [days]. */
@@ -115,12 +114,12 @@ object Badges {
         BadgeDef("str_weighted_pull_20", "+20 kg pull-up", "Pull-up with 20 kg added", BadgeCategory.STRENGTH, loadAny(PULL_UPS, 20f)),
         BadgeDef("str_weighted_dip_30", "+30 kg dip", "Dip with 30 kg added", BadgeCategory.STRENGTH, loadAny(DIPS, 30f)),
 
-        BadgeDef("str_bench_1", "Bench: bodyweight", "Bench press your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("bench_press", 1f, 60f)),
-        BadgeDef("str_bench_2", "Bench: one and a half", "Bench press 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("bench_press", 1.5f, 100f)),
-        BadgeDef("str_squat_1", "Squat: bodyweight", "Back squat your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("back_squat", 1f, 60f)),
-        BadgeDef("str_squat_2", "Squat: one and a half", "Back squat 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("back_squat", 1.5f, 100f)),
-        BadgeDef("str_deadlift_1", "Deadlift: bodyweight", "Deadlift your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("deadlift", 1f, 60f)),
-        BadgeDef("str_deadlift_2", "Deadlift: one and a half", "Deadlift 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("deadlift", 1.5f, 100f)),
+        BadgeDef("str_bench_1", "Bench: bodyweight", "Bench press your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("bench_press", 1f)),
+        BadgeDef("str_bench_2", "Bench: one and a half", "Bench press 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("bench_press", 1.5f)),
+        BadgeDef("str_squat_1", "Squat: bodyweight", "Back squat your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("back_squat", 1f)),
+        BadgeDef("str_squat_2", "Squat: one and a half", "Back squat 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("back_squat", 1.5f)),
+        BadgeDef("str_deadlift_1", "Deadlift: bodyweight", "Deadlift your body weight, or 60 kg", BadgeCategory.STRENGTH, lift("deadlift", 1f)),
+        BadgeDef("str_deadlift_2", "Deadlift: one and a half", "Deadlift 1.5 x your body weight, or 100 kg", BadgeCategory.STRENGTH, lift("deadlift", 1.5f)),
 
         BadgeDef("life_sets_500", "500 sets", "Complete 500 sets", BadgeCategory.CONSISTENCY) { it.lifetimeSets >= 500 },
         BadgeDef("life_hours_50", "50 hours", "Train for 50 hours in total", BadgeCategory.CONSISTENCY) { it.lifetimeHours >= 50 },

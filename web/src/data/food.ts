@@ -135,3 +135,63 @@ export function recentOneOffsOf(meals: readonly MealRow[]): MealRow[] {
 }
 export const getRecentOneOffs = async (): Promise<MealRow[]> => recentOneOffsOf(await db.meals.filter((m) => m.foodId == null).toArray());
 export const useRecentOneOffs = (): MealRow[] => useLive(getRecentOneOffs, [], []);
+
+// ---------------------------------------------------------------- Barcode lookup helpers & offline cache
+
+export type CachedBarcodeProduct = {
+  code: string;
+  name: string;
+  brand: string;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  serving: string;
+};
+
+const BARCODE_CACHE_KEY = 'barcodeCache';
+const MAX_BARCODE_CACHE = 500;
+type BarcodeCacheEntry = { product: CachedBarcodeProduct; cachedAt: number };
+type BarcodeCacheMap = Record<string, BarcodeCacheEntry>;
+
+/** Finds a saved food in "My foods" whose barcode matches any of the normalized variants. */
+export async function findFoodByBarcode(variants: readonly string[]): Promise<FoodRow | null> {
+  const wanted = new Set(variants.map((v) => v.trim()).filter(Boolean));
+  if (wanted.size === 0) return null;
+  const foods = await getFoods();
+  return foods.find((f) => {
+    const b = f.barcode?.trim();
+    return Boolean(b && wanted.has(b));
+  }) ?? null;
+}
+
+/** Returns a previously looked-up product from the local IndexedDB cache, or null. */
+export async function getCachedBarcodeProduct(variants: readonly string[]): Promise<CachedBarcodeProduct | null> {
+  if (!variants.length) return null;
+  const raw = (await db.kv.get(BARCODE_CACHE_KEY))?.value;
+  if (typeof raw !== 'object' || raw === null) return null;
+  const cache = raw as BarcodeCacheMap;
+  for (const v of variants) {
+    const hit = cache[v];
+    if (hit?.product) return hit.product;
+  }
+  return null;
+}
+
+/** Saves an Open Food Facts or AI-read product into IndexedDB so repeat scans work offline. */
+export async function cacheBarcodeProduct(product: CachedBarcodeProduct, now = Date.now()): Promise<void> {
+  const code = product.code.trim();
+  if (!code) return;
+  await db.transaction('rw', db.kv, async () => {
+    const raw = (await db.kv.get(BARCODE_CACHE_KEY))?.value;
+    const prev: BarcodeCacheMap = typeof raw === 'object' && raw !== null ? { ...(raw as BarcodeCacheMap) } : {};
+    prev[code] = { product: { ...product, code }, cachedAt: now };
+    const entries = Object.entries(prev);
+    if (entries.length > MAX_BARCODE_CACHE) {
+      entries.sort((a, b) => b[1].cachedAt - a[1].cachedAt);
+      const trimmed = Object.fromEntries(entries.slice(0, MAX_BARCODE_CACHE));
+      await db.kv.put({ key: BARCODE_CACHE_KEY, value: trimmed });
+      return;
+    }
+    await db.kv.put({ key: BARCODE_CACHE_KEY, value: prev });
+  });
+}

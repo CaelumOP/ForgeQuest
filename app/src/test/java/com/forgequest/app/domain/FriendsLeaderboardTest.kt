@@ -40,6 +40,25 @@ class FriendsLeaderboardTest {
     )
 
     @Test
+    fun tiesUseReachedTimeThenUsernameAndKeepRawBreakdown() {
+        val breakdown = ForgeScore.breakdown(3, 3, 2, 1)
+        val mine = snap(score = 112).copy(target = 3, prCount = 2, reachedAt = 200, breakdown = breakdown)
+        val view = FriendsView(me = me, today = weekStart + 2, weekStart = weekStart,
+            friends = listOf(
+                Friend("early", username = "z", snapshot = mine.copy(reachedAt = 100)),
+                Friend("tie", username = "adam", snapshot = mine),
+                Friend("legacy", username = "old", snapshot = snap(score = 112).copy(updatedAt = 300)),
+            ))
+        val board = FriendsLeaderboard.build(view, mine)
+        assertEquals(listOf("early", "tie", "me", "legacy"), board.map { it.id })
+        val own = board.single { it.isMe }
+        assertEquals(3, own.target)
+        assertEquals(2, own.prCount)
+        assertEquals(breakdown, own.breakdown)
+        assertEquals(300L, board.last().reachedAt)
+    }
+
+    @Test
     fun staleAndMissingSnapshotsNeutralisedNeverSlacking() {
         val view = FriendsView(
             me = me,
@@ -54,7 +73,7 @@ class FriendsLeaderboardTest {
 
         val board = FriendsLeaderboard.build(view, meSnapshot = snap(week = weekStart, score = 90, badge = ForgeScore.TRAINED))
 
-        assertEquals(listOf("Tariq", "Omar", "Karim", "Noor"), board.map { it.name })
+        assertEquals(listOf("tariq", "Omar", "Karim", "Noor"), board.map { it.name })
         val noor = board.first { it.id == "f_stale" }
         assertEquals(0, noor.score)
         assertEquals(FriendBadge.NOT_SYNCED, noor.badge)
@@ -87,7 +106,7 @@ class FriendsLeaderboardTest {
 
         val board = FriendsLeaderboard.build(view, meSnapshot = snap(score = 85, badge = ForgeScore.TRAINED))
 
-        assertEquals(listOf("Adam", "lina", "Tariq", "Zaid"), board.map { it.name })
+        assertEquals(listOf("Adam", "lina", "tariq", "Zaid"), board.map { it.name })
         assertEquals(listOf(100, 85, 85, 85), board.map { it.score })
     }
 
@@ -111,6 +130,50 @@ class FriendsLeaderboardTest {
         assertEquals(0, meEntry.score)
         assertEquals(FriendBadge.NOT_SYNCED, meEntry.badge)
         assertFalse(meEntry.syncedThisWeek)
-        assertEquals(listOf("Omar", "Tariq"), board.map { it.name })
+        assertEquals(listOf("Omar", "tariq"), board.map { it.name })
+    }
+
+    @Test
+    fun effectiveWeekStateMarksHitWhenTargetMet() {
+        assertEquals("hit", FriendsLeaderboard.effectiveWeekState(weekState = null, done = 3, due = 3))
+        assertEquals("hit", FriendsLeaderboard.effectiveWeekState(weekState = "open", done = 4, due = 3))
+        assertEquals("open", FriendsLeaderboard.effectiveWeekState(weekState = "open", done = 2, due = 3))
+        assertEquals("free", FriendsLeaderboard.effectiveWeekState(weekState = "free", done = 0, due = 3))
+        assertEquals(null, FriendsLeaderboard.effectiveWeekState(weekState = null, done = 0, due = 0))
+    }
+
+    @Test
+    fun englishOrdinalSuffixHandlesTeensHundredsAndStandardCases() {
+        val expected = mapOf(
+            1 to "st",
+            2 to "nd",
+            3 to "rd",
+            4 to "th",
+            5 to "th",
+            10 to "th",
+            11 to "th",
+            12 to "th",
+            13 to "th",
+            14 to "th",
+            20 to "th",
+            21 to "st",
+            22 to "nd",
+            23 to "rd",
+            24 to "th",
+            100 to "th",
+            101 to "st",
+            102 to "nd",
+            103 to "rd",
+            111 to "th",
+            112 to "th",
+            113 to "th",
+            121 to "st",
+            122 to "nd",
+            123 to "rd",
+        )
+        for ((rank, suffix) in expected) {
+            assertEquals("suffix for $rank", suffix, FriendsLeaderboard.ordinalSuffix(rank))
+            assertEquals("ordinal for $rank", "$rank$suffix", FriendsLeaderboard.ordinal(rank))
+        }
     }
 }

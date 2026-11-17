@@ -26,16 +26,7 @@
 .onb-plan-desc { font-size: 13px; color: var(--text-2); }
 .onb-radio { inline-size: 24px; block-size: 24px; border-radius: var(--r-full); background: var(--card-high); flex: none; display: inline-flex; align-items: center; justify-content: center; }
 .onb-radio.on { background: var(--teal); color: var(--on-teal); }
-.onb-optional { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; color: var(--text-2); }
 .onb-badge { inline-size: 44px; block-size: 44px; border-radius: var(--r-full); background: var(--teal-track); color: var(--teal); display: inline-flex; align-items: center; justify-content: center; }
-.onb-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.onb-steps li { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; }
-.onb-num { inline-size: 24px; block-size: 24px; border-radius: var(--r-full); background: var(--teal-track); color: var(--teal); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
-.onb-getkey { align-self: flex-start; text-decoration: none; background: var(--teal-track); color: var(--teal); }
-.onb-check { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.onb-msg { font-size: 13px; flex: 1; min-inline-size: 0; }
-.onb-msg.ok { color: var(--teal); }
-.onb-msg.bad { color: var(--coral); }
 
 @media (prefers-reduced-motion: reduce) { .onb-body { animation: none; } .onb-bar-fill { transition: none; } }
 .onb-num-wrap { display: inline-flex; align-items: center; gap: 8px; }

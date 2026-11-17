@@ -516,8 +516,8 @@ internal fun HealthSettingsGroup(
             }
             // Switched on here but access was taken back in Health Connect: say so rather than look switched off.
             if (settings.healthEnabled && health == HealthState.NeedsAccess) {
-                Text(stringResource(R.string.ready_reconnect_body), style = MaterialTheme.typography.bodySmall, color = c.gold)
-                TextButton(onClick = { healthAccess.launch(vm.app.health.requestPermissions()) }) { Text(stringResource(R.string.ready_reconnect), color = c.gold) }
+                Text(stringResource(R.string.hc_reconnect_body), style = MaterialTheme.typography.bodySmall, color = c.gold)
+                TextButton(onClick = { healthAccess.launch(vm.app.health.requestPermissions()) }) { Text(stringResource(R.string.hc_reconnect), color = c.gold) }
             }
         }
     }

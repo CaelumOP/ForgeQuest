@@ -1,32 +1,21 @@
 import { useState } from 'preact/hooks'
-import { getLang, plural, setLang, t, type Lang, intlLocale } from '../../i18n'
+import { getLang, intlLocale, plural, setLang, t, type Lang } from '../../i18n'
 import { updateSettings } from '../../data/settings'
 import { applyPlan, seedLibrary } from '../../data/workouts'
+import { db } from '../../data/db'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { ONBOARDING_PLAN_COUNT, STARTER_PLANS, localizePlan, type PlanDraft } from '../../data/seed/starter-plans'
-import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
+import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment, type EquipmentPreset } from '../../domain/exercise-swap-engine'
+import { buildPlan, spreadDays, type Experience } from '../../domain/plan-builder'
 import {
   allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, DAY_BASE, dailyBurn, GAIN_PACE, GAIN_PACES, NUTRITION_GOALS, type CutPace, type GainPace,
 } from '../../domain/nutrition'
 import { bodyStep, fromKg, toKg, unitLabel, type WeightUnit } from '../../domain/units'
-import { Button, Card, ChipGroup, Segmented, Stat, Stepper, TextField, parseNumber } from '../kit'
-import { CheckCircleIcon, FireIcon, OpenIcon, SparkleIcon } from '../home/glyphs'
+import { Button, Card, Chip, ChipGroup, Segmented, Sheet, Stat, Stepper, TextField, parseNumber } from '../kit'
+import { CsvImportScreen } from '../profile/CsvImportScreen'
+import { CheckCircleIcon, FireIcon } from '../home/glyphs'
 import { DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, planForDays, presetForPlan, setWeight, settingsPatch, withSuggestions, type OnbState } from './logic'
 import './onboarding.css'
-
-const GEMINI_MODELS = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
-type KeyCheck = { busy: boolean; ok: boolean; msg: string | null }
-
-/** Straight from the browser, like the AI check screen. Only a working key is saved. */
-async function checkKey(key: string): Promise<KeyCheck> {
-  try {
-    const r = await fetch(GEMINI_MODELS, { headers: { 'x-goog-api-key': key } })
-    if (r.ok) return { busy: false, ok: true, msg: t('onb_key_works') }
-    return { busy: false, ok: false, msg: r.status === 400 || r.status === 401 || r.status === 403 ? t('onb_web_key_rejected') : t('onb_key_check_failed') }
-  } catch {
-    return { busy: false, ok: false, msg: t('onb_key_check_failed') }
-  }
-}
 
 const emptyPlan = (): PlanDraft => ({
   name: t('onb_my_plan'), description: t('onb_my_plan_desc'),
@@ -42,12 +31,11 @@ export async function quickStart(): Promise<void> {
 /** Training days of starter plan [i], for its "N days a week" label. */
 const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 0
 
-/** First-run setup: language, name, goals, starter plan, optional Gemini key. Full screen, no tab bar. */
+/** First-run setup: language, name, starter plan. Full screen, no tab bar. */
 export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [s, setS] = useState<OnbState>(initialState)
-  const [key, setKey] = useState('')
-  const [check, setCheck] = useState<KeyCheck>({ busy: false, ok: false, msg: null })
   const [saving, setSaving] = useState(false)
+  const [csvOpen, setCsvOpen] = useState(false)
   const update = (f: (c: OnbState) => OnbState) => setS(f)
   const go = (d: number) => update((c) => ({ ...c, step: Math.min(LAST_STEP, Math.max(0, c.step + d)) }))
 
@@ -56,21 +44,25 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
     setSaving(true)
     try {
       await seedLibrary(getLang())
-      const chosen = STARTER_PLANS[s.planIndex]
-      const plan = chosen ? localizePlan(chosen, getLang()) : emptyPlan()
-      const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
-      await applyPlan(adapted, chosen ? 'starter' : 'manual')
-      await updateSettings(settingsPatch(s, check.ok ? key.trim() : null))
+      if (s.builtForMe) {
+        const lib = await db.exercises.toArray()
+        const built = buildPlan(
+          { goal: 'GENERAL', days: spreadDays(s.daysPerWeek), minutes: 45, equipment: presetEquipment(s.preset), experience: s.experience },
+          lib,
+        )
+        await applyPlan(built.draft, 'builder')
+      } else {
+        const chosen = STARTER_PLANS[s.planIndex]
+        const plan = chosen ? localizePlan(chosen, getLang()) : emptyPlan()
+        const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
+        await applyPlan(adapted, chosen ? 'starter' : 'manual')
+      }
+      await updateSettings(settingsPatch(s))
       onDone()
     } catch (e) {
       console.error('onboarding failed', e)
       setSaving(false)
     }
-  }
-
-  const runCheck = async () => {
-    setCheck({ busy: true, ok: false, msg: null })
-    setCheck(await checkKey(key.trim()))
   }
 
   return (
@@ -82,19 +74,19 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
       </div>
       <div class="onb-body" key={s.step}>
         {s.step === 0 && <StepLanguage onNext={() => go(1)} />}
-        {s.step === 1 && <StepWelcome s={s} update={update} />}
+        {s.step === 1 && <StepWelcome s={s} update={update} onImportCsv={() => setCsvOpen(true)} />}
         {s.step === 2 && <StepPlan s={s} update={update} />}
-        {s.step === 3 && (
-          <StepKey value={key} onInput={(v) => { setKey(v.trim()); setCheck({ busy: false, ok: false, msg: null }) }} check={check} onCheck={runCheck} />
-        )}
       </div>
+      <Sheet open={csvOpen} onClose={() => setCsvOpen(false)} title={t('prog41_csv_import_title')}>
+        <CsvImportScreen onDone={() => setCsvOpen(false)} />
+      </Sheet>
       {s.step > 0 && (
         <div class="onb-foot">
           <Button variant="text" onClick={() => go(-1)}>{t('action_back')}</Button>
           <span class="onb-spacer" />
           {s.step < LAST_STEP
             ? <Button onClick={() => go(1)} disabled={s.step === 1 && !s.name.trim()}>{t('action_continue')}</Button>
-            : <Button onClick={finish} loading={saving}>{check.ok ? t('onb_lets_go') : t('onb_finish')}</Button>}
+            : <Button onClick={finish} loading={saving}>{t('onb_finish')}</Button>}
         </div>
       )}
     </main>
@@ -127,7 +119,7 @@ function StepLanguage({ onNext }: { onNext: () => void }) {
 
 export type StepProps = { s: OnbState; update: (f: (c: OnbState) => OnbState) => void }
 
-function StepWelcome({ s, update }: StepProps) {
+function StepWelcome({ s, update, onImportCsv }: StepProps & { onImportCsv?: () => void }) {
   return (
     <>
       <Title title={t('onb_welcome_title')} body={t('onb_welcome_body')} />
@@ -135,6 +127,12 @@ function StepWelcome({ s, update }: StepProps) {
       <h2 class="onb-h2">{t('onb_web_body_type')}</h2>
       <ChipGroup label={t('onb_web_body_type')} value={s.bodyType} onChange={(v) => update((c) => ({ ...c, bodyType: v }))}
         options={[{ value: 'MALE', label: t('body_male') }, { value: 'FEMALE', label: t('body_female') }]} />
+      {onImportCsv && (
+        <div style={{ marginBlockStart: '12px' }}>
+          <p class="onb-note">{t('prog41_onb_import_csv')}</p>
+          <Button variant="text" onClick={onImportCsv}>{t('prog41_csv_import_title')}</Button>
+        </div>
+      )}
     </>
   )
 }
@@ -301,15 +299,49 @@ function StepPlan({ s, update }: StepProps) {
       <Segmented label={t('onb_days_title')} value={String(s.daysPerWeek)}
         onChange={(v) => update((c) => ({ ...c, daysPerWeek: Number(v), planIndex: planForDays(Number(v), c.preset) }))}
         options={DAY_OPTIONS.map((d) => ({ value: String(d), label: new Intl.NumberFormat(intlLocale()).format(d) }))} />
+      <h2 class="onb-h2">{t('prog41_onb_quick_place')}</h2>
+      <div class="kit-chips" role="group" aria-label={t('prog41_onb_quick_place')}>
+        {([
+          ['FULL_GYM', 'prog41_onb_place_gym'],
+          ['HOME_GYM', 'prog41_onb_place_home'],
+          ['BODYWEIGHT_ONLY', 'prog41_onb_place_bw'],
+        ] as [EquipmentPreset, string][]).map(([preset, k]) => (
+          <Chip
+            key={preset}
+            label={t(k)}
+            selected={s.preset === preset}
+            onClick={() => update((c) => ({ ...c, preset, planIndex: planForDays(c.daysPerWeek, preset) }))}
+          />
+        ))}
+      </div>
+      <h2 class="onb-h2">{t('prog41_onb_exp_title')}</h2>
+      <Segmented
+        label={t('prog41_onb_exp_title')}
+        value={s.experience}
+        onChange={(experience: Experience) => update((c) => ({ ...c, experience }))}
+        options={[
+          { value: 'NEW', label: t('prog41_onb_exp_new') },
+          { value: 'SOME', label: t('prog41_onb_exp_some') },
+          { value: 'SEASONED', label: t('prog41_onb_exp_seasoned') },
+        ]}
+      />
       <h2 class="onb-h2">{t('onb_available_equipment')}</h2>
       <ChipGroup label={t('onb_available_equipment')} value={s.preset} onChange={(p) => update((c) => ({ ...c, preset: p, planIndex: planForDays(c.daysPerWeek, p) }))}
         options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn }))} />
       <div class="onb-plans" role="radiogroup" aria-label={t('onb_plan_title')}>
+        <button type="button" role="radio" aria-checked={s.builtForMe} class={`onb-plan${s.builtForMe ? ' on' : ''}`}
+          onClick={() => update((c) => ({ ...c, builtForMe: true }))}>
+          <span class="onb-plan-text">
+            <span class="onb-plan-name">{t('onb_built_title')}</span>
+            <span class="onb-plan-desc">{t('onb_built_body', s.daysPerWeek)}</span>
+          </span>
+          <span class={`onb-radio${s.builtForMe ? ' on' : ''}`}>{s.builtForMe && <CheckCircleIcon />}</span>
+        </button>
         {options.map((o, i) => {
-          const on = s.planIndex === i
+          const on = !s.builtForMe && s.planIndex === i
           return (
             <button key={i} type="button" role="radio" aria-checked={on} class={`onb-plan${on ? ' on' : ''}`}
-              onClick={() => update((c) => ({ ...c, planIndex: i, preset: presetForPlan(i, c.preset) }))}>
+              onClick={() => update((c) => ({ ...c, builtForMe: false, planIndex: i, preset: presetForPlan(i, c.preset) }))}>
               <span class="onb-plan-text">
                 <span class="onb-plan-name">{o.name}</span>
                 {trainingDaysOf(i) > 0 && <span class="onb-plan-days">{plural('onb_plan_days', trainingDaysOf(i))}</span>}
@@ -320,33 +352,6 @@ function StepPlan({ s, update }: StepProps) {
           )
         })}
       </div>
-    </>
-  )
-}
-
-function StepKey({ value, onInput, check, onCheck }: { value: string; onInput: (v: string) => void; check: KeyCheck; onCheck: () => void }) {
-  return (
-    <>
-      <div class="onb-optional">
-        <span class="onb-badge"><SparkleIcon /></span>
-        <span>{t('onb_optional')}</span>
-      </div>
-      <Title title={t('onb_ai_title')} body={t('onb_ai_body')} />
-      <ol class="onb-steps">
-        {['onb_ai_step1', 'onb_ai_step2', 'onb_ai_step3'].map((k, i) => (
-          <li key={k}><span class="onb-num" aria-hidden="true">{new Intl.NumberFormat(intlLocale()).format(i + 1)}</span><span>{t(k)}</span></li>
-        ))}
-      </ol>
-      <a class="kit-btn kit-btn-tonal onb-getkey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">
-        <OpenIcon size={18} /><span class="kit-btn-label">{t('onb_get_key')}</span>
-      </a>
-      <TextField label={t('onb_key_label')} type="password" value={value} autocomplete="off" onInput={onInput} />
-      <div class="onb-check">
-        <Button onClick={onCheck} loading={check.busy} disabled={!value}>{check.busy ? t('onb_checking') : t('onb_check_key')}</Button>
-        {check.msg && <span class={`onb-msg ${check.ok ? 'ok' : 'bad'}`} role="status">{check.msg}</span>}
-      </div>
-      <p class="onb-note">{t('onb_privacy')}</p>
-      <p class="onb-note">{t('onb_groq_hint')}</p>
     </>
   )
 }

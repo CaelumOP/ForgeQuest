@@ -3,7 +3,7 @@
 import { useState } from 'preact/hooks'
 import { plural, t } from '../../i18n'
 import type { ProgressSnapshot } from '../../data/progress'
-import { updateSettings } from '../../data/settings'
+import { DEFAULT_SETTINGS, updateSettings } from '../../data/settings'
 import { nudgeTarget, showTargetNudge } from '../../domain/target-nudge'
 import { trainingDays } from '../../data/workouts'
 import { fullTarget } from '../../domain/progress'
@@ -13,7 +13,12 @@ import { needsFoodTargets } from '../onboarding/logic'
 
 export function FoodTargetsCard({ s }: { s: ProgressSnapshot }) {
   const [open, setOpen] = useState(false)
-  if (!needsFoodTargets(s.settings.heightCm, s.sessions.length)) return null
+  const targetsSet = s.settings.heightCm > 0
+    || s.settings.goalSetDay > 0
+    || s.settings.targetSetDay > 0
+    || s.settings.kcalGoal !== DEFAULT_SETTINGS.kcalGoal
+    || s.settings.proteinGoal !== DEFAULT_SETTINGS.proteinGoal
+  if (targetsSet || !needsFoodTargets(s.settings.heightCm, s.sessions.length)) return null
   return (
     <>
       <Card onClick={() => setOpen(true)}>

@@ -12,9 +12,10 @@ export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 // Auto-generated ids are optional on rows that are not saved yet (Room uses 0 for that).
 
 // Row types for entities the domain also reads: the domain type is the single definition.
-export type ExerciseRow = Required<ExerciseEntity>;
+export type ExerciseRow = ExerciseEntity & Required<Pick<ExerciseEntity, 'videoUrl' | 'custom'>>;
 export interface PlanRow {
   id?: number; name: string; description: string; source: string; active: boolean; createdAt: number;
+  scheduleMode?: string; rotationCursor?: number;
 }
 export interface PlanDayRow {
   id?: number; planId: number; dayOfWeek: number; title: string; isRest: boolean; note: string;
@@ -38,6 +39,7 @@ export interface MealRow {
   id?: number; epochDay: number; loggedAt: number; name: string; category: FoodCategory; kcal: number;
   protein: number; quantity: number; carbs: number; photoPath: string | null; foodId: number | null;
 }
+export interface BodyMeasurementRow { id?: number; epochDay: number; metric: string; valueCm: number; loggedAt: number }
 export interface WeightRow { epochDay: number; kg: number; loggedAt: number }
 export interface ChatRow {
   id?: number; role: string; text: string; planJson: string | null; planApplied: boolean; kind: string;
@@ -61,6 +63,7 @@ export class ForgeQuestDb extends Dexie {
   foods!: Table<FoodRow, number>;
   meals!: Table<MealRow, number>;
   weights!: Table<WeightRow, number>;
+  bodyMeasurements!: Table<BodyMeasurementRow, number>;
   chat!: Table<ChatRow, number>;
   badges!: Table<BadgeRow, string>;
   dayNotes!: Table<DayNoteRow, number>;
@@ -88,6 +91,14 @@ export class ForgeQuestDb extends Dexie {
       safetyCopies: '++id, createdAt',
     });
     this.version(2).stores({ kv: 'key' });
+    this.version(3).stores({ bodyMeasurements: '++id, epochDay, metric' });
+    // Reading hooks cover get, queries and backup exports without rewriting historical rows.
+    this.exercises.hook('reading', (row) => row && ({
+      equipment: '', pattern: '', setupNote: '', aliases: '', unitOverride: '', pinned: false, mediaKey: '', ...row,
+    }));
+    this.plans.hook('reading', (row) => row && ({ scheduleMode: 'WEEKDAY', rotationCursor: 0, ...row }));
+    this.planItems.hook('reading', (row) => row && ({ supersetGroup: null, autoWarmup: false, progressionMode: 'DOUBLE', ...row }));
+    this.sets.hook('reading', (row) => row && ({ setType: 'WORKING', ...row }));
   }
 }
 

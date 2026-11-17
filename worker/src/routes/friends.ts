@@ -9,9 +9,11 @@ import { riyadhEpochDay, sundayWeekStart } from "../time";
 import {
   Friend,
   HttpError,
+  Inbox,
   Me,
   NudgeView,
   Person,
+  Snapshot,
   toMe,
   toPerson,
   toSnapshot,
@@ -26,16 +28,24 @@ export async function handleGetFriends(
   user: UserRow,
 ): Promise<{
   me: Me;
+  mySnapshot: Snapshot | null;
   today: number;
   weekStart: number;
   friends: Friend[];
   incoming: Person[];
   outgoing: Person[];
   nudges: NudgeView[];
+  inbox?: Inbox;
 }> {
   const today = riyadhEpochDay(ctx.nowMs);
   const weekStart = sundayWeekStart(today);
-  const view = await ctx.store.getFriendsView(user.id);
+  const v4 = ["4", "5"].includes(new URL(ctx.request.url).searchParams.get("v") ?? "");
+  const view = await ctx.store.getFriendsView(user.id, {
+    v4,
+    pingsSinceDay: today - 6,
+    activitySinceSec: ctx.nowSec - 48 * 60 * 60,
+  });
+  const muted = new Set(view.mutedIds);
   const statesByUser = new Map<string, Map<number, WeekState>>();
   for (const w of view.weekStates) {
     if (!WEEK_STATES.has(w.state)) continue;
@@ -43,9 +53,13 @@ export async function handleGetFriends(
     if (!m) statesByUser.set(w.user_id, (m = new Map()));
     m.set(w.week_start, w.state as WeekState);
   }
+  const mySnapshot = await ctx.store.getSnapshot(user.id);
   const mine = statesByUser.get(user.id) ?? new Map<number, WeekState>();
   return {
     me: toMe(user),
+    mySnapshot: mySnapshot ? toSnapshot(mySnapshot, user.share_prs === 1,
+      mySnapshot.week_start === weekStart && ["hit", "free", "open"].includes(mine.get(weekStart) ?? "")
+        ? mine.get(weekStart) as Snapshot["weekState"] : null) : null,
     today,
     weekStart,
     friends: view.friends.map(({ user: friend, snapshot, friendsSince }) => {
@@ -56,11 +70,26 @@ export async function handleGetFriends(
         ...toPerson(friend),
         snapshot: snapshot ? toSnapshot(snapshot, friend.share_prs === 1, weekState) : null,
         sharedStreak: sharedStreak({ friendsSinceSec: friendsSince, today, mine, theirs }),
+        muted: muted.has(friend.id),
       };
+    }).sort((a, b) => {
+      const current = (f: Friend) => f.snapshot && f.snapshot.weekStart >= weekStart ? f.snapshot : null;
+      const sa = current(a), sb = current(b);
+      return (sb?.score ?? 0) - (sa?.score ?? 0) ||
+        (sa?.reachedAt ?? Number.MAX_SAFE_INTEGER) - (sb?.reachedAt ?? Number.MAX_SAFE_INTEGER) ||
+        ((a.username ?? "") < (b.username ?? "") ? -1 : (a.username ?? "") > (b.username ?? "") ? 1 : 0);
     }),
     incoming: view.incoming.map(toPerson),
     outgoing: view.outgoing.map(toPerson),
     nudges: view.nudges,
+    ...(view.inbox
+      ? {
+          inbox: {
+            pings: view.inbox.pings.map((p) => ({ ...p, name: p.username ?? "" })),
+            activity: view.inbox.activity.map((a) => ({ ...a, name: a.username ?? "" })),
+          },
+        }
+      : {}),
   };
 }
 

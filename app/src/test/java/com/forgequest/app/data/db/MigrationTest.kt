@@ -19,7 +19,7 @@ import java.io.File
 // A plain Application: the real one schedules WorkManager jobs, which Robolectric has no setup for.
 @Config(sdk = [34], application = android.app.Application::class)
 class MigrationTest {
-    private val latest = 10
+    private val latest = 11
     private val dbName = "migration-test"
 
     @get:Rule
@@ -45,6 +45,36 @@ class MigrationTest {
             // Validates the result against the exported schema of each version on the way.
             for (to in from + 1..latest) {
                 helper.runMigrationsAndValidate(name, to, true, *AppDatabase.MIGRATIONS).close()
+            }
+        }
+    }
+
+    @Test fun populatedTenUpgradesWithoutLosingAnUnfinishedWorkout() {
+        val name = "$dbName-foundation"
+        helper.createDatabase(name, 10).apply {
+            execSQL("INSERT INTO exercises (id, name, kind, `primary`, secondary, custom) VALUES ('custom', 'My press', 'WEIGHTED', 'CHEST', '', 1)")
+            execSQL("INSERT INTO plans (name, description, source, active, createdAt) VALUES ('My plan', '', 'manual', 1, 1)")
+            execSQL("INSERT INTO sessions (title, epochDay, startedAt, note, debrief) VALUES ('Open', 1, 1, '', '')")
+            execSQL("INSERT INTO sets (sessionId, exerciseId, itemPosition, block, circuit, setIndex, targetLabel, done, isPr, restSeconds, note, effort) VALUES (1, 'custom', 0, 'Warm-up', 0, 0, '10', 0, 0, 60, '', '')")
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 11, true, *AppDatabase.MIGRATIONS).use { db ->
+            db.query("SELECT setupNote, unitOverride, pinned, mediaKey FROM exercises WHERE id = 'custom'").use {
+                assertEquals(true, it.moveToFirst()); assertEquals("", it.getString(0))
+                assertEquals("", it.getString(1)); assertEquals(0, it.getInt(2)); assertEquals("", it.getString(3))
+            }
+            db.query("SELECT scheduleMode, rotationCursor FROM plans").use {
+                assertEquals(true, it.moveToFirst()); assertEquals("WEEKDAY", it.getString(0)); assertEquals(0, it.getInt(1))
+            }
+            db.query("SELECT setType, block FROM sets").use {
+                assertEquals(true, it.moveToFirst()); assertEquals("WORKING", it.getString(0)); assertEquals("Warm-up", it.getString(1))
+            }
+            db.query("SELECT finishedAt FROM sessions").use {
+                assertEquals(true, it.moveToFirst()); assertEquals(true, it.isNull(0))
+            }
+            db.execSQL("INSERT INTO body_measurements (epochDay, metric, valueCm, loggedAt) VALUES (1, 'WAIST', 80.5, 1)")
+            db.query("SELECT valueCm FROM body_measurements").use {
+                assertEquals(true, it.moveToFirst()); assertEquals(80.5, it.getDouble(0), 0.0)
             }
         }
     }

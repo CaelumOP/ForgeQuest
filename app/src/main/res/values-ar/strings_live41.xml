@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thumb-zone keypad -->
+    <string name="live41_keypad_last_time">المرة السابقة (%1$s)</string>
+    <string name="live41_keypad_done">تم</string>
+    <string name="live41_keypad_clear">مسح</string>
+    <string name="live41_keypad_backspace">حذف رقم</string>
+    <string name="live41_keypad_decimal">فاصلة عشرية</string>
+
+    <!-- Plate calculator -->
+    <string name="live41_plates_side">%1$s / جانب</string>
+    <string name="live41_plates_bar_only">البار فقط (%1$s)</string>
+    <string name="live41_plates_title">الأوزان لكل جانب</string>
+    <string name="live41_plates_target">الهدف: %1$s</string>
+    <string name="live41_plates_bar">البار: %1$s</string>
+    <string name="live41_plates_loaded">المحمول: %1$s</string>
+    <string name="live41_plates_remainder">أقرب وزن متاح (فرق %1$s)</string>
+    <string name="live41_plates_none_needed">البار فارغ، لا حاجة لأقراص إضافية</string>
+    <string name="live41_plates_below_bar">أقل من وزن البار (%1$s)</string>
+    <string name="live41_plates_breakdown_cd">تفصيل الأقراص لوزن %1$s</string>
+
+    <!-- Set types -->
+    <string name="live41_set_type_title">نوع المجموعة</string>
+    <string name="live41_set_type_working">أساسية</string>
+    <string name="live41_set_type_working_desc">تُحتسب في التدرّج والنتيجة والأرقام القياسية</string>
+    <string name="live41_set_type_warmup">تسخين</string>
+    <string name="live41_set_type_warmup_desc">لا تبدأ راحة تلقائية ولا تُحتسب في التدرّج أو PR</string>
+    <string name="live41_set_type_dropset">دروب سِت</string>
+    <string name="live41_set_type_dropset_desc">مجموعة إضافية بعد المجموعة الأساسية</string>
+    <string name="live41_set_type_failure">فشل عضلي</string>
+    <string name="live41_set_type_failure_desc">مجموعة حتى الفشل العضلي؛ تُحتسب في التدرّج وPR</string>
+    <string name="live41_set_type_restpause">ريست بوز (راحة قصيرة)</string>
+    <string name="live41_set_type_restpause_desc">خيار راحة قصيرة 15 ثانية بين التكرارات</string>
+    <string name="live41_tag_warmup">ت</string>
+    <string name="live41_tag_dropset">د</string>
+    <string name="live41_tag_failure">ف</string>
+    <string name="live41_tag_restpause">ر</string>
+    <string name="live41_set_badge_cd">المجموعة %1$s، %2$s. اضغط لتغيير النوع</string>
+
+    <!-- Quick peek -->
+    <string name="live41_peek_tab_form">الأداء</string>
+    <string name="live41_peek_tab_history">آخر 3 حصص</string>
+    <string name="live41_peek_start">البداية</string>
+    <string name="live41_peek_finish">النهاية</string>
+    <string name="live41_peek_no_media">لا تتوفر صور توضيحية دون اتصال</string>
+    <string name="live41_peek_cues">إرشادات الأداء</string>
+    <string name="live41_peek_mistake">خطأ شائع</string>
+    <string name="live41_peek_no_cues">لا توجد إرشادات محفوظة لهذا التمرين</string>
+    <string name="live41_peek_no_history">لا توجد حصص سابقة مسجلة بعد</string>
+    <string name="live41_peek_use_last">استخدام أرقام المرة السابقة</string>
+    <string name="live41_peek_used_last">تم تطبيق أرقام المرة السابقة</string>
+    <string name="live41_peek_full_stats">الإحصائيات الكاملة</string>
+
+    <!-- Pinned setup note -->
+    <string name="live41_setup_note_label">ملاحظة التجهيز</string>
+    <string name="live41_setup_note_hint">مثال: المقعد 4، المسمار 3</string>
+    <string name="live41_setup_note_prefix">التجهيز: %1$s</string>
+    <string name="live41_setup_note_edit">تعديل ملاحظة التجهيز</string>
+
+    <!-- Per-exercise weight unit -->
+    <string name="live41_unit_menu">وحدة الوزن (%1$s)</string>
+    <string name="live41_unit_default">افتراضي الملف الشخصي (%1$s)</string>
+    <string name="live41_unit_kg">كغ</string>
+    <string name="live41_unit_lb">رطل</string>
+    <string name="live41_unit_title">وحدة الوزن لهذا التمرين</string>
+
+    <!-- Rest bar -->
+    <string name="live41_rest_preset_s">%1$d ث</string>
+    <string name="live41_copy_last_set">نسخ آخر مجموعة</string>
+    <string name="live41_copied_last_set">تم نسخ آخر مجموعة</string>
+
+    <!-- Superset display -->
+    <string name="live41_superset">سوبر سِت</string>
+    <string name="live41_superset_hint">بدّل بين %1$s و%2$s؛ الراحة الكاملة بعد %2$s</string>
+
+    <!-- Spoken cues -->
+    <string name="live41_tts_toggle">تنبيهات صوتية</string>
+    <string name="live41_tts_rest_over">انتهت الراحة</string>
+    <string name="live41_tts_rest_over_next">انتهت الراحة. التالي: %1$s</string>
+    <string name="live41_tts_hold_start">اثبت</string>
+    <string name="live41_tts_hold_halfway">نصف الوقت</string>
+    <string name="live41_tts_hold_done">انتهى</string>
+
+    <!-- Shareable recap -->
+    <string name="live41_share_summary">مشاركة الملخص</string>
+    <string name="live41_share_copied">تم نسخ الملخص</string>
+    <plurals name="live41_recap_sets">
+        <item quantity="zero">0 مجموعات</item>
+        <item quantity="one">مجموعة واحدة</item>
+        <item quantity="two">مجموعتان</item>
+        <item quantity="few">%1$d مجموعات</item>
+        <item quantity="many">%1$d مجموعة</item>
+        <item quantity="other">%1$d مجموعة</item>
+    </plurals>
+    <string name="live41_recap_minutes">%1$d د</string>
+    <string name="live41_recap_total_lifted">إجمالي الأوزان: %1$s</string>
+    <string name="live41_recap_best">الأفضل %1$s</string>
+    <string name="live41_recap_pr_tag">رقم قياسي</string>
+    <string name="live41_recap_prs_header">الأرقام القياسية: %1$s</string>
+</resources>

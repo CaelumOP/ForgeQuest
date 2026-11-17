@@ -1,6 +1,6 @@
 {
-  "versionCode": 40,
-  "versionName": "4.0.0",
-  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v4.0.0/ForgeQuest-v4.0.0.apk",
-  "notes": "• Friends: sign in with Google, pick a username, and add friends by @username. A weekly board shows everyone's Forge Score, workouts and status, with a nudge button for friends who haven't finished their week.\n• Shared streaks: count the weeks you and a friend both hit your targets. See them on Home under your streak and in each friend's card.\n• New tab order: Home, Friends, Workouts, Food, Progress.\n• Privacy: only your weekly summary is shared, never your sets or meals. Turn off your photo or PRs any time in Settings."
+  "versionCode": 41,
+  "versionName": "4.1.0",
+  "apk": "https://github.com/CaelumOP/ForgeQuest/releases/download/v4.1.0/ForgeQuest-v4.1.0.apk",
+  "notes": "• 861 exercises with start/finish photos, Arabic gym names and search in both languages. New exercise page with a mini muscle map and how-to tips.\n• Smarter swap: every option says Easier, Same level or Harder, and the list stays tied to the exercise in your plan.\n• Effort is simpler: Easy, Hard or Failure after each set, plus a separate \"it hurt\" button. The app adds weight when sets feel easy.\n• Live workout: number keypad, plate math, quick peek at last sessions, spoken cues and a short recap when you finish.\n• Planner: rotating days, supersets, automatic warm-up sets, progression modes, and share or import plans.\n• Progress: body measurements, weekly sets per muscle on the body map, and CSV import from Strong, Hevy and FitNotes.\n• Daily Google Drive backup turns on when you sign in. Your profile photo on Home opens Profile and Settings.\n• Friends: a clearer Forge Score with a breakdown of bonuses for PRs, protein days and extra workouts.\n• Removed: Fitbit readiness. Health Connect is now used only for steps, calories burned and weight."
 }

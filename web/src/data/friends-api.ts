@@ -3,7 +3,7 @@ import type { Friend, Person, Snapshot } from '../domain/forge-score'
 
 export type { Friend, Person, Pr, Snapshot } from '../domain/forge-score'
 
-// Shapes follow the Friends contract v2 (.claude/scratch/v4/friends-contract.md) and Android FriendsModels.kt.
+// Shapes follow the Friends contract v4 (.claude/scratch/v4/friends-contract.md) and Android FriendsModels.kt.
 
 export interface Me {
   id: string
@@ -13,6 +13,9 @@ export interface Me {
   sharePhoto: boolean
   sharePrs: boolean
   joined: boolean
+  alertsOn: boolean
+  shareWorkouts: boolean
+  pingsOn: boolean
 }
 
 export interface Nudge {
@@ -22,7 +25,29 @@ export interface Nudge {
   day: number
 }
 
+export interface InboxPing {
+  fromId: string
+  name: string
+  username: string | null
+  day: number
+  createdAt: number
+  seen: boolean
+}
+
+export interface InboxActivity {
+  userId: string
+  name: string
+  username: string | null
+  at: number
+}
+
+export interface Inbox {
+  pings: InboxPing[]
+  activity: InboxActivity[]
+}
+
 export interface FriendsView {
+  mySnapshot?: Snapshot | null
   me: Me
   today: number
   weekStart: number
@@ -30,6 +55,7 @@ export interface FriendsView {
   incoming: Person[]
   outgoing: Person[]
   nudges: Nudge[]
+  inbox: Inbox
 }
 
 export interface AuthResponse {
@@ -46,11 +72,13 @@ export interface NudgeResult {
 }
 
 export interface ProfileInput {
-  name: string
   sharePhoto: boolean
   sharePrs: boolean
   /** Required on first join; omit to keep the current one. */
   username?: string
+  alertsOn?: boolean
+  shareWorkouts?: boolean
+  pingsOn?: boolean
 }
 
 export class FriendsError extends Error {
@@ -143,7 +171,18 @@ export const friendsApi = {
       },
     }),
 
-  getFriends: (token: string) => request<FriendsView>('/v1/friends', { method: 'GET', token }),
+  getFriends: (token: string) => request<FriendsView>('/v1/friends?v=4', { method: 'GET', token }),
+
+  inboxSeen: (token: string) => request<{ ok: boolean }>('/v1/inbox/seen', { method: 'POST', token }),
+
+  setMuted: (token: string, id: string, muted: boolean) =>
+    request<{ ok: boolean }>(`/v1/mutes/${enc(id)}`, { method: muted ? 'PUT' : 'DELETE', token }),
+
+  putPush: (token: string, pushToken: string) =>
+    request<void>('/v1/push', { method: 'PUT', token, body: { token: pushToken, platform: 'web' } }),
+
+  deletePush: (token: string, pushToken: string) =>
+    request<void>('/v1/push', { method: 'DELETE', token, body: { token: pushToken } }),
 
   invite: (token: string, username: string) =>
     request<InviteResult>('/v1/invites', { method: 'POST', token, body: { username } }),

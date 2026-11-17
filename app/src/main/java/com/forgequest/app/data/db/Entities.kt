@@ -1,5 +1,6 @@
 package com.forgequest.app.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -21,6 +22,15 @@ data class ExerciseEntity(
     /** Specific tutorial link. Null falls back to a YouTube search for the exercise name. */
     val videoUrl: String? = null,
     val custom: Boolean = false,
+    /** Comma-separated persisted Equipment names; all entries are required. */
+    @ColumnInfo(defaultValue = "''") val equipment: String = "",
+    @ColumnInfo(defaultValue = "''") val pattern: String = "",
+    @ColumnInfo(defaultValue = "''") val setupNote: String = "",
+    @ColumnInfo(defaultValue = "''") val aliases: String = "",
+    /** Empty inherits the profile unit; kg/lb affect display only. */
+    @ColumnInfo(defaultValue = "''") val unitOverride: String = "",
+    @ColumnInfo(defaultValue = "0") val pinned: Boolean = false,
+    @ColumnInfo(defaultValue = "''") val mediaKey: String = "",
 )
 
 @Serializable
@@ -33,6 +43,8 @@ data class PlanEntity(
     val source: String,
     val active: Boolean,
     val createdAt: Long,
+    @ColumnInfo(defaultValue = "'WEEKDAY'") val scheduleMode: String = "WEEKDAY",
+    @ColumnInfo(defaultValue = "0") val rotationCursor: Int = 0,
 )
 
 @Serializable
@@ -64,6 +76,9 @@ data class PlanItemEntity(
     val weightKg: Float? = null,
     val restSeconds: Int = 60,
     val note: String = "",
+    val supersetGroup: Int? = null,
+    @ColumnInfo(defaultValue = "0") val autoWarmup: Boolean = false,
+    @ColumnInfo(defaultValue = "'DOUBLE'") val progressionMode: String = "DOUBLE",
 )
 
 @Serializable
@@ -107,6 +122,7 @@ data class SetEntity(
     val effort: String = "",
     /** When the set was ticked (epoch ms); null while unticked or for sets done before this existed. */
     val doneAt: Long? = null,
+    @ColumnInfo(defaultValue = "'WORKING'") val setType: String = "WORKING",
 )
 
 @Serializable
@@ -202,6 +218,16 @@ data class BadgeEntity(
     val seen: Boolean = false,
 )
 
+@Serializable
+@Entity(tableName = "body_measurements", indices = [Index("epochDay")])
+data class BodyMeasurementEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val epochDay: Long,
+    val metric: String,
+    val valueCm: Float,
+    val loggedAt: Long,
+)
+
 class Converters {
     @TypeConverter
     fun musclesToString(list: List<Muscle>): String = list.joinToString(",") { it.name }
@@ -232,7 +258,7 @@ data class DayNoteEntity(
     val updatedAt: Long,
 )
 
-/** One day's Fitbit readiness, saved so the formulas can later be tuned against workouts and "I feel great" taps. */
+// kept for backup compatibility (readiness removed in 4.1)
 @Serializable
 @Entity(tableName = "readiness_days")
 data class ReadinessDayEntity(

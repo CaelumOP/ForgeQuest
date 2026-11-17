@@ -1,6 +1,7 @@
 package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
+import com.forgequest.app.data.seed.ExerciseLevels
 
 /** How hard a movement is to learn and its leverage, not the load (the person picks the weight). */
 enum class Tier { FOUNDATION, INTERMEDIATE, ADVANCED }
@@ -29,7 +30,11 @@ object ExerciseTiers {
         ex.custom -> null
         ex.id in ADVANCED -> Tier.ADVANCED
         ex.id in INTERMEDIATE -> Tier.INTERMEDIATE
-        else -> Tier.FOUNDATION
+        else -> when (ExerciseLevels.byId[ex.id]) {
+            "expert" -> Tier.ADVANCED
+            "intermediate" -> Tier.INTERMEDIATE
+            else -> Tier.FOUNDATION
+        }
     }
 
     /** Every set at this many reps, two sessions in a row, means the move has become easy. */

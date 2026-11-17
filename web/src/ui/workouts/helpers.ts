@@ -1,5 +1,6 @@
 import { plural, t } from '../../i18n'
 import type { ExerciseRow, PlanItemRow } from '../../data/db'
+import { filterExercisesBySearch } from '../../data/seed/search'
 import { isWebUrl } from '../../data/workouts'
 import { formatWeight, type WeightUnit } from '../../domain/units'
 import { expandLegacyEquipment, profileFits, profileFor, type Equipment } from '../../domain/exercise-swap-engine'
@@ -36,6 +37,8 @@ export const kindLabel = (k: ExerciseKind): string => t(k === 'REPS' ? 'stepper_
 export const muscleLabel = (m: Muscle): string => t('muscle_' + m.toLowerCase())
 export const musclesLabel = (ex: Pick<ExerciseRow, 'primary' | 'secondary'>): string =>
   [...new Set([...ex.primary, ...ex.secondary])].slice(0, 3).map(muscleLabel).join(t('list_separator'))
+export const primaryMusclesLabel = (ex: Pick<ExerciseRow, 'primary' | 'secondary'>): string =>
+  [...new Set(ex.primary.length ? ex.primary : ex.secondary)].slice(0, 2).map(muscleLabel).join(t('list_separator'))
 
 const BLOCKS: Record<string, string> = { 'Warm-up': 'block_warm_up', Core: 'block_core', Main: 'block_main', Legs: 'block_legs' }
 export const blockLabel = (b: string): string => (BLOCKS[b] ? t(BLOCKS[b]) : b)
@@ -65,24 +68,24 @@ export type PickerFilter = {
   focusMuscle?: Muscle
 }
 
-/** Library rows for the picker: filtered, then primary-muscle matches first, then by name. */
+/** Library rows for the picker: filtered (using cross-language ExerciseSearch), then primary-muscle matches first, then by name. */
 export function filterExercises(library: readonly ExerciseRow[], f: PickerFilter): ExerciseRow[] {
-  const q = f.query.trim().toLowerCase()
+  const q = f.query.trim()
+  const searched = q ? filterExercisesBySearch(library, q) : library
   const allowed = expandLegacyEquipment(f.equipment)
   const picked = f.selectedEquipment ?? null
-  return library
-    .filter((ex) => {
-      const prof = profileFor(ex)
-      const eqOk = picked ? picked === prof.equipment || Boolean(prof.requires?.includes(picked)) : profileFits(prof, allowed)
-      return eqOk &&
-        (!q || ex.name.toLowerCase().includes(q)) &&
-        (f.muscle == null || ex.primary.includes(f.muscle) || ex.secondary.includes(f.muscle)) &&
-        !f.excludeIds?.has(ex.id)
-    })
-    .sort((a, b) =>
-      Number(f.muscle != null && !a.primary.includes(f.muscle)) - Number(f.muscle != null && !b.primary.includes(f.muscle)) ||
-      Number(f.focusMuscle != null && !a.primary.includes(f.focusMuscle)) - Number(f.focusMuscle != null && !b.primary.includes(f.focusMuscle)) ||
-      a.name.localeCompare(b.name))
+  const matching = searched.filter((ex) => {
+    const prof = profileFor(ex)
+    const eqOk = picked ? picked === prof.equipment || Boolean(prof.requires?.includes(picked)) : profileFits(prof, allowed)
+    return eqOk &&
+      (f.muscle == null || ex.primary.includes(f.muscle) || ex.secondary.includes(f.muscle)) &&
+      !f.excludeIds?.has(ex.id)
+  })
+  if (q) return matching
+  return [...matching].sort((a, b) =>
+    Number(f.muscle != null && !a.primary.includes(f.muscle)) - Number(f.muscle != null && !b.primary.includes(f.muscle)) ||
+    Number(f.focusMuscle != null && !a.primary.includes(f.focusMuscle)) - Number(f.focusMuscle != null && !b.primary.includes(f.focusMuscle)) ||
+    a.name.localeCompare(b.name))
 }
 
 export const ROW_HEIGHT_2COL = 46

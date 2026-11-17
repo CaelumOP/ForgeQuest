@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canExcuse, greetingKey } from './helpers'
+import { avatarInitial, canExcuse, greetingKey, pickAvatarName, pickAvatarPhoto } from './helpers'
 
 describe('home helpers', () => {
   it('picks the greeting by hour like Android', () => {
@@ -16,5 +16,26 @@ describe('home helpers', () => {
     expect(canExcuse(101, 100, 'UPCOMING')).toBe(false)
     expect(canExcuse(100, 100, 'DONE')).toBe(false)
     expect(canExcuse(100, 100, 'OFF')).toBe(false)
+  })
+})
+
+describe('pickAvatarPhoto', () => {
+  it('prefers the Friends photo, falls back to Drive, treats blank as none', () => {
+    expect(pickAvatarPhoto('f', 'd')).toBe('f')
+    expect(pickAvatarPhoto(null, 'd')).toBe('d')
+    expect(pickAvatarPhoto('  ', 'd')).toBe('d')
+    expect(pickAvatarPhoto('', null)).toBeNull()
+    expect(pickAvatarPhoto(undefined)).toBeNull()
+  })
+})
+
+describe('pickAvatarName and avatarInitial', () => {
+  it('falls back to Friends shownName and uppercases the first letter', () => {
+    expect(pickAvatarName('', 'tariq')).toBe('tariq')
+    expect(pickAvatarName('  Omar ', 'tariq')).toBe('Omar')
+    expect(pickAvatarName('  ', null)).toBe('')
+    expect(avatarInitial(pickAvatarName('', 'tariq'))).toBe('T')
+    expect(avatarInitial('أحمد')).toBe('أ')
+    expect(avatarInitial('   ')).toBe('?')
   })
 })

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="score41_title">كيف تُحسب نقاط فورج</string>
+    <string name="score41_target">حدّد هدفًا أسبوعيًا</string>
+    <string name="score41_workouts">أيام التمرين: %1$s من %2$s (%3$s)</string>
+    <string name="score41_prs">مجموعات بأرقام شخصية جديدة: %1$s (+%2$s)</string>
+    <string name="score41_protein">أيام تحقيق هدف البروتين: %1$s (+%2$s)</string>
+    <string name="score41_extra">يوم تمرين إضافي (+5)</string>
+    <string name="score41_total">%1$s + %2$s = %3$s</string>
+    <string name="score41_cap">الحد الأقصى للمكافآت +20</string>
+    <string name="score41_rule_base">تزيد نقاطك مع كل يوم تمرين حتى 100 نقطة. يبدأ الأسبوع يوم الأحد.</string>
+    <string name="score41_rule_bonus">+5 لكل مجموعة برقم شخصي جديد (حتى +10)، و+2 لكل يوم تحقق فيه هدف البروتين (حتى +6)، و+5 ليوم تمرين يتجاوز هدفك.</string>
+    <string name="score41_rule_tie">المكافآت حتى +20، والمجموع حتى 120. عند التعادل، يتقدم من بلغ النقاط أولًا، ثم يُرتّب الاسمان أبجديًا.</string>
+    <string name="score41_close">إغلاق</string>
+    <string name="score41_score_label">النقاط: %1$s. كيف تُحسب نقاط فورج</string>
+</resources>

@@ -1,10 +1,36 @@
-/** How a set felt, from the one-tap chips under a finished set. Not tapping counts as OK. */
-export const SET_EFFORTS = ['EASY', 'OK', 'HARD', 'PAIN'] as const
+/**
+ * How a set felt, as a reps-in-reserve scale: EASY (3+ left), HARD (1-2 left), FAILURE (none left). PAIN is not on the
+ * scale: it is the separate "it hurt" button. Not tapping counts as OK (neutral). A stored "OK" from before the scale
+ * still counts as neutral in the maths but the chips show it as Hard (chipOf).
+ */
+export const SET_EFFORTS = ['EASY', 'OK', 'HARD', 'FAILURE', 'PAIN'] as const
 export type SetEffort = (typeof SET_EFFORTS)[number]
 
-/** Reads the stored name; empty or unknown is OK. */
+/** The three chips of the scale, in display order; PAIN has its own button. */
+export const EFFORT_CHIPS: readonly SetEffort[] = ['EASY', 'HARD', 'FAILURE']
+
+/** Reached the limit: HARD or FAILURE hold progression back. */
+export const isStrain = (e: SetEffort): boolean => e === 'HARD' || e === 'FAILURE'
+
+/** Reads the stored name; empty or unknown is OK (not tapped). */
 export function parseEffort(raw: string | null | undefined): SetEffort {
   return SET_EFFORTS.find((e) => e === raw) ?? 'OK'
+}
+
+/**
+ * What tapping [picked] does to a set's effort and set type. Tapping the chosen one again clears it. Failure also makes
+ * the set a FAILURE set; leaving Failure puts it back to WORKING (only when Failure had set it, never from another type).
+ */
+/** The chip a stored value lights up: a stored "OK" shows as Hard; blank is no chip. */
+export const chipOf = (raw: string): string => (raw === 'OK' ? 'HARD' : raw)
+
+export function pickEffort(current: { effort: string; setType?: string }, picked: SetEffort): { effort: string; setType: string } {
+  const type = current.setType || 'WORKING'
+  const was = chipOf(current.effort)
+  const effort = was === picked ? '' : picked
+  if (effort === 'FAILURE') return { effort, setType: type === 'WORKING' ? 'FAILURE' : type }
+  if (was === 'FAILURE' && type === 'FAILURE') return { effort, setType: 'WORKING' }
+  return { effort, setType: type }
 }
 
 // One word list for every reader of old notes (progression and recovery).

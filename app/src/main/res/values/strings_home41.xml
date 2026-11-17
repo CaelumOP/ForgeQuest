@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home41_profile_cd">Profile and settings</string>
+    <string name="home41_profile_hint_t">Your profile</string>
+    <string name="home41_profile_hint_b">Your profile and settings are here</string>
+    <string name="home41_settings_cd">Settings</string>
+</resources>

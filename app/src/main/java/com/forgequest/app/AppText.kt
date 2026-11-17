@@ -17,6 +17,10 @@ object AppText {
     /** Falls back to the resource id in plain JVM unit tests, where there are no resources. */
     fun get(@StringRes id: Int, vararg args: Any): String = context?.getString(id, *args) ?: "#$id"
 
+    /** Falls back to the resource id in plain JVM unit tests, where there are no resources. */
+    fun plural(@androidx.annotation.PluralsRes id: Int, count: Int, vararg args: Any): String =
+        context?.resources?.getQuantityString(id, count, *args) ?: "#$id"
+
     /** The app's resources in English whatever the app language, for text written to the coach; null in plain JVM unit tests. */
     fun englishResources(): android.content.res.Resources? {
         val c = context ?: return null
