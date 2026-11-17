@@ -146,6 +146,13 @@ export function withSuggestions(s: OnbState): OnbState {
   return { ...next, kcal: kcalFor(next) }
 }
 
+/** Goal card picked. "Just log" is Maintain with no plan (as Android), so a Gain/Cut picked before it never sticks. */
+export function pickGoal(s: OnbState, v: NutritionGoal | 'JUST_LOG'): OnbState {
+  return v === 'JUST_LOG'
+    ? withSuggestions({ ...s, goal: 'MAINTAIN', justLog: true })
+    : withSuggestions({ ...s, goal: v, justLog: false })
+}
+
 export const setWeight = (s: OnbState, kg: number): OnbState =>
   withSuggestions({ ...s, weightKg: Math.min(250, Math.max(30, kg)) })
 

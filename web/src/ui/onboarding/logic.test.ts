@@ -4,7 +4,7 @@ import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { DEFAULT_SETTINGS } from '../../data/settings'
 import {
   bodyStatsReady, foodSetupInitialState, foodTargetsPatch, initialState, localizeOnboardingPlan,
-  needsFoodTargets, nextStep, planForDays, presetForPlan, prevStep, progressStep, setWeight,
+  needsFoodTargets, nextStep, pickGoal, planForDays, presetForPlan, prevStep, progressStep, setWeight,
   settingsPatch, trainGoalFor, withSuggestions,
 } from './logic'
 
@@ -133,5 +133,14 @@ describe('onboarding logic', () => {
     expect(arPlan.name).toBe('خطة بناء العضلات')
     expect(arPlan.days.map((d) => d.title)).toEqual(['الجزء العلوي', 'الجزء السفلي', 'الجزء العلوي', 'الجزء السفلي'])
     expect(arPlan.description).not.toBe(enPlan.description)
+  })
+
+  it('Just log resets a Gain/Cut goal to Maintain and keeps targets in step', () => {
+    const gain = pickGoal(initialState(), 'GAIN')
+    const log = pickGoal(gain, 'JUST_LOG')
+    expect(log.goal).toBe('MAINTAIN')
+    expect(log.justLog).toBe(true)
+    expect(log.kcal).toBe(pickGoal(initialState(), 'MAINTAIN').kcal)
+    expect(pickGoal(log, 'CUT')).toMatchObject({ goal: 'CUT', justLog: false })
   })
 })

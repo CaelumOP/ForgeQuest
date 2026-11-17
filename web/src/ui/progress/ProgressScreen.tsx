@@ -345,7 +345,8 @@ export function ProgressScreen(_: { param?: string }) {
         {head}
         <div class="pg-list">
           <Card><EmptyState title={t('progress_empty_title')} body={t('progress_empty_body')}
-            icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" /></svg>} /></Card>
+            icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" /></svg>}
+            action={<Button onClick={() => { location.hash = '#/workouts' }}>{t('hist_go_workouts')}</Button>} /></Card>
           <MeasurementsCard range={range} />
           <OneRmCalculatorCard s={snap} unit={unit} />
         </div>

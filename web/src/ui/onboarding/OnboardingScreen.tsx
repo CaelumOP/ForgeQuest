@@ -19,7 +19,7 @@ import { CheckCircleIcon, DumbbellIcon, FireIcon } from '../home/glyphs'
 import { markGettingStartedEligible } from '../home/getting-started'
 import {
   DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, localizeOnboardingPlan, nextStep, planForDays,
-  presetForPlan, prevStep, progressStep, setWeight, settingsPatch, withSuggestions, type OnbState,
+  pickGoal, presetForPlan, prevStep, progressStep, setWeight, settingsPatch, withSuggestions, type OnbState,
 } from './logic'
 import './onboarding.css'
 
@@ -204,17 +204,14 @@ type GoalChoice = NutritionGoal | 'JUST_LOG'
 
 function StepGoalSetup({ s, update }: StepProps) {
   const goalChoice: GoalChoice = s.justLog ? 'JUST_LOG' : s.goal
-  const pickGoal = (v: GoalChoice) => {
-    if (v === 'JUST_LOG') update((c) => ({ ...c, justLog: true }))
-    else update((c) => withSuggestions({ ...c, goal: v, justLog: false }))
-  }
+  const choose = (v: GoalChoice) => update((c) => pickGoal(c, v))
   return (
     <>
       <Title title={t('v42_onb_goal_title')} body={t('v42_onb_goal_body')} />
       <RadioCards<GoalChoice>
         label={t('v42_onb_goal_title')}
         value={goalChoice}
-        onPick={pickGoal}
+        onPick={choose}
         options={[
           { v: 'GAIN', name: t('v42_onb_goal_muscle'), desc: t('v42_onb_goal_muscle_desc') },
           { v: 'CUT', name: t('v42_onb_goal_fat'), desc: t('v42_onb_goal_fat_desc') },

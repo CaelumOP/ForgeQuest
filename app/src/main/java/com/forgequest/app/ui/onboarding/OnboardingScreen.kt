@@ -204,8 +204,8 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
 
     fun setWeight(kg: Float) = update { it.copy(weightKg = kg.coerceIn(30f, 250f), weightTouched = true) }
 
-    fun next() = state.update { it.copy(step = (it.step + 1).coerceAtMost(LAST_STEP)) }
-    fun back() = state.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }
+    fun next() = state.update { it.copy(step = nextStep(it.step, it.justLog)) }
+    fun back() = state.update { it.copy(step = prevStep(it.step, it.justLog)) }
 
     private val emptyPlan by lazy {
         PlanDraft(
@@ -318,6 +318,18 @@ class OnboardingViewModel(private val app: AppContainer) : ViewModel() {
     companion object {
         const val TOTAL_STEPS = 5
         const val LAST_STEP = TOTAL_STEPS - 1
+        private const val TRAINING_STEP = 3
+
+        /** "Just log my training" skips the Training step (days, equipment, plan), as on web. */
+        fun nextStep(step: Int, justLog: Boolean): Int =
+            if (justLog && step == TRAINING_STEP - 1) TRAINING_STEP + 1 else (step + 1).coerceAtMost(LAST_STEP)
+
+        fun prevStep(step: Int, justLog: Boolean): Int =
+            if (justLog && step == TRAINING_STEP + 1) TRAINING_STEP - 1 else (step - 1).coerceAtLeast(0)
+
+        /** 1-based position and total for the "Step x of y" line. */
+        fun progress(step: Int, justLog: Boolean): Pair<Int, Int> =
+            if (justLog) (if (step > TRAINING_STEP) step else step + 1) to TOTAL_STEPS - 1 else step + 1 to TOTAL_STEPS
     }
 }
 
@@ -335,10 +347,11 @@ fun OnboardingScreen(onImportCsv: (() -> Unit)? = null) {
         Modifier.fillMaxSize().background(c.background).statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = ForgeSpace.Lg),
     ) {
         Spacer(Modifier.height(ForgeSpace.Md))
-        ProgressLine((s.step + 1) / OnboardingViewModel.TOTAL_STEPS.toFloat(), c.teal, c.cardHigh, height = 4.dp)
+        val (stepAt, stepsTotal) = OnboardingViewModel.progress(s.step, s.justLog)
+        ProgressLine(stepAt / stepsTotal.toFloat(), c.teal, c.cardHigh, height = 4.dp)
         Spacer(Modifier.height(ForgeSpace.Xs))
         Text(
-            stringResource(R.string.v42_onb_step, s.step + 1, OnboardingViewModel.TOTAL_STEPS),
+            stringResource(R.string.v42_onb_step, stepAt, stepsTotal),
             style = MaterialTheme.typography.labelSmall,
             color = c.textSecondary,
         )
