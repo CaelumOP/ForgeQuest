@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import type { ExerciseRow, SetRow } from '../../data/db'
 import type { ExerciseKind } from '../../domain/muscle'
-import { SET_EFFORTS, parseEffort, type SetEffort } from '../../domain/effort'
+import { EFFORT_CHIPS, chipOf, parseEffort, pickEffort, type SetEffort } from '../../domain/effort'
 import { SET_TYPES, type SetType } from '../../domain/set-types'
 import {
   calculatePlates, DEFAULT_KG_PLATES, formatPlateNumber, formatPlatesSummary,
@@ -15,8 +15,9 @@ import { CheckIcon } from '../icons'
 import { clampField } from './groups'
 import { PlayIcon } from './glyphs'
 
-const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: 'effort_ok', HARD: 'effort_hard', PAIN: 'effort_pain' }
-const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'HARD' ? 'purple' : e === 'OK' ? 'blue' : 'teal')
+const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: 'effort_hard', HARD: 'effort_hard', FAILURE: 'effort41_failure', PAIN: 'effort_pain' }
+const EFFORT_CAPTION_KEY: Partial<Record<SetEffort, string>> = { EASY: 'effort41_easy_cap', OK: 'effort41_hard_cap', HARD: 'effort41_hard_cap', FAILURE: 'effort41_failure_cap' }
+const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'FAILURE' ? 'gold' : e === 'HARD' ? 'purple' : e === 'OK' ? 'blue' : 'teal')
 
 const SET_TYPE_LABEL_KEY: Record<SetType, string> = {
   WORKING: 'live41_set_type_working',
@@ -113,6 +114,13 @@ export function SetRowView(p: SetRowProps) {
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = undefined } }
   const save = (patch: Partial<SetRow>, editedField?: EditedField) => p.onChange({ ...set, ...patch }, editedField)
   const effort = parseEffort(set.effort || null)
+  const pickFromChips = (e: SetEffort) => {
+    haptics.tick()
+    const next = pickEffort(set, e)
+    save(next)
+    if (next.effort === 'PAIN') setNoteOpen(true)
+    else p.onDismissEffort?.()
+  }
   const setType = parseSetType(set.setType)
   const tag = setType === 'WORKING' ? null : t(SET_TYPE_TAG_KEY[setType])
   const badgeLabel = tag ?? p.label ?? String(set.setIndex + 1)
@@ -234,18 +242,24 @@ export function SetRowView(p: SetRowProps) {
             <span class="lw-effort-cap">{t('live_effort_caption')}</span>
             <button type="button" class="lw-effort-skip" onClick={() => p.onDismissEffort?.()}>{t('live_effort_skip')}</button>
           </div>
-          <div class="lw-effort-group" role="radiogroup" aria-label={t('a11y_set_effort')}>
-            {SET_EFFORTS.map((e) => (
-              <button key={e} type="button" role="radio" aria-checked={set.effort === e}
-                class={`lw-effort-seg kit-accent-${accentOf(e)}${set.effort === e ? ' lw-effort-on' : ''}`}
-                onClick={() => {
-                  haptics.tick()
-                  const nextEffort = set.effort === e ? '' : e
-                  save({ effort: nextEffort })
-                  if (nextEffort === 'PAIN') setNoteOpen(true)
-                  else p.onDismissEffort?.()
-                }}>{t(EFFORT_KEY[e])}</button>
-            ))}
+          <div class="lw-effort-row">
+            <div class="lw-effort-group" role="radiogroup" aria-label={t('a11y_set_effort')}>
+              {EFFORT_CHIPS.map((e) => (
+                <button key={e} type="button" role="radio" aria-checked={chipOf(set.effort) === e}
+                  class={`lw-effort-seg kit-accent-${accentOf(e)}${chipOf(set.effort) === e ? ' lw-effort-on' : ''}`}
+                  onClick={() => pickFromChips(e)}>
+                  <span class="lw-effort-name">{t(EFFORT_KEY[e])}</span>
+                  <span class="lw-effort-capt">{t(EFFORT_CAPTION_KEY[e]!)}</span>
+                </button>
+              ))}
+            </div>
+            <button type="button" aria-pressed={set.effort === 'PAIN'} aria-label={t('effort41_pain_cd')}
+              class={`lw-effort-hurt${set.effort === 'PAIN' ? ' lw-effort-hurt-on' : ''}`}
+              onClick={() => pickFromChips('PAIN')}>
+              <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="currentColor">
+                <path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm-1 4h2v3h3v2h-3v3h-2v-3H8v-2h3z"/>
+              </svg>
+            </button>
           </div>
           {set.effort === 'PAIN' && <Button variant="text" onClick={() => setNoteOpen(true)}>{t('live_add_note')}</Button>}
         </div>

@@ -376,7 +376,7 @@ object Recovery {
         }
         val blockFactor = if (set.block.equals("Warm-up", ignoreCase = true) || ex.id == "jumping_jacks") 0.25f else 1.0f
         val rpeFactor = when (SetEffort.of(set.effort, set.note)) {
-            SetEffort.HARD, SetEffort.PAIN -> 1.15f
+            SetEffort.HARD, SetEffort.FAILURE, SetEffort.PAIN -> 1.15f
             SetEffort.EASY -> 0.80f
             SetEffort.OK -> 1.0f
         }

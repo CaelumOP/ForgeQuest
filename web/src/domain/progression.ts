@@ -6,7 +6,7 @@
 //   Pain also takes the load back one step (bodyweight moves keep their reps).
 // - Load steps follow the person's unit: +2.5 kg or +5 lb, landing on numbers they can actually load.
 // Kotlin uses 32-bit Float here, so weights go through Math.fround.
-import { effortOf, type SetEffort } from './effort'
+import { effortOf, isStrain, type SetEffort } from './effort'
 import type { PlanItemEntity, SetEntity } from './entities'
 import type { ExerciseKind, Muscle } from './muscle'
 import { countsForProgression } from './set-types'
@@ -95,7 +95,11 @@ export function nextPrefill(
   const hasRange = repsMax > repsMin
 
   const pain = last.some((s) => s.effort === 'PAIN')
-  const strained = pain || last.some((s) => s.effort === 'HARD')
+  // Failure twice in a row (this workout and the one before) means the load is too heavy: back off like pain.
+  const failureStreak = last.some((s) => s.effort === 'FAILURE') && previous.some((s) => s.effort === 'FAILURE')
+  const strained = pain || last.some((s) => isStrain(s.effort))
+  // Every set Easy (3+ reps left): add load without waiting for the top of the rep range.
+  const allEasy = last.length > 0 && last.every((s) => s.effort === 'EASY')
   // "Completed" means every set was done without a hard or painful one; only then may anything go up.
   const completed = !warmup && last.length >= count && !strained
   const mayProgress = completed && !lowReadiness && !deload && mode !== 'MAINTAIN'
@@ -127,20 +131,21 @@ export function nextPrefill(
         const weight = lastSet?.weightKg != null && lastSet.weightKg > 0 ? lastSet.weightKg : (target?.weightKg ?? 0)
         // One failed set (4 of 8) starts next time at the bottom of the range, not below it.
         const baseReps = lastSet?.reps != null ? Math.max(lastSet.reps, repsMin) : target?.repsMin ?? 10
-        if (pain && weight > 0) return { reps: baseReps, seconds: null, weightKg: stepDown(weight, unit) }
+        if ((pain || failureStreak) && weight > 0) return { reps: baseReps, seconds: null, weightKg: stepDown(weight, unit) }
         if (mode === 'MAINTAIN') return { reps: lastSet?.reps ?? baseReps, seconds: null, weightKg: weight }
         if (mode === 'LINEAR') {
           const linearUp = mayProgress && weight > 0 && hitLinearTarget(last)
           if (linearUp) return { reps: repsMin, seconds: null, weightKg: stepUpLinear(weight, unit, lowerBody) }
           return { reps: baseReps, seconds: null, weightKg: weight }
         }
-        const loadUp = mayProgress && weight > 0 && hitTop(last) && (
+        const easyUp = mayProgress && allEasy && weight > 0 && hitLinearTarget(last)
+        const loadUp = easyUp || (mayProgress && weight > 0 && hitTop(last) && (
           hasRange || (
             hitTop(previous) &&
-            !previous.some((s) => s.effort === 'HARD' || s.effort === 'PAIN') &&
+            !previous.some((s) => isStrain(s.effort) || s.effort === 'PAIN') &&
             sameWeight(sessionWeight(previous), sessionWeight(last))
           )
-        )
+        ))
         if (loadUp && hasRange) return { reps: repsMin, seconds: null, weightKg: stepUp(weight, unit) }
         if (loadUp) return { reps: baseReps, seconds: null, weightKg: stepUp(weight, unit) }
         if (mayProgress && baseReps < repsMax) return { reps: baseReps + 1, seconds: null, weightKg: weight }

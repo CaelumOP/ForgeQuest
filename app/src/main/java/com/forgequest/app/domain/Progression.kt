@@ -129,7 +129,11 @@ object Progression {
         val hasRange = repsMax > repsMin
 
         val pain = last.any { it.effort == SetEffort.PAIN }
-        val strained = pain || last.any { it.effort == SetEffort.HARD }
+        // Failure twice in a row (this workout and the one before) means the load is too heavy: back off like pain.
+        val failureStreak = last.any { it.effort == SetEffort.FAILURE } && previous.any { it.effort == SetEffort.FAILURE }
+        val strained = pain || last.any { it.effort.isStrain }
+        // Every set Easy (3+ reps left): add load without waiting for the top of the rep range.
+        val allEasy = last.isNotEmpty() && last.all { it.effort == SetEffort.EASY }
         // "Completed" means every set was done without a hard or painful one; only then may anything go up.
         val completed = !warmup && last.size >= count && !strained
         val mayProgress = completed && !lowReadiness && !deload && mode != ProgressionMode.MAINTAIN
@@ -160,7 +164,7 @@ object Progression {
                     val baseReps = lastSet?.reps?.coerceAtLeast(repsMin) ?: target?.repsMin ?: 10
                     when {
                         // Precedence: pain/hard/missed/lowReadiness/deload first.
-                        pain && lastWeight > 0f -> Prefill(baseReps, null, stepDown(lastWeight, unit).coerceAtLeast(minOf(lastWeight, unit.toKg(unit.loadStep))))
+                        (pain || failureStreak) && lastWeight > 0f -> Prefill(baseReps, null, stepDown(lastWeight, unit).coerceAtLeast(minOf(lastWeight, unit.toKg(unit.loadStep))))
                         mode == ProgressionMode.MAINTAIN -> Prefill(lastSet?.reps ?: baseReps, null, lastWeight)
                         mode == ProgressionMode.LINEAR -> {
                             val linearUp = mayProgress && lastWeight > 0f && hitLinearTarget(last)
@@ -168,13 +172,14 @@ object Progression {
                             else Prefill(baseReps, null, lastWeight)
                         }
                         else -> {
-                            val loadUp = mayProgress && lastWeight > 0f && hitTop(last) && (
+                            val easyUp = mayProgress && allEasy && lastWeight > 0f && hitLinearTarget(last)
+                            val loadUp = easyUp || (mayProgress && lastWeight > 0f && hitTop(last) && (
                                 hasRange || (
                                     hitTop(previous) &&
-                                        previous.none { it.effort == SetEffort.HARD || it.effort == SetEffort.PAIN } &&
+                                        previous.none { it.effort.isStrain || it.effort == SetEffort.PAIN } &&
                                         sameWeight(sessionWeight(previous), sessionWeight(last))
                                     )
-                                )
+                                ))
                             when {
                                 loadUp && hasRange -> Prefill(repsMin, null, stepUp(lastWeight, unit))
                                 loadUp -> Prefill(baseReps, null, stepUp(lastWeight, unit))

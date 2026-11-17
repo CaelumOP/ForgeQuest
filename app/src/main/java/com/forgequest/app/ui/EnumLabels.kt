@@ -130,6 +130,18 @@ val SetEffort.labelRes: Int
         SetEffort.EASY -> R.string.effort_easy
         SetEffort.OK -> R.string.effort_ok
         SetEffort.HARD -> R.string.effort_hard
+        SetEffort.FAILURE -> R.string.effort41_failure
+        SetEffort.PAIN -> R.string.effort_pain
+    }
+
+/** The small caption under each chip: how many reps were left. */
+@get:StringRes
+val SetEffort.captionRes: Int
+    get() = when (this) {
+        SetEffort.EASY -> R.string.effort41_easy_cap
+        SetEffort.OK -> R.string.effort41_hard_cap
+        SetEffort.HARD -> R.string.effort41_hard_cap
+        SetEffort.FAILURE -> R.string.effort41_failure_cap
         SetEffort.PAIN -> R.string.effort_pain
     }
 

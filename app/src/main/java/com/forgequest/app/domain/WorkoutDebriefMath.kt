@@ -265,7 +265,7 @@ object WorkoutDebriefMath {
                 val was = x.was
                 x.trend == WorkoutScore.Trend.SAME && was != null && !x.pain && abs(x.now.top - was.top) <= WorkoutScore.SAME_WEIGHT_KG &&
                     x.now.total >= was.total && (
-                        x.working.count { effort(it) == SetEffort.HARD } < x.lastWorking.count { effort(it) == SetEffort.HARD } ||
+                        x.working.count { effort(it)?.isStrain == true } < x.lastWorking.count { effort(it)?.isStrain == true } ||
                             x.working.count { effort(it) == SetEffort.EASY } > x.lastWorking.count { effort(it) == SetEffort.EASY }
                         )
             }.forEach { x -> yield(Win.EffortMastery(x.id)) }
@@ -385,7 +385,7 @@ object WorkoutDebriefMath {
             ExerciseKind.HOLD -> p.last.all { (it.seconds ?: 0) >= (p.target?.seconds ?: 30) }
             else -> p.last.all { (it.reps ?: 0) >= (p.target?.repsMax ?: p.target?.repsMin ?: 12) }
         }
-        if (!x.pain && hitTop && p.last.any { it.effort == SetEffort.HARD }) {
+        if (!x.pain && hitTop && p.last.any { it.effort?.isStrain == true }) {
             val holds = kind == ExerciseKind.HOLD
             return 6 to Next.HoldSteady(x.id, nowTop.takeIf { it > 0f }, if (holds) null else p.last.maxOf { it.reps ?: 0 }, if (holds) p.last.maxOf { it.seconds ?: 0 } else null)
         }

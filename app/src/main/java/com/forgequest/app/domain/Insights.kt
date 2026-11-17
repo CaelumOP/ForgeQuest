@@ -384,7 +384,7 @@ private class InsightContext(val input: InsightInput, val today: Long) {
 
     private fun hardTwice(): List<Slot>? = focusExercises.firstNotNullOfOrNull { (id, _) ->
         val runs = lastWith(id, 2)
-        if (runs.size == 2 && runs.all { sets -> sets.all { effortOf(it) == SetEffort.HARD } }) listOf(Slot.Exercise(id)) else null
+        if (runs.size == 2 && runs.all { sets -> sets.all { effortOf(it)?.isStrain == true } }) listOf(Slot.Exercise(id)) else null
     }
 
     /** Weeks in a row, ending with the focus workout's week, with a workout on the same weekday (4 or more). */

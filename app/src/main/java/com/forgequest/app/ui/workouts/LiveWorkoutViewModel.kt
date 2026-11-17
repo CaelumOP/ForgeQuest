@@ -554,7 +554,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun setEffort(set: SetEntity, effort: SetEffort) = viewModelScope.launch {
         app.haptics.tick()
         effortSetId.value = null
-        repo.updateSet(set.copy(effort = if (set.effort == effort.name) "" else effort.name))
+        val (e, type) = SetEffort.pick(set.effort, set.setType, effort)
+        repo.updateSet(set.copy(effort = e, setType = type))
     }
 
     fun setNote(set: SetEntity, note: String) = viewModelScope.launch { repo.updateSet(set.copy(note = note.trim().take(120))) }

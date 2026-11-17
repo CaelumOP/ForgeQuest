@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Healing
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AlertDialog
@@ -91,6 +94,7 @@ import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.KeypadNumberStepper
 import com.forgequest.app.ui.components.rememberFullSheetState
 import com.forgequest.app.ui.components.steadyToggleable
+import com.forgequest.app.ui.captionRes
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeMotion
@@ -546,39 +550,54 @@ private fun PlateBreakdownSheet(
     }
 }
 
-/** Easy teal, OK blue, Hard purple, Pain coral. */
+/** Easy teal, Hard purple, Failure gold, Pain coral. */
 @Composable
 internal fun effortColor(e: SetEffort) = Fit.colors.let { c ->
-    when (e) { SetEffort.EASY -> c.teal; SetEffort.OK -> c.blue; SetEffort.HARD -> c.purple; SetEffort.PAIN -> c.coral }
+    when (e) { SetEffort.EASY -> c.teal; SetEffort.OK -> c.blue; SetEffort.HARD -> c.purple; SetEffort.FAILURE -> c.gold; SetEffort.PAIN -> c.coral }
 }
 
 /**
- * Easy · OK · Hard · Pain as one connected group: round outer ends, 6 dp inner seams. The chosen one morphs into a full
- * pill and fills with its colour. Tapping it again clears it (the view model decides that).
+ * Easy · Hard · Failure as one connected group (reps left: 3+, 1-2, 0), each with a small caption, then a separate
+ * "it hurt" button for Pain. The chosen chip morphs into a full pill and fills with its colour. Tapping it again clears
+ * it (the view model decides that).
  */
 @Composable
 internal fun EffortGroup(selected: String, onSelect: (SetEffort) -> Unit) {
     val c = Fit.colors
-    val entries = SetEffort.entries
-    Row(Modifier.fillMaxWidth().padding(end = 8.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        entries.forEachIndexed { i, e ->
-            val isSel = selected == e.name
-            val full = 20.dp // half the 40 dp minimum height
-            val seam = 6.dp
-            val startCorner by animateDpAsState(if (isSel || i == 0) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortStart")
-            val endCorner by animateDpAsState(if (isSel || i == entries.lastIndex) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortEnd")
-            val accent = effortColor(e)
-            val fill by animateColorAsState(if (isSel) accent else c.cardHigh, effectsSpec(), label = "effortFill")
-            val ink by animateColorAsState(if (isSel) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary, effectsSpec(), label = "effortInk")
-            val shape = RoundedCornerShape(topStart = startCorner, bottomStart = startCorner, topEnd = endCorner, bottomEnd = endCorner)
-            Box(
-                Modifier.weight(1f).heightIn(min = 40.dp).clip(shape).background(fill)
-                    .selectable(selected = isSel, role = Role.RadioButton) { onSelect(e) }
-                    .padding(horizontal = 4.dp, vertical = 9.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(e.labelRes), style = MaterialTheme.typography.labelLarge, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+    val entries = SetEffort.chips
+    Row(Modifier.fillMaxWidth().padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.weight(1f).height(IntrinsicSize.Min).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            entries.forEachIndexed { i, e ->
+                val isSel = SetEffort.chipOf(selected) == e.name
+                val full = 24.dp // half the 48 dp minimum height
+                val seam = 6.dp
+                val startCorner by animateDpAsState(if (isSel || i == 0) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortStart")
+                val endCorner by animateDpAsState(if (isSel || i == entries.lastIndex) full else seam, spatialSpec(ForgeMotion.Springs.FastSpatial, Dp.VisibilityThreshold), label = "effortEnd")
+                val accent = effortColor(e)
+                val fill by animateColorAsState(if (isSel) accent else c.cardHigh, effectsSpec(), label = "effortFill")
+                val ink by animateColorAsState(if (isSel) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary, effectsSpec(), label = "effortInk")
+                val shape = RoundedCornerShape(topStart = startCorner, bottomStart = startCorner, topEnd = endCorner, bottomEnd = endCorner)
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp).clip(shape).background(fill)
+                        .selectable(selected = isSel, role = Role.RadioButton) { onSelect(e) }
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(stringResource(e.labelRes), style = MaterialTheme.typography.labelLarge, color = ink, textAlign = TextAlign.Center)
+                    Text(stringResource(e.captionRes), style = MaterialTheme.typography.labelSmall, color = ink, textAlign = TextAlign.Center)
+                }
             }
+        }
+        val hurt = selected == SetEffort.PAIN.name
+        val painLabel = stringResource(R.string.effort41_pain_cd)
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).background(if (hurt) c.coral else c.cardHigh)
+                .selectable(selected = hurt, role = Role.Button) { onSelect(SetEffort.PAIN) }
+                .semantics { contentDescription = painLabel },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.Healing, contentDescription = null, tint = if (hurt) c.background else c.coral)
         }
     }
 }

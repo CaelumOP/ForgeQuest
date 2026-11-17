@@ -179,3 +179,17 @@ describe('ProgressionMode LINEAR / MAINTAIN & WP1a set-types', () => {
     expect(input.last.map((s) => s.reps)).toEqual([10, 9])
   })
 })
+
+describe('effort scale (reps in reserve)', () => {
+  const t = target(3, 8, null, null, 60)
+  it('all Easy adds load right away, mixed Easy and Hard does not', () => {
+    expect(next('WEIGHTED', t, sets(3, 8, 60, null, 'EASY'), []).sets[0].weightKg!).toBeCloseTo(62.5, 2)
+    const mixed = [...sets(2, 8, 60, null, 'EASY'), ...sets(1, 8, 60, null, 'HARD')]
+    expect(next('WEIGHTED', t, mixed, []).sets[0].weightKg!).toBeCloseTo(60, 2)
+  })
+  it('Failure holds the load; twice in a row backs off; Pain still backs off at once', () => {
+    expect(next('WEIGHTED', t, sets(3, 8, 60, null, 'FAILURE'), sets(3, 8, 60)).sets[0].weightKg!).toBeCloseTo(60, 2)
+    expect(next('WEIGHTED', t, sets(3, 8, 60, null, 'FAILURE'), sets(3, 8, 60, null, 'FAILURE')).sets[0].weightKg!).toBeCloseTo(57.5, 2)
+    expect(next('WEIGHTED', t, sets(3, 8, 60, null, 'PAIN'), []).sets[0].weightKg!).toBeCloseTo(57.5, 2)
+  })
+})

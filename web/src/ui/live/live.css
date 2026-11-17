@@ -74,14 +74,19 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
   .lw-tick:active .lw-tick-box { transform: none; }
 }
 .lw-efforts { display: flex; flex-wrap: wrap; gap: 8px; padding-block-start: 6px; padding-inline-start: 8px; }
-.lw-effort-group { flex-basis: 100%; display: flex; gap: 2px; padding-inline-end: 8px; }
+.lw-effort-row { flex-basis: 100%; display: flex; align-items: center; gap: 8px; padding-inline-end: 8px; }
+.lw-effort-group { flex: 1; min-inline-size: 0; display: flex; align-items: stretch; gap: 2px; }
+.lw-effort-name, .lw-effort-capt { display: block; white-space: normal; overflow-wrap: anywhere; }
+.lw-effort-capt { font-size: 11px; font-weight: 400; }
+.lw-effort-hurt { flex: none; inline-size: 48px; block-size: 48px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--card-high); color: var(--coral); cursor: pointer; }
+.lw-effort-hurt.lw-effort-hurt-on { background: var(--coral); color: var(--bg); }
 .lw-effort-seg {
-  flex: 1; min-inline-size: 0; min-block-size: 44px; padding-inline: 4px; border: 0; border-radius: var(--r-sm); background: var(--card-high); color: var(--text);
-  font: inherit; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+  flex: 1; min-inline-size: 0; min-block-size: 48px; padding: 4px; border: 0; border-radius: var(--r-sm); background: var(--card-high); color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 500; text-align: center; cursor: pointer;
   transition: border-radius var(--forge-spring-fast-spatial-duration) var(--forge-spring-fast-spatial), background-color var(--forge-spring-default-effects-duration) var(--forge-spring-effects), color var(--forge-spring-default-effects-duration) var(--forge-spring-effects);
 }
-.lw-effort-seg:first-child { border-start-start-radius: 22px; border-end-start-radius: 22px; }
-.lw-effort-seg:last-child { border-start-end-radius: 22px; border-end-end-radius: 22px; }
+.lw-effort-seg:first-child { border-start-start-radius: 24px; border-end-start-radius: 24px; }
+.lw-effort-seg:last-child { border-start-end-radius: 24px; border-end-end-radius: 24px; }
 .lw-effort-seg.lw-effort-on { border-radius: var(--r-full); background: var(--acc); color: var(--on-acc); }
 @media (prefers-reduced-motion: reduce) {
   .lw-effort-seg { transition: background-color var(--forge-reduced-fade) linear, color var(--forge-reduced-fade) linear; }

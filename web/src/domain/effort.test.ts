@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effortOf, parseEffort } from './effort'
+import { chipOf, effortOf, isStrain, parseEffort, pickEffort } from './effort'
 
 // Audit #8: one word list decides effort from an old note, for progression and recovery alike.
 describe('effortOf', () => {
@@ -39,5 +39,27 @@ describe('audit 2026-10-24: negated words', () => {
     expect(effortOf('', 'no rest, knee pain')).toBe('PAIN')
     expect(effortOf('', 'no pain at first but pain on the last rep')).toBe('PAIN')
     expect(effortOf('', 'بألم في الركبة')).toBe('PAIN')
+  })
+})
+
+describe('effort scale', () => {
+  it('reads old stored values and the new Failure', () => {
+    for (const e of ['EASY', 'HARD', 'PAIN', 'FAILURE'] as const) expect(parseEffort(e)).toBe(e)
+    expect(chipOf('OK')).toBe('HARD')
+    expect(parseEffort('nonsense')).toBe('OK')
+    expect(parseEffort('')).toBe('OK')
+  })
+  it('Failure also sets the set type and leaving it puts it back', () => {
+    expect(pickEffort({ effort: '', setType: 'WORKING' }, 'FAILURE')).toEqual({ effort: 'FAILURE', setType: 'FAILURE' })
+    expect(pickEffort({ effort: 'FAILURE', setType: 'FAILURE' }, 'FAILURE')).toEqual({ effort: '', setType: 'WORKING' })
+    expect(pickEffort({ effort: 'FAILURE', setType: 'FAILURE' }, 'EASY')).toEqual({ effort: 'EASY', setType: 'WORKING' })
+    expect(pickEffort({ effort: '', setType: 'DROPSET' }, 'FAILURE')).toEqual({ effort: 'FAILURE', setType: 'DROPSET' })
+    expect(pickEffort({ effort: 'HARD' }, 'PAIN')).toEqual({ effort: 'PAIN', setType: 'WORKING' })
+  })
+  it('a stored OK picked again as Hard clears it', () => {
+    expect(pickEffort({ effort: 'OK', setType: 'WORKING' }, 'HARD')).toEqual({ effort: '', setType: 'WORKING' })
+  })
+  it('only Hard and Failure count as strain', () => {
+    expect(['EASY', 'OK', 'HARD', 'FAILURE', 'PAIN'].filter((e) => isStrain(e as never))).toEqual(['HARD', 'FAILURE'])
   })
 })
