@@ -454,7 +454,7 @@
     <string name="scan_allow_camera">السماح بالكاميرا</string>
     <string name="cd_light">الإضاءة</string>
     <string name="scan_capture_failed">تعذّر على الكاميرا التقاط الصورة. أعد المحاولة أو اختر صورة من المعرض.</string>
-    <string name="scan_frame_hint">اجعل الطبق كاملًا داخل الإطار. وجود يدك أو شوكة بجانبه يساعد على تقدير الكمية.</string>
+    <string name="scan_frame_hint">اجعل الطبق كاملًا داخل الإطار. وجود شوكة أو ملعقة بجانبه يساعد على تقدير الكمية.</string>
     <string name="scan_step_find">جارٍ التعرّف على الأطعمة…</string>
     <string name="scan_step_portions">جارٍ تقدير الكميات…</string>
     <string name="scan_step_add">جارٍ حساب السعرات والبروتين…</string>
@@ -465,7 +465,6 @@
     <string name="action_try_again">إعادة المحاولة</string>
     <string name="scan_grams_title">%1$s: كم غرامًا؟</string>
     <string name="scan_tap_name">اضغط على الاسم لتغييره</string>
-    <string name="scan_hand_scaled">قُدّرت الكميات بالاستعانة بحجم يدك</string>
     <string name="scan_about_grams">نحو %1$d غ · اضغط للتصحيح</string>
     <string name="scan_set_grams">اضغط لتحديد الغرامات</string>
     <string name="scan_portion_size">حجم الحصة</string>
@@ -1558,6 +1557,7 @@
     <string name="barcode_err_label">لم تكن الأرقام على الملصق واضحة. أعد المحاولة مع ملء جدول القيم الغذائية للإطار.</string>
     <string name="barcode_unnamed">منتج %1$s</string>
     <string name="profile_credits_data">بيانات الأطعمة: Open Food Facts (ODbL)، والهيئة العامة للغذاء والدواء، وUSDA.</string>
+    <string name="profile_credits_images">صور التمارين: قاعدة free-exercise-db (ملكية عامة). أما الصور التالية فتبقى تحت رخصها الأصلية، ولم نغيّر فيها إلا الحجم وجعل الخلفية الشفافة بيضاء والتحويل إلى صيغة WebP:</string>
     <string name="pb_title">ابنِ خطتي</string>
     <string name="pb_goal">الهدف</string>
     <string name="pb_goal_strength">القوة</string>
@@ -2276,4 +2276,10 @@
     <string name="v42_pain_tag_ache">ألم خفيف</string>
     <string name="v42_pain_tag_joint">في المفصل</string>
     <string name="v42_note_hint">هل من شيء تتذكّره في المرة القادمة؟</string>
+    <string name="drive_disconnect_title">هل تريد قطع الاتصال بـ Google Drive؟</string>
+    <string name="drive_disconnect_body">يشترك تطبيقا ForgeQuest على أندرويد والويب في النسخة الاحتياطية على Google Drive؛ لذا فإن حذفها يزيلها من كليهما. لن يُحذف مستند الوجبات من Gemini.</string>
+    <string name="drive_delete_disconnect">حذف النسخة الاحتياطية وقطع الاتصال</string>
+    <string name="drive_keep_backup">الاحتفاظ بالنسخة الاحتياطية</string>
+    <string name="drive_deleting_backup">جارٍ حذف النسخة الاحتياطية…</string>
+    <string name="drive_delete_failed">تعذّر حذف النسخة الاحتياطية. حاول مجددًا، أو اختر الاحتفاظ بها لقطع الاتصال.</string>
 </resources>

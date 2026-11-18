@@ -680,9 +680,6 @@ private fun ResultSheet(
                         if (carbsOn) Text(stringResource(R.string.food_g_carbs, carbs.roundToInt()), style = MaterialTheme.typography.labelLarge, color = c.purple)
                     }
                 }
-                if (scan.handVisible) {
-                    Text(stringResource(R.string.scan_hand_scaled), style = MaterialTheme.typography.bodySmall, color = c.teal)
-                }
                 if (scan.note.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Text(scan.note, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)

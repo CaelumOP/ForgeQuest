@@ -1,12 +1,13 @@
 name: ForgeQuest Web
 
-# Builds /web and publishes it to caelumop.github.io/ForgeQuest on every merge to main that touches it.
+# Builds /web and publishes it to caelumop.github.io/ForgeQuest on every merge to main that touches it,
+# or the Android versionName in app/build.gradle.kts (the web About and What's New read it).
 on:
   push:
     branches: [main]
-    paths: ['web/**', '.github/workflows/web-pages.yml']
+    paths: ['web/**', 'app/build.gradle.kts', '.github/workflows/web-pages.yml']
   pull_request:
-    paths: ['web/**', '.github/workflows/web-pages.yml']
+    paths: ['web/**', 'app/build.gradle.kts', '.github/workflows/web-pages.yml']
   workflow_dispatch:
 
 permissions:

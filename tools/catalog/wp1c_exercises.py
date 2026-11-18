@@ -4713,7 +4713,7 @@ WP1C_EXERCISES = [
       "HAMSTRINGS"
     ],
     "equipment": "BARBELL,SQUAT_RACK",
-    "pattern": "ELBOW_FLEXION",
+    "pattern": "SQUAT_BILATERAL",
     "stretch": False,
     "aliases": [
       "front squat (clean grip)",
@@ -8144,7 +8144,7 @@ WP1C_EXERCISES = [
       "HAMSTRINGS"
     ],
     "equipment": "HACK_SQUAT",
-    "pattern": "HORIZONTAL_PULL",
+    "pattern": "SQUAT_BILATERAL",
     "stretch": False,
     "aliases": [
       "narrow stance hack squats",

@@ -7,6 +7,8 @@ import { categoryForNow, deleteFood, deleteMeal, logFoods, logName, logOnce, pla
 import { score } from '../../domain/food-search'
 import { scaledKcal } from '../../domain/nutrition'
 import { AiError, aiErrorKey } from '../../data/ai'
+import { validDocsToken } from '../../data/drive'
+import { markMealHandled, mealEpochDay, mealKcal, mealTimeParts, syncMeals, usePendingMeals, type GeminiMeal } from '../../data/meal-inbox'
 import { evaluateBadges, useProgress } from '../../data/progress'
 import { isAiOn, loadSettings, useSettings } from '../../data/settings'
 import { AddIcon, BackChevron, CameraIcon, CheckIcon, CloseIcon, EditIcon, ForwardChevron, PinIcon, RemoveIcon, RestaurantIcon, SearchIcon } from '../icons'
@@ -62,6 +64,37 @@ function CategoryTabs({ value, onChange, dots, label }: { value: FoodCategory; o
 
 function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return <button type="button" class="food-switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />
+}
+
+function GeminiInbox({ meals, today, onOpen, onDismiss }: { meals: GeminiMeal[]; today: number; onOpen: (m: GeminiMeal) => void; onDismiss: (m: GeminiMeal) => void }) {
+  return (
+    <Card>
+      <div class="food-inbox">
+        <div class="food-inbox-head">
+          <span class="food-inbox-title">{t('meals_inbox_title', meals.length)}</span>
+          <span class="food-note">{t('meals_inbox_hint')}</span>
+        </div>
+        {meals.map((meal) => {
+          const day = mealEpochDay(meal, today)
+          const dayLabel = day === today ? t('day_today') : day === today - 1 ? t('day_yesterday') : formatDay(day, { weekday: 'long', month: 'short', day: 'numeric' })
+          const tp = mealTimeParts(meal)
+          const timeLabel = tp ? ` · ${String(tp.hour).padStart(2, '0')}:${String(tp.minute).padStart(2, '0')}` : ''
+          return (
+            <div key={meal.mealId} class="food-inbox-row">
+              <button type="button" class="food-inbox-main" onClick={() => onOpen(meal)}>
+                <span class="food-inbox-text">
+                  <span class="food-inbox-dish">{meal.dish}</span>
+                  <span class="food-note">{`${dayLabel}${timeLabel}`}</span>
+                </span>
+                <span class="food-inbox-kcal">{t('food_kcal', mealKcal(meal))}</span>
+              </button>
+              <IconButton label={t('meals_dismiss')} onClick={() => onDismiss(meal)}><CloseIcon size={18} /></IconButton>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
 }
 
 function DayPicker({ day, today, onShift, onToday }: { day: number; today: number; onShift: (d: number) => void; onToday: () => void }) {
@@ -333,8 +366,15 @@ export function FoodScreen(_: { param?: string }) {
   const [showAllMeals, setShowAllMeals] = useState(false)
   const [undo, setUndo] = useState<{ text: string; meal: MealRow } | null>(null)
   const meals = useMealsOn(day)
+  const pendingMeals = usePendingMeals()
   const isToday = day === today
   const aiReady = isAiOn(s) && s.apiKey.trim() !== ''
+
+  useEffect(() => {
+    if (!s.geminiMealsEnabled) return
+    const token = validDocsToken()
+    if (token) void syncMeals(token, t('meals_doc_placeholder')).catch(() => undefined)
+  }, [s.geminiMealsEnabled])
 
   // A tab left open overnight or brought back to the front moves on to the new day while the person is on "today".
   useEffect(() => {
@@ -418,11 +458,19 @@ export function FoodScreen(_: { param?: string }) {
     <div class={`content food${picked.length ? ' food-has-bar' : ''}`}>
       <div class="food-head">
         <span class="food-head-fill" />
-        <Button icon={<CameraIcon size={20} />} onClick={() => { location.hash = '#/scan' }}>{t('food_scan_meal')}</Button>
+        {aiReady && <Button icon={<CameraIcon size={20} />} onClick={() => { location.hash = '#/scan' }}>{t('food_scan_meal')}</Button>}
         <IconButton label={t('barcode_scan')} tone="tonal" onClick={() => { unlockAudio(); setBarcodeOpen(true) }}><BarcodeIcon /></IconButton>
         <IconButton label={t('food_add')} tone="tonal" onClick={openAdd}><AddIcon /></IconButton>
       </div>
       <DayPicker day={day} today={today} onShift={shift} onToday={() => { setDay(today); setFollowToday(true) }} />
+      {s.geminiMealsEnabled && pendingMeals.length > 0 && (
+        <GeminiInbox
+          meals={pendingMeals}
+          today={today}
+          onOpen={(m) => { location.hash = `#/scan/inbox/${encodeURIComponent(m.mealId)}` }}
+          onDismiss={(m) => { void markMealHandled(m.mealId) }}
+        />
+      )}
       <Totals meals={meals} kcalGoal={s.kcalGoal} proteinGoal={s.proteinGoal} carbsGoal={s.carbsGoal} trackCarbs={s.trackCarbs} />
       <div class="food-logged-head">
         <h2>{isToday ? t('food_logged_today') : t('food_logged_that_day')}</h2>
@@ -468,7 +516,7 @@ export function FoodScreen(_: { param?: string }) {
             <h3>{t('food_none_in_category', catLabel(cat))}</h3>
             <p>{t('food_empty_hint')}</p>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Button variant="tonal" icon={<CameraIcon size={20} />} onClick={() => { location.hash = '#/scan' }}>{t('food_scan_meal')}</Button>
+              {aiReady && <Button variant="tonal" icon={<CameraIcon size={20} />} onClick={() => { location.hash = '#/scan' }}>{t('food_scan_meal')}</Button>}
               <Button variant="tonal" icon={<AddIcon size={20} />} onClick={() => setQuick(true)}>{t('food_quick_log')}</Button>
               <Button variant="tonal" icon={<AddIcon size={20} />} onClick={openAdd}>{t('food_add_a_food')}</Button>
             </div>

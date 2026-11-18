@@ -7,7 +7,7 @@ import { applyBackup, buildBackup, decodeBackup, encodeBackup, type BackupFile }
 import { db } from './db'
 import { autoBackupEffective, loadSettings, markRestoreOfferShown, updateSettings } from './settings'
 
-const SCOPE = 'https://www.googleapis.com/auth/drive.appdata'
+const SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file'
 const API = 'https://www.googleapis.com/drive/v3'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
 export const BACKUP_NAME = 'forgequest_backup.json'
@@ -82,6 +82,10 @@ function setKnownRemoteMod(accountKey: string, mod: string | null | undefined): 
   try { localStorage.setItem(`${REMOTE_MOD_PREFIX}${accountKey}`, mod) } catch { /* ignore */ }
 }
 
+function clearKnownRemoteMod(accountKey: string): void {
+  try { localStorage.removeItem(`${REMOTE_MOD_PREFIX}${accountKey}`) } catch { /* ignore */ }
+}
+
 // ---------------------------------------------------------------- Token
 
 type Gis = {
@@ -111,7 +115,7 @@ export function preloadGis(): Promise<void> {
   return gisLoading
 }
 
-type Saved = { token: string; exp: number }
+type Saved = { token: string; exp: number; scope?: string }
 function savedToken(): Saved | null {
   try {
     const v = JSON.parse(localStorage.getItem(TOKEN_KEY) ?? 'null') as Saved | null
@@ -125,6 +129,12 @@ function saveToken(v: Saved | null) {
 /** A token that is still good for at least a minute, or null (then a tap is needed). */
 export const validToken = (): string | null => savedToken()?.token ?? null
 
+/** A token with the `drive.file` scope needed for app-created Docs, or null. */
+export const validDocsToken = (): string | null => {
+  const s = savedToken()
+  return s && s.scope?.includes('drive.file') ? s.token : null
+}
+
 /** Opens Google's sign-in popup. Must run straight from a tap. */
 export async function requestToken(hint?: string): Promise<string> {
   await preloadGis()
@@ -137,7 +147,7 @@ export async function requestToken(hint?: string): Promise<string> {
     }).requestAccessToken({ prompt: hint ? '' : 'select_account' })
   })
   if (!r.access_token) throw new DriveError('cancelled')
-  saveToken({ token: r.access_token, exp: Date.now() + (r.expires_in ?? 3600) * 1000 })
+  saveToken({ token: r.access_token, exp: Date.now() + (r.expires_in ?? 3600) * 1000, scope: SCOPE })
   return r.access_token
 }
 
@@ -161,6 +171,24 @@ async function findBackupInfo(token: string): Promise<RemoteFileInfo | null> {
   const q = encodeURIComponent(`name='${BACKUP_NAME}'`)
   const body = await (await call(token, `${API}/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)`)).json() as { files?: RemoteFileInfo[] }
   return body.files?.[0] ?? null
+}
+
+async function findAllBackupIds(token: string): Promise<string[]> {
+  const ids: string[] = []
+  let pageToken: string | undefined
+  const q = encodeURIComponent(`name='${BACKUP_NAME}' and trashed=false`)
+  do {
+    const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''
+    const body = await (await call(token, `${API}/files?spaces=appDataFolder&q=${q}&fields=nextPageToken,files(id)${pageParam}`)).json() as {
+      nextPageToken?: string
+      files?: { id?: string }[]
+    }
+    for (const f of body.files ?? []) {
+      if (f.id) ids.push(f.id)
+    }
+    pageToken = body.nextPageToken || undefined
+  } while (pageToken)
+  return ids
 }
 
 export async function accountEmail(token: string): Promise<string> {
@@ -285,16 +313,104 @@ export function connectDrive(): Promise<ConnectResult> {
   })
 }
 
-export async function disconnectDrive(): Promise<void> {
-  const token = validToken()
-  saveToken(null)
-  if (token) gis()?.accounts.oauth2.revoke(token)
-  await updateSettings((s) => ({ ...s, driveEmail: '' }))
+export function disconnectDrive(): Promise<void> {
+  return withSyncLock(async () => {
+    const token = validToken()
+    saveToken(null)
+    if (token) gis()?.accounts.oauth2.revoke(token)
+    await updateSettings((s) => ({ ...s, driveEmail: '' }))
+  })
+}
+
+/**
+ * Deletes `forgequest_backup.json` from appDataFolder inside the sync lock, clears `lastBackupAt`,
+ * then revokes/clears the token and clears `driveEmail`. Fails before clearing local connection state.
+ */
+export function deleteBackupAndDisconnect(token: string): Promise<void> {
+  return withSyncLock(async () => {
+    const s = await loadSettings()
+    if (!s.driveEmail) return
+    const accountKey = normalizeAccountKey(s.driveEmail)
+    // Like Android: never delete from a different account picked in the Google popup.
+    if (normalizeAccountKey(await accountEmail(token)) !== accountKey) throw new DriveError('cancelled')
+    const ids = await findAllBackupIds(token)
+    for (const id of ids) {
+      await call(token, `${API}/files/${id}`, { method: 'DELETE' })
+    }
+    clearKnownRemoteMod(accountKey)
+    await updateSettings((cur) => ({ ...cur, lastBackupAt: 0 }))
+    saveToken(null)
+    gis()?.accounts.oauth2.revoke(token)
+    await updateSettings((cur) => ({ ...cur, driveEmail: '' }))
+  })
 }
 
 /** A token from storage, or a new one from a tap (signed in to the same account). */
 export async function tokenForTap(): Promise<string> {
   return validToken() ?? requestToken((await loadSettings()).driveEmail || undefined)
+}
+
+/** A token with `drive.file` scope for reading/creating app-owned Google Docs. */
+export async function tokenForDocsTap(): Promise<string> {
+  return validDocsToken() ?? requestToken((await loadSettings()).driveEmail || undefined)
+}
+
+// ---------------------------------------------------------------- App-created Docs (DriveSync.kt)
+
+export interface DocText { id: string; text: string; modifiedAt: number }
+
+/** Creates the named Google Doc from plain text, or replaces the text of `fileId`. Returns the doc's id. */
+export async function upsertTextDoc(token: string, name: string, text: string, fileId: string | null): Promise<string> {
+  if (fileId != null) {
+    try {
+      await call(token, `${UPLOAD}/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'text/plain; charset=UTF-8' },
+        body: text,
+      })
+      return fileId
+    } catch (e) {
+      // Deleted or no longer ours: make a new one below.
+      if (!(e instanceof DriveError && e.kind === 'http')) throw e
+    }
+  }
+  const boundary = `fqdoc${Date.now().toString(36)}`
+  const meta = JSON.stringify({ name, mimeType: 'application/vnd.google-apps.document' })
+  const body = [
+    `--${boundary}`, 'Content-Type: application/json; charset=UTF-8', '', meta,
+    `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', '', text,
+    `--${boundary}--`, '',
+  ].join('\r\n')
+  const resp = await call(token, `${UPLOAD}/files?uploadType=multipart&fields=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  })
+  const info = await resp.json() as { id?: string }
+  if (!info.id) throw new DriveError('http', 500)
+  return info.id
+}
+
+/**
+ * Id, text and modified time of the app-created Doc named `name`, or null if none is newer than `sinceMillis`.
+ * When the Doc doesn't exist yet it is created with `placeholder`, so Gemini can fill it in and ForgeQuest can read it.
+ */
+export async function readDoc(token: string, name: string, sinceMillis: number, placeholder: string): Promise<DocText | null> {
+  const escaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  const q = `mimeType='application/vnd.google-apps.document' and name='${escaped}' and trashed=false`
+  const url = `${API}/files?q=${encodeURIComponent(q)}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,name,modifiedTime)`
+  const body = await (await call(token, url)).json() as {
+    files?: { id?: string; name?: string; modifiedTime?: string }[]
+  }
+  const doc = body.files?.[0]
+  if (!doc?.id) {
+    await upsertTextDoc(token, name, placeholder, null)
+    return null
+  }
+  const modifiedAt = doc.modifiedTime ? Date.parse(doc.modifiedTime) : 0
+  if (!Number.isFinite(modifiedAt) || modifiedAt <= sinceMillis) return null
+  const text = await (await call(token, `${API}/files/${doc.id}/export?mimeType=text/plain`)).text()
+  return { id: doc.id, text, modifiedAt }
 }
 
 /**

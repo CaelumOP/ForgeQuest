@@ -12,7 +12,8 @@ import type { PlanItemEntity, SessionEntity, SetEntity } from '../../domain/enti
 import { muscleWeekTargets, pickInsights } from '../../domain/insights'
 import { gramsLeft } from '../../domain/nutrition'
 import { formatInsight } from '../progress/insightText'
-import { Button, Card, Chip, CoachMark, type CoachStep, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
+import { Button, Card, Chip, CoachMark, type CoachStep, Dialog, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
+import { checkWhatsNew, type LatestVersion } from '../../data/update'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
@@ -35,6 +36,10 @@ export function HomeScreen(_: { param?: string }) {
   const open = useOpenSession()
   const [weightOpen, setWeightOpen] = useState(false)
   const [tagDay, setTagDay] = useState<number | null>(null)
+  const [whatsNew, setWhatsNew] = useState<LatestVersion | null>(null)
+  useEffect(() => {
+    void checkWhatsNew().then((v) => { if (v) setWhatsNew(v) })
+  }, [])
   if (!s) return <div class="content home" />
   const today = todayEpochDay()
   const plan = s.plan
@@ -115,6 +120,15 @@ export function HomeScreen(_: { param?: string }) {
       {!startOnTop && todayCard}
       <WeightSheet s={s} open={weightOpen} onClose={() => setWeightOpen(false)} />
       <DayTagSheet day={tagDay} current={tagDay != null ? s.dayTags.get(tagDay) ?? null : null} onClose={() => setTagDay(null)} />
+      <Dialog
+        open={whatsNew != null}
+        title={whatsNew ? t('whats_new_title', whatsNew.versionName) : ''}
+        message={whatsNew?.notes}
+        confirmLabel={t('action_ok')}
+        hideCancel
+        onConfirm={() => setWhatsNew(null)}
+        onCancel={() => setWhatsNew(null)}
+      />
       <RaadEgg name={s.settings.name} />
     </div>
   )

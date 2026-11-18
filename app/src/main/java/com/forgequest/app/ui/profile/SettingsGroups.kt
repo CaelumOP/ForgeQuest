@@ -58,9 +58,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import com.forgequest.app.data.friends.findActivity
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -138,7 +141,7 @@ internal fun CoachSettingsGroup(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TonalPill(stringResource(R.string.bridge_sync), onClick = vm::syncMeals)
                     TonalPill(stringResource(R.string.meals_copy_gem), onClick = {
-                        clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context, settings.handLengthCm, settings.palmWidthCm))
+                        clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context))
                         context.toast(context.getString(R.string.bridge_prompt_copied))
                     })
                 }
@@ -399,6 +402,10 @@ internal fun BackupSettingsGroup(
     val settings = s.settings
     val safetyCopies by vm.safetyCopies.collectAsState()
     var showDriveNotice by remember { mutableStateOf(false) }
+    var showDriveDisconnect by remember { mutableStateOf(false) }
+    LaunchedEffect(settings.driveEmail) {
+        if (settings.driveEmail.isBlank()) showDriveDisconnect = false
+    }
 
     SettingsGroup(
         Icons.Rounded.Cloud, c.teal, c.tealTrack, stringResource(R.string.settings_group_backup),
@@ -466,7 +473,7 @@ internal fun BackupSettingsGroup(
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(stringResource(R.string.drive_back_up_now), onClick = { vm.backupNow() })
                     TonalPill(stringResource(R.string.action_restore), onClick = vm::restore)
-                    TonalPill(stringResource(R.string.drive_disconnect), onClick = vm::disconnectDrive, tint = c.textSecondary)
+                    TonalPill(stringResource(R.string.drive_disconnect), onClick = { showDriveDisconnect = true }, tint = c.textSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -475,6 +482,27 @@ internal fun BackupSettingsGroup(
                 )
             }
         }
+    }
+    if (showDriveDisconnect) {
+        AlertDialog(
+            onDismissRequest = { showDriveDisconnect = false },
+            containerColor = c.card,
+            title = { Text(stringResource(R.string.drive_disconnect_title), color = c.textPrimary) },
+            text = { Text(stringResource(R.string.drive_disconnect_body), color = c.textSecondary, modifier = Modifier.verticalScroll(rememberScrollState())) },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(onClick = vm::deleteBackupAndDisconnect) {
+                        Text(stringResource(R.string.drive_delete_disconnect), color = c.teal)
+                    }
+                    TextButton(onClick = { showDriveDisconnect = false; vm.disconnectDrive() }) {
+                        Text(stringResource(R.string.drive_keep_backup), color = c.teal)
+                    }
+                    TextButton(onClick = { showDriveDisconnect = false }) {
+                        Text(stringResource(R.string.action_cancel), color = c.textSecondary)
+                    }
+                }
+            },
+        )
     }
     if (showDriveNotice) {
         AlertDialog(
@@ -526,6 +554,18 @@ internal fun AboutSettingsGroup(
                     Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     Text(stringResource(R.string.profile_credits_data), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_credits_images), style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp))
+                    // Credit lines stay in their original (English) wording; each opens its source page.
+                    com.forgequest.app.data.seed.ExerciseMediaCredits.all.forEach { credit ->
+                        Text(
+                            "• ${credit.exercise}: ${credit.line}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.teal,
+                            modifier = Modifier
+                                .padding(top = 2.dp)
+                                .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(credit.url))) },
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))

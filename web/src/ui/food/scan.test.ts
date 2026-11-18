@@ -66,9 +66,10 @@ describe('scan maths and prompt', () => {
     expect(scanTotals(items, 1.25, 50)).toEqual({ kcal: 751 + 50, protein: 55, carbs: 50 });
     expect(scanTotals([], 1, 150).kcal).toBe(0);
   });
-  it('uses the hand size only when known', () => {
-    expect(scanInstructions(18.5, 8)).toContain('hand length = 18.5 cm, palm width = 8 cm');
-    expect(scanInstructions(0, 0)).toContain('standard fork');
+  it('uses standard objects as scale reference without hand measurements', () => {
+    const prompt = scanInstructions();
+    expect(prompt).toContain('standard fork');
+    expect(prompt).not.toMatch(/hand length|palm width/i);
   });
 });
 

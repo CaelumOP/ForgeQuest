@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { t } from '../../i18n'
+import { getLang, t } from '../../i18n'
 import { todayEpochDay } from '../../domain/dates'
 import { scaledKcal } from '../../domain/nutrition'
 import type { FoodCategory } from '../../data/db'
-import { AiError, aiErrorKey } from '../../data/ai'
+import { AiError, aiErrorKey, foodSkillPrompt } from '../../data/ai'
 import { categoryForNow, logFoods, logOnce, placesOf, saveFood, saveMeal, useFoods, withParts } from '../../data/food'
+import { getPendingMeal, markMealHandled, mealCategory, mealEpochDay, mealToScan, type GeminiMeal } from '../../data/meal-inbox'
 import type { FoodPart } from '../../data/db'
 import { PlaceField } from './FoodParts'
 import { PasteMealSheet } from './PasteMealSheet'
@@ -24,19 +25,29 @@ const SCAN_LIMIT_MS = 25_000
 const CATS: FoodCategory[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACKS', 'DRINKS']
 const STEPS = ['scan_step_find', 'scan_step_portions', 'scan_step_add']
 
-type Photo = { url: string; base64: string }
+type Photo = { url: string; base64: string; blob?: Blob }
 type State =
   | { kind: 'pick' }
   | { kind: 'busy'; photo: Photo | null }
-  | { kind: 'result'; photo: Photo; scan: FoodScan }
+  | { kind: 'result'; photo: Photo; scan: FoodScan; gemini?: GeminiMeal }
   | { kind: 'label'; photo: Photo; product: BarcodeProduct }
   | { kind: 'failed'; photo: Photo | null; message: string; keyProblem: boolean }
+  | { kind: 'outside'; photo: Photo }
+
+function canSharePhoto(): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') return false
+  try {
+    return navigator.canShare({ files: [new File([new Uint8Array([0])], 'meal.jpg', { type: 'image/jpeg' })] })
+  } catch {
+    return false
+  }
+}
 
 function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return <button type="button" class="food-switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />
 }
 
-function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn: boolean; onRetake: () => void; onLogged: () => void }) {
+function Result({ scan, gemini, carbsOn, onRetake, onLogged }: { scan: FoodScan; gemini?: GeminiMeal; carbsOn: boolean; onRetake: () => void; onLogged: () => void }) {
   const [items, setItems] = useState<ScanItem[]>(scan.items)
   const [dish, setDish] = useState(scan.dish)
   const [included, setIncluded] = useState<Set<number>>(new Set(scan.items.map((_, i) => i)))
@@ -44,10 +55,10 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
   const [grams, setGrams] = useState<number | null>(null)
   const [portion, setPortion] = useState('normal')
   const [fat, setFat] = useState('light')
-  const [cat, setCat] = useState<FoodCategory>(categoryForNow())
-  const [save, setSave] = useState(false)
+  const [cat, setCat] = useState<FoodCategory>((gemini && mealCategory(gemini)) || categoryForNow())
+  const [save, setSave] = useState(gemini != null)
   const [pin, setPin] = useState(false)
-  const [place, setPlace] = useState('')
+  const [place, setPlace] = useState(gemini?.place ?? '')
   const [busy, setBusy] = useState(false)
   const places = placesOf(useFoods())
 
@@ -72,7 +83,9 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
     const off = parts.filter((p) => !p.on).map((p) => p.name)
     const logged = off.length ? t('food_without', name, off.join(t('food_list_sep'))) : name
     try {
-      await logOnce(logged, cat, kcal, protein, todayEpochDay(), carbs, true)
+      const targetDay = gemini ? mealEpochDay(gemini) : todayEpochDay()
+      await logOnce(logged, cat, kcal, protein, targetDay, carbs, true)
+      if (gemini) await markMealHandled(gemini.mealId)
       // Saved with its parts, so next time it's one tap with ketchup ticked off; the same meal is updated, not added twice.
       if (save) await saveMeal(withParts({ name, category: cat, kcal, protein, carbs, serving: t('scan_default_serving'), photoPath: null, pinned: pin, createdAt: Date.now(), place: place.trim() }, parts))
       toast(t('scan_logged_summary', name, kcal, Math.round(protein)) + (await badgeSuffix()))
@@ -93,7 +106,6 @@ function Result({ scan, carbsOn, onRetake, onLogged }: { scan: FoodScan; carbsOn
           {carbsOn && <span class="c">{t('food_g_carbs', Math.round(tot.carbs))}</span>}
         </div>
       </div>
-      {scan.handVisible && <p class="scan-hand">{t('scan_hand_scaled')}</p>}
       {scan.note && <p class="food-note">{scan.note}</p>}
       {items.map((item, i) => {
         const on = included.has(i)
@@ -219,6 +231,7 @@ function LabelResult({ product, barcode, carbsOn, onRetake, onLogged }: {
 
 export function ScanScreen({ param }: { param?: string }) {
   const labelCode = param?.startsWith('label/') ? param.slice(6).trim() : null
+  const inboxMealId = param?.startsWith('inbox/') ? param.slice(6).trim() : null
   const s = useSettings()
   const [state, setState] = useState<State>({ kind: 'pick' })
   const [step, setStep] = useState(0)
@@ -229,6 +242,15 @@ export function ScanScreen({ param }: { param?: string }) {
   const runId = useRef(0)
   const [pasteOpen, setPasteOpen] = useState(false)
   const hasKey = isAiOn(s) && s.apiKey.trim() !== ''
+  const shareOk = !labelCode && canSharePhoto()
+
+  useEffect(() => {
+    if (!inboxMealId) return
+    void getPendingMeal(inboxMealId).then((meal) => {
+      if (meal) setState({ kind: 'result', photo: { url: '', base64: '' }, scan: mealToScan(meal), gemini: meal })
+      else goBack()
+    })
+  }, [inboxMealId])
 
   const drop = () => {
     abortRef.current?.abort()
@@ -283,7 +305,7 @@ export function ScanScreen({ param }: { param?: string }) {
     setState({ kind: 'busy', photo: null })
     try {
       const { blob, base64 } = await shrinkPhoto(file)
-      const photo = { url: URL.createObjectURL(blob), base64 }
+      const photo = { url: URL.createObjectURL(blob), base64, blob }
       photoRef.current = photo
       await analyze(photo)
     } catch {
@@ -291,7 +313,21 @@ export function ScanScreen({ param }: { param?: string }) {
     }
   }
 
-  const retake = () => { runId.current++; drop(); setState({ kind: 'pick' }) }
+  const askOutside = async (target: Photo) => {
+    if (!target.blob) return
+    const prompt = foodSkillPrompt(getLang())
+    void navigator.clipboard?.writeText(prompt)
+    const file = new File([target.blob], 'meal.jpg', { type: 'image/jpeg' })
+    try {
+      await navigator.share({ files: [file], text: prompt })
+      setState({ kind: 'outside', photo: target })
+    } catch { /* user dismissed the share sheet */ }
+  }
+
+  const retake = () => {
+    if (state.kind === 'result' && state.gemini) { goBack(); return }
+    runId.current++; drop(); setState({ kind: 'pick' })
+  }
   const photo = state.kind === 'pick' ? null : state.photo
 
   return (
@@ -341,11 +377,30 @@ export function ScanScreen({ param }: { param?: string }) {
                     ? <Button onClick={() => { location.hash = '#/profile' }}>{t('scan_open_profile')}</Button>
                     : state.photo && <Button onClick={() => analyze(state.photo!)}>{t('action_try_again')}</Button>}
                 </div>
+                {shareOk && state.photo?.blob && (
+                  <div class="scan-actions" style={{ marginBlockStart: '12px' }}>
+                    <Button block onClick={() => void askOutside(state.photo!)}>{t('scan_ask_outside')}</Button>
+                  </div>
+                )}
               </div>
             </Card>
           )}
 
-          {state.kind === 'result' && <Result scan={state.scan} carbsOn={s.trackCarbs} onRetake={retake} onLogged={goBack} />}
+          {state.kind === 'outside' && (
+            <Card>
+              <div class="scan-fail">
+                <h2>{t('scan_outside_title')}</h2>
+                <p>{t('scan_outside_body')}</p>
+                <div class="scan-actions">
+                  <Button variant="tonal" onClick={retake}>{t('scan_retake')}</Button>
+                  <Button variant="tonal" onClick={() => setPasteOpen(true)}>{t('food_paste_meal')}</Button>
+                  <Button onClick={() => void askOutside(state.photo)}>{t('scan_ask_again')}</Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {state.kind === 'result' && <Result key={state.gemini?.mealId ?? 'scan'} scan={state.scan} gemini={state.gemini} carbsOn={s.trackCarbs} onRetake={retake} onLogged={goBack} />}
           {state.kind === 'label' && labelCode && (
             <LabelResult product={state.product} barcode={labelCode} carbsOn={s.trackCarbs} onRetake={retake} onLogged={goBack} />
           )}

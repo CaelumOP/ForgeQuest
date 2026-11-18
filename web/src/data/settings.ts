@@ -36,10 +36,6 @@ export interface Settings {
   smartModel: string;
   liteModel: string;
   modelsCheckedAt: number;
-  /** Which model the coach uses: "auto", "lite", "flash" or "pro". */
-  coachModel: string;
-  groqModel: string;
-  lastCheckinWeek: number;
   driveEmail: string;
   lastBackupAt: number;
   /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
@@ -60,7 +56,6 @@ export interface Settings {
   bodyFatPct: number;
   nutritionGoal: NutritionGoal;
   goalSetDay: number;
-  debriefEnabled: boolean;
   /** How active a normal day is outside workouts (calorie plan v2). */
   dayActivity: DayActivity;
   cutPace: CutPace;
@@ -79,8 +74,8 @@ export interface Settings {
   justLog: boolean;
   /** Gemini key. Never in a backup, never logged. */
   apiKey: string;
-  /** Optional Groq key. Never in a backup, never logged. */
-  groqKey: string;
+  /** Meals from the Gemini Gem via Google Docs. Default off; never in a backup. */
+  geminiMealsEnabled: boolean;
   /** The plan builder's last answers as JSON (see PlanAnswers), so a rebuild starts from them. Not part of backups. */
   planBuilderAnswers: string | null;
   /** AI master opt-in: null means "auto" (on when apiKey is set). */
@@ -96,10 +91,10 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   barWeightKg: 20, plateInventory: [...DEFAULT_PLATE_INVENTORY], ttsCues: false,
   onboarded: false, name: '', bodyType: 'MALE', kcalGoal: 2200, proteinGoal: 140, weeklyTargetOverride: 0,
   handLengthCm: 0, palmWidthCm: 0, fastModel: '', smartModel: '', liteModel: '', modelsCheckedAt: 0,
-  coachModel: 'auto', groqModel: '', lastCheckinWeek: -1, driveEmail: '', lastBackupAt: 0, coachNotes: '',
+  driveEmail: '', lastBackupAt: 0, coachNotes: '',
   theme: 'system', hapticsEnabled: true, unit: 'kg', reminderHour: -1, heightCm: 0, birthYear: 0,
   trackCarbs: false, carbsGoal: 250, proteinPerKg: 1.8, fatSharePct: 25, equipment: '', bodyFatPct: 0,
-  nutritionGoal: 'MAINTAIN', goalSetDay: 0, debriefEnabled: true, apiKey: '', groqKey: '',
+  nutritionGoal: 'MAINTAIN', goalSetDay: 0, apiKey: '', geminiMealsEnabled: false,
   dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD', targetWeightKg: 0, targetSetDay: 0,
   calorieSnoozeUntil: 0, calorieV2Seen: false, targetNudgeAnswered: false, justLog: false,
   planBuilderAnswers: null, aiOptIn: null, cycleHistory: '', insightHistory: '',
@@ -129,7 +124,6 @@ function normalize(raw: unknown): Settings {
     nutritionGoal: NUTRITION_GOALS.includes(s.nutritionGoal) ? s.nutritionGoal : 'MAINTAIN',
     dayActivity: parseDayActivity(s.dayActivity), cutPace: parseCutPace(s.cutPace), gainPace: parseGainPace(s.gainPace),
     apiKey: s.apiKey.trim(),
-    groqKey: s.groqKey.trim(),
     planBuilderAnswers: typeof rawAnswers === 'string' ? rawAnswers : null,
     aiOptIn: typeof src.aiOptIn === 'boolean' ? src.aiOptIn : null,
   };
@@ -191,7 +185,7 @@ export function toBackupSettings(s: Settings): BackupSettings {
     unit: unitCode(unitFromCodeOrLabel(s.unit)), reminderHour: s.reminderHour, heightCm: s.heightCm,
     birthYear: s.birthYear, trackCarbs: s.trackCarbs, carbsGoal: s.carbsGoal, proteinPerKg: s.proteinPerKg,
     fatSharePct: s.fatSharePct, equipment: s.equipment, bodyFatPct: s.bodyFatPct, nutritionGoal: s.nutritionGoal,
-    goalSetDay: s.goalSetDay, debriefEnabled: s.debriefEnabled,
+    goalSetDay: s.goalSetDay, debriefEnabled: true,
     dayActivity: s.dayActivity, cutPace: s.cutPace, gainPace: s.gainPace, targetWeightKg: s.targetWeightKg, targetSetDay: s.targetSetDay,
     justLog: s.justLog,
     barWeightKg: s.barWeightKg, plateInventory: s.plateInventory, ttsCues: s.ttsCues,
@@ -210,7 +204,7 @@ export function fromBackupSettings(b: BackupSettings, s: Settings): Settings {
     heightCm: b.heightCm, birthYear: b.birthYear, trackCarbs: b.trackCarbs, carbsGoal: b.carbsGoal,
     proteinPerKg: b.proteinPerKg, fatSharePct: b.fatSharePct, equipment: b.equipment, bodyFatPct: b.bodyFatPct,
     nutritionGoal: (NUTRITION_GOALS as readonly string[]).includes(b.nutritionGoal) ? b.nutritionGoal : s.nutritionGoal,
-    goalSetDay: b.goalSetDay, debriefEnabled: b.debriefEnabled,
+    goalSetDay: b.goalSetDay,
     dayActivity: parseDayActivity(b.dayActivity), cutPace: parseCutPace(b.cutPace), gainPace: parseGainPace(b.gainPace),
     targetWeightKg: b.targetWeightKg, targetSetDay: b.targetSetDay, justLog: b.justLog,
     barWeightKg: b.barWeightKg ?? 20, plateInventory: b.plateInventory ?? [...DEFAULT_PLATE_INVENTORY], ttsCues: b.ttsCues ?? false,

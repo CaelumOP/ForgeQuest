@@ -4,8 +4,9 @@ import fixtureText from './fixtures/android-backup.json?raw';
 import { db } from './db';
 import { applyBackup, decodeBackup } from './backup';
 import {
-  BACKUP_NAME, DriveError, autoBackup, backupNow, connectDrive, disconnectDrive, fetchDriveBackup,
-  fetchDriveBackupPreview, isDeviceEmpty, isRemoteNewer, lastActivityAt, needsChoice, restoreSerialized,
+  BACKUP_NAME, DriveError, autoBackup, backupNow, connectDrive, deleteBackupAndDisconnect, disconnectDrive,
+  fetchDriveBackup, fetchDriveBackupPreview, isDeviceEmpty, isRemoteNewer, lastActivityAt, needsChoice,
+  readDoc, restoreSerialized, upsertTextDoc,
 } from './drive';
 import { autoBackupEffective, loadSettings, setAutoBackup, updateSettings } from './settings';
 
@@ -233,5 +234,111 @@ describe('drive backup', () => {
     expect(await backupNow('tok1', true)).toBe(true);
     expect(uploads).toBe(1);
     expect(store.get('fq.drive.remoteMod.sync@example.com')).toBe('2026-11-13T00:00:00Z');
+  });
+
+  it('deleteBackupAndDisconnect deletes appDataFolder backup, clears lastBackupAt, revokes token, and clears email', async () => {
+    await updateSettings((s) => ({ ...s, driveEmail: 'User@Example.com', lastBackupAt: 123456789 }));
+    store.set('fq.drive.token', JSON.stringify({ token: 'tok1', exp: Date.now() + 3_600_000 }));
+    store.set('fq.drive.remoteMod.user@example.com', '2026-11-10T00:00:00Z');
+    const revoked: string[] = [];
+    vi.stubGlobal('window', {
+      google: { accounts: { oauth2: { initTokenClient: () => ({ requestAccessToken: () => undefined }), revoke: (t: string) => revoked.push(t) } } },
+    });
+    const reqs: { url: string; method: string }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      reqs.push({ url, method: init.method ?? 'GET' });
+      if (url.includes('/about?')) return Response.json({ user: { emailAddress: 'user@example.com' } });
+      if (url.includes('/files?spaces=appDataFolder')) return Response.json({ files: [{ id: 'f1' }, { id: 'f2' }] });
+      if (init.method === 'DELETE') return new Response(null, { status: 204 });
+      return new Response('', { status: 404 });
+    });
+
+    await deleteBackupAndDisconnect('tok1');
+
+    expect(reqs.filter((r) => r.method === 'DELETE').map((r) => r.url)).toEqual([
+      'https://www.googleapis.com/drive/v3/files/f1',
+      'https://www.googleapis.com/drive/v3/files/f2',
+    ]);
+    const s = await loadSettings();
+    expect(s.lastBackupAt).toBe(0);
+    expect(s.driveEmail).toBe('');
+    expect(store.has('fq.drive.token')).toBe(false);
+    expect(store.has('fq.drive.remoteMod.user@example.com')).toBe(false);
+    expect(revoked).toEqual(['tok1']);
+  });
+
+  it('deleteBackupAndDisconnect preserves connection state when deletion fails', async () => {
+    await updateSettings((s) => ({ ...s, driveEmail: 'user@example.com', lastBackupAt: 999 }));
+    store.set('fq.drive.token', JSON.stringify({ token: 'tok1', exp: Date.now() + 3_600_000 }));
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      if (url.includes('/about?')) return Response.json({ user: { emailAddress: 'user@example.com' } });
+      if (url.includes('/files?spaces=appDataFolder')) return Response.json({ files: [{ id: 'f1' }] });
+      if (init.method === 'DELETE') return new Response('', { status: 500 });
+      return new Response('', { status: 404 });
+    });
+
+    await expect(deleteBackupAndDisconnect('tok1')).rejects.toMatchObject({ kind: 'http', status: 500 });
+    const s = await loadSettings();
+    expect(s.driveEmail).toBe('user@example.com');
+    expect(s.lastBackupAt).toBe(999);
+    expect(store.has('fq.drive.token')).toBe(true);
+  });
+
+  it('deleteBackupAndDisconnect refuses a token for a different Google account', async () => {
+    await updateSettings((s) => ({ ...s, driveEmail: 'user@example.com', lastBackupAt: 999 }));
+    store.set('fq.drive.token', JSON.stringify({ token: 'tok2', exp: Date.now() + 3_600_000 }));
+    const deletes: string[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      if (url.includes('/about?')) return Response.json({ user: { emailAddress: 'other@example.com' } });
+      if (url.includes('/files?spaces=appDataFolder')) return Response.json({ files: [{ id: 'f1' }] });
+      if (init.method === 'DELETE') { deletes.push(url); return new Response(null, { status: 204 }); }
+      return new Response('', { status: 404 });
+    });
+
+    await expect(deleteBackupAndDisconnect('tok2')).rejects.toMatchObject({ kind: 'cancelled' });
+    expect(deletes).toEqual([]);
+    const s = await loadSettings();
+    expect(s.driveEmail).toBe('user@example.com');
+    expect(s.lastBackupAt).toBe(999);
+  });
+
+  it('readDoc creates placeholder when missing and returns newer doc text otherwise', async () => {
+    const reqs: { url: string; method: string; body?: string }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      reqs.push({ url, method: init.method ?? 'GET', body: init.body as string | undefined });
+      if (url.includes('orderBy=modifiedTime')) return Response.json({ files: [] });
+      if (url.includes('/upload/drive/v3/files?uploadType=multipart')) return Response.json({ id: 'doc1' });
+      return new Response('', { status: 404 });
+    });
+
+    expect(await readDoc('tok', 'ForgeQuest meals from Gemini', 0, 'placeholder')).toBeNull();
+    expect(reqs.some((r) => r.method === 'POST' && r.body?.includes('placeholder'))).toBe(true);
+
+    vi.stubGlobal('fetch', async (url: string) => {
+      if (url.includes('orderBy=modifiedTime')) {
+        return Response.json({ files: [{ id: 'doc1', name: 'ForgeQuest meals from Gemini', modifiedTime: '2026-11-12T10:00:00Z' }] });
+      }
+      if (url.includes('/files/doc1/export')) return new Response('FORGEQUEST-MEAL v1\n{"dish":"Kabsa"}');
+      return new Response('', { status: 404 });
+    });
+
+    const doc = await readDoc('tok', 'ForgeQuest meals from Gemini', 0, 'placeholder');
+    expect(doc).toEqual({
+      id: 'doc1',
+      text: 'FORGEQUEST-MEAL v1\n{"dish":"Kabsa"}',
+      modifiedAt: Date.parse('2026-11-12T10:00:00Z'),
+    });
+    expect(await readDoc('tok', 'ForgeQuest meals from Gemini', doc!.modifiedAt, 'placeholder')).toBeNull();
+
+    let patched = false;
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      if (url.includes('/upload/drive/v3/files/doc1') && init.method === 'PATCH') {
+        patched = true;
+        return new Response('', { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    });
+    expect(await upsertTextDoc('tok', 'ForgeQuest meals from Gemini', 'updated', 'doc1')).toBe('doc1');
+    expect(patched).toBe(true);
   });
 });

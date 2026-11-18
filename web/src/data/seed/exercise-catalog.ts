@@ -39,7 +39,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CARRY_CONDITIONING',
     aliases: 'البيربي, burpees, كارديو, لياقة',
-    mediaKey: '',
+    mediaKey: 'burpee',
   },
   {
     id: 'incline_hollow_plank',
@@ -312,7 +312,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'ANKLE_FLEXION',
     aliases: 'رفع السمانة, calf raises, calves, سمانة, بطات',
-    mediaKey: '',
+    mediaKey: 'calf_raise',
   },
   {
     id: 'push_up',
@@ -429,7 +429,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'SQUAT_UNILATERAL',
     aliases: 'الطعن, lunges, forward lunge, طعن, لانجز, أرجل',
-    mediaKey: '',
+    mediaKey: 'lunge',
   },
   {
     id: 'bulgarian_split_squat',
@@ -546,7 +546,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'DIP_STATION',
     pattern: 'CORE_ANTI_EXTENSION',
     aliases: 'جلسة L, lsit, بطن',
-    mediaKey: '',
+    mediaKey: 'l_sit',
   },
   {
     id: 'handstand_hold',
@@ -1105,7 +1105,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CORE_FLEXION_ROTATION',
     aliases: 'بطن, خواصر',
-    mediaKey: '',
+    mediaKey: 'bicycle_crunch',
   },
   {
     id: 'wrist_curl',
@@ -1443,7 +1443,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BAND',
     pattern: 'ELBOW_FLEXION',
     aliases: 'ثني الذراع بالحزام المطاطي, باي, باند',
-    mediaKey: '',
+    mediaKey: 'band_curl',
   },
   {
     id: 'seated_calf_raise',
@@ -6914,7 +6914,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     videoUrl: null,
     custom: false,
     equipment: 'BARBELL,SQUAT_RACK',
-    pattern: 'ELBOW_FLEXION',
+    pattern: 'SQUAT_BILATERAL',
     aliases: 'الأماميات',
     mediaKey: 'front_squat_clean_grip',
   },
@@ -8292,7 +8292,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     videoUrl: null,
     custom: false,
     equipment: 'HACK_SQUAT',
-    pattern: 'HORIZONTAL_PULL',
+    pattern: 'SQUAT_BILATERAL',
     aliases: 'الأماميات',
     mediaKey: 'narrow_stance_hack_squats',
   },

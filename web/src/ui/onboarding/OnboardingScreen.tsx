@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'preact/hooks'
-import { getLang, intlLocale, listSep, plural, setLang, t, type Lang } from '../../i18n'
+import { getLang, intlLocale, listSep, setLang, t, type Lang } from '../../i18n'
 import { logWeight } from '../../data/progress'
 import { updateSettings } from '../../data/settings'
 import { applyPlan, seedLibrary } from '../../data/workouts'
 import { db } from '../../data/db'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
-import { ONBOARDING_PLAN_COUNT, STARTER_PLANS, localizePlan, type PlanDraft } from '../../data/seed/starter-plans'
-import { EQUIPMENT_PRESETS, PRESET_INFO, adaptPlanToEquipment, presetEquipment } from '../../domain/exercise-swap-engine'
+import { EQUIPMENT_PRESETS, PRESET_INFO } from '../../domain/exercise-swap-engine'
 import { type Experience } from '../../domain/plan-builder'
 import {
   allowedCutPace, CUT_PACE, CUT_PACES, DAY_ACTIVITIES, DAY_BASE, dailyBurn, GAIN_PACE, GAIN_PACES, NUTRITION_GOALS, type CutPace, type GainPace, type NutritionGoal,
@@ -18,15 +17,10 @@ import { CsvImportScreen } from '../profile/CsvImportScreen'
 import { CheckCircleIcon, DumbbellIcon, FireIcon } from '../home/glyphs'
 import { markGettingStartedEligible } from '../home/getting-started'
 import {
-  DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, localizeOnboardingPlan, nextStep, planForDays,
-  pickGoal, presetForPlan, prevStep, progressStep, setWeight, settingsPatch, withSuggestions, type OnbState,
+  DAY_OPTIONS, LAST_STEP, bodyStatsReady, floorOf, initialState, localizeOnboardingPlan, nextStep,
+  onboardingPlanChoice, pickGoal, prevStep, progressStep, setWeight, settingsPatch, withSuggestions, type OnbState,
 } from './logic'
 import './onboarding.css'
-
-const emptyPlan = (): PlanDraft => ({
-  name: t('onb_my_plan'), description: t('onb_my_plan_desc'),
-  days: [1, 2, 3, 4, 5, 6, 7].map((d) => ({ dayOfWeek: d, title: t('today_rest_day'), isRest: true, note: '', items: [] })),
-})
 
 /** Tour-only first run (no setup screens): no starting plan, 3 days a week target, everything editable later in Profile. */
 export async function quickStart(): Promise<void> {
@@ -34,9 +28,6 @@ export async function quickStart(): Promise<void> {
   markGettingStartedEligible()
   await updateSettings((c) => ({ ...c, onboarded: true, weeklyTargetOverride: 3, calorieV2Seen: true }))
 }
-
-/** Training days of starter plan [i], for its "N days a week" label. */
-const trainingDaysOf = (i: number) => STARTER_PLANS[i]?.days.filter((d) => !d.isRest && d.items.length > 0).length ?? 0
 
 /** First-run setup: language, welcome, about you, goal, training, weight. Full screen, no tab bar. */
 export function OnboardingScreen({ onDone }: { onDone: () => void }) {
@@ -65,15 +56,9 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
     try {
       await seedLibrary(getLang())
       if (!s.justLog) {
-        if (s.builtForMe) {
-          const lib = await db.exercises.toArray()
-          await applyPlan(localizeOnboardingPlan(s, lib), 'builder')
-        } else {
-          const chosen = STARTER_PLANS[s.planIndex]
-          const plan = chosen ? localizePlan(chosen, getLang()) : emptyPlan()
-          const adapted = chosen ? adaptPlanToEquipment(plan, new Map(EXERCISE_CATALOG.map((e) => [e.id, e])), presetEquipment(s.preset), true)[0] : plan
-          await applyPlan(adapted, chosen ? 'starter' : 'manual')
-        }
+        const lib = s.builtForMe ? await db.exercises.toArray() : []
+        const { plan, source } = onboardingPlanChoice(s, lib)
+        await applyPlan(plan, source)
       }
       if (logEnteredWeight && s.weightTouched) {
         await logWeight(s.weightKg)
@@ -237,8 +222,6 @@ function StepGoalSetup({ s, update }: StepProps) {
 function StepTraining({ s, update }: StepProps) {
   const lang = getLang()
   const ar = lang === 'ar'
-  const plans = STARTER_PLANS.slice(0, ONBOARDING_PLAN_COUNT).map((p) => localizePlan(p, lang))
-  const options = [...plans.map((p) => ({ name: p.name, desc: p.description })), { name: t('onb_start_empty'), desc: t('onb_start_empty_desc') }]
   const builtPreview = useMemo(
     () => localizeOnboardingPlan(s, EXERCISE_CATALOG),
     [s.goal, s.daysPerWeek, s.preset, s.experience, lang],
@@ -258,14 +241,14 @@ function StepTraining({ s, update }: StepProps) {
       <Segmented
         label={t('v42_onb_days_week')}
         value={String(s.daysPerWeek)}
-        onChange={(v) => update((c) => ({ ...c, daysPerWeek: Number(v), planIndex: planForDays(Number(v), c.preset) }))}
+        onChange={(v) => update((c) => ({ ...c, daysPerWeek: Number(v) }))}
         options={DAY_OPTIONS.map((d) => ({ value: String(d), label: new Intl.NumberFormat(intlLocale()).format(d) }))}
       />
       <h2 class="onb-h2">{t('v42_onb_where_train')}</h2>
       <ChipGroup
         label={t('v42_onb_where_train')}
         value={s.preset}
-        onChange={(p) => update((c) => ({ ...c, preset: p, planIndex: planForDays(c.daysPerWeek, p) }))}
+        onChange={(preset) => update((c) => ({ ...c, preset }))}
         options={EQUIPMENT_PRESETS.map((p) => ({ value: p, label: ar ? PRESET_INFO[p].labelAr : PRESET_INFO[p].labelEn }))}
       />
       <p class="onb-note">{t('onb_equipment_hint')}</p>
@@ -287,26 +270,21 @@ function StepTraining({ s, update }: StepProps) {
             {s.builtForMe && <CheckCircleIcon />}
           </span>
         </button>
-        {options.map((o, i) => {
-          const on = !s.builtForMe && s.planIndex === i
-          return (
-            <button
-              key={i}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              class={`onb-plan${on ? ' on' : ''}`}
-              onClick={() => update((c) => ({ ...c, builtForMe: false, planIndex: i, preset: presetForPlan(i, c.preset) }))}
-            >
-              <span class="onb-plan-text">
-                <span class="onb-plan-name">{o.name}</span>
-                {trainingDaysOf(i) > 0 && <span class="onb-plan-days">{plural('onb_plan_days', trainingDaysOf(i))}</span>}
-                <span class="onb-plan-desc">{o.desc}</span>
-              </span>
-              <span class={`onb-radio${on ? ' on' : ''}`} aria-label={on ? t('onb_web_plan_selected') : undefined}>{on && <CheckCircleIcon />}</span>
-            </button>
-          )
-        })}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!s.builtForMe}
+          class={`onb-plan${!s.builtForMe ? ' on' : ''}`}
+          onClick={() => update((c) => ({ ...c, builtForMe: false }))}
+        >
+          <span class="onb-plan-text">
+            <span class="onb-plan-name">{t('onb_start_empty')}</span>
+            <span class="onb-plan-desc">{t('onb_start_empty_desc')}</span>
+          </span>
+          <span class={`onb-radio${!s.builtForMe ? ' on' : ''}`} aria-label={!s.builtForMe ? t('onb_web_plan_selected') : undefined}>
+            {!s.builtForMe && <CheckCircleIcon />}
+          </span>
+        </button>
       </div>
     </>
   )

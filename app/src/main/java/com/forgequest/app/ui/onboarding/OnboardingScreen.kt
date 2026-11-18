@@ -74,8 +74,6 @@ import com.forgequest.app.R
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.prefs.BodyType
-import com.forgequest.app.data.seed.StarterPlans
-import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.EquipmentPreset
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Nutrition
@@ -158,7 +156,6 @@ data class OnboardingState(
     val justLog: Boolean = false,
     /** "Built for me" card picked (the default): the plan comes from PlanBuilder instead of starting empty. */
     val builtForMe: Boolean = true,
-    val planIndex: Int = StarterPlans.BODYWEIGHT_INDEX,
     val equipmentPreset: EquipmentPreset = EquipmentPreset.CALISTHENICS_PARK,
     val experience: Experience = Experience.SOME,
 ) {
@@ -547,7 +544,7 @@ private fun StepTraining(s: OnboardingState, vm: OnboardingViewModel) {
     SegmentedTabs(
         options = dayOptions.map { java.text.NumberFormat.getIntegerInstance().format(it) },
         selected = dayOptions.indexOf(s.daysPerWeek).coerceAtLeast(0),
-        onSelect = { i -> vm.update { it.copy(daysPerWeek = dayOptions[i], planIndex = planForDays(dayOptions[i], it.equipmentPreset)) } },
+        onSelect = { i -> vm.update { it.copy(daysPerWeek = dayOptions[i]) } },
     )
     Spacer(Modifier.height(20.dp))
 
@@ -558,7 +555,7 @@ private fun StepTraining(s: OnboardingState, vm: OnboardingViewModel) {
             ChoiceChip(
                 text = if (isArabic) preset.labelAr else preset.labelEn,
                 selected = s.equipmentPreset == preset,
-                onClick = { vm.update { it.copy(equipmentPreset = preset, planIndex = planForDays(it.daysPerWeek, preset)) } },
+                onClick = { vm.update { it.copy(equipmentPreset = preset) } },
             )
         }
     }
@@ -762,17 +759,6 @@ private fun GoalRow(label: String, value: Float, onChange: (Float) -> Unit, step
         Text(label, style = MaterialTheme.typography.titleSmall, color = c.textPrimary, modifier = Modifier.weight(1f))
         NumberStepper(value, onChange, step, min, max, unit = unit, decimals = decimals, title = label, minValueWidth = 84.dp, placeholder = placeholder)
     }
-}
-
-/**
- * The starter plan to show as chosen for [days] a week and the picked equipment. Plans: 0 Hemo (5 days), 1 bodyweight and
- * 2 dumbbells (both 3 days), 3 gym split (6 days). 5 gets Hemo (bodyweight when there is nothing to hang from); 2, 3 and
- * 4 get the 3-day full body, the gentlest plan that is nearest.
- */
-internal fun planForDays(days: Int, preset: EquipmentPreset): Int = when {
-    days >= 5 -> if (preset == EquipmentPreset.BODYWEIGHT_ONLY) StarterPlans.BODYWEIGHT_INDEX else 0
-    Equipment.DUMBBELLS in preset.equipment -> StarterPlans.DUMBBELLS_INDEX
-    else -> StarterPlans.BODYWEIGHT_INDEX
 }
 
 /** The body and food-goal steps that used to sit in onboarding, offered from Home after the first workout. */

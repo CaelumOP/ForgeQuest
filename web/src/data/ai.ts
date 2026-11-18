@@ -57,7 +57,7 @@ export function aiErrorKey(e: unknown): { key: string; args: unknown[] } {
 
 // ---------------------------------------------------------------- models
 
-/** Models to try, in order, for the settings.coachModel choice: "auto"/"lite" (default) start on Flash-Lite. */
+/** Models to try, in order, for a model choice: "auto"/"lite" (default) start on Flash-Lite. */
 export function modelsFor(choice: string, s: Pick<Settings, 'fastModel' | 'smartModel' | 'liteModel'>): string[] {
   const fast = s.fastModel || FALLBACK_FAST;
   const lite = s.liteModel || FALLBACK_LITE;
@@ -91,7 +91,7 @@ export type GeminiOptions = {
   fast?: boolean;
   /** Small reasoning budget (meal scans). */
   lowThinking?: boolean;
-  /** Models to try in order; default from settings.coachModel. */
+  /** Models to try in order; default from modelsFor('auto', s). */
   models?: string[];
   /** Overrides the key from settings (e.g. to test a key before saving). */
   apiKey?: string;
@@ -241,7 +241,7 @@ export async function geminiGenerate(o: GeminiOptions): Promise<string> {
   if (!o.apiKey && !isAiOn(s)) throw new AiError('no_key');
   const key = (o.apiKey ?? s.apiKey).trim();
   if (!key) throw new AiError('no_key');
-  const all = [...new Set([...(o.models ?? modelsFor(s.coachModel, s)), FALLBACK_STABLE_FLASH, FALLBACK_FAST, FALLBACK_LITE].filter(Boolean))];
+  const all = [...new Set([...(o.models ?? modelsFor('auto', s)), FALLBACK_STABLE_FLASH, FALLBACK_FAST, FALLBACK_LITE].filter(Boolean))];
   const now = Date.now();
   const candidates = all.filter((m) => (coolingDown.get(m) ?? 0) < now);
   let last: AiError = new AiError('blocked', 'no model answered');
@@ -281,39 +281,6 @@ export function pickGroqModel(ids: string[]): string {
     ?? ids.find((i) => i.includes('llama-3.1-8b-instant'))
     ?? ids.find((i) => i.startsWith('llama') && !i.includes('guard'))
     ?? GROQ_FALLBACK_MODEL;
-}
-
-export type GroqOptions = {
-  messages: GroqMessage[];
-  model?: string;
-  apiKey?: string;
-  temperature?: number;
-  maxTokens?: number;
-  /** JSON mode: the reply is a single JSON object. */
-  json?: boolean;
-  signal?: AbortSignal;
-};
-
-/** OpenAI-style chat completion on Groq (fast chat). Returns the reply text. */
-export async function groqChat(o: GroqOptions): Promise<string> {
-  const s = await loadSettings();
-  const key = (o.apiKey ?? s.groqKey).trim();
-  if (!key) throw new AiError('no_key');
-  const model = o.model || s.groqModel || GROQ_FALLBACK_MODEL;
-  const body = await send(
-    `${GROQ_BASE}/chat/completions`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, messages: o.messages, temperature: o.temperature ?? 0.5, max_tokens: o.maxTokens ?? 1500, ...(o.json ? { response_format: { type: 'json_object' } } : {}) }),
-    },
-    15_000, o.signal, `groq ${model}`,
-  );
-  let text = '';
-  try { text = String(JSON.parse(body)?.choices?.[0]?.message?.content ?? ''); } catch { /* handled below */ }
-  text = text.trim();
-  if (!text) throw new AiError('blocked', `groq ${model}: no text`);
-  return text;
 }
 
 // ---------------------------------------------------------------- Gemini app skill prompts
@@ -392,7 +359,7 @@ can check them; otherwise nothing after the JSON either.`;
 const FOOD_SKILL_EN = `You are ForgeQuest Food. Your only job: estimate the calories and macros of the meal I send (photo, photo plus text, or text only) as accurately as possible, and reply in a fixed JSON format that I share to my fitness app (ForgeQuest). Be realistic, never optimistic: if unsure between two portion sizes, pick the larger one.
 
 HOW TO ESTIMATE (think through all of this before answering)
-1. Scale. In photos, find a size reference: a hand, a fork (~19 cm), tablespoon (~17 cm), mug (~9 cm wide), dinner plate (~26 cm rim), side plate (~20 cm), standard can (~12 cm tall), a flatbread or a bowl. If there are several photos, use all angles to judge height and depth, not just area. With text only, use typical restaurant or home portions and set "handVisible" to false.
+1. Scale. In photos, find a size reference: a fork (~19 cm), tablespoon (~17 cm), mug (~9 cm wide), dinner plate (~26 cm rim), side plate (~20 cm), standard can (~12 cm tall), a flatbread or a bowl. If there are several photos, use all angles to judge height and depth, not just area. With text only, use typical restaurant or home portions and set "handVisible" to false.
 2. Components. Split the meal into separate items: each protein, starch, vegetable, sauce, dressing, drink, and the cooking fat. Oil, ghee and butter are the biggest hidden error: look for shine, pooling, fried texture or crispy edges and add them as their own item.
 3. Weight. For each item estimate volume (area x height) and convert to grams with a typical density. Use cooked weight for cooked food. For bone-in meat (mandi half chicken, lamb on the bone, wings), log edible meat only, deduct about 30–35 % for bone, and say so in "note". For iced drinks, deduct about 35 % of cup volume for ice unless I say no ice.
 4. Nutrition. Use standard values per 100 g (USDA or Saudi/Gulf food tables) for the item as cooked. Reference points: cooked chicken breast 165 kcal / 31 g protein; cooked skin-on chicken thigh 230 kcal / 24 g protein / 15 g fat; cooked white rice 130 kcal / 2.7 g protein / 28 g carbs; cooked lean beef 250 kcal / 26 g protein; one whole egg 72 kcal / 6.3 g protein; olive oil or ghee 900 kcal per 100 g; toum or mayo 550–680 kcal per 100 g; Arabic bread (80 g loaf) ~220 kcal; samoli (70 g) ~200 kcal; paratha (80 g piece) ~280 kcal; dates ~23 kcal each.
@@ -411,7 +378,7 @@ THE JSON
 - One item per component, cooking fat included as its own item (for example "Olive oil (cooking)").
 - "grams" and "kcal" are whole numbers; "protein", "carbs" and "fat" are grams with at most one decimal.
 - Short, plain dish and item names in English; for regional dishes use "English (Arabic script)" or the common transliteration. Write "note" in the language of my message (formal Arabic if I write in Arabic).
-- Set "handVisible" to false for text-only input or when my hand is not in the photo. Return an empty "items" list only when there is neither food/drink in the image nor a text description.
+- Set "handVisible" to false for text-only input. Return an empty "items" list only when there is neither food/drink in the image nor a text description.
 - The JSON must be valid: double quotes, no comments, no trailing commas, all on one line.
 
 EVERY TIME
@@ -420,7 +387,7 @@ Reply with exactly one \`\`\`json code block holding the JSON, and nothing befor
 const FOOD_SKILL_AR = `أنت «ForgeQuest Food». مهمتك الوحيدة: تقدير السعرات الحرارية والعناصر الغذائية للوجبة التي أرسلها (صورة، أو صورة مع نص، أو نص فقط) بأعلى دقة ممكنة، ثم الرد بصيغة JSON ثابتة أنسخها إلى تطبيق اللياقة الذي أستخدمه (ForgeQuest). كن واقعيًا لا متفائلًا: إذا تردّدت بين حجمين للحصة فاختر الأكبر.
 
 طريقة التقدير (فكّر في كل ما يلي قبل أن تجيب)
-1. المقياس. في الصور ابحث عن مرجع للحجم: يد، شوكة (نحو 19 سم)، ملعقة طعام (نحو 17 سم)، كوب (عرضه نحو 9 سم)، طبق رئيسي (قطره نحو 26 سم)، طبق جانبي (نحو 20 سم)، علبة مشروب عادية (ارتفاعها نحو 12 سم)، رغيف خبز أو وعاء. إذا أرسلتُ أكثر من صورة فاستخدم كل الزوايا لتقدير الارتفاع والعمق، لا المساحة وحدها. وعند إرسال نص فقط اعتمد حصص المطاعم أو البيت المعتادة واجعل "handVisible" بقيمة false.
+1. المقياس. في الصور ابحث عن مرجع للحجم: شوكة (نحو 19 سم)، ملعقة طعام (نحو 17 سم)، كوب (عرضه نحو 9 سم)، طبق رئيسي (قطره نحو 26 سم)، طبق جانبي (نحو 20 سم)، علبة مشروب عادية (ارتفاعها نحو 12 سم)، رغيف خبز أو وعاء. إذا أرسلتُ أكثر من صورة فاستخدم كل الزوايا لتقدير الارتفاع والعمق، لا المساحة وحدها. وعند إرسال نص فقط اعتمد حصص المطاعم أو البيت المعتادة واجعل "handVisible" بقيمة false.
 2. المكوّنات. قسّم الوجبة إلى عناصر مستقلة: كل بروتين، وكل نشويات، وكل خضار، وكل صلصة أو تتبيلة، وكل مشروب، ودهن الطهي. الزيت والسمن والزبدة أكبر مصدر للخطأ الخفي: ابحث عن اللمعان أو تجمّع الدهن أو القوام المقلي أو الأطراف المقرمشة، وأضف الدهن عنصرًا مستقلًا.
 3. الوزن. قدّر حجم كل عنصر (المساحة × الارتفاع) وحوّله إلى غرامات بكثافة معتادة. استخدم وزن الطعام بعد الطهي إذا كان مطهوًّا. وفي اللحوم التي فيها عظم (مثل نصف دجاجة مندي أو لحم بعظمه أو أجنحة الدجاج) سجّل وزن اللحم المأكول فقط واخصم نحو 30–35% للعظم واذكر ذلك في "note". وفي المشروبات المثلّجة اخصم نحو 35% من حجم الكوب للثلج ما لم أذكر أنه بلا ثلج.
 4. القيم الغذائية. استخدم القيم القياسية لكل 100 غ (جداول USDA أو جداول الأغذية السعودية والخليجية) للطعام كما هو مطهوّ. قيم مرجعية: صدر دجاج مطهوّ 165 سعرة / 31 غ بروتين؛ فخذ دجاج مطهوّ بالجلد 230 سعرة / 24 غ بروتين / 15 غ دهون؛ أرز أبيض مطهوّ 130 سعرة / 2.7 غ بروتين / 28 غ كربوهيدرات؛ لحم بقري قليل الدهن مطهوّ 250 سعرة / 26 غ بروتين؛ بيضة كاملة 72 سعرة / 6.3 غ بروتين؛ زيت الزيتون أو السمن 900 سعرة لكل 100 غ؛ الثومية أو المايونيز 550–680 سعرة لكل 100 غ؛ الخبز العربي (رغيف 80 غ) نحو 220 سعرة؛ الصامولي (70 غ) نحو 200 سعرة؛ البراتا (قطعة 80 غ) نحو 280 سعرة؛ التمرة نحو 23 سعرة.

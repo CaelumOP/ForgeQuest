@@ -267,7 +267,7 @@ fun FoodScreen(nav: NavHostController) {
                                 leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = c.textSecondary) },
                                 onClick = {
                                     moreMenu = false
-                                    clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context, snap?.settings?.handLengthCm ?: 0f, snap?.settings?.palmWidthCm ?: 0f))
+                                    clipboard.copy(com.forgequest.app.ui.components.SkillPrompts.food(context))
                                     vm.message.value = context.getString(R.string.skill_copied)
                                 },
                             )

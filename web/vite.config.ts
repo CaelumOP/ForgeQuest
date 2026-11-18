@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig, type Plugin } from 'vite'
 import preact from '@preact/preset-vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+// One version for both apps: the Android versionName (bumped once per release).
+const appVersion = /versionName\s*=\s*"([^"]+)"/.exec(readFileSync(new URL('../app/build.gradle.kts', import.meta.url), 'utf8'))?.[1] ?? '0.0.0'
 
 // Which sites the app may load from or talk to. Build only: the dev server needs its own websocket.
 const csp = [
@@ -24,6 +28,9 @@ const cspMeta: Plugin = {
 export default defineConfig({
   // Served from caelumop.github.io/ForgeQuest/ (decision 6).
   base: '/ForgeQuest/',
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   // One bundle: an old cached page can never ask for a chunk that a newer deploy removed.
   build: { rolldownOptions: { output: { codeSplitting: false } } },
   plugins: [

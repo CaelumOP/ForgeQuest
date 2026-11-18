@@ -33,6 +33,35 @@ class WorkoutRepositoryV42Test {
     }
 
     @Test
+    fun seedCorrectsOnlyKnownOldBuiltInPatterns() = runBlocking {
+        val db = newDb()
+        try {
+            val repo = WorkoutRepository(db)
+            val oldPatterns = mapOf(
+                "narrow_stance_hack_squats" to "HORIZONTAL_PULL",
+                "front_squat_clean_grip" to "ELBOW_FLEXION",
+            )
+            val catalog = com.forgequest.app.data.seed.ExerciseCatalog.all.filter { it.id in oldPatterns }
+            assertEquals(2, catalog.size)
+            db.exercises().upsertAll(catalog.map { it.copy(pattern = oldPatterns.getValue(it.id)) })
+            repo.seedLibrary()
+            catalog.forEach { assertEquals(it.pattern, db.exercises().byId(it.id)!!.pattern) }
+            repo.seedLibrary()
+            catalog.forEach { assertEquals(it.pattern, db.exercises().byId(it.id)!!.pattern) }
+
+            db.exercises().upsertAll(catalog.map { it.copy(pattern = oldPatterns.getValue(it.id), custom = true) })
+            repo.seedLibrary()
+            catalog.forEach { assertEquals(oldPatterns[it.id], db.exercises().byId(it.id)!!.pattern) }
+
+            db.exercises().upsertAll(catalog.map { it.copy(pattern = "VERTICAL_PULL") })
+            repo.seedLibrary()
+            catalog.forEach { assertEquals("VERTICAL_PULL", db.exercises().byId(it.id)!!.pattern) }
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun stepUpSkipsPositionsWithDoneSetsAndUpdatesPlanForNextTime() = runBlocking {
         val db = newDb()
         try {

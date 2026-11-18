@@ -31,7 +31,14 @@ HARD_CAP_TOTAL_BYTES = 18 * 1024 * 1024  # 18 MB total cap across ex_media
 
 def encode_webp_under_ceiling(src_path: Path) -> tuple[bytes, int, int, tuple[int, int]]:
     with Image.open(src_path) as im:
-        rgb = im.convert("RGB")
+        if im.mode in ("RGBA", "LA", "P"):
+            # Transparent drawings (Everkinetic) go on white, not the black a plain RGB convert gives.
+            rgba = im.convert("RGBA")
+            flat = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+            flat.alpha_composite(rgba)
+            rgb = flat.convert("RGB")
+        else:
+            rgb = im.convert("RGB")
         for max_side in (MAX_SIDE, 320, 280, 240):
             working = rgb.copy()
             working.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
@@ -47,6 +54,7 @@ def encode_webp_under_ceiling(src_path: Path) -> tuple[bytes, int, int, tuple[in
 
 def main() -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from credited_media import CREDITED_MEDIA
     from existing_overrides import EXISTING_OVERRIDES
     from new_exercises import NEW_EXERCISES
     from wp1c_exercises import WP1C_EXERCISES
@@ -117,6 +125,29 @@ def main() -> int:
             "frames": frame_records,
         })
 
+    # Openly licensed images from other sources (credited_media.py), same encoder.
+    credited_src = Path(__file__).resolve().parent / "credited_src"
+    for item in CREDITED_MEDIA:
+        frame_records = []
+        for idx, src_name in enumerate(item["frames"]):
+            data, q, max_side, dims = encode_webp_under_ceiling(credited_src / src_name)
+            fname = f"{item['key']}_{idx}.webp"
+            expected_files.add(fname)
+            (ANDROID_MEDIA_DIR / fname).write_bytes(data)
+            (WEB_MEDIA_DIR / fname).write_bytes(data)
+            total_bytes += len(data)
+            max_frame_bytes = max(max_frame_bytes, len(data))
+            frame_records.append({"file": fname, "bytes": len(data), "quality": q, "width": dims[0], "height": dims[1]})
+        manifest.append({
+            "mediaKey": item["key"],
+            "source": item["source_url"],
+            "author": item["author"],
+            "license": item["license"],
+            "modified": "resized, transparent background flattened to white, converted to WebP",
+            "frames": frame_records,
+        })
+    manifest.sort(key=lambda m: m["mediaKey"])
+
     # Clean stale files
     for folder in (ANDROID_MEDIA_DIR, WEB_MEDIA_DIR):
         for p in folder.iterdir():
@@ -126,6 +157,7 @@ def main() -> int:
     MANIFEST_PATH.write_text(json.dumps({
         "source": "https://github.com/yuhonas/free-exercise-db",
         "license": "The Unlicense (Public Domain)",
+        "otherSources": "Items with an author field come from credited_media.py under their own licence.",
         "exercisesMapped": len(manifest),
         "totalFrames": len(expected_files),
         "totalBytesPerPlatform": total_bytes,

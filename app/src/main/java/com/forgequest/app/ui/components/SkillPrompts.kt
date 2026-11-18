@@ -11,14 +11,5 @@ import com.forgequest.app.R
 object SkillPrompts {
     private fun raw(context: Context, id: Int): String = context.resources.openRawResource(id).bufferedReader().use { it.readText() }
 
-    /** The meal-photo skill. The person's hand size goes in as the ruler; the line is dropped when it is not set. */
-    fun food(context: Context, handLengthCm: Float, palmWidthCm: Float): String {
-        val arabic = context.resources.configuration.locales[0].language == "ar"
-        val hand = when {
-            handLengthCm <= 0f -> ""
-            arabic -> "يدي: الطول $handLengthCm سم، وعرض الكف $palmWidthCm سم. إذا ظهرت يدي في الصورة فاستخدمها مسطرة دقيقة.\n"
-            else -> "MY HAND: length $handLengthCm cm, palm width $palmWidthCm cm. When my hand is in the photo, use it as an exact ruler.\n"
-        }
-        return raw(context, R.raw.food_gem_prompt).replace(Regex("MY HAND:[^\n]*\n"), hand)
-    }
+    fun food(context: Context): String = raw(context, R.raw.food_gem_prompt)
 }

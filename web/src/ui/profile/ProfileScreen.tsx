@@ -25,7 +25,9 @@ import {
   applyNutrition, carbsFor, hasBodyStats, impliedFatPct, kcalFor, proteinFor, summary, type NutritionPatch,
   trainingDaysFor,
 } from './helpers'
-import { BackupSection, backupSummary } from './BackupSection'
+import { BackupSection, backupSummary, driveErrorText } from './BackupSection'
+import { accountEmail, tokenForDocsTap } from '../../data/drive'
+import { syncMeals } from '../../data/meal-inbox'
 import { FriendsSection, friendsSummary } from './FriendsSection'
 import { useFriends } from '../../data/friends'
 import './profile.css'
@@ -255,6 +257,7 @@ export function ProfileScreen({ param }: { param?: string }) {
   const [pastePlanOpen, setPastePlanOpen] = useState(false)
   const [exUnitsOpen, setExUnitsOpen] = useState(false)
   const [exUnitsQuery, setExUnitsQuery] = useState('')
+  const [mealsBusy, setMealsBusy] = useState(false)
   const library = useLibrary()
   const toggle = (id: string) => {
     const next = openIds.includes(id) ? openIds.filter((x) => x !== id) : [...openIds, id]
@@ -296,6 +299,28 @@ export function ProfileScreen({ param }: { param?: string }) {
   const fat = Math.max(s.fatSharePct, MIN_FAT_SHARE_PCT)
   const proteinSub = latestKg != null && latestKg > 0 ? t('you_protein_ratio', (s.proteinGoal / latestKg).toFixed(1)) : t('you_protein_tap')
   const carbsSub = t('you_carbs_ratio', impliedFatPct(s) ?? fat)
+
+  const syncMealsNow = async () => {
+    if (mealsBusy) return
+    setMealsBusy(true)
+    try {
+      const token = await tokenForDocsTap()
+      if (!s.driveEmail) {
+        const email = await accountEmail(token)
+        await set({ driveEmail: email || t('drive_connected') })
+      }
+      const added = await syncMeals(token, t('meals_doc_placeholder'))
+      toast(added > 0 ? t('meals_synced', added) : t('meals_none_new'))
+    } catch (e) {
+      toast(driveErrorText(e))
+    } finally {
+      setMealsBusy(false)
+    }
+  }
+  const toggleGeminiMeals = async (on: boolean) => {
+    await set({ geminiMealsEnabled: on })
+    if (on) await syncMealsNow()
+  }
 
   return (
     <div class="content pf">
@@ -525,10 +550,13 @@ export function ProfileScreen({ param }: { param?: string }) {
           </div>
         </Card>
         <Card>
-          <CardTitle icon="coach" accent="teal" title={t('meals_title')} hint={t('meals_hint')} />
-          <div class="pf-actions">
-            <Button variant="tonal" onClick={() => { void navigator.clipboard?.writeText(foodSkillPrompt(lang)); toast(t('bridge_prompt_copied')) }}>{t('meals_copy_gem')}</Button>
-          </div>
+          <Switch icon="coach" accent="teal" label={t('meals_title')} hint={t('meals_hint')} on={s.geminiMealsEnabled} onChange={(on) => void toggleGeminiMeals(on)} />
+          {s.geminiMealsEnabled && (
+            <div class="pf-actions">
+              <Button variant="tonal" loading={mealsBusy} disabled={mealsBusy} onClick={() => void syncMealsNow()}>{t('bridge_sync')}</Button>
+              <Button variant="tonal" onClick={() => { void navigator.clipboard?.writeText(foodSkillPrompt(lang)); toast(t('bridge_prompt_copied')) }}>{t('meals_copy_gem')}</Button>
+            </div>
+          )}
         </Card>
         <h3 class="pf-h3">{t('settings_ai_key_title')}</h3>
         <p class="pf-s">{t('settings_ai_key_body')}</p>
@@ -547,7 +575,7 @@ export function ProfileScreen({ param }: { param?: string }) {
         <ListRow title={t('v42_guide_title')} subtitle={t('v42_guide_row_sub')} icon={<Glyph name="about" />} href="#/guide" />
       </Card>
 
-      <Group id="about" accent="text" icon="about" title={t('settings_group_about')} open={isOpen('about')} onToggle={() => toggle('about')} sum={t('profile_credits')}>
+      <Group id="about" accent="text" icon="about" title={t('settings_group_about')} open={isOpen('about')} onToggle={() => toggle('about')} sum={t('profile_version', __APP_VERSION__)}>
         <Card padded={false}><ListRow title={t('settings_group_about')} subtitle={t('profile_credits_body')} icon={<Glyph name="about" />} href="#/about" /></Card>
       </Group>
 

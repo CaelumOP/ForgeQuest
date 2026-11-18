@@ -68,17 +68,8 @@ data class Settings(
     val liteModel: String = "",
     /** When the model list was last read from Google; new models ship often, so it's refreshed weekly. */
     val modelsCheckedAt: Long = 0,
-    val lastCheckinWeek: Long = -1,
     val driveEmail: String = "",
     val lastBackupAt: Long = 0,
-    /** Owner-only Gemini app bridge (see data/bridge). */
-    val bridgeEnabled: Boolean = false,
-    val bridgeDataId: String = "",
-    val bridgeLastWrite: Long = 0,
-    val bridgeLastReplyModified: Long = 0,
-    val bridgeLastReadAt: Long = 0,
-    val bridgeToday: String = "",
-    val bridgeIssues: String = "",
     /** Meals from the person's own "ForgeQuest Food" Gem, read from a Drive Doc into the Food tab inbox. */
     val geminiMealsEnabled: Boolean = false,
     /** Lasting facts for the coach (injuries, equipment, preferences), one per line. */
@@ -174,16 +165,8 @@ class SettingsRepository(private val context: Context) {
         val smartModel = stringPreferencesKey("smart_model")
         val liteModel = stringPreferencesKey("lite_model")
         val modelsCheckedAt = longPreferencesKey("models_checked_at")
-        val lastCheckin = longPreferencesKey("last_checkin_week")
         val driveEmail = stringPreferencesKey("drive_email")
         val lastBackup = longPreferencesKey("last_backup_at")
-        val bridgeEnabled = booleanPreferencesKey("bridge_enabled")
-        val bridgeDataId = stringPreferencesKey("bridge_data_id")
-        val bridgeLastWrite = longPreferencesKey("bridge_last_write")
-        val bridgeLastReplyModified = longPreferencesKey("bridge_last_reply_modified")
-        val bridgeLastReadAt = longPreferencesKey("bridge_last_read_at")
-        val bridgeToday = stringPreferencesKey("bridge_today")
-        val bridgeIssues = stringPreferencesKey("bridge_issues")
         val geminiMeals = booleanPreferencesKey("gemini_meals_enabled")
         val coachNotes = stringPreferencesKey("coach_notes")
         val theme = stringPreferencesKey("theme")
@@ -257,16 +240,8 @@ class SettingsRepository(private val context: Context) {
             smartModel = this[K.smartModel] ?: "",
             liteModel = this[K.liteModel] ?: "",
             modelsCheckedAt = this[K.modelsCheckedAt] ?: 0,
-            lastCheckinWeek = this[K.lastCheckin] ?: -1,
             driveEmail = this[K.driveEmail] ?: "",
             lastBackupAt = this[K.lastBackup] ?: 0,
-            bridgeEnabled = this[K.bridgeEnabled] ?: false,
-            bridgeDataId = this[K.bridgeDataId] ?: "",
-            bridgeLastWrite = this[K.bridgeLastWrite] ?: 0,
-            bridgeLastReplyModified = this[K.bridgeLastReplyModified] ?: 0,
-            bridgeLastReadAt = this[K.bridgeLastReadAt] ?: 0,
-            bridgeToday = this[K.bridgeToday] ?: "",
-            bridgeIssues = this[K.bridgeIssues] ?: "",
             geminiMealsEnabled = this[K.geminiMeals] ?: false,
             coachNotes = this[K.coachNotes] ?: "",
             theme = this[K.theme] ?: "system",
@@ -323,16 +298,8 @@ class SettingsRepository(private val context: Context) {
             p[K.smartModel] = s.smartModel
             p[K.liteModel] = s.liteModel
             p[K.modelsCheckedAt] = s.modelsCheckedAt
-            p[K.lastCheckin] = s.lastCheckinWeek
             p[K.driveEmail] = s.driveEmail
             p[K.lastBackup] = s.lastBackupAt
-            p[K.bridgeEnabled] = s.bridgeEnabled
-            p[K.bridgeDataId] = s.bridgeDataId
-            p[K.bridgeLastWrite] = s.bridgeLastWrite
-            p[K.bridgeLastReplyModified] = s.bridgeLastReplyModified
-            p[K.bridgeLastReadAt] = s.bridgeLastReadAt
-            p[K.bridgeToday] = s.bridgeToday
-            p[K.bridgeIssues] = s.bridgeIssues
             p[K.geminiMeals] = s.geminiMealsEnabled
             p[K.coachNotes] = s.coachNotes
             p[K.theme] = s.theme

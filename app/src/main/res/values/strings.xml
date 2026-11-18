@@ -397,7 +397,7 @@
     <string name="scan_allow_camera">Allow camera</string>
     <string name="cd_light">Light</string>
     <string name="scan_capture_failed">The camera couldn\'t take that picture. Try again, or pick one from your gallery.</string>
-    <string name="scan_frame_hint">Fit the whole plate in frame. A hand or fork beside it helps with portions.</string>
+    <string name="scan_frame_hint">Fit the whole plate in frame. A fork or spoon beside it helps with portions.</string>
     <string name="scan_step_find">Finding the foods…</string>
     <string name="scan_step_portions">Estimating portions…</string>
     <string name="scan_step_add">Adding up calories and protein…</string>
@@ -408,7 +408,6 @@
     <string name="action_try_again">Try again</string>
     <string name="scan_grams_title">%1$s: how many grams?</string>
     <string name="scan_tap_name">Tap the name to change it</string>
-    <string name="scan_hand_scaled">Portions scaled using your hand</string>
     <string name="scan_about_grams">about %1$d g · tap to correct</string>
     <string name="scan_set_grams">tap to set grams</string>
     <string name="scan_portion_size">Portion size</string>
@@ -1367,6 +1366,7 @@
     <string name="barcode_err_label">The numbers on that label weren\'t clear. Try again with the nutrition table filling the frame.</string>
     <string name="barcode_unnamed">Product %1$s</string>
     <string name="profile_credits_data">Food data: Open Food Facts (ODbL), Saudi Food and Drug Authority, USDA.</string>
+    <string name="profile_credits_images">Exercise photos: free-exercise-db (public domain). These exercise images keep their own licence; we only resized them, put transparent backgrounds on white and converted them to WebP:</string>
     <string name="pb_title">Build my plan</string>
     <string name="pb_goal">Goal</string>
     <string name="pb_goal_strength">Strength</string>
@@ -1934,4 +1934,10 @@
     <string name="v42_pain_tag_ache">Dull ache</string>
     <string name="v42_pain_tag_joint">In the joint</string>
     <string name="v42_note_hint">Anything to remember next time?</string>
+    <string name="drive_disconnect_title">Disconnect Google Drive?</string>
+    <string name="drive_disconnect_body">The backup in Google Drive is shared by the ForgeQuest Android and web apps. Deleting it removes it for both. The Gemini meals Doc will not be deleted.</string>
+    <string name="drive_delete_disconnect">Delete backup and disconnect</string>
+    <string name="drive_keep_backup">Keep backup</string>
+    <string name="drive_deleting_backup">Deleting backup…</string>
+    <string name="drive_delete_failed">Could not delete the backup. Try again, or choose Keep backup to disconnect.</string>
 </resources>

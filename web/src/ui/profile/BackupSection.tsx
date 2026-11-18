@@ -4,7 +4,7 @@ import { plural, t, intlLocale } from '../../i18n'
 import { backupCounts, buildBackup, decodeBackup, encodeBackup, listSafetyCopies, type BackupFile } from '../../data/backup'
 import { requestPersistence } from '../../data/db'
 import {
-  backupNow, connectDrive, disconnectDrive, DriveError, fetchDriveBackupPreview, preloadGis, restoreSerialized, tokenForTap, validToken,
+  backupNow, connectDrive, deleteBackupAndDisconnect, disconnectDrive, DriveError, fetchDriveBackupPreview, preloadGis, restoreSerialized, tokenForTap, validToken,
   type DriveRestoreMeta,
 } from '../../data/drive'
 import { useLive } from '../../data/live'
@@ -41,6 +41,7 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
   const [noticeOpen, setNoticeOpen] = useState(false)
   const [conflictKind, setConflictKind] = useState<'exists' | 'newer' | null>(null)
   const [confirmKeepMine, setConfirmKeepMine] = useState(false)
+  const [disconnectOpen, setDisconnectOpen] = useState(false)
   const [online, setOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true))
   const [persisted, setPersisted] = useState<boolean | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -130,6 +131,23 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
     setPersisted(ok)
   }
 
+  const deleteAndDisconnect = () => {
+    if (busy) return
+    setDisconnectOpen(false)
+    setBusy(t('drive_deleting_backup'))
+    void (async () => {
+      try {
+        await deleteBackupAndDisconnect(await tokenForTap())
+      } catch (e) {
+        console.warn('drive delete failed', e)
+        toast(t('drive_delete_failed'))
+        setDisconnectOpen(true)
+      } finally {
+        setBusy(null)
+      }
+    })()
+  }
+
   const autoOn = s.autoBackup && !s.autoBackupOptedOut
   const needsReconnect = autoBackupEffective(s) && !validToken()
 
@@ -167,7 +185,7 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
               )}
               <Button variant="tonal" onClick={() => void backUp()} disabled={!!busy}>{t('drive_back_up_now')}</Button>
               <Button variant="tonal" onClick={fromDrive} disabled={!!busy}>{t('drive_web_restore')}</Button>
-              <Button variant="text" onClick={() => void disconnectDrive()} disabled={!!busy}>{t('drive_disconnect')}</Button>
+              <Button variant="text" onClick={() => setDisconnectOpen(true)} disabled={!!busy}>{t('drive_disconnect')}</Button>
             </>
           )}
         </div>
@@ -225,6 +243,18 @@ export function BackupSection({ s, Title }: { s: Settings; Title: (p: { title: s
         destructive
         onConfirm={() => { setConfirmKeepMine(false); void backUp(true) }}
         onCancel={() => setConfirmKeepMine(false)}
+      />
+      <Dialog
+        open={disconnectOpen}
+        title={t('drive_disconnect_title')}
+        message={t('drive_disconnect_body')}
+        confirmLabel={t('drive_delete_disconnect')}
+        secondaryLabel={t('drive_keep_backup')}
+        cancelLabel={t('action_cancel')}
+        destructive
+        onConfirm={deleteAndDisconnect}
+        onSecondary={() => { setDisconnectOpen(false); void disconnectDrive() }}
+        onCancel={() => setDisconnectOpen(false)}
       />
     </>
   )
