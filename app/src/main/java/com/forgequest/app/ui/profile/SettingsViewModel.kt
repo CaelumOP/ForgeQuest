@@ -1,6 +1,7 @@
 package com.forgequest.app.ui.profile
 
 import kotlin.math.roundToInt
+import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.components.UndoState
 import android.content.Intent
 import android.net.Uri
@@ -392,8 +393,28 @@ class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressS
     }
 
     fun disconnectDrive() = viewModelScope.launch {
-        app.settings.update { it.copy(driveEmail = "") }
         DriveSyncWorker.cancel(app.appContext)
+        app.drive.withSyncLock { app.settings.update { it.copy(driveEmail = "") } }
+    }
+
+    fun deleteBackupAndDisconnect() {
+        if (busy.value != null) return
+        busy.value = app.str(R.string.drive_deleting_backup)
+        viewModelScope.launch {
+            try {
+                DriveSyncWorker.cancel(app.appContext)
+                val token = app.drive.silentToken() ?: throw DriveError.NeedsConsent
+                app.drive.deleteBackupAndDisconnect(token)
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Still connected: turn auto-backup back on as it was before the attempt.
+                DriveSyncWorker.syncScheduling(app.appContext, app.settings.current().autoBackupEffective)
+                app.appContext.toast(if (e is DriveError) e.userMessage else app.str(R.string.drive_delete_failed))
+            } finally {
+                busy.value = null
+            }
+        }
     }
 
     val friendsState = app.friends.state

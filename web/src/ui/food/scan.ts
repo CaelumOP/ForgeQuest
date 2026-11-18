@@ -50,12 +50,9 @@ export async function shrinkPhoto(file: Blob): Promise<{ blob: Blob; base64: str
   } finally { img.close(); }
 }
 
-export function scanInstructions(handLengthCm: number, palmWidthCm: number): string {
-  const handHint = handLengthCm > 0
-    ? `If the user's hand is visible, use it as an exact spatial ruler: hand length = ${handLengthCm} cm, palm width = ${palmWidthCm} cm.`
-    : 'If a hand, standard fork (~19 cm), spoon, mug, or dinner plate (~26 cm rim) is visible, use it as a geometric scale reference.';
+export function scanInstructions(): string {
   return `You are an expert sports nutritionist estimating macros from meal photos for a fitness app. Be realistic, never optimistic.
-1. ${handHint}
+1. If a standard fork (~19 cm), spoon, mug, or dinner plate (~26 cm rim) is visible, use it as a geometric scale reference.
 2. Identify each distinct food component separately, including visible cooking oil, ghee, butter, sauces, or dressings.
 3. Recognize Saudi / Middle Eastern and home-cooked items accurately (e.g., Kabsa, Mandi, Saleeg, Mutabbaq, Shawarma, Paratha flatbread ~260-300 kcal per 80g piece, eggs, cheese, laban, dates, cappuccino/mocha) as well as standard gym foods.
 4. Anchor your math on standard cooked nutritional densities per 100g (e.g. cooked chicken breast ~165 kcal & 31g protein; cooked rice ~130 kcal & 2.7g protein & 28g carbs; cooked lean beef ~250 kcal & 26g protein; whole egg ~72 kcal & 6.3g protein; olive oil/ghee ~900 kcal per 100g).
@@ -115,7 +112,7 @@ export async function scanMeal(base64Jpeg: string, signal?: AbortSignal, userHin
     ? `Estimate this meal. User notes/context: ${hint}`
     : 'Estimate this meal with realistic cooked weights and macro math.';
   const raw = await geminiGenerate({
-    system: scanInstructions(s.handLengthCm, s.palmWidthCm),
+    system: scanInstructions(),
     parts: [textPart(prompt), imagePart(base64Jpeg)],
     json: true, lowThinking: true, models: scanModelsFor(s), signal,
   });
@@ -130,7 +127,7 @@ export async function estimateFoodText(description: string, signal?: AbortSignal
   const s = await loadSettings();
   if (!isAiOn(s) || !s.apiKey.trim()) throw new AiError('no_key');
   const raw = await geminiGenerate({
-    system: scanInstructions(s.handLengthCm, s.palmWidthCm),
+    system: scanInstructions(),
     parts: [textPart(`There is no photo. Estimate one typical home-sized serving of what the user typed: ${description.trim().slice(0, 300)}`)],
     json: true, lowThinking: true, models: scanModelsFor(s), signal,
   });

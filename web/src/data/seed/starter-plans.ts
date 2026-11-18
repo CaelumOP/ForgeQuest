@@ -423,9 +423,6 @@ export const MORE_PLANS: PlanDraft[] = [FULL_BODY_GYM, UPPER_LOWER_GYM, UPPER_LO
 /** Every starter plan: the onboarding four (StarterPlans.all) first, then the library extras (StarterPlans.more). */
 export const STARTER_PLANS: PlanDraft[] = [HEMO_FOUNDATION, FULL_BODY_BEGINNER, FULL_BODY_DUMBBELLS, PUSH_PULL_LEGS, ...MORE_PLANS]
 
-/** How many of [STARTER_PLANS] onboarding offers (the rest are library-only). */
-export const ONBOARDING_PLAN_COUNT = 4
-
 /** English starter texts and their formal Arabic versions (from StarterPlans.kt `arabic`). */
 export const STARTER_PLANS_AR: Record<string, string> = {
   'Hemo · Foundation level': 'هيمو · المستوى التأسيسي',

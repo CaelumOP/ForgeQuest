@@ -1,6 +1,5 @@
 import { t } from '../../i18n'
 import type { BodyType, Settings } from '../../data/settings'
-import { BODYWEIGHT_INDEX, DUMBBELLS_INDEX, GYM_SPLIT_INDEX } from '../../data/seed/starter-plans'
 import type { ExerciseEntity, PlanDraft } from '../../domain/entities'
 import { encodePreset, presetEquipment, type EquipmentPreset } from '../../domain/exercise-swap-engine'
 import {
@@ -35,7 +34,6 @@ export type OnbState = {
   dayActivity: DayActivity
   cutPace: CutPace
   gainPace: GainPace
-  planIndex: number
   preset: EquipmentPreset
   experience: Experience
   builtForMe: boolean
@@ -70,6 +68,25 @@ export function localizeOnboardingPlan(
   return localizeBuiltPlan(built, trainGoal, tr)
 }
 
+/** Empty 7-day plan for "Start empty" in onboarding. */
+export function emptyOnboardingPlan(tr: (key: string, ...args: (string | number)[]) => string = t): PlanDraft {
+  return {
+    name: tr('onb_my_plan'),
+    description: tr('onb_my_plan_desc'),
+    days: [1, 2, 3, 4, 5, 6, 7].map((d) => ({ dayOfWeek: d, title: tr('today_rest_day'), isRest: true, note: '', items: [] })),
+  }
+}
+
+/** Chooses and localizes the onboarding plan: built-for-me or start-empty. */
+export function onboardingPlanChoice(
+  s: Pick<OnbState, 'builtForMe' | 'goal' | 'daysPerWeek' | 'preset' | 'experience'>,
+  library: readonly ExerciseEntity[],
+  tr: (key: string, ...args: (string | number)[]) => string = t,
+): { plan: PlanDraft; source: 'builder' | 'manual' } {
+  if (s.builtForMe) return { plan: localizeOnboardingPlan(s, library, tr), source: 'builder' }
+  return { plan: emptyOnboardingPlan(tr), source: 'manual' }
+}
+
 /** Next onboarding step (skips step 4 Training when justLog is active). */
 export function nextStep(s: Pick<OnbState, 'step' | 'justLog'>): number {
   if (s.step === 3 && s.justLog) return 5
@@ -89,21 +106,11 @@ export function progressStep(s: Pick<OnbState, 'step' | 'justLog'>): { current: 
   return { current: (idx >= 0 ? idx : 0) + 1, total: steps.length }
 }
 
-/**
- * The starter plan to show as chosen for [days] a week and the picked equipment. Plans: 0 Hemo (5 days), 1 bodyweight and
- * 2 dumbbells (both 3 days), 3 gym split (6 days). 5 gets Hemo (bodyweight when there is nothing to hang from); 2, 3 and
- * 4 get the 3-day full body, the gentlest plan that is nearest.
- */
-export function planForDays(days: number, preset: EquipmentPreset): number {
-  if (days >= 5) return preset === 'BODYWEIGHT_ONLY' ? BODYWEIGHT_INDEX : 0
-  return presetEquipment(preset).has('DUMBBELLS') ? DUMBBELLS_INDEX : BODYWEIGHT_INDEX
-}
-
 export const initialState = (): OnbState => ({
   step: 0, name: '', bodyType: 'MALE', daysPerWeek: DEFAULT_DAYS, justLog: false, weightKg: 75, weightTouched: false,
   unit: 'KG', heightCm: 0, age: 0, kcal: 2500, protein: 135,
   goalsTouched: false, goal: 'MAINTAIN', dayActivity: 'SITTING', cutPace: 'STANDARD', gainPace: 'STANDARD',
-  planIndex: planForDays(DEFAULT_DAYS, 'CALISTHENICS_PARK'), preset: 'CALISTHENICS_PARK',
+  preset: 'CALISTHENICS_PARK',
   experience: 'SOME', builtForMe: true,
 })
 
@@ -119,13 +126,6 @@ export function foodSetupInitialState(settings: Settings, latestWeight: number |
     daysPerWeek: settings.weeklyTargetOverride > 0 ? settings.weeklyTargetOverride : DEFAULT_DAYS,
     goal: settings.nutritionGoal,
   })
-}
-
-/** The equipment to show after picking starter plan [index]: the gym split needs a gym, the dumbbell plan dumbbells. */
-export function presetForPlan(index: number, current: EquipmentPreset): EquipmentPreset {
-  if (index === GYM_SPLIT_INDEX) return 'FULL_GYM'
-  if (index === DUMBBELLS_INDEX && !presetEquipment(current).has('DUMBBELLS')) return 'DUMBBELLS_AND_BAR'
-  return current
 }
 
 /** Height and age are needed before the food targets can be calculated. */

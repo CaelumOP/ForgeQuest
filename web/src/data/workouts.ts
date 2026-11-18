@@ -61,6 +61,11 @@ export function planToDraft(p: ActivePlan): PlanDraft {
 
 // ---------------------------------------------------------------- Library
 
+const OLD_WRONG_PATTERNS: Record<string, string> = {
+  narrow_stance_hack_squats: 'HORIZONTAL_PULL',
+  front_squat_clean_grip: 'ELBOW_FLEXION',
+};
+
 /** Adds missing built-in exercises, then applies the language's names and any new video links. Custom ones are left alone. */
 export async function seedLibrary(lang: 'en' | 'ar' = 'en'): Promise<void> {
   const arabic = lang === 'ar';
@@ -85,7 +90,7 @@ export async function seedLibrary(lang: 'en' | 'ar' = 'en'): Promise<void> {
     const nameNeeds = e.name !== wanted && recognizedName;
     const videoNeeds = e.videoUrl == null && b.videoUrl != null;
     const nextEquipment = !e.equipment && b.equipment ? b.equipment : e.equipment;
-    const nextPattern = !e.pattern && b.pattern ? b.pattern : e.pattern;
+    const nextPattern = (!e.pattern || e.pattern === OLD_WRONG_PATTERNS[b.id]) && b.pattern ? b.pattern : e.pattern;
     const nextAliases = !e.aliases && b.aliases ? b.aliases : e.aliases;
     const nextMediaKey = !e.mediaKey && b.mediaKey ? b.mediaKey : e.mediaKey;
     const metaNeeds =

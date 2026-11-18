@@ -4,15 +4,15 @@ import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { DEFAULT_SETTINGS } from '../../data/settings'
 import {
   bodyStatsReady, foodSetupInitialState, foodTargetsPatch, initialState, localizeOnboardingPlan,
-  needsFoodTargets, nextStep, pickGoal, planForDays, presetForPlan, prevStep, progressStep, setWeight,
+  needsFoodTargets, nextStep, onboardingPlanChoice, pickGoal, prevStep, progressStep, setWeight,
   settingsPatch, trainGoalFor, withSuggestions,
 } from './logic'
 
 describe('onboarding logic', () => {
-  it('starts at 3 days a week with the 3-day bodyweight plan', () => {
+  it('starts at 3 days a week with Built for me', () => {
     const s = initialState()
     expect(s.daysPerWeek).toBe(3)
-    expect(s.planIndex).toBe(1)
+    expect(s.builtForMe).toBe(true)
   })
   it('suggests protein and calories from weight and goal', () => {
     const s = setWeight(initialState(), 80)
@@ -61,28 +61,12 @@ describe('onboarding logic', () => {
     expect(needsFoodTargets(178, 5)).toBe(false)
   })
 
-  // Plans: 0 Hemo (5 days), 1 bodyweight (3), 2 dumbbells (3), 3 gym split (6).
-  it('preselects a starter plan for 2, 3, 4 and 5 days a week', () => {
-    for (const d of [2, 3, 4]) {
-      expect(planForDays(d, 'CALISTHENICS_PARK')).toBe(1)
-      expect(planForDays(d, 'FULL_GYM')).toBe(2)
-      expect(planForDays(d, 'DUMBBELLS_AND_BAR')).toBe(2)
-    }
-    expect(planForDays(5, 'CALISTHENICS_PARK')).toBe(0)
-    expect(planForDays(5, 'FULL_GYM')).toBe(0)
-    expect(planForDays(5, 'BODYWEIGHT_ONLY')).toBe(1)
-  })
-  it('shows Hemo preselected only when 5 days is picked', () => {
-    for (const p of ['CALISTHENICS_PARK', 'FULL_GYM', 'HOME_GYM', 'PULL_UP_BAR_ONLY', 'DUMBBELLS_AND_BAR'] as const) {
-      for (const d of [2, 3, 4]) expect(planForDays(d, p)).not.toBe(0)
-      expect(planForDays(5, p)).toBe(0)
-    }
-  })
-  it('picking the gym split sets Full gym; the dumbbell plan without dumbbells sets Dumbbells & pull-up bar', () => {
-    expect(presetForPlan(3, 'BODYWEIGHT_ONLY')).toBe('FULL_GYM')
-    expect(presetForPlan(2, 'CALISTHENICS_PARK')).toBe('DUMBBELLS_AND_BAR')
-    expect(presetForPlan(2, 'DUMBBELLS_AND_KETTLEBELL')).toBe('DUMBBELLS_AND_KETTLEBELL')
-    expect(presetForPlan(1, 'HOME_GYM')).toBe('HOME_GYM')
+  it('start-empty yields an empty 7-day manual plan instead of a starter plan', () => {
+    const s = { ...initialState(), builtForMe: false, daysPerWeek: 5, preset: 'FULL_GYM' as const }
+    const choice = onboardingPlanChoice(s, EXERCISE_CATALOG, (k, ...a) => tIn('en', k, ...a))
+    expect(choice.source).toBe('manual')
+    expect(choice.plan.days).toHaveLength(7)
+    expect(choice.plan.days.every((d) => d.isRest && d.items.length === 0)).toBe(true)
   })
 
   it('maps nutrition goals to training goals and saves nutritionGoal and unit on finish', () => {

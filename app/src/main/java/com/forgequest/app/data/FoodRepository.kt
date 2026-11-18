@@ -281,15 +281,9 @@ class FoodRepository(
     }
 
     private suspend fun scanInstructions(): String {
-        val s = settings.current()
-        val handHint = if (s.handLengthCm > 0f) {
-            "If the user's hand is visible, use it as an exact spatial ruler: hand length = ${s.handLengthCm} cm, palm width = ${s.palmWidthCm} cm."
-        } else {
-            "If a hand, standard fork (~19 cm), spoon, mug, or dinner plate (~26 cm rim) is visible, use it as a geometric scale reference."
-        }
         return """
             You are an expert sports nutritionist estimating macros from meal photos for a fitness app. Be realistic, never optimistic.
-            1. $handHint
+            1. If a standard fork (~19 cm), spoon, mug, or dinner plate (~26 cm rim) is visible, use it as a geometric scale reference.
             2. Identify each distinct food component separately, including visible cooking oil, ghee, butter, sauces, or dressings.
             3. Recognize Saudi / Middle Eastern and home-cooked items accurately (e.g., Kabsa, Mandi, Saleeg, Mutabbaq, Shawarma, Paratha flatbread ~260-300 kcal per 80g piece, eggs, cheese, laban, dates, cappuccino/mocha) as well as standard gym foods.
             4. Anchor your math on standard cooked nutritional densities per 100g (e.g. cooked chicken breast ~165 kcal & 31g protein; cooked rice ~130 kcal & 2.7g protein & 28g carbs; cooked lean beef ~250 kcal & 26g protein; whole egg ~72 kcal & 6.3g protein; olive oil/ghee ~900 kcal per 100g).

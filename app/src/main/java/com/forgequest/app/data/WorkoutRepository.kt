@@ -110,7 +110,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 val nameNeedsUpdate = existing.name != wantedName && recognizedName
                 val videoNeedsUpdate = existing.videoUrl == null && builtIn.videoUrl != null
                 val newEquipment = if (existing.equipment.isBlank() && builtIn.equipment.isNotBlank()) builtIn.equipment else existing.equipment
-                val newPattern = if (existing.pattern.isBlank() && builtIn.pattern.isNotBlank()) builtIn.pattern else existing.pattern
+                val oldPatterns = mapOf(
+                    "narrow_stance_hack_squats" to "HORIZONTAL_PULL",
+                    "front_squat_clean_grip" to "ELBOW_FLEXION",
+                )
+                val newPattern = if (
+                    (existing.pattern.isBlank() || existing.pattern == oldPatterns[builtIn.id]) && builtIn.pattern.isNotBlank()
+                ) builtIn.pattern else existing.pattern
                 val newAliases = if (existing.aliases.isBlank() && builtIn.aliases.isNotBlank()) builtIn.aliases else existing.aliases
                 val newMediaKey = if (existing.mediaKey.isBlank() && builtIn.mediaKey.isNotBlank()) builtIn.mediaKey else existing.mediaKey
                 val metadataNeedsUpdate =

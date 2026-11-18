@@ -39,7 +39,7 @@ describe('settings', () => {
     expect(s.kcalGoal).toBe(2200);
     expect(s.proteinGoal).toBe(140);
     expect(s.unit).toBe('kg');
-    expect(s.lastCheckinWeek).toBe(-1);
+    expect(s.geminiMealsEnabled).toBe(false);
   });
 
   it('survives a reload of the database', async () => {
@@ -54,11 +54,13 @@ describe('settings', () => {
     expect(s.apiKey).toBe('k1');
   });
 
-  it('never puts the API keys in a backup', async () => {
-    await updateSettings((s) => ({ ...s, apiKey: 'GEMINI-SECRET-123', groqKey: 'GROQ-SECRET-456', name: 'Omar' }));
-    const text = JSON.stringify(toBackupSettings(await loadSettings()));
+  it('never puts the API keys or geminiMealsEnabled in a backup', async () => {
+    await updateSettings((s) => ({ ...s, apiKey: 'GEMINI-SECRET-123', geminiMealsEnabled: true, name: 'Omar' }));
+    const backup = toBackupSettings(await loadSettings());
+    const text = JSON.stringify(backup);
     expect(text).not.toContain('SECRET');
-    expect(text).not.toMatch(/apiKey|groqKey/);
+    expect(text).not.toMatch(/apiKey|geminiMealsEnabled/);
+    expect(backup.debriefEnabled).toBe(true);
     expect(text).toContain('Omar');
   });
 

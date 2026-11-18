@@ -5,7 +5,7 @@ const settings = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
 vi.mock('./settings', async (orig) => ({ ...(await orig<typeof import('./settings')>()), loadSettings: async () => settings.value }));
 
 import {
-  AiError, FALLBACK_FAST, FALLBACK_LITE, FALLBACK_STABLE_FLASH, aiErrorKey, aiTuning, extractText, geminiGenerate, groqChat,
+  AiError, FALLBACK_FAST, FALLBACK_LITE, FALLBACK_STABLE_FLASH, aiErrorKey, aiTuning, extractText, geminiGenerate,
   imagePart, modelsFor, pickGroqModel, resetAiState, retryAfterMs, scanModelsFor, textPart,
 } from './ai';
 
@@ -25,7 +25,7 @@ const body = (i: number) => JSON.parse(calls[i].init.body as string);
 const modelOf = (i: number) => /models\/([^:]+):/.exec(calls[i].url)![1];
 
 beforeEach(() => {
-  settings.value = { ...DEFAULT_SETTINGS, apiKey: 'KEY', groqKey: 'GKEY' };
+  settings.value = { ...DEFAULT_SETTINGS, apiKey: 'KEY' };
   aiTuning.busyRetryMs = 0;
   resetAiState();
 });
@@ -112,21 +112,5 @@ describe('geminiGenerate', () => {
   it('reports an empty answer as blocked', async () => {
     mockFetch(new Response('{"candidates":[{"finishReason":"SAFETY"}]}', { status: 200 }));
     await expect(geminiGenerate({ parts: [textPart('x')] })).rejects.toMatchObject({ kind: 'blocked' });
-  });
-});
-
-describe('groqChat', () => {
-  it('posts OpenAI-style messages with a bearer key', async () => {
-    mockFetch(new Response(JSON.stringify({ choices: [{ message: { content: ' hello ' } }] }), { status: 200 }));
-    expect(await groqChat({ messages: [{ role: 'user', content: 'hi' }] })).toBe('hello');
-    expect(calls[0].url).toBe('https://api.groq.com/openai/v1/chat/completions');
-    expect((calls[0].init.headers as Record<string, string>).authorization).toBe('Bearer GKEY');
-    expect(body(0).messages[0]).toEqual({ role: 'user', content: 'hi' });
-  });
-  it('classifies errors', async () => {
-    mockFetch(fail(401));
-    await expect(groqChat({ messages: [] })).rejects.toMatchObject({ kind: 'bad_key' });
-    mockFetch(fail(429));
-    await expect(groqChat({ messages: [] })).rejects.toMatchObject({ kind: 'quota' });
   });
 });

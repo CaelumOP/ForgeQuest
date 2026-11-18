@@ -1,10 +1,11 @@
 {
   "source": "https://github.com/yuhonas/free-exercise-db",
   "license": "The Unlicense (Public Domain)",
-  "exercisesMapped": 799,
-  "totalFrames": 1598,
-  "totalBytesPerPlatform": 11509916,
-  "totalMBPerPlatform": 10.98,
+  "otherSources": "Items with an author field come from credited_media.py under their own licence.",
+  "exercisesMapped": 805,
+  "totalFrames": 1610,
+  "totalBytesPerPlatform": 11577824,
+  "totalMBPerPlatform": 11.04,
   "maxFrameBytes": 15868,
   "reencodedBelow60": 0,
   "items": [
@@ -645,6 +646,29 @@
           "quality": 60,
           "width": 360,
           "height": 240
+        }
+      ]
+    },
+    {
+      "mediaKey": "band_curl",
+      "source": "https://github.com/lczarnec/everkinetic_modifications",
+      "author": "Everkinetic",
+      "license": "CC BY-SA 3.0",
+      "modified": "resized, transparent background flattened to white, converted to WebP",
+      "frames": [
+        {
+          "file": "band_curl_0.webp",
+          "bytes": 5118,
+          "quality": 60,
+          "width": 290,
+          "height": 360
+        },
+        {
+          "file": "band_curl_1.webp",
+          "bytes": 5590,
+          "quality": 60,
+          "width": 290,
+          "height": 360
         }
       ]
     },
@@ -1689,6 +1713,29 @@
       ]
     },
     {
+      "mediaKey": "bicycle_crunch",
+      "source": "https://github.com/lczarnec/everkinetic_modifications",
+      "author": "Everkinetic",
+      "license": "CC BY-SA 3.0",
+      "modified": "resized, transparent background flattened to white, converted to WebP",
+      "frames": [
+        {
+          "file": "bicycle_crunch_0.webp",
+          "bytes": 3480,
+          "quality": 60,
+          "width": 360,
+          "height": 208
+        },
+        {
+          "file": "bicycle_crunch_1.webp",
+          "bytes": 4308,
+          "quality": 60,
+          "width": 360,
+          "height": 208
+        }
+      ]
+    },
+    {
       "mediaKey": "bicycling",
       "fedbId": "Bicycling",
       "frames": [
@@ -2065,6 +2112,29 @@
           "quality": 60,
           "width": 360,
           "height": 240
+        }
+      ]
+    },
+    {
+      "mediaKey": "burpee",
+      "source": "https://commons.wikimedia.org/wiki/File:Burpee_1_Neutral_Position.jpg",
+      "author": "Taco fleur",
+      "license": "CC BY-SA 4.0",
+      "modified": "resized, transparent background flattened to white, converted to WebP",
+      "frames": [
+        {
+          "file": "burpee_0.webp",
+          "bytes": 7518,
+          "quality": 60,
+          "width": 360,
+          "height": 216
+        },
+        {
+          "file": "burpee_1.webp",
+          "bytes": 6960,
+          "quality": 60,
+          "width": 360,
+          "height": 216
         }
       ]
     },
@@ -2744,6 +2814,29 @@
           "bytes": 8530,
           "quality": 60,
           "width": 240,
+          "height": 360
+        }
+      ]
+    },
+    {
+      "mediaKey": "calf_raise",
+      "source": "https://github.com/lczarnec/everkinetic_modifications",
+      "author": "Everkinetic",
+      "license": "CC BY-SA 3.0",
+      "modified": "resized, transparent background flattened to white, converted to WebP",
+      "frames": [
+        {
+          "file": "calf_raise_0.webp",
+          "bytes": 3898,
+          "quality": 60,
+          "width": 135,
+          "height": 360
+        },
+        {
+          "file": "calf_raise_1.webp",
+          "bytes": 3956,
+          "quality": 60,
+          "width": 135,
           "height": 360
         }
       ]
@@ -7829,6 +7922,29 @@
       ]
     },
     {
+      "mediaKey": "l_sit",
+      "source": "https://commons.wikimedia.org/wiki/File:West_Point_male_gymnast_L-sit.jpg",
+      "author": "Tommy Gilligan / West Point Public Affairs",
+      "license": "Public domain",
+      "modified": "resized, transparent background flattened to white, converted to WebP",
+      "frames": [
+        {
+          "file": "l_sit_0.webp",
+          "bytes": 8038,
+          "quality": 60,
+          "width": 360,
+          "height": 240
+        },
+        {
+          "file": "l_sit_1.webp",
+          "bytes": 8038,
+          "quality": 60,
+          "width": 360,
+          "height": 240
+        }
+      ]
+    },
+    {
       "mediaKey": "landmine_linear_jammer",
       "fedbId": "Landmine_Linear_Jammer",
       "frames": [
@@ -8465,6 +8581,29 @@
           "quality": 60,
           "width": 360,
           "height": 240
+        }
+      ]
+    },
+    {
+      "mediaKey": "lunge",
+      "source": "https://github.com/lczarnec/everkinetic_modifications",
+      "author": "Everkinetic",
+      "license": "CC BY-SA 3.0",
+      "modified": "resized, transparent background flattened to white, converted to WebP",
+      "frames": [
+        {
+          "file": "lunge_0.webp",
+          "bytes": 5688,
+          "quality": 60,
+          "width": 319,
+          "height": 360
+        },
+        {
+          "file": "lunge_1.webp",
+          "bytes": 5316,
+          "quality": 60,
+          "width": 319,
+          "height": 360
         }
       ]
     },

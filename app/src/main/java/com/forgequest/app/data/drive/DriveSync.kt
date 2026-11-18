@@ -22,6 +22,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -194,7 +195,9 @@ class DriveSync(
     }
 
     suspend fun backup(token: String, forceOverwrite: Boolean = false): Boolean = syncMutex.withLock {
-        val accountKey = DriveConnectPolicy.normalizeAccountKey(settings.current().driveEmail)
+        val email = settings.current().driveEmail
+        if (email.isBlank()) return@withLock false
+        val accountKey = DriveConnectPolicy.normalizeAccountKey(email)
         backupInternal(token, accountKey, forceOverwrite)
     }
 
@@ -235,6 +238,35 @@ class DriveSync(
             val info = findBackupInfo(token) ?: throw DriveError.NoBackup
             FetchedBackup(fetchBackupById(token, info.id), info.modifiedTime)
         }
+    }
+
+    suspend fun deleteBackupAndDisconnect(token: String) = withSyncLock {
+        val email = settings.current().driveEmail
+        if (email.isBlank()) return@withSyncLock
+        val accountKey = DriveConnectPolicy.normalizeAccountKey(email)
+        if (DriveConnectPolicy.normalizeAccountKey(accountEmail(token)) != accountKey) throw DriveError.NeedsConsent
+        withContext(Dispatchers.IO) {
+            val ids = mutableListOf<String>()
+            var pageToken: String? = null
+            do {
+                val url = "$API/files".toHttpUrl().newBuilder()
+                    .addQueryParameter("spaces", "appDataFolder")
+                    .addQueryParameter("q", "name='$BACKUP_NAME' and trashed=false")
+                    .addQueryParameter("fields", "nextPageToken,files(id)")
+                    .apply { pageToken?.let { addQueryParameter("pageToken", it) } }
+                    .build()
+                val page = json.parseToJsonElement(call(token, Request.Builder().url(url).get())).jsonObject
+                page["files"]?.jsonArray?.forEach { file ->
+                    ids += file.jsonObject.getValue("id").jsonPrimitive.content
+                }
+                pageToken = page["nextPageToken"]?.jsonPrimitive?.contentOrNull
+            } while (!pageToken.isNullOrBlank())
+            for (id in ids) {
+                call(token, Request.Builder().url("$API/files/$id").delete())
+            }
+        }
+        settings.update { it.copy(driveEmail = "", lastBackupAt = 0) }
+        metaPrefs.edit().remove("mod_$accountKey").apply()
     }
 
     private fun fetchBackupById(token: String, id: String): BackupFile =

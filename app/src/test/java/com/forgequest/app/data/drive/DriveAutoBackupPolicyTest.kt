@@ -52,6 +52,74 @@ class DriveAutoBackupPolicyTest {
     )
 
     @Test
+    fun deleteBackupHandlesAllPagesAndKeepsConnectionOnPartialFailure() = runBlocking {
+        val ctx: Context = ApplicationProvider.getApplicationContext()
+        val meta = ctx.getSharedPreferences("drive_sync_meta", Context.MODE_PRIVATE)
+        meta.edit().clear().putString("mod_user@test.com", "old")
+            .putString("mod_other@test.com", "other").commit()
+        val db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java).build()
+        try {
+            val settings = SettingsRepository(ctx)
+            settings.update { it.copy(driveEmail = "user@test.com", lastBackupAt = 123L) }
+            val backups = BackupRepository(ctx, db, settings, WorkoutRepository(db))
+            val remaining = mutableSetOf("f1", "f2")
+            var failDelete = true
+            val deleted = mutableListOf<String>()
+            val http = OkHttpClient.Builder().addInterceptor { chain ->
+                val req = chain.request()
+                var code = 200
+                val body = when {
+                    req.url.encodedPath.endsWith("/about") ->
+                        """{"user":{"emailAddress":"user@test.com"}}"""
+                    req.method == "GET" && req.url.encodedPath.endsWith("/files") -> {
+                        assertEquals("appDataFolder", req.url.queryParameter("spaces"))
+                        assertEquals("name='forgequest_backup.json' and trashed=false", req.url.queryParameter("q"))
+                        if (req.url.queryParameter("pageToken") == "page 2") {
+                            """{"files":[{"id":"f2"}]}"""
+                        } else {
+                            val files = if ("f1" in remaining) """{"id":"f1"}""" else ""
+                            """{"files":[$files],"nextPageToken":"page 2"}"""
+                        }
+                    }
+                    req.method == "DELETE" -> {
+                        val id = req.url.pathSegments.last()
+                        assertTrue(id in remaining)
+                        if (id == "f2" && failDelete) code = 500 else {
+                            remaining.remove(id)
+                            deleted += id
+                            code = 204
+                        }
+                        ""
+                    }
+                    else -> error("Unexpected request: ${req.method} ${req.url}")
+                }
+                Response.Builder().request(req).protocol(Protocol.HTTP_1_1).code(code).message("test")
+                    .body(body.toResponseBody("application/json".toMediaType())).build()
+            }.build()
+            val drive = DriveSync(ctx, settings, backups, http)
+            try {
+                drive.deleteBackupAndDisconnect("tok")
+                fail("Expected deletion failure")
+            } catch (_: DriveError.Http) {
+                assertEquals("user@test.com", settings.current().driveEmail)
+                assertEquals(123L, settings.current().lastBackupAt)
+                assertEquals("old", meta.getString("mod_user@test.com", null))
+            }
+            failDelete = false
+            drive.deleteBackupAndDisconnect("tok")
+            assertEquals(listOf("f1", "f2"), deleted)
+            assertTrue(remaining.isEmpty())
+            assertEquals("", settings.current().driveEmail)
+            assertEquals(0L, settings.current().lastBackupAt)
+            assertFalse(meta.contains("mod_user@test.com"))
+            assertEquals("other", meta.getString("mod_other@test.com", null))
+            assertFalse(drive.backup("tok"))
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun emptyDetectionIgnoresSeededCatalogAndDetectsMeaningfulUserData() {
         assertTrue(DriveConnectPolicy.isDeviceEmpty(emptyFile()))
         assertFalse(DriveConnectPolicy.isDeviceEmpty(emptyFile().copy(sessions = listOf(SessionEntity(1, null, "W", 1, 1, 2)))))

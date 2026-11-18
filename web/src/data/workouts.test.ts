@@ -44,6 +44,22 @@ describe('library and plans', () => {
     expect((await db.exercises.get('burpee'))!.name).toBe('Burpee');
   });
 
+  it('corrects known wrong patterns on existing built-in installs without touching custom or other patterns', async () => {
+    await db.exercises.update('narrow_stance_hack_squats', { pattern: 'HORIZONTAL_PULL' });
+    await db.exercises.update('front_squat_clean_grip', { pattern: 'ELBOW_FLEXION' });
+    await db.exercises.put({
+      id: 'custom_squat', name: 'Custom Squat', kind: 'WEIGHTED', primary: ['QUADS'], secondary: [],
+      videoUrl: null, custom: true, equipment: '', pattern: 'HORIZONTAL_PULL', setupNote: '', aliases: '',
+      unitOverride: '', pinned: false, mediaKey: '',
+    });
+
+    await seedLibrary('en');
+
+    expect((await db.exercises.get('narrow_stance_hack_squats'))!.pattern).toBe('SQUAT_BILATERAL');
+    expect((await db.exercises.get('front_squat_clean_grip'))!.pattern).toBe('SQUAT_BILATERAL');
+    expect((await db.exercises.get('custom_squat'))!.pattern).toBe('HORIZONTAL_PULL');
+  });
+
   it('applies a starter plan as the only active plan with seven days', async () => {
     await applyPlan(FULL_BODY_BEGINNER, 'starter');
     const second = await applyPlan(FULL_BODY_BEGINNER, 'starter');

@@ -59,13 +59,14 @@ export type DialogProps = {
   confirmLabel?: string
   secondaryLabel?: string
   cancelLabel?: string
+  hideCancel?: boolean
   destructive?: boolean
   onConfirm: () => void
   onSecondary?: () => void
   onCancel: () => void
 }
 /** Confirm dialog (Android AlertDialog). */
-export function Dialog({ open, title, message, confirmLabel, secondaryLabel, cancelLabel, destructive, onConfirm, onSecondary, onCancel }: DialogProps) {
+export function Dialog({ open, title, message, confirmLabel, secondaryLabel, cancelLabel, hideCancel, destructive, onConfirm, onSecondary, onCancel }: DialogProps) {
   const ref = useTrap(open, onCancel)
   const id = useId()
   if (!open) return null
@@ -76,7 +77,7 @@ export function Dialog({ open, title, message, confirmLabel, secondaryLabel, can
         <h2 id={id} class="kit-sheet-title">{title}</h2>
         {message && <p class="kit-dialog-msg">{message}</p>}
         <div class="kit-dialog-actions">
-          <Button variant="text" onClick={onCancel}>{cancelLabel ?? t('action_cancel')}</Button>
+          {!hideCancel && <Button variant="text" onClick={onCancel}>{cancelLabel ?? t('action_cancel')}</Button>}
           {secondaryLabel && onSecondary && <Button variant="text" onClick={onSecondary}>{secondaryLabel}</Button>}
           <Button variant="text" class={destructive ? 'kit-danger' : undefined} onClick={onConfirm}>{confirmLabel ?? t('action_ok')}</Button>
         </div>
