@@ -540,7 +540,7 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
 /** Today's sets for one exercise from its last two finished workouts, through the Progression rules. */
 async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined, deload = false): Promise<SetRow[]> {
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
-  const input = progressionInputs(item, ex?.id, ex ? await recentDoneSets(ex.id) : []);
+  const input = progressionInputs(item, ex?.id, ex ? await withoutDeloadSessions(await recentDoneSets(ex.id)) : []);
   const settings = await loadSettings();
   const unit = weightUnit(settings, ex?.unitOverride);
   const result = nextPrefill(
@@ -566,6 +566,20 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
   return [...warmupRows, ...workRows];
 }
 
+/**
+ * `recent` without the workouts done in a deload week of the active plan: a deload session had half the sets, so it
+ * would read as missed next time. Progress from the session before it instead (Android WorkoutRepository.progressionFor).
+ */
+export async function withoutDeloadSessions(recent: SetRow[]): Promise<SetRow[]> {
+  const plan = await getActivePlan();
+  if (!plan || recent.length === 0) return recent;
+  const ids = [...new Set(recent.map((s) => s.sessionId))];
+  const sessions = await db.sessions.bulkGet(ids);
+  const deloadIds = new Set(sessions.filter((s) => s != null && isDeloadWeek(plan.plan.createdAt, s.epochDay)).map((s) => s!.id!));
+  const usable = recent.filter((s) => !deloadIds.has(s.sessionId));
+  return usable.length > 0 ? usable : recent;
+}
+
 export async function progressionReasonFor(
   item: PlanItemRow | null,
   ex: ExerciseRow | undefined,
@@ -573,7 +587,7 @@ export async function progressionReasonFor(
   deload = false,
 ): Promise<ProgressionReason | null> {
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
-  const input = progressionInputs(item, ex?.id, recent);
+  const input = progressionInputs(item, ex?.id, await withoutDeloadSessions(recent));
   const settings = await loadSettings();
   return nextPrefill(
     kind, input.target, input.last, input.previous, weightUnit(settings, ex?.unitOverride), input.warmup, deload,
@@ -801,9 +815,10 @@ export async function workoutDebrief(sessionId: number): Promise<DebriefResult |
   const report = analyzeFatigueAndPlateaus(
     upTo as never, doneSets.filter((s) => upToIds.has(s.sessionId)) as never, exercises as never, session.epochDay,
   );
+  const deload = plan != null && planItems.length > 0 && isDeloadWeek(plan.plan.createdAt, todayEpochDay());
   return debriefForSession(
     session, sessions, doneSets, exercises as never, score, planItems, weeklyTarget, report,
-    weightUnit(settings), false, configuredEquipment(settings),
+    weightUnit(settings), false, configuredEquipment(settings), deload,
   );
 }
 

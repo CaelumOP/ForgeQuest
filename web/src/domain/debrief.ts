@@ -8,7 +8,8 @@ import type { ExerciseEntity, PlanItemEntity, SessionEntity, SetEntity } from '.
 import { harderVersion, readyForHarder } from './exercise-tiers'
 import type { Equipment } from './exercise-swap-engine'
 import type { ExerciseKind } from './muscle'
-import { nextPrefill, progressionInputs, type ProgressionInputs, type ProgressionResult } from './progression'
+import { isExtraBlock } from './pr-picker'
+import { isLowerBodyExercise, nextPrefill, progressionInputs, type ProgressionInputs, type ProgressionResult } from './progression'
 import { recordScore } from './progress'
 import { percentChange, type FatigueAndPlateauReport } from './trends'
 import type { WeightUnit } from './units'
@@ -72,7 +73,7 @@ export type Next =
   | { type: 'LOAD_UP'; exerciseId: string; weightKg: number; reps: number | null }
   | { type: 'PLUS_REP'; exerciseId: string; reps: number; weightKg: number | null }
   | { type: 'PLUS_SECONDS'; exerciseId: string; seconds: number }
-  /** The top of the range was hit, but a Hard set keeps the numbers. */
+  /** The top of the range was hit, but a Failure set keeps the numbers. */
   | { type: 'HOLD_STEADY'; exerciseId: string; weightKg: number | null; reps: number | null; seconds: number | null }
 
 export type DebriefResult = {
@@ -87,7 +88,7 @@ export type DebriefResult = {
 }
 
 type DebriefSet = Pick<SetEntity, 'sessionId' | 'exerciseId' | 'itemPosition' | 'block' | 'setIndex' | 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort' | 'note' | 'setType' | 'autoTicked'>
-type DebriefItem = Pick<PlanItemEntity, 'exerciseId' | 'block' | 'sets' | 'repsMin' | 'repsMax' | 'seconds' | 'weightKg'>
+type DebriefItem = Pick<PlanItemEntity, 'exerciseId' | 'block' | 'sets' | 'repsMin' | 'repsMax' | 'seconds' | 'weightKg' | 'progressionMode'>
 
 /** One exercise of the workout. */
 export type DebriefExercise = {
@@ -105,6 +106,8 @@ export type DebriefExercise = {
   item: DebriefItem | null
   /** harderVersion's name; null when there is none. */
   harderName: string | null
+  /** Primary muscle is lower body (used by LINEAR progression increments). */
+  lowerBody?: boolean
 }
 
 export type DebriefInput = {
@@ -121,6 +124,8 @@ export type DebriefInput = {
   report: FatigueAndPlateauReport | null
   unit: WeightUnit
   healthOn: boolean
+  /** Active plan is currently in a deload week, matching the live prefill. */
+  deload?: boolean
 }
 
 /** An exercise back after this many days or more is a win. */
@@ -133,8 +138,11 @@ type Ex = {
   now: TrendStats; was: TrendStats | null
 }
 
-const effort = (s: DebriefSet): SetEffort => effortOf(s.effort, s.note)
+const HIGH_EFFORT: ReadonlySet<SetEffort> = new Set(['HARD', 'FAILURE'])
+const effort = (s: DebriefSet): SetEffort =>
+  s.effort.trim() === '' && s.setType === 'FAILURE' ? 'FAILURE' : effortOf(s.effort, s.note)
 const count = (l: DebriefSet[], e: SetEffort) => l.filter((s) => effort(s) === e).length
+const countHigh = (l: DebriefSet[]) => l.filter((s) => HIGH_EFFORT.has(effort(s))).length
 const PR_ORDER: Record<PrKind, number> = { WEIGHT: 0, REPS: 1, HOLD: 2 }
 
 export function computeDebrief(input: DebriefInput): DebriefResult {
@@ -226,7 +234,7 @@ function wins(input: DebriefInput, exs: Ex[], headline: Headline): Win[] {
   // 4. Effort mastery: the same numbers, felt easier.
   for (const x of exs) {
     if (x.trend !== 'SAME' || !x.was || x.pain || Math.abs(x.now.top - x.was.top) > SAME_WEIGHT_KG || x.now.total < x.was.total) continue
-    if (count(x.working, 'HARD') < count(x.lastWorking, 'HARD') || count(x.working, 'EASY') > count(x.lastWorking, 'EASY')) {
+    if (countHigh(x.working) < countHigh(x.lastWorking) || count(x.working, 'EASY') > count(x.lastWorking, 'EASY')) {
       candidates.push({ type: 'EFFORT_MASTERY', exerciseId: x.id })
     }
   }
@@ -298,7 +306,8 @@ function nextTime(input: DebriefInput, exs: Ex[]): { next: Next[]; sameRest: boo
     if (!x.e.newest) continue
     const p = progressionInputs(x.e.item, x.id, [...x.working, ...x.lastWorking])
     if (p.warmup) continue
-    const r = nextPrefill(x.e.kind, p.target, p.last, p.previous, input.unit, false)
+    const deload = (input.deload ?? false) && x.e.item != null && !isExtraBlock(x.e.item.block)
+    const r = nextPrefill(x.e.kind, p.target, p.last, p.previous, input.unit, false, deload, p.mode, x.e.lowerBody ?? false)
     const line = nextLine(x, p, r)
     if (line) lines.push(line)
     else unchanged = true
@@ -331,12 +340,12 @@ function nextLine(x: Ex, p: ProgressionInputs, r: ProgressionResult): { order: n
     // The top set gains reps (a failed set back to the bottom of the range alone doesn't count).
     return { order: 5, line: { type: 'PLUS_REP', exerciseId: x.id, reps: Math.max(...r.sets.map((s) => s.reps ?? 0)), weightKg: nextTop > 0 ? nextTop : null } }
   }
-  // The top of the range was hit, but a Hard set kept the numbers.
+  // The top of the range was hit, but a Failure set kept the numbers.
   const sets = p.target?.sets ?? 3
   const hitTop = p.last.length >= sets && (kind === 'HOLD'
     ? p.last.every((s) => (s.seconds ?? 0) >= (p.target?.seconds ?? 30))
     : p.last.every((s) => (s.reps ?? 0) >= (p.target?.repsMax ?? p.target?.repsMin ?? 12)))
-  if (!x.pain && hitTop && p.last.some((s) => s.effort === 'HARD')) {
+  if (r.reason === 'HARD' && !x.pain && hitTop && p.last.some((s) => s.effort === 'FAILURE')) {
     const holds = kind === 'HOLD'
     return {
       order: 6,
@@ -369,6 +378,7 @@ export function debriefForSession(
   unit: WeightUnit,
   healthOn: boolean,
   equipment: Set<Equipment>,
+  deload = false,
 ): DebriefResult {
   const byId = new Map(sessions.map((s) => [s.id!, s]))
   const earlier = (o: ScoreSession, s: ScoreSession) => o.epochDay < s.epochDay || (o.epochDay === s.epochDay && o.startedAt < s.startedAt)
@@ -396,6 +406,7 @@ export function debriefForSession(
       newest: !others.some((o) => earlier(session, o.session)),
       item: planItems.find((i) => i.exerciseId === id) ?? null,
       harderName: ex && kind === 'REPS' ? harderVersion(ex, library, equipment)?.name ?? null : null,
+      lowerBody: isLowerBodyExercise(ex?.primary ?? []),
     }
   })
   const ws = weekStart(session.epochDay)
@@ -411,5 +422,6 @@ export function debriefForSession(
     report,
     unit,
     healthOn,
+    deload,
   })
 }

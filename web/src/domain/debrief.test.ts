@@ -109,6 +109,8 @@ describe('debrief wins', () => {
   it('effort mastery, all planned sets, weekly target', () => {
     const easier = ex('a', 'WEIGHTED', n(3, 8, 50), [...n(2, 8, 50), s(8, 50, { effort: 'HARD' })])
     expect(run([easier], { planned: 3 }).wins).toEqual([{ type: 'EFFORT_MASTERY', exerciseId: 'a' }, { type: 'ALL_SETS', sets: 3 }])
+    const easierFromFailure = ex('a', 'WEIGHTED', n(3, 8, 50), [...n(2, 8, 50), s(8, 50, { effort: 'FAILURE' })])
+    expect(run([easierFromFailure], { planned: 3 }).wins).toEqual([{ type: 'EFFORT_MASTERY', exerciseId: 'a' }, { type: 'ALL_SETS', sets: 3 }])
     // The done count, not the planned one.
     expect(run([same('a'), same('b')], { planned: 5 }).wins).toEqual([{ type: 'ALL_SETS', sets: 6 }])
     expect(run([same('a')], { weeklyTarget: 3, weekCount: 3, weekCountBefore: 2 }).wins).toEqual([{ type: 'WEEKLY_TARGET', target: 3 }])
@@ -172,11 +174,11 @@ describe('debrief next time', () => {
     expect(run([ex('plank', 'HOLD', hold(3, 30), hold(3, 30), { item: holdItem(30) })]).next).toEqual([{ type: 'PLUS_SECONDS', exerciseId: 'plank', seconds: 35 }])
     // A hold at 1.5x its target: a harder version, or a slower tempo with none.
     expect(run([ex('plank', 'HOLD', hold(3, 45), hold(3, 45), { item: holdItem(30) })]).next).toEqual([{ type: 'HARDER', exerciseId: 'plank', harderName: null }])
-    const hard = ex('bench', 'WEIGHTED', [...n(2, 12, 60), s(12, 60, { effort: 'HARD' })], n(3, 11, 60))
-    expect(run([hard]).next).toEqual([{ type: 'HOLD_STEADY', exerciseId: 'bench', weightKg: 60, reps: 12, seconds: null }])
+    const failure = ex('bench', 'WEIGHTED', [...n(2, 12, 60), s(12, 60, { effort: 'FAILURE' })], n(3, 11, 60))
+    expect(run([failure]).next).toEqual([{ type: 'HOLD_STEADY', exerciseId: 'bench', weightKg: 60, reps: 12, seconds: null }])
   })
   it('everything else: same numbers; newest = false hides next time', () => {
-    const kept = ex('curl', 'WEIGHTED', [s(10, 12.5, { effort: 'HARD' }), ...n(2, 10, 12.5)], n(3, 10, 12.5))
+    const kept = ex('curl', 'WEIGHTED', [s(10, 12.5, { effort: 'FAILURE' }), ...n(2, 10, 12.5)], n(3, 10, 12.5))
     const r = run([ex('row', 'WEIGHTED', n(3, 10, 50), n(3, 10, 50)), kept])
     expect(r.next).toEqual([{ type: 'PLUS_REP', exerciseId: 'row', reps: 11, weightKg: 50 }])
     expect(r.sameRest).toBe(true)
@@ -186,15 +188,15 @@ describe('debrief next time', () => {
     expect(old.sameRest).toBe(false)
   })
   it('hold steady at the top of the range with a Hard set, and everything else keeps its numbers', () => {
-    // Bench 3x12 @16 (item 3 sets, 8-12), the last set Hard; the previous time 3x12 @16, all OK.
-    const bench = ex('bench', 'WEIGHTED', [...n(2, 12, 16), s(12, 16, { effort: 'HARD' })], n(3, 12, 16), { item: range() })
-    const kept = ex('curl', 'WEIGHTED', [s(10, 12.5, { effort: 'HARD' }), ...n(2, 10, 12.5)], n(3, 10, 12.5), { item: range() })
+    // Bench 3x12 @16 (item 3 sets, 8-12), the last set Failure; the previous time 3x12 @16, all OK.
+    const bench = ex('bench', 'WEIGHTED', [...n(2, 12, 16), s(12, 16, { effort: 'FAILURE' })], n(3, 12, 16), { item: range() })
+    const kept = ex('curl', 'WEIGHTED', [s(10, 12.5, { effort: 'FAILURE' }), ...n(2, 10, 12.5)], n(3, 10, 12.5), { item: range() })
     const r = run([bench, kept])
     expect(r.next).toEqual([{ type: 'HOLD_STEADY', exerciseId: 'bench', weightKg: 16, reps: 12, seconds: null }])
     expect(r.sameRest).toBe(true)
   })
   it('three changes never push the hold-steady line out (the QA seed day)', () => {
-    const bench = ex('bench', 'WEIGHTED', [...n(2, 12, 16), s(12, 16, { effort: 'HARD' })], n(3, 12, 16), { item: range() })
+    const bench = ex('bench', 'WEIGHTED', [...n(2, 12, 16), s(12, 16, { effort: 'FAILURE' })], n(3, 12, 16), { item: range() })
     const r = run([
       ex('squat', 'WEIGHTED', n(3, 9, 15), n(3, 8, 15), { item: range() }), bench,
       ex('row', 'WEIGHTED', n(3, 10, 20), n(3, 10, 20), { item: range() }), ex('plank', 'HOLD', hold(3, 35), hold(3, 35)),
@@ -276,8 +278,8 @@ describe("Gemini's 8 cases", () => {
     expect(r.wins).toEqual([{ type: 'BEST_GAIN', exerciseId: 'romanian_deadlift', percent: 3 }, { type: 'EFFORT_MASTERY', exerciseId: 'curl' }])
     expect(r.watch).toEqual([])
     expect(r.next).toEqual([
+      { type: 'LOAD_UP', exerciseId: 'romanian_deadlift', weightKg: 72.5, reps: 8 },
       { type: 'LOAD_UP', exerciseId: 'curl', weightKg: 15, reps: 8 },
-      { type: 'HOLD_STEADY', exerciseId: 'romanian_deadlift', weightKg: 70, reps: 10, seconds: null },
     ])
   })
   it('5. after a break: score hidden, no drop warning', () => {
@@ -319,7 +321,7 @@ describe("Gemini's 8 cases", () => {
     expect(r.watch).toEqual([{ type: 'DROP', exerciseId: 'row' }])
     expect(r.next).toEqual([
       { type: 'PLUS_REP', exerciseId: 'bench', reps: 10, weightKg: 60 },
-      { type: 'PLUS_REP', exerciseId: 'row', reps: 9, weightKg: 50 },
+      { type: 'PLUS_REP', exerciseId: 'row', reps: 8, weightKg: 50 },
     ])
   })
   it('8. ready for a harder push-up; a swapped-in exercise hides the skip', () => {

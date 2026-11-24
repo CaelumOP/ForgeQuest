@@ -39,7 +39,9 @@ describe('exercise tiers', () => {
     expect(readyForHarder(s([20, 18, 15]), s([16, 15, 15]))).toBe(true)
     expect(readyForHarder(s([20, 18, 14]), s([16, 15, 15]))).toBe(false)
     expect(readyForHarder(s([20, 18, 15]), [])).toBe(false)
-    expect(readyForHarder(s([20, 18, 15], 'HARD'), s([16, 15, 15]))).toBe(false)
+    expect(readyForHarder(s([20, 18, 15], 'HARD'), s([16, 15, 15]))).toBe(true)
+    expect(readyForHarder(s([20, 18, 15], 'FAILURE'), s([16, 15, 15]))).toBe(false)
+    expect(readyForHarder(s([20, 18, 15], 'PAIN'), s([16, 15, 15]))).toBe(false)
   })
 })
 

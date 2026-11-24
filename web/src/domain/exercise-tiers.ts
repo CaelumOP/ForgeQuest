@@ -50,10 +50,10 @@ const RELATED: Partial<Record<MovementPattern, MovementPattern>> = {
   HORIZONTAL_PULL: 'VERTICAL_PULL',
 }
 
-/** True when both of the last two sessions had 2+ sets, all at READY_REPS+ reps, none marked Hard or Pain. */
+/** True when both of the last two sessions had 2+ sets, all at READY_REPS+ reps, none marked Failure or Pain. */
 export const readyForHarder = (last: PastSet[], previous: PastSet[]): boolean =>
   [last, previous].every((session) => session.length >= 2 &&
-    session.every((s) => (s.reps ?? 0) >= READY_REPS && s.effort !== 'HARD' && s.effort !== 'PAIN'))
+    session.every((s) => (s.reps ?? 0) >= READY_REPS && s.effort !== 'FAILURE' && s.effort !== 'PAIN'))
 
 /**
  * The next step up from `ex` that fits `equipment` (empty = not set, so anything): a bodyweight rep move one tier up

@@ -5,7 +5,7 @@ import { FULL_BODY_BEGINNER } from './seed/starter-plans';
 import {
   addExercise, applyPlan, finishSession, getActivePlan, getSets, importSharedPlan, moveSession,
   openSessionNow, recomputeRecords, seedLibrary, setPairWithNext, startSession, stepUp, updateFinishedSet,
-  updatePlanDay, updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, type PlanDayWithItems,
+  updatePlanDay, updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, withoutDeloadSessions, type PlanDayWithItems,
 } from './workouts';
 import { exportSharedPlan, parseAndValidateSharedPlan } from '../domain/plan-share';
 
@@ -78,6 +78,31 @@ describe('live session', () => {
     const next = await startSession(day);
     const prefilled = (await getSets(next)).filter((s) => s.exerciseId === item.exerciseId);
     expect(prefilled.map((s) => s.reps)).toEqual(Array(item.sets).fill(17)); // HARD: repeat last numbers
+  });
+
+  it('a workout from a deload week is skipped when reading progression history', async () => {
+    await applyPlan(FULL_BODY_BEGINNER, 'starter');
+    const plan = (await getActivePlan())!;
+    const day = plan.days.find((d) => !d.day.isRest)!;
+    const item = await pickItem(day);
+
+    const before = await startSession(day);
+    await logAndFinish(before, item.exerciseId, 12, '');
+    await pause();
+    const deloadDay = await startSession(day);
+    await logAndFinish(deloadDay, item.exerciseId, 6, '');
+    // The plan started 3 weeks before the second workout, so that one fell in a deload week; the first a week earlier.
+    const today = (await db.sessions.get(deloadDay))!.epochDay;
+    await moveSession(before, today - 7);
+    await db.plans.update(plan.plan.id!, { createdAt: Date.now() - 21 * 86_400_000 });
+
+    const recent = await recentDoneSets(item.exerciseId);
+    expect(recent[0].sessionId).toBe(deloadDay);
+    const usable = await withoutDeloadSessions(recent);
+    expect(new Set(usable.map((s) => s.sessionId))).toEqual(new Set([before]));
+    // Only deload workouts: kept, so there is still something to go on.
+    const onlyDeload = recent.filter((s) => s.sessionId === deloadDay);
+    expect(await withoutDeloadSessions(onlyDeload)).toEqual(onlyDeload);
   });
 
   it('a backdated workout does not drive the next prefill', async () => {

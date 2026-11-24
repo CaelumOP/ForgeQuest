@@ -15,9 +15,9 @@ import { CheckIcon } from '../icons'
 import { clampField } from './groups'
 import { PlayIcon } from './glyphs'
 
-const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: 'effort_hard', HARD: 'effort_hard', FAILURE: 'effort41_failure', PAIN: 'effort_pain' }
-const EFFORT_CAPTION_KEY: Partial<Record<SetEffort, string>> = { EASY: 'effort41_easy_cap', OK: 'effort41_hard_cap', HARD: 'effort41_hard_cap', FAILURE: 'effort41_failure_cap' }
-const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'FAILURE' ? 'gold' : e === 'HARD' ? 'purple' : e === 'OK' ? 'blue' : 'teal')
+const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: '', HARD: 'effort_hard', FAILURE: 'effort41_failure', PAIN: 'effort_pain' }
+const EFFORT_CAPTION_KEY: Partial<Record<SetEffort, string>> = { EASY: 'effort41_easy_cap', HARD: 'effort41_hard_cap', FAILURE: 'effort41_failure_cap' }
+const accentOf = (e: SetEffort) => (e === 'PAIN' ? 'coral' : e === 'FAILURE' ? 'gold' : e === 'HARD' ? 'purple' : 'teal')
 
 const SET_TYPE_LABEL_KEY: Record<SetType, string> = {
   WORKING: 'live41_set_type_working',
