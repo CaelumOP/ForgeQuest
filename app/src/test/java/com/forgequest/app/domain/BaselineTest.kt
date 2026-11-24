@@ -124,6 +124,20 @@ class BaselineTest {
     }
 
     @Test
+    fun backDatedWorkoutDoesNotWinRecency() {
+        val bench = byId.getValue("bench_press")
+        val machine = byId.getValue("chest_press_machine")
+        val dbBench = byId.getValue("db_bench_press")
+        // History lists the newest workout first. The machine workout was logged later (higher session id) but dated earlier.
+        val history = linkedMapOf(
+            bench.id to listOf(set(1L, 10L, bench.id, 100f, reps = 1, effort = SetEffort.FAILURE.name)),
+            machine.id to listOf(set(2L, 99L, machine.id, 200f, reps = 1, effort = SetEffort.FAILURE.name)),
+        )
+        val est = Baseline.coldStart(dbBench, repsMin = 8, WeightUnit.KG, history, byId)
+        assertEquals(bench.id, est.donorId)
+    }
+
+    @Test
     fun coldStartWithNoDonorIsBlank() {
         val bench = byId.getValue("bench_press")
         val squat = byId.getValue("back_squat")

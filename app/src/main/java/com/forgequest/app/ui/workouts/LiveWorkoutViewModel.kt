@@ -45,6 +45,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -386,15 +388,43 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** Source sets whose running rest was already extended on Failure (at most once per source set). */
     private val restExtendedBy = mutableSetOf<Long>()
 
-    /** Pre-change copies of the sets modified by the current [adjustment], for Undo. */
-    private var preAdjustmentSets: List<SetEntity> = emptyList()
+    /** Per source set: the later sets as they were before that adjustment (and before its carry-forward), for Undo and untick. */
+    private val preAdjustment = mutableMapOf<Long, List<SetEntity>>()
+
+    /** Per source set: its later sets as they were just before its tick, so carry-forward never hides an adjustment. */
+    private val preCarry = mutableMapOf<Long, List<SetEntity>>()
+
+    /** Serialises tick, effort, adjustment, Undo and untick writes so they never interleave or overwrite each other. */
+    private val liveMutex = Mutex()
 
     private val _adjustment = MutableStateFlow<LiveAdjustment?>(null)
     val adjustment: StateFlow<LiveAdjustment?> = _adjustment
 
     private fun clearAdjustment() {
         _adjustment.value = null
-        preAdjustmentSets = emptyList()
+    }
+
+    /** The later working sets of [source]'s exercise that are still open for automatic changes. */
+    private fun openLaterSets(source: SetEntity): List<SetEntity> = sets.value
+        .filter {
+            it.itemPosition == source.itemPosition &&
+                it.exerciseId == source.exerciseId &&
+                it.setIndex > source.setIndex &&
+                !it.done &&
+                it.id !in edited &&
+                countsForProgression(it)
+        }
+        .sortedBy { it.setIndex }
+
+    /** Writes [values]' numbers onto each row as it is now, skipping rows ticked or hand-edited in the meantime. */
+    private suspend fun writeNumbers(values: List<SetEntity>) {
+        val now = sets.value.associateBy { it.id }
+        values.forEach { v ->
+            val current = now[v.id] ?: return@forEach
+            if (current.done || current.id in edited) return@forEach
+            val next = current.copy(reps = v.reps, seconds = v.seconds, weightKg = v.weightKg)
+            if (next != current) repo.updateSet(next)
+        }
     }
 
     /** Exercises whose record buzz already fired this workout: one per exercise. */
@@ -444,10 +474,20 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             effort = if (done) set.effort else "",
         )
         viewModelScope.launch {
-            repo.updateSet(updatedSet)
-            if (done) {
-                val carried = carryForward(updatedSet)
-                applyIntraSession(updatedSet, carried)
+            liveMutex.withLock {
+                if (done) {
+                    preCarry[set.id] = openLaterSets(set)
+                    repo.updateSet(updatedSet)
+                    carryForward(updatedSet)
+                    applyIntraSession(updatedSet)
+                } else {
+                    repo.updateSet(updatedSet)
+                    // Unticking an adjusted set takes its adjustment back, so a re-tick starts clean instead of stacking cuts.
+                    preAdjustment.remove(set.id)?.let { writeNumbers(it) }
+                    adjustedBy -= set.id
+                    preCarry -= set.id
+                    if (_adjustment.value?.sourceSetId == set.id) clearAdjustment()
+                }
             }
         }
         if (done && restPlan.seconds > 0) {
@@ -498,23 +538,18 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         return updated
     }
 
-    private suspend fun applyIntraSession(source: SetEntity, carriedById: Map<Long, SetEntity> = emptyMap()) {
+    /**
+     * Runs [IntraSession.compute] for [source] against its later sets as they were before its carry-forward, so a
+     * bodyweight miss (which carry-forward already copies) still shows the cue and can be undone. Call under [liveMutex].
+     */
+    private suspend fun applyIntraSession(source: SetEntity) {
         if (source.id in adjustedBy) return
-        val remaining = sets.value
-            .filter {
-                it.itemPosition == source.itemPosition &&
-                    it.exerciseId == source.exerciseId &&
-                    it.setIndex > source.setIndex &&
-                    !it.done &&
-                    it.id !in edited &&
-                    countsForProgression(it)
-            }
-            .sortedBy { it.setIndex }
-            .map { carriedById[it.id] ?: it }
+        val openIds = openLaterSets(source).map { it.id }.toSet()
+        val base = (preCarry[source.id] ?: openLaterSets(source)).filter { it.id in openIds }
         val kind = exercises.value[source.exerciseId]?.kind ?: ExerciseKind.REPS
         val result = IntraSession.compute(
             source = source,
-            remaining = remaining,
+            remaining = base,
             kind = kind,
             repsMin = repsMinFor(source),
             unit = effectiveUnit(source.exerciseId),
@@ -522,8 +557,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         if (result.changed.isEmpty()) return
         adjustedBy += source.id
         val changedIds = result.changed.map { it.id }.toSet()
-        preAdjustmentSets = remaining.filter { it.id in changedIds }
-        result.changed.forEach { repo.updateSet(it) }
+        preAdjustment[source.id] = base.filter { it.id in changedIds }
+        writeNumbers(result.changed)
         _adjustment.value = LiveAdjustment(
             exerciseId = source.exerciseId,
             sourceSetId = source.id,
@@ -535,23 +570,11 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     /** Restores the sets altered by the latest intra-session adjustment, skipping any row edited or ticked since. */
     fun undoAdjustment() {
-        val saved = preAdjustmentSets
+        val sourceId = _adjustment.value?.sourceSetId ?: return
         clearAdjustment()
-        if (saved.isEmpty()) return
         app.haptics.tick()
-        val currentById = sets.value.associateBy { it.id }
         viewModelScope.launch {
-            saved.forEach { original ->
-                val current = currentById[original.id] ?: return@forEach
-                if (current.done || current.id in edited) return@forEach
-                repo.updateSet(
-                    current.copy(
-                        reps = original.reps,
-                        seconds = original.seconds,
-                        weightKg = original.weightKg,
-                    ),
-                )
-            }
+            liveMutex.withLock { preAdjustment.remove(sourceId)?.let { writeNumbers(it) } }
         }
     }
 
@@ -789,7 +812,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         effortSetId.value = null
         val (e, type) = SetEffort.pick(set.effort, set.setType, effort)
         val updatedSet = set.copy(effort = e, setType = type)
-        repo.updateSet(updatedSet)
+        liveMutex.withLock { repo.updateSet(updatedSet) }
         if (e == SetEffort.FAILURE.name) {
             rest.value?.let { r ->
                 if (r.setId == set.id && !r.isRestPause && !r.isShortTransition && restExtendedBy.add(set.id)) {
@@ -797,7 +820,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     if (delta > 0) addRest(delta)
                 }
             }
-            applyIntraSession(updatedSet)
+            liveMutex.withLock { applyIntraSession(updatedSet) }
         }
     }
 

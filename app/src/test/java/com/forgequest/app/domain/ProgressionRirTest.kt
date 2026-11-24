@@ -138,6 +138,15 @@ class ProgressionRirTest {
     }
 
     @Test
+    fun missedRepsKeepMetSetsAndRestartTheMissedOneAtTheMinimum() {
+        val last = listOf(12, 12, 6).map { Progression.PastSet(it, null, 60f, SetEffort.OK) }
+        val r = Progression.next(ExerciseKind.WEIGHTED, weightedTarget(), last, emptyList(), WeightUnit.KG, warmup = false)
+        assertEquals(Progression.Reason.MISSED, r.reason)
+        assertEquals(listOf(12, 12, 8), r.sets.map { it.reps })
+        assertEquals(listOf(60f, 60f, 60f), r.sets.map { it.weightKg })
+    }
+
+    @Test
     fun missedRepsUntaggedHoldsAtMinimumNotPlusOne() {
         val r = Progression.next(
             ExerciseKind.WEIGHTED,

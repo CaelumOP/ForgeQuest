@@ -134,12 +134,13 @@ object Baseline {
         val e1rm: Float,
         val ratio: Float,
         val samePattern: Boolean,
-        val maxSessionId: Long,
-        val maxDoneAt: Long,
+        /** Position of the donor in [coldStart]'s history, which lists the most recent workout first. */
+        val recency: Int,
     )
 
     /**
      * Estimates a starting working weight for [target] at [repsMin] (targeting 3 RIR) from the most recent
+     * (by [history]'s order: callers pass it grouped from sets ordered newest workout first, as the DAO returns them)
      * calibrated weighted donor in [history], preferring the same [MovementPattern] else the same [PatternBucket] (x0.8).
      */
     fun coldStart(
@@ -158,7 +159,8 @@ object Baseline {
         val targetBucket = bucketOf(targetPattern)
 
         val donors = mutableListOf<Donor>()
-        for ((donorId, donorSets) in history) {
+        for ((recency, entry) in history.entries.withIndex()) {
+            val (donorId, donorSets) = entry
             if (donorId == target.id) continue
             val donorEx = library[donorId] ?: continue
             if (donorEx.kind != ExerciseKind.WEIGHTED) continue
@@ -171,22 +173,18 @@ object Baseline {
             val eligible = donorSets.filter { countsForProgression(it) && it.done && (it.weightKg ?: 0f) > 0f }
             if (eligible.isEmpty()) continue
             val donorE1rm = exerciseE1rm(donorSets) ?: continue
-            val maxSessionId = eligible.maxOf { it.sessionId }
-            val maxDoneAt = eligible.mapNotNull { it.doneAt }.maxOrNull() ?: 0L
             donors += Donor(
                 id = donorId,
                 e1rm = donorE1rm,
                 ratio = donorRatio,
                 samePattern = samePattern,
-                maxSessionId = maxSessionId,
-                maxDoneAt = maxDoneAt,
+                recency = recency,
             )
         }
 
         val best = donors.minWithOrNull(
             compareByDescending<Donor> { it.samePattern }
-                .thenByDescending { it.maxSessionId }
-                .thenByDescending { it.maxDoneAt }
+                .thenBy { it.recency }
                 .thenBy { it.id },
         ) ?: return Estimate(weightKg = null, status = BaselineStatus.NONE)
 
