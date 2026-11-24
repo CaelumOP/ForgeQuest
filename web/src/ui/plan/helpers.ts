@@ -23,6 +23,9 @@ export const FOCUS_MUSCLES: readonly Muscle[] = [
 export const DAY_COUNT_OPTIONS = [2, 3, 4, 5, 6] as const
 export const MINUTE_OPTIONS = [20, 30, 45, 60] as const
 
+/** Zero is an entered count; null is cleared separately, as in Android. */
+export const stepperCountFromValue = (value: number): number => Math.max(0, Math.trunc(value))
+
 export function goalKey(g: TrainGoal): string {
   switch (g) {
     case 'STRENGTH': return 'pb_goal_strength'

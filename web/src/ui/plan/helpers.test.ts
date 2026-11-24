@@ -2,14 +2,44 @@ import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { DEFAULT_SETTINGS, loadSettings, toBackupSettings, updateSettings } from '../../data/settings'
-import { encodeEquipmentSet, presetEquipment, type Equipment } from '../../domain/exercise-swap-engine'
+import { encodeEquipmentSet, presetEquipment, profileFor, type Equipment } from '../../domain/exercise-swap-engine'
+import { tierOf } from '../../domain/exercise-tiers'
+import { decodePlanAnswers } from '../../domain/plan-answers'
 import {
-  PlanBuilder, defaultPlanAnswers, encodePlanAnswers, planAnswersToInput,
+  PlanBuilder, defaultPlanAnswers, encodePlanAnswers, planAnswersToInput, spreadDays,
 } from '../../domain/plan-builder'
 import {
   activeEquipmentPreset, equipmentSetting, initialAnswers, localizeBuiltPlan,
-  presetShortLabel, rowSummaries, scheme, swapBuiltPlanItem,
+  presetShortLabel, rowSummaries, scheme, swapBuiltPlanItem, stepperCountFromValue,
 } from './helpers'
+
+describe('PlanBuilderStepperTest (Android parity)', () => {
+  it('zeroPullUpsEnteredReachesFoundation', () => {
+    const entered = stepperCountFromValue(0)
+    expect(entered).toBe(0)
+    const saved = { ...defaultPlanAnswers(), days: spreadDays(5), equipment: presetEquipment('FULL_GYM'), experience: 'SEASONED' as const, pullUpMax: entered }
+    const decoded = decodePlanAnswers(encodePlanAnswers(saved))!
+    expect(decoded.pullUpMax).toBe(0)
+    const plan = PlanBuilder.build(planAnswersToInput(decoded), EXERCISE_CATALOG)
+    const byId = new Map(EXERCISE_CATALOG.map((e) => [e.id, e]))
+    const pulls = plan.draft.days.flatMap((d) => d.items).map((i) => byId.get(i.exerciseId)!)
+      .filter((e) => profileFor(e).pattern === 'VERTICAL_PULL')
+    expect(pulls.length).toBeGreaterThan(0)
+    expect(pulls.every((e) => (tierOf(e) ?? 'FOUNDATION') === 'FOUNDATION')).toBe(true)
+  })
+  it('preserves zero push-ups and leaves absent old answers unset', () => {
+    const answers = { ...defaultPlanAnswers(), pushUpMax: stepperCountFromValue(0) }
+    expect(decodePlanAnswers(encodePlanAnswers(answers))!.pushUpMax).toBe(0)
+    const old = JSON.parse(encodePlanAnswers(answers))
+    delete old.pushUpMax
+    delete old.pullUpMax
+    const decoded = decodePlanAnswers(JSON.stringify(old))!
+    expect(decoded.pushUpMax).toBeNull()
+    expect(decoded.pullUpMax).toBeNull()
+    expect(stepperCountFromValue(-1)).toBe(0)
+    expect(stepperCountFromValue(2.8)).toBe(2)
+  })
+})
 
 describe('plan builder helpers', () => {
   it('formats scheme text for holds, rep ranges, single reps and empty reps', () => {

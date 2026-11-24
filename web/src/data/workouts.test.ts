@@ -1,15 +1,110 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db, putSession, putSet, type SetRow } from './db';
+import { db, putSession, putSet, type SetRow, type PlanItemRow } from './db';
+import { countsForProgression } from '../domain/set-types';
+import { generateWarmupRamp } from '../domain/warmup-ramp';
 import { FULL_BODY_BEGINNER } from './seed/starter-plans';
 import {
   addExercise, applyPlan, finishSession, getActivePlan, getSets, importSharedPlan, moveSession,
   openSessionNow, recomputeRecords, seedLibrary, setPairWithNext, startSession, stepUp, updateFinishedSet,
   updatePlanDay, updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, withoutDeloadSessions, type PlanDayWithItems,
+  allRecentDoneSets, baselineStatusFor,
 } from './workouts';
 import { exportSharedPlan, parseAndValidateSharedPlan } from '../domain/plan-share';
 
 const pause = () => new Promise((r) => setTimeout(r, 5));
+
+describe('baseline prefill and live status', () => {
+  const row = (sessionId: number, exerciseId = 'bench_press', overrides: Partial<SetRow> = {}): SetRow => ({
+    sessionId, exerciseId, itemPosition: 0, block: 'Main', circuit: false, setIndex: 0, targetLabel: '8-12',
+    reps: 1, seconds: null, weightKg: 100, done: true, isPr: false, restSeconds: 90,
+    note: '', effort: 'FAILURE', setType: 'WORKING', ...overrides,
+  });
+  const session = (epochDay = 100, startedAt = 1000, finishedAt: number | null = 2000) => putSession({
+    title: 'Baseline', planDayId: null, epochDay, startedAt, finishedAt, note: '', debrief: '',
+  });
+  const item = (exerciseId: string, weightKg: number | null = null): PlanItemRow => ({
+    dayId: 1, position: 0, exerciseId, block: 'Main', circuit: false, sets: 3, repsMin: 8,
+    repsMax: 12, seconds: null, weightKg, restSeconds: 90, note: '',
+  });
+
+  it('prefills a new dumbbell exercise after barbell bench, while own history keeps normal progression', async () => {
+    const old = await session();
+    await putSet(row(old));
+    const sid = await startSession(null);
+    await addExercise(sid, 'db_bench_press');
+    expect((await getSets(sid)).filter(countsForProgression).every((s) => s.weightKg === 25)).toBe(true);
+    await db.sessions.update(sid, { finishedAt: 3000 });
+    const historySession = await session(101);
+    await putSet(row(historySession, 'db_bench_press', { weightKg: 17.5, reps: 8, effort: 'HARD' }));
+    const next = await startSession(null);
+    await addExercise(next, 'db_bench_press');
+    const sets = (await getSets(next)).filter(countsForProgression);
+    expect(sets.length).toBeGreaterThan(0);
+    expect(sets.every((s) => s.weightKg === 17.5)).toBe(true);
+  });
+
+  it('orders donors by workout date/start/setIndex, excluding open and unticked sets and capping at 4000', async () => {
+    const newest = await session(200, 2000);
+    const olderStart = await session(200, 1000);
+    const backdated = await session(100, 9000);
+    const open = await session(300, 10000, null);
+    await db.sets.bulkAdd([
+      row(newest, 'bench_press', { setIndex: 2 }), row(newest, 'bench_press', { setIndex: 1 }),
+      row(olderStart), row(backdated, 'chest_press_machine', { weightKg: 200 }),
+      row(open), row(newest, 'bench_press', { done: false }),
+    ]);
+    expect((await allRecentDoneSets()).map((s) => [s.sessionId, s.setIndex])).toEqual([
+      [newest, 1], [newest, 2], [olderStart, 0], [backdated, 0],
+    ]);
+    await addExercise(open, 'db_bench_press');
+    expect((await getSets(open)).filter((s) => s.exerciseId === 'db_bench_press').every((s) => s.weightKg === 25)).toBe(true);
+    await db.sets.bulkAdd(Array.from({ length: 4000 }, (_, i) => row(newest, 'bench_press', { setIndex: i + 3 })));
+    const capped = await allRecentDoneSets();
+    expect(capped).toHaveLength(4000);
+    expect(capped.every((s) => s.sessionId === newest)).toBe(true);
+    expect(capped.at(-1)!.setIndex).toBe(4000);
+  });
+
+  it('applies estimated load before generating the unchanged warm-up ramp', async () => {
+    await putSet(row(await session()));
+    const day: PlanDayWithItems = {
+      day: { id: 1, planId: 1, dayOfWeek: 1, title: 'Push', isRest: false, note: '' },
+      items: [{ ...item('incline_bench_press'), autoWarmup: true }],
+    };
+    const sets = await getSets(await startSession(day));
+    const working = sets.filter(countsForProgression);
+    expect(working).toHaveLength(3);
+    expect(working.every((s) => s.weightKg === 65)).toBe(true);
+    expect(sets.filter((s) => s.setType === 'WARMUP').map((s) => s.weightKg))
+      .toEqual(generateWarmupRamp(65, 'KG', 20).map((s) => s.weightKg));
+  });
+
+  it('resolveBaselineStatusReportsCalibratedEstimatedAndNone (Android parity)', async () => {
+    const old = await session();
+    const donor = row(old);
+    await putSet(donor);
+    const bench = await db.exercises.get('bench_press');
+    const dumbbell = await db.exercises.get('db_bench_press');
+    const own = [row(20, 'db_bench_press', { weightKg: 25, done: false })];
+    expect(await baselineStatusFor(bench, null, [], [donor])).toBe('CALIBRATED');
+    expect(await baselineStatusFor(dumbbell, item('db_bench_press', 0), own, [])).toBe('ESTIMATED');
+    expect(await baselineStatusFor(dumbbell, item('db_bench_press', 20), own, [])).toBe('NONE');
+    expect(await baselineStatusFor(await db.exercises.get('overhead_press'), null, [row(20, 'overhead_press', { weightKg: 0, done: false })], [])).toBe('NONE');
+    expect(await baselineStatusFor(await db.exercises.get('push_up'), null, [row(20, 'push_up', { weightKg: null, done: false })], [])).toBe('NONE');
+    await db.sets.clear();
+    expect(await baselineStatusFor(dumbbell, null, own, [])).toBe('NONE');
+  });
+
+  it('leaves an explicit plan load unchanged', async () => {
+    await putSet(row(await session()));
+    const sets = await getSets(await startSession({
+      day: { id: 1, planId: 1, dayOfWeek: 1, title: 'Push', isRest: false, note: '' },
+      items: [item('db_bench_press', 15)],
+    }));
+    expect(sets.filter(countsForProgression).every((s) => s.weightKg === 15)).toBe(true);
+  });
+});
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()));

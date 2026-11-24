@@ -21,7 +21,7 @@ import {
   DAY_COUNT_OPTIONS, FOCUS_MUSCLES, MINUTE_OPTIONS,
   cardioKey, dayFocusKey, equipmentSetting, experienceKey, goalDescKey, goalKey,
   initialAnswers, injuryKey, localizeBuiltPlan, repPrefKey, restPrefKey,
-  rowSummaries, scheme, swapBuiltPlanItem, whyTagKey,
+  rowSummaries, scheme, swapBuiltPlanItem, whyTagKey, stepperCountFromValue,
 } from './helpers'
 import { weeklyMuscleVolume } from '../../domain/plan-share'
 import './plan-builder.css'
@@ -338,26 +338,28 @@ function YouRow({ a, change }: { a: PlanAnswers; change: (fn: (a: PlanAnswers) =
       />
       <div class="pb-row">
         <span class="pb-row-text">{t('pb_pushups')}</span>
+        {a.pushUpMax != null && <IconButton label={t('cd_remove')} onClick={() => change((it) => ({ ...it, pushUpMax: null }))}><CloseIcon /></IconButton>}
         <Stepper
           label={t('pb_pushups')}
           value={a.pushUpMax ?? 0}
           step={1}
           min={0}
           max={100}
-          format={(v) => (a.pushUpMax != null && v > 0 ? String(v) : '–')}
-          onChange={(v) => change((it) => ({ ...it, pushUpMax: v > 0 ? Math.round(v) : null }))}
+          format={(v) => (a.pushUpMax != null ? String(v) : '–')}
+          onChange={(v) => change((it) => ({ ...it, pushUpMax: stepperCountFromValue(v) }))}
         />
       </div>
       <div class="pb-row">
         <span class="pb-row-text">{t('pb_pullups')}</span>
+        {a.pullUpMax != null && <IconButton label={t('cd_remove')} onClick={() => change((it) => ({ ...it, pullUpMax: null }))}><CloseIcon /></IconButton>}
         <Stepper
           label={t('pb_pullups')}
           value={a.pullUpMax ?? 0}
           step={1}
           min={0}
           max={100}
-          format={(v) => (a.pullUpMax != null && v > 0 ? String(v) : '–')}
-          onChange={(v) => change((it) => ({ ...it, pullUpMax: v > 0 ? Math.round(v) : null }))}
+          format={(v) => (a.pullUpMax != null ? String(v) : '–')}
+          onChange={(v) => change((it) => ({ ...it, pullUpMax: stepperCountFromValue(v) }))}
         />
       </div>
     </>

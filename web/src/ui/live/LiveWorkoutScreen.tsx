@@ -4,7 +4,7 @@ import type { ExerciseRow, PlanItemRow, SessionRow, SetRow } from '../../data/db
 import { configuredEquipment, updateSettings, useSettings, weightUnit } from '../../data/settings'
 import {
   addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishedSessions,
-  finishSession, harderHint, progressionReasonFor, recentDoneSets, recentDoneSetsAll, removeSet,
+  finishSession, harderHint, progressionReasonFor, baselineStatusFor, recentDoneSets, recentDoneSetsAll, removeSet,
   stepUp, swapExercise, trainingDays, updateExercise, updateSet, useActivePlan, useLibrary,
   getSets, useOpenSession, useSets, workoutDebrief, type FinishResult,
 } from '../../data/workouts'
@@ -99,6 +99,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const [previous, setPrevious] = useState<Map<string, SetRow[]>>(new Map())
   const [harder, setHarder] = useState<Map<string, Hint>>(new Map())
   const [reasons, setReasons] = useState<Map<string, ProgressionReason>>(new Map())
+  const [estimated, setEstimated] = useState<Set<string>>(new Set())
   const [newBestId, setNewBestId] = useState<number | null>(null)
   const [showWelcomeBack, setShowWelcomeBack] = useState(false)
   const activePlan = useActivePlan()
@@ -288,6 +289,23 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     return map
   }, [activePlan, session?.planDayId])
   const planItemsRef = useRef(planItemsByPos); planItemsRef.current = planItemsByPos
+
+  useEffect(() => {
+    let live = true
+    if (!session?.id) { setEstimated(new Set()); return }
+    // Worked out when exercises appear (like the reason line), not on every tap: a cold-start check reads all history.
+    const rowsNow = setsRef.current
+    void Promise.all([...new Set(rowsNow.map((s) => s.exerciseId))].map(async (id) => {
+      const ownSets = rowsNow.filter((s) => s.exerciseId === id)
+      const item = planItemsByPos.get(ownSets[0].itemPosition)
+      const recent = await recentDoneSets(id)
+      const status = await baselineStatusFor(exercises.get(id), item?.exerciseId === id ? item : null, ownSets, recent)
+      return [id, status] as const
+    })).then((rows) => {
+      if (live) setEstimated(new Set(rows.filter(([, status]) => status === 'ESTIMATED').map(([id]) => id)))
+    })
+    return () => { live = false }
+  }, [session?.id, sets.map((s) => s.exerciseId).join('|'), exercises.size, planItemsByPos, settings.unit])
 
   const supersetMap = useMemo(() => {
     const map = new Map<number, number | null>()
@@ -821,6 +839,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       prIds={prIds}
       newBestId={newBestId}
       reasons={reasons}
+      estimated={estimated}
       unitFor={unitFor}
       barWeightKg={settings.barWeightKg}
       plateInventory={settings.plateInventory}
@@ -1126,6 +1145,7 @@ type CardProps = {
   prIds: Set<number>
   newBestId: number | null
   reasons: Map<string, ProgressionReason>
+  estimated: Set<string>
   unitFor: (exerciseId: string) => WeightUnit
   barWeightKg: number
   plateInventory: readonly number[]
@@ -1285,6 +1305,7 @@ function GroupCard(p: CardProps) {
               <span class="lw-name">{name(first.exerciseId)}</span>
               <span class="lw-small">{target ? t('live_target', g.sets.length, target) : ex ? [...ex.primary].map((m) => t('muscle_' + m.toLowerCase())).join(' · ') : ''}</span>
               {reason && <span class="lw-small">{t(`rx_why_${reason.toLowerCase()}`)}</span>}
+              {p.estimated.has(first.exerciseId) && <span class="lw-small" title={t('live_baseline_estimated_cd')} aria-label={t('live_baseline_estimated_cd')}>{t('live_baseline_estimated')}</span>}
               {firstCueKey && <span class="lw-small">{t(firstCueKey)}</span>}
               {ex?.setupNote && <span class="lw-setup-note">{t('live41_setup_note_prefix', ex.setupNote)}</span>}
             </button>
@@ -1326,6 +1347,7 @@ function GroupCard(p: CardProps) {
         </div>
         {distinctEx.map((e) => (
           <div key={e.id}>
+            {p.estimated.has(e.id) && <div class="lw-small" title={t('live_baseline_estimated_cd')} aria-label={t('live_baseline_estimated_cd')}>{e.name}: {t('live_baseline_estimated')}</div>}
             {e.setupNote && <div class="lw-setup-note">{`${e.name}: ${e.setupNote}`}</div>}
             <HarderNote ex={e} hint={p.harder.get(e.id)} onStepUp={p.onStepUp} />
             <AdjustmentCue adjustment={p.adjustment} exerciseId={e.id} onUndo={p.onUndoAdjustment} />

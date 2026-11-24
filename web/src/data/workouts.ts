@@ -22,7 +22,8 @@ import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
 import { isDeloadWeek, isLowerBodyExercise, nextPrefill, parseProgressionMode, progressionInputs, type PastSet, type ProgressionReason } from '../domain/progression';
 import { isExtraBlock, pickPrs } from '../domain/pr-picker';
 import { cursorAfterPlanEdit, cursorOnFinish, parseScheduleMode, type ScheduleMode } from '../domain/rotation';
-import { countsForPR, countsForScore } from '../domain/set-types';
+import { countsForPR, countsForScore, countsForProgression } from '../domain/set-types';
+import { coldStart, type BaselineStatus } from '../domain/baseline';
 import { normalizeDaySupersets, safeImportName, setPairWithNext as applyPairWithNext, type SharedPlan } from '../domain/plan-share';
 import { generateWarmupRamp, isHeavyBarbellCompound } from '../domain/warmup-ramp';
 import { scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
@@ -516,6 +517,39 @@ export async function recentDoneSetsAll(exerciseId: string): Promise<SetRow[]> {
   return (await db.sets.where('exerciseId').equals(exerciseId).toArray()).filter((s) => s.done && finished.has(s.sessionId));
 }
 
+/** Done sets from finished workouts, newest workout date/start first, then set order. */
+export async function allRecentDoneSets(): Promise<SetRow[]> {
+  const sessions = new Map((await db.sessions.toArray()).filter((s) => s.finishedAt != null).map((s) => [s.id!, s]));
+  return (await db.sets.toArray()).filter((s) => s.done && sessions.has(s.sessionId)).sort((a, b) => {
+    const sa = sessions.get(a.sessionId)!; const sb = sessions.get(b.sessionId)!;
+    return sb.epochDay - sa.epochDay || sb.startedAt - sa.startedAt || a.setIndex - b.setIndex;
+  }).slice(0, 4000);
+}
+
+async function baselineHistory(): Promise<Map<string, SetRow[]>> {
+  const history = new Map<string, SetRow[]>();
+  for (const set of await allRecentDoneSets()) {
+    const sets = history.get(set.exerciseId);
+    if (sets) sets.push(set);
+    else history.set(set.exerciseId, [set]);
+  }
+  return history;
+}
+
+/** Android resolveBaselineStatus: explicit plan loads and unloaded sets are not estimates. */
+export async function baselineStatusFor(
+  ex: ExerciseRow | undefined, item: PlanItemRow | null, sessionSets: SetRow[], recentFinished: SetRow[],
+): Promise<BaselineStatus> {
+  if (recentFinished.some(countsForProgression)) return 'CALIBRATED';
+  if (!ex || ex.kind !== 'WEIGHTED' || (item?.weightKg ?? 0) > 0) return 'NONE';
+  if (!sessionSets.some((s) => countsForProgression(s) && (s.weightKg ?? 0) > 0)) return 'NONE';
+  const settings = await loadSettings();
+  const history = await baselineHistory();
+  const library = new Map((await db.exercises.toArray()).map((e) => [e.id, e]));
+  const estimate = coldStart(ex, item?.repsMin ?? 8, weightUnit(settings, ex.unitOverride), history, library);
+  return estimate.status === 'ESTIMATED' && estimate.weightKg != null ? 'ESTIMATED' : 'NONE';
+}
+
 /** Starts a workout from a plan day (or an empty quick workout) with sets prefilled from history. Returns the open one if there is one. */
 export async function startSession(day: PlanDayWithItems | null, lighter = false): Promise<number> {
   const open = await openSessionNow();
@@ -540,7 +574,8 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
 /** Today's sets for one exercise from its last two finished workouts, through the Progression rules. */
 async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined, deload = false): Promise<SetRow[]> {
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
-  const input = progressionInputs(item, ex?.id, ex ? await withoutDeloadSessions(await recentDoneSets(ex.id)) : []);
+  const recent = ex ? await recentDoneSets(ex.id) : [];
+  const input = progressionInputs(item, ex?.id, await withoutDeloadSessions(recent));
   const settings = await loadSettings();
   const unit = weightUnit(settings, ex?.unitOverride);
   const result = nextPrefill(
@@ -549,7 +584,14 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
   );
   const base = targetLabel(kind, item);
   const label = result.holdCeilingReached ? [base, HOLD_CEILING_NOTE].filter(Boolean).join(' · ') : base;
-  const firstWorkingKg = result.sets[0]?.weightKg ?? 0;
+  let prefilledSets = result.sets;
+  if (ex && kind === 'WEIGHTED' && !recent.some(countsForProgression) && (item?.weightKg ?? 0) <= 0) {
+    const history = await baselineHistory();
+    const library = new Map((await db.exercises.toArray()).map((e) => [e.id, e]));
+    const estimate = coldStart(ex, item?.repsMin ?? 8, unit, history, library);
+    if (estimate.weightKg != null) prefilledSets = result.sets.map((s) => ({ ...s, weightKg: estimate.weightKg }));
+  }
+  const firstWorkingKg = prefilledSets[0]?.weightKg ?? 0;
   const ramp = item?.autoWarmup && !isExtraBlock(item.block) && kind === 'WEIGHTED'
     ? generateWarmupRamp(firstWorkingKg, unit, settings.barWeightKg)
     : [];
@@ -558,7 +600,7 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
     circuit: item?.circuit ?? false, setIndex: idx, targetLabel: '', reps: r.reps, seconds: null, weightKg: r.weightKg,
     done: false, isPr: false, restSeconds: 0, note: '', effort: '', doneAt: null, setType: 'WARMUP',
   }));
-  const workRows: SetRow[] = result.sets.map((p, i) => ({
+  const workRows: SetRow[] = prefilledSets.map((p, i) => ({
     sessionId, exerciseId: ex?.id ?? item?.exerciseId ?? '', itemPosition: position, block: item?.block ?? 'Main',
     circuit: item?.circuit ?? false, setIndex: ramp.length + i, targetLabel: label, reps: p.reps, seconds: p.seconds, weightKg: p.weightKg,
     done: false, isPr: false, restSeconds: item?.restSeconds ?? 90, note: '', effort: '', doneAt: null, setType: 'WORKING',
