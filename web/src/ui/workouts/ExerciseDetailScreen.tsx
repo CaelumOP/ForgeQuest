@@ -9,6 +9,7 @@ import { EQUIPMENT_LABEL, profileFor } from '../../domain/exercise-swap-engine'
 import { tierOf } from '../../domain/exercise-tiers'
 import type { ExerciseKind } from '../../domain/muscle'
 import { recordScore } from '../../domain/progress'
+import { countsForScore } from '../../domain/set-types'
 import { fromKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
 import { Button, Card, ChipGroup, IconButton, LineChart, Sheet, TextField, toast } from '../kit'
 import { ExerciseMediaPair } from '../kit/ExerciseMediaView'
@@ -81,7 +82,10 @@ export function ExerciseDetailScreen({ param }: { param?: string }) {
   for (const s of sets) if (byId.has(s.sessionId)) groups.set(s.sessionId, [...(groups.get(s.sessionId) ?? []), s])
   const history = [...groups].map(([sid, list]) => ({ session: byId.get(sid)!, sets: list.sort((a, b) => a.setIndex - b.setIndex) }))
     .sort((a, b) => (a.session.finishedAt ?? 0) - (b.session.finishedAt ?? 0))
-  const points = history.map((h) => ({ label: dateText(h.session.epochDay, 'short'), value: metric.value(h.sets) }))
+  const points = history.flatMap((h) => {
+    const scoring = h.sets.filter(countsForScore)
+    return scoring.length ? [{ label: dateText(h.session.epochDay, 'short'), value: metric.value(scoring) }] : []
+  })
   const best = points.length ? Math.max(...points.map((p) => p.value)) : null
   const sec = t('unit_s')
   const tier = tierOf(ex)

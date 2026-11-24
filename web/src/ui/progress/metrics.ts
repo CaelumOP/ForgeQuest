@@ -3,6 +3,7 @@ import { weekStart, todayEpochDay } from '../../domain/dates'
 import type { ExerciseEntity } from '../../domain/entities'
 import type { Muscle } from '../../domain/muscle'
 import { countsForScore } from '../../domain/set-types'
+import { e1rm } from '../../domain/strength'
 
 type VolumeSession = { id?: number; epochDay: number; finishedAt?: number | null }
 type VolumeSet = { sessionId: number; exerciseId: string; done: boolean; setType?: string; block?: string }
@@ -39,11 +40,9 @@ export function weeklyMuscleVolume(
   return totals
 }
 
-/** Epley estimated 1RM. Exact weight when reps === 1; 0 when weight <= 0 or reps <= 0. */
+/** Shared raw-rep estimated 1RM, with exact singles and a logarithmic cap above 12 reps. */
 export function epley1Rm(weight: number, reps: number): number {
-  if (!Number.isFinite(weight) || weight <= 0 || !Number.isFinite(reps) || reps <= 0) return 0
-  if (reps === 1) return weight
-  return weight * (1 + reps / 30)
+  return e1rm(weight, reps)
 }
 
 /** Ratio of estimated 1RM (kg) to body weight (kg), or null when body weight is unavailable. */

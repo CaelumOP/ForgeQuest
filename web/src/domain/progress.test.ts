@@ -298,7 +298,7 @@ describe('web additions', () => {
       targetLabel: '', reps: 10, seconds: null, weightKg: null, done: true, isPr: false, restSeconds: 60, note, effort,
     })
     expect(effectiveSetEffort(set(''), pushUp)).toBe(1)
-    expect(effectiveSetEffort(set('صعب'), pushUp)).toBeCloseTo(1.15, 5)
+    expect(effectiveSetEffort(set('صعب'), pushUp)).toBeCloseTo(1.05, 5)
     expect(effectiveSetEffort(set('سهل'), pushUp)).toBeCloseTo(0.8, 5)
     expect(effectiveSetEffort(set('صعب', 'OK'), pushUp)).toBe(1)
   })
@@ -326,5 +326,38 @@ describe('audit 2026-10-24', () => {
 
   it('a one-day-a-week plan can still reach three misses in a row', () => {
     expect(missedInARow(30, days(6), days(), days(), 0)).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('W1e recovery and records parity', () => {
+  const ex: ExerciseEntity = { id: 'bench_press', name: 'Bench', kind: 'WEIGHTED', primary: ['CHEST'], secondary: ['TRICEPS'] }
+  const set: SetEntity = { id: 1, sessionId: 1, exerciseId: ex.id, itemPosition: 0, block: 'Main', circuit: false, setIndex: 0, targetLabel: '', reps: 6, seconds: null, weightKg: 100, done: true, isPr: false, restSeconds: 60, note: '', effort: '' }
+  it('uses all effort multipliers including blank FAILURE', () => {
+    for (const [effort, expected] of [['', 1], ['OK', 1], ['EASY', 0.8], ['HARD', 1.05], ['FAILURE', 1.25], ['PAIN', 1.15]] as const) {
+      expect(effectiveSetEffort({ ...set, effort }, ex)).toBeCloseTo(expected, 5)
+    }
+    expect(effectiveSetEffort({ ...set, setType: 'FAILURE', effort: ' ' }, ex)).toBeCloseTo(1.25, 5)
+    expect(effectiveSetEffort({ ...set, setType: 'FAILURE', effort: 'EASY' }, ex)).toBeCloseTo(0.8, 5)
+  })
+  it('excludes warm-ups, extra blocks and stretches from session fatigue', () => {
+    for (const change of [{ setType: 'WARMUP' }, { block: 'Warm-up' }, { block: 'Cool-down' }, { exerciseId: 'quad_stretch' }]) {
+      const s = { ...set, ...change }
+      expect(effectiveSetEffort(s, ex)).toBe(0)
+      expect(sessionHits([s], new Map([[s.exerciseId, ex]]), new Map([[1, 100]]))).toEqual([])
+    }
+    expect(effectiveSetEffort(set, { ...ex, id: 'quad_stretch' })).toBe(0)
+  })
+  it('counts loaded singles as half a set and keeps secondary stimulus at half', () => {
+    const single = { ...set, reps: 1 }
+    expect(effectiveSetEffort(single, ex)).toBe(0.5)
+    expect(sessionHits([single], new Map([[ex.id, ex]]), new Map([[1, 100]]))).toEqual([['CHEST', 100, 0.125], ['TRICEPS', 100, 0.0625]])
+    expect(effectiveSetEffort({ ...single, weightKg: 0 }, ex)).toBeCloseTo(0.15, 5)
+  })
+  it('scores exact singles, capped high reps and the no-load fallback', () => {
+    expect(recordScore('WEIGHTED', 1, null, 100)).toBe(100)
+    expect(recordScore('WEIGHTED', 1, null, 15, 'weighted_pull_up')).toBe(15)
+    expect(recordScore('WEIGHTED', 20, null, 60)).toBeCloseTo(60 * (1 + (12 + 3 * Math.log(9)) / 30), 3)
+    expect(recordScore('WEIGHTED', 5, null, 100)).toBeGreaterThan(recordScore('WEIGHTED', 20, null, 60))
+    expect(recordScore('WEIGHTED', 10, null, 0)).toBeCloseTo(0.1, 5)
   })
 })

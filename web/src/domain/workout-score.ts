@@ -3,11 +3,11 @@
 // Rule v2: docs/math/workout-score.md.
 import type { SessionEntity, SetEntity } from './entities'
 import type { ExerciseKind } from './muscle'
-import { parseEffort } from './effort'
+import { effortOf } from './effort'
 import { recordScore, welcomeBack, type DayTag } from './progress'
 import { countsForPR, countsForScore } from './set-types'
 
-type Done = Pick<SetEntity, 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort'> & { block?: string; setType?: string }
+type Done = Pick<SetEntity, 'reps' | 'seconds' | 'weightKg' | 'isPr' | 'effort'> & { block?: string; setType?: string; note?: string }
 export type Trend = 'UP' | 'SAME' | 'DOWN'
 
 /** The block name the starter plans give warm-ups (the stored value, not the translated label). */
@@ -110,7 +110,7 @@ export function computeWorkoutScore(
 ): WorkoutScoreResult {
   const working = work.map((w) => ({ ...w, done: w.done.filter((s) => countsForScore(s)), last: w.last.filter((s) => countsForScore(s)) }))
   const sets = working.flatMap((w) => w.done)
-  const pain = new Set(working.filter((w) => w.done.some((s) => parseEffort(s.effort) === 'PAIN')).map((w) => w.exerciseId))
+  const pain = new Set(working.filter((w) => w.done.some((s) => effortOf(s.effort, s.note ?? '') === 'PAIN')).map((w) => w.exerciseId))
   const rough = pain.size > 0
   const planned = plannedSets != null && plannedSets > 0 ? plannedSets : null
   // ceil(0.67 × planned) in whole numbers, so 0.67 × 100 can't round up to 68.

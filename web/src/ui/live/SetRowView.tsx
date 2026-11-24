@@ -181,7 +181,7 @@ export function SetRowView(p: SetRowProps) {
           {p.previous && <span class="lw-small">{t('live_last_time', previousText(p.previous, kind, unit))}</span>}
           <span class="lw-small">
             {set.targetLabel && p.sublabel != null && <span>{set.targetLabel} </span>}
-            {set.isPr && <span class="lw-pr">{t('live_pr')}</span>}
+            {set.done && (set.isPr || p.pr) && <span class="lw-pr">{t('live_pr')}</span>}
             {set.effort !== '' && effort !== 'OK' && <span class={`lw-effort lw-effort-${accentOf(effort)}`}> {t(EFFORT_KEY[effort])}</span>}
           </span>
           {set.note && <span class="lw-note">{set.note}</span>}

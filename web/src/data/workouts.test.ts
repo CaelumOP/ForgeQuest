@@ -405,7 +405,7 @@ describe('WP4 plan41 rules (rotation, supersets, autoWarmup, linear/maintain, sh
     const sets = (await getSets(sid)).filter((s) => s.exerciseId === 'bench_press').sort((a, b) => a.setIndex - b.setIndex);
     const warmups = sets.filter((s) => (s.setType ?? 'WORKING') === 'WARMUP');
     const workings = sets.filter((s) => (s.setType ?? 'WORKING') === 'WORKING');
-    expect(warmups.map((s) => s.weightKg)).toEqual([30, 42.5, 50]); // 50/70/85% of 60 kg
+    expect(warmups.map((s) => s.weightKg)).toEqual([20, 30, 42.5, 50]); // empty bar then 50/70/85% of 60 kg
     expect(warmups[warmups.length - 1].setIndex).toBeLessThan(workings[0].setIndex);
     expect(workings).toHaveLength(3);
 
@@ -550,10 +550,11 @@ describe('v4.2 audit fixes (stepUp done-set guard & autoTicked PR exclusion)', (
     expect(after1.find((s) => s.autoTicked)?.isPr).toBe(false);
     expect(after2[0].isPr).toBe(true);
 
-    // Even editing the autoTicked set itself keeps it ineligible for PR
+    // Editing the load confirms an auto-ticked set and makes it eligible for future comparisons
     await updateFinishedSet({ ...after1[1], weightKg: 120 });
     const afterEditAuto = await getSets(s1);
-    expect(afterEditAuto[1].autoTicked).toBe(true);
-    expect(afterEditAuto[1].isPr).toBe(false);
+    expect(afterEditAuto[1].autoTicked).toBe(false);
+    expect(afterEditAuto[1].isPr).toBe(false); // first session still never earns a PR
+    expect((await getSets(s2))[0].isPr).toBe(false);
   });
 });

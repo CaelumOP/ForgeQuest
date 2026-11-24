@@ -101,7 +101,7 @@ export function HistoryScreen(_: { param?: string }) {
           const expanded = open[w.start] ?? index === 0
           const sets = w.sessions.flatMap((s) => bySession.get(s.id!) ?? [])
           const minutes = w.sessions.reduce((a, s) => a + (minutesOf(s) ?? 0), 0)
-          const volume = sets.reduce((a, s) => a + (s.weightKg ?? 0) * (s.reps ?? 0), 0)
+          const volume = sets.filter(countsAsWorkingSet).reduce((a, s) => a + (s.weightKg ?? 0) * (s.reps ?? 0), 0)
           const prs = sets.filter((s) => s.isPr).length
           const title = w.start === thisWeek ? t('journal_this_week')
             : w.start === thisWeek - 7 ? t('journal_last_week')

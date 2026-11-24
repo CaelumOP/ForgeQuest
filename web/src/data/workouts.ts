@@ -26,6 +26,7 @@ import { countsForPR, countsForScore, countsForProgression } from '../domain/set
 import { coldStart, type BaselineStatus } from '../domain/baseline';
 import { normalizeDaySupersets, safeImportName, setPairWithNext as applyPairWithNext, type SharedPlan } from '../domain/plan-share';
 import { generateWarmupRamp, isHeavyBarbellCompound } from '../domain/warmup-ramp';
+import { isBarbellExercise } from '../domain/plate-math';
 import { scoresForSessions, type WorkoutScoreResult } from '../domain/workout-score';
 
 export type PlanDayWithItems = { day: PlanDayRow; items: PlanItemRow[] };
@@ -416,7 +417,7 @@ export async function addPlanItem(dayId: number, exerciseId: string): Promise<vo
     await db.planItems.add({
       dayId, position: existing.reduce((m, i) => Math.max(m, i.position), -1) + 1, exerciseId, block: 'Main', circuit: false,
       sets: 3, repsMin: ex.kind === 'HOLD' ? null : 10, repsMax: null, seconds: ex.kind === 'HOLD' ? 30 : null,
-      weightKg: ex.kind === 'WEIGHTED' ? 0 : null, restSeconds: 90, note: '',
+      weightKg: ex.kind === 'WEIGHTED' ? 0 : null, restSeconds: 90, note: '', autoWarmup: isHeavyBarbellCompound(ex),
     });
     const day = await db.planDays.get(dayId);
     const workoutFallback = getLang() === 'ar' ? 'تمرين' : 'Workout';
@@ -593,7 +594,7 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
   }
   const firstWorkingKg = prefilledSets[0]?.weightKg ?? 0;
   const ramp = item?.autoWarmup && !isExtraBlock(item.block) && kind === 'WEIGHTED'
-    ? generateWarmupRamp(firstWorkingKg, unit, settings.barWeightKg)
+    ? generateWarmupRamp(firstWorkingKg, unit, settings.barWeightKg, isBarbellExercise(ex))
     : [];
   const warmupRows: SetRow[] = ramp.map((r, idx) => ({
     sessionId, exerciseId: ex?.id ?? item?.exerciseId ?? '', itemPosition: position, block: item?.block ?? 'Main',
@@ -871,7 +872,9 @@ export const useWorkoutScores = (): Map<number, WorkoutScoreResult> => useLive(a
 
 /** Edits a set of a finished workout and re-checks which sets of that exercise are records. */
 export async function updateFinishedSet(set: SetRow): Promise<void> {
-  await putSet(set);
+  const previous = set.id == null ? undefined : await db.sets.get(set.id);
+  const numbersChanged = previous && (previous.reps !== set.reps || previous.seconds !== set.seconds || previous.weightKg !== set.weightKg);
+  await putSet(numbersChanged ? { ...set, autoTicked: false } : set);
   await recomputeRecords(set.exerciseId);
 }
 

@@ -2,6 +2,9 @@
 // Kotlin uses 32-bit Float for recovery and record scores, so those go through Math.fround.
 import { dayOfWeek, weekStart } from './dates'
 import { effortOf } from './effort'
+import { e1rm } from './strength'
+import { countsAsWorkingSet } from './set-types'
+import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity, SetEntity } from './entities'
 import type { ExerciseKind, Muscle } from './muscle'
 
@@ -282,7 +285,7 @@ const HIGH_SKILL_LOW_REP_IDS = new Set([
 /**
  * Converts a session's completed sets into per-muscle stimulus weights in (0, 1]:
  * one full working set (10 reps or a 30 s hold) is 0.25 on each primary muscle, half that on secondary ones,
- * 4+ sets is 1.0 (48 h). Warm-up sets count a quarter. Stimulus below 0.02 is dropped.
+ * 4+ sets is 1.0 (48 h). Warm-ups and stretches are excluded. Stimulus below 0.02 is dropped.
  */
 export function sessionHits(
   sets: readonly SetEntity[],
@@ -321,6 +324,7 @@ export function sessionHits(
 
 /** Working-set equivalent for one logged set: a full working set is 1.0, one bodyweight rep 0.10. */
 export function effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): number {
+  if (!countsAsWorkingSet(set) || STRETCH_IDS.has(ex.id) || STRETCH_IDS.has(set.exerciseId)) return 0
   let rawEffort: number
   if (ex.kind === 'HOLD') {
     const sec = set.seconds ?? 0
@@ -330,9 +334,9 @@ export function effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): number {
   } else if (ex.kind === 'WEIGHTED') {
     const r = set.reps ?? 0
     if (r <= 0) return 0
-    // With external load, 6 reps already count as a full working set (10 without); a heavy triple counts half.
+    // With external load, 6 reps count as a full working set and a loaded single counts at least half.
     const refReps = (set.weightKg ?? 0) > 0 ? 6 : 10
-    rawEffort = clamp(f(r / refReps), f(0.15), 1.25)
+    rawEffort = clamp(f(r / refReps), (set.weightKg ?? 0) > 0 ? 0.5 : f(0.15), 1.25)
   } else {
     const r = set.reps ?? 0
     if (r <= 0) return 0
@@ -340,9 +344,8 @@ export function effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): number {
     rawEffort = clamp(f(r / refReps), f(0.08), 1.25)
   }
   const blockFactor = set.block.toLowerCase() === 'warm-up' || ex.id === 'jumping_jacks' ? 0.25 : 1.0
-  // web: audit #8 (Android reads notes with its own word list here; the web uses the one in effort.ts)
-  const effort = effortOf(set.effort, set.note)
-  const rpeFactor = effort === 'HARD' || effort === 'PAIN' ? f(1.15) : effort === 'EASY' ? f(0.8) : 1.0
+  const effort = !set.effort.trim() && set.setType === 'FAILURE' ? 'FAILURE' : effortOf(set.effort, set.note)
+  const rpeFactor = f({ EASY: 0.8, OK: 1, HARD: 1.05, FAILURE: 1.25, PAIN: 1.15 }[effort])
   return clamp(f(f(rawEffort * blockFactor) * rpeFactor), 0, f(1.35))
 }
 
@@ -400,8 +403,7 @@ export function recordScore(kind: ExerciseKind, reps: number | null, seconds: nu
   if (r === 0) return 0
   const body = f(REFERENCE_BODY_KG * (BODY_SHARE[exerciseId] ?? 0))
   if (extraKg <= 0 && body <= 0) return f(r / 100)
-  const effectiveReps = r <= 12 ? r : f(12 + f(3 * f(Math.log(f(1 + (r - 12))))))
-  return f(f(f(body + extraKg) * f(1 + f(effectiveReps / 30))) - body)
+  return f(e1rm(f(body + extraKg), r) - body)
 }
 
 /**

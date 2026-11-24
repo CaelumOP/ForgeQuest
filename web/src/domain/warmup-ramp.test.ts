@@ -21,15 +21,15 @@ describe('WarmupRamp', () => {
 
   it('generates 50% / 70% / 85% ramp sets rounded to kg plate steps', () => {
     const sets = generateWarmupRamp(100, 'KG', 20);
-    expect(sets).toHaveLength(3);
-    expect(sets.map((s) => s.weightKg)).toEqual([50, 70, 85]);
-    expect(sets.map((s) => s.reps)).toEqual([8, 5, 3]);
+    expect(sets).toHaveLength(4);
+    expect(sets.map((s) => s.weightKg)).toEqual([20, 50, 70, 85]);
+    expect(sets.map((s) => s.reps)).toEqual([10, 8, 5, 3]);
   });
 
   it('rounds to 5 lb plate steps and floors at bar weight in LB', () => {
     const sets = generateWarmupRamp(toKg('LB', 225), 'LB', 20);
-    expect(sets).toHaveLength(3);
-    expect(sets.map((s) => Math.round(fromKg('LB', s.weightKg)))).toEqual([115, 160, 190]);
+    expect(sets).toHaveLength(4);
+    expect(sets.map((s) => Math.round(fromKg('LB', s.weightKg)))).toEqual([45, 115, 160, 190]);
   });
 
   it('deduplicates ramp steps above the bar and returns empty at/below bar weight', () => {
@@ -46,4 +46,25 @@ describe('WarmupRamp', () => {
     expect(generateWarmupRamp(22.5, 'KG', 20).map((s) => s.weightKg)).toEqual([20, 20]);
     expect(generateWarmupRamp(Number.NaN)).toEqual([]);
   });
+});
+
+it('uses one load step as the non-barbell floor', () => {
+  const ramp = generateWarmupRamp(20, 'KG', 20, false);
+  expect(ramp.map((s) => s.weightKg)).toEqual([10, 15, 17.5]);
+  expect(ramp.map((s) => s.reps)).toEqual([8, 5, 3]);
+  expect(generateWarmupRamp(2.5, 'KG', 20, false)).toEqual([]);
+});
+it('prepends the empty bar at three times bar weight only', () => {
+  const ramp = generateWarmupRamp(60, 'KG', 20, true);
+  expect(ramp.map((s) => s.weightKg)).toEqual([20, 30, 42.5, 50]);
+  expect(ramp.map((s) => s.reps)).toEqual([10, 8, 5, 3]);
+  expect(generateWarmupRamp(40).map((s) => s.reps)).toEqual([8, 5, 3]);
+  expect(generateWarmupRamp(15)).toEqual([]);
+});
+it('snaps barbell and dumbbell ramps in pounds', () => {
+  const bar = generateWarmupRamp(toKg('LB', 135), 'LB', toKg('LB', 45), true);
+  expect(bar.map((s) => fromKg('LB', s.weightKg))).toEqual([45, 70, 95, 115]);
+  expect(bar.map((s) => s.reps)).toEqual([10, 8, 5, 3]);
+  const db = generateWarmupRamp(toKg('LB', 30), 'LB', 20, false);
+  expect(db.map((s) => fromKg('LB', s.weightKg))).toEqual([15, 20, 25]);
 });

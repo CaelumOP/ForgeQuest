@@ -37,26 +37,29 @@ export function isHeavyBarbellCompound(ex: ExerciseEntity | null | undefined): b
 
 const snap = (value: number, step: number): number => f(Math.round(f(value / step)) * step);
 
-/**
- * Generates 2–3 ramp sets below `workingWeightKg`, rounded to `unit` plate steps (2.5 kg / 5 lb)
- * and floored at `barWeightKg` (default 20 kg). Returns [] when working weight is missing or at/below the bar.
- */
+/** Ramps below working weight: barbell floor + empty bar at 3x bar; other lifts floor at one load step. */
 export function generateWarmupRamp(
   workingWeightKg: number,
   unit: WeightUnit = 'KG',
   barWeightKg = 20,
+  isBarbell = true,
 ): RampSet[] {
   if (!Number.isFinite(workingWeightKg) || workingWeightKg <= 0) return [];
   const step = loadStep(unit);
   const workingDisplay = fromKg(unit, workingWeightKg);
   const rawBar = Number.isFinite(barWeightKg) && barWeightKg > 0 ? barWeightKg : 20;
   const barDisplay = Math.max(snap(fromKg(unit, rawBar), step), step);
-  if (workingDisplay <= barDisplay + 0.01) return [];
+  const floorDisplay = isBarbell ? barDisplay : step;
+  if (workingDisplay <= floorDisplay + 0.01) return [];
 
   const out: RampSet[] = [];
   let lastDisplay = -1;
+  if (isBarbell && workingDisplay >= 3 * barDisplay - 0.01) {
+    lastDisplay = barDisplay;
+    out.push({ weightKg: toKg(unit, barDisplay), reps: 10 });
+  }
   for (const [pct, reps] of RAMP_STEPS) {
-    const targetDisplay = Math.max(snap(f(workingDisplay * pct), step), barDisplay);
+    const targetDisplay = Math.max(snap(f(workingDisplay * pct), step), floorDisplay);
     if (targetDisplay >= workingDisplay - 0.01) continue;
     if (Math.abs(targetDisplay - lastDisplay) < 0.01) continue;
     lastDisplay = targetDisplay;

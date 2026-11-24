@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { computeWorkoutScore, scoresForSessions, trend, trendStats, type ScoreWork } from './workout-score'
 import type { DayTag } from './progress'
 
-type S = { reps: number; seconds: number | null; weightKg: number | null; isPr: boolean; effort: string; block: string }
+type S = { reps: number; seconds: number | null; weightKg: number | null; isPr: boolean; effort: string; block: string; note?: string }
 const set = (reps: number, weightKg: number | null = null, extra: Partial<S> = {}): S =>
   ({ reps, seconds: null, weightKg, isPr: false, effort: '', block: 'Main', ...extra })
 const sets = (n: number, reps: number, kg: number | null, extra: Partial<S> = {}) => Array.from({ length: n }, () => set(reps, kg, extra))
@@ -148,4 +148,11 @@ describe('scoresForSessions', () => {
     expect(withExtras.prs).toBe(0)
     expect(withExtras.score).toBe(8)
   })
+})
+
+it('recognizes legacy pain notes while respecting negations and explicit chips', () => {
+  const run = (extra: Partial<S>) => score([work([set(8, 40, extra)], sets(3, 8, 50)), ...many(same, 3)], 12)
+  expect(run({ note: 'shoulder pain' })).toMatchObject({ score: 8, rough: true })
+  expect(run({ note: 'no pain' }).rough).toBe(false)
+  expect(run({ note: 'shoulder pain', effort: 'OK' }).rough).toBe(false)
 })
