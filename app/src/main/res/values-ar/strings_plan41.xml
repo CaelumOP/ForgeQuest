@@ -64,4 +64,8 @@
     <string name="plan_audit_junk_volume">%1$s: %2$d مجموعة في %3$s (أكثر من %4$d)</string>
     <string name="plan_audit_recovery_overlap">%1$s: %2$d+ مجموعات في يومين متتاليين</string>
     <string name="plan_audit_day_fallback">اليوم %1$d</string>
+    <string name="plan_audit_show_all">عرض الكل (%1$d)</string>
+    <string name="plan_audit_show_less">عرض أقل</string>
+    <string name="cd_audit_warning">تحذير</string>
+    <string name="cd_audit_info">ملاحظة</string>
 </resources>

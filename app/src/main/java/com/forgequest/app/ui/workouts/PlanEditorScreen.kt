@@ -43,7 +43,9 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Warning
 import com.forgequest.app.ui.components.EmptyState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,6 +75,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.border
 import com.forgequest.app.ui.theme.ForgeMotion
@@ -87,8 +90,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -132,6 +137,7 @@ import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeQuestTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -1163,29 +1169,54 @@ internal fun WeeklyVolumeChips(volume: List<PlanShare.MuscleSets>, limit: Int = 
     }
 }
 
+private const val AUDIT_MAX_VISIBLE = 4
+
 @Composable
-internal fun RoutineAuditCard(findings: List<RoutineAuditor.Finding>) {
+internal fun RoutineAuditCard(findings: List<RoutineAuditor.Finding>, modifier: Modifier = Modifier) {
+    if (findings.isEmpty()) return
     val c = Fit.colors
-    FitCard(Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.plan_audit_title), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
-            findings.forEach { finding ->
-                val warnColor = when (finding.kind) {
-                    RoutineAuditor.Kind.ABOVE_MRV,
-                    RoutineAuditor.Kind.RECOVERY_OVERLAP,
-                    RoutineAuditor.Kind.JUNK_VOLUME,
-                    -> c.coral
-                    RoutineAuditor.Kind.PUSH_PULL,
-                    RoutineAuditor.Kind.BELOW_MEV,
-                    RoutineAuditor.Kind.ISOLATION_FIRST,
-                    -> c.gold
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(warnColor))
+    var expanded by rememberSaveable(findings.size) { mutableStateOf(false) }
+    val visible = if (expanded || findings.size <= AUDIT_MAX_VISIBLE) findings else findings.take(AUDIT_MAX_VISIBLE)
+    FitCard(modifier.fillMaxWidth().animateContentSize(spatialSpec())) {
+        Column(verticalArrangement = Arrangement.spacedBy(ForgeSpace.Xs)) {
+            Text(
+                stringResource(R.string.plan_audit_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = c.textPrimary,
+                modifier = Modifier.semantics { heading() },
+            )
+            visible.forEach { finding ->
+                val isWarning = finding.kind == RoutineAuditor.Kind.ABOVE_MRV ||
+                    finding.kind == RoutineAuditor.Kind.RECOVERY_OVERLAP ||
+                    finding.kind == RoutineAuditor.Kind.JUNK_VOLUME
+                Row(
+                    Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(ForgeSpace.Xs),
+                ) {
+                    Icon(
+                        imageVector = if (isWarning) Icons.Rounded.Warning else Icons.Rounded.Info,
+                        contentDescription = stringResource(if (isWarning) R.string.cd_audit_warning else R.string.cd_audit_info),
+                        tint = if (isWarning) c.coral else c.textSecondary,
+                        modifier = Modifier.padding(top = 2.dp).size(18.dp),
+                    )
                     Text(
                         auditFindingText(finding),
                         style = MaterialTheme.typography.bodySmall,
                         color = c.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            if (findings.size > AUDIT_MAX_VISIBLE) {
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        if (expanded) stringResource(R.string.plan_audit_show_less)
+                        else stringResource(R.string.plan_audit_show_all, findings.size),
+                        color = c.teal,
                     )
                 }
             }
@@ -1276,5 +1307,34 @@ private fun EditorDayStrip(selectedDay: Int, onSelect: (Int) -> Unit) {
         ) { chips() }
     } else {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { chips() }
+    }
+}
+
+@Preview(name = "Routine audit empty")
+@Composable
+private fun RoutineAuditEmptyPreview() {
+    ForgeQuestTheme(dark = true) {
+        Box(Modifier.background(Fit.colors.background).padding(ForgeSpace.Md)) {
+            RoutineAuditCard(emptyList())
+        }
+    }
+}
+
+@Preview(name = "Routine audit mixed findings")
+@Composable
+private fun RoutineAuditMixedPreview() {
+    ForgeQuestTheme(dark = true) {
+        Box(Modifier.background(Fit.colors.background).padding(ForgeSpace.Md)) {
+            RoutineAuditCard(
+                listOf(
+                    RoutineAuditor.Finding(RoutineAuditor.Kind.ABOVE_MRV, Muscle.CHEST, value = 24.0, limit = 22.0),
+                    RoutineAuditor.Finding(RoutineAuditor.Kind.RECOVERY_OVERLAP, Muscle.UPPER_BACK, dayIndex = 1, value = 8.0, limit = 6.0, dayOfWeek = 2),
+                    RoutineAuditor.Finding(RoutineAuditor.Kind.JUNK_VOLUME, Muscle.QUADS, dayIndex = 2, value = 12.0, limit = 10.0, dayOfWeek = 3),
+                    RoutineAuditor.Finding(RoutineAuditor.Kind.PUSH_PULL, value = 18.0, limit = 10.0),
+                    RoutineAuditor.Finding(RoutineAuditor.Kind.BELOW_MEV, Muscle.HAMSTRINGS, value = 4.0, limit = 6.0),
+                    RoutineAuditor.Finding(RoutineAuditor.Kind.ISOLATION_FIRST, Muscle.CHEST, dayIndex = 0, value = 1.0, limit = 0.0, dayOfWeek = 1),
+                ),
+            )
+        }
     }
 }

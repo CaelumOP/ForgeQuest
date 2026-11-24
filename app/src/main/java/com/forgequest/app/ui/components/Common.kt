@@ -253,17 +253,22 @@ fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     Surface(
         onClick = onClick,
         shape = ForgeShape.Full,
-        modifier = modifier.semantics { this.selected = selected },
+        modifier = modifier.heightIn(min = 48.dp).semantics { this.selected = selected },
         color = if (selected) accent else c.cardHigh,
         contentColor = if (selected) (if (accent == c.teal) c.onTeal else c.background) else c.textPrimary,
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
-            maxLines = 1,
-            textAlign = TextAlign.Center,
-        )
+        Box(
+            Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -390,7 +395,7 @@ fun Stepper(
             Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.cd_decrease, spokenValue), tint = c.textSecondary, modifier = Modifier.size(22.dp))
         }
         Box(
-            Modifier.heightIn(min = 40.dp).widthIn(min = minValueWidth)
+            Modifier.heightIn(min = 48.dp).widthIn(min = minValueWidth)
                 // TalkBack hears the value ("82.5 kg") as the control's state, once.
                 .semantics(mergeDescendants = true) { stateDescription = spokenValue; valueSemantics?.invoke(this) }
                 .let { if (onValueClick != null) it.clip(ForgeShape.Sm).clickable(onClick = onValueClick, role = Role.Button, onClickLabel = typeLabel) else it }

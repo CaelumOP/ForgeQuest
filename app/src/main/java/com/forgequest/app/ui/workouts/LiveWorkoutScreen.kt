@@ -7,6 +7,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -22,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +50,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -74,9 +81,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -86,6 +96,7 @@ import com.forgequest.app.R
 import com.forgequest.app.container
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.domain.BaselineStatus
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.SetEffort
@@ -103,7 +114,10 @@ import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.exerciseCues
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.ForgeSpace
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import com.forgequest.app.ui.theme.itemMotion
 import com.forgequest.app.ui.theme.tabular
 import java.util.Locale
@@ -971,6 +985,7 @@ internal fun StraightCard(
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
     val reasons by vm.reasons.collectAsState()
+    val baselineStatuses by vm.baselineStatus.collectAsState()
     val settings by vm.settings.collectAsState()
     var menu by remember { mutableStateOf(false) }
     val exUnit = settings.weightUnitFor(ex?.unitOverride.orEmpty())
@@ -994,6 +1009,7 @@ internal fun StraightCard(
                         )
                     }
                 }
+                BaselineStatusLine(baselineStatuses[g.sets.first().exerciseId])
             }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary) }
@@ -1067,37 +1083,99 @@ internal fun HarderNote(ex: ExerciseEntity, vm: LiveWorkoutViewModel) {
     }
 }
 
+/** Short badge under an exercise header when its starting weight was estimated from a similar lift. */
+@Composable
+internal fun BaselineStatusLine(status: BaselineStatus?, exerciseName: String? = null) {
+    if (status != BaselineStatus.ESTIMATED) return
+    val c = Fit.colors
+    val shortLabel = stringResource(R.string.live_baseline_estimated)
+    val label = if (exerciseName != null) "$exerciseName · $shortLabel" else shortLabel
+    val cd = stringResource(R.string.live_baseline_estimated_cd)
+    Row(
+        Modifier
+            .padding(top = ForgeSpace.Xxs)
+            .clip(ForgeShape.Full)
+            .background(c.cardHigh)
+            .padding(horizontal = ForgeSpace.Xs, vertical = ForgeSpace.Xxs)
+            .semantics(mergeDescendants = true) { contentDescription = cd },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Info, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(ForgeSpace.Xxs))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = c.textSecondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 /** One-line cue under an exercise card header after an intra-session adjustment, with an Undo action. */
 @Composable
 internal fun AdjustmentCue(exerciseId: String, vm: LiveWorkoutViewModel) {
-    val c = Fit.colors
     val adj by vm.adjustment.collectAsState()
-    val current = adj?.takeIf { it.exerciseId == exerciseId } ?: return
-    val text = when {
-        current.percent != null -> stringResource(R.string.live_adjusted_load, current.percent)
-        current.reps != null -> stringResource(R.string.live_adjusted_reps, current.reps)
-        current.seconds != null -> stringResource(R.string.live_adjusted_seconds, current.seconds)
-        else -> return
-    }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, end = 8.dp)
-            .clip(ForgeShape.Sm)
-            .background(c.goldTrack)
-            .padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    AdjustmentCueContent(
+        adjustment = adj?.takeIf { it.exerciseId == exerciseId },
+        onUndo = vm::undoAdjustment,
+    )
+}
+
+@Composable
+internal fun AdjustmentCueContent(adjustment: LiveAdjustment?, onUndo: () -> Unit) {
+    val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    val shown = remember { mutableStateOf(adjustment) }
+    if (adjustment != null) shown.value = adjustment
+    AnimatedVisibility(
+        visible = adjustment != null,
+        enter = fadeIn(ForgeMotion.effects(reduced)) +
+            expandVertically(ForgeMotion.spatial(reduced, visibilityThreshold = IntSize.VisibilityThreshold)),
+        exit = fadeOut(ForgeMotion.effects(reduced)) +
+            shrinkVertically(ForgeMotion.spatial(reduced, visibilityThreshold = IntSize.VisibilityThreshold)),
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall,
-            color = c.textPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = vm::undoAdjustment) {
-            Text(stringResource(R.string.live_adjust_undo), color = c.gold)
+        val current = shown.value ?: return@AnimatedVisibility
+        val text = when {
+            current.percent != null -> stringResource(R.string.live_adjusted_load, current.percent)
+            current.reps != null -> stringResource(R.string.live_adjusted_reps, current.reps)
+            current.seconds != null -> stringResource(R.string.live_adjusted_seconds, current.seconds)
+            else -> return@AnimatedVisibility
+        }
+        val undoCd = stringResource(R.string.cd_undo_adjustment)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = ForgeSpace.Xs, end = ForgeSpace.Xs)
+                .clip(ForgeShape.Sm)
+                .background(c.tealTrack)
+                .padding(start = ForgeSpace.Sm, end = ForgeSpace.Xxs, top = ForgeSpace.Xxs, bottom = ForgeSpace.Xxs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                Modifier
+                    .weight(1f)
+                    .semantics(mergeDescendants = true) { contentDescription = text },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.Tune, contentDescription = null, tint = c.teal, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(ForgeSpace.Xs))
+                Text(
+                    text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.textPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TextButton(
+                onClick = onUndo,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = undoCd },
+            ) {
+                Text(stringResource(R.string.live_adjust_undo), color = c.teal, maxLines = 1)
+            }
         }
     }
 }
@@ -1116,6 +1194,7 @@ internal fun CircuitCard(
 ) {
     val c = Fit.colors
     val settings by vm.settings.collectAsState()
+    val baselineStatuses by vm.baselineStatus.collectAsState()
     val isSuperset = g.supersetGroup != null
     val letter = supersetLetter ?: "A"
     val posLabel = remember(g.positions, letter, isSuperset) {
@@ -1152,6 +1231,10 @@ internal fun CircuitCard(
                     Text("${ex.name}: ${ex.setupNote}", style = MaterialTheme.typography.labelSmall, color = c.blue)
                 }
             }
+            BaselineStatusLine(
+                baselineStatuses[ex.id],
+                exerciseName = if (distinctEx.size > 1) ex.name else null,
+            )
             HarderNote(ex, vm)
             AdjustmentCue(ex.id, vm)
         }

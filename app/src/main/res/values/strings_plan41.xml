@@ -60,4 +60,8 @@
     <string name="plan_audit_junk_volume">%1$s: %2$d sets on %3$s (over %4$d)</string>
     <string name="plan_audit_recovery_overlap">%1$s: %2$d+ sets on back-to-back days</string>
     <string name="plan_audit_day_fallback">Day %1$d</string>
+    <string name="plan_audit_show_all">Show all (%1$d)</string>
+    <string name="plan_audit_show_less">Show less</string>
+    <string name="cd_audit_warning">Warning</string>
+    <string name="cd_audit_info">Note</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.workouts
 
+import androidx.annotation.PluralsRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VisibilityThreshold
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -72,6 +74,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -80,25 +83,31 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.domain.ExerciseKind
+import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.PlateMath
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.SetType
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.components.ChoiceChip
 import com.forgequest.app.ui.components.KeypadNumberStepper
+import com.forgequest.app.ui.components.Stepper
+import com.forgequest.app.ui.components.formatNumber
 import com.forgequest.app.ui.components.rememberFullSheetState
 import com.forgequest.app.ui.components.steadyToggleable
 import com.forgequest.app.ui.captionRes
 import com.forgequest.app.ui.labelRes
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeMotion
+import com.forgequest.app.ui.theme.ForgeQuestTheme
 import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.ForgeSpace
 import com.forgequest.app.ui.theme.LocalReducedMotion
 import com.forgequest.app.ui.theme.effectsSpec
 import com.forgequest.app.ui.theme.spatialSpec
@@ -131,7 +140,6 @@ private fun setTypeTag(type: SetType): String? = when (type) {
     SetType.RESTPAUSE -> stringResource(R.string.live41_tag_restpause)
 }
 
-@OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun SetRow(
     label: String?,
@@ -143,11 +151,56 @@ internal fun SetRow(
     onLabelClick: (() -> Unit)? = null,
     previous: SetEntity? = null,
 ) {
-    val c = Fit.colors
     val settings by vm.settings.collectAsState()
     val effectiveUnit = settings.weightUnitFor(exercise?.unitOverride.orEmpty())
     val prIds by vm.prSetIds.collectAsState()
     val pr = set.isPr || set.id in prIds
+    val flashingId by vm.newBest.collectAsState()
+    SetRowContent(
+        label = label,
+        sublabel = sublabel,
+        set = set,
+        kind = kind,
+        effectiveUnit = effectiveUnit,
+        pr = pr,
+        flashing = flashingId == set.id,
+        exercise = exercise,
+        barWeightKg = settings.barWeightKg,
+        plateInventory = settings.plateInventory,
+        previous = previous,
+        onLabelClick = onLabelClick,
+        onToggle = { vm.toggle(set) },
+        onStartHold = { vm.startHold(set) },
+        onFieldChange = { field, value -> vm.setField(set, field, value) },
+        onNoteSave = { vm.setNote(set, it) },
+        onSetTypeSelect = { vm.setSetType(set, it) },
+        onReopenEffort = { vm.reopenEffort(set.id) },
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+internal fun SetRowContent(
+    label: String?,
+    sublabel: String?,
+    set: SetEntity,
+    kind: ExerciseKind,
+    effectiveUnit: WeightUnit,
+    pr: Boolean,
+    flashing: Boolean,
+    exercise: ExerciseEntity? = null,
+    barWeightKg: Float = 20f,
+    plateInventory: List<Float> = emptyList(),
+    previous: SetEntity? = null,
+    onLabelClick: (() -> Unit)? = null,
+    onToggle: () -> Unit = {},
+    onStartHold: () -> Unit = {},
+    onFieldChange: (Field, Float) -> Unit = { _, _ -> },
+    onNoteSave: (String) -> Unit = {},
+    onSetTypeSelect: (SetType) -> Unit = {},
+    onReopenEffort: () -> Unit = {},
+) {
+    val c = Fit.colors
     val scheme = MaterialTheme.colorScheme
     // Ticked rows tint primaryContainer; a PR set tints tertiaryContainer with a thin gold edge.
     val rowColor by animateColorAsState(
@@ -155,8 +208,6 @@ internal fun SetRow(
         effectsSpec(), label = "row",
     )
     val rowBorder by animateColorAsState(if (set.done && pr) scheme.tertiary else Color.Transparent, effectsSpec(), label = "rowBorder")
-    val flashingId by vm.newBest.collectAsState()
-    val flashing = flashingId == set.id
     val flashColor by animateColorAsState(if (flashing) c.gold else c.textPrimary, label = "flash")
     var noteDialog by remember { mutableStateOf(false) }
     var typeSheet by remember { mutableStateOf(false) }
@@ -167,14 +218,14 @@ internal fun SetRow(
             initial = set.note,
             isPain = set.effort == SetEffort.PAIN.name,
             onDismiss = { noteDialog = false },
-            onSave = { vm.setNote(set, it); noteDialog = false },
+            onSave = { onNoteSave(it); noteDialog = false },
         )
     }
     val setType = parseSetType(set.setType)
     if (typeSheet) {
         SetTypeSheet(
             selected = setType,
-            onSelect = { chosen -> vm.setSetType(set, chosen); typeSheet = false },
+            onSelect = { chosen -> onSetTypeSelect(chosen); typeSheet = false },
             onDismiss = { typeSheet = false },
         )
     }
@@ -258,21 +309,42 @@ internal fun SetRow(
                 }
                 Text(stringResource(R.string.live_last_time, last), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (set.targetLabel.isNotBlank() && sublabel != null) {
                     Text(set.targetLabel, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
                 if (showPrPill(set, pr)) {
-                    Spacer(Modifier.width(8.dp))
                     PrTag()
                 }
                 if (set.effort.isNotBlank() && effort != SetEffort.OK) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        stringResource(effort.labelRes),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = effortColor(effort),
-                    )
+                    if (set.done) {
+                        val editEffortLabel = stringResource(R.string.cd_edit_effort)
+                        Box(
+                            Modifier
+                                .heightIn(min = 48.dp)
+                                .widthIn(min = 48.dp)
+                                .clip(ForgeShape.Full)
+                                .clickable(role = Role.Button, onClickLabel = editEffortLabel, onClick = onReopenEffort)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                stringResource(effort.labelRes),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = effortColor(effort),
+                            )
+                        }
+                    } else {
+                        Text(
+                            stringResource(effort.labelRes),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = effortColor(effort),
+                        )
+                    }
                 }
             }
             if (set.note.isNotBlank()) {
@@ -289,11 +361,11 @@ internal fun SetRow(
     val steppers: @Composable () -> Unit = {
         when (kind) {
             ExerciseKind.HOLD -> Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!set.done) IconButton(onClick = { vm.startHold(set) }) {
+                if (!set.done) IconButton(onClick = onStartHold) {
                     Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.cd_start_hold), tint = c.teal)
                 }
-                KeypadNumberStepper(
-                    (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 1f, min = 0f, max = 3600f,
+                SetRowStepper(
+                    (set.seconds ?: 0).toFloat(), { onFieldChange(Field.SECONDS, it) }, step = 1f, min = 0f, max = 3600f,
                     unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
                     quickDeltas = listOf(5f, 10f, 30f),
                     lastTimeValue = previous?.seconds?.toFloat(),
@@ -301,24 +373,24 @@ internal fun SetRow(
                 )
             }
             // "reps" beside the number: a bare 8 read as seconds or kilos to beginners.
-            ExerciseKind.REPS -> KeypadNumberStepper(
-                (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
+            ExerciseKind.REPS -> SetRowStepper(
+                (set.reps ?: 0).toFloat(), { onFieldChange(Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                 unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
                 unitPlurals = R.plurals.rx_reps,
                 quickDeltas = listOf(1f, 2f, 5f),
                 lastTimeValue = previous?.reps?.toFloat(),
             )
             ExerciseKind.WEIGHTED -> {
-                KeypadNumberStepper(
-                    (set.reps ?: 0).toFloat(), { vm.setField(set, Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
+                SetRowStepper(
+                    (set.reps ?: 0).toFloat(), { onFieldChange(Field.REPS, it) }, step = 1f, min = 0f, max = 999f,
                     unit = stringResource(R.string.unit_reps), title = stringResource(R.string.stepper_reps), minValueWidth = 64.dp, valueColor = flashColor,
                     unitPlurals = R.plurals.rx_reps,
                     quickDeltas = listOf(1f, 2f, 5f),
                     lastTimeValue = previous?.reps?.toFloat(),
                 )
                 val lastWeight = previous?.weightKg?.takeIf { it > 0f }
-                KeypadNumberStepper(
-                    effectiveUnit.fromKg(set.weightKg ?: 0f), { vm.setField(set, Field.WEIGHT, effectiveUnit.toKg(it)) }, step = effectiveUnit.loadStep, min = 0f, max = effectiveUnit.fromKg(999f),
+                SetRowStepper(
+                    effectiveUnit.fromKg(set.weightKg ?: 0f), { onFieldChange(Field.WEIGHT, effectiveUnit.toKg(it)) }, step = effectiveUnit.loadStep, min = 0f, max = effectiveUnit.fromKg(999f),
                     unit = effectiveUnit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = if (flashing) flashColor else c.blue,
                     quickDeltas = weightQuickDeltas,
                     lastTimeValue = lastWeight?.let { effectiveUnit.fromKg(it) },
@@ -330,8 +402,8 @@ internal fun SetRow(
         val extra = set.weightKg
         if (kind != ExerciseKind.WEIGHTED && extra != null) {
             val lastExtra = previous?.weightKg?.takeIf { it > 0f }
-            KeypadNumberStepper(
-                effectiveUnit.fromKg(extra), { vm.setField(set, Field.WEIGHT, effectiveUnit.toKg(it)) }, step = effectiveUnit.loadStep, min = 0f, max = effectiveUnit.fromKg(999f),
+            SetRowStepper(
+                effectiveUnit.fromKg(extra), { onFieldChange(Field.WEIGHT, effectiveUnit.toKg(it)) }, step = effectiveUnit.loadStep, min = 0f, max = effectiveUnit.fromKg(999f),
                 unit = effectiveUnit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = c.blue,
                 quickDeltas = weightQuickDeltas,
                 lastTimeValue = lastExtra?.let { effectiveUnit.fromKg(it) },
@@ -340,8 +412,8 @@ internal fun SetRow(
         }
         val weightKg = set.weightKg ?: 0f
         if (isBarbell && weightKg > 0f) {
-            val breakdown = remember(weightKg, effectiveUnit, settings.barWeightKg, settings.plateInventory) {
-                PlateMath.calculate(weightKg, effectiveUnit, settings.barWeightKg, settings.plateInventory)
+            val breakdown = remember(weightKg, effectiveUnit, barWeightKg, plateInventory) {
+                PlateMath.calculate(weightKg, effectiveUnit, barWeightKg, plateInventory)
             }
             if (!breakdown.belowBar) {
                 val summaryText = if (breakdown.barOnly) {
@@ -369,6 +441,14 @@ internal fun SetRow(
             }
         }
     }
+    val preview = LocalInspectionMode.current
+    val tick: @Composable () -> Unit = {
+        if (preview) {
+            SetTick(set.done, pr, onToggle)
+        } else {
+            com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr, onToggle) }
+        }
+    }
     Column {
         if (reflow) {
             Column(rowModifier) {
@@ -376,7 +456,7 @@ internal fun SetRow(
                     number()
                     info(Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))
-                    com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
+                    tick()
                 }
                 FlowRow(
                     Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -391,8 +471,55 @@ internal fun SetRow(
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) { steppers() }
             Spacer(Modifier.width(8.dp))
-            com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr) { vm.toggle(set) } }
+            tick()
         }
+    }
+}
+
+@Composable
+private fun SetRowStepper(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    step: Float,
+    min: Float,
+    max: Float,
+    unit: String = "",
+    decimals: Int = 0,
+    title: String = stringResource(R.string.stepper_enter_value),
+    valueColor: Color = Fit.colors.textPrimary,
+    minValueWidth: Dp = 40.dp,
+    @PluralsRes unitPlurals: Int? = null,
+    quickDeltas: List<Float> = emptyList(),
+    lastTimeValue: Float? = null,
+    lastTimeLabel: String? = null,
+) {
+    if (LocalInspectionMode.current) {
+        val shown = formatNumber(value, decimals) + if (unit.isNotEmpty()) " $unit" else ""
+        Stepper(
+            value = shown,
+            onMinus = {},
+            onPlus = {},
+            valueColor = valueColor,
+            minValueWidth = minValueWidth,
+            onValueClick = {},
+        )
+    } else {
+        KeypadNumberStepper(
+            value = value,
+            onValueChange = onValueChange,
+            step = step,
+            min = min,
+            max = max,
+            unit = unit,
+            decimals = decimals,
+            title = title,
+            valueColor = valueColor,
+            minValueWidth = minValueWidth,
+            unitPlurals = unitPlurals,
+            quickDeltas = quickDeltas,
+            lastTimeValue = lastTimeValue,
+            lastTimeLabel = lastTimeLabel,
+        )
     }
 }
 
@@ -761,5 +888,221 @@ fun PrTag() {
     val c = Fit.colors
     Box(Modifier.clip(ForgeShape.Full).background(c.goldTrack).padding(horizontal = 8.dp, vertical = 1.dp)) {
         Text(stringResource(R.string.live_pr), style = MaterialTheme.typography.labelSmall, color = c.gold, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun SetRowPreviewFrame(content: @Composable () -> Unit) {
+    ForgeQuestTheme(dark = true) {
+        Box(Modifier.background(Fit.colors.card).padding(horizontal = ForgeSpace.Sm, vertical = ForgeSpace.Xs)) {
+            content()
+        }
+    }
+}
+
+private val previewBench = ExerciseEntity(
+    id = "bench_press",
+    name = "Bench Press",
+    kind = ExerciseKind.WEIGHTED,
+    primary = listOf(Muscle.CHEST),
+    secondary = listOf(Muscle.TRICEPS),
+)
+
+@Preview(name = "Cold start")
+@Composable
+private fun SetRowColdStartPreview() {
+    SetRowPreviewFrame {
+        SetRowContent(
+            label = "1",
+            sublabel = null,
+            set = SetEntity(
+                id = 1L,
+                sessionId = 1L,
+                exerciseId = "bench_press",
+                itemPosition = 0,
+                block = "Main",
+                circuit = false,
+                setIndex = 0,
+                targetLabel = "8-12",
+                reps = 8,
+                weightKg = 0f,
+                done = false,
+            ),
+            kind = ExerciseKind.WEIGHTED,
+            effectiveUnit = WeightUnit.KG,
+            pr = false,
+            flashing = false,
+            exercise = previewBench,
+            previous = null,
+        )
+    }
+}
+
+@Preview(name = "Untagged done")
+@Composable
+private fun SetRowUntaggedDonePreview() {
+    SetRowPreviewFrame {
+        SetRowContent(
+            label = "1",
+            sublabel = null,
+            set = SetEntity(
+                id = 2L,
+                sessionId = 1L,
+                exerciseId = "bench_press",
+                itemPosition = 0,
+                block = "Main",
+                circuit = false,
+                setIndex = 0,
+                targetLabel = "8-12",
+                reps = 10,
+                weightKg = 80f,
+                done = true,
+                effort = "",
+            ),
+            kind = ExerciseKind.WEIGHTED,
+            effectiveUnit = WeightUnit.KG,
+            pr = false,
+            flashing = false,
+            exercise = previewBench,
+        )
+    }
+}
+
+@Preview(name = "Hard effort")
+@Composable
+private fun SetRowHardPreview() {
+    SetRowPreviewFrame {
+        SetRowContent(
+            label = "2",
+            sublabel = null,
+            set = SetEntity(
+                id = 3L,
+                sessionId = 1L,
+                exerciseId = "bench_press",
+                itemPosition = 0,
+                block = "Main",
+                circuit = false,
+                setIndex = 1,
+                targetLabel = "8-12",
+                reps = 10,
+                weightKg = 80f,
+                done = true,
+                effort = SetEffort.HARD.name,
+            ),
+            kind = ExerciseKind.WEIGHTED,
+            effectiveUnit = WeightUnit.KG,
+            pr = false,
+            flashing = false,
+            exercise = previewBench,
+        )
+    }
+}
+
+@Preview(name = "Failure effort")
+@Composable
+private fun SetRowFailurePreview() {
+    SetRowPreviewFrame {
+        SetRowContent(
+            label = "3",
+            sublabel = null,
+            set = SetEntity(
+                id = 4L,
+                sessionId = 1L,
+                exerciseId = "bench_press",
+                itemPosition = 0,
+                block = "Main",
+                circuit = false,
+                setIndex = 2,
+                targetLabel = "8-12",
+                reps = 8,
+                weightKg = 80f,
+                done = true,
+                effort = SetEffort.FAILURE.name,
+                setType = SetType.FAILURE.name,
+            ),
+            kind = ExerciseKind.WEIGHTED,
+            effectiveUnit = WeightUnit.KG,
+            pr = false,
+            flashing = false,
+            exercise = previewBench,
+        )
+    }
+}
+
+@Preview(name = "Adjusted next set")
+@Composable
+private fun SetRowAdjustedNextPreview() {
+    SetRowPreviewFrame {
+        Column {
+            AdjustmentCueContent(
+                adjustment = LiveAdjustment(exerciseId = "bench_press", sourceSetId = 4L, percent = 5),
+                onUndo = {},
+            )
+            SetRowContent(
+                label = "2",
+                sublabel = null,
+                set = SetEntity(
+                    id = 5L,
+                    sessionId = 1L,
+                    exerciseId = "bench_press",
+                    itemPosition = 0,
+                    block = "Main",
+                    circuit = false,
+                    setIndex = 1,
+                    targetLabel = "8-12",
+                    reps = 8,
+                    weightKg = 75f,
+                    done = false,
+                ),
+                kind = ExerciseKind.WEIGHTED,
+                effectiveUnit = WeightUnit.KG,
+                pr = false,
+                flashing = false,
+                exercise = previewBench,
+                previous = SetEntity(
+                    id = 4L,
+                    sessionId = 0L,
+                    exerciseId = "bench_press",
+                    itemPosition = 0,
+                    block = "Main",
+                    circuit = false,
+                    setIndex = 1,
+                    targetLabel = "8-12",
+                    reps = 10,
+                    weightKg = 80f,
+                    done = true,
+                ),
+            )
+        }
+    }
+}
+
+@Preview(name = "PR pill visible")
+@Composable
+private fun SetRowPrPillPreview() {
+    SetRowPreviewFrame {
+        SetRowContent(
+            label = "1",
+            sublabel = null,
+            set = SetEntity(
+                id = 6L,
+                sessionId = 1L,
+                exerciseId = "bench_press",
+                itemPosition = 0,
+                block = "Main",
+                circuit = false,
+                setIndex = 0,
+                targetLabel = "8-12",
+                reps = 10,
+                weightKg = 85f,
+                done = true,
+                isPr = true,
+            ),
+            kind = ExerciseKind.WEIGHTED,
+            effectiveUnit = WeightUnit.KG,
+            pr = true,
+            flashing = false,
+            exercise = previewBench,
+        )
     }
 }

@@ -1940,4 +1940,8 @@
     <string name="live_adjusted_reps">Adjusted: target %1$d reps</string>
     <string name="live_adjusted_seconds">Adjusted: target %1$d s</string>
     <string name="live_adjust_undo">Undo</string>
+    <string name="live_baseline_estimated">Estimated start</string>
+    <string name="live_baseline_estimated_cd">Starting weight estimated from a similar exercise</string>
+    <string name="cd_undo_adjustment">Undo set adjustment</string>
+    <string name="cd_edit_effort">Change effort rating</string>
 </resources>

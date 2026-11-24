@@ -776,6 +776,13 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         app.settings.update { it.copy(ttsCues = !it.ttsCues) }
     }
 
+    /** Reopens the effort chips for an already-done set without unticking it or clearing any running rest. */
+    fun reopenEffort(setId: Long) {
+        if (sets.value.none { it.id == setId && it.done }) return
+        app.haptics.tick()
+        effortSetId.value = setId
+    }
+
     /** Tapping the chosen chip again clears it back to "not tapped" (counts as OK). */
     fun setEffort(set: SetEntity, effort: SetEffort) = viewModelScope.launch {
         app.haptics.tick()
