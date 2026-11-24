@@ -55,4 +55,13 @@
     <string name="plan41_import_error">تعذّر قراءة الخطة: %1$s</string>
     <string name="plan_ready_made">التحوّل إلى خطة جاهزة</string>
     <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
+
+    <string name="plan_audit_title">مراجعة الخطة</string>
+    <string name="plan_audit_above_mrv">%1$s: %2$s مجموعة/أسبوع (أعلى من %3$s)</string>
+    <string name="plan_audit_below_mev">%1$s: %2$s مجموعة/أسبوع (أقل من %3$s)</string>
+    <string name="plan_audit_push_pull">عدم توازن الدفع والسحب: %1$d دفع مقابل %2$d سحب</string>
+    <string name="plan_audit_isolation_first">%1$s: تمرين عزل قبل المركّب (%2$s)</string>
+    <string name="plan_audit_junk_volume">%1$s: %2$d مجموعة في %3$s (أكثر من %4$d)</string>
+    <string name="plan_audit_recovery_overlap">%1$s: %2$d+ مجموعات في يومين متتاليين</string>
+    <string name="plan_audit_day_fallback">اليوم %1$d</string>
 </resources>

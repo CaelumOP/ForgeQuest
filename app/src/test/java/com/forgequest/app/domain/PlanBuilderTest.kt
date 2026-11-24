@@ -119,7 +119,8 @@ class PlanBuilderTest {
             .flatMap { it.items }.filter { it.kind == "WEIGHTED" }.map { it.repsMin to it.repsMax }.toSet()
         val strength = ranges(TrainGoal.STRENGTH)
         val endurance = ranges(TrainGoal.ENDURANCE)
-        assertEquals(setOf(4 to 6), strength)
+        assertTrue((4 to 6) in strength)
+        assertTrue(strength.all { it == (4 to 6) || it == (8 to 12) })
         assertEquals(setOf(15 to 20), endurance)
         assertNotEquals(strength, endurance)
         val rest = { goal: TrainGoal -> build(input(3, fullGym, goal)).draft.days.first().items.first { it.block == "Main" }.restSeconds }
@@ -163,5 +164,89 @@ class PlanBuilderTest {
         val base = build(input())
         assertEquals(base, build(input { it.copy(offset = 0) }))
         assertNotEquals(base.draft.exercises().map { it.id }, build(input { it.copy(offset = 1) }).draft.exercises().map { it.id })
+    }
+
+    @Test fun isolationsGetEightToFifteenRepsOnMuscle() {
+        val plan = build(input(4, fullGym, TrainGoal.MUSCLE, minutes = 90))
+        val main = plan.draft.days.flatMap { it.items }.filter { it.block == "Main" && it.kind != "HOLD" }
+        val (compounds, isolations) = main.partition {
+            PlanBuilder.isCompound(ExerciseSwapEngine.profileFor(byId.getValue(it.exerciseId)).pattern)
+        }
+        assertTrue(compounds.isNotEmpty())
+        assertTrue(isolations.isNotEmpty())
+        assertTrue(isolations.all { (it.repsMin ?: 0) in 8..15 && (it.repsMax ?: 0) in 8..15 && it.repsMin == 10 && it.repsMax == 15 })
+        assertTrue(compounds.filter { it.kind == "WEIGHTED" }.all { it.repsMin == 8 && it.repsMax == 12 })
+    }
+
+    @Test fun isolationsGetEightToTwelveOnStrength() {
+        val plan = build(input(4, fullGym, TrainGoal.STRENGTH, minutes = 90))
+        val weighted = plan.draft.days.flatMap { it.items }.filter { it.block == "Main" && it.kind == "WEIGHTED" }
+        val (compounds, isolations) = weighted.partition {
+            PlanBuilder.isCompound(ExerciseSwapEngine.profileFor(byId.getValue(it.exerciseId)).pattern)
+        }
+        assertTrue(compounds.isNotEmpty())
+        assertTrue(isolations.isNotEmpty())
+        assertTrue(isolations.all { it.repsMin == 8 && it.repsMax == 12 })
+        assertTrue(compounds.all { it.repsMin == 4 && it.repsMax == 6 })
+    }
+
+    @Test fun compoundsRestLongerThanIsolations() {
+        for (goal in TrainGoal.entries) {
+            val main = build(input(4, fullGym, goal, minutes = 90)).draft.days.flatMap { it.items }.filter { it.block == "Main" }
+            val (compounds, isolations) = main.partition {
+                PlanBuilder.isCompound(ExerciseSwapEngine.profileFor(byId.getValue(it.exerciseId)).pattern)
+            }
+            assertTrue("$goal compounds empty", compounds.isNotEmpty())
+            assertTrue("$goal isolations empty", isolations.isNotEmpty())
+            assertTrue("$goal rest", compounds.minOf { it.restSeconds } > isolations.maxOf { it.restSeconds })
+        }
+        val longStrength = build(input(4, fullGym, TrainGoal.STRENGTH, minutes = 90) {
+            it.copy(rest = RestPref.LONG, cardio = Cardio.FINISHER)
+        }).draft.days.flatMap { it.items }
+        val longCompounds = longStrength.filter {
+            it.block == "Main" && PlanBuilder.isCompound(ExerciseSwapEngine.profileFor(byId.getValue(it.exerciseId)).pattern)
+        }
+        val longIsolations = longStrength.filter {
+            it.block == "Main" && !PlanBuilder.isCompound(ExerciseSwapEngine.profileFor(byId.getValue(it.exerciseId)).pattern)
+        }
+        assertTrue(longCompounds.all { it.restSeconds == 240 })
+        assertTrue(longIsolations.all { it.restSeconds == 135 })
+        val finishers = longStrength.filter { it.block == PlanBuilder.FINISHER_BLOCK }
+        assertTrue(finishers.isNotEmpty())
+        assertTrue(finishers.all { it.restSeconds == 30 })
+    }
+
+    @Test fun coreAndIsolationsComeAfterCompoundsFinisherLast() {
+        val plan = build(input(4, fullGym, TrainGoal.MUSCLE, minutes = 90) {
+            it.copy(cardio = Cardio.FINISHER, warmUp = true, coolDown = true)
+        })
+        fun rankOf(block: String, id: String): Int {
+            if (block == PlanBuilder.FINISHER_BLOCK) return 3
+            val p = ExerciseSwapEngine.profileFor(byId.getValue(id)).pattern
+            return when {
+                PlanBuilder.isCore(p) -> 2
+                PlanBuilder.isCompound(p) -> 0
+                else -> 1
+            }
+        }
+        val seenRanks = mutableSetOf<Int>()
+        for (day in plan.draft.days) {
+            val working = day.items.filter { !WorkoutScore.isExtra(it.block) }
+            val ranks = working.map { rankOf(it.block, it.exerciseId) }
+            seenRanks += ranks
+            assertEquals("Day ${day.dayOfWeek} out of order: $ranks", ranks.sorted(), ranks)
+        }
+        assertEquals(setOf(0, 1, 2, 3), seenRanks)
+    }
+
+    @Test fun existingFocusVolumeStillHolds() {
+        fun weeklySets(plan: BuiltPlan, m: Muscle) = plan.draft.days.flatMap { it.items }
+            .filter { !WorkoutScore.isExtra(it.block) && m in byId.getValue(it.exerciseId).primary }
+            .sumOf { it.sets }
+        for (m in listOf(Muscle.BICEPS, Muscle.SHOULDERS, Muscle.GLUTES, Muscle.CHEST, Muscle.CALVES)) {
+            val without = weeklySets(build(input(4, minutes = 45)), m)
+            val with = weeklySets(build(input(4, minutes = 45) { it.copy(focus = setOf(m)) }), m)
+            assertTrue("$m at 45m: $with vs $without", with > without)
+        }
     }
 }

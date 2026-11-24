@@ -51,4 +51,13 @@
     <string name="plan41_import_error">Could not read that plan: %1$s</string>
     <string name="plan_ready_made">Switch to a ready-made plan</string>
     <string name="plan_ready_made_info">Plans that come with the app, from beginner to advanced. Picking one replaces your current plan; the old one stays under Previous plans.</string>
+
+    <string name="plan_audit_title">Plan check</string>
+    <string name="plan_audit_above_mrv">%1$s: %2$s weekly sets (above %3$s)</string>
+    <string name="plan_audit_below_mev">%1$s: %2$s weekly sets (below %3$s)</string>
+    <string name="plan_audit_push_pull">Push/pull imbalance: %1$d push vs %2$d pull sets</string>
+    <string name="plan_audit_isolation_first">%1$s: isolation before compound (%2$s)</string>
+    <string name="plan_audit_junk_volume">%1$s: %2$d sets on %3$s (over %4$d)</string>
+    <string name="plan_audit_recovery_overlap">%1$s: %2$d+ sets on back-to-back days</string>
+    <string name="plan_audit_day_fallback">Day %1$d</string>
 </resources>

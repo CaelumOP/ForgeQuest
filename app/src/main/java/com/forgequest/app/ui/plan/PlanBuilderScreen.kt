@@ -99,9 +99,12 @@ import com.forgequest.app.domain.PlanBuilder
 import com.forgequest.app.domain.PlanShare
 import com.forgequest.app.domain.RepPref
 import com.forgequest.app.domain.RestPref
+import com.forgequest.app.domain.RoutineAuditor
+import com.forgequest.app.domain.ScheduleMode
 import com.forgequest.app.domain.TrainGoal
 import com.forgequest.app.domain.expandLegacyEquipment
 import com.forgequest.app.ui.appViewModel
+import com.forgequest.app.ui.workouts.RoutineAuditCard
 import com.forgequest.app.ui.workouts.WeeklyVolumeChips
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.FitSwitch
@@ -124,6 +127,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -144,6 +148,14 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
     /** Non-null shows the review: the built plan, with any swaps already made. */
     val built = MutableStateFlow<BuiltPlan?>(null)
     val busy = MutableStateFlow(false)
+    val auditFindings: StateFlow<List<RoutineAuditor.Finding>> = combine(built, library) { plan, lib ->
+        if (plan == null || lib.isEmpty()) emptyList()
+        else RoutineAuditor.audit(
+            days = RoutineAuditor.fromDraft(plan.draft),
+            exercises = lib.associateBy { it.id },
+            scheduleMode = ScheduleMode.WEEKDAY,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Exercises already tried per slot ("day:index"), so repeated swaps step on instead of bouncing between two. */
     private val tried = mutableMapOf<String, Set<String>>()
@@ -250,6 +262,7 @@ fun PlanBuilderScreen(nav: NavHostController) {
     val built by vm.built.collectAsState()
     val busy by vm.busy.collectAsState()
     val library by vm.library.collectAsState()
+    val auditFindings by vm.auditFindings.collectAsState()
     val context = LocalContext.current
     val c = Fit.colors
     val review = built
@@ -308,6 +321,9 @@ fun PlanBuilderScreen(nav: NavHostController) {
                             WeeklyVolumeChips(volume)
                         }
                     }
+                }
+                if (review.draft.days.isNotEmpty() && auditFindings.isNotEmpty()) {
+                    RoutineAuditCard(auditFindings)
                 }
                 review.draft.days.sortedBy { Dates.weekOrder.indexOf(it.dayOfWeek) }.forEach { day ->
                     ReviewDay(day, review, onSwap = { index -> vm.swap(day.dayOfWeek, index) })

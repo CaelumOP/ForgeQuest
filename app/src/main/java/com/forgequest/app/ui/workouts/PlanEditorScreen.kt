@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -112,6 +113,7 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.PlanShare
 import com.forgequest.app.domain.ProgressionMode
 import com.forgequest.app.domain.Rotation
+import com.forgequest.app.domain.RoutineAuditor
 import com.forgequest.app.domain.ScheduleMode
 import com.forgequest.app.domain.SupersetRules
 import com.forgequest.app.domain.WeightUnit
@@ -133,12 +135,24 @@ import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val library: StateFlow<List<ExerciseEntity>> = app.workouts.library.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val auditFindings: StateFlow<List<RoutineAuditor.Finding>> = snapshot
+        .map { snap ->
+            val active = snap?.plan ?: return@map emptyList()
+            RoutineAuditor.audit(
+                days = RoutineAuditor.fromActivePlan(active),
+                exercises = snap.exercises,
+                scheduleMode = ScheduleMode.parse(active.plan.scheduleMode),
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** A plan waiting for the user to confirm, from a template, pasted text or Google Docs. */
     val pending = MutableStateFlow<PlanDraft?>(null)
@@ -242,6 +256,7 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
     val vm = appViewModel { PlanEditorViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val library by vm.library.collectAsState()
+    val auditFindings by vm.auditFindings.collectAsState()
     val pending by vm.pending.collectAsState()
     val pendingShared by vm.pendingShared.collectAsState()
     val busy by vm.busy.collectAsState()
@@ -469,6 +484,10 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     Spacer(Modifier.height(8.dp))
                     TonalPill(stringResource(R.string.live_add_exercise), onClick = { picker = true }, icon = Icons.Rounded.Add, modifier = Modifier.fillMaxWidth())
                 }
+            }
+            if (s.plan != null && auditFindings.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                RoutineAuditCard(auditFindings)
             }
             Spacer(Modifier.height(24.dp))
             // What the plan is built around; shown with or without a plan.
@@ -1142,6 +1161,85 @@ internal fun WeeklyVolumeChips(volume: List<PlanShare.MuscleSets>, limit: Int = 
             }
         }
     }
+}
+
+@Composable
+internal fun RoutineAuditCard(findings: List<RoutineAuditor.Finding>) {
+    val c = Fit.colors
+    FitCard(Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.plan_audit_title), style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+            findings.forEach { finding ->
+                val warnColor = when (finding.kind) {
+                    RoutineAuditor.Kind.ABOVE_MRV,
+                    RoutineAuditor.Kind.RECOVERY_OVERLAP,
+                    RoutineAuditor.Kind.JUNK_VOLUME,
+                    -> c.coral
+                    RoutineAuditor.Kind.PUSH_PULL,
+                    RoutineAuditor.Kind.BELOW_MEV,
+                    RoutineAuditor.Kind.ISOLATION_FIRST,
+                    -> c.gold
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(warnColor))
+                    Text(
+                        auditFindingText(finding),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.textPrimary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun auditFindingText(finding: RoutineAuditor.Finding): String {
+    val muscleName = finding.muscle?.localLabel().orEmpty()
+    val dayLabel = finding.dayOfWeek?.takeIf { it in 1..7 }?.let { Dates.dayName(it) }
+        ?: stringResource(R.string.plan_audit_day_fallback, (finding.dayIndex ?: 0) + 1)
+    return when (finding.kind) {
+        RoutineAuditor.Kind.ABOVE_MRV -> stringResource(
+            R.string.plan_audit_above_mrv,
+            muscleName,
+            formatAuditSets(finding.value),
+            formatAuditSets(finding.limit),
+        )
+        RoutineAuditor.Kind.BELOW_MEV -> stringResource(
+            R.string.plan_audit_below_mev,
+            muscleName,
+            formatAuditSets(finding.value),
+            formatAuditSets(finding.limit),
+        )
+        RoutineAuditor.Kind.PUSH_PULL -> stringResource(
+            R.string.plan_audit_push_pull,
+            finding.value.toInt(),
+            finding.limit.toInt(),
+        )
+        RoutineAuditor.Kind.ISOLATION_FIRST -> stringResource(
+            R.string.plan_audit_isolation_first,
+            dayLabel,
+            muscleName,
+        )
+        RoutineAuditor.Kind.JUNK_VOLUME -> stringResource(
+            R.string.plan_audit_junk_volume,
+            muscleName,
+            finding.value.toInt(),
+            dayLabel,
+            finding.limit.toInt(),
+        )
+        RoutineAuditor.Kind.RECOVERY_OVERLAP -> stringResource(
+            R.string.plan_audit_recovery_overlap,
+            muscleName,
+            finding.limit.toInt(),
+        )
+    }
+}
+
+private fun formatAuditSets(value: Double): String {
+    val rounded = value.toInt()
+    return if (kotlin.math.abs(value - rounded) < 0.05) rounded.toString()
+    else String.format(Locale.US, "%.1f", value)
 }
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)

@@ -59,6 +59,21 @@ object PlanBuilder {
     const val PROGRESSION_NOTE =
         "Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets."
 
+    internal val COMPOUND_PATTERNS = setOf(
+        MP.HORIZONTAL_PUSH,
+        MP.DIP_PUSH,
+        MP.VERTICAL_PUSH,
+        MP.VERTICAL_PULL,
+        MP.HORIZONTAL_PULL,
+        MP.SQUAT_BILATERAL,
+        MP.SQUAT_UNILATERAL,
+        MP.HIP_HINGE,
+    )
+
+    internal fun isCompound(pattern: MP): Boolean = pattern in COMPOUND_PATTERNS
+
+    internal fun isCore(pattern: MP): Boolean = pattern == MP.CORE_ANTI_EXTENSION || pattern == MP.CORE_FLEXION_ROTATION
+
     /** Sensible training weekdays for [n] days a week (Monday = 1). */
     fun spreadDays(n: Int): Set<Int> = when {
         n <= 0 -> emptySet()
@@ -320,19 +335,37 @@ object PlanBuilder {
             }
         }
 
-        private fun baseRest(): Int {
-            val seconds = when (input.goal) {
-                TrainGoal.STRENGTH -> 150
-                TrainGoal.MUSCLE -> 90
-                TrainGoal.FAT_LOSS -> 45
-                TrainGoal.ENDURANCE -> 30
-                TrainGoal.GENERAL -> 75
+        private fun repRangeFor(p: Pick): Pair<Int, Int> {
+            if (p.role == Role.COND || p.role == Role.FINISHER) return 12 to 20
+            val base = repRange()
+            if (isCompound(prof(p.ex).pattern)) return base
+            if (input.reps != RepPref.AUTO) return if (base.first >= 8) base else 8 to 15
+            return when (input.goal) {
+                TrainGoal.STRENGTH -> 8 to 12
+                TrainGoal.MUSCLE -> 10 to 15
+                else -> if (base.first >= 8) base else 8 to 15
+            }
+        }
+
+        private fun restFor(p: Pick): Int {
+            if (p.role == Role.COND || p.role == Role.FINISHER) return CONDITIONING_REST
+            val compound = isCompound(prof(p.ex).pattern)
+            val seconds = if (compound) {
+                when (input.goal) {
+                    TrainGoal.STRENGTH -> 180
+                    TrainGoal.MUSCLE -> 150
+                    TrainGoal.GENERAL, TrainGoal.FAT_LOSS, TrainGoal.ENDURANCE -> 120
+                }
+            } else {
+                when (input.goal) {
+                    TrainGoal.STRENGTH, TrainGoal.MUSCLE -> 90
+                    TrainGoal.GENERAL -> 75
+                    TrainGoal.FAT_LOSS, TrainGoal.ENDURANCE -> 60
+                }
             }
             val factor = when (input.rest) { RestPref.AUTO -> 1.0; RestPref.SHORT -> 0.6; RestPref.LONG -> 1.5 }
             return (seconds * factor).roundToInt().coerceIn(30, 240)
         }
-
-        private fun restFor(role: Role) = if (role == Role.COND || role == Role.FINISHER) CONDITIONING_REST else baseRest()
 
         private fun target(m: Muscle): Double {
             val weekly = when (input.experience) { Experience.NEW -> 8; Experience.SOME -> 12; Experience.SEASONED -> 16 }
@@ -358,7 +391,7 @@ object PlanBuilder {
         }
 
         private fun item(p: Pick): PlanDraftItem {
-            val (lo, hi) = if (p.role == Role.COND || p.role == Role.FINISHER) 12 to 20 else repRange()
+            val (lo, hi) = repRangeFor(p)
             val e = p.ex
             var repsMin: Int? = null
             var repsMax: Int? = null
@@ -372,7 +405,7 @@ object PlanBuilder {
                 exerciseId = e.id, name = e.name, kind = e.kind.name, muscles = e.primary.map { it.name },
                 block = if (p.role == Role.FINISHER) FINISHER_BLOCK else "Main",
                 circuit = input.goal == TrainGoal.FAT_LOSS || p.role == Role.COND || p.role == Role.FINISHER,
-                sets = p.sets, repsMin = repsMin, repsMax = repsMax, seconds = seconds, restSeconds = restFor(p.role),
+                sets = p.sets, repsMin = repsMin, repsMax = repsMax, seconds = seconds, restSeconds = restFor(p),
             )
         }
 
@@ -403,9 +436,19 @@ object PlanBuilder {
             }
         }
 
-        private fun workSeconds(picks: List<Pick>) = picks.sumOf { it.sets * (SET_SECONDS + restFor(it.role)) }
+        private fun workSeconds(picks: List<Pick>) = picks.sumOf { it.sets * (SET_SECONDS + restFor(it)) }
 
-        /** Turns a day's picks into a draft day that fits the time: extras and accessories go first, then sets down to 2. */
+        private fun orderRank(p: Pick): Int {
+            if (p.role == Role.FINISHER) return 3
+            val pattern = prof(p.ex).pattern
+            return when {
+                isCore(pattern) -> 2
+                isCompound(pattern) -> 0
+                else -> 1
+            }
+        }
+
+        /** Turns a day's picks into a draft day that fits the time: extras, accessories and core go before focus, then sets down to 2. */
         private fun finalizeDay(d: Int, day: DayBuild): PlanDraftDay? {
             if (day.picks.isEmpty()) return null
             val warm = warmUpItems(day.picks.map { it.ex.id }.toSet())
@@ -413,14 +456,24 @@ object PlanBuilder {
             val reservedSeconds = ((if (warm.isNotEmpty()) 5 else 0) + (if (cool.isNotEmpty()) 5 else 0)) * 60
             val budgetSeconds = (dayMinutes(d) + TOLERANCE_MIN) * 60
             val picks = day.picks
+            picks.sortBy { orderRank(it) }
             var trimmed = false
             while (workSeconds(picks) + reservedSeconds > budgetSeconds) {
-                val drop = listOf(Role.FINISHER, Role.ACC, Role.FOCUS).firstNotNullOfOrNull { r -> picks.indexOfLast { it.role == r }.takeIf { it >= 0 } }
+                val drop = listOf<(Pick) -> Boolean>(
+                    { it.role == Role.FINISHER },
+                    { it.role == Role.ACC },
+                    { it.role != Role.FOCUS && isCore(prof(it.ex).pattern) },
+                ).firstNotNullOfOrNull { match -> picks.indexOfLast(match).takeIf { it >= 0 } }
                 if (drop != null) {
                     picks.removeAt(drop)
                 } else {
-                    val cut = picks.indices.filter { picks[it].sets > 2 }.maxWithOrNull(compareBy<Int>({ picks[it].sets }, { it }))
-                    if (cut != null) picks[cut].sets-- else if (picks.size > 1) picks.removeAt(picks.lastIndex) else break
+                    // Shave sets off non-focus lifts first, so a focus muscle never ends up with less than without the focus.
+                    val cuttable = picks.indices.filter { picks[it].sets > 2 }
+                    val spareFocus = cuttable.filter { i -> picks[i].ex.primary.none { it in focus } }.ifEmpty { cuttable }
+                    val cut = spareFocus.maxWithOrNull(compareBy<Int>({ picks[it].sets }, { it }))
+                    // A focus pick goes only once no other lift has sets left to shave.
+                    val dropFocus = picks.indexOfLast { it.role == Role.FOCUS }
+                    if (cut != null) picks[cut].sets-- else if (dropFocus >= 0) picks.removeAt(dropFocus) else if (picks.size > 1) picks.removeAt(picks.lastIndex) else break
                 }
                 trimmed = true
             }
