@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -548,17 +549,33 @@ private fun YouRow(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -> Uni
     StepperLine(stringResource(R.string.pb_pullups), a.pullUpMax) { v -> change { it.copy(pullUpMax = v) } }
 }
 
-/** A count that stays unset (null, shown as a dash) until it is above zero. */
+/** Converts a stepper value to an entered non-negative count (preserving 0 as distinct from null). */
+internal fun stepperCountFromValue(value: Float): Int = value.toInt().coerceAtLeast(0)
+
+/** A count that stays unset (null, shown as a dash) until entered; 0 is preserved as a valid entry. */
 @Composable
 private fun StepperLine(label: String, value: Int?, onChange: (Int?) -> Unit) {
+    var resetKey by remember { mutableIntStateOf(0) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = Fit.colors.textPrimary, modifier = Modifier.weight(1f))
-        NumberStepper(
-            value = (value ?: 0).toFloat(),
-            onValueChange = { onChange(it.toInt().takeIf { n -> n > 0 }) },
-            step = 1f, min = 0f, max = 100f,
-            placeholder = if (value == null) "–" else null,
-        )
+        if (value != null) {
+            IconButton(onClick = { resetKey++; onChange(null) }) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.cd_remove),
+                    tint = Fit.colors.textSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        key(resetKey) {
+            NumberStepper(
+                value = (value ?: 0).toFloat(),
+                onValueChange = { onChange(stepperCountFromValue(it)) },
+                step = 1f, min = 0f, max = 100f,
+                placeholder = if (value == null) "–" else null,
+            )
+        }
     }
 }
 

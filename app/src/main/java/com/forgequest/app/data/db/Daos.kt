@@ -178,6 +178,14 @@ interface SessionDao {
     )
     suspend fun recentDoneSets(exerciseId: String): List<SetEntity>
 
+    /** Finished done sets across all exercises, latest workout first, for cold-start baseline estimation (newest 4000, enough for every recent donor). */
+    @Query(
+        "SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id " +
+            "WHERE ss.finishedAt IS NOT NULL AND s.done = 1 " +
+            "ORDER BY ss.epochDay DESC, ss.startedAt DESC, s.setIndex ASC LIMIT 4000"
+    )
+    suspend fun allRecentDoneSets(): List<SetEntity>
+
     /** Like [recentDoneSets], but only from workouts before the one on [epochDay] started at [startedAt]. */
     @Query(
         "SELECT s.* FROM sets s JOIN sessions ss ON s.sessionId = ss.id " +

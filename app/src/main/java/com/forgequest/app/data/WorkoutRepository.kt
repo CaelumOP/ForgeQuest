@@ -15,6 +15,7 @@ import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
+import com.forgequest.app.domain.Baseline
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
@@ -35,6 +36,7 @@ import com.forgequest.app.domain.Trends
 import com.forgequest.app.domain.WorkoutDebriefMath
 import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.domain.countsForPR
+import com.forgequest.app.domain.countsForProgression
 import com.forgequest.app.domain.countsForScore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -562,14 +564,29 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
      */
     private suspend fun buildSetsFor(sessionId: Long, position: Int, item: PlanItemEntity?, ex: ExerciseEntity?): List<SetEntity> {
         val kind = ex?.kind ?: ExerciseKind.REPS
-        val result = progressionFor(item, ex, ex?.let { sessions.recentDoneSets(it.id) }.orEmpty())
+        val recent = ex?.let { sessions.recentDoneSets(it.id) }.orEmpty()
+        val result = progressionFor(item, ex, recent)
         val label = targetLabel(kind, item).let { base ->
             if (result.holdCeilingReached) listOf(base, AppText.get(R.string.rx_hold_ceiling)).filter { it.isNotBlank() }.joinToString(" · ") else base
         }
         val s = settings?.current()
         val unit = s?.weightUnitFor(ex?.unitOverride.orEmpty()) ?: WeightUnit.KG
         val barWeightKg = s?.barWeightKg ?: 20f
-        val firstWorkingKg = result.sets.firstOrNull()?.weightKg ?: 0f
+        val hasWorkingHistory = recent.any { countsForProgression(it) }
+        val planWeight = item?.weightKg ?: 0f
+        val coldStartWeightKg = if (ex != null && kind == ExerciseKind.WEIGHTED && !hasWorkingHistory && planWeight <= 0f) {
+            val history = sessions.allRecentDoneSets().groupBy { it.exerciseId }
+            val library = exercises.all().associateBy { it.id }
+            Baseline.coldStart(ex, item?.repsMin ?: 8, unit, history, library).weightKg
+        } else {
+            null
+        }
+        val prefilledSets = if (coldStartWeightKg != null) {
+            result.sets.map { it.copy(weightKg = coldStartWeightKg) }
+        } else {
+            result.sets
+        }
+        val firstWorkingKg = prefilledSets.firstOrNull()?.weightKg ?: 0f
         val ramp = if (item != null && item.autoWarmup && !WorkoutScore.isExtra(item.block) && kind == ExerciseKind.WEIGHTED) {
             WarmupRamp.generate(firstWorkingKg, unit, barWeightKg)
         } else {
@@ -591,7 +608,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 setType = SetType.WARMUP.name,
             )
         }
-        val workEntities = result.sets.mapIndexed { i, p ->
+        val workEntities = prefilledSets.mapIndexed { i, p ->
             SetEntity(
                 sessionId = sessionId,
                 exerciseId = ex?.id ?: item?.exerciseId ?: "",

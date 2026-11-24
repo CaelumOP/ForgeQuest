@@ -9,6 +9,8 @@ import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.prefs.Settings
+import com.forgequest.app.domain.Baseline
+import com.forgequest.app.domain.BaselineStatus
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
@@ -118,6 +120,29 @@ internal fun resolveRepsMin(set: SetEntity, kind: ExerciseKind, planItemsByPos: 
     return if (kind == ExerciseKind.WEIGHTED) 8 else null
 }
 
+/** Resolves [BaselineStatus] for one exercise in the live session from finished history and cold-start eligibility. */
+internal fun resolveBaselineStatus(
+    exercise: ExerciseEntity?,
+    item: PlanItemEntity?,
+    sessionSets: List<SetEntity>,
+    recentFinished: List<SetEntity>,
+    allHistory: Map<String, List<SetEntity>>,
+    library: Map<String, ExerciseEntity>,
+    unit: WeightUnit,
+): BaselineStatus {
+    if (recentFinished.any { countsForProgression(it) }) return BaselineStatus.CALIBRATED
+    if (exercise == null || exercise.kind != ExerciseKind.WEIGHTED) return BaselineStatus.NONE
+    if ((item?.weightKg ?: 0f) > 0f) return BaselineStatus.NONE
+    val hasPositiveWorkingWeight = sessionSets.any { countsForProgression(it) && (it.weightKg ?: 0f) > 0f }
+    if (!hasPositiveWorkingWeight) return BaselineStatus.NONE
+    val estimate = Baseline.coldStart(exercise, item?.repsMin ?: 8, unit, allHistory, library)
+    return if (estimate.status == BaselineStatus.ESTIMATED && estimate.weightKg != null) {
+        BaselineStatus.ESTIMATED
+    } else {
+        BaselineStatus.NONE
+    }
+}
+
 data class WorkoutSummary(
     val title: String,
     val doneSets: Int,
@@ -216,6 +241,10 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** Exercise id → why today's numbers are what they are, from the same rules as the prefill. */
     val reasons = MutableStateFlow<Map<String, Progression.Reason>>(emptyMap())
 
+    private val _baselineStatus = MutableStateFlow<Map<String, BaselineStatus>>(emptyMap())
+    /** Exercise id -> baseline status (CALIBRATED, ESTIMATED, or NONE) for the open session. */
+    val baselineStatus: StateFlow<Map<String, BaselineStatus>> = _baselineStatus
+
     val rest = runningRest
     val hold = MutableStateFlow<HoldTimer?>(null)
     val now = MutableStateFlow(System.currentTimeMillis())
@@ -251,13 +280,51 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 previous.value = previous.value + loaded
                 harder.value = harder.value + harderHints(recentById, list)
                 val session = currentSession
-                val found = recentById.mapNotNull { (id, recent) ->
-                    val first = list.firstOrNull { it.exerciseId == id } ?: return@mapNotNull null
-                    val item = session?.let { repo.planItemAt(it, first.itemPosition) }?.takeIf { it.exerciseId == id }
-                    val ex = repo.library.first().firstOrNull { it.id == id }
-                    repo.progressionFor(item, ex, recent).reason?.let { id to it }
-                }.toMap()
+                val libById = repo.library.first().associateBy { it.id }
+                val currentSettings = app.settings.current()
+                val itemsByExercise = recentById.keys.associateWith { id ->
+                    val first = list.firstOrNull { it.exerciseId == id }
+                    if (first != null && session != null) {
+                        repo.planItemAt(session, first.itemPosition)?.takeIf { it.exerciseId == id }
+                    } else {
+                        null
+                    }
+                }
+                val needsColdStartCheck = recentById.any { (id, recent) ->
+                    val ex = libById[id]
+                    val item = itemsByExercise[id]
+                    recent.none { countsForProgression(it) } &&
+                        ex?.kind == ExerciseKind.WEIGHTED &&
+                        (item?.weightKg ?: 0f) <= 0f &&
+                        list.any { it.exerciseId == id && countsForProgression(it) && (it.weightKg ?: 0f) > 0f }
+                }
+                val allHistory = if (needsColdStartCheck) {
+                    app.db.sessions().allRecentDoneSets()
+                        .filter { it.sessionId != session?.id }
+                        .groupBy { it.exerciseId }
+                } else {
+                    emptyMap()
+                }
+                val found = mutableMapOf<String, Progression.Reason>()
+                val statuses = mutableMapOf<String, BaselineStatus>()
+                for ((id, recent) in recentById) {
+                    val ex = libById[id]
+                    val item = itemsByExercise[id]
+                    repo.progressionFor(item, ex, recent).reason?.let { found[id] = it }
+                    val exSets = list.filter { it.exerciseId == id }
+                    val exUnit = currentSettings.weightUnitFor(ex?.unitOverride.orEmpty())
+                    statuses[id] = resolveBaselineStatus(
+                        exercise = ex,
+                        item = item,
+                        sessionSets = exSets,
+                        recentFinished = recent,
+                        allHistory = allHistory,
+                        library = libById,
+                        unit = exUnit,
+                    )
+                }
                 reasons.value = reasons.value + found
+                _baselineStatus.value = _baselineStatus.value + statuses
             }
         }
         viewModelScope.launch {
