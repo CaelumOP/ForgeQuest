@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="effort41_easy_cap">3+ متبقية</string>
-    <string name="effort41_hard_cap">1-2 متبقية</string>
+    <string name="effort41_hard_cap">1-3 متبقية</string>
     <string name="effort41_failure">فشل عضلي</string>
     <string name="effort41_failure_cap">0 متبقية</string>
     <string name="effort41_pain_cd">آلمني</string>

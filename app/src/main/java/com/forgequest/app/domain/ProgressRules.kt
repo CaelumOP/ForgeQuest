@@ -375,10 +375,17 @@ object Recovery {
             }
         }
         val blockFactor = if (set.block.equals("Warm-up", ignoreCase = true) || ex.id == "jumping_jacks") 0.25f else 1.0f
-        val rpeFactor = when (SetEffort.of(set.effort, set.note)) {
-            SetEffort.HARD, SetEffort.FAILURE, SetEffort.PAIN -> 1.15f
+        val effort = if (set.effort.isBlank() && set.setType == SetType.FAILURE.name) {
+            SetEffort.FAILURE
+        } else {
+            SetEffort.of(set.effort, set.note)
+        }
+        val rpeFactor = when (effort) {
             SetEffort.EASY -> 0.80f
             SetEffort.OK -> 1.0f
+            SetEffort.HARD -> 1.05f
+            SetEffort.FAILURE -> 1.25f
+            SetEffort.PAIN -> 1.15f
         }
         return (rawEffort * blockFactor * rpeFactor).coerceIn(0f, 1.35f)
     }

@@ -633,6 +633,8 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val upToIds = upTo.mapTo(HashSet()) { it.id }
         val report = Trends.analyzeFatigueAndPlateaus(upTo, snap.doneSets.filter { it.sessionId in upToIds }, snap.exercises, session.epochDay)
         val weeklyTarget = StreakCalculator.fullTarget(snap.plan?.trainingDays ?: emptySet(), snap.settings.weeklyTargetOverride)
+        val createdAt = snap.plan?.plan?.createdAt ?: plans.active()?.createdAt
+        val deload = createdAt != null && planItems.isNotEmpty() && Progression.isDeloadWeek(createdAt, Dates.today())
         return WorkoutDebriefMath.forSession(
             session = session,
             sessions = snap.sessions,
@@ -645,6 +647,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             unit = snap.settings.weightUnit,
             equipment = snap.settings.configuredEquipment,
             variations = variations(snap, report.stalledLifts),
+            deload = deload,
         )
     }
 

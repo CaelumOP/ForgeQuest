@@ -55,8 +55,16 @@ class Plan41RulesTest {
             ExerciseKind.WEIGHTED, target, history, emptyList(), WeightUnit.LB,
             false, deload, mode, lowerBody = true,
         )
-        assertEquals(105f, next(ProgressionMode.LINEAR).sets[0].weightKg!!, 0.001f)
-        assertEquals(102.5f, Progression.stepUpLinear(100f, WeightUnit.LB, false), 0.001f)
+        val kg135 = WeightUnit.LB.toKg(135f)
+        val lbLast = List(3) { Progression.PastSet(5, null, kg135, SetEffort.OK) }
+        val lbLower = Progression.next(
+            ExerciseKind.WEIGHTED, target.copy(weightKg = kg135), lbLast, emptyList(), WeightUnit.LB,
+            false, deload = false, ProgressionMode.LINEAR, lowerBody = true,
+        )
+        assertEquals(145f, WeightUnit.LB.fromKg(lbLower.sets[0].weightKg!!), 0.05f)
+        assertEquals(140f, WeightUnit.LB.fromKg(Progression.stepUpLinear(kg135, WeightUnit.LB, false)), 0.05f)
+        assertEquals(105f, Progression.stepUpLinear(100f, WeightUnit.KG, true), 0.001f)
+        assertEquals(102.5f, Progression.stepUpLinear(100f, WeightUnit.KG, false), 0.001f)
         assertEquals(100f, next(ProgressionMode.MAINTAIN).sets[0].weightKg!!, 0.001f)
         val deload = next(ProgressionMode.LINEAR, deload = true)
         assertEquals(2, deload.sets.size)

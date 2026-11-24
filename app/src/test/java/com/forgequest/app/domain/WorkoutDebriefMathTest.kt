@@ -256,13 +256,13 @@ class WorkoutDebriefMathTest {
         assertEquals(listOf(Next.PlusSeconds("plank", 35)), run(listOf(ex("plank", ExerciseKind.HOLD, hold(3, 30), hold(3, 30), item = holdItem(30)))).next)
         // A hold at 1.5x its target: a harder version, or a slower tempo with none.
         assertEquals(listOf(Next.Harder("plank", null)), run(listOf(ex("plank", ExerciseKind.HOLD, hold(3, 45), hold(3, 45), item = holdItem(30)))).next)
-        val hard = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 60f) + s(12, 60f, effort = "HARD"), n(3, 11, 60f))
-        assertEquals(listOf(Next.HoldSteady("bench", 60f, 12, null)), run(listOf(hard)).next)
+        val failure = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 60f) + s(12, 60f, effort = "FAILURE"), n(3, 11, 60f))
+        assertEquals(listOf(Next.HoldSteady("bench", 60f, 12, null)), run(listOf(failure)).next)
     }
 
     @Test
     fun sameRestAndNewestFalseHidesNextTime() {
-        val kept = ex("curl", ExerciseKind.WEIGHTED, listOf(s(10, 12.5f, effort = "HARD")) + n(2, 10, 12.5f), n(3, 10, 12.5f))
+        val kept = ex("curl", ExerciseKind.WEIGHTED, listOf(s(10, 12.5f, effort = "FAILURE")) + n(2, 10, 12.5f), n(3, 10, 12.5f))
         val r = run(listOf(ex("row", ExerciseKind.WEIGHTED, n(3, 10, 50f), n(3, 10, 50f)), kept))
         assertEquals(listOf(Next.PlusRep("row", 11, 50f)), r.next)
         assertTrue(r.result.sameRest)
@@ -273,9 +273,9 @@ class WorkoutDebriefMathTest {
 
     @Test
     fun holdSteadyAtTheTopOfTheRangeAndEverythingElseKeepsItsNumbers() {
-        // Bench 3x12 @16 (item 3 sets, 8-12), the last set Hard; the previous time 3x12 @16, all OK.
-        val bench = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 16f) + s(12, 16f, effort = "HARD"), n(3, 12, 16f), item = range())
-        val kept = ex("curl", ExerciseKind.WEIGHTED, listOf(s(10, 12.5f, effort = "HARD")) + n(2, 10, 12.5f), n(3, 10, 12.5f), item = range())
+        // Bench 3x12 @16 (item 3 sets, 8-12), the last set Failure; the previous time 3x12 @16, all OK.
+        val bench = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 16f) + s(12, 16f, effort = "FAILURE"), n(3, 12, 16f), item = range())
+        val kept = ex("curl", ExerciseKind.WEIGHTED, listOf(s(10, 12.5f, effort = "FAILURE")) + n(2, 10, 12.5f), n(3, 10, 12.5f), item = range())
         val r = run(listOf(bench, kept))
         assertEquals(listOf(Next.HoldSteady("bench", 16f, 12, null)), r.next)
         assertTrue(r.result.sameRest)
@@ -283,8 +283,8 @@ class WorkoutDebriefMathTest {
 
     @Test
     fun threeChangesNeverPushTheHoldSteadyLineOut() {
-        // The QA seed day: squat +1 rep, row +1 rep, plank +5 s, bench held by a Hard set.
-        val bench = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 16f) + s(12, 16f, effort = "HARD"), n(3, 12, 16f), item = range())
+        // The QA seed day: squat +1 rep, row +1 rep, plank +5 s, bench held by a Failure set.
+        val bench = ex("bench", ExerciseKind.WEIGHTED, n(2, 12, 16f) + s(12, 16f, effort = "FAILURE"), n(3, 12, 16f), item = range())
         val r = run(
             listOf(
                 ex("squat", ExerciseKind.WEIGHTED, n(3, 9, 15f), n(3, 8, 15f), item = range()),
@@ -416,7 +416,7 @@ class WorkoutDebriefMathTest {
         assertEquals(Headline.MOSTLY_UP, r.headline.type)
         assertEquals(listOf(Win.BestGain("romanian_deadlift", 3), Win.EffortMastery("curl")), r.wins)
         assertEquals(emptyList<Watch>(), r.watch)
-        assertEquals(listOf(Next.LoadUp("curl", 15f, 8), Next.HoldSteady("romanian_deadlift", 70f, 10, null)), r.next)
+        assertEquals(listOf(Next.LoadUp("romanian_deadlift", 72.5f, 8), Next.LoadUp("curl", 15f, 8)), r.next)
     }
 
     @Test
@@ -466,8 +466,8 @@ class WorkoutDebriefMathTest {
         assertEquals(Headline.MIXED, r.headline.type)
         assertEquals(listOf(Win.AllSets(6)), r.wins)
         assertEquals(listOf(Watch.Drop("row")), r.watch)
-        // The row climbs back from the bottom of the range (8) plus one rep.
-        assertEquals(listOf(Next.PlusRep("bench", 10, 60f), Next.PlusRep("row", 9, 50f)), r.next)
+        // The row holds at the bottom of the range (8) instead of climbing +1 rep.
+        assertEquals(listOf(Next.PlusRep("bench", 10, 60f), Next.PlusRep("row", 8, 50f)), r.next)
     }
 
     @Test

@@ -42,7 +42,9 @@ class ExerciseTiersTest {
         assertTrue(ExerciseTiers.readyForHarder(s(20, 18, 15), s(16, 15, 15)))
         assertFalse(ExerciseTiers.readyForHarder(s(20, 18, 14), s(16, 15, 15)))
         assertFalse(ExerciseTiers.readyForHarder(s(20, 18, 15), emptyList()))
-        assertFalse(ExerciseTiers.readyForHarder(s(20, 18, 15, effort = SetEffort.HARD), s(16, 15, 15)))
+        assertTrue(ExerciseTiers.readyForHarder(s(20, 18, 15, effort = SetEffort.HARD), s(16, 15, 15)))
+        assertFalse(ExerciseTiers.readyForHarder(s(20, 18, 15, effort = SetEffort.FAILURE), s(16, 15, 15)))
+        assertFalse(ExerciseTiers.readyForHarder(s(20, 18, 15, effort = SetEffort.PAIN), s(16, 15, 15)))
     }
 
     @Test fun muscleList() {

@@ -54,12 +54,12 @@ object ExerciseTiers {
     )
 
     /**
-     * True when both of the last two sessions had 2+ sets, all at [READY_REPS]+ reps, none marked Hard or Pain.
+     * True when both of the last two sessions had 2+ sets, all at [READY_REPS]+ reps, none marked Failure or Pain.
      * [last] and [previous] are the sets of the last two finished sessions of one bodyweight rep exercise.
      */
     fun readyForHarder(last: List<Progression.PastSet>, previous: List<Progression.PastSet>): Boolean =
         listOf(last, previous).all { session ->
-            session.size >= 2 && session.all { (it.reps ?: 0) >= READY_REPS && it.effort != SetEffort.HARD && it.effort != SetEffort.PAIN }
+            session.size >= 2 && session.all { (it.reps ?: 0) >= READY_REPS && it.effort != SetEffort.FAILURE && it.effort != SetEffort.PAIN }
         }
 
     /**

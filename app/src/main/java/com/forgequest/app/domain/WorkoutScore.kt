@@ -113,7 +113,7 @@ object WorkoutScore {
     fun compute(work: List<Work>, plannedSets: Int?, firstEver: Boolean = false, afterBreak: Boolean = false): Result {
         val working = work.map { w -> Work(w.exerciseId, w.kind, w.done.filter { countsForScore(it) }, w.last.filter { countsForScore(it) }) }
         val sets = working.flatMap { it.done }
-        val pain = working.filter { w -> w.done.any { SetEffort.parse(it.effort) == SetEffort.PAIN } }.map { it.exerciseId }.toSet()
+        val pain = working.filter { w -> w.done.any { SetEffort.of(it.effort, it.note) == SetEffort.PAIN } }.map { it.exerciseId }.toSet()
         val rough = pain.isNotEmpty()
         val planned = plannedSets?.takeIf { it > 0 }
         // ceil(0.67 × planned) in whole numbers, so 0.67 × 100 can't round up to 68.

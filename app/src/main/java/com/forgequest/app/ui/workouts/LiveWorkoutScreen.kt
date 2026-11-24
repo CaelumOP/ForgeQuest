@@ -953,6 +953,8 @@ private fun whyRes(r: Progression.Reason) = when (r) {
     Progression.Reason.HARD -> R.string.rx_why_hard
     Progression.Reason.PAIN -> R.string.rx_why_pain
     Progression.Reason.MISSED -> R.string.rx_why_missed
+    Progression.Reason.BACK_OFF -> R.string.rx_why_back_off
+    Progression.Reason.FATIGUE -> R.string.rx_why_fatigue
 }
 
 @Composable

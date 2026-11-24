@@ -34,8 +34,10 @@ class ProgressionTest {
         assertEquals(62.5f, next(ExerciseKind.WEIGHTED, t, sets(3, 8, 60f), sets(3, 8, 60f)).sets[0].weightKg!!, 0.01f)
         // just went up (62.5 after 60): no second increase in a row
         assertEquals(62.5f, next(ExerciseKind.WEIGHTED, t, sets(3, 8, 62.5f), sets(3, 8, 60f)).sets[0].weightKg!!, 0.01f)
-        // a hard set in the previous session blocks it
-        assertEquals(60f, next(ExerciseKind.WEIGHTED, t, sets(3, 8, 60f), sets(3, 8, 60f, effort = SetEffort.HARD)).sets[0].weightKg!!, 0.01f)
+        // a hard set in the previous session still counts as clean and goes up
+        assertEquals(62.5f, next(ExerciseKind.WEIGHTED, t, sets(3, 8, 60f), sets(3, 8, 60f, effort = SetEffort.HARD)).sets[0].weightKg!!, 0.01f)
+        // a failure set in the previous session blocks it
+        assertEquals(60f, next(ExerciseKind.WEIGHTED, t, sets(3, 8, 60f), sets(3, 8, 60f, effort = SetEffort.FAILURE)).sets[0].weightKg!!, 0.01f)
     }
 
     @Test
@@ -48,9 +50,14 @@ class ProgressionTest {
     @Test
     fun hardAndPainHoldOrBackOff() {
         val t = Progression.Target(3, 8, 12, null, 40f)
+        // Hard sets are progress-eligible: top of range steps up and resets to bottom
         val hard = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.HARD))
-        assertEquals(40f, hard.sets[0].weightKg!!, 0.01f)
-        assertEquals(12, hard.sets[0].reps)
+        assertEquals(42.5f, hard.sets[0].weightKg!!, 0.01f)
+        assertEquals(8, hard.sets[0].reps)
+        // Failure holds weight and reps
+        val failure = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.FAILURE))
+        assertEquals(40f, failure.sets[0].weightKg!!, 0.01f)
+        assertEquals(12, failure.sets[0].reps)
         val pain = next(ExerciseKind.WEIGHTED, t, sets(3, 10, 40f, effort = SetEffort.PAIN))
         assertEquals(37.5f, pain.sets[0].weightKg!!, 0.01f)
         // bodyweight move with pain: reps stay
@@ -141,7 +148,8 @@ class ProgressionTest {
     @Test
     fun reasonHardPainMissed() {
         val t = Progression.Target(3, 8, 12, null, 40f)
-        assertEquals(Progression.Reason.HARD, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.HARD)))
+        assertEquals(Progression.Reason.LOAD_UP, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.HARD)))
+        assertEquals(Progression.Reason.HARD, reason(ExerciseKind.WEIGHTED, t, sets(3, 12, 40f, effort = SetEffort.FAILURE)))
         assertEquals(Progression.Reason.PAIN, reason(ExerciseKind.WEIGHTED, t, sets(3, 10, 40f, effort = SetEffort.PAIN)))
         // pain on a bodyweight move: no weight drop, so it reads as hard
         assertEquals(Progression.Reason.HARD, reason(ExerciseKind.REPS, Progression.Target(3, 8, 12, null, null), sets(3, 10, null, effort = SetEffort.PAIN)))

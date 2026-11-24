@@ -80,7 +80,7 @@ object WorkoutDebriefMath {
         data class LoadUp(override val exerciseId: String, val weightKg: Float, val reps: Int?) : Next
         data class PlusRep(override val exerciseId: String, val reps: Int, val weightKg: Float?) : Next
         data class PlusSeconds(override val exerciseId: String, val seconds: Int) : Next
-        /** The top of the range was hit, but a Hard set keeps the numbers. */
+        /** The top of the range was hit, but a Failure set keeps the numbers. */
         data class HoldSteady(override val exerciseId: String, val weightKg: Float?, val reps: Int?, val seconds: Int?) : Next
     }
 
@@ -111,6 +111,8 @@ object WorkoutDebriefMath {
         val item: PlanItemEntity?,
         /** [ExerciseTiers.harderVersion]'s name; null when there is none. */
         val harderName: String?,
+        /** Primary muscle is lower body (used by LINEAR progression increments). */
+        val lowerBody: Boolean = false,
     )
 
     class Input(
@@ -128,6 +130,8 @@ object WorkoutDebriefMath {
         val unit: WeightUnit,
         /** Stalled exercise id to the variation to try instead ([VariationCycle.next]); empty when there is none. */
         val variations: Map<String, String> = emptyMap(),
+        /** Active plan is currently in a deload week, matching the live prefill. */
+        val deload: Boolean = false,
     )
 
     /** An exercise back after this many days or more is a win. */
@@ -150,7 +154,10 @@ object WorkoutDebriefMath {
         val unforgivenDrop: Boolean get() = trend == WorkoutScore.Trend.DOWN && !forgiven
     }
 
-    private fun effort(s: SetEntity) = SetEffort.of(s.effort, s.note)
+    private val HIGH_EFFORT = setOf(SetEffort.HARD, SetEffort.FAILURE)
+
+    private fun effort(s: SetEntity): SetEffort =
+        if (s.effort.isBlank() && s.setType == SetType.FAILURE.name) SetEffort.FAILURE else SetEffort.of(s.effort, s.note)
 
     fun compute(input: Input): Result {
         val score = input.score
@@ -239,7 +246,7 @@ object WorkoutDebriefMath {
                 val was = x.was
                 x.trend == WorkoutScore.Trend.SAME && was != null && !x.pain && abs(x.now.top - was.top) <= WorkoutScore.SAME_WEIGHT_KG &&
                     x.now.total >= was.total && (
-                        x.working.count { effort(it)?.isStrain == true } < x.lastWorking.count { effort(it)?.isStrain == true } ||
+                        x.working.count { effort(it) in HIGH_EFFORT } < x.lastWorking.count { effort(it) in HIGH_EFFORT } ||
                             x.working.count { effort(it) == SetEffort.EASY } > x.lastWorking.count { effort(it) == SetEffort.EASY }
                         )
             }.forEach { x -> yield(Win.EffortMastery(x.id)) }
@@ -321,7 +328,18 @@ object WorkoutDebriefMath {
             if (!x.e.newest) continue
             val p = Progression.inputs(x.e.item, x.id, x.working + x.lastWorking)
             if (p.warmup) continue
-            val r = Progression.next(x.e.kind, p.target, p.last, p.previous, input.unit, warmup = false)
+            val deload = input.deload && x.e.item != null && !WorkoutScore.isExtra(x.e.item.block)
+            val r = Progression.next(
+                kind = x.e.kind,
+                target = p.target,
+                last = p.last,
+                previous = p.previous,
+                unit = input.unit,
+                warmup = false,
+                deload = deload,
+                mode = p.mode,
+                lowerBody = x.e.lowerBody,
+            )
             val line = nextLine(x, p, r)
             if (line == null) unchanged = true else lines += line
         }
@@ -353,13 +371,13 @@ object WorkoutDebriefMath {
             // The top set gains reps (a failed set back to the bottom of the range alone doesn't count).
             return 5 to Next.PlusRep(x.id, r.sets.maxOf { it.reps ?: 0 }, nextTop.takeIf { it > 0f })
         }
-        // The top of the range was hit, but a Hard set kept the numbers.
+        // The top of the range was hit, but a Failure set kept the numbers.
         val count = p.target?.sets ?: 3
         val hitTop = p.last.size >= count && when (kind) {
             ExerciseKind.HOLD -> p.last.all { (it.seconds ?: 0) >= (p.target?.seconds ?: 30) }
             else -> p.last.all { (it.reps ?: 0) >= (p.target?.repsMax ?: p.target?.repsMin ?: 12) }
         }
-        if (!x.pain && hitTop && p.last.any { it.effort?.isStrain == true }) {
+        if (r.reason == Progression.Reason.HARD && !x.pain && hitTop && p.last.any { it.effort == SetEffort.FAILURE }) {
             val holds = kind == ExerciseKind.HOLD
             return 6 to Next.HoldSteady(x.id, nowTop.takeIf { it > 0f }, if (holds) null else p.last.maxOf { it.reps ?: 0 }, if (holds) p.last.maxOf { it.seconds ?: 0 } else null)
         }
@@ -384,6 +402,7 @@ object WorkoutDebriefMath {
         unit: WeightUnit,
         equipment: Set<Equipment>,
         variations: Map<String, String> = emptyMap(),
+        deload: Boolean = false,
     ): Result {
         val byId = sessions.associateBy { it.id }
         fun earlier(o: SessionEntity, s: SessionEntity) = o.epochDay < s.epochDay || (o.epochDay == s.epochDay && o.startedAt < s.startedAt)
@@ -404,6 +423,7 @@ object WorkoutDebriefMath {
                 newest = others.none { earlier(session, it.first) },
                 item = planItems.firstOrNull { it.exerciseId == id },
                 harderName = ex?.takeIf { kind == ExerciseKind.REPS }?.let { ExerciseTiers.harderVersion(it, library, equipment)?.name },
+                lowerBody = Progression.isLowerBody(ex?.primary.orEmpty()),
             )
         }
         val weekStart = Dates.weekStart(session.epochDay)
@@ -420,6 +440,7 @@ object WorkoutDebriefMath {
                 report = report,
                 unit = unit,
                 variations = variations,
+                deload = deload,
             ),
         ).copy(volumeChange = volumeChangeVsLastTime(session, sessions, doneSets, mine))
     }

@@ -1,27 +1,37 @@
 package com.forgequest.app.domain
 
 /**
- * How a set felt, as a reps-in-reserve scale: EASY (3+ left), HARD (1-2 left), FAILURE (none left).
+ * How a set felt, as a reps-in-reserve scale: EASY (3+ left), HARD (1-3 left), FAILURE (0 left).
  * PAIN is not on the scale: it is the separate "it hurt" button. Not tapping counts as OK (neutral). A stored "OK" from
- * before the scale still counts as neutral in the maths but the chips show it as Hard ([chipOf]).
+ * before the scale counts as neutral in the maths and shows as no chip ([chipOf]).
  */
 enum class SetEffort {
     EASY, OK, HARD, FAILURE, PAIN;
 
-    /** Reached the limit: HARD or FAILURE hold progression back. */
+    /** Reached the limit; progression checks [FAILURE] explicitly rather than using this flag. */
     val isStrain: Boolean get() = this == HARD || this == FAILURE
 
     companion object {
         /** The three chips of the scale, in display order; PAIN has its own button. */
         val chips: List<SetEffort> = listOf(EASY, HARD, FAILURE)
 
+        /** Reps in reserve represented by [e], used by baseline / e1RM math. */
+        fun rir(e: SetEffort): Int = when (e) {
+            EASY -> 3
+            OK -> 2
+            HARD -> 1
+            FAILURE -> 0
+            PAIN -> 2
+        }
+
+        /** The chip a stored value lights up: a stored "OK" shows as no chip, matching blank. */
+        fun chipOf(raw: String): String = if (raw == OK.name) "" else raw
+
         /**
          * What tapping [picked] does to a set's effort and set type (names). Tapping the chosen one again clears it.
          * Failure also makes a WORKING set a FAILURE set; leaving Failure puts it back to WORKING, but only when
          * Failure had set it, never from another type.
          */
-        /** The chip a stored value lights up: a stored "OK" shows as Hard; blank is no chip. */
-        fun chipOf(raw: String): String = if (raw == OK.name) HARD.name else raw
 
         fun pick(effort: String, setType: String, picked: SetEffort): Pair<String, String> {
             val type = setType.ifBlank { SetType.WORKING.name }

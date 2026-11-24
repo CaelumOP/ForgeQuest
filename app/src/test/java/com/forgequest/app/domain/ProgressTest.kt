@@ -240,7 +240,7 @@ class RecoveryTest {
         )
         // 6 reps with load is exactly one working set, so the factor shows through.
         assertEquals(1.0f, Recovery.effectiveSetEffort(set(""), ex), 0.001f)
-        assertEquals(1.15f, Recovery.effectiveSetEffort(set("صعب"), ex), 0.001f)
+        assertEquals(1.05f, Recovery.effectiveSetEffort(set("صعب"), ex), 0.001f)
         assertEquals(0.80f, Recovery.effectiveSetEffort(set("سهل"), ex), 0.001f)
         assertEquals(1.15f, Recovery.effectiveSetEffort(set("left knee twinge"), ex), 0.001f)
         // a tapped chip wins over the note

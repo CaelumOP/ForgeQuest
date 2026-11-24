@@ -13,8 +13,8 @@ class EffortScaleTest {
     fun oldStoredValuesStillRead() {
         listOf("EASY", "HARD", "PAIN", "FAILURE").forEach { assertEquals(it, SetEffort.parse(it).name) }
         assertEquals(SetEffort.OK, SetEffort.parse("OK"))
-        assertEquals("HARD", SetEffort.chipOf("OK"))
-        assertEquals("" to "WORKING", SetEffort.pick("OK", "WORKING", SetEffort.HARD))
+        assertEquals("", SetEffort.chipOf("OK"))
+        assertEquals("HARD" to "WORKING", SetEffort.pick("OK", "WORKING", SetEffort.HARD))
         assertEquals(SetEffort.OK, SetEffort.parse("nonsense"))
         assertEquals(SetEffort.OK, SetEffort.parse(null))
         assertEquals(listOf(SetEffort.EASY, SetEffort.HARD, SetEffort.FAILURE), SetEffort.chips)
@@ -23,13 +23,18 @@ class EffortScaleTest {
     @Test
     fun allEasyAddsLoadMixedDoesNot() {
         assertEquals(62.5f, next(sets(SetEffort.EASY)), 0.01f)
-        assertEquals(60f, next(sets(SetEffort.EASY, 2) + sets(SetEffort.HARD, 1)), 0.01f)
+        assertEquals(60f, next(sets(SetEffort.EASY, 2) + sets(SetEffort.FAILURE, 1)), 0.01f)
     }
 
     @Test
     fun failureHoldsTwiceInARowBacksOffPainAtOnce() {
+        // Meeting target reps at failure holds (even twice in a row)
         assertEquals(60f, next(sets(SetEffort.FAILURE), sets(SetEffort.HARD)), 0.01f)
-        assertEquals(57.5f, next(sets(SetEffort.FAILURE), sets(SetEffort.FAILURE)), 0.01f)
+        assertEquals(60f, next(sets(SetEffort.FAILURE), sets(SetEffort.FAILURE)), 0.01f)
+        // Missing target reps at failure holds once (FATIGUE) and backs off after two in a row (BACK_OFF)
+        val missedAtFailure = List(3) { Progression.PastSet(7, null, 60f, SetEffort.FAILURE) }
+        assertEquals(60f, next(missedAtFailure, sets(SetEffort.HARD)), 0.01f)
+        assertEquals(57.5f, next(missedAtFailure, missedAtFailure), 0.01f)
         assertEquals(57.5f, next(sets(SetEffort.PAIN)), 0.01f)
     }
 
