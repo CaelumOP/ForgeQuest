@@ -290,7 +290,7 @@ internal fun SetRow(
                     Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.cd_start_hold), tint = c.teal)
                 }
                 KeypadNumberStepper(
-                    (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 5f, min = 0f, max = 3600f,
+                    (set.seconds ?: 0).toFloat(), { vm.setField(set, Field.SECONDS, it) }, step = 1f, min = 0f, max = 3600f,
                     unit = stringResource(R.string.unit_s), title = stringResource(R.string.stepper_hold_time), minValueWidth = 52.dp, valueColor = flashColor,
                     quickDeltas = listOf(5f, 10f, 30f),
                     lastTimeValue = previous?.seconds?.toFloat(),

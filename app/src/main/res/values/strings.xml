@@ -1936,4 +1936,8 @@
     <string name="v42_pain_tag_ache">Dull ache</string>
     <string name="v42_pain_tag_joint">In the joint</string>
     <string name="v42_note_hint">Anything to remember next time?</string>
+    <string name="live_adjusted_load">Adjusted: −%1$d%% after a hard set</string>
+    <string name="live_adjusted_reps">Adjusted: target %1$d reps</string>
+    <string name="live_adjusted_seconds">Adjusted: target %1$d s</string>
+    <string name="live_adjust_undo">Undo</string>
 </resources>

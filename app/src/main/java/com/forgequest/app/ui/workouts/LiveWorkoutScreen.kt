@@ -1019,6 +1019,7 @@ internal fun StraightCard(
             TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
         }
         ex?.let { HarderNote(it, vm) }
+        AdjustmentCue(g.sets.first().exerciseId, vm)
         Spacer(Modifier.height(4.dp))
         g.sets.forEach { set ->
             SetRow(
@@ -1062,6 +1063,41 @@ internal fun HarderNote(ex: ExerciseEntity, vm: LiveWorkoutViewModel) {
                     context.toast(if (swapped == 0) nextTime else done)
                 }
             }) { Text(stringResource(R.string.harder_switch), color = c.teal) }
+        }
+    }
+}
+
+/** One-line cue under an exercise card header after an intra-session adjustment, with an Undo action. */
+@Composable
+internal fun AdjustmentCue(exerciseId: String, vm: LiveWorkoutViewModel) {
+    val c = Fit.colors
+    val adj by vm.adjustment.collectAsState()
+    val current = adj?.takeIf { it.exerciseId == exerciseId } ?: return
+    val text = when {
+        current.percent != null -> stringResource(R.string.live_adjusted_load, current.percent)
+        current.reps != null -> stringResource(R.string.live_adjusted_reps, current.reps)
+        current.seconds != null -> stringResource(R.string.live_adjusted_seconds, current.seconds)
+        else -> return
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, end = 8.dp)
+            .clip(ForgeShape.Sm)
+            .background(c.goldTrack)
+            .padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = c.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = vm::undoAdjustment) {
+            Text(stringResource(R.string.live_adjust_undo), color = c.gold)
         }
     }
 }
@@ -1117,6 +1153,7 @@ internal fun CircuitCard(
                 }
             }
             HarderNote(ex, vm)
+            AdjustmentCue(ex.id, vm)
         }
         val prev by vm.previous.collectAsState()
         g.rounds.forEachIndexed { r, round ->

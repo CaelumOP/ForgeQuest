@@ -13,6 +13,8 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseTiers
+import com.forgequest.app.domain.HoldMath
+import com.forgequest.app.domain.IntraSession
 import com.forgequest.app.domain.LevelInfo
 import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.Nudges
@@ -51,6 +53,8 @@ data class RestTimer(
     val endsAt: Long,
     val nextExercise: String? = null,
     val isRestPause: Boolean = false,
+    val setId: Long? = null,
+    val isShortTransition: Boolean = false,
 )
 
 /** Outlives the screen, so leaving a workout mid-rest and resuming it keeps the countdown. */
@@ -58,6 +62,15 @@ private val runningRest = MutableStateFlow<RestTimer?>(null)
 
 /** A bodyweight move that has become easy: [next] is the harder version, or null to suggest a slower tempo. */
 data class HarderHint(val next: ExerciseEntity?)
+
+/** Active intra-session adjustment banner state for one exercise, with Undo support. */
+data class LiveAdjustment(
+    val exerciseId: String,
+    val sourceSetId: Long,
+    val percent: Int? = null,
+    val reps: Int? = null,
+    val seconds: Int? = null,
+)
 
 /** A timed hold in progress: a 3-second get-ready, then the clock runs from [startsAt] towards [target]. */
 data class HoldTimer(val setId: Long, val exerciseName: String, val target: Int, val startsAt: Long) {
@@ -70,11 +83,13 @@ internal sealed interface TtsCue {
     data class Hold(val event: HoldCueEvent) : TtsCue
 }
 
-/** Pure rest duration helper for live sets: warm-ups skip rest, rest-pause uses 15s, superset A1 gets a 10s transition. */
-internal fun effectiveRestSeconds(set: SetEntity, groups: List<Group>): Int {
-    if (set.setType == SetType.WARMUP.name) return 0
-    if (set.setType == SetType.RESTPAUSE.name) return 15
-    if (set.restSeconds <= 0) return 0
+internal data class EffectiveRest(val seconds: Int, val isShortTransition: Boolean = false)
+
+/** Pure rest duration and transition-flag helper for live sets: warm-ups skip rest, rest-pause uses 15s, superset A1 gets a 10s short transition. */
+internal fun effectiveRest(set: SetEntity, groups: List<Group>): EffectiveRest {
+    if (set.setType == SetType.WARMUP.name) return EffectiveRest(0)
+    if (set.setType == SetType.RESTPAUSE.name) return EffectiveRest(15)
+    if (set.restSeconds <= 0) return EffectiveRest(0)
     val circuit = groups.filterIsInstance<Group.Circuit>().firstOrNull { g ->
         g.supersetGroup != null && g.allSets.any { it.id == set.id }
     }
@@ -84,11 +99,23 @@ internal fun effectiveRestSeconds(set: SetEntity, groups: List<Group>): Int {
             val otherUndone = round.any { it.id != set.id && !it.done }
             val isLastInRound = round.lastOrNull()?.id == set.id
             if (!isLastInRound && otherUndone) {
-                return minOf(set.restSeconds, 10)
+                return EffectiveRest(minOf(set.restSeconds, 10), isShortTransition = true)
             }
         }
     }
-    return set.restSeconds
+    return EffectiveRest(set.restSeconds)
+}
+
+/** Pure rest duration helper for live sets: warm-ups skip rest, rest-pause uses 15s, superset A1 gets a 10s transition. */
+internal fun effectiveRestSeconds(set: SetEntity, groups: List<Group>): Int =
+    effectiveRest(set, groups).seconds
+
+/** Plan item's repsMin when it matches the set's exercise; fallback 8 for WEIGHTED, null for HOLD and plan-less REPS. */
+internal fun resolveRepsMin(set: SetEntity, kind: ExerciseKind, planItemsByPos: Map<Int, PlanItemEntity>): Int? {
+    if (kind == ExerciseKind.HOLD) return null
+    val item = planItemsByPos[set.itemPosition]?.takeIf { it.exerciseId == set.exerciseId }
+    item?.repsMin?.let { return it }
+    return if (kind == ExerciseKind.WEIGHTED) 8 else null
 }
 
 data class WorkoutSummary(
@@ -157,12 +184,22 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     val userEquipment: StateFlow<Set<Equipment>> = settings.map { it.configuredEquipment }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    /** Plan item position -> supersetGroup for the open session's plan day (used for A1/A2 grouping). */
-    val supersetGroups: StateFlow<Map<Int, Int?>> = combine(repo.openSession, repo.activePlan) { session, plan ->
+    /** Plan item position -> PlanItemEntity for the open session's plan day. */
+    val planItemsByPos: StateFlow<Map<Int, PlanItemEntity>> = combine(repo.openSession, repo.activePlan) { session, plan ->
         val dayId = session?.planDayId ?: return@combine emptyMap()
         val day = plan?.days?.firstOrNull { it.day.id == dayId } ?: return@combine emptyMap()
-        day.items.associate { it.position to it.supersetGroup }
+        day.items.associateBy { it.position }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /** Plan item position -> supersetGroup for the open session's plan day (used for A1/A2 grouping). */
+    val supersetGroups: StateFlow<Map<Int, Int?>> = planItemsByPos
+        .map { items -> items.mapValues { it.value.supersetGroup } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    private fun repsMinFor(set: SetEntity): Int? {
+        val kind = exercises.value[set.exerciseId]?.kind ?: ExerciseKind.REPS
+        return resolveRepsMin(set, kind, planItemsByPos.value)
+    }
 
     fun effectiveUnit(exerciseId: String): WeightUnit =
         settings.value.weightUnitFor(exercises.value[exerciseId]?.unitOverride.orEmpty())
@@ -276,6 +313,23 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** Sets whose numbers were typed or nudged this session; the rest still hold the plan's defaults. */
     private val edited = mutableSetOf<Long>()
 
+    /** Source sets that already triggered an intra-session adjustment (at most once per source set). */
+    private val adjustedBy = mutableSetOf<Long>()
+
+    /** Source sets whose running rest was already extended on Failure (at most once per source set). */
+    private val restExtendedBy = mutableSetOf<Long>()
+
+    /** Pre-change copies of the sets modified by the current [adjustment], for Undo. */
+    private var preAdjustmentSets: List<SetEntity> = emptyList()
+
+    private val _adjustment = MutableStateFlow<LiveAdjustment?>(null)
+    val adjustment: StateFlow<LiveAdjustment?> = _adjustment
+
+    private fun clearAdjustment() {
+        _adjustment.value = null
+        preAdjustmentSets = emptyList()
+    }
+
     /** Exercises whose record buzz already fired this workout: one per exercise. */
     private val prBuzzed = mutableSetOf<String>()
 
@@ -306,6 +360,9 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     fun toggle(set: SetEntity) {
         val done = !set.done
+        if (done && _adjustment.value?.exerciseId != null && _adjustment.value?.exerciseId != set.exerciseId) {
+            clearAdjustment()
+        }
         effortSetId.value = if (done) set.id else null
         when {
             !done -> app.haptics.tick()
@@ -313,13 +370,27 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             else -> app.haptics.check()
         }
         val currentGroups = group(sets.value) { pos -> supersetGroups.value[pos] }
-        val restSec = if (done) effectiveRestSeconds(set, currentGroups) else 0
+        val restPlan = if (done) effectiveRest(set, currentGroups) else EffectiveRest(0)
+        val updatedSet = set.copy(
+            done = done,
+            doneAt = if (done) System.currentTimeMillis() else null,
+            effort = if (done) set.effort else "",
+        )
         viewModelScope.launch {
-            repo.updateSet(set.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null, effort = if (done) set.effort else ""))
-            if (done) carryForward(set)
+            repo.updateSet(updatedSet)
+            if (done) {
+                val carried = carryForward(updatedSet)
+                applyIntraSession(updatedSet, carried)
+            }
         }
-        if (done && restSec > 0) {
-            startRest(restSec, nextExerciseAfter(set), isRestPause = set.setType == SetType.RESTPAUSE.name)
+        if (done && restPlan.seconds > 0) {
+            startRest(
+                seconds = restPlan.seconds,
+                nextExercise = nextExerciseAfter(set),
+                isRestPause = set.setType == SetType.RESTPAUSE.name,
+                setId = set.id,
+                isShortTransition = restPlan.isShortTransition,
+            )
         } else if (!done) {
             skipRest()
         }
@@ -328,14 +399,18 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** The warm-up's single tick: marks all of one exercise's sets done (or all undone) and starts no rest timer. */
     fun toggleAll(group: List<SetEntity>) {
         val done = !group.all { it.done }
+        if (done && _adjustment.value?.exerciseId != null && group.none { it.exerciseId == _adjustment.value?.exerciseId }) {
+            clearAdjustment()
+        }
         effortSetId.value = null
         if (done) app.haptics.check() else app.haptics.tick()
         viewModelScope.launch { group.filter { it.done != done }.forEach { repo.updateSet(it.copy(done = done, doneAt = if (done) System.currentTimeMillis() else null)) } }
     }
 
     /** What you just did becomes the starting point for the exercise's next working sets you haven't touched yet. */
-    private suspend fun carryForward(set: SetEntity) {
-        if (!countsForProgression(set)) return
+    private suspend fun carryForward(set: SetEntity): Map<Long, SetEntity> {
+        if (!countsForProgression(set)) return emptyMap()
+        val updated = mutableMapOf<Long, SetEntity>()
         sets.value.filter {
             it.itemPosition == set.itemPosition &&
                 it.exerciseId == set.exerciseId &&
@@ -348,7 +423,68 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 reps = if (set.reps != null && next.reps != null) set.reps else next.reps,
                 weightKg = set.weightKg?.takeIf { it > 0f } ?: next.weightKg,
             )
-            if (carried != next) repo.updateSet(carried)
+            if (carried != next) {
+                repo.updateSet(carried)
+                updated[carried.id] = carried
+            }
+        }
+        return updated
+    }
+
+    private suspend fun applyIntraSession(source: SetEntity, carriedById: Map<Long, SetEntity> = emptyMap()) {
+        if (source.id in adjustedBy) return
+        val remaining = sets.value
+            .filter {
+                it.itemPosition == source.itemPosition &&
+                    it.exerciseId == source.exerciseId &&
+                    it.setIndex > source.setIndex &&
+                    !it.done &&
+                    it.id !in edited &&
+                    countsForProgression(it)
+            }
+            .sortedBy { it.setIndex }
+            .map { carriedById[it.id] ?: it }
+        val kind = exercises.value[source.exerciseId]?.kind ?: ExerciseKind.REPS
+        val result = IntraSession.compute(
+            source = source,
+            remaining = remaining,
+            kind = kind,
+            repsMin = repsMinFor(source),
+            unit = effectiveUnit(source.exerciseId),
+        ) ?: return
+        if (result.changed.isEmpty()) return
+        adjustedBy += source.id
+        val changedIds = result.changed.map { it.id }.toSet()
+        preAdjustmentSets = remaining.filter { it.id in changedIds }
+        result.changed.forEach { repo.updateSet(it) }
+        _adjustment.value = LiveAdjustment(
+            exerciseId = source.exerciseId,
+            sourceSetId = source.id,
+            percent = result.percent,
+            reps = result.reps,
+            seconds = result.seconds,
+        )
+    }
+
+    /** Restores the sets altered by the latest intra-session adjustment, skipping any row edited or ticked since. */
+    fun undoAdjustment() {
+        val saved = preAdjustmentSets
+        clearAdjustment()
+        if (saved.isEmpty()) return
+        app.haptics.tick()
+        val currentById = sets.value.associateBy { it.id }
+        viewModelScope.launch {
+            saved.forEach { original ->
+                val current = currentById[original.id] ?: return@forEach
+                if (current.done || current.id in edited) return@forEach
+                repo.updateSet(
+                    current.copy(
+                        reps = original.reps,
+                        seconds = original.seconds,
+                        weightKg = original.weightKg,
+                    ),
+                )
+            }
         }
     }
 
@@ -359,9 +495,15 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         return exercises.value[next.exerciseId]?.name
     }
 
-    fun startRest(seconds: Int, nextExercise: String? = null, isRestPause: Boolean = rest.value?.isRestPause ?: false) {
+    fun startRest(
+        seconds: Int,
+        nextExercise: String? = null,
+        isRestPause: Boolean = rest.value?.isRestPause ?: false,
+        setId: Long? = null,
+        isShortTransition: Boolean = false,
+    ) {
         val endsAt = System.currentTimeMillis() + seconds * 1000L
-        rest.value = RestTimer(seconds, endsAt, nextExercise, isRestPause)
+        rest.value = RestTimer(seconds, endsAt, nextExercise, isRestPause, setId, isShortTransition)
         app.notifier.showRest(endsAt, nextExercise)
         app.restAlert.start(endsAt, nextExercise)
         if (app.restAlarms.shouldOfferExact()) offerExactAlarm.value = true
@@ -370,7 +512,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun setRestPreset(seconds: Int) {
         val current = rest.value ?: return
         app.haptics.tick()
-        startRest(seconds, current.nextExercise, current.isRestPause)
+        startRest(seconds, current.nextExercise, current.isRestPause, current.setId, current.isShortTransition)
     }
 
     /** Asked once: the system refuses exact alarms until the person allows them, and without them the alert can be late. */
@@ -467,20 +609,36 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     fun cancelHold() { hold.value = null }
 
-    /** Saves the seconds actually held (short of the target or past it), ticks the set and starts the rest. */
+    /** Saves the seconds actually held (with reaction-time grace near target), ticks the set and starts the rest. */
     fun stopHold() {
         val h = hold.value ?: return
         hold.value = null
         val held = h.elapsed(System.currentTimeMillis()).coerceIn(0, 3600)
         val set = sets.value.firstOrNull { it.id == h.setId } ?: return
         if (held == 0) return
-        val updated = set.copy(seconds = held, done = true, doneAt = System.currentTimeMillis())
+        if (_adjustment.value?.exerciseId != null && _adjustment.value?.exerciseId != set.exerciseId) {
+            clearAdjustment()
+        }
+        val saved = HoldMath.recorded(held, h.target)
+        val updated = set.copy(seconds = saved, done = true, doneAt = System.currentTimeMillis())
+        effortSetId.value = updated.id
         app.haptics.setDone()
         val currentGroups = group(sets.value) { pos -> supersetGroups.value[pos] }
-        val restSec = effectiveRestSeconds(updated, currentGroups)
-        viewModelScope.launch { repo.updateSet(updated) }
+        val restPlan = effectiveRest(updated, currentGroups)
+        viewModelScope.launch {
+            repo.updateSet(updated)
+            applyIntraSession(updated)
+        }
         checkBest(set, updated)
-        if (restSec > 0) startRest(restSec, nextExerciseAfter(set), isRestPause = set.setType == SetType.RESTPAUSE.name)
+        if (restPlan.seconds > 0) {
+            startRest(
+                seconds = restPlan.seconds,
+                nextExercise = nextExerciseAfter(set),
+                isRestPause = set.setType == SetType.RESTPAUSE.name,
+                setId = updated.id,
+                isShortTransition = restPlan.isShortTransition,
+            )
+        }
     }
 
     /** Best score ever per exercise (finished sessions only), for the gold flash when a typed value beats it. */
@@ -556,7 +714,17 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         app.haptics.tick()
         effortSetId.value = null
         val (e, type) = SetEffort.pick(set.effort, set.setType, effort)
-        repo.updateSet(set.copy(effort = e, setType = type))
+        val updatedSet = set.copy(effort = e, setType = type)
+        repo.updateSet(updatedSet)
+        if (e == SetEffort.FAILURE.name) {
+            rest.value?.let { r ->
+                if (r.setId == set.id && !r.isRestPause && !r.isShortTransition && restExtendedBy.add(set.id)) {
+                    val delta = IntraSession.extendedRest(r.totalSeconds) - r.totalSeconds
+                    if (delta > 0) addRest(delta)
+                }
+            }
+            applyIntraSession(updatedSet)
+        }
     }
 
     fun setNote(set: SetEntity, note: String) = viewModelScope.launch { repo.updateSet(set.copy(note = note.trim().take(120))) }

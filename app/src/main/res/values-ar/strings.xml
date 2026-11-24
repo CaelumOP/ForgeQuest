@@ -2278,4 +2278,8 @@
     <string name="v42_pain_tag_ache">ألم خفيف</string>
     <string name="v42_pain_tag_joint">في المفصل</string>
     <string name="v42_note_hint">هل من شيء تتذكّره في المرة القادمة؟</string>
+    <string name="live_adjusted_load">تعديل: خفض %1$d%% بعد مجموعة شاقة</string>
+    <string name="live_adjusted_reps">تعديل: الهدف %1$d عدّة</string>
+    <string name="live_adjusted_seconds">تعديل: الهدف %1$d ث</string>
+    <string name="live_adjust_undo">تراجع</string>
 </resources>
