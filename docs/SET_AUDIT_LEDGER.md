@@ -118,3 +118,22 @@ VERDICT: Core set logging, PR deduplication, and post-workout debriefs work, but
   - `MIGRATION_9_10`: `foods.barcode`
   - `MIGRATION_10_11`: `exercises.{equipment,pattern,setupNote,aliases,unitOverride,mediaKey,pinned}`, `plans.{scheduleMode,rotationCursor}`, `plan_items.{supersetGroup,autoWarmup,progressionMode}`, `sets.setType`, `body_measurements` table
   - `MIGRATION_11_12`: `sets.autoTicked`
+
+## Final status after the overhaul (2026-11-24, HEAD `b8cd38a`, testDebugUnitTest exit 0, 572 tests)
+
+| Subsystem | Before | After | Proof (write path -> consumer; tests) |
+|---|---|---|---|
+| 1a Planner generator | SCIENTIFICALLY_FLAWED | DONE | `domain/PlanBuilder.kt` restFor/orderRank/finalizeDay -> `WorkoutRepository.applyPlan`; PlanBuilderTest (+5) |
+| 1b Routine auditor | MISSING | DONE | `domain/RoutineAuditor.kt` -> `PlanEditorViewModel.auditFindings` -> `RoutineAuditCard`; plan builder review; RoutineAuditorTest x12 |
+| 2 Baseline | PARTIAL | DONE | `domain/Baseline.kt` -> `WorkoutRepository.buildSetsFor` prefill -> `LiveWorkoutViewModel.baselineStatus` -> `BaselineStatusLine`; BaselineTest, LiveWorkoutBaselineTest, PlanBuilderStepperTest |
+| 3 RIR / effort | SCIENTIFICALLY_FLAWED | DONE | `SetEffort.pick` -> `sets.effort` -> Progression, Recovery, IntraSession, Baseline, Debrief, Score, ExerciseTiers; EffortScaleTest, ProgressionRirTest |
+| 4 Next-session progression | SCIENTIFICALLY_FLAWED | DONE | `domain/Progression.kt` -> `buildSetsFor` + live reasons + debrief; ProgressionTest, ProgressionRirTest, AuditFixesTest |
+| 5 Intra-session adjustment | MISSING | DONE (VM paths device-check) | `domain/IntraSession.kt` -> `LiveWorkoutViewModel.applyIntraSession` (toggle / setEffort / stopHold) -> `sets` rows + `adjustment` -> `AdjustmentCue`; IntraSessionTest x16, LiveWorkoutIntraSessionTest |
+| 6 PR / e1RM | PARTIAL | DONE | `domain/Strength.kt` -> `Records.score`, `ProgressMetrics.epley1Rm`; live pill `LiveWorkoutSets`; StrengthTest, LiveWorkoutPrPillTest |
+| 7 Warm-up generator | PARTIAL | DONE | `domain/WarmupRamp.kt` (isBarbell) <- `buildSetsFor`, `addPlanItem` autoWarmup; WarmupRampTest, Plan41RulesTest |
+| 8 Rest auto-scaling | MISSING | DONE (Failure +45 s) | `IntraSession.extendedRest` <- `LiveWorkoutViewModel.setEffort` (RestTimer.setId/isShortTransition); IntraSessionTest `extendedRestAddsFortyFiveCappedAt240`, LiveWorkoutIntraSessionTest |
+| 9 Recovery / fatigue | SCIENTIFICALLY_FLAWED | DONE (readiness stays removed) | `ProgressRules.kt` `effectiveSetEffort` -> `Recovery.sessionHits` -> body map; ProgressTest RecoveryTest additions |
+| 10 Debrief / scoring | PARTIAL | DONE (XP unchanged by owner decision) | `WorkoutDebriefMath.nextTime` deload/lowerBody; `WorkoutScore` `SetEffort.of`; WorkoutDebriefMathTest |
+| 11 Live UI / planner UI | PARTIAL | DONE (history effort edit deferred) | `LiveWorkoutSets.SetRowContent` + previews, `Common.kt` 48 dp; assembleDebug exit 0 |
+| 12 Room `sets` | PARTIAL | DONE | no schema change (v12); `autoTicked` cleared on history edit; `setType` read by Recovery / charts / WeekCard |
+| Hold timer (owner request) | n/a | DONE | `domain/HoldMath.kt` <- `stopHold`; stepper 1 s; HoldMathTest x5 |
