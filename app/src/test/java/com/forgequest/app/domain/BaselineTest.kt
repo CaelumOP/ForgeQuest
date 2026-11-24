@@ -138,6 +138,29 @@ class BaselineTest {
     }
 
     @Test
+    fun donorsOnlyInOtherPatternsGiveNoEstimate() {
+        val squat = byId.getValue("back_squat")
+        val dbBench = byId.getValue("db_bench_press")
+        // Plenty of history, but nothing that pushes: no guessed load for a pressing lift.
+        val history = linkedMapOf(squat.id to listOf(set(1L, 10L, squat.id, 140f, reps = 5)))
+        val est = Baseline.coldStart(dbBench, repsMin = 8, WeightUnit.KG, history, byId)
+        assertEquals(BaselineStatus.NONE, est.status)
+        assertNull(est.weightKg)
+        assertNull(est.donorId)
+    }
+
+    @Test
+    fun newBodyweightExerciseNeverGetsAGuessedLoad() {
+        val bench = byId.getValue("bench_press")
+        val pushUp = byId.getValue("push_up")
+        val history = linkedMapOf(bench.id to listOf(set(1L, 10L, bench.id, 100f, reps = 5)))
+        val est = Baseline.coldStart(pushUp, repsMin = 8, WeightUnit.KG, history, byId)
+        // Bodyweight moves keep the plan's own reps (and tier from the plan builder); no external load is invented.
+        assertEquals(BaselineStatus.NONE, est.status)
+        assertNull(est.weightKg)
+    }
+
+    @Test
     fun coldStartWithNoDonorIsBlank() {
         val bench = byId.getValue("bench_press")
         val squat = byId.getValue("back_squat")

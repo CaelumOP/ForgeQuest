@@ -137,3 +137,16 @@ VERDICT: Core set logging, PR deduplication, and post-workout debriefs work, but
 | 11 Live UI / planner UI | PARTIAL | DONE (history effort edit deferred) | `LiveWorkoutSets.SetRowContent` + previews, `Common.kt` 48 dp; assembleDebug exit 0 |
 | 12 Room `sets` | PARTIAL | DONE | no schema change (v12); `autoTicked` cleared on history edit; `setType` read by Recovery / charts / WeekCard |
 | Hold timer (owner request) | n/a | DONE | `domain/HoldMath.kt` <- `stopHold`; stepper 1 s; HoldMathTest x5 |
+
+## Left unchanged on purpose (Part A spot-check, 2026-11-24)
+
+| Item (audit row) | Status | Rationale |
+|---|---|---|
+| 13 DROPSET / RESTPAUSE excluded from weekly muscle volume (`ui/progress/ProgressMetrics.kt`, `countsForScore`) | KEPT | Consistent with the RoutineAuditor and scoring: drop and rest-pause sets are not separate hard sets, so counting them would inflate MEV/MRV checks. Progression and PRs already exclude them. |
+| 9 `ReadinessDayEntity` / `ReadinessDao` (DEAD_WIRED) | KEPT | Room tables and backup fields are never removed (AGENTS.md rule); readiness modifiers were removed in 4.1 by design. Stale `lowReadiness` KDoc removed in 3a. |
+| 12 `SessionEntity.debrief` (never read) | KEPT | Same rule: schema + backup compatibility. |
+| 12 `PlanItemEntity.note` not shown on the live card | DEFERRED | A UI feature, not set math; listed in the report's watch list. |
+| 10 XP counts warm-up sets (`Xp.setsForXp`) | KEPT | Owner decision (spec 0 item 12): changing it would lower existing levels. |
+| 11 Effort editing in History session detail | DEFERRED | A12. |
+| ViewModel coroutine paths (Codex fixes 1-3) | NOT UNIT TESTED | `LiveWorkoutViewModel(app: AppContainer)`: `AppContainer` builds the on-disk Room DB, DataStore, OkHttp/Gemini and the catalog asset DB, and the VM `init` starts flows, haptics, TTS and alarms. Testing needs repository injection (a refactor the owner ruled out). Pure parts covered by `IntraSessionTest`, `LiveWorkoutIntraSessionTest`; device checklist in the report. |
+| Baseline zero-donor / bodyweight cold start | VERIFIED | `Baseline.coldStart` returns NONE with null weight (`Baseline.kt:155,189,198`), so the plan default stays; tests `donorsOnlyInOtherPatternsGiveNoEstimate`, `newBodyweightExerciseNeverGetsAGuessedLoad`, `coldStartWithNoDonorIsBlank`. |
