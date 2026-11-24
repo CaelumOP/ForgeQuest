@@ -574,6 +574,13 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     })
   }
 
+  /** Shows the effort chips again for a done set; never unticks it or touches the rest timer. */
+  const reopenEffort = (set: SetRow) => {
+    if (set.id == null || !setsRef.current.some((s) => s.id === set.id && s.done)) return
+    haptics.tick()
+    setEffortSetId(set.id)
+  }
+
   const undoAdjustment = () => {
     const sourceId = adjustment?.sourceSetId
     if (sourceId == null) return
@@ -848,6 +855,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       onToggle={toggle}
       onToggleAll={toggleAll}
       onSetEffort={handleSetEffort}
+      onReopenEffort={reopenEffort}
       onStartHold={beginHold}
       onDismissEffort={() => setEffortSetId(null)}
       adjustment={adjustment}
@@ -1154,6 +1162,7 @@ type CardProps = {
   onToggle: (s: SetRow) => void
   onToggleAll: (sets: SetRow[]) => void
   onSetEffort: (s: SetRow, picked: SetEffort) => void
+  onReopenEffort: (s: SetRow) => void
   onStartHold: (s: SetRow) => void
   onDismissEffort: () => void
   adjustment: LiveAdjustment | null
@@ -1265,6 +1274,7 @@ function GroupCard(p: CardProps) {
     onChange: p.onChange,
     onToggle: p.onToggle,
     onSetEffort: p.onSetEffort,
+    onReopenEffort: p.onReopenEffort,
     onStartHold: p.onStartHold,
     onDismissEffort: p.onDismissEffort,
   })

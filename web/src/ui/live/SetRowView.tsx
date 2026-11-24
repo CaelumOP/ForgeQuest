@@ -66,6 +66,8 @@ export type SetRowProps = {
   onSetEffort: (set: SetRow, picked: SetEffort) => void
   onStartHold: (set: SetRow) => void
   onDismissEffort?: () => void
+  /** Tapping a done set's effort label shows the chips again so it can be re-tagged. */
+  onReopenEffort?: (set: SetRow) => void
   onLabelClick?: () => void
 }
 
@@ -182,7 +184,10 @@ export function SetRowView(p: SetRowProps) {
           <span class="lw-small">
             {set.targetLabel && p.sublabel != null && <span>{set.targetLabel} </span>}
             {set.done && (set.isPr || p.pr) && <span class="lw-pr">{t('live_pr')}</span>}
-            {set.effort !== '' && effort !== 'OK' && <span class={`lw-effort lw-effort-${accentOf(effort)}`}> {t(EFFORT_KEY[effort])}</span>}
+            {set.effort !== '' && effort !== 'OK' && (set.done && p.onReopenEffort
+              ? <button type="button" class={`lw-effort lw-effort-btn lw-effort-${accentOf(effort)}`} aria-label={t('cd_edit_effort')}
+                  onPointerDown={(e) => e.stopPropagation()} onClick={() => p.onReopenEffort?.(set)}>{t(EFFORT_KEY[effort])}</button>
+              : <span class={`lw-effort lw-effort-${accentOf(effort)}`}> {t(EFFORT_KEY[effort])}</span>)}
           </span>
           {set.note && <span class="lw-note">{set.note}</span>}
         </div>

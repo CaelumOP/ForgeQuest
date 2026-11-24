@@ -76,6 +76,10 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 .lw-efforts { display: flex; flex-wrap: wrap; gap: 8px; padding-block-start: 6px; padding-inline-start: 8px; }
 .lw-effort-row { flex-basis: 100%; display: flex; align-items: center; gap: 8px; padding-inline-end: 8px; }
 .lw-effort-group { flex: 1; min-inline-size: 0; display: flex; align-items: stretch; gap: 2px; }
+/* A done set's effort label reopens the chips (Android A12): text look, 48 px tap target. */
+.lw-effort-btn { min-block-size: 48px; min-inline-size: 48px; padding-block: 0; padding-inline: 8px; border: 0; border-radius: var(--r-sm); background: none; font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 4px; }
+/* Set-row steppers: a 48 px value box, as Android raised its Stepper value box (A12). */
+.lw-set button.kit-stepper-val { min-block-size: 48px; }
 .lw-effort-name, .lw-effort-capt { display: block; white-space: normal; overflow-wrap: anywhere; }
 .lw-effort-capt { font-size: 11px; font-weight: 400; }
 .lw-effort-hurt { flex: none; inline-size: 48px; block-size: 48px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--card-high); color: var(--coral); cursor: pointer; }
