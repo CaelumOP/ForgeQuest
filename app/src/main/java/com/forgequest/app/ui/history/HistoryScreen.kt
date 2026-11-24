@@ -280,7 +280,7 @@ private fun WeekCard(
     val c = Fit.colors
     val sets = sessions.flatMap { setsBySession[it.id].orEmpty() }
     val minutes = sessions.sumOf { s -> s.finishedAt?.let { ((it - s.startedAt) / 60_000).toInt().coerceAtLeast(1) } ?: 0 }
-    val volume = sets.sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat()
+    val volume = sets.filter(::countsAsWorkingSet).sumOf { ((it.weightKg ?: 0f) * (it.reps ?: 0)).toDouble() }.toFloat()
     val prs = sets.count { it.isPr }
     val title = when (week) {
         thisWeek -> stringResource(R.string.journal_this_week)
@@ -376,9 +376,9 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
     fun setField(set: SetEntity, field: Field, value: Float) {
         app.haptics.tick()
         val updated = when (field) {
-            Field.REPS -> set.copy(reps = value.roundToInt().coerceIn(0, 999))
-            Field.SECONDS -> set.copy(seconds = value.roundToInt().coerceIn(0, 3600))
-            Field.WEIGHT -> set.copy(weightKg = ((value * 10).roundToInt() / 10f).coerceIn(0f, 999f))
+            Field.REPS -> set.copy(reps = value.roundToInt().coerceIn(0, 999), autoTicked = false)
+            Field.SECONDS -> set.copy(seconds = value.roundToInt().coerceIn(0, 3600), autoTicked = false)
+            Field.WEIGHT -> set.copy(weightKg = ((value * 10).roundToInt() / 10f).coerceIn(0f, 999f), autoTicked = false)
         }
         viewModelScope.launch { app.workouts.updateFinishedSet(updated) }
     }

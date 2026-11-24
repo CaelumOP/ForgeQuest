@@ -108,6 +108,9 @@ import com.forgequest.app.ui.workouts.LiveWorkoutViewModel.Field
 internal fun parseSetType(raw: String?): SetType =
     SetType.entries.firstOrNull { it.name == raw } ?: SetType.WORKING
 
+internal fun showPrPill(set: SetEntity, livePr: Boolean): Boolean =
+    set.done && (set.isPr || livePr)
+
 @Composable
 private fun setTypeLabel(type: SetType): String = stringResource(
     when (type) {
@@ -259,7 +262,7 @@ internal fun SetRow(
                 if (set.targetLabel.isNotBlank() && sublabel != null) {
                     Text(set.targetLabel, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
-                if (set.isPr) {
+                if (showPrPill(set, pr)) {
                     Spacer(Modifier.width(8.dp))
                     PrTag()
                 }

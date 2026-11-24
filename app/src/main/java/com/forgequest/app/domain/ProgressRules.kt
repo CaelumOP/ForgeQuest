@@ -2,9 +2,9 @@ package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.data.seed.ExerciseCatalog
 import java.time.DayOfWeek
 import java.time.LocalDate
-import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 
@@ -347,6 +347,7 @@ object Recovery {
      * - 1 rep on a bodyweight exercise = 0.10f (so 1 rep is 1/10th of a set, not a full workout).
      */
     internal fun effectiveSetEffort(set: SetEntity, ex: ExerciseEntity): Float {
+        if (!countsAsWorkingSet(set) || ex.id in ExerciseCatalog.STRETCH_IDS || set.exerciseId in ExerciseCatalog.STRETCH_IDS) return 0f
         val rawEffort = when (ex.kind) {
             ExerciseKind.HOLD -> {
                 val sec = set.seconds ?: 0
@@ -358,9 +359,10 @@ object Recovery {
                 val r = set.reps ?: 0
                 if (r <= 0) return 0f
                 val w = set.weightKg ?: 0f
-                // With external load, 6 reps already count as a full working set (10 without); a heavy triple counts half.
+                // With external load, 6 reps already count as a full working set (10 without); a loaded set counts at least half.
                 val refReps = if (w > 0f) 6f else 10f
-                (r / refReps).coerceIn(0.15f, 1.25f)
+                val minEffort = if (w > 0f) 0.5f else 0.15f
+                (r / refReps).coerceIn(minEffort, 1.25f)
             }
             ExerciseKind.REPS -> {
                 val r = set.reps ?: 0
@@ -422,11 +424,11 @@ object Recovery {
 object Records {
     /**
      * Comparable score for one set:
-     * - WEIGHTED sets use an Epley 1RM model with linear scaling up to 12 reps and logarithmic diminishing
-     *   returns above 12 reps so 5×100 kg beats 8×80 kg and 35×20 kg never falsely beats heavy strength sets.
+     * - WEIGHTED sets delegate to [Strength.e1rm] (exact on singles, Epley for 2..12, logarithmic soft cap above 12)
+     *   so 5×100 kg beats 8×80 kg and 35×20 kg never falsely beats heavy strength sets.
      * - REPS and HOLD sets also credit added external weight (e.g. weighted vest or dip belt on calisthenics)
      *   so progressing from bodyweight to +10 kg is recognized as a personal record.
-     * - Weighted pull-ups, chin-ups, dips and push-ups move the body too, so their Epley score uses body + added
+     * - Weighted pull-ups, chin-ups, dips and push-ups move the body too, so their e1RM uses body + added
      *   load (then takes the body back off): +10 kg × 10 beats +15 kg × 1. A fixed 75 kg reference body keeps one
      *   person's sets in the right order without needing their weight (audit 2026-10-24).
      */
@@ -448,8 +450,7 @@ object Records {
                 if (extraKg <= 0f && body <= 0f) {
                     r / 100f
                 } else {
-                    val effectiveReps = if (r <= 12) r.toFloat() else 12f + 3f * ln(1f + (r - 12).toFloat())
-                    (body + extraKg) * (1f + effectiveReps / 30f) - body
+                    Strength.e1rm(body + extraKg, r) - body
                 }
             }
         }

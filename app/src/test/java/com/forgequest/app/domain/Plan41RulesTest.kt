@@ -39,8 +39,8 @@ class Plan41RulesTest {
     }
 
     @Test fun warmupRampUsesRoundedLoadsBelowWorkingWeight() {
-        assertEquals(listOf(50f, 70f, 85f), WarmupRamp.generate(100f).map { it.weightKg })
-        assertEquals(listOf(8, 5, 3), WarmupRamp.generate(100f).map { it.reps })
+        assertEquals(listOf(20f, 50f, 70f, 85f), WarmupRamp.generate(100f).map { it.weightKg })
+        assertEquals(listOf(10, 8, 5, 3), WarmupRamp.generate(100f).map { it.reps })
         assertTrue(WarmupRamp.generate(20f).isEmpty())
         assertTrue(WarmupRamp.generate(0f).isEmpty())
         assertTrue(WarmupRamp.generate(Float.NaN).isEmpty())

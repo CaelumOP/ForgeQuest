@@ -6,6 +6,7 @@ import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.Strength
 import com.forgequest.app.domain.countsForScore
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -45,12 +46,8 @@ object ProgressMetrics {
         return totals
     }
 
-    /** Epley estimated 1RM. Exact weight when reps == 1; 0 when weight <= 0 or reps <= 0. */
-    fun epley1Rm(weight: Float, reps: Int): Float {
-        if (weight <= 0f || reps <= 0) return 0f
-        if (reps == 1) return weight
-        return weight * (1f + reps / 30f)
-    }
+    /** Estimated 1RM via [Strength.e1rm]. Exact weight when reps == 1; soft-capped above 12 reps. */
+    fun epley1Rm(weight: Float, reps: Int): Float = Strength.e1rm(weight, reps)
 
     /** Ratio of estimated 1RM (in kg) to body weight (in kg), or null when body weight is missing. */
     fun strengthToBodyweight(est1RmKg: Float, bodyWeightKg: Float?): Float? {

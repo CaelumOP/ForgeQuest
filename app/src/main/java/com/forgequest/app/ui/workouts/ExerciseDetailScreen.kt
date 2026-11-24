@@ -67,6 +67,7 @@ import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.ExerciseTiers
 import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.countsForScore
 import com.forgequest.app.ui.LocalSnackbar
 import com.forgequest.app.ui.Routes
 import com.forgequest.app.ui.appViewModel
@@ -166,7 +167,11 @@ fun ExerciseDetailScreen(nav: NavHostController, exerciseId: String, fromLive: B
             .mapNotNull { (sid, sets) -> sessionsById[sid]?.let { it to sets.sortedBy { set -> set.setIndex } } }
             .sortedBy { it.first.finishedAt }
     }
-    val points = remember(history, mi, kind, unit) { history.map { (_, sets) -> metric.value(sets, kind) } }
+    val points = remember(history, mi, kind, unit) {
+        history.mapNotNull { (_, sets) ->
+            sets.filter(::countsForScore).takeIf { it.isNotEmpty() }?.let { metric.value(it, kind) }
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding().verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -41,32 +41,39 @@ object WarmupRamp {
     }
 
     /**
-     * Generates 2–3 ramp sets below [workingWeightKg], rounded to [unit]'s plate steps (2.5 kg / 5 lb)
-     * and floored at the bar weight ([barWeightKg], default 20 kg). Returns empty when working weight is missing
-     * or at/below the bar weight.
+     * Generates ramp sets below [workingWeightKg], rounded to [unit]'s load steps (2.5 kg / 5 lb).
+     * When [isBarbell] is true, sets floor at [barWeightKg] (default 20 kg) and prepend an empty-bar
+     * set for 10 reps when working weight is at least 3× the bar; non-barbell lifts floor at one load step.
+     * Returns empty when working weight is missing or at/below the floor.
      */
     fun generate(
         workingWeightKg: Float,
         unit: WeightUnit = WeightUnit.KG,
         barWeightKg: Float = 20f,
+        isBarbell: Boolean = true,
     ): List<RampSet> {
         if (!workingWeightKg.isFinite() || workingWeightKg <= 0f) return emptyList()
         val step = unit.loadStep
         val workingDisplay = unit.fromKg(workingWeightKg)
         val rawBar = if (barWeightKg.isFinite() && barWeightKg > 0f) barWeightKg else 20f
         val barDisplay = snap(unit.fromKg(rawBar), step).coerceAtLeast(step)
-        if (workingDisplay <= barDisplay + 0.01f) return emptyList()
+        val floorDisplay = if (isBarbell) barDisplay else step
+        if (workingDisplay <= floorDisplay + 0.01f) return emptyList()
 
         val out = mutableListOf<RampSet>()
         var lastDisplay = -1f
+        if (isBarbell && workingDisplay >= 3f * barDisplay - 0.01f) {
+            lastDisplay = barDisplay
+            out += RampSet(weightKg = unit.toKg(barDisplay), reps = 10)
+        }
         for ((pct, reps) in RAMP_STEPS) {
-            val targetDisplay = snap(workingDisplay * pct, step).coerceAtLeast(barDisplay)
+            val targetDisplay = snap(workingDisplay * pct, step).coerceAtLeast(floorDisplay)
             if (targetDisplay >= workingDisplay - 0.01f) continue
             if (kotlin.math.abs(targetDisplay - lastDisplay) < 0.01f) continue
             lastDisplay = targetDisplay
             out += RampSet(weightKg = unit.toKg(targetDisplay), reps = reps)
         }
-        // Near the empty bar, two preparation sets share the only load below working weight.
+        // Near the floor, two preparation sets share the only load below working weight.
         if (out.size == 1) out += RampSet(out.first().weightKg, 5)
         return out
     }

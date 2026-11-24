@@ -20,6 +20,7 @@ import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.PlateMath
 import com.forgequest.app.domain.PrPicker
 import com.forgequest.app.domain.Progression
 import com.forgequest.app.domain.ProgressionMode
@@ -444,6 +445,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                 seconds = if (ex.kind == ExerciseKind.HOLD) 30 else null,
                 weightKg = if (ex.kind == ExerciseKind.WEIGHTED) 0f else null,
                 restSeconds = 90,
+                autoWarmup = WarmupRamp.isHeavyBarbellCompound(ex),
             )
         )
         val day = plans.day(dayId)
@@ -588,7 +590,7 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         }
         val firstWorkingKg = prefilledSets.firstOrNull()?.weightKg ?: 0f
         val ramp = if (item != null && item.autoWarmup && !WorkoutScore.isExtra(item.block) && kind == ExerciseKind.WEIGHTED) {
-            WarmupRamp.generate(firstWorkingKg, unit, barWeightKg)
+            WarmupRamp.generate(firstWorkingKg, unit, barWeightKg, isBarbell = PlateMath.isBarbellExercise(ex))
         } else {
             emptyList()
         }

@@ -246,6 +246,36 @@ class RecoveryTest {
         // a tapped chip wins over the note
         assertEquals(0.80f, Recovery.effectiveSetEffort(set("صعب", effort = "EASY"), ex), 0.001f)
     }
+
+    @Test
+    fun warmupSetTypeAddsNoFatigue() {
+        val ex = ExerciseEntity("bench", "Bench", ExerciseKind.WEIGHTED, listOf(Muscle.CHEST), emptyList())
+        val warmup = SetEntity(
+            sessionId = 1, exerciseId = "bench", itemPosition = 0, block = "Main", circuit = false, setIndex = 0,
+            targetLabel = "", reps = 8, weightKg = 40f, done = true, setType = SetType.WARMUP.name,
+        )
+        assertEquals(0f, Recovery.effectiveSetEffort(warmup, ex), 0.0001f)
+    }
+
+    @Test
+    fun stretchesAddNoFatigue() {
+        val stretch = ExerciseEntity("quad_stretch", "Standing quad stretch", ExerciseKind.HOLD, listOf(Muscle.QUADS), emptyList())
+        val set = SetEntity(
+            sessionId = 1, exerciseId = "quad_stretch", itemPosition = 0, block = "Main", circuit = false, setIndex = 0,
+            targetLabel = "", seconds = 30, done = true,
+        )
+        assertEquals(0f, Recovery.effectiveSetEffort(set, stretch), 0.0001f)
+    }
+
+    @Test
+    fun heavySingleCountsAtLeastHalfASet() {
+        val ex = ExerciseEntity("squat", "Squat", ExerciseKind.WEIGHTED, listOf(Muscle.QUADS), emptyList())
+        val single = SetEntity(
+            sessionId = 1, exerciseId = "squat", itemPosition = 0, block = "Main", circuit = false, setIndex = 0,
+            targetLabel = "", reps = 1, weightKg = 140f, done = true,
+        )
+        assertEquals(0.5f, Recovery.effectiveSetEffort(single, ex), 0.001f)
+    }
 }
 
 class RecordsTest {
@@ -259,6 +289,21 @@ class RecordsTest {
     @Test
     fun holdsCompareBySeconds() {
         assertEquals(45f, Records.score(ExerciseKind.HOLD, null, 45, null))
+    }
+
+    @Test
+    fun singleScoresExactly() {
+        assertEquals(100f, Records.score(ExerciseKind.WEIGHTED, reps = 1, seconds = null, weightKg = 100f), 0.001f)
+        assertEquals(15f, Records.score(ExerciseKind.WEIGHTED, reps = 1, seconds = null, weightKg = 15f, exerciseId = "weighted_pull_up"), 0.001f)
+    }
+
+    @Test
+    fun noLoadFallbackOrdersByReps() {
+        val eight = Records.score(ExerciseKind.WEIGHTED, reps = 8, seconds = null, weightKg = 0f)
+        val twelve = Records.score(ExerciseKind.WEIGHTED, reps = 12, seconds = null, weightKg = null)
+        assertEquals(0.08f, eight, 0.0001f)
+        assertEquals(0.12f, twelve, 0.0001f)
+        assertTrue(twelve > eight)
     }
 }
 
