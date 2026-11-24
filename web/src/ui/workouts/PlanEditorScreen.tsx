@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { audit, fromActivePlan } from '../../domain/routine-auditor'
+import { AuditCard } from '../plan/AuditCard'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t, useLang, intlLocale } from '../../i18n'
 import type { ExerciseRow, PlanDayRow, PlanItemRow, PlanRow } from '../../data/db'
 import { useProgress } from '../../data/progress'
@@ -58,6 +60,10 @@ export function PlanEditorScreen({ param }: { param?: string }) {
   const [drag, setDrag] = useState<{ id: number; offset: number; order: number[]; start: number } | null>(null)
   const rowEls = useRef(new Map<number, HTMLElement>())
   const lastY = useRef(0)
+
+  const findings = useMemo(() => s?.plan
+    ? audit(fromActivePlan(s.plan), s.exercises, parseScheduleMode(s.plan.plan.scheduleMode))
+    : [], [s?.plan, s?.exercises])
 
   if (!s) return <div class="content wk" />
   const plan = s.plan
@@ -151,6 +157,8 @@ export function PlanEditorScreen({ param }: { param?: string }) {
           </div>
         </Card>
       )}
+
+      <AuditCard findings={findings} />
 
       {!plan ? (
         <Card>

@@ -1,3 +1,4 @@
+import { isExtraBlock } from './pr-picker'
 // Same cases as Android PlanBuilderTest.kt.
 import { describe, expect, it } from 'vitest'
 import { EXERCISE_CATALOG, STRETCH_IDS } from '../data/seed/exercise-catalog'
@@ -6,7 +7,7 @@ import { EQUIPMENT_PRESETS, presetEquipment, profileFor, type Equipment, type Mo
 import { tierOf } from './exercise-tiers'
 import type { Muscle } from './muscle'
 import {
-  blocked, COOL_DOWN_BLOCK, estimateMinutes, INJURIES, PlanBuilder, spreadDays,
+  blocked, COOL_DOWN_BLOCK, estimateMinutes, FINISHER_BLOCK, INJURIES, isCompound, isCore, PlanBuilder, spreadDays,
   type BuiltPlan, type Injury, type PlanInput, type TrainGoal,
 } from './plan-builder'
 
@@ -151,7 +152,8 @@ describe('PlanBuilderTest', () => {
       )
     const strength = ranges('STRENGTH')
     const endurance = ranges('ENDURANCE')
-    expect(strength).toEqual(new Set(['4:6']))
+    expect(strength.has('4:6')).toBe(true)
+    expect([...strength].every((range) => range === '4:6' || range === '8:12')).toBe(true)
     expect(endurance).toEqual(new Set(['15:20']))
     expect(strength).not.toEqual(endurance)
     const rest = (goal: TrainGoal) =>
@@ -203,5 +205,68 @@ describe('PlanBuilderTest', () => {
     expect(exercisesOf(build(input(4, fullGym, 'MUSCLE', 60, { offset: 1 })).draft).map((e) => e.id)).not.toEqual(
       exercisesOf(base.draft).map((e) => e.id),
     )
+  })
+})
+
+// Training-science overhaul cases from Android.
+describe('PlanBuilder overhaul', () => {
+  const compound = (id: string) => isCompound(profileFor(byId.get(id)!).pattern)
+  it('isolationsGetEightToFifteenRepsOnMuscle', () => {
+    const main = build(input(4, fullGym, 'MUSCLE', 90)).draft.days.flatMap((d) => d.items)
+      .filter((i) => i.block === 'Main' && i.kind !== 'HOLD')
+    const compounds = main.filter((i) => compound(i.exerciseId))
+    const isolations = main.filter((i) => !compound(i.exerciseId))
+    expect(compounds.length).toBeGreaterThan(0)
+    expect(isolations.length).toBeGreaterThan(0)
+    expect(isolations.every((i) => i.repsMin === 10 && i.repsMax === 15)).toBe(true)
+    expect(compounds.filter((i) => i.kind === 'WEIGHTED').every((i) => i.repsMin === 8 && i.repsMax === 12)).toBe(true)
+  })
+  it('isolationsGetEightToTwelveOnStrength', () => {
+    const main = build(input(4, fullGym, 'STRENGTH', 90)).draft.days.flatMap((d) => d.items)
+      .filter((i) => i.block === 'Main' && i.kind === 'WEIGHTED')
+    const compounds = main.filter((i) => compound(i.exerciseId))
+    const isolations = main.filter((i) => !compound(i.exerciseId))
+    expect(compounds.length).toBeGreaterThan(0)
+    expect(isolations.length).toBeGreaterThan(0)
+    expect(isolations.every((i) => i.repsMin === 8 && i.repsMax === 12)).toBe(true)
+    expect(compounds.every((i) => i.repsMin === 4 && i.repsMax === 6)).toBe(true)
+  })
+  it('compoundsRestLongerThanIsolations', () => {
+    for (const goal of ['STRENGTH', 'MUSCLE', 'GENERAL', 'FAT_LOSS', 'ENDURANCE'] as const) {
+      const main = build(input(4, fullGym, goal, 90)).draft.days.flatMap((d) => d.items).filter((i) => i.block === 'Main')
+      const compounds = main.filter((i) => compound(i.exerciseId))
+      const isolations = main.filter((i) => !compound(i.exerciseId))
+      expect(compounds.length).toBeGreaterThan(0)
+      expect(isolations.length).toBeGreaterThan(0)
+      expect(Math.min(...compounds.map((i) => i.restSeconds))).toBeGreaterThan(Math.max(...isolations.map((i) => i.restSeconds)))
+    }
+    const long = build(input(4, fullGym, 'STRENGTH', 90, { rest: 'LONG', cardio: 'FINISHER' })).draft.days.flatMap((d) => d.items)
+    expect(long.filter((i) => i.block === 'Main' && compound(i.exerciseId)).every((i) => i.restSeconds === 240)).toBe(true)
+    expect(long.filter((i) => i.block === 'Main' && !compound(i.exerciseId)).every((i) => i.restSeconds === 135)).toBe(true)
+    const finishers = long.filter((i) => i.block === FINISHER_BLOCK)
+    expect(finishers.length).toBeGreaterThan(0)
+    expect(finishers.every((i) => i.restSeconds === 30)).toBe(true)
+  })
+  it('coreAndIsolationsComeAfterCompoundsFinisherLast', () => {
+    const plan = build(input(4, fullGym, 'MUSCLE', 90, { cardio: 'FINISHER', warmUp: true, coolDown: true }))
+    const seenRanks = new Set<number>()
+    for (const day of plan.draft.days) {
+      const ranks = day.items.filter((i) => !isExtraBlock(i.block)).map((i) => {
+        const p = profileFor(byId.get(i.exerciseId)!).pattern
+        return i.block === FINISHER_BLOCK ? 3 : isCore(p) ? 2 : isCompound(p) ? 0 : 1
+      })
+      ranks.forEach((r) => seenRanks.add(r))
+      expect(ranks).toEqual([...ranks].sort((a, b) => a - b))
+    }
+    expect(seenRanks).toEqual(new Set([0, 1, 2, 3]))
+  })
+  it('existingFocusVolumeStillHolds', () => {
+    const weeklySets = (plan: BuiltPlan, m: Muscle) => plan.draft.days.flatMap((d) => d.items)
+      .filter((i) => !isExtraBlock(i.block) && byId.get(i.exerciseId)!.primary.includes(m)).reduce((sum, i) => sum + i.sets, 0)
+    for (const m of ['BICEPS', 'SHOULDERS', 'GLUTES', 'CHEST', 'CALVES'] as const) {
+      const without = weeklySets(build(input(4, fullGym, 'MUSCLE', 45)), m)
+      const withFocus = weeklySets(build(input(4, fullGym, 'MUSCLE', 45, { focus: [m] })), m)
+      expect(withFocus, `${m} at 45m: ${withFocus} vs ${without}`).toBeGreaterThan(without)
+    }
   })
 })

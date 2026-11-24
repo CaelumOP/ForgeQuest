@@ -75,6 +75,14 @@ export const FINISHER_BLOCK = 'Finisher'
 export const PROGRESSION_NOTE =
   'Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.'
 
+export const COMPOUND_PATTERNS = new Set<MovementPattern>([
+  'HORIZONTAL_PUSH', 'DIP_PUSH', 'VERTICAL_PUSH', 'VERTICAL_PULL', 'HORIZONTAL_PULL',
+  'SQUAT_BILATERAL', 'SQUAT_UNILATERAL', 'HIP_HINGE',
+])
+export const isCompound = (pattern: MovementPattern): boolean => COMPOUND_PATTERNS.has(pattern)
+export const isCore = (pattern: MovementPattern): boolean =>
+  pattern === 'CORE_ANTI_EXTENSION' || pattern === 'CORE_FLEXION_ROTATION'
+
 const SET_SECONDS = 40
 const TOLERANCE_MIN = 5
 const CONDITIONING_REST = 30
@@ -495,19 +503,23 @@ class Builder {
     }
   }
 
-  private baseRest(): number {
-    const seconds =
-      this.goal === 'STRENGTH' ? 150
-      : this.goal === 'MUSCLE' ? 90
-      : this.goal === 'FAT_LOSS' ? 45
-      : this.goal === 'ENDURANCE' ? 30
-      : 75
-    const factor = this.rest === 'AUTO' ? 1.0 : this.rest === 'SHORT' ? 0.6 : 1.5
-    return clamp(Math.round(seconds * factor), 30, 240)
+  private repRangeFor(p: Pick): [number, number] {
+    if (p.role === 'COND' || p.role === 'FINISHER') return [12, 20]
+    const base = this.repRange()
+    if (isCompound(this.prof(p.ex).pattern)) return base
+    if (this.reps !== 'AUTO') return base[0] >= 8 ? base : [8, 15]
+    if (this.goal === 'STRENGTH') return [8, 12]
+    if (this.goal === 'MUSCLE') return [10, 15]
+    return base[0] >= 8 ? base : [8, 15]
   }
 
-  private restFor(role: Role): number {
-    return role === 'COND' || role === 'FINISHER' ? CONDITIONING_REST : this.baseRest()
+  private restFor(p: Pick): number {
+    if (p.role === 'COND' || p.role === 'FINISHER') return CONDITIONING_REST
+    const seconds = isCompound(this.prof(p.ex).pattern)
+      ? (this.goal === 'STRENGTH' ? 180 : this.goal === 'MUSCLE' ? 150 : 120)
+      : (this.goal === 'STRENGTH' || this.goal === 'MUSCLE' ? 90 : this.goal === 'GENERAL' ? 75 : 60)
+    const factor = this.rest === 'AUTO' ? 1.0 : this.rest === 'SHORT' ? 0.6 : 1.5
+    return clamp(Math.round(seconds * factor), 30, 240)
   }
 
   private target(m: Muscle): number {
@@ -541,7 +553,7 @@ class Builder {
   }
 
   private item(p: Pick): PlanDraftItem {
-    const [lo, hi] = p.role === 'COND' || p.role === 'FINISHER' ? [12, 20] : this.repRange()
+    const [lo, hi] = this.repRangeFor(p)
     const e = p.ex
     let repsMin: number | null = null
     let repsMax: number | null = null
@@ -573,7 +585,7 @@ class Builder {
       repsMax,
       seconds,
       weightKg: null,
-      restSeconds: this.restFor(p.role),
+      restSeconds: this.restFor(p),
       note: '',
       videoUrl: null,
     }
@@ -633,10 +645,16 @@ class Builder {
   }
 
   private workSeconds(picks: Pick[]): number {
-    return picks.reduce((sum, p) => sum + p.sets * (SET_SECONDS + this.restFor(p.role)), 0)
+    return picks.reduce((sum, p) => sum + p.sets * (SET_SECONDS + this.restFor(p)), 0)
   }
 
-  /** Turns a day's picks into a draft day that fits the time: extras and accessories go first, then sets down to 2. */
+  private orderRank(p: Pick): number {
+    if (p.role === 'FINISHER') return 3
+    const pattern = this.prof(p.ex).pattern
+    return isCore(pattern) ? 2 : isCompound(pattern) ? 0 : 1
+  }
+
+  /** Fits the time budget, protecting focus picks until other lifts cannot be shaved. */
   private finalizeDay(d: number, day: DayBuild): PlanDraftDay | null {
     if (day.picks.length === 0) return null
     const pickIds = new Set(day.picks.map((p) => p.ex.id))
@@ -646,37 +664,36 @@ class Builder {
     const reservedSeconds = ((warm.length > 0 ? 5 : 0) + (cool.length > 0 ? 5 : 0)) * 60
     const budgetSeconds = (this.dayMinutes(d) + TOLERANCE_MIN) * 60
     const picks = day.picks
+    picks.sort((a, b) => this.orderRank(a) - this.orderRank(b))
     let trimmed = false
-    const dropOrder: Role[] = ['FINISHER', 'ACC', 'FOCUS']
+    const dropOrder: ((p: Pick) => boolean)[] = [
+      (p) => p.role === 'FINISHER',
+      (p) => p.role === 'ACC',
+      (p) => p.role !== 'FOCUS' && isCore(this.prof(p.ex).pattern),
+    ]
     while (this.workSeconds(picks) + reservedSeconds > budgetSeconds) {
-      let drop: number | null = null
-      for (const r of dropOrder) {
+      let drop = -1
+      for (const match of dropOrder) {
         for (let i = picks.length - 1; i >= 0; i--) {
-          if (picks[i].role === r) {
-            drop = i
-            break
-          }
+          if (match(picks[i])) { drop = i; break }
         }
-        if (drop != null) break
+        if (drop >= 0) break
       }
-      if (drop != null) {
+      if (drop >= 0) {
         picks.splice(drop, 1)
       } else {
-        let cut: number | null = null
-        for (let i = 0; i < picks.length; i++) {
-          if (picks[i].sets > 2) {
-            if (cut == null || picks[i].sets > picks[cut].sets || (picks[i].sets === picks[cut].sets && i > cut)) {
-              cut = i
-            }
-          }
+        const cuttable = picks.map((_, i) => i).filter((i) => picks[i].sets > 2)
+        const spareFocus = cuttable.filter((i) => !picks[i].ex.primary.some((m) => this.focus.has(m)))
+        const candidates = spareFocus.length ? spareFocus : cuttable
+        const cut = candidates.sort((a, b) => picks[b].sets - picks[a].sets || b - a)[0]
+        let dropFocus = -1
+        for (let i = picks.length - 1; i >= 0; i--) {
+          if (picks[i].role === 'FOCUS') { dropFocus = i; break }
         }
-        if (cut != null) {
-          picks[cut].sets--
-        } else if (picks.length > 1) {
-          picks.pop()
-        } else {
-          break
-        }
+        if (cut != null) picks[cut].sets--
+        else if (dropFocus >= 0) picks.splice(dropFocus, 1)
+        else if (picks.length > 1) picks.pop()
+        else break
       }
       trimmed = true
     }

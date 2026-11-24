@@ -1,3 +1,5 @@
+import { audit, fromDraft } from '../../domain/routine-auditor'
+import { AuditCard } from './AuditCard'
 // Port of app/src/main/java/com/forgequest/app/ui/plan/PlanBuilderScreen.kt.
 import type { ComponentChildren } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
@@ -612,9 +614,11 @@ function ReviewSection({
     [review],
   )
   const volume = useMemo(() => weeklyMuscleVolume(review.draft, byId), [review, byId])
+  const findings = useMemo(() => audit(fromDraft(review.draft), byId), [review, byId])
 
   return (
     <div class="pb-review">
+      <AuditCard findings={findings} />
       {days.length === 0 ? (
         <Card>
           <p class="pb-hint">{t('pb_empty')}</p>
