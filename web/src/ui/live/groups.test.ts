@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SetRow } from '../../data/db'
-import { carryForwardUpdates, clampField, currentGroupIndex, effectiveRestSeconds, groupSetsByExercise, nextUntickedSet } from './groups'
+import { carryForwardUpdates, clampField, currentGroupIndex, effectiveRest, effectiveRestSeconds, groupSetsByExercise, nextUntickedSet } from './groups'
 
 let id = 0
 const s = (itemPosition: number, setIndex: number, o: Partial<SetRow> = {}): SetRow => ({
@@ -130,5 +130,9 @@ describe('supersetGroup & effectiveRestSeconds', () => {
     expect(effectiveRestSeconds(restPause, groups)).toBe(15)
     expect(effectiveRestSeconds(a1, groups)).toBe(10)
     expect(effectiveRestSeconds(a2, groups)).toBe(90)
+    expect(effectiveRest(a1, groups)).toEqual({ seconds: 10, isShortTransition: true })
+    expect(effectiveRest(a2, groups)).toEqual({ seconds: 90, isShortTransition: false })
+    expect(effectiveRest(restPause, groups)).toEqual({ seconds: 15, isShortTransition: false })
+    expect(effectiveRest(warmup, groups)).toEqual({ seconds: 0, isShortTransition: false })
   })
 })

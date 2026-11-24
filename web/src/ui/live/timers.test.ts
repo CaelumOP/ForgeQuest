@@ -58,4 +58,22 @@ describe('saved timers', () => {
     expect(loadTimers(store, 1, 0)).toEqual({ rest: null, hold: null })
     expect(() => saveTimers(null, { sessionId: 1, rest: null, hold: null })).not.toThrow()
   })
+  it('loads a saved RestTimer without setId or isShortTransition, and preserves them when set', () => {
+    const store = memory()
+    store.data.set('fq.live.timers', JSON.stringify({
+      sessionId: 5,
+      rest: { totalSeconds: 90, endsAt: 100_000, nextExercise: 'Squat', isRestPause: false },
+      hold: null,
+    }))
+    const legacy = loadTimers(store, 5, 20_000).rest
+    expect(legacy).toEqual({ totalSeconds: 90, endsAt: 100_000, nextExercise: 'Squat', isRestPause: false })
+    expect(legacy?.setId).toBeUndefined()
+    expect(legacy?.isShortTransition).toBeUndefined()
+
+    const withMeta = startRest(10, 10_000, 'Row', false, 42, true)
+    saveTimers(store, { sessionId: 5, rest: withMeta, hold: null })
+    const loaded = loadTimers(store, 5, 12_000).rest
+    expect(loaded).toEqual(withMeta)
+    expect(adjustRest(loaded!, 45)).toMatchObject({ totalSeconds: 55, setId: 42, isShortTransition: true })
+  })
 })

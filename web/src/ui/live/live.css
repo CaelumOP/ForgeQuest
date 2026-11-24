@@ -154,6 +154,12 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
 /* "Ready for a harder version" note */
 .lw-harder { display: flex; align-items: center; gap: 8px; margin-block: 8px 4px; padding-block: 8px; padding-inline: 12px; border-radius: var(--r-sm); background: var(--teal-track); color: var(--text); font-size: 14px; line-height: 1.45; }
 .lw-harder-text { flex: 1; min-inline-size: 0; }
+.lw-adjust { display: flex; align-items: center; gap: 8px; margin-block: 8px 4px; padding-block: 4px; padding-inline: 12px 4px; border-radius: var(--r-sm); background: var(--teal-track); color: var(--text); font-size: 14px; line-height: 1.45; }
+.lw-adjust-text { flex: 1; min-inline-size: 0; }
+.lw-adjust-undo {
+  flex: none; min-inline-size: 44px; min-block-size: 44px; padding-inline: 12px; border: 0; border-radius: var(--r-full);
+  background: transparent; color: var(--teal); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
 
 /* Rest countdown: Material 3 Expressive wavy bar (Android LinearWavyProgressIndicator). The wave travels one wavelength a second. */
 .lw-wavebar { display: block; inline-size: 100%; block-size: 10px; overflow: visible; }

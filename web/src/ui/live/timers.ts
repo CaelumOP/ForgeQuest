@@ -5,7 +5,14 @@ export const READY_SECONDS = 3
 export const DEFAULT_HOLD_SECONDS = 30
 const MIN_REST_TOTAL = 15
 
-export type RestTimer = { totalSeconds: number; endsAt: number; nextExercise: string | null; isRestPause?: boolean }
+export type RestTimer = {
+  totalSeconds: number
+  endsAt: number
+  nextExercise: string | null
+  isRestPause?: boolean
+  setId?: number
+  isShortTransition?: boolean
+}
 
 /** Whole seconds left, never below zero. Rounds up so a fresh 90 s rest reads 1:30, not 1:29. */
 export function restLeft(endsAt: number, now: number): number {
@@ -14,8 +21,22 @@ export function restLeft(endsAt: number, now: number): number {
 
 export const restDone = (r: RestTimer, now: number): boolean => now >= r.endsAt
 
-export function startRest(seconds: number, now: number, nextExercise: string | null, isRestPause = false): RestTimer {
-  return { totalSeconds: seconds, endsAt: now + seconds * 1000, nextExercise, isRestPause }
+export function startRest(
+  seconds: number,
+  now: number,
+  nextExercise: string | null,
+  isRestPause = false,
+  setId?: number,
+  isShortTransition = false,
+): RestTimer {
+  return {
+    totalSeconds: seconds,
+    endsAt: now + seconds * 1000,
+    nextExercise,
+    isRestPause,
+    ...(setId != null ? { setId } : {}),
+    ...(isShortTransition ? { isShortTransition } : {}),
+  }
 }
 
 /** +15 s or -15 s on a running rest. The total never drops below 15 s. */

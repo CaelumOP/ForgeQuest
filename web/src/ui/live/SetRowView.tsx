@@ -63,6 +63,7 @@ export type SetRowProps = {
   showEffort: boolean
   onChange: (next: SetRow, editedField?: EditedField) => void
   onToggle: (set: SetRow) => void
+  onSetEffort: (set: SetRow, picked: SetEffort) => void
   onStartHold: (set: SetRow) => void
   onDismissEffort?: () => void
   onLabelClick?: () => void
@@ -115,9 +116,8 @@ export function SetRowView(p: SetRowProps) {
   const save = (patch: Partial<SetRow>, editedField?: EditedField) => p.onChange({ ...set, ...patch }, editedField)
   const effort = parseEffort(set.effort || null)
   const pickFromChips = (e: SetEffort) => {
-    haptics.tick()
     const next = pickEffort(set, e)
-    save(next)
+    p.onSetEffort(set, e)
     if (next.effort === 'PAIN') setNoteMode('pain')
     else p.onDismissEffort?.()
   }
@@ -195,7 +195,7 @@ export function SetRowView(p: SetRowProps) {
                 value={set.seconds ?? 0}
                 min={0}
                 max={3600}
-                step={5}
+                step={1}
                 unit={t('unit_s')}
                 quickDeltas={[5, 10, 30]}
                 lastTimeValue={p.previous?.seconds ?? null}

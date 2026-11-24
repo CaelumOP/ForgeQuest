@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t, useLang } from '../../i18n'
-import type { ExerciseRow, SessionRow, SetRow } from '../../data/db'
+import type { ExerciseRow, PlanItemRow, SessionRow, SetRow } from '../../data/db'
 import { configuredEquipment, updateSettings, useSettings, weightUnit } from '../../data/settings'
 import {
   addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishedSessions,
   finishSession, harderHint, progressionReasonFor, recentDoneSets, recentDoneSetsAll, removeSet,
   stepUp, swapExercise, trainingDays, updateExercise, updateSet, useActivePlan, useLibrary,
-  useOpenSession, useSets, workoutDebrief, type FinishResult,
+  getSets, useOpenSession, useSets, workoutDebrief, type FinishResult,
 } from '../../data/workouts'
 import { exerciseCueKeys } from '../../data/seed/exercise-cues'
+import { pickEffort, type SetEffort } from '../../domain/effort'
+import { recordedHold } from '../../domain/hold-math'
+import { computeAdjustment, extendedRest, numbersToRestore, openLaterSets, resolveRepsMin } from '../../domain/intra-session'
 import { formatWeight, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
 import { isDeloadWeek, type ProgressionReason } from '../../domain/progression'
 import { isExtraBlock, pickPrs } from '../../domain/pr-picker'
@@ -30,7 +33,7 @@ import { blockLabel, openFormVideo } from '../workouts/helpers'
 import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
 import {
-  carryForwardUpdates, currentGroupIndex, effectiveRestSeconds, groupSets,
+  carryForwardUpdates, currentGroupIndex, effectiveRest, groupSets,
   groupSetsByExercise, nextUntickedSet, type Group,
 } from './groups'
 import { HoldOverlay, RestBar } from './Overlays'
@@ -62,6 +65,7 @@ const readFocus = () => { try { return localStorage.getItem(FOCUS_KEY) === '1' }
 const leave = () => { if (history.length > 1) history.back(); else location.hash = '#/workouts' }
 
 type PickerMode = { kind: 'add' } | { kind: 'swap'; position: number }
+type LiveAdjustment = { exerciseId: string; sourceSetId: number; percent?: number; reps?: number; seconds?: number }
 
 export function LiveWorkoutScreen(_: { param?: string }) {
   const lang = useLang()
@@ -101,6 +105,13 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const deloadWeek = !!activePlan && session?.planDayId != null && isDeloadWeek(activePlan.plan.createdAt, todayEpochDay())
   const editedRepsRef = useRef(new Set<number>())
   const editedWeightRef = useRef(new Set<number>())
+  const editedSecondsRef = useRef(new Set<number>())
+  const adjustedByRef = useRef(new Set<number>())
+  const preAdjustmentRef = useRef(new Map<number, SetRow[]>())
+  const preCarryRef = useRef(new Map<number, SetRow[]>())
+  const restExtendedByRef = useRef(new Set<number>())
+  const liveQueue = useRef<Promise<unknown>>(Promise.resolve())
+  const [adjustment, setAdjustment] = useState<LiveAdjustment | null>(null)
   const prBuzzedRef = useRef(new Set<string>())
   const celebratedRef = useRef(new Set<number>())
   const [best, setBest] = useState<Map<string, number>>(new Map())
@@ -109,6 +120,8 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const holdRef = useRef(hold); holdRef.current = hold
   const nowRef = useRef(now)
   const setsRef = useRef(sets); setsRef.current = sets
+  const exercisesRef = useRef(exercises); exercisesRef.current = exercises
+  const settingsRef = useRef(settings); settingsRef.current = settings
   const hapticsOn = settings.hapticsEnabled !== false
   const hapticsRef = useRef(hapticsOn); hapticsRef.current = hapticsOn
   const ttsRef = useRef(settings.ttsCues); ttsRef.current = settings.ttsCues
@@ -268,12 +281,19 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     })
   }, [sets.map((s) => s.exerciseId).join('|'), session?.id, exercises.size])
 
-  const supersetMap = useMemo(() => {
-    const map = new Map<number, number | null>()
+  const planItemsByPos = useMemo(() => {
+    const map = new Map<number, PlanItemRow>()
     const planDay = activePlan?.days.find((d) => d.day.id === session?.planDayId)
-    for (const item of planDay?.items ?? []) map.set(item.position, item.supersetGroup ?? null)
+    for (const item of planDay?.items ?? []) map.set(item.position, item)
     return map
   }, [activePlan, session?.planDayId])
+  const planItemsRef = useRef(planItemsByPos); planItemsRef.current = planItemsByPos
+
+  const supersetMap = useMemo(() => {
+    const map = new Map<number, number | null>()
+    for (const [pos, item] of planItemsByPos) map.set(pos, item.supersetGroup ?? null)
+    return map
+  }, [planItemsByPos])
 
   const groups = useMemo(() => groupSetsByExercise(sets, (pos) => supersetMap.get(pos) ?? null), [sets, supersetMap])
   const supersetLetters = useMemo(() => {
@@ -353,11 +373,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const startRestFor = (set: SetRow, doneAtMs: number) => {
     const withTick = setsRef.current.map((s) => (s.id === set.id ? { ...set, done: true, doneAt: doneAtMs } : s))
     const nextGroups = groupSetsByExercise(withTick, (pos) => supersetMap.get(pos) ?? null)
-    const restSec = effectiveRestSeconds(set, nextGroups)
-    if (restSec <= 0) return
+    const restPlan = effectiveRest(set, nextGroups)
+    if (restPlan.seconds <= 0) return
     const next = nextUntickedSet(nextGroups)
     const isRp = (set.setType ?? 'WORKING') === 'RESTPAUSE'
-    setRestSaved(startRest(restSec, Date.now(), next ? nameOf(next.exerciseId) : null, isRp))
+    setRestSaved(startRest(restPlan.seconds, Date.now(), next ? nameOf(next.exerciseId) : null, isRp, set.id, restPlan.isShortTransition))
   }
 
   const announcePr = (set: SetRow) => {
@@ -388,33 +408,96 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     }
   }
 
+  // A render can put an older liveQuery snapshot back into setsRef while a queued step is between writes, so queued
+  // steps read the rows from Dexie itself before deciding anything.
+  const sessionIdRef = useRef(session?.id); sessionIdRef.current = session?.id
+  const freshRows = async (): Promise<SetRow[]> => {
+    const id = sessionIdRef.current
+    if (id == null) return setsRef.current
+    const rows = await getSets(id)
+    setsRef.current = rows
+    return rows
+  }
+
+  const locked = <T,>(fn: () => Promise<T>): Promise<T> => {
+    const run = async () => { await freshRows(); return fn() }
+    const next = liveQueue.current.then(run, run)
+    liveQueue.current = next.then(() => {}, () => {})
+    return next
+  }
+
+  const isEdited = (id: number) =>
+    editedRepsRef.current.has(id) || editedWeightRef.current.has(id) || editedSecondsRef.current.has(id)
+
+  const persistSet = async (row: SetRow) => {
+    try {
+      await updateSet(row)
+      if (row.id != null) setsRef.current = setsRef.current.map((s) => (s.id === row.id ? row : s))
+    } catch {
+      toast(t('live_web_save_failed'))
+    }
+  }
+
+  const writeNumbers = async (values: readonly SetRow[]) => {
+    for (const row of numbersToRestore(values, await freshRows(), isEdited)) {
+      await persistSet(row)
+    }
+  }
+
+  const applyIntraSession = async (source: SetRow) => {
+    if (source.id == null || adjustedByRef.current.has(source.id)) return
+    const currentOpen = openLaterSets(await freshRows(), source, isEdited)
+    const openIds = new Set(currentOpen.map((s) => s.id!))
+    const base = (preCarryRef.current.get(source.id) ?? currentOpen).filter((s) => s.id != null && openIds.has(s.id))
+    const ex = exercisesRef.current.get(source.exerciseId)
+    const kind = ex?.kind ?? 'REPS'
+    const repsMin = resolveRepsMin(source, kind, planItemsRef.current.get(source.itemPosition))
+    const unit = weightUnit(settingsRef.current, ex?.unitOverride ?? '')
+    const result = computeAdjustment(source, base, kind, repsMin, unit)
+    if (!result || result.changed.length === 0) return
+    adjustedByRef.current.add(source.id)
+    const changedIds = new Set(result.changed.map((s) => s.id!))
+    preAdjustmentRef.current.set(source.id, base.filter((s) => s.id != null && changedIds.has(s.id)))
+    await writeNumbers(result.changed)
+    setAdjustment({
+      exerciseId: source.exerciseId,
+      sourceSetId: source.id,
+      percent: result.percent,
+      reps: result.reps,
+      seconds: result.seconds,
+    })
+  }
+
   const save = (next: SetRow, editedField?: EditedField) => {
     if (editedField && next.id != null) {
       if (editedField === 'reps') editedRepsRef.current.add(next.id)
       if (editedField === 'weightKg') editedWeightRef.current.add(next.id)
+      if (editedField === 'seconds') editedSecondsRef.current.add(next.id)
       if (next.done) checkBest(next)
     }
-    void updateSet(next).catch(() => toast(t('live_web_save_failed')))
+    void persistSet(next)
   }
 
   const toggleAll = (group: SetRow[]) => {
     unlockAudio()
     const done = !group.every((s) => s.done)
+    if (done) setAdjustment((cur) => (cur && !group.some((s) => s.exerciseId === cur.exerciseId) ? null : cur))
     setEffortSetId(null)
     if (done) haptics.check(); else haptics.tick()
     const doneAt = done ? Date.now() : null
     group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt }) })
   }
 
-  const carryForward = (set: SetRow) => {
-    for (const updated of carryForwardUpdates(setsRef.current, set, editedRepsRef.current, editedWeightRef.current)) {
-      void updateSet(updated).catch(() => {})
+  const carryForward = async (set: SetRow) => {
+    for (const updated of carryForwardUpdates(await freshRows(), set, editedRepsRef.current, editedWeightRef.current)) {
+      await persistSet(updated)
     }
   }
 
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
+    if (done) setAdjustment((cur) => (cur && cur.exerciseId !== set.exerciseId ? null : cur))
     const doneAt = done ? Date.now() : null
     const effort = done ? set.effort : ''
     setEffortSetId(done ? (set.id ?? null) : null)
@@ -430,10 +513,59 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       setNewBestId(set.id!)
       window.setTimeout(() => setNewBestId((cur) => (cur === set.id ? null : cur)), 1400)
     } else haptics.check()
-    save({ ...set, done, doneAt, effort })
-    if (done) carryForward(set)
+    void locked(async () => {
+      const fresh = (set.id != null ? setsRef.current.find((s) => s.id === set.id) : undefined) ?? set
+      const updatedSet: SetRow = { ...fresh, done, doneAt, effort: done ? fresh.effort : '' }
+      if (done) {
+        if (fresh.id != null) preCarryRef.current.set(fresh.id, openLaterSets(setsRef.current, fresh, isEdited))
+        await persistSet(updatedSet)
+        await carryForward(updatedSet)
+        await applyIntraSession(updatedSet)
+      } else {
+        await persistSet(updatedSet)
+        if (fresh.id != null) {
+          const prev = preAdjustmentRef.current.get(fresh.id)
+          preAdjustmentRef.current.delete(fresh.id)
+          if (prev) await writeNumbers(prev)
+          adjustedByRef.current.delete(fresh.id)
+          preCarryRef.current.delete(fresh.id)
+          setAdjustment((cur) => (cur?.sourceSetId === fresh.id ? null : cur))
+        }
+      }
+    })
     if (done && doneAt != null) startRestFor(set, doneAt)
     else if (!done) setRestSaved(null)
+  }
+
+  const handleSetEffort = (set: SetRow, picked: SetEffort) => {
+    haptics.tick()
+    void locked(async () => {
+      const fresh = (set.id != null ? setsRef.current.find((s) => s.id === set.id) : undefined) ?? set
+      const { effort, setType } = pickEffort(fresh, picked)
+      const updated: SetRow = { ...fresh, effort, setType }
+      await persistSet(updated)
+      if (effort === 'FAILURE' && updated.id != null) {
+        const r = restRef.current
+        if (r && r.setId === updated.id && !r.isRestPause && !r.isShortTransition && !restExtendedByRef.current.has(updated.id)) {
+          restExtendedByRef.current.add(updated.id)
+          const delta = extendedRest(r.totalSeconds) - r.totalSeconds
+          if (delta > 0) addRest(delta)
+        }
+        await applyIntraSession(updated)
+      }
+    })
+  }
+
+  const undoAdjustment = () => {
+    const sourceId = adjustment?.sourceSetId
+    if (sourceId == null) return
+    setAdjustment(null)
+    haptics.tick()
+    void locked(async () => {
+      const prev = preAdjustmentRef.current.get(sourceId)
+      preAdjustmentRef.current.delete(sourceId)
+      if (prev) await writeNumbers(prev)
+    })
   }
 
   const copyLastSetTo = (target: SetRow) => {
@@ -441,6 +573,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     if (!src || target.id == null) return
     editedRepsRef.current.add(target.id)
     editedWeightRef.current.add(target.id)
+    editedSecondsRef.current.add(target.id)
     haptics.tick()
     save({
       ...target,
@@ -462,6 +595,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (!src || s.id == null) return
       editedRepsRef.current.add(s.id)
       editedWeightRef.current.add(s.id)
+      editedSecondsRef.current.add(s.id)
       save({
         ...s,
         reps: src.reps ?? s.reps,
@@ -498,9 +632,19 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const held = holdSaved(h, Date.now())
     const set = setsRef.current.find((s) => s.id === h.setId)
     if (!set || held === 0) return
+    setAdjustment((cur) => (cur && cur.exerciseId !== set.exerciseId ? null : cur))
+    const saved = recordedHold(held, h.target)
     const doneAt = Date.now()
-    const updated = { ...set, seconds: held, done: true, doneAt }
-    save(updated)
+    const updated: SetRow = { ...set, seconds: saved, done: true, doneAt }
+    setEffortSetId(updated.id ?? null)
+    void locked(async () => {
+      const fresh = (updated.id != null ? setsRef.current.find((s) => s.id === updated.id) : undefined) ?? set
+      const freshUpdated: SetRow = { ...fresh, seconds: saved, done: true, doneAt }
+      if (fresh.id != null) preCarryRef.current.set(fresh.id, openLaterSets(setsRef.current, fresh, isEdited))
+      await persistSet(freshUpdated)
+      await carryForward(freshUpdated)
+      await applyIntraSession(freshUpdated)
+    })
     checkBest(updated)
     if (hapticsOn) buzz(40)
     startRestFor(updated, doneAt)
@@ -515,7 +659,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const r = restRef.current
     if (!r) return
     haptics.tick()
-    setRestSaved(startRest(seconds, Date.now(), r.nextExercise, r.isRestPause))
+    setRestSaved(startRest(seconds, Date.now(), r.nextExercise, r.isRestPause, r.setId, r.isShortTransition))
   }
 
   const removeLast = (position: number) => {
@@ -684,8 +828,11 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       onChange={save}
       onToggle={toggle}
       onToggleAll={toggleAll}
+      onSetEffort={handleSetEffort}
       onStartHold={beginHold}
       onDismissEffort={() => setEffortSetId(null)}
+      adjustment={adjustment}
+      onUndoAdjustment={undoAdjustment}
       harder={harder}
       onStepUp={(oldId, next) => {
         setHarder((m) => { const n = new Map(m); n.delete(oldId); return n })
@@ -986,8 +1133,11 @@ type CardProps = {
   onChange: (s: SetRow, editedField?: EditedField) => void
   onToggle: (s: SetRow) => void
   onToggleAll: (sets: SetRow[]) => void
+  onSetEffort: (s: SetRow, picked: SetEffort) => void
   onStartHold: (s: SetRow) => void
   onDismissEffort: () => void
+  adjustment: LiveAdjustment | null
+  onUndoAdjustment: () => void
   onMenu: (position: number, swapOnly: boolean) => void
   onSwap: (position: number) => void
   onPeek: (exerciseId: string) => void
@@ -1007,6 +1157,27 @@ function HarderNote({ ex, hint, onStepUp }: { ex: ExerciseRow; hint: Hint | unde
     <div class="lw-harder">
       <span class="lw-harder-text">{next ? t('harder_ready', ex.name, next.name) : t('harder_tempo', ex.name)}</span>
       {next && <Button variant="text" onClick={() => onStepUp(ex.id, next)}>{t('harder_switch')}</Button>}
+    </div>
+  )
+}
+
+function AdjustmentCue({ adjustment, exerciseId, onUndo }: { adjustment: LiveAdjustment | null; exerciseId: string; onUndo: () => void }) {
+  if (!adjustment || adjustment.exerciseId !== exerciseId) return null
+  const text =
+    adjustment.percent != null
+      ? t('live_adjusted_load', adjustment.percent)
+      : adjustment.reps != null
+        ? t('live_adjusted_reps', adjustment.reps)
+        : adjustment.seconds != null
+          ? t('live_adjusted_seconds', adjustment.seconds)
+          : null
+  if (!text) return null
+  return (
+    <div class="lw-adjust" role="status">
+      <span class="lw-adjust-text">{text}</span>
+      <button type="button" class="lw-adjust-undo" aria-label={t('cd_undo_adjustment')} onClick={onUndo}>
+        {t('live_adjust_undo')}
+      </button>
     </div>
   )
 }
@@ -1073,6 +1244,7 @@ function GroupCard(p: CardProps) {
     showEffort: p.effortSetId === set.id,
     onChange: p.onChange,
     onToggle: p.onToggle,
+    onSetEffort: p.onSetEffort,
     onStartHold: p.onStartHold,
     onDismissEffort: p.onDismissEffort,
   })
@@ -1123,6 +1295,7 @@ function GroupCard(p: CardProps) {
             <button type="button" class="lw-quickbtn" onClick={() => p.onSwap(g.position)}>{t('live_swap_exercise')}</button>
           </div>
           {ex && <HarderNote ex={ex} hint={p.harder.get(ex.id)} onStepUp={p.onStepUp} />}
+          <AdjustmentCue adjustment={p.adjustment} exerciseId={first.exerciseId} onUndo={p.onUndoAdjustment} />
           {g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...rowProps(set, null)} />)}
         </Card>
       </div>
@@ -1155,6 +1328,7 @@ function GroupCard(p: CardProps) {
           <div key={e.id}>
             {e.setupNote && <div class="lw-setup-note">{`${e.name}: ${e.setupNote}`}</div>}
             <HarderNote ex={e} hint={p.harder.get(e.id)} onStepUp={p.onStepUp} />
+            <AdjustmentCue adjustment={p.adjustment} exerciseId={e.id} onUndo={p.onUndoAdjustment} />
           </div>
         ))}
         {g.rounds.map((round, r) => {
