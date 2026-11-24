@@ -20,5 +20,5 @@
 ## Part A (web-port mission) and Part B checklist
 - [x] Part A: Android closure `2542be5` (testDebugUnitTest exit 0, 574 tests; assembleDebug exit 0)
 - [x] W0: web preflight + `docs/WEB_SET_AUDIT_LEDGER.md` (baseline: vitest exit 0, 70 files / 617 tests; tsc exit 0; production bundle exit 0)
-- [x] W1a progression & RIR `899efd6` (vitest exit 0, 634 tests; tsc exit 0) | [x] W1b intra-session, rest, hold `6bc6e39` (vitest exit 0, 659 tests; tsc exit 0) | [x] W1c baseline `2c2d3a6` (vitest exit 0, 685 tests; tsc exit 0) | [ ] W1d planner + auditor | [ ] W1e PR/e1RM, warm-ups, recovery | [ ] W1f UI + EN/AR
+- [x] W1a progression & RIR `899efd6` (vitest exit 0, 634 tests; tsc exit 0) | [x] W1b intra-session, rest, hold `6bc6e39` (vitest exit 0, 659 tests; tsc exit 0) | [x] W1c baseline `2c2d3a6` (vitest exit 0, 685 tests; tsc exit 0) | [x] W1d planner + auditor `9dcbf63` (vitest exit 0, 702 tests; tsc exit 0) | [ ] W1e PR/e1RM, warm-ups, recovery | [ ] W1f UI + EN/AR
 - [ ] W2: Codex cold review + Argon Gate 3, fixes, `docs/WEB_SET_OVERHAUL_REPORT.md`
