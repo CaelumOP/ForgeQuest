@@ -117,6 +117,8 @@ object Routes {
     const val LIBRARY = "library"
     const val PROGRESS = "progress"
     const val PLAN_BUILDER = "plan_builder"
+    const val BASELINE = "baseline?exerciseId={exerciseId}"
+    fun baseline(exerciseId: String? = null) = "baseline" + (exerciseId?.let { "?exerciseId=${android.net.Uri.encode(it)}" } ?: "")
     const val SETTINGS = "settings"
     const val SETTINGS_GROUP = "settings/{id}"
     const val CSV_IMPORT = "csv_import"
@@ -293,6 +295,11 @@ private fun MainScaffold() {
                     PlanEditorScreen(nav, entry.arguments?.getInt("day") ?: 0, entry.arguments?.getBoolean("paste") ?: false, entry.arguments?.getBoolean("templates") ?: false)
                 }
                 composable(Routes.PLAN_BUILDER) { com.forgequest.app.ui.plan.PlanBuilderScreen(nav) }
+                composable(Routes.BASELINE, arguments = listOf(navArgument("exerciseId") {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                })) { entry ->
+                    com.forgequest.app.ui.baseline.BaselineScreen(nav, entry.arguments?.getString("exerciseId"))
+                }
                 composable(Routes.SCAN) { ScanScreen(nav) }
                 composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType }, navArgument("fromLive") { type = NavType.BoolType; defaultValue = false })) { entry ->
                     ExerciseDetailScreen(nav, entry.arguments?.getString("id").orEmpty(), entry.arguments?.getBoolean("fromLive") ?: false)

@@ -145,7 +145,7 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
             CompositionLocalProvider(LocalGroupMode provides if (id == null) GroupMode.Row else GroupMode.Page) {
                 // Language and theme are what people look for first, so "App and appearance" leads the list.
                 if (id == null || id == "app") AppSettingsGroup(vm, s, onGroup)
-                if (id == null || id == "you") YouSettingsGroup(vm, s, onGroup)
+                if (id == null || id == "you") YouSettingsGroup(vm, s, onGroup) { nav.navigate(Routes.baseline()) }
                 if (id == null || id == "health") HealthSettingsGroup(vm, s, onGroup, probe, { startHealthCheck() }, healthAccess)
                 if (id == null || id == "friends") FriendsSettingsGroup(vm, onGroup)
                 if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher) { nav.navigate(Routes.CSV_IMPORT) }

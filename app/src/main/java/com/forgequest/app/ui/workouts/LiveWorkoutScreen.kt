@@ -388,6 +388,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
             onPeek = openPeek,
             onEditSetupNote = { ex -> setupNoteExercise = ex },
             onEditUnit = { ex -> unitExercise = ex },
+            onTestBaseline = { nav.navigate(Routes.baseline(it)) },
         )
     }
 
@@ -814,6 +815,7 @@ internal fun GroupCard(
     onPeek: (String) -> Unit,
     onEditSetupNote: (ExerciseEntity) -> Unit,
     onEditUnit: (ExerciseEntity) -> Unit,
+    onTestBaseline: (String) -> Unit = {},
 ) {
     val c = Fit.colors
     val all = g.allSets
@@ -828,6 +830,7 @@ internal fun GroupCard(
             onToggleExpand = onToggleWarmup,
             onSwap = { onSwap(g.position) },
             onPeek = { onPeek(g.sets.first().exerciseId) },
+            onTestBaseline = onTestBaseline,
         )
         return
     }
@@ -863,6 +866,7 @@ internal fun GroupCard(
             onPeek = { onPeek(g.sets.first().exerciseId) },
             onEditSetupNote = onEditSetupNote,
             onEditUnit = onEditUnit,
+            onTestBaseline = onTestBaseline,
         )
         is Group.Circuit -> CircuitCard(
             g = g,
@@ -874,6 +878,7 @@ internal fun GroupCard(
             onPeek = onPeek,
             onEditSetupNote = onEditSetupNote,
             onEditUnit = onEditUnit,
+            onTestBaseline = onTestBaseline,
         )
     }
 }
@@ -889,6 +894,7 @@ internal fun WarmupCard(
     onToggleExpand: () -> Unit,
     onSwap: () -> Unit,
     onPeek: () -> Unit,
+    onTestBaseline: (String) -> Unit = {},
 ) {
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
@@ -925,6 +931,11 @@ internal fun WarmupCard(
                 icon = Icons.Rounded.Check,
                 tint = if (allDone) c.teal else c.textPrimary,
             )
+        }
+        if (ex?.kind == ExerciseKind.WEIGHTED && g.sets.any { !it.done && (it.weightKg ?: 0f) <= 0f }) {
+            TextButton(onClick = { onTestBaseline(ex.id) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.live_test_this_move), color = c.teal)
+            }
         }
         if (expanded) {
             Spacer(Modifier.height(4.dp))
@@ -982,6 +993,7 @@ internal fun StraightCard(
     onPeek: () -> Unit,
     onEditSetupNote: (ExerciseEntity) -> Unit,
     onEditUnit: (ExerciseEntity) -> Unit,
+    onTestBaseline: (String) -> Unit = {},
 ) {
     val c = Fit.colors
     val prev by vm.previous.collectAsState()
@@ -1035,6 +1047,11 @@ internal fun StraightCard(
             TonalPill(stringResource(R.string.cues_title), onClick = onPeek, icon = Icons.Rounded.Info, tint = c.teal)
             TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
         }
+        if (ex?.kind == ExerciseKind.WEIGHTED && g.sets.any { !it.done && (it.weightKg ?: 0f) <= 0f }) {
+            TextButton(onClick = { onTestBaseline(ex.id) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.live_test_this_move), color = c.teal)
+            }
+        }
         ex?.let { HarderNote(it, vm) }
         AdjustmentCue(g.sets.first().exerciseId, vm)
         Spacer(Modifier.height(4.dp))
@@ -1087,11 +1104,11 @@ internal fun HarderNote(ex: ExerciseEntity, vm: LiveWorkoutViewModel) {
 /** Short badge under an exercise header when its starting weight was estimated from a similar lift. */
 @Composable
 internal fun BaselineStatusLine(status: BaselineStatus?, exerciseName: String? = null) {
-    if (status != BaselineStatus.ESTIMATED) return
+    if (status != BaselineStatus.ESTIMATED && status != BaselineStatus.FROM_BASELINE) return
     val c = Fit.colors
-    val shortLabel = stringResource(R.string.live_baseline_estimated)
+    val shortLabel = stringResource(if (status == BaselineStatus.FROM_BASELINE) R.string.live_baseline_from_test else R.string.live_baseline_estimated)
     val label = if (exerciseName != null) "$exerciseName · $shortLabel" else shortLabel
-    val cd = stringResource(R.string.live_baseline_estimated_cd)
+    val cd = stringResource(if (status == BaselineStatus.FROM_BASELINE) R.string.live_baseline_from_test_cd else R.string.live_baseline_estimated_cd)
     Row(
         Modifier
             .padding(top = ForgeSpace.Xxs)
@@ -1192,6 +1209,7 @@ internal fun CircuitCard(
     onPeek: (String) -> Unit,
     onEditSetupNote: (ExerciseEntity) -> Unit,
     onEditUnit: (ExerciseEntity) -> Unit,
+    onTestBaseline: (String) -> Unit = {},
 ) {
     val c = Fit.colors
     val settings by vm.settings.collectAsState()
@@ -1236,6 +1254,11 @@ internal fun CircuitCard(
                 baselineStatuses[ex.id],
                 exerciseName = if (distinctEx.size > 1) ex.name else null,
             )
+            if (ex.kind == ExerciseKind.WEIGHTED && g.allSets.any { it.exerciseId == ex.id && !it.done && (it.weightKg ?: 0f) <= 0f }) {
+                TextButton(onClick = { onTestBaseline(ex.id) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("${ex.name}: ${stringResource(R.string.live_test_this_move)}", color = c.teal)
+                }
+            }
             HarderNote(ex, vm)
             AdjustmentCue(ex.id, vm)
         }

@@ -36,6 +36,8 @@ class BaselineRepository(
 
     suspend fun all(): List<BaselineTestEntity> = dao.all()
 
+    suspend fun deleteFor(exerciseId: String) = dao.deleteFor(exerciseId)
+
     suspend fun deleteAll() = dao.deleteAll()
 
     /**

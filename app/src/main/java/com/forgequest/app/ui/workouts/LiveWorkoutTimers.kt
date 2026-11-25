@@ -3,6 +3,8 @@ package com.forgequest.app.ui.workouts
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +56,7 @@ internal fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: 
     val c = Fit.colors
     // The workout screen already keeps the screen on.
     BackHandler(onBack = onCancel)
+    val largeText = com.forgequest.app.ui.components.reflowText()
     val s = h.elapsed(now)
     val ready = s < 0
     val over = s >= h.target
@@ -64,11 +67,12 @@ internal fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: 
     }
     val tint = when { ready -> c.textSecondary; over -> c.teal; else -> c.teal }
     Column(
-        Modifier.fillMaxSize().background(c.background).clickable(enabled = false) {}.statusBarsPadding().navigationBarsPadding().padding(24.dp),
+        Modifier.fillMaxSize().background(c.background).clickable(enabled = false) {}.statusBarsPadding().navigationBarsPadding()
+            .let { if (largeText) it.verticalScroll(rememberScrollState()) else it }.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(h.exerciseName, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(h.exerciseName, style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
             IconButton(onClick = onCancel) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.action_cancel), tint = c.textSecondary) }
         }
         Spacer(Modifier.weight(1f))
@@ -77,7 +81,7 @@ internal fun HoldOverlay(h: HoldTimer, now: Long, onStop: () -> Unit, onCancel: 
             style = MaterialTheme.typography.titleLarge, color = tint, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(12.dp))
-        Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(88f, androidx.compose.ui.unit.TextUnitType.Sp)).tabular(), fontWeight = FontWeight.Bold, color = tint)
+        Text(shown, style = MaterialTheme.typography.displayLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(if (largeText) 40f else 88f, androidx.compose.ui.unit.TextUnitType.Sp)).tabular(), fontWeight = FontWeight.Bold, color = tint)
         Spacer(Modifier.height(16.dp))
         ProgressLine(if (ready) 0f else (s / h.target.toFloat()).coerceIn(0f, 1f), c.teal, c.tealTrack, height = 6.dp)
         Spacer(Modifier.height(8.dp))

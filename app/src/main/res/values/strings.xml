@@ -1948,6 +1948,57 @@
     <string name="live_baseline_estimated">Estimated start</string>
     <string name="live_baseline_estimated_cd">Starting weight estimated from a similar exercise</string>
     <string name="live_baseline_from_test">From your baseline</string>
+    <string name="live_baseline_from_test_cd">Starting target set from your baseline test</string>
+    <string name="live_add_weight">Add weight</string>
+    <string name="live_test_this_move">Test this move</string>
+    <string name="baseline_title">Find your starting point</string>
+    <string name="baseline_intro">Test a few moves so your first workout starts at the right level. Takes about 5 minutes.</string>
+    <string name="baseline_entry_title">Starting point</string>
+    <plurals name="baseline_tested_count">
+        <item quantity="one">%1$d move tested</item>
+        <item quantity="other">%1$d moves tested</item>
+    </plurals>
+    <string name="baseline_pb_entry">Test your starting point</string>
+    <string name="baseline_pb_entry_hint">Find your starting reps, holds, and weights</string>
+    <string name="baseline_workouts_card_body">Test a few moves so your first workout starts right.</string>
+    <string name="baseline_workouts_card_cta">Start test</string>
+    <string name="baseline_card_dismiss_cd">Dismiss starting point card</string>
+    <string name="baseline_test_another">Test another move</string>
+    <string name="baseline_picker_title">Choose a move to test</string>
+    <string name="baseline_mode_guided">Guided</string>
+    <string name="baseline_mode_manual">Manual</string>
+    <string name="baseline_tap_after_rep">Tap after each rep</string>
+    <string name="baseline_reps_counter_cd">Add one rep. Current count: %1$d</string>
+    <string name="baseline_undo_rep">−1 rep</string>
+    <string name="baseline_weighted_hint">Pick a weight you can lift 6-10 times with good form</string>
+    <string name="baseline_hold_guide_hint">Hold as long as you can with good form. You can stop anytime.</string>
+    <string name="baseline_start_hold">Start hold timer</string>
+    <string name="baseline_weight_label">Weight</string>
+    <string name="baseline_reps_label">Reps</string>
+    <string name="baseline_seconds_label">Hold time</string>
+    <plurals name="baseline_start_reps">
+        <item quantity="one">Start with %1$d rep</item>
+        <item quantity="other">Start with %1$d reps</item>
+    </plurals>
+    <string name="baseline_start_seconds">Start with %1$d s</string>
+    <string name="baseline_start_weight">Start with %1$s</string>
+    <string name="baseline_try_easier">Try an easier version: %1$s</string>
+    <string name="baseline_try_easier_generic">Try an easier version when you feel ready.</string>
+    <string name="baseline_test_move_named">Test %1$s</string>
+    <string name="baseline_too_light">Too light to judge: try a heavier weight</string>
+    <string name="baseline_hold_zero_hint">Hold at least 1 second to set a starting target.</string>
+    <plurals name="baseline_last_reps">
+        <item quantity="one">Last: %1$d rep</item>
+        <item quantity="other">Last: %1$d reps</item>
+    </plurals>
+    <string name="baseline_last_seconds">Last: %1$d s</string>
+    <string name="baseline_last_weight">Last: %1$s × %2$d</string>
+    <string name="baseline_not_tested">Not tested yet</string>
+    <string name="baseline_rest_between">Rest before next move</string>
+    <string name="baseline_back_to_list">Back to moves</string>
+    <string name="baseline_see_all_moves">See all moves</string>
+    <string name="baseline_retest">Test again</string>
     <string name="cd_undo_adjustment">Undo set adjustment</string>
     <string name="cd_edit_effort">Change effort rating</string>
+    <string name="baseline_save_failed">Could not save your test. Please try again.</string>
 </resources>

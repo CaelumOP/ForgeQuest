@@ -129,6 +129,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -164,6 +165,9 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
 
     /** How many times "Show a different version" was used since the answers last changed. */
     private var offset = 0
+    private val baselineWrites = kotlinx.coroutines.sync.Mutex()
+    val pendingBaselineWrites = MutableStateFlow(0)
+    val baselineSaveFailed = MutableStateFlow(false)
 
     init {
         viewModelScope.launch {
@@ -179,13 +183,54 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
                 pullUpMax = pull ?: base.pullUpMax,
             )
             ready.value = true
+            app.baselines.observeLatest().collect { rows ->
+                if (pendingBaselineWrites.value == 0) {
+                    answers.update { it.copy(
+                        pushUpMax = rows[BaselineRepository.PUSH_UP_ID]?.reps,
+                        pullUpMax = rows[BaselineRepository.PULL_UP_ID]?.reps,
+                    ) }
+                }
+            }
         }
     }
 
-    fun change(f: (PlanAnswers) -> PlanAnswers) = answers.update(f)
+    fun change(f: (PlanAnswers) -> PlanAnswers) {
+        val old = answers.value
+        val next = f(old)
+        answers.value = next
+        val changes = listOf(
+            Triple(BaselineRepository.PUSH_UP_ID, old.pushUpMax, next.pushUpMax),
+            Triple(BaselineRepository.PULL_UP_ID, old.pullUpMax, next.pullUpMax),
+        ).filter { it.second != it.third }
+        if (changes.isEmpty()) return
+        pendingBaselineWrites.value++
+        viewModelScope.launch {
+            baselineWrites.lock()
+            try {
+                com.forgequest.app.data.suspendRunCatching {
+                    // Keep the legacy migration source in sync, including explicit clearing.
+                    app.settings.update { settings ->
+                        val saved = PlanAnswers.decode(settings.planBuilderAnswers) ?: next
+                        settings.copy(planBuilderAnswers = saved.copy(pushUpMax = next.pushUpMax, pullUpMax = next.pullUpMax).encode())
+                    }
+                    changes.forEach { (id, _, reps) ->
+                        if (reps == null) app.baselines.deleteFor(id)
+                        else app.baselines.save(com.forgequest.app.data.db.BaselineTestEntity(
+                            exerciseId = id, kind = ExerciseKind.REPS.name, reps = reps,
+                            createdAt = System.currentTimeMillis(),
+                        ))
+                    }
+                }.onSuccess { baselineSaveFailed.value = false }
+                    .onFailure { baselineSaveFailed.value = true }
+            } finally {
+                pendingBaselineWrites.value--
+                baselineWrites.unlock()
+            }
+        }
+    }
 
     fun build(different: Boolean = false) {
-        if (busy.value) return
+        if (busy.value || pendingBaselineWrites.value > 0 || baselineSaveFailed.value) return
         offset = if (different) offset + 1 else 0
         busy.value = true
         viewModelScope.launch {
@@ -267,6 +312,8 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
 fun PlanBuilderScreen(nav: NavHostController) {
     val vm = appViewModel { PlanBuilderViewModel(it) }
     val ready by vm.ready.collectAsState()
+    val baselineSaveFailed by vm.baselineSaveFailed.collectAsState()
+    val pendingBaselineWrites by vm.pendingBaselineWrites.collectAsState()
     val a by vm.answers.collectAsState()
     val built by vm.built.collectAsState()
     val busy by vm.busy.collectAsState()
@@ -303,6 +350,8 @@ fun PlanBuilderScreen(nav: NavHostController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 QuickCard(a, vm::change)
+                TonalPill(stringResource(R.string.baseline_pb_entry), onClick = { nav.navigate(com.forgequest.app.ui.Routes.baseline()) }, modifier = Modifier.fillMaxWidth(), tint = c.teal)
+                if (baselineSaveFailed) Text(stringResource(R.string.baseline_save_failed), color = c.coral)
                 FitMeSection(a, vm::change, library)
             }
             Column(Modifier.fillMaxWidth().background(c.background).padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp).navigationBarsPadding()) {
@@ -311,7 +360,7 @@ fun PlanBuilderScreen(nav: NavHostController) {
                     onClick = { vm.build() },
                     modifier = Modifier.fillMaxWidth(),
                     icon = Icons.Rounded.Tune,
-                    enabled = a.days.isNotEmpty() && library.isNotEmpty() && !busy,
+                    enabled = a.days.isNotEmpty() && library.isNotEmpty() && !busy && pendingBaselineWrites == 0 && !baselineSaveFailed,
                 )
             }
         } else {

@@ -135,6 +135,8 @@ data class Settings(
     val aiOptIn: Boolean? = null,
     /** The plan builder's last answers as JSON (see PlanAnswers), so a rebuild starts from them. Not part of backups. */
     val planBuilderAnswers: String? = null,
+    /** User dismissed the Workouts tab "Find your starting point" card. */
+    val baselineCardDismissed: Boolean = false,
 ) {
     val autoBackupEffective: Boolean
         get() = autoBackup && !autoBackupOptedOut && driveEmail.isNotBlank()
@@ -216,6 +218,7 @@ class SettingsRepository(private val context: Context) {
         val justLog = booleanPreferencesKey("just_log")
         val aiEnabled = booleanPreferencesKey("ai_enabled")
         val planBuilderAnswers = stringPreferencesKey("plan_builder_answers")
+        val baselineCardDismissed = booleanPreferencesKey("baseline_card_dismissed")
     }
 
     /** A damaged settings file reads as defaults rather than crashing every screen that watches settings. */
@@ -299,6 +302,7 @@ class SettingsRepository(private val context: Context) {
             justLog = this[K.justLog] ?: false,
             aiOptIn = this[K.aiEnabled],
             planBuilderAnswers = this[K.planBuilderAnswers],
+            baselineCardDismissed = this[K.baselineCardDismissed] ?: false,
         )
     }
 
@@ -365,6 +369,7 @@ class SettingsRepository(private val context: Context) {
             p[K.justLog] = s.justLog
             s.aiOptIn?.let { p[K.aiEnabled] = it }
             if (s.planBuilderAnswers != null) p[K.planBuilderAnswers] = s.planBuilderAnswers else p.remove(K.planBuilderAnswers)
+            p[K.baselineCardDismissed] = s.baselineCardDismissed
         }
     }
 

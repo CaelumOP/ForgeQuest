@@ -110,6 +110,13 @@ class WorkoutsViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val openSession: StateFlow<SessionEntity?> = app.workouts.openSession.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val baselineRows = app.baselines.observe()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun dismissBaseline() = viewModelScope.launch {
+        app.settings.update { it.copy(baselineCardDismissed = true) }
+    }
+
     suspend fun start(day: PlanDayWithItems?) = app.workouts.startSession(day)
 }
 
@@ -157,6 +164,7 @@ fun WorkoutsScreen(nav: NavHostController) {
     val vm = appViewModel { WorkoutsViewModel(it) }
     val snap by vm.snapshot.collectAsState()
     val open by vm.openSession.collectAsState()
+    val baselineRows by vm.baselineRows.collectAsState()
     val c = Fit.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -213,10 +221,13 @@ fun WorkoutsScreen(nav: NavHostController) {
         Unit
     }
 
+    val showBaseline = baselineRows != null && com.forgequest.app.ui.baseline.showBaselineEntry(
+        s.sessions.any { it.finishedAt != null }, baselineRows.orEmpty().isNotEmpty(), s.settings.baselineCardDismissed,
+    )
     val fontScale = LocalDensity.current.fontScale
 
     BoxWithConstraints(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
-        val fallbackScroll = maxHeight < 568.dp || fontScale > 1.3f
+        val fallbackScroll = showBaseline || maxHeight < 568.dp || fontScale > 1.3f
         // Spare vertical height left for exercise rows once the map figures reach their 300 dp maximum.
         val availRowDp = (maxHeight - 620.dp).value.toInt().coerceAtLeast(ROW_HEIGHT_2COL * MIN_EXERCISE_ROWS)
 
@@ -261,6 +272,17 @@ fun WorkoutsScreen(nav: NavHostController) {
                 }
             }
 
+            if (showBaseline) {
+                FitCard {
+                    Text(stringResource(R.string.baseline_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                    Text(stringResource(R.string.baseline_workouts_card_body), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+                    Spacer(Modifier.height(12.dp))
+                    PillButton(stringResource(R.string.baseline_workouts_card_cta), onClick = { nav.navigate(Routes.baseline()) }, modifier = Modifier.fillMaxWidth())
+                    androidx.compose.material3.TextButton(onClick = { vm.dismissBaseline() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.baseline_card_dismiss_cd), color = c.teal)
+                    }
+                }
+            }
             if (plan != null) {
                 DayStrip(plan.days, selectedDay, s.workoutDoneToday) { selectedDay = it }
             }

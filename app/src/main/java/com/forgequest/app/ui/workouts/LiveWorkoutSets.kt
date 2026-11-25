@@ -392,6 +392,7 @@ internal fun SetRowContent(
                 SetRowStepper(
                     effectiveUnit.fromKg(set.weightKg ?: 0f), { onFieldChange(Field.WEIGHT, effectiveUnit.toKg(it)) }, step = effectiveUnit.loadStep, min = 0f, max = effectiveUnit.fromKg(999f),
                     unit = effectiveUnit.label, decimals = 1, title = stringResource(R.string.stepper_weight), minValueWidth = 64.dp, valueColor = if (flashing) flashColor else c.blue,
+                    placeholder = if ((set.weightKg ?: 0f) <= 0f) stringResource(R.string.live_add_weight) else null,
                     quickDeltas = weightQuickDeltas,
                     lastTimeValue = lastWeight?.let { effectiveUnit.fromKg(it) },
                     lastTimeLabel = lastWeight?.let { effectiveUnit.format(it) },
@@ -492,9 +493,10 @@ private fun SetRowStepper(
     quickDeltas: List<Float> = emptyList(),
     lastTimeValue: Float? = null,
     lastTimeLabel: String? = null,
+    placeholder: String? = null,
 ) {
     if (LocalInspectionMode.current) {
-        val shown = formatNumber(value, decimals) + if (unit.isNotEmpty()) " $unit" else ""
+        val shown = placeholder ?: (formatNumber(value, decimals) + if (unit.isNotEmpty()) " $unit" else "")
         Stepper(
             value = shown,
             onMinus = {},
@@ -519,6 +521,7 @@ private fun SetRowStepper(
             quickDeltas = quickDeltas,
             lastTimeValue = lastTimeValue,
             lastTimeLabel = lastTimeLabel,
+            placeholder = placeholder,
         )
     }
 }

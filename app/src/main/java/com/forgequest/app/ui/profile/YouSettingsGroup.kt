@@ -111,7 +111,7 @@ private fun SuggestionLine(text: String, showUse: Boolean, onUse: () -> Unit) {
  * (one calorie and one protein target, each with its suggestion). Body fat sits under Advanced.
  */
 @Composable
-internal fun YouSettingsGroup(vm: SettingsViewModel, s: ProgressSnapshot, toggleGroup: (String) -> Unit) {
+internal fun YouSettingsGroup(vm: SettingsViewModel, s: ProgressSnapshot, toggleGroup: (String) -> Unit, onBaseline: () -> Unit) {
     val c = Fit.colors
     val settings = s.settings
     val health by vm.app.health.state.collectAsState()
@@ -133,6 +133,13 @@ internal fun YouSettingsGroup(vm: SettingsViewModel, s: ProgressSnapshot, toggle
         ),
         onToggle = { toggleGroup("you") },
     ) {
+        val baselineRows by vm.baselineRows.collectAsState()
+        SettingsRow(
+            Icons.Rounded.TrackChanges, c.teal, c.tealTrack,
+            stringResource(R.string.baseline_entry_title),
+            androidx.compose.ui.res.pluralStringResource(R.plurals.baseline_tested_count, baselineRows.size, baselineRows.size),
+            onClick = onBaseline,
+        )
         // 1. Your details.
         FitCard {
             CardTitle(Icons.Rounded.Accessibility, stringResource(R.string.profile_about_you), stringResource(R.string.profile_about_you_hint))

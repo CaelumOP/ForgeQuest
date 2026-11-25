@@ -39,6 +39,7 @@ import kotlinx.coroutines.sync.withLock
  * The progress [snapshot] is the one [ProfileViewModel] already holds, shared with Profile and Badges.
  */
 class SettingsViewModel(val app: AppContainer, val snapshot: StateFlow<ProgressSnapshot?>) : ViewModel() {
+    val baselineRows = app.baselines.observeLatest().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
     val apiKey: StateFlow<String> = app.settings.apiKey
     val message = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow<String?>(null)

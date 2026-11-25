@@ -461,6 +461,9 @@ interface BaselineTestDao {
     @Insert
     suspend fun insert(test: BaselineTestEntity): Long
 
+    @Query("DELETE FROM baseline_tests WHERE exerciseId = :exerciseId")
+    suspend fun deleteFor(exerciseId: String)
+
     @Query("DELETE FROM baseline_tests")
     suspend fun deleteAll()
 
