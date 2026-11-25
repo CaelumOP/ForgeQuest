@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   computeAdjustment,
   extendedRest,
+  newAdjustmentLedger,
   numbersToRestore,
   openLaterSets,
+  recordAdjustment,
+  releaseAdjustment,
   resolveRepsMin,
   type IntraSessionSet,
 } from './intra-session'
@@ -244,5 +247,43 @@ describe('resolveRepsMin', () => {
     expect(resolveRepsMin({ exerciseId: 'plank' }, 'HOLD', { exerciseId: 'plank', repsMin: 5 })).toBeNull()
     expect(resolveRepsMin({ exerciseId: 'pushup' }, 'REPS', null)).toBeNull()
     expect(resolveRepsMin({ exerciseId: 'pushup' }, 'REPS', { exerciseId: 'pushup', repsMin: 12 })).toBe(12)
+  })
+})
+
+describe('adjustment ledger', () => {
+  const w = (id: number, weightKg: number) => makeSet(id, { setIndex: id - 1, weightKg })
+
+  it('reverting an older adjustment leaves rows a newer adjustment rewrote', () => {
+    const ledger = newAdjustmentLedger()
+    recordAdjustment(ledger, 1, [w(2, 100), w(3, 100)]) // set 1 Failure: 2-3 to 95
+    recordAdjustment(ledger, 2, [w(3, 95)]) // set 2 Failure: 3 to 90
+    expect(releaseAdjustment(ledger, 1)).toEqual([w(2, 100)])
+    // Set 2's adjustment now goes back to the numbers from before set 1's.
+    expect(releaseAdjustment(ledger, 2)).toEqual([w(3, 100)])
+    expect(ledger.owners.size).toBe(0)
+  })
+
+  it('reverting newest first restores each step in turn', () => {
+    const ledger = newAdjustmentLedger()
+    recordAdjustment(ledger, 1, [w(2, 100), w(3, 100)])
+    recordAdjustment(ledger, 2, [w(3, 95)])
+    expect(releaseAdjustment(ledger, 2)).toEqual([w(3, 95)])
+    expect(releaseAdjustment(ledger, 1)).toEqual([w(2, 100), w(3, 100)])
+  })
+
+  it('releasing an unknown or already released source returns nothing', () => {
+    const ledger = newAdjustmentLedger()
+    recordAdjustment(ledger, 1, [w(2, 100)])
+    expect(releaseAdjustment(ledger, 1)).toHaveLength(1)
+    expect(releaseAdjustment(ledger, 1)).toEqual([])
+    expect(releaseAdjustment(ledger, 9)).toEqual([])
+  })
+})
+
+describe('computeAdjustment legacy effort', () => {
+  it('treats a missing effort as untagged instead of throwing', () => {
+    const source = { ...makeSet(1, { reps: 8 }), effort: undefined as unknown as string }
+    expect(() => computeAdjustment(source, [makeSet(2)], 'WEIGHTED', 8, 'KG')).not.toThrow()
+    expect(computeAdjustment(source, [makeSet(2)], 'WEIGHTED', 8, 'KG')).toBeNull()
   })
 })

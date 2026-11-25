@@ -573,7 +573,9 @@ export async function startSession(day: PlanDayWithItems | null, lighter = false
 }
 
 /** Today's sets for one exercise from its last two finished workouts, through the Progression rules. */
-async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined, deload = false): Promise<SetRow[]> {
+async function buildSetsFor(sessionId: number, position: number, item: PlanItemRow | null, ex: ExerciseRow | undefined, deloadWeek = false): Promise<SetRow[]> {
+  // Warm-up and cool-down blocks keep their sets in a deload week (Android progressionFor).
+  const deload = deloadWeek && item != null && !isExtraBlock(item.block);
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
   const recent = ex ? await recentDoneSets(ex.id) : [];
   const input = progressionInputs(item, ex?.id, await withoutDeloadSessions(recent));
@@ -627,8 +629,9 @@ export async function progressionReasonFor(
   item: PlanItemRow | null,
   ex: ExerciseRow | undefined,
   recent: SetRow[],
-  deload = false,
+  deloadWeek = false,
 ): Promise<ProgressionReason | null> {
+  const deload = deloadWeek && item != null && !isExtraBlock(item.block);
   const kind: ExerciseKind = ex?.kind ?? 'REPS';
   const input = progressionInputs(item, ex?.id, await withoutDeloadSessions(recent));
   const settings = await loadSettings();
@@ -717,8 +720,12 @@ export async function harderHint(ex: ExerciseRow, warmup: boolean, openSessionId
   if (ex.kind !== 'REPS' || warmup || ex.id === 'jumping_jacks') return undefined;
   const recent = (await recentDoneSets(ex.id)).filter((s) => s.sessionId !== openSessionId);
   const ids = [...new Set(recent.map((s) => s.sessionId))];
-  const past = (id: number | undefined): PastSet[] => recent.filter((s) => s.sessionId === id)
-    .map((s) => ({ reps: s.reps, seconds: s.seconds, weightKg: s.weightKg, effort: effortOf(s.effort, s.note) }));
+  // Working sets only (no warm-up / drop / rest-pause rows), with a blank-effort FAILURE set read as Failure (A11).
+  const past = (id: number | undefined): PastSet[] => recent.filter((s) => s.sessionId === id && countsForProgression(s))
+    .map((s) => ({
+      reps: s.reps, seconds: s.seconds, weightKg: s.weightKg,
+      effort: s.effort.trim() === '' && s.setType === 'FAILURE' ? 'FAILURE' : effortOf(s.effort, s.note),
+    }));
   if (!readyForHarder(past(ids[0]), past(ids[1]))) return undefined;
   const next = harderVersion(ex, await getLibrary(), configuredEquipment(await loadSettings()));
   return { next: (next as ExerciseRow | null) ?? null };

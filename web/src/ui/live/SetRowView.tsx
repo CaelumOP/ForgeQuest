@@ -61,7 +61,8 @@ export type SetRowProps = {
   /** Briefly flash stepper numbers gold when a new PR is entered. */
   flash?: boolean
   showEffort: boolean
-  onChange: (next: SetRow, editedField?: EditedField) => void
+  /** `patch` holds only the fields this edit changes; the screen merges it onto the row as stored when it writes. */
+  onChange: (set: SetRow, patch: Partial<SetRow>, editedField?: EditedField) => void
   onToggle: (set: SetRow) => void
   onSetEffort: (set: SetRow, picked: SetEffort) => void
   onStartHold: (set: SetRow) => void
@@ -115,7 +116,7 @@ export function SetRowView(p: SetRowProps) {
   const [plateBreakdown, setPlateBreakdown] = useState<PlateBreakdown | null>(null)
   const timer = useRef<number | undefined>(undefined)
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = undefined } }
-  const save = (patch: Partial<SetRow>, editedField?: EditedField) => p.onChange({ ...set, ...patch }, editedField)
+  const save = (patch: Partial<SetRow>, editedField?: EditedField) => p.onChange(set, patch, editedField)
   const effort = parseEffort(set.effort || null)
   const pickFromChips = (e: SetEffort) => {
     const next = pickEffort(set, e)
@@ -270,7 +271,7 @@ export function SetRowView(p: SetRowProps) {
         </div>
       )}
 
-      <NoteSheet open={noteMode != null} pain={noteMode === 'pain'} initial={set.note} onClose={() => setNoteMode(null)}
+      <NoteSheet open={noteMode != null} pain={noteMode === 'pain'} initial={set.note} onClose={() => { const wasPain = noteMode === 'pain'; setNoteMode(null); if (wasPain && p.showEffort) p.onDismissEffort?.() }}
         onSave={(v) => { save({ note: v.trim().slice(0, 120) }); setNoteMode(null); if (p.showEffort) p.onDismissEffort?.() }} />
 
       <SetTypeSheet

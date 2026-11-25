@@ -54,7 +54,7 @@ export function computeAdjustment<T extends IntraSessionSet>(
   unit: WeightUnit,
 ): AdjustmentResult<T> | null {
   if (!countsForProgression(source) || remaining.length === 0) return null
-  const isFailure = source.effort === 'FAILURE' || (source.effort.trim() === '' && source.setType === 'FAILURE')
+  const isFailure = source.effort === 'FAILURE' || ((source.effort ?? '').trim() === '' && source.setType === 'FAILURE')
   const repsMiss = kind !== 'HOLD' && repsMin != null && source.reps != null && source.reps <= repsMin - 2
   if (!isFailure && !repsMiss) return null
 
@@ -167,4 +167,52 @@ export function resolveRepsMin(
     return planItem.repsMin
   }
   return kind === 'WEIGHTED' ? 8 : null
+}
+
+/**
+ * Which adjustment last wrote each open row. A row keeps a stack of source set ids (newest last) so reverting an
+ * older adjustment never overwrites numbers a newer adjustment wrote since.
+ */
+export type AdjustmentLedger = {
+  owners: Map<number, number[]>
+  before: Map<number, IntraSessionSet[]>
+}
+
+export function newAdjustmentLedger(): AdjustmentLedger {
+  return { owners: new Map(), before: new Map() }
+}
+
+/** Records that `sourceId`'s adjustment wrote the rows in `before` (their numbers before that write). */
+export function recordAdjustment(ledger: AdjustmentLedger, sourceId: number, before: readonly IntraSessionSet[]): void {
+  const rows = before.filter((s) => s.id != null)
+  ledger.before.set(sourceId, rows)
+  for (const s of rows) {
+    const stack = ledger.owners.get(s.id!) ?? []
+    stack.push(sourceId)
+    ledger.owners.set(s.id!, stack)
+  }
+}
+
+/**
+ * Forgets `sourceId`'s adjustment and returns the rows whose numbers should go back: only rows it still owns.
+ * A row a newer adjustment rewrote stays as it is; that newer adjustment inherits the older pre-adjustment numbers.
+ */
+export function releaseAdjustment(ledger: AdjustmentLedger, sourceId: number): IntraSessionSet[] {
+  const prev = ledger.before.get(sourceId) ?? []
+  ledger.before.delete(sourceId)
+  const out: IntraSessionSet[] = []
+  for (const v of prev) {
+    const stack = ledger.owners.get(v.id!)
+    const idx = stack ? stack.lastIndexOf(sourceId) : -1
+    if (!stack || idx < 0) continue
+    if (idx === stack.length - 1) {
+      out.push(v)
+    } else {
+      const newer = ledger.before.get(stack[idx + 1])
+      if (newer) ledger.before.set(stack[idx + 1], newer.map((s) => (s.id === v.id ? v : s)))
+    }
+    stack.splice(idx, 1)
+    if (stack.length === 0) ledger.owners.delete(v.id!)
+  }
+  return out
 }

@@ -11,7 +11,10 @@ import {
 import { exerciseCueKeys } from '../../data/seed/exercise-cues'
 import { pickEffort, type SetEffort } from '../../domain/effort'
 import { recordedHold } from '../../domain/hold-math'
-import { computeAdjustment, extendedRest, numbersToRestore, openLaterSets, resolveRepsMin } from '../../domain/intra-session'
+import {
+  computeAdjustment, extendedRest, newAdjustmentLedger, numbersToRestore, openLaterSets, recordAdjustment, releaseAdjustment,
+  resolveRepsMin,
+} from '../../domain/intra-session'
 import { formatWeight, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
 import { isDeloadWeek, type ProgressionReason } from '../../domain/progression'
 import { isExtraBlock, pickPrs } from '../../domain/pr-picker'
@@ -108,7 +111,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const editedWeightRef = useRef(new Set<number>())
   const editedSecondsRef = useRef(new Set<number>())
   const adjustedByRef = useRef(new Set<number>())
-  const preAdjustmentRef = useRef(new Map<number, SetRow[]>())
+  const ledgerRef = useRef(newAdjustmentLedger())
   const preCarryRef = useRef(new Map<number, SetRow[]>())
   const restExtendedByRef = useRef(new Set<number>())
   const liveQueue = useRef<Promise<unknown>>(Promise.resolve())
@@ -472,11 +475,18 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const repsMin = resolveRepsMin(source, kind, planItemsRef.current.get(source.itemPosition))
     const unit = weightUnit(settingsRef.current, ex?.unitOverride ?? '')
     const result = computeAdjustment(source, base, kind, repsMin, unit)
-    if (!result || result.changed.length === 0) return
+    if (!result) return
+    // Targets come from the pre-carry rows, but the write compares against the rows as they are now: a carry-forward
+    // that raised targets before a Failure tag goes back to the pre-carry numbers even when the cut itself changes nothing.
+    const changedById = new Map(result.changed.map((s) => [s.id!, s]))
+    const intended = base.map((s) => changedById.get(s.id!) ?? s)
+    const toWrite = numbersToRestore(intended, currentOpen, isEdited)
+    if (toWrite.length === 0) return
     adjustedByRef.current.add(source.id)
-    const changedIds = new Set(result.changed.map((s) => s.id!))
-    preAdjustmentRef.current.set(source.id, base.filter((s) => s.id != null && changedIds.has(s.id)))
-    await writeNumbers(result.changed)
+    const writeIds = new Set(toWrite.map((s) => s.id!))
+    recordAdjustment(ledgerRef.current, source.id, base.filter((s) => writeIds.has(s.id!)))
+    await writeNumbers(intended.filter((s) => writeIds.has(s.id!)))
+    if (result.changed.length === 0) return
     setAdjustment({
       exerciseId: source.exerciseId,
       sourceSetId: source.id,
@@ -486,14 +496,25 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     })
   }
 
-  const save = (next: SetRow, editedField?: EditedField) => {
-    if (editedField && next.id != null) {
-      if (editedField === 'reps') editedRepsRef.current.add(next.id)
-      if (editedField === 'weightKg') editedWeightRef.current.add(next.id)
-      if (editedField === 'seconds') editedSecondsRef.current.add(next.id)
-      if (next.done) checkBest(next)
+  /**
+   * Hand edits join the same queue as tick / effort / Undo and write only the fields in `patch` onto the row as it is
+   * when their turn comes, so a stale rendered row never overwrites a Failure tag or an adjustment, and vice versa.
+   */
+  const save = (set: SetRow, patch: Partial<SetRow>, editedField?: EditedField) => {
+    const id = set.id
+    if (id == null) { void persistSet({ ...set, ...patch }); return }
+    const latest = { ...(setsRef.current.find((s) => s.id === id) ?? set), ...patch }
+    if (editedField) {
+      if (editedField === 'reps') editedRepsRef.current.add(id)
+      if (editedField === 'weightKg') editedWeightRef.current.add(id)
+      if (editedField === 'seconds') editedSecondsRef.current.add(id)
+      if (latest.done) checkBest(latest)
     }
-    void persistSet(next)
+    setsRef.current = setsRef.current.map((s) => (s.id === id ? { ...s, ...patch } : s))
+    void locked(async () => {
+      const fresh = setsRef.current.find((s) => s.id === id)
+      if (fresh) await persistSet({ ...fresh, ...patch })
+    })
   }
 
   const toggleAll = (group: SetRow[]) => {
@@ -503,7 +524,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     setEffortSetId(null)
     if (done) haptics.check(); else haptics.tick()
     const doneAt = done ? Date.now() : null
-    group.forEach((s) => { if (s.done !== done) save({ ...s, done, doneAt }) })
+    group.forEach((s) => { if (s.done !== done) save(s, { done, doneAt }) })
   }
 
   const carryForward = async (set: SetRow) => {
@@ -533,7 +554,9 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     } else haptics.check()
     void locked(async () => {
       const fresh = (set.id != null ? setsRef.current.find((s) => s.id === set.id) : undefined) ?? set
-      const updatedSet: SetRow = { ...fresh, done, doneAt, effort: done ? fresh.effort : '' }
+      // Unticking clears the effort; a FAILURE type the Failure tag set goes too, or A11 would still read the row as Failure.
+      const setType = !done && fresh.effort === 'FAILURE' && fresh.setType === 'FAILURE' ? 'WORKING' : fresh.setType
+      const updatedSet: SetRow = { ...fresh, done, doneAt, effort: done ? fresh.effort : '', setType }
       if (done) {
         if (fresh.id != null) preCarryRef.current.set(fresh.id, openLaterSets(setsRef.current, fresh, isEdited))
         await persistSet(updatedSet)
@@ -542,10 +565,10 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       } else {
         await persistSet(updatedSet)
         if (fresh.id != null) {
-          const prev = preAdjustmentRef.current.get(fresh.id)
-          preAdjustmentRef.current.delete(fresh.id)
-          if (prev) await writeNumbers(prev)
+          const prev = releaseAdjustment(ledgerRef.current, fresh.id)
+          if (prev.length > 0) await writeNumbers(prev as SetRow[])
           adjustedByRef.current.delete(fresh.id)
+          restExtendedByRef.current.delete(fresh.id)
           preCarryRef.current.delete(fresh.id)
           setAdjustment((cur) => (cur?.sourceSetId === fresh.id ? null : cur))
         }
@@ -587,9 +610,8 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     setAdjustment(null)
     haptics.tick()
     void locked(async () => {
-      const prev = preAdjustmentRef.current.get(sourceId)
-      preAdjustmentRef.current.delete(sourceId)
-      if (prev) await writeNumbers(prev)
+      const prev = releaseAdjustment(ledgerRef.current, sourceId)
+      if (prev.length > 0) await writeNumbers(prev as SetRow[])
     })
   }
 
@@ -600,8 +622,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     editedWeightRef.current.add(target.id)
     editedSecondsRef.current.add(target.id)
     haptics.tick()
-    save({
-      ...target,
+    save(target, {
       reps: src.reps ?? target.reps,
       seconds: src.seconds ?? target.seconds,
       weightKg: src.weightKg ?? target.weightKg,
@@ -621,8 +642,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       editedRepsRef.current.add(s.id)
       editedWeightRef.current.add(s.id)
       editedSecondsRef.current.add(s.id)
-      save({
-        ...s,
+      save(s, {
         reps: src.reps ?? s.reps,
         seconds: src.seconds ?? s.seconds,
         weightKg: src.weightKg ?? s.weightKg,
@@ -1158,7 +1178,7 @@ type CardProps = {
   barWeightKg: number
   plateInventory: readonly number[]
   effortSetId: number | null
-  onChange: (s: SetRow, editedField?: EditedField) => void
+  onChange: (s: SetRow, patch: Partial<SetRow>, editedField?: EditedField) => void
   onToggle: (s: SetRow) => void
   onToggleAll: (sets: SetRow[]) => void
   onSetEffort: (s: SetRow, picked: SetEffort) => void

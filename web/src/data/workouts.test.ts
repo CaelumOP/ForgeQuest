@@ -8,7 +8,7 @@ import {
   addExercise, applyPlan, finishSession, getActivePlan, getSets, importSharedPlan, moveSession,
   openSessionNow, recomputeRecords, seedLibrary, setPairWithNext, startSession, stepUp, updateFinishedSet,
   updatePlanDay, updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, withoutDeloadSessions, type PlanDayWithItems,
-  allRecentDoneSets, baselineStatusFor,
+  allRecentDoneSets, baselineStatusFor, harderHint,
 } from './workouts';
 import { exportSharedPlan, parseAndValidateSharedPlan } from '../domain/plan-share';
 
@@ -556,5 +556,51 @@ describe('v4.2 audit fixes (stepUp done-set guard & autoTicked PR exclusion)', (
     expect(afterEditAuto[1].autoTicked).toBe(false);
     expect(afterEditAuto[1].isPr).toBe(false); // first session still never earns a PR
     expect((await getSets(s2))[0].isPr).toBe(false);
+  });
+});
+
+describe('W2 review fixes', () => {
+  const finished = (epochDay: number) => putSession({
+    title: 'Past', planDayId: null, epochDay, startedAt: epochDay * 1000, finishedAt: epochDay * 1000 + 500, note: '', debrief: '',
+  });
+  const pushUp = (sessionId: number, setIndex: number, reps: number, overrides: Partial<SetRow> = {}): SetRow => ({
+    sessionId, exerciseId: 'push_up', itemPosition: 0, block: 'Main', circuit: false, setIndex, targetLabel: '',
+    reps, seconds: null, weightKg: null, done: true, isPr: false, restSeconds: 60,
+    note: '', effort: 'EASY', setType: 'WORKING', ...overrides,
+  });
+  const twoSessions = async (extra: (sid: number) => SetRow) => {
+    for (const day of [100, 101]) {
+      const sid = await finished(day);
+      await db.sets.bulkAdd([pushUp(sid, 0, 15), pushUp(sid, 1, 15), pushUp(sid, 2, 15), extra(sid)]);
+    }
+  };
+
+  it('harderHint ignores rest-pause burnout sets (Android countsForProgression)', async () => {
+    await twoSessions((sid) => pushUp(sid, 3, 6, { setType: 'RESTPAUSE' }));
+    const ex = (await db.exercises.get('push_up'))!;
+    expect(await harderHint(ex, false, -1)).toBeDefined();
+  });
+
+  it('harderHint reads a blank-effort FAILURE set as Failure (A11)', async () => {
+    await twoSessions((sid) => pushUp(sid, 3, 15, { effort: '', setType: 'FAILURE' }));
+    const ex = (await db.exercises.get('push_up'))!;
+    expect(await harderHint(ex, false, -1)).toBeUndefined();
+  });
+
+  it('a deload week halves working items but keeps the warm-up block sets', async () => {
+    await applyPlan(FULL_BODY_BEGINNER, 'starter');
+    const plan = (await getActivePlan())!;
+    await db.plans.update(plan.plan.id!, { createdAt: Date.now() - 21 * 86_400_000 });
+    const first = plan.days.find((d) => !d.day.isRest && d.items.filter((i) => i.sets > 1).length >= 2)!;
+    const [warmItem] = first.items.filter((i) => i.sets > 1);
+    await db.planItems.update(warmItem.id!, { block: 'Warm-up' });
+    const day = (await getActivePlan())!.days.find((d) => d.day.id === first.day.id)!;
+    const warm = day.items.find((i) => i.id === warmItem.id)!;
+    const main = day.items.find((i) => i.block !== 'Warm-up' && i.sets > 1)!;
+    const sets = await getSets(await startSession(day));
+    const count = (pos: number) => sets.filter((s) => s.itemPosition === pos && countsForProgression(s)).length
+      + sets.filter((s) => s.itemPosition === pos && s.block === 'Warm-up').length;
+    expect(sets.filter((s) => s.itemPosition === warm.position)).toHaveLength(warm.sets);
+    expect(count(main.position)).toBe(Math.trunc((main.sets + 1) / 2));
   });
 });
