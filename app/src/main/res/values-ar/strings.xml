@@ -799,7 +799,7 @@
     <string name="unit_s">ث</string>
     <string name="metric_total_time">مجموع الوقت</string>
     <string name="metric_best_set">أفضل مجموعة</string>
-    <string name="metric_est_1rm">%1$s · أقصى وزن لعدّة واحدة تقديريًا (1RM)</string>
+    <string name="metric_est_1rm">%1$s · أفضل رفعة (تقديري)</string>
     <string name="metric_max_weight">أقصى وزن</string>
     <string name="metric_volume">إجمالي الأوزان</string>
     <string name="detail_add_link">إضافة رابط فيديو</string>
@@ -1150,7 +1150,7 @@
     <string name="debrief_next_lighter">%1$s بحمل أخف: %2$s لأداء %3$s</string>
     <string name="debrief_next_lighter_only">%1$s بحمل أخف: %2$s</string>
     <string name="debrief_next_harder">%1$s أصبح سهلًا، انتقل إلى %2$s</string>
-    <string name="debrief_next_tempo">%1$s أصبح سهلًا، أبطئ الإيقاع</string>
+    <string name="debrief_next_tempo">%1$s أصبح سهلًا، أبطئ كل تكرار</string>
     <string name="debrief_next_load_reps">%1$s بوزن %2$s لأداء %3$s</string>
     <string name="debrief_next_goal">%1$s، %2$s</string>
     <string name="debrief_next_goal_at">%1$s، %2$s بوزن %3$s</string>
@@ -1566,7 +1566,7 @@
     <string name="pb_goal_strength">القوة</string>
     <string name="pb_goal_strength_desc">أوزان ثقيلة · 4–6 تكرار · راحة 2.5 د</string>
     <string name="pb_goal_muscle">بناء العضلات</string>
-    <string name="pb_goal_muscle_desc">تضخيم عضلي · 8–12 تكرار · راحة 90 ث</string>
+    <string name="pb_goal_muscle_desc">بناء العضل · 8–12 تكرار · راحة 90 ث</string>
     <string name="pb_goal_fat">خسارة الدهون</string>
     <string name="pb_goal_fat_desc">تمارين دائرية · 12–15 تكرار · راحة 45 ث</string>
     <string name="pb_goal_endurance">التحمّل</string>

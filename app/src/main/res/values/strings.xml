@@ -643,7 +643,7 @@
     <string name="live_note_hint">Felt easy, add weight next time</string>
     <string name="live_add_note">Add a note</string>
     <string name="cd_set_done">Set done</string>
-    <string name="live_pr">PR</string>
+    <string name="live_pr">Best</string>
     <string name="live_rest">Rest</string>
     <string name="live_skip">Skip</string>
     <string name="live_ended_at_last_set">Ended at your last set, %1$s</string>
@@ -694,7 +694,7 @@
     <string name="unit_s">s</string>
     <string name="metric_total_time">Total time</string>
     <string name="metric_best_set">Best set</string>
-    <string name="metric_est_1rm">%1$s est. 1RM</string>
+    <string name="metric_est_1rm">%1$s · Best single (est.)</string>
     <string name="metric_max_weight">Max weight</string>
     <string name="metric_volume">Volume</string>
     <string name="detail_add_link">Add video link</string>
@@ -1025,7 +1025,7 @@
     <string name="debrief_next_lighter">%1$s, a step lighter: %2$s for %3$s</string>
     <string name="debrief_next_lighter_only">%1$s, a step lighter: %2$s</string>
     <string name="debrief_next_harder">%1$s is easy now, move up to %2$s</string>
-    <string name="debrief_next_tempo">%1$s is easy now, slow the tempo down</string>
+    <string name="debrief_next_tempo">%1$s is easy now, slow down each rep</string>
     <string name="debrief_next_load_reps">%1$s, %2$s for %3$s</string>
     <string name="debrief_next_goal">%1$s, %2$s</string>
     <string name="debrief_next_goal_at">%1$s, %2$s at %3$s</string>
@@ -1115,8 +1115,8 @@
     <string name="score_volume_down">Volume down %1$d%%</string>
     <string name="score_volume_same">Same volume as last time</string>
     <plurals name="score_prs">
-        <item quantity="one">%1$d PR</item>
-        <item quantity="other">%1$d PRs</item>
+        <item quantity="one">%1$d new best</item>
+        <item quantity="other">%1$d new bests</item>
     </plurals>
     <string name="debrief_open">Workout debrief</string>
     <!-- Profile: folding settings categories -->
@@ -1375,7 +1375,7 @@
     <string name="pb_goal_strength">Strength</string>
     <string name="pb_goal_strength_desc">Heavy lifts · 4–6 reps · 2.5m rest</string>
     <string name="pb_goal_muscle">Build muscle</string>
-    <string name="pb_goal_muscle_desc">Hypertrophy · 8–12 reps · 90s rest</string>
+    <string name="pb_goal_muscle_desc">Build muscle · 8–12 reps · 90s rest</string>
     <string name="pb_goal_fat">Lose fat</string>
     <string name="pb_goal_fat_desc">Fast circuits · 12–15 reps · 45s rest</string>
     <string name="pb_goal_endurance">Endurance</string>
@@ -1732,7 +1732,7 @@
     <string name="friends_username_hint">3–20 letters, numbers, _ or .</string>
     <string name="friends_username_rules">Use 3–20 letters, numbers, _ or . (no dot at the start or end)</string>
     <string name="friends_share_photo">Show my Google photo</string>
-    <string name="friends_share_prs">Share my PRs</string>
+    <string name="friends_share_prs">Share my personal records</string>
     <string name="friends_join_button">Join Friends</string>
     <string name="friends_your_code">Your username</string>
     <string name="friends_copy_code">Copy</string>
@@ -1756,8 +1756,8 @@
     <string name="friends_badge_slacking">Behind</string>
     <string name="friends_badge_rest">Rest day</string>
     <string name="friends_badge_not_synced">Not synced this week</string>
-    <string name="friends_prs_title">This week\'s PRs</string>
-    <string name="friends_prs_hidden">PRs are private or none logged this week.</string>
+    <string name="friends_prs_title">This week\'s personal records</string>
+    <string name="friends_prs_hidden">Personal records are private or none logged this week.</string>
     <string name="friends_nudge">Nudge</string>
     <string name="friends_nudge_sent">Nudge sent</string>
     <string name="friends_remove">Remove</string>
@@ -1775,7 +1775,7 @@
     <string name="settings_friends_status_signed_out">Not signed in</string>
     <string name="settings_friends_sign_in">Sign in with Google</string>
     <string name="settings_friends_share_photo">Show my Google photo</string>
-    <string name="settings_friends_share_prs">Share my PRs</string>
+    <string name="settings_friends_share_prs">Share my personal records</string>
     <string name="settings_friends_username_save">Save username</string>
     <string name="settings_friends_username_saved">Username saved</string>
     <string name="settings_friends_sign_out">Sign out of Friends</string>

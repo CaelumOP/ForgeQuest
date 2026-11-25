@@ -22,13 +22,13 @@
     <!-- Set types -->
     <string name="live41_set_type_title">Set type</string>
     <string name="live41_set_type_working">Working</string>
-    <string name="live41_set_type_working_desc">Counts toward progression, score, and PRs</string>
+    <string name="live41_set_type_working_desc">Counts toward progression, score, and records</string>
     <string name="live41_set_type_warmup">Warm-up</string>
-    <string name="live41_set_type_warmup_desc">Skipped in auto-rest, progression, and PRs</string>
+    <string name="live41_set_type_warmup_desc">Skipped in auto-rest, progression, and records</string>
     <string name="live41_set_type_dropset">Drop set</string>
     <string name="live41_set_type_dropset_desc">Extra volume after a working set</string>
     <string name="live41_set_type_failure">Failure</string>
-    <string name="live41_set_type_failure_desc">All-out set; counts toward progression and PRs</string>
+    <string name="live41_set_type_failure_desc">All-out set; counts toward progression and records</string>
     <string name="live41_set_type_restpause">Rest-pause</string>
     <string name="live41_set_type_restpause_desc">Short 15 s rest preset between bursts</string>
     <string name="live41_tag_warmup">W</string>
@@ -91,6 +91,6 @@
     <string name="live41_recap_minutes">%1$d min</string>
     <string name="live41_recap_total_lifted">Total lifted: %1$s</string>
     <string name="live41_recap_best">best %1$s</string>
-    <string name="live41_recap_pr_tag">PR</string>
-    <string name="live41_recap_prs_header">PRs: %1$s</string>
+    <string name="live41_recap_pr_tag">Best</string>
+    <string name="live41_recap_prs_header">Personal records: %1$s</string>
 </resources>

@@ -34,7 +34,34 @@ export function WeeklyVolumeCard({ s }: { s: ProgressSnapshot }) {
   )
 }
 
-export function OneRmCalculatorCard({ s, unit }: { s: ProgressSnapshot; unit: WeightUnit }) {
+export function MoreToolsSection({ s, unit }: { s: ProgressSnapshot; unit: WeightUnit }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Card>
+      <button
+        type="button"
+        class="pg-more-toggle"
+        aria-expanded={open}
+        aria-controls="pg-more-tools-body"
+        onClick={() => setOpen(!open)}
+      >
+        <span class="pg-more-title">{t('prog41_more_tools')}</span>
+        <span class={open ? 'pg-more-chev open' : 'pg-more-chev'} aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+          </svg>
+        </span>
+      </button>
+      {open && (
+        <div id="pg-more-tools-body" class="pg-more-body">
+          <MaxStrengthEstimateBody s={s} unit={unit} />
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function MaxStrengthEstimateBody({ s, unit }: { s: ProgressSnapshot; unit: WeightUnit }) {
   const ar = getLang() === 'ar'
   const uText = unitLabel(unit, ar)
   const bestSample = useMemo(() => {
@@ -54,7 +81,7 @@ export function OneRmCalculatorCard({ s, unit }: { s: ProgressSnapshot; unit: We
   const ratio = strengthToBodyweight(estKg, s.latestWeight)
 
   return (
-    <Card>
+    <>
       <h3 class="pg-h3">{t('prog41_1rm_title')}</h3>
       <p class="pg-hint">{t('prog41_1rm_hint')}</p>
       {bestSample && (
@@ -112,7 +139,7 @@ export function OneRmCalculatorCard({ s, unit }: { s: ProgressSnapshot; unit: We
           <span key={pct} class="pg-pct">{`${pct}% · ${weightNumber(unit, value, 0)} ${uText}`}</span>
         ))}
       </div>
-    </Card>
+    </>
   )
 }
 

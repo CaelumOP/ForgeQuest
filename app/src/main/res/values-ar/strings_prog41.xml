@@ -31,17 +31,18 @@
     <string name="prog41_vol_tap_hint">اضغط على أي عضلة لعرض المجموعات الأسبوعية التقديرية.</string>
     <string name="prog41_vol_cd">خريطة المجموعات الأسبوعية التقديرية للعضلات</string>
 
-    <!-- Estimated 1RM & Strength / BW -->
-    <string name="prog41_1rm_title">حاسبة أقصى وزن تقديري (1RM)</string>
-    <string name="prog41_1rm_hint">تقدير إيبلي من مجموعة عمل واحدة، مع نسب التدريب.</string>
+    <!-- تقدير أقصى قوة ونسبة وزن الجسم -->
+    <string name="prog41_more_tools">أدوات أخرى</string>
+    <string name="prog41_1rm_title">تقدير أقصى قوة</string>
+    <string name="prog41_1rm_hint">أفضل رفعة واحدة لك، مقدَّرة من مجموعة واحدة</string>
     <string name="prog41_1rm_weight">الوزن (%1$s)</string>
     <string name="prog41_1rm_reps">العدّات</string>
-    <string name="prog41_1rm_result_label">أقصى وزن تقديري لعدّة واحدة (1RM)</string>
+    <string name="prog41_1rm_result_label">أفضل رفعة (تقديري)</string>
     <string name="prog41_1rm_ratio_label">نسبة القوة إلى وزن الجسم</string>
-    <string name="prog41_1rm_ratio_val">%1$s× وزن الجسم</string>
+    <string name="prog41_1rm_ratio_val">ترفع %1$s ضعف وزن جسمك</string>
     <string name="prog41_1rm_ratio_missing">سجّل وزن الجسم لحساب النسبة</string>
     <string name="prog41_1rm_use_best">استخدم الأفضل: %1$s</string>
-    <string name="prog41_1rm_latest_est">1RM تقديري: %1$s</string>
+    <string name="prog41_1rm_latest_est">أفضل رفعة (تقديري): %1$s</string>
 
     <!-- CSV Import -->
     <string name="prog41_csv_import_title">استيراد سجل التمارين (CSV)</string>

@@ -3,7 +3,5 @@
   "progress_web_badge_new": "New",
   "progress_web_badge_locked": "Locked",
   "progress_web_badge_unlocked": "Unlocked",
-  "progress_web_heatmap_cd": "Consistency grid, oldest week first",
-  "progress_tile_workouts": "Workout days · per week",
-  "coach_week_line": "This week · workout days: {1} · sets: {2}"
+  "progress_web_heatmap_cd": "Consistency grid, oldest week first"
 }

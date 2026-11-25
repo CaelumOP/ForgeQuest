@@ -1,15 +1,1 @@
-{
-  "score41_title": "How ForgeScore works",
-  "score41_target": "Set a weekly target",
-  "score41_workouts": "Workout days: {1} of {2} ({3})",
-  "score41_prs": "New PR sets: {1} (+{2})",
-  "score41_protein": "Protein-goal days: {1} (+{2})",
-  "score41_extra": "Extra workout day (+5)",
-  "score41_total": "{1} + {2} = {3}",
-  "score41_cap": "Bonuses capped at +20",
-  "score41_rule_base": "Workout days build up to 100 points. Each week starts on Sunday.",
-  "score41_rule_bonus": "+5 per new PR set (up to +10), +2 per protein-goal day (up to +6), and +5 for a workout day beyond your target.",
-  "score41_rule_tie": "Bonuses add up to +20 (120 total). Ties go to whoever reached the score earlier, then username.",
-  "score41_close": "Close",
-  "score41_score_label": "{1} points. How ForgeScore works"
-}
+{}

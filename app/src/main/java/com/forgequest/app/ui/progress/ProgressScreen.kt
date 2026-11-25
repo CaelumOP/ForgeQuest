@@ -11,6 +11,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -179,7 +181,7 @@ fun ProgressScreen(nav: NavHostController) {
                     ProgressMeasureLink.openAdd = false
                 }
                 Spacer(Modifier.height(12.dp))
-                OneRmCalculatorCard(s, unit)
+                MoreToolsSection(s, unit)
                 Spacer(Modifier.height(32.dp))
             }
             return
@@ -204,7 +206,7 @@ fun ProgressScreen(nav: NavHostController) {
             StrengthCard(s, d, unit, reveal, dateLabel)
             Spacer(Modifier.height(12.dp))
 
-            OneRmCalculatorCard(s, unit)
+            MoreToolsSection(s, unit)
             Spacer(Modifier.height(12.dp))
 
             MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement, openMeasureAdd) {
@@ -351,6 +353,7 @@ private fun TileGrid(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: 
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StrengthCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reveal: Float, dateLabel: (Long) -> String) {
     val c = Fit.colors
@@ -383,7 +386,7 @@ private fun StrengthCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reve
             if (latestEst != null && latestEst > 0f) {
                 val ratio = ProgressMetrics.strengthToBodyweight(latestEst, s.latestWeight)
                 Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         stringResource(R.string.prog41_1rm_latest_est, unit.format(latestEst, 1)),
                         style = MaterialTheme.typography.labelLarge.tabular(),

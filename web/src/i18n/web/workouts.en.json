@@ -13,8 +13,6 @@
   "workouts_web_metric": "Metric",
   "workouts_web_dismiss": "Dismiss",
   "cd_what_is_this": "What is {1}?",
-  "plan_ready_made": "Switch to a ready-made plan",
-  "plan_ready_made_info": "Plans that come with the app, from beginner to advanced. Picking one replaces your current plan; the old one stays under Previous plans.",
   "plan_paste_hint": "From notes, a message or a Google Doc. AI turns it into your schedule.",
   "pattern_horizontal_push": "Chest push",
   "pattern_dip_push": "Dips & lower chest",

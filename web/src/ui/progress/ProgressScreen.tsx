@@ -18,7 +18,7 @@ import { Button, Card, Chip, ChipGroup, EmptyState, LineChart, Ring, toast } fro
 import { carbWeeks, formatDelta, formatValue, grouped } from './helpers'
 import { formatInsight } from './insightText'
 import { strengthToBodyweight } from './metrics'
-import { MeasurementsCard, OneRmCalculatorCard, WeeklyVolumeCard } from './ProgressExtras'
+import { MeasurementsCard, MoreToolsSection, WeeklyVolumeCard } from './ProgressExtras'
 import './progress.css'
 
 const RANGE_KEYS: Record<TrendRange, string> = {
@@ -348,7 +348,7 @@ export function ProgressScreen(_: { param?: string }) {
             icon={<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" /></svg>}
             action={<Button onClick={() => { location.hash = '#/workouts' }}>{t('hist_go_workouts')}</Button>} /></Card>
           <MeasurementsCard range={range} />
-          <OneRmCalculatorCard s={snap} unit={unit} />
+          <MoreToolsSection s={snap} unit={unit} />
         </div>
       </div>
     )
@@ -368,7 +368,7 @@ export function ProgressScreen(_: { param?: string }) {
         <WeeklyVolumeCard s={snap} />
         <Tiles s={snap} d={d} unit={unit} />
         <StrengthCard s={snap} d={d} unit={unit} />
-        <OneRmCalculatorCard s={snap} unit={unit} />
+        <MoreToolsSection s={snap} unit={unit} />
         <MeasurementsCard range={range} />
         {d.weightPoints.length >= 2 && (
           <Card>

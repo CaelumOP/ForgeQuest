@@ -31,17 +31,18 @@
     <string name="prog41_vol_tap_hint">Tap a muscle to see its estimated weekly sets.</string>
     <string name="prog41_vol_cd">Estimated weekly muscle sets map</string>
 
-    <!-- Estimated 1RM & Strength / BW -->
-    <string name="prog41_1rm_title">Estimated 1RM calculator</string>
-    <string name="prog41_1rm_hint">Epley estimate from one working set, plus percentage targets.</string>
+    <!-- Max strength estimate & body-weight ratio -->
+    <string name="prog41_more_tools">More tools</string>
+    <string name="prog41_1rm_title">Max strength estimate</string>
+    <string name="prog41_1rm_hint">Your best single lift, estimated from one set</string>
     <string name="prog41_1rm_weight">Weight (%1$s)</string>
     <string name="prog41_1rm_reps">Reps</string>
-    <string name="prog41_1rm_result_label">Estimated 1RM (Epley)</string>
+    <string name="prog41_1rm_result_label">Best single (est.)</string>
     <string name="prog41_1rm_ratio_label">Strength / bodyweight</string>
-    <string name="prog41_1rm_ratio_val">%1$s× BW</string>
-    <string name="prog41_1rm_ratio_missing">Log body weight to see ×BW</string>
+    <string name="prog41_1rm_ratio_val">Lifts %1$s× your body weight</string>
+    <string name="prog41_1rm_ratio_missing">Log body weight to see your ratio</string>
     <string name="prog41_1rm_use_best">Use best: %1$s</string>
-    <string name="prog41_1rm_latest_est">Est. 1RM: %1$s</string>
+    <string name="prog41_1rm_latest_est">Best single (est.): %1$s</string>
 
     <!-- CSV Import -->
     <string name="prog41_csv_import_title">Import history (CSV)</string>

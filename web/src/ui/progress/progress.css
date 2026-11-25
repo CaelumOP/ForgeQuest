@@ -93,10 +93,16 @@ html[dir='rtl'] .pg-spark { transform: scaleX(-1); }
 .pg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 8px; }
 .pg-calc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 6px; }
 .pg-calc-label { font-size: 15px; color: var(--text); }
-.pg-1rm-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px; border-radius: var(--r-md); background: var(--card-high); margin-block: 10px; }
+.pg-more-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; inline-size: 100%; min-block-size: 44px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.pg-more-title { font-size: 16px; line-height: 22px; font-weight: 600; min-inline-size: 0; overflow-wrap: anywhere; }
+.pg-more-chev { display: inline-flex; flex: none; color: var(--text-2); transition: transform var(--dur-short) var(--ease-standard); }
+.pg-more-chev.open { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .pg-more-chev { transition: none; } }
+.pg-more-body { margin-block-start: 16px; padding-block-start: 16px; border-block-start: 1px solid var(--divider); }
+.pg-1rm-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11em), 1fr)); gap: 12px; padding: 14px; border-radius: var(--r-md); background: var(--card-high); margin-block: 10px; }
 .pg-1rm-col { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
 .pg-1rm-lbl { font-size: 12px; color: var(--text-2); }
-.pg-1rm-val { font-size: 20px; }
+.pg-1rm-val { font-size: 18px; line-height: 24px; overflow-wrap: anywhere; }
 .pg-pcts { display: flex; flex-wrap: wrap; gap: 8px; }
 .pg-pct { padding: 6px 10px; border-radius: var(--r-sm); background: var(--blue-track); color: var(--blue); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .pg-meas-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

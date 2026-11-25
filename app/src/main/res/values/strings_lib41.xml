@@ -23,7 +23,7 @@
     <string name="detail_setup_note">Setup note</string>
     <string name="detail_setup_note_hint">e.g. Seat 3, Pin 4</string>
     <string name="detail_no_media">No demonstration photo yet</string>
-    <string name="detail_strength_bw">Strength / BW</string>
+    <string name="detail_strength_bw">Strength / body weight</string>
     <string name="detail_variations">Similar &amp; variations</string>
 
     <!-- Custom Exercise Editor -->

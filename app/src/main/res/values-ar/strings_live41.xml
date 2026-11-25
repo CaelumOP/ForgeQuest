@@ -24,11 +24,11 @@
     <string name="live41_set_type_working">أساسية</string>
     <string name="live41_set_type_working_desc">تُحتسب في التدرّج والنتيجة والأرقام القياسية</string>
     <string name="live41_set_type_warmup">تسخين</string>
-    <string name="live41_set_type_warmup_desc">لا تبدأ راحة تلقائية ولا تُحتسب في التدرّج أو PR</string>
+    <string name="live41_set_type_warmup_desc">لا تبدأ راحة تلقائية ولا تُحتسب في التدرّج أو الأرقام القياسية</string>
     <string name="live41_set_type_dropset">دروب سِت</string>
     <string name="live41_set_type_dropset_desc">مجموعة إضافية بعد المجموعة الأساسية</string>
     <string name="live41_set_type_failure">فشل عضلي</string>
-    <string name="live41_set_type_failure_desc">مجموعة حتى الفشل العضلي؛ تُحتسب في التدرّج وPR</string>
+    <string name="live41_set_type_failure_desc">مجموعة حتى الفشل العضلي؛ تُحتسب في التدرّج والأرقام القياسية</string>
     <string name="live41_set_type_restpause">ريست بوز (راحة قصيرة)</string>
     <string name="live41_set_type_restpause_desc">خيار راحة قصيرة 15 ثانية بين التكرارات</string>
     <string name="live41_tag_warmup">ت</string>

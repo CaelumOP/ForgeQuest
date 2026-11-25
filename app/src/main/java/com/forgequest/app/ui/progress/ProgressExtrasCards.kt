@@ -1,8 +1,16 @@
 package com.forgequest.app.ui.progress
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -17,7 +25,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,9 +48,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.data.MeasurementMath
@@ -59,7 +76,9 @@ import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.TrendChart
 import com.forgequest.app.ui.theme.Fit
+import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.ForgeShape
+import com.forgequest.app.ui.theme.LocalReducedMotion
 import com.forgequest.app.ui.theme.NumberFont
 import com.forgequest.app.ui.theme.tabular
 import java.util.Locale
@@ -90,9 +109,57 @@ internal fun WeeklyVolumeCard(s: ProgressSnapshot) {
     }
 }
 
+/** Collapsed-by-default "More tools" expandable row holding the max strength estimate tool. */
+@Composable
+internal fun MoreToolsSection(s: ProgressSnapshot, unit: WeightUnit) {
+    val c = Fit.colors
+    val reduced = LocalReducedMotion.current
+    var open by rememberSaveable { mutableStateOf(false) }
+    val expandedText = stringResource(if (open) R.string.cd_expanded else R.string.cd_collapsed)
+
+    FitCard {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clip(ForgeShape.Sm)
+                .clickable(role = Role.Button) { open = !open }
+                .semantics { stateDescription = expandedText },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.prog41_more_tools),
+                style = MaterialTheme.typography.titleMedium,
+                color = c.textPrimary,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = null,
+                tint = c.textSecondary,
+            )
+        }
+        AnimatedVisibility(
+            visible = open,
+            enter = fadeIn(ForgeMotion.effects(reduced)) +
+                expandVertically(ForgeMotion.spatial(reduced, visibilityThreshold = IntSize.VisibilityThreshold)),
+            exit = fadeOut(ForgeMotion.effects(reduced)) +
+                shrinkVertically(ForgeMotion.spatial(reduced, visibilityThreshold = IntSize.VisibilityThreshold)),
+        ) {
+            Column {
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = c.divider)
+                Spacer(Modifier.height(16.dp))
+                MaxStrengthEstimateContent(s, unit)
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun OneRmCalculatorCard(s: ProgressSnapshot, unit: WeightUnit) {
+private fun MaxStrengthEstimateContent(s: ProgressSnapshot, unit: WeightUnit) {
     val c = Fit.colors
     val bestSample = remember(s.doneSets, s.exercises) {
         s.doneSets
@@ -105,7 +172,7 @@ internal fun OneRmCalculatorCard(s: ProgressSnapshot, unit: WeightUnit) {
     val estKg = ProgressMetrics.epley1Rm(weightKg, reps)
     val ratio = ProgressMetrics.strengthToBodyweight(estKg, s.latestWeight)
 
-    FitCard {
+    Column {
         Text(stringResource(R.string.prog41_1rm_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
         Text(stringResource(R.string.prog41_1rm_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         if (bestSample != null) {
@@ -148,31 +215,50 @@ internal fun OneRmCalculatorCard(s: ProgressSnapshot, unit: WeightUnit) {
             )
         }
         Spacer(Modifier.height(12.dp))
-        Row(
+        val largeScale = LocalDensity.current.fontScale >= 1.4f
+        BoxWithConstraints(
             Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.cardHigh).padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.prog41_1rm_result_label), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Text(
-                    unit.format(estKg, 1),
-                    fontFamily = NumberFont,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.headlineSmall.tabular(),
-                    color = c.blue,
-                )
+            val stack = largeScale || maxWidth < 280.dp
+            val resultBlock: @Composable (Modifier) -> Unit = { m ->
+                Column(m) {
+                    Text(stringResource(R.string.prog41_1rm_result_label), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                    Text(
+                        unit.format(estKg, 1),
+                        fontFamily = NumberFont,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineSmall.tabular(),
+                        color = c.blue,
+                    )
+                }
             }
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.prog41_1rm_ratio_label), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                Text(
-                    if (ratio != null) stringResource(R.string.prog41_1rm_ratio_val, String.format(Locale.US, "%.2f", ratio))
-                    else stringResource(R.string.prog41_1rm_ratio_missing),
-                    fontFamily = NumberFont,
-                    fontWeight = FontWeight.SemiBold,
-                    style = if (ratio != null) MaterialTheme.typography.titleMedium.tabular() else MaterialTheme.typography.bodySmall,
-                    color = if (ratio != null) c.purple else c.textSecondary,
-                )
+            val ratioBlock: @Composable (Modifier) -> Unit = { m ->
+                Column(m) {
+                    Text(stringResource(R.string.prog41_1rm_ratio_label), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                    Text(
+                        if (ratio != null) stringResource(R.string.prog41_1rm_ratio_val, String.format(Locale.US, "%.2f", ratio))
+                        else stringResource(R.string.prog41_1rm_ratio_missing),
+                        fontFamily = NumberFont,
+                        fontWeight = FontWeight.SemiBold,
+                        style = if (ratio != null) MaterialTheme.typography.titleMedium.tabular() else MaterialTheme.typography.bodySmall,
+                        color = if (ratio != null) c.purple else c.textSecondary,
+                    )
+                }
+            }
+            if (stack) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    resultBlock(Modifier.fillMaxWidth())
+                    ratioBlock(Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    resultBlock(Modifier.weight(1f))
+                    ratioBlock(Modifier.weight(1f))
+                }
             }
         }
         Spacer(Modifier.height(10.dp))
