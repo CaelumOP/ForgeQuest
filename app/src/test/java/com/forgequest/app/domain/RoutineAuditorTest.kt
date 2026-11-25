@@ -66,7 +66,7 @@ class RoutineAuditorTest {
                 ),
             ),
         )
-        val lowFindings = RoutineAuditor.audit(lowChestDays, exercises)
+        val lowFindings = RoutineAuditor.audit(lowChestDays, exercises, shortPlanNote = false)
         assertEquals(listOf(Muscle.CHEST), lowFindings.filter { it.kind == Kind.BELOW_MEV }.map { it.muscle })
     }
 
@@ -205,12 +205,26 @@ class RoutineAuditorTest {
                 ),
             ),
         )
-        val findings = RoutineAuditor.audit(days, exercises)
+        val findings = RoutineAuditor.audit(days, exercises, shortPlanNote = false)
         // The warm-up raise and cool-down bench would put shoulders at 20 and chest at 12 if they counted.
         assertTrue(findings.toString(), findings.none { it.kind == Kind.ISOLATION_FIRST })
         assertTrue(findings.toString(), findings.none { it.kind == Kind.JUNK_VOLUME && it.muscle in setOf(Muscle.SHOULDERS, Muscle.CHEST) })
         assertTrue(findings.toString(), findings.none { it.kind == Kind.ABOVE_MRV })
         assertEquals(listOf(Muscle.CHEST), findings.filter { it.kind == Kind.BELOW_MEV }.map { it.muscle })
+    }
+
+    @Test
+    fun shortPlanReplacesBelowMev() {
+        // One training day: the low chest volume becomes one SHORT_PLAN note instead of BELOW_MEV (plan audit Q1).
+        val days = listOf(AuditDay(1, listOf(AuditItem(bench.id, 4), AuditItem(row.id, 10), AuditItem(squat.id, 8))))
+        val findings = RoutineAuditor.audit(days, exercises)
+        assertTrue(findings.toString(), findings.none { it.kind == Kind.BELOW_MEV })
+        val note = findings.single { it.kind == Kind.SHORT_PLAN }
+        assertEquals(1.0, note.value, 0.0)
+        assertEquals(RoutineAuditor.SHORT_PLAN_MAX_DAYS.toDouble(), note.limit, 0.0)
+        // Nothing short (no BELOW_MEV) means no note either.
+        val full = listOf(AuditDay(1, listOf(AuditItem(bench.id, 8), AuditItem(row.id, 10), AuditItem(ohp.id, 8), AuditItem(squat.id, 8), AuditItem(rdl.id, 6))))
+        assertTrue(RoutineAuditor.audit(full, exercises).none { it.kind == Kind.SHORT_PLAN })
     }
 
     @Test

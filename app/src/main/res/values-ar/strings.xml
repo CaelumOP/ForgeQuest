@@ -1269,8 +1269,9 @@
     <string name="rx_why_hard">وصلت إحدى المجموعات إلى الفشل العضلي في المرة السابقة. الأرقام نفسها اليوم.</string>
     <string name="rx_why_pain">سببت إحدى المجموعات ألمًا في المرة السابقة. أخف اليوم.</string>
     <string name="rx_why_missed">الأرقام نفسها اليوم. أتمم كل المجموعات فيزيد الحِمل في المرة القادمة.</string>
-    <string name="rx_why_back_off">لم تكتمل التكرارات عند الفشل العضلي مرتين متتاليتين. أخف اليوم لاستعادة التقدم.</string>
+    <string name="rx_why_back_off">لم تكتمل التكرارات في تمرينين متتاليين. أخف اليوم لاستعادة التقدم.</string>
     <string name="rx_why_fatigue">لم تكتمل التكرارات عند الفشل العضلي في المرة السابقة. الوزن نفسه اليوم للتعافي.</string>
+    <string name="rx_why_easier">تمرينان صعبان على التوالي. جرّب نسخة أسهل.</string>
     <string name="score_volume_up">ارتفع الحجم %1$d%%</string>
     <string name="score_volume_down">انخفض الحجم %1$d%%</string>
     <string name="score_volume_same">الحجم كما في المرة السابقة</string>

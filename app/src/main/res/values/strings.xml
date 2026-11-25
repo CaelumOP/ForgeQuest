@@ -1108,8 +1108,9 @@
     <string name="rx_why_hard">A set went to failure last time. Same numbers today.</string>
     <string name="rx_why_pain">A set hurt last time. Lighter today.</string>
     <string name="rx_why_missed">Same numbers today. Finish every set and next time goes up.</string>
-    <string name="rx_why_back_off">Missed reps at failure twice in a row. Lighter today to rebuild.</string>
+    <string name="rx_why_back_off">Missed reps two workouts in a row. Lighter today to rebuild.</string>
     <string name="rx_why_fatigue">Missed reps at failure last time. Same weight today to recover.</string>
+    <string name="rx_why_easier">Two tough workouts in a row. Try an easier version.</string>
     <string name="score_volume_up">Volume up %1$d%%</string>
     <string name="score_volume_down">Volume down %1$d%%</string>
     <string name="score_volume_same">Same volume as last time</string>

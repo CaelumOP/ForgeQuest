@@ -109,8 +109,10 @@ class BaselineTest {
         assertEquals(25f, est.weightKg!!, 0.01f)
     }
 
+    private fun dbBenchOf() = byId.getValue("db_bench_press")
+
     @Test
-    fun coldStartFallsBackToBucketWithExtraDiscount() {
+    fun coldStartPressToOverheadUsesSmallerTransfer() {
         val bench = byId.getValue("bench_press")
         val ohp = byId.getValue("overhead_press")
         val history = mapOf(
@@ -119,8 +121,12 @@ class BaselineTest {
         val est = Baseline.coldStart(ohp, repsMin = 8, WeightUnit.KG, history, byId)
         assertEquals(BaselineStatus.ESTIMATED, est.status)
         assertEquals(bench.id, est.donorId)
-        // 100 / 1.0 * 1.0 * 0.9 * 0.8 = 72 -> 72 / (1 + 11/30) = 52.68 -> floor to 2.5 = 52.5
-        assertEquals(52.5f, est.weightKg!!, 0.01f)
+        // Horizontal -> vertical push transfers 0.9 x 0.6 (audit S6): 100 * 0.54 = 54 -> 54 / (1 + 11/30) = 39.5 -> 37.5
+        assertEquals(37.5f, est.weightKg!!, 0.01f)
+        // Flyes never donate (Gate point 4).
+        val fly = byId.getValue("db_fly")
+        val flyOnly = mapOf(fly.id to listOf(set(1L, 10L, fly.id, 20f, reps = 10, effort = SetEffort.OK.name)))
+        assertEquals(BaselineStatus.NONE, Baseline.coldStart(dbBenchOf(), repsMin = 8, WeightUnit.KG, flyOnly, byId).status)
     }
 
     @Test

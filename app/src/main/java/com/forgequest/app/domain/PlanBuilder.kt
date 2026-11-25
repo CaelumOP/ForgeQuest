@@ -72,6 +72,68 @@ object PlanBuilder {
 
     internal fun isCompound(pattern: MP): Boolean = pattern in COMPOUND_PATTERNS
 
+    /** Machines that sit in a compound movement group but work one joint (leg extension). */
+    private val ISOLATION_IDS = setOf("leg_extension")
+
+    /** A fly (chest fly, crossover, pec deck) is a one-joint chest move even though it shares the press movement group. */
+    fun isFly(ex: ExerciseEntity): Boolean {
+        val pattern = ExerciseSwapEngine.profileFor(ex).pattern
+        if (pattern != MP.HORIZONTAL_PUSH && pattern != MP.DIP_PUSH) return false
+        val id = ex.id
+        return "_fly" in id || id.startsWith("fly") || "flye" in id || "crossover" in id || "pec_deck" in id
+    }
+
+    /** Multi-joint lift: a compound movement group, not a fly and not a one-joint machine. Shared by the auditor and the baseline. */
+    fun isCompoundExercise(ex: ExerciseEntity): Boolean =
+        isCompound(ExerciseSwapEngine.profileFor(ex).pattern) && !isFly(ex) && ex.id !in ISOLATION_IDS
+
+    /** The muscles a movement group works; a catalog row whose main muscles miss them is filed in the wrong group. */
+    private val PATTERN_MUSCLES: Map<MP, Set<Muscle>> = mapOf(
+        MP.HORIZONTAL_PUSH to setOf(Muscle.CHEST, Muscle.TRICEPS, Muscle.SHOULDERS),
+        MP.DIP_PUSH to setOf(Muscle.CHEST, Muscle.TRICEPS, Muscle.SHOULDERS),
+        MP.VERTICAL_PUSH to setOf(Muscle.SHOULDERS, Muscle.TRICEPS),
+        MP.VERTICAL_PULL to setOf(Muscle.UPPER_BACK, Muscle.BICEPS),
+        MP.HORIZONTAL_PULL to setOf(Muscle.UPPER_BACK, Muscle.BICEPS, Muscle.TRAPS, Muscle.SHOULDERS),
+        MP.UPPER_BACK_PULL to setOf(Muscle.UPPER_BACK, Muscle.TRAPS, Muscle.SHOULDERS),
+        MP.SQUAT_BILATERAL to setOf(Muscle.QUADS, Muscle.GLUTES),
+        MP.SQUAT_UNILATERAL to setOf(Muscle.QUADS, Muscle.GLUTES),
+        MP.HIP_HINGE to setOf(Muscle.HAMSTRINGS, Muscle.GLUTES, Muscle.LOWER_BACK),
+        MP.KNEE_FLEXION to setOf(Muscle.HAMSTRINGS),
+        MP.LATERAL_RAISE to setOf(Muscle.SHOULDERS),
+        MP.CORE_ANTI_EXTENSION to setOf(Muscle.ABS, Muscle.OBLIQUES, Muscle.LOWER_BACK),
+        MP.CORE_FLEXION_ROTATION to setOf(Muscle.ABS, Muscle.OBLIQUES),
+        MP.ELBOW_FLEXION to setOf(Muscle.BICEPS, Muscle.FOREARMS),
+        MP.ELBOW_EXTENSION to setOf(Muscle.TRICEPS),
+        MP.ANKLE_FLEXION to setOf(Muscle.CALVES, Muscle.TIBIALIS),
+    )
+
+    /** False for a catalog row whose main muscles do not belong to its movement group (a leg jump filed as a chest press). */
+    fun fitsItsMovement(ex: ExerciseEntity): Boolean {
+        val expected = PATTERN_MUSCLES[ExerciseSwapEngine.profileFor(ex).pattern] ?: return true
+        return ex.primary.any { it in expected }
+    }
+
+    /** Well-known exercises that win a tie on score, so the builder picks a bench press before an odd variation. */
+    val STAPLE_IDS: Set<String> = setOf(
+        "bench_press", "db_bench_press", "incline_db_press", "push_up", "incline_push_up", "knee_push_up", "chest_press_machine",
+        "chest_dip", "bench_dip", "overhead_press", "db_shoulder_press", "pike_push_up",
+        "pull_up", "chin_up", "lat_pulldown", "negative_pull_up", "band_assisted_pull_up",
+        "barbell_row", "db_row", "seated_cable_row", "inverted_row", "australian_pull_up",
+        "face_pull", "band_pull_apart", "rear_delt_db_fly",
+        "back_squat", "front_squat", "goblet_squat", "db_squat", "leg_press",
+        "bulgarian_split_squat", "lunge", "reverse_lunge", "step_up",
+        "deadlift", "romanian_deadlift", "db_romanian_deadlift", "hip_thrust", "hip_bridge",
+        "leg_curl", "seated_leg_curl", "nordic_curl",
+        "plank", "side_plank", "dead_bug", "hollow_hold", "crunch", "hanging_knee_raise", "ab_roller", "bird_dog",
+        "barbell_curl", "hammer_curl", "incline_db_curl", "cable_curl", "band_curl",
+        "skull_crusher", "overhead_db_tricep_ext", "overhead_cable_triceps_extension", "band_overhead_triceps", "close_grip_push_up",
+        "lateral_raise", "cable_lateral_raise",
+        "calf_raise", "standing_calf_raise", "db_calf_raise", "seated_calf_raise",
+        "incline_bench_press", "close_grip_bench_press", "arnold_press", "t_bar_row", "chest_supported_row",
+        "sumo_deadlift", "trap_bar_deadlift", "hack_squat", "glute_ham_raise", "single_leg_rdl", "diamond_push_up",
+        "db_lunge", "db_step_up", "db_split_squat", "squat",
+    )
+
     internal fun isCore(pattern: MP): Boolean = pattern == MP.CORE_ANTI_EXTENSION || pattern == MP.CORE_FLEXION_ROTATION
 
     /** Sensible training weekdays for [n] days a week (Monday = 1). */
@@ -173,7 +235,7 @@ object PlanBuilder {
         DayFocus.UPPER -> listOf(main(H_PUSH), main(H_PULL), main(V_PUSH), main(V_PULL), main(CORE), acc(CURL), acc(EXTENSION), acc(LATERAL))
         DayFocus.LOWER -> listOf(main(SQUAT), main(HINGE), main(UNILATERAL), main(CORE), acc(KNEE_FLEX), acc(CALF))
         DayFocus.PUSH -> listOf(main(H_PUSH), main(V_PUSH), main(DIP), main(CORE), acc(LATERAL), acc(EXTENSION))
-        DayFocus.PULL -> listOf(main(V_PULL), main(H_PULL), main(BACK_PULL), main(CORE), acc(CURL), acc(HINGE))
+        DayFocus.PULL -> listOf(main(V_PULL), main(H_PULL), main(BACK_PULL), main(CORE), acc(CURL), acc(BACK_PULL))
         DayFocus.LEGS -> listOf(main(SQUAT), main(HINGE), main(UNILATERAL), main(CORE), acc(KNEE_FLEX), acc(CALF))
         DayFocus.CONDITIONING -> List(3) { Slot(CONDITIONING, Role.COND) } + main(CORE)
     }
@@ -210,7 +272,10 @@ object PlanBuilder {
         private fun prof(e: ExerciseEntity) = profiles.getValue(e.id)
 
         private val equipOk = lib.filter { prof(it).fits(allowedEq) && it.id !in input.avoidIds }
-        private val eligible = equipOk.filter { it.id !in ExerciseCatalog.STRETCH_IDS && !blocked(it, prof(it), input.injuries) }
+        private val eligible = equipOk.filter {
+            it.id !in ExerciseCatalog.STRETCH_IDS && prof(it).pattern != MP.MOBILITY && fitsItsMovement(it) &&
+                !blocked(it, prof(it), input.injuries)
+        }
         private val stretches = equipOk.filter { it.id in ExerciseCatalog.STRETCH_IDS && !blocked(it, prof(it), input.injuries) }
 
         private val experienceCap = when (input.experience) {
@@ -236,8 +301,11 @@ object PlanBuilder {
             return s
         }
 
+        /** Within the best score: unused staples, then staples used on another day, then unused others, then the rest. */
+        private fun tieRank(e: ExerciseEntity): Int = (if (e.id in STAPLE_IDS) 0 else 2) + (if (e.id in weekUsed) 1 else 0)
+
         private fun best(cands: List<ExerciseEntity>, role: Role): ExerciseEntity {
-            val sorted = cands.sortedWith(compareBy<ExerciseEntity>({ -score(it, role) }, { it.id }))
+            val sorted = cands.sortedWith(compareBy<ExerciseEntity>({ -score(it, role) }, { tieRank(it) }, { it.id }))
             val tied = sorted.takeWhile { score(it, role) == score(sorted[0], role) }
             return tied[input.offset.mod(tied.size)]
         }
@@ -251,8 +319,7 @@ object PlanBuilder {
             for (holdsAllowed in passes) for (match in groupsOf(slot)) {
                 val cands = eligible.filter { match(it) && it.id !in dayUsed && (holdsAllowed || it.kind != ExerciseKind.HOLD) && withinCap(it) }
                 if (cands.isEmpty()) continue
-                val fresh = cands.filter { it.id !in weekUsed }.ifEmpty { cands }
-                val chosen = best(fresh, slot.role)
+                val chosen = best(cands, slot.role)
                 if (!input.holdsOk && chosen.kind == ExerciseKind.HOLD) tags += WhyTag.HOLD_FALLBACK
                 return chosen
             }
@@ -270,7 +337,7 @@ object PlanBuilder {
             return eligible.filter {
                 it.id != current.id && it.id !in exclude && prof(it).pattern == pattern && withinCap(it) &&
                     (input.holdsOk || it.kind != ExerciseKind.HOLD)
-            }.sortedWith(compareBy<ExerciseEntity>({ -score(it, Role.ACC) }, { it.id })).take(limit)
+            }.sortedWith(compareBy<ExerciseEntity>({ -score(it, Role.ACC) }, { if (it.id in STAPLE_IDS) 0 else 1 }, { it.id })).take(limit)
         }
 
         // ---- week layout ----
@@ -338,7 +405,7 @@ object PlanBuilder {
         private fun repRangeFor(p: Pick): Pair<Int, Int> {
             if (p.role == Role.COND || p.role == Role.FINISHER) return 12 to 20
             val base = repRange()
-            if (isCompound(prof(p.ex).pattern)) return base
+            if (isCompoundExercise(p.ex)) return base
             if (input.reps != RepPref.AUTO) return if (base.first >= 8) base else 8 to 15
             return when (input.goal) {
                 TrainGoal.STRENGTH -> 8 to 12
@@ -349,7 +416,7 @@ object PlanBuilder {
 
         private fun restFor(p: Pick): Int {
             if (p.role == Role.COND || p.role == Role.FINISHER) return CONDITIONING_REST
-            val compound = isCompound(prof(p.ex).pattern)
+            val compound = isCompoundExercise(p.ex)
             val seconds = if (compound) {
                 when (input.goal) {
                     TrainGoal.STRENGTH -> 180
@@ -367,27 +434,197 @@ object PlanBuilder {
             return (seconds * factor).roundToInt().coerceIn(30, 240)
         }
 
+        /** Weekly effective sets the builder aims for, kept between the muscle's minimum and maximum. */
         private fun target(m: Muscle): Double {
-            val weekly = when (input.experience) { Experience.NEW -> 8; Experience.SOME -> 12; Experience.SEASONED -> 16 }
-            return weekly * (if (m in MAJOR_MUSCLES) 1.0 else 0.5) + (if (m in focus) 4 else 0)
+            val weekly = when (input.experience) { Experience.NEW -> 10; Experience.SOME -> 12; Experience.SEASONED -> 14 }
+            val raw = weekly * (if (m in MAJOR_MUSCLES) 1.0 else 0.5) + (if (m in focus) 4 else 0)
+            val lm = RoutineAuditor.landmarkFor(m)
+            val floor = if (m in RoutineAuditor.BELOW_MEV_MUSCLES) lm.mev.toDouble() else 0.0
+            return raw.coerceIn(floor, lm.mrv.toDouble())
         }
 
-        private fun assignSets(builds: Collection<DayBuild>) {
-            val counts = HashMap<Muscle, Int>()
-            for (b in builds) for (p in b.picks) if (p.role == Role.MAIN || p.role == Role.FOCUS || p.role == Role.ACC) {
-                counts.merge(p.ex.primary.firstOrNull() ?: Muscle.ABS, 1, Int::plus)
+        private val maxSets get() = if (input.experience == Experience.NEW) 4 else 5
+
+        /** Running weekly totals for the plan being built, so each candidate set is checked in a few steps. */
+        private inner class Volume(private val days: List<Pair<Int, DayBuild>>) {
+            private val week = HashMap<Muscle, Double>()
+            private val dayPrimary = days.map { HashMap<Muscle, Int>() }
+            private var push = 0
+            private var pull = 0
+            private val indexByDow = days.withIndex().associate { (i, d) -> d.first to i }
+            private val neighbours: List<List<Int>> = days.indices.map { i ->
+                val dow = days[i].first
+                listOfNotNull(indexByDow[if (dow == 1) 7 else dow - 1], indexByDow[if (dow == 7) 1 else dow + 1]).filter { it != i }.distinct()
             }
-            for (b in builds) for (p in b.picks) {
-                p.sets = when (p.role) {
-                    Role.COND -> 3
-                    Role.FINISHER -> 2
-                    else -> {
-                        val m = p.ex.primary.firstOrNull() ?: Muscle.ABS
-                        (target(m) / counts.getValue(m)).roundToInt().coerceIn(2, 5)
+
+            init { for ((i, d) in days.withIndex()) for (p in d.second.picks) add(i, p, p.sets) }
+
+            fun add(dayIdx: Int, p: Pick, n: Int) {
+                for ((m, c) in RoutineAuditor.credits(p.ex)) {
+                    week[m] = (week[m] ?: 0.0) + c * n
+                    if (c >= 1.0) dayPrimary[dayIdx][m] = (dayPrimary[dayIdx][m] ?: 0) + n
+                }
+                when (RoutineAuditor.pushPull(p.ex)) { 1 -> push += n; -1 -> pull += n; else -> {} }
+            }
+
+            private fun overlaps(dayIdx: Int, m: Muscle, after: Int) =
+                after >= RoutineAuditor.OVERLAP_SETS && neighbours[dayIdx].any { (dayPrimary[it][m] ?: 0) >= RoutineAuditor.OVERLAP_SETS }
+
+            /** True when one more set of [p] on [dayIdx] keeps every Plan check rule. */
+            fun fits(dayIdx: Int, p: Pick): Boolean {
+                for ((m, c) in RoutineAuditor.credits(p.ex)) {
+                    if ((week[m] ?: 0.0) + c > RoutineAuditor.landmarkFor(m).mrv + 1e-9) return false
+                    if (c >= 1.0) {
+                        val after = (dayPrimary[dayIdx][m] ?: 0) + 1
+                        if (after > RoutineAuditor.DAY_MUSCLE_LIMIT || overlaps(dayIdx, m, after)) return false
                     }
                 }
-                if (b.light) p.sets = min(p.sets, 3)
+                return RoutineAuditor.pushPull(p.ex) != 1 || !RoutineAuditor.pushPullBroken(push + 1, pull)
             }
+
+            /** How much one more set of [p] closes the gap to the weekly targets. */
+            fun gain(p: Pick): Double = RoutineAuditor.credits(p.ex).entries.sumOf { (m, c) ->
+                minOf(c, maxOf(0.0, target(m) - (week[m] ?: 0.0)))
+            }
+
+            /** Sets missing to reach each tracked muscle's minimum, summed over the week. */
+            fun shortfall(): Double = RoutineAuditor.BELOW_MEV_MUSCLES.sumOf { m ->
+                maxOf(0.0, RoutineAuditor.landmarkFor(m).mev - (week[m] ?: 0.0))
+            }
+
+            fun shortMuscles(): Set<Muscle> = RoutineAuditor.BELOW_MEV_MUSCLES.filterTo(HashSet()) { m ->
+                (week[m] ?: 0.0) < RoutineAuditor.landmarkFor(m).mev - 1e-9
+            }
+
+            /** A push set would still help but only the push/pull balance stops it, so a pull set is worth adding. */
+            fun pushBlocked(): Boolean = RoutineAuditor.pushPullBroken(push + 1, pull)
+
+            /** The first broken rule a pick could fix by leaving: (muscle, or null for push/pull) and (day index, or null for the week). */
+            fun broken(): Pair<Muscle?, Int?>? {
+                for (m in Muscle.entries) if ((week[m] ?: 0.0) > RoutineAuditor.landmarkFor(m).mrv + 1e-9) return m to null
+                for (i in days.indices) for (m in Muscle.entries) {
+                    val v = dayPrimary[i][m] ?: 0
+                    if (v > RoutineAuditor.DAY_MUSCLE_LIMIT || overlaps(i, m, v)) return m to i
+                }
+                if (RoutineAuditor.pushPullBroken(push, pull)) return null to null
+                return null
+            }
+        }
+
+        private fun budgetSeconds(d: Int, reserved: Int) = (dayMinutes(d) + TOLERANCE_MIN) * 60 - reserved
+
+        private fun removalRank(p: Pick): Int = when {
+            p.role == Role.FINISHER || p.role == Role.COND -> 0
+            p.role == Role.ACC -> 1
+            isCore(prof(p.ex).pattern) -> 2
+            p.role == Role.MAIN -> 3
+            else -> 4
+        }
+
+        /**
+         * Sets for every pick. Each starts at 2 (conditioning 3, finisher 2) and the day is fitted to its minutes; picks that
+         * break a Plan check rule even at their starting sets leave; then one set at a time goes to the pick that best closes
+         * the gap to the weekly targets, as long as every Plan check rule, the per-pick cap and the day's minutes still hold.
+         */
+        private fun allocate(builds: LinkedHashMap<Int, DayBuild>, reserved: Map<Int, Int>) {
+            for (b in builds.values) for (p in b.picks) p.sets = if (p.role == Role.COND) 3 else 2
+            val days = builds.entries.map { it.key to it.value }
+            for ((d, b) in days) {
+                val budget = budgetSeconds(d, reserved.getValue(d))
+                while (workSeconds(b.picks) > budget && b.picks.size > 1) {
+                    val drop = listOf<(Pick) -> Boolean>(
+                        { it.role == Role.FINISHER },
+                        { it.role == Role.ACC },
+                        { it.role != Role.FOCUS && isCore(prof(it.ex).pattern) },
+                        { it.role != Role.FOCUS },
+                        { true },
+                    ).firstNotNullOfOrNull { match -> b.picks.indexOfLast(match).takeIf { it >= 0 } } ?: break
+                    b.picks.removeAt(drop)
+                    b.tags += WhyTag.TIME_TRIMMED
+                }
+            }
+            var vol = Volume(days)
+            for (round in 0 until 200) {
+                val (m, dayIdx) = vol.broken() ?: break
+                val candidates = days.indices.flatMap { i -> days[i].second.picks.map { i to it } }.filter { (i, p) ->
+                    days[i].second.picks.size > 1 && (dayIdx == null || i == dayIdx) &&
+                        if (m == null) RoutineAuditor.pushPull(p.ex) == 1 else (RoutineAuditor.credits(p.ex)[m] ?: 0.0) > 0.0
+                }
+                val victim = candidates.minWithOrNull(
+                    compareBy<Pair<Int, Pick>>(
+                        { removalRank(it.second) },
+                        { -(if (m == null) 1.0 else RoutineAuditor.credits(it.second.ex)[m] ?: 0.0) },
+                        { -it.first },
+                        { -days[it.first].second.picks.indexOf(it.second) },
+                    ),
+                ) ?: break
+                days[victim.first].second.picks.remove(victim.second)
+                vol = Volume(days)
+            }
+            vol = fill(days, reserved, vol)
+            // Still short of a minimum: trade one whole lift that does not feed the short muscle for more sets of those that do.
+            for (round in 0 until 20) {
+                val short = vol.shortfall()
+                if (short <= 1e-9) break
+                val shortMuscles = vol.shortMuscles()
+                val options = days.indices.flatMap { i -> days[i].second.picks.map { i to it } }.filter { (i, q) ->
+                    days[i].second.picks.size > 2 && q.role != Role.FOCUS &&
+                        RoutineAuditor.credits(q.ex).keys.none { it in shortMuscles }
+                }.sortedWith(compareBy<Pair<Int, Pick>>({ removalRank(it.second) }, { -it.first }))
+                var improved = false
+                for ((i, q) in options) {
+                    val snapshot = days.map { d -> d.second.picks.map { it to it.sets } }
+                    days[i].second.picks.remove(q)
+                    val trial = fill(days, reserved, Volume(days))
+                    if (trial.broken() == null && trial.shortfall() < short - 1e-9) {
+                        vol = trial
+                        improved = true
+                        break
+                    }
+                    for ((d, saved) in days.zip(snapshot)) {
+                        d.second.picks.clear()
+                        for ((pick, sets) in saved) { pick.sets = sets; d.second.picks += pick }
+                    }
+                }
+                if (!improved) break
+            }
+        }
+
+        /** Adds one set at a time to the pick that best closes the gap to the weekly targets while every rule still holds. */
+        private fun fill(days: List<Pair<Int, DayBuild>>, reserved: Map<Int, Int>, start: Volume): Volume {
+            val vol = start
+            val cap = maxSets
+            while (true) {
+                val pushWanted = vol.pushBlocked() && days.withIndex().any { (_, d) ->
+                    val spare = budgetSeconds(d.first, reserved.getValue(d.first)) - workSeconds(d.second.picks)
+                    !d.second.light && d.second.picks.any { p ->
+                        RoutineAuditor.pushPull(p.ex) == 1 && p.sets < cap && SET_SECONDS + restFor(p) <= spare && vol.gain(p) >= 0.5 - 1e-9
+                    }
+                }
+                var bestIdx = -1
+                var bestPick: Pick? = null
+                var bestGain = 0.0
+                for ((i, d) in days.withIndex()) {
+                    val (dow, b) = d
+                    if (b.light) continue
+                    val spare = budgetSeconds(dow, reserved.getValue(dow)) - workSeconds(b.picks)
+                    for (p in b.picks) {
+                        if (p.role == Role.COND || p.role == Role.FINISHER || p.sets >= cap) continue
+                        if (SET_SECONDS + restFor(p) > spare) continue
+                        var g = vol.gain(p)
+                        if (g < 0.5 - 1e-9 && pushWanted && RoutineAuditor.pushPull(p.ex) == -1) g = 0.5
+                        if (g < 0.5 - 1e-9 || !vol.fits(i, p)) continue
+                        val chosen = bestPick
+                        if (chosen == null || g > bestGain + 1e-9 || (kotlin.math.abs(g - bestGain) < 1e-9 && p.sets < chosen.sets)) {
+                            bestIdx = i; bestPick = p; bestGain = g
+                        }
+                    }
+                }
+                val p = bestPick ?: break
+                p.sets++
+                vol.add(bestIdx, p, 1)
+            }
+            return vol
         }
 
         private fun item(p: Pick): PlanDraftItem {
@@ -443,46 +680,21 @@ object PlanBuilder {
             val pattern = prof(p.ex).pattern
             return when {
                 isCore(pattern) -> 2
-                isCompound(pattern) -> 0
+                isCompoundExercise(p.ex) -> 0
                 else -> 1
             }
         }
 
-        /** Turns a day's picks into a draft day that fits the time: extras, accessories and core go before focus, then sets down to 2. */
+        private fun warmFor(day: DayBuild) = warmUpItems(day.picks.map { it.ex.id }.toSet())
+        private fun coolFor(day: DayBuild) = coolDownItems(day.picks.map { it.ex.id }.toSet(), day.picks.flatMap { it.ex.primary }.toSet())
+
+        /** Turns a day's picks (already sized to the time by [allocate]) into a draft day: big lifts first, core, then finisher. */
         private fun finalizeDay(d: Int, day: DayBuild): PlanDraftDay? {
             if (day.picks.isEmpty()) return null
-            val warm = warmUpItems(day.picks.map { it.ex.id }.toSet())
-            val cool = coolDownItems(day.picks.map { it.ex.id }.toSet(), day.picks.flatMap { it.ex.primary }.toSet())
-            val reservedSeconds = ((if (warm.isNotEmpty()) 5 else 0) + (if (cool.isNotEmpty()) 5 else 0)) * 60
-            val budgetSeconds = (dayMinutes(d) + TOLERANCE_MIN) * 60
-            val picks = day.picks
-            picks.sortBy { orderRank(it) }
-            var trimmed = false
-            while (workSeconds(picks) + reservedSeconds > budgetSeconds) {
-                val drop = listOf<(Pick) -> Boolean>(
-                    { it.role == Role.FINISHER },
-                    { it.role == Role.ACC },
-                    { it.role != Role.FOCUS && isCore(prof(it.ex).pattern) },
-                ).firstNotNullOfOrNull { match -> picks.indexOfLast(match).takeIf { it >= 0 } }
-                if (drop != null) {
-                    picks.removeAt(drop)
-                } else {
-                    // Shave sets off non-focus lifts first, so a focus muscle never ends up with less than without the focus.
-                    val cuttable = picks.indices.filter { picks[it].sets > 2 }
-                    val spareFocus = cuttable.filter { i -> picks[i].ex.primary.none { it in focus } }.ifEmpty { cuttable }
-                    val cut = spareFocus.maxWithOrNull(compareBy<Int>({ picks[it].sets }, { it }))
-                    // A focus pick goes only once no other lift has sets left to shave.
-                    val dropFocus = picks.indexOfLast { it.role == Role.FOCUS }
-                    if (cut != null) picks[cut].sets-- else if (dropFocus >= 0) picks.removeAt(dropFocus) else if (picks.size > 1) picks.removeAt(picks.lastIndex) else break
-                }
-                trimmed = true
-            }
-            if (trimmed) day.tags += WhyTag.TIME_TRIMMED
-            return PlanDraftDay(
-                dayOfWeek = d,
-                title = titleFor(day.focus),
-                items = warm + picks.map { item(it) } + cool,
-            )
+            val warm = warmFor(day)
+            val cool = coolFor(day)
+            day.picks.sortBy { orderRank(it) }
+            return PlanDraftDay(dayOfWeek = d, title = titleFor(day.focus), items = warm + day.picks.map { item(it) } + cool)
         }
 
         fun run(): BuiltPlan {
@@ -499,7 +711,9 @@ object PlanBuilder {
                 if (day.picks.isEmpty() && f == DayFocus.CONDITIONING) day = buildDay(DayFocus.FULL_BODY, true, false)
                 builds[d] = day
             }
-            assignSets(builds.values)
+            for (b in builds.values) b.picks.sortBy { orderRank(it) }
+            val reserved = builds.mapValues { (_, b) -> ((if (warmFor(b).isNotEmpty()) 5 else 0) + (if (coolFor(b).isNotEmpty()) 5 else 0)) * 60 }
+            allocate(builds, reserved)
             val days = mutableListOf<PlanDraftDay>()
             val focusByDay = linkedMapOf<Int, DayFocus>()
             val why = linkedMapOf<Int, List<WhyTag>>()

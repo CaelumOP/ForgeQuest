@@ -53,12 +53,13 @@
     <string name="plan_ready_made_info">Plans that come with the app, from beginner to advanced. Picking one replaces your current plan; the old one stays under Previous plans.</string>
 
     <string name="plan_audit_title">Plan check</string>
-    <string name="plan_audit_above_mrv">%1$s: %2$s weekly sets (above %3$s)</string>
-    <string name="plan_audit_below_mev">%1$s: %2$s weekly sets (below %3$s)</string>
-    <string name="plan_audit_push_pull">Push/pull imbalance: %1$d push vs %2$d pull sets</string>
-    <string name="plan_audit_isolation_first">%1$s: isolation before compound (%2$s)</string>
-    <string name="plan_audit_junk_volume">%1$s: %2$d sets on %3$s (over %4$d)</string>
-    <string name="plan_audit_recovery_overlap">%1$s: %2$d+ sets on back-to-back days</string>
+    <string name="plan_audit_above_mrv">%1$s: %2$s sets a week, more than most people recover from (%3$s)</string>
+    <string name="plan_audit_below_mev">%1$s: %2$s sets a week, fewer than it needs to grow (%3$s)</string>
+    <string name="plan_audit_push_pull">More pushing than pulling: %1$d push sets and %2$d pull sets a week</string>
+    <string name="plan_audit_isolation_first">%1$s: a small %2$s exercise comes before the big lift</string>
+    <string name="plan_audit_junk_volume">%1$s: %2$d sets on %3$s, more than one day can use well (%4$d)</string>
+    <string name="plan_audit_recovery_overlap">%1$s: %2$d+ sets on back-to-back days, little time to recover</string>
+    <string name="plan_audit_short_plan">Short plan: with this much time some muscles get fewer sets than ideal. It still keeps you strong and active.</string>
     <string name="plan_audit_day_fallback">Day %1$d</string>
     <string name="plan_audit_show_all">Show all (%1$d)</string>
     <string name="plan_audit_show_less">Show less</string>

@@ -234,7 +234,8 @@ class ProgressionRirTest {
             warmup = false,
         )
         assertEquals(Progression.Reason.MISSED, r.reason)
-        assertEquals(listOf(8, 7, 6), r.sets.map { it.reps })
+        // A missed session: every set at min(minimum, best set) so a cut set does not stay cut (audit S2).
+        assertEquals(listOf(8, 8, 8), r.sets.map { it.reps })
     }
 
     @Test

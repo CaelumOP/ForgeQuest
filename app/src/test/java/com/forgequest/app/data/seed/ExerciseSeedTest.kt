@@ -67,7 +67,9 @@ class ExerciseSeedTest {
             if (ex.mediaKey.isNotEmpty()) {
                 assertTrue("Missing level for mapped ${ex.id}", ExerciseLevels.levelFor(ex.id) in valid)
             }
-            if (ex.pattern == "MOBILITY") {
+            // Neck strength holds sit in MOBILITY only so the plan builder skips them (plan audit); they are not stretches.
+            val neckFix = com.forgequest.app.data.seed.CatalogFixes.metadata.any { it.id == ex.id && it.pattern == "MOBILITY" }
+            if (ex.pattern == "MOBILITY" && !neckFix) {
                 assertTrue("Mobility ${ex.id} must be in STRETCH_IDS", ex.id in ExerciseCatalog.STRETCH_IDS)
             }
         }

@@ -359,7 +359,7 @@ object WorkoutDebriefMath {
         if (x.pain && x.painLast) return 1 to Next.Swap(x.id)
         if (kind == ExerciseKind.WEIGHTED && nextTop < nowTop - WorkoutScore.SAME_WEIGHT_KG) return 2 to Next.Lighter(x.id, nextTop, firstReps)
         val harder = (kind == ExerciseKind.HOLD && r.holdCeilingReached) ||
-            (kind == ExerciseKind.REPS && x.id != "jumping_jacks" && ExerciseTiers.readyForHarder(p.last, p.previous))
+            (kind == ExerciseKind.REPS && x.id != "jumping_jacks" && ExerciseTiers.readyForHarder(p.last, p.previous, p.target?.repsMax))
         if (harder) return 3 to Next.Harder(x.id, x.e.harderName)
         if (nextTop > nowTop + WorkoutScore.SAME_WEIGHT_KG) return 4 to Next.LoadUp(x.id, nextTop, firstReps)
         val lastAt = { i: Int -> p.last.getOrNull(i) ?: p.last.last() }

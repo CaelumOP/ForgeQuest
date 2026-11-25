@@ -48,12 +48,18 @@ object Progression {
     data class Prefill(val reps: Int?, val seconds: Int?, val weightKg: Float?)
 
     /** Why today's numbers are what they are, for the one-line note on the live card. */
-    enum class Reason { LOAD_UP, MORE_REPS, MORE_TIME, ONCE_MORE, SAME, HARD, PAIN, MISSED, BACK_OFF, FATIGUE }
+    enum class Reason { LOAD_UP, MORE_REPS, MORE_TIME, ONCE_MORE, SAME, HARD, PAIN, MISSED, BACK_OFF, FATIGUE, EASIER }
 
     data class Result(val sets: List<Prefill>, val holdCeilingReached: Boolean = false, val reason: Reason? = null)
 
     const val HOLD_STEP_SEC = 5
     const val HOLD_CEILING = 1.5f
+
+    /** One done row as the rules read it; a Failure-type row with no tag counts as Failure (A11). */
+    fun pastSet(set: SetEntity): PastSet {
+        val effort = if (set.effort.isBlank() && set.setType == SetType.FAILURE.name) SetEffort.FAILURE else SetEffort.of(set.effort, set.note)
+        return PastSet(set.reps, set.seconds, set.weightKg, effort)
+    }
 
     /** What [next] needs for one exercise, apart from the unit. */
     data class Inputs(
@@ -71,15 +77,7 @@ object Progression {
     fun inputs(item: PlanItemEntity?, exerciseId: String?, recent: List<SetEntity>): Inputs {
         val eligible = recent.filter { countsForProgression(it) }
         val sessionIds = eligible.map { it.sessionId }.distinct()
-        fun past(id: Long?) = eligible.filter { it.sessionId == id }.sortedBy { it.setIndex }
-            .map {
-                val effort = if (it.effort.isBlank() && it.setType == SetType.FAILURE.name) {
-                    SetEffort.FAILURE
-                } else {
-                    SetEffort.of(it.effort, it.note)
-                }
-                PastSet(it.reps, it.seconds, it.weightKg, effort)
-            }
+        fun past(id: Long?) = eligible.filter { it.sessionId == id }.sortedBy { it.setIndex }.map(::pastSet)
         val warmup = item?.block?.equals("Warm-up", ignoreCase = true) == true || exerciseId == "jumping_jacks" ||
             item?.block?.equals(PlanBuilder.COOL_DOWN_BLOCK, ignoreCase = true) == true || exerciseId in ExerciseCatalog.STRETCH_IDS
         val mode = ProgressionMode.parse(item?.progressionMode)
@@ -111,13 +109,19 @@ object Progression {
      * marked Failure or Pain (Hard sets count as clean), and not a warm-up. Even then it stays put in a [deload] week
      * (which also halves the sets via [deloadSets]) or in [ProgressionMode.MAINTAIN].
      * - Precedence: warm-up -> pain -> BACK_OFF (missed at Failure two workouts in a row) -> deload / MAINTAIN ->
-     *   FATIGUE (missed at Failure once) -> Failure hold (target reps met) -> missed reps/sets -> mode rules.
+     *   EASIER (two missed bodyweight workouts in a row) -> FATIGUE (missed at Failure once) -> Failure hold (target
+     *   reps met) -> missed reps/sets -> mode rules. BACK_OFF also follows two workouts at the same top weight each with a
+     *   set 2+ reps under the minimum; when one load step is over 10 % of the weight it keeps the weight (shown as MISSED).
+     * - Weighted sets all start from the session's top weight; only sets at that weight count, lighter ones restart at
+     *   the bottom of the range.
      * - Weighted, with a rep range: one more rep per workout; once every set reaches the top of the range, the weight
      *   goes up one load step of [unit] and the reps return to the bottom (double progression).
      * - Weighted, with a fixed rep count: the weight goes up only after two clean workouts in a row at the same weight.
      * - A Pain set on a weighted exercise takes the weight one step down (never below one load step).
-     * - Bodyweight reps: one more rep, up to two past the top of the range, only when minimum met and not Failure; missed
-     *   holds at the reps done. Holds: a few seconds more once every set reaches the target, up to a ceiling above it.
+     * - Bodyweight reps: one more rep, up to two past the top of the range, only when minimum met and not Failure; a
+     *   missed workout puts every set at min(minimum, best set), never below 1.
+     * - Holds read the best set rounded down to 5 s: missed (best under target) -> best + 5 s up to the target, or the
+     *   best after Failure; met on every set -> 5 s more up to a ceiling above the target. Every set gets the same value.
      */
     fun next(
         kind: ExerciseKind,
@@ -139,26 +143,53 @@ object Progression {
 
         val pain = last.any { it.effort == SetEffort.PAIN }
         val failed = last.any { it.effort == SetEffort.FAILURE }
+        fun sessionWeight(session: List<PastSet>) = session.maxOfOrNull { it.weightKg ?: 0f } ?: 0f
+        // Weighted: only the sets at the session's top weight say whether the weight was handled (audit S1, Gate 5).
+        fun topSets(session: List<PastSet>): List<PastSet> =
+            if (kind != ExerciseKind.WEIGHTED) session else sessionWeight(session).let { top -> session.filter { sameWeight(it.weightKg ?: 0f, top) } }
         fun missedAtFailure(session: List<PastSet>) =
             kind != ExerciseKind.HOLD && session.any { it.effort == SetEffort.FAILURE } && session.any { (it.reps ?: 0) < repsMin }
+        // Two or more reps under the minimum, tagged or not (audit S4).
+        fun farUnder(session: List<PastSet>) = kind != ExerciseKind.HOLD && session.any { (it.reps ?: 0) <= repsMin - 2 }
+        fun bestSeconds(session: List<PastSet>) = session.maxOfOrNull { it.seconds ?: 0 } ?: 0
+        // A missed bodyweight session: a rep set under the minimum, or a hold whose best stayed under the target (S2, S3).
+        fun missedSession(session: List<PastSet>) = session.isNotEmpty() && when (kind) {
+            ExerciseKind.REPS -> session.any { (it.reps ?: 0) < repsMin }
+            ExerciseKind.HOLD -> bestSeconds(session) < holdTarget
+            ExerciseKind.WEIGHTED -> false
+        }
         val fatigue = missedAtFailure(last)
-        val backOff = fatigue && missedAtFailure(previous)
+        // Back-off pairs two workouts at the same top weight only (Gate 16).
+        val backOff = previous.isNotEmpty() &&
+            ((fatigue && missedAtFailure(previous)) || (farUnder(last) && farUnder(previous))) &&
+            (kind != ExerciseKind.WEIGHTED || sameWeight(sessionWeight(last), sessionWeight(previous)))
+        // Two missed bodyweight workouts in a row suggest an easier version (S2, Gate 6: needs a previous workout).
+        val easier = !warmup && missedSession(last) && missedSession(previous)
         val complete = last.size >= count
-        val metMin = complete && (kind == ExerciseKind.HOLD || last.all { (it.reps ?: 0) >= repsMin })
+        val metMin = complete && when (kind) {
+            ExerciseKind.HOLD -> last.all { (it.seconds ?: 0) >= holdTarget }
+            ExerciseKind.WEIGHTED -> topSets(last).all { (it.reps ?: 0) >= repsMin }
+            ExerciseKind.REPS -> last.all { (it.reps ?: 0) >= repsMin }
+        }
         // Every set Easy (3+ reps left): add load without waiting for the top of the rep range.
         val allEasy = last.isNotEmpty() && last.all { it.effort == SetEffort.EASY }
         val mayProgress = !warmup && last.isNotEmpty() && metMin && !pain && !failed && !deload && mode != ProgressionMode.MAINTAIN
 
+        // Holds read the session's best seconds, rounded down to 5 s, never under 5 s (audit S3).
+        val holdBest = (bestSeconds(last) / HOLD_STEP_SEC * HOLD_STEP_SEC).coerceAtLeast(HOLD_STEP_SEC)
         fun hitTop(session: List<PastSet>) = session.size >= count && when (kind) {
-            ExerciseKind.HOLD -> session.all { (it.seconds ?: 0) >= holdTarget }
-            ExerciseKind.REPS, ExerciseKind.WEIGHTED -> session.all { (it.reps ?: 0) >= repsMax }
+            ExerciseKind.HOLD -> session.all { (it.seconds ?: 0) >= maxOf(holdTarget, holdBest) }
+            ExerciseKind.REPS -> session.all { (it.reps ?: 0) >= repsMax }
+            ExerciseKind.WEIGHTED -> topSets(session).all { (it.reps ?: 0) >= repsMax }
         }
-        fun sessionWeight(session: List<PastSet>) = session.maxOfOrNull { it.weightKg ?: 0f } ?: 0f
         fun stepDownFloor(w: Float) = stepDown(w, unit).coerceAtLeast(minOf(w, unit.toKg(unit.loadStep)))
 
         val lastTop = sessionWeight(last)
         val backOffWeighted = kind == ExerciseKind.WEIGHTED && backOff && lastTop > 0f
+        // One load step is more than 10 % of the weight: a step down is too big, so back-off keeps the weight (audit S5).
+        val bigStep = lastTop > 0f && unit.loadStep > 0.1f * unit.fromKg(lastTop)
         val holdCeiling = roundTo5((holdTarget * HOLD_CEILING).roundToInt()).coerceAtLeast(holdTarget)
+        val holdMissed = kind == ExerciseKind.HOLD && !warmup && missedSession(last)
         var ceilingReached = false
 
         val sets = (0 until count).map { i ->
@@ -166,33 +197,45 @@ object Progression {
             val lastWeight = lastSet?.weightKg ?: target?.weightKg ?: 0f
             when (kind) {
                 ExerciseKind.HOLD -> {
-                    val base = lastSet?.seconds ?: holdTarget
-                    val next = if (mayProgress && hitTop(last) && base < holdCeiling) (base + HOLD_STEP_SEC).coerceAtMost(holdCeiling) else base
-                    if (!warmup && !pain && !failed && !deload && mode != ProgressionMode.MAINTAIN && hitTop(last) && base >= holdCeiling) {
+                    val next = when {
+                        warmup || last.isEmpty() -> lastSet?.seconds ?: holdTarget
+                        // Missed: Failure keeps the best, otherwise 5 s more, never past the target.
+                        holdMissed -> if (failed) holdBest else (holdBest + HOLD_STEP_SEC).coerceAtMost(holdTarget).coerceAtLeast(holdBest)
+                        mayProgress && hitTop(last) && holdBest < holdCeiling -> (holdBest + HOLD_STEP_SEC).coerceAtMost(holdCeiling)
+                        else -> holdBest
+                    }
+                    if (!warmup && !holdMissed && !pain && !failed && !deload && mode != ProgressionMode.MAINTAIN &&
+                        last.isNotEmpty() && hitTop(last) && holdBest >= holdCeiling
+                    ) {
                         ceilingReached = true
                     }
                     val w = if (target?.weightKg != null || lastSet?.weightKg != null) lastWeight else null
                     Prefill(null, next, w)
                 }
                 ExerciseKind.WEIGHTED -> {
+                    // Every set starts from the session's top weight; a set done lighter restarts at the bottom of the range (S1).
+                    val top = if (lastTop > 0f) lastTop else lastWeight
+                    val atTop = lastSet != null && sameWeight(lastSet.weightKg ?: 0f, lastTop)
                     // One missed set (4 of 8) starts next time at the bottom of the range, not below it.
-                    val baseReps = lastSet?.reps?.coerceAtLeast(repsMin) ?: target?.repsMin ?: 10
+                    val baseReps = if (atTop) lastSet?.reps?.coerceAtLeast(repsMin) ?: repsMin else repsMin
                     when {
                         warmup || last.isEmpty() -> Prefill(lastSet?.reps ?: target?.repsMin ?: 10, null, lastWeight)
-                        pain && lastWeight > 0f -> Prefill(baseReps, null, stepDownFloor(lastWeight))
-                        pain -> Prefill(baseReps, null, lastWeight)
-                        backOffWeighted -> Prefill(repsMin, null, if (lastWeight > 0f) stepDownFloor(lastWeight) else lastWeight)
-                        deload || mode == ProgressionMode.MAINTAIN -> Prefill(if (mode == ProgressionMode.MAINTAIN) lastSet?.reps ?: baseReps else baseReps, null, lastWeight)
-                        fatigue -> Prefill(repsMin, null, lastWeight)
-                        failed -> Prefill(baseReps, null, lastWeight)
-                        !metMin -> Prefill(baseReps, null, lastWeight)
+                        pain && top > 0f -> Prefill(baseReps, null, stepDownFloor(top))
+                        pain -> Prefill(baseReps, null, top)
+                        backOffWeighted && bigStep -> Prefill(repsMin, null, top)
+                        backOffWeighted -> Prefill(repsMin, null, stepDownFloor(top))
+                        deload || mode == ProgressionMode.MAINTAIN ->
+                            Prefill(if (mode == ProgressionMode.MAINTAIN && atTop) lastSet?.reps ?: baseReps else baseReps, null, top)
+                        fatigue -> Prefill(repsMin, null, top)
+                        failed -> Prefill(baseReps, null, top)
+                        !metMin -> Prefill(baseReps, null, top)
                         mode == ProgressionMode.LINEAR -> {
-                            if (lastWeight > 0f) Prefill(repsMin, null, stepUpLinear(lastWeight, unit, lowerBody))
-                            else Prefill(baseReps, null, lastWeight)
+                            if (top > 0f) Prefill(repsMin, null, stepUpLinear(top, unit, lowerBody))
+                            else Prefill(baseReps, null, top)
                         }
                         else -> {
-                            val easyUp = allEasy && lastWeight > 0f
-                            val loadUp = easyUp || (lastWeight > 0f && hitTop(last) && (
+                            val easyUp = allEasy && top > 0f
+                            val loadUp = easyUp || (top > 0f && hitTop(last) && (
                                 hasRange || (
                                     hitTop(previous) &&
                                         previous.none { it.effort == SetEffort.FAILURE || it.effort == SetEffort.PAIN } &&
@@ -200,17 +243,24 @@ object Progression {
                                     )
                                 ))
                             when {
-                                loadUp && hasRange -> Prefill(repsMin, null, stepUp(lastWeight, unit))
-                                loadUp -> Prefill(baseReps, null, stepUp(lastWeight, unit))
-                                baseReps < repsMax -> Prefill(baseReps + 1, null, lastWeight)
-                                else -> Prefill(baseReps, null, lastWeight)
+                                loadUp && hasRange -> Prefill(repsMin, null, stepUp(top, unit))
+                                loadUp -> Prefill(baseReps, null, stepUp(top, unit))
+                                // A set done lighter restarts at the minimum at the top weight, with no extra rep (S1).
+                                !atTop -> Prefill(repsMin, null, top)
+                                baseReps < repsMax -> Prefill(baseReps + 1, null, top)
+                                else -> Prefill(baseReps, null, top)
                             }
                         }
                     }
                 }
                 ExerciseKind.REPS -> {
-                    val baseReps = lastSet?.reps ?: target?.repsMin ?: 10
-                    val next = if (mayProgress && baseReps < repsMax + 2) (baseReps + 1).coerceAtMost(999) else baseReps
+                    val baseReps = (lastSet?.reps ?: target?.repsMin ?: 10).coerceAtLeast(1)
+                    val next = when {
+                        // Missed: every set at the reps the best set reached, up to the minimum, never 0 (audit S2).
+                        !warmup && missedSession(last) -> minOf(repsMin, last.maxOf { it.reps ?: 0 }).coerceAtLeast(1)
+                        mayProgress && baseReps < repsMax + 2 -> (baseReps + 1).coerceAtMost(999)
+                        else -> baseReps
+                    }
                     val w = if (target?.weightKg != null || (lastSet?.weightKg != null && lastSet.weightKg > 0f)) lastWeight else null
                     Prefill(next, null, w)
                 }
@@ -221,8 +271,10 @@ object Progression {
         val reason = when {
             warmup || last.isEmpty() || ceilingReached -> null
             pain -> if (kind == ExerciseKind.WEIGHTED && nextTop < lastTop - 0.1f) Reason.PAIN else Reason.HARD
-            backOffWeighted -> Reason.BACK_OFF
+            // A back-off that keeps the weight reads as a missed workout (Gate 7).
+            backOffWeighted -> if (bigStep) Reason.MISSED else Reason.BACK_OFF
             deload || mode == ProgressionMode.MAINTAIN -> Reason.SAME
+            easier -> Reason.EASIER
             fatigue -> Reason.FATIGUE
             failed -> Reason.HARD
             !metMin -> Reason.MISSED

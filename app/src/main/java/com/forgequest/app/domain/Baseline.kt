@@ -136,7 +136,20 @@ object Baseline {
         val samePattern: Boolean,
         /** Position of the donor in [coldStart]'s history, which lists the most recent workout first. */
         val recency: Int,
+        /** Share of the donor's strength that carries over to the target, see [transfer]. */
+        val transfer: Float,
     )
+
+    /**
+     * How much of a [donor] movement's strength carries over to [target] (audit S6): the same movement 0.9; a press
+     * into an overhead press, or two legs into one leg, 0.9 x 0.6; any other pair in the same [PatternBucket] 0.9 x 0.8.
+     */
+    fun transfer(donor: MovementPattern, target: MovementPattern): Float = when {
+        donor == target -> 0.9f
+        donor == MovementPattern.HORIZONTAL_PUSH && target == MovementPattern.VERTICAL_PUSH -> 0.9f * 0.6f
+        donor == MovementPattern.SQUAT_BILATERAL && target == MovementPattern.SQUAT_UNILATERAL -> 0.9f * 0.6f
+        else -> 0.9f * 0.8f
+    }
 
     /**
      * Estimates a starting working weight for [target] at [repsMin] (targeting 3 RIR) from the most recent
@@ -153,6 +166,8 @@ object Baseline {
         val ownWorking = history[target.id].orEmpty().any { countsForProgression(it) && it.done }
         if (ownWorking) return Estimate(weightKg = null, status = BaselineStatus.CALIBRATED)
         if (target.kind != ExerciseKind.WEIGHTED) return Estimate(weightKg = null, status = BaselineStatus.NONE)
+        // A fly's load says little about a press and the other way round (audit S6, Gate point 4).
+        if (PlanBuilder.isFly(target)) return Estimate(weightKg = null, status = BaselineStatus.NONE)
         val targetRatio = equipmentRatio(target) ?: return Estimate(weightKg = null, status = BaselineStatus.NONE)
 
         val targetPattern = ExerciseSwapEngine.profileFor(target).pattern
@@ -163,7 +178,7 @@ object Baseline {
             val (donorId, donorSets) = entry
             if (donorId == target.id) continue
             val donorEx = library[donorId] ?: continue
-            if (donorEx.kind != ExerciseKind.WEIGHTED) continue
+            if (donorEx.kind != ExerciseKind.WEIGHTED || PlanBuilder.isFly(donorEx)) continue
             val donorRatio = equipmentRatio(donorEx) ?: continue
             val donorPattern = ExerciseSwapEngine.profileFor(donorEx).pattern
             val samePattern = donorPattern == targetPattern
@@ -179,6 +194,7 @@ object Baseline {
                 ratio = donorRatio,
                 samePattern = samePattern,
                 recency = recency,
+                transfer = transfer(donorPattern, targetPattern),
             )
         }
 
@@ -188,8 +204,7 @@ object Baseline {
                 .thenBy { it.id },
         ) ?: return Estimate(weightKg = null, status = BaselineStatus.NONE)
 
-        val discount = if (best.samePattern) 0.9f else 0.9f * 0.8f
-        val targetE1rm = best.e1rm / best.ratio * targetRatio * discount
+        val targetE1rm = best.e1rm / best.ratio * targetRatio * best.transfer
         val effectiveReps = repsMin.coerceAtLeast(1)
         val rawKg = targetE1rm / (1f + (effectiveReps + 3) / 30f)
         val step = unit.loadStep

@@ -1259,6 +1259,7 @@ private fun auditFindingText(finding: RoutineAuditor.Finding): String {
             dayLabel,
             finding.limit.toInt(),
         )
+        RoutineAuditor.Kind.SHORT_PLAN -> stringResource(R.string.plan_audit_short_plan)
         RoutineAuditor.Kind.RECOVERY_OVERLAP -> stringResource(
             R.string.plan_audit_recovery_overlap,
             muscleName,

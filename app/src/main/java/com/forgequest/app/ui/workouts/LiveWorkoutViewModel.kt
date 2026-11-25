@@ -721,8 +721,16 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val currentGroups = group(sets.value) { pos -> supersetGroups.value[pos] }
         val restPlan = effectiveRest(updated, currentGroups)
         viewModelScope.launch {
-            repo.updateSet(updated)
-            applyIntraSession(updated)
+            // Same lock and fresh rows as a rep tick: a Failure tag or an edit queued just before is not lost, and the
+            // adjustment reads the later sets as they were before this write (audit stopHold).
+            liveMutex.withLock {
+                val rows = freshSets()
+                val fresh = rows.firstOrNull { it.id == set.id } ?: set
+                val stored = fresh.copy(seconds = saved, done = true, doneAt = updated.doneAt)
+                preCarry[set.id] = openLaterSets(stored, rows)
+                repo.updateSet(stored)
+                applyIntraSession(stored)
+            }
         }
         checkBest(set, updated)
         if (restPlan.seconds > 0) {
@@ -877,8 +885,12 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             if (sets.any { it.exerciseId == id && it.block.equals("Warm-up", ignoreCase = true) }) return@mapNotNull null
             val sessionIds = recent.map { it.sessionId }.distinct()
             fun past(sid: Long?) = recent.filter { it.sessionId == sid && countsForProgression(it) }
-                .map { Progression.PastSet(it.reps, it.seconds, it.weightKg, SetEffort.of(it.effort, it.note)) }
-            if (!ExerciseTiers.readyForHarder(past(sessionIds.getOrNull(0)), past(sessionIds.getOrNull(1)))) return@mapNotNull null
+                .sortedBy { it.setIndex }.map(Progression::pastSet)
+            // The plan's top reps set how many reps count as ready (audit S7); the plan item is read here, after it loads.
+            val first = sets.firstOrNull { it.exerciseId == id }
+            val topReps = currentSession?.let { s -> first?.let { repo.planItemAt(s, it.itemPosition) } }
+                ?.takeIf { it.exerciseId == id }?.repsMax
+            if (!ExerciseTiers.readyForHarder(past(sessionIds.getOrNull(0)), past(sessionIds.getOrNull(1)), topReps)) return@mapNotNull null
             id to HarderHint(ExerciseTiers.harderVersion(ex, library, equipment))
         }.toMap()
     }

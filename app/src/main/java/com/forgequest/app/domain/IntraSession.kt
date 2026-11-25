@@ -61,7 +61,8 @@ object IntraSession {
                 val factor = if (cut == 10) 0.90f else 0.95f
                 val step = unit.loadStep
                 val displayW = unit.fromKg(wKg)
-                val newWeightKg = if (displayW <= step + 1e-3f) {
+                // A load step over 10 % of the weight is too big a cut: keep the weight, cap the reps (audit S5).
+                val newWeightKg = if (displayW <= step + 1e-3f || step > 0.1f * displayW) {
                     wKg
                 } else {
                     val floored = floorToStep(displayW * factor, step)
@@ -70,7 +71,8 @@ object IntraSession {
                 }
                 val droppedLoad = newWeightKg < wKg - 1e-4f
                 // A lighter load aims for the bottom of the range again; at the lightest load, aim for what was done.
-                val targetReps = if (droppedLoad) repsMin ?: source.reps else source.reps
+                // Never prescribes 0 reps (Gate 17).
+                val targetReps = (if (droppedLoad) repsMin ?: source.reps else source.reps)?.coerceAtLeast(1)
                 val changed = remaining.mapNotNull { next ->
                     val updated = next.copy(
                         weightKg = newWeightKg,

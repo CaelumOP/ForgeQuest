@@ -15,6 +15,7 @@ import com.forgequest.app.data.plan.PlanDraftDay
 import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
+import com.forgequest.app.data.seed.CatalogFixes
 import com.forgequest.app.domain.Baseline
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.ExerciseKind
@@ -135,6 +136,8 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
             if (toUpsert.isNotEmpty()) {
                 exercises.upsertAll(toUpsert)
             }
+            val fixed = exercises.all().mapNotNull { CatalogFixes.apply(it).takeIf { f -> f != it } }
+            if (fixed.isNotEmpty()) exercises.upsertAll(fixed)
 
             if (lastSeededLang != langTag) {
                 for ((en, ar) in com.forgequest.app.data.seed.StarterPlans.arabic) {

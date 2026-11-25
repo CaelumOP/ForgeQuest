@@ -57,12 +57,13 @@
     <string name="plan_ready_made_info">خطط مرفقة بالتطبيق من المبتدئ إلى المتقدم. اختيار إحداها يستبدل خطتك الحالية، وتبقى القديمة ضمن «الخطط السابقة».</string>
 
     <string name="plan_audit_title">مراجعة الخطة</string>
-    <string name="plan_audit_above_mrv">%1$s: %2$s مجموعة/أسبوع (أعلى من %3$s)</string>
-    <string name="plan_audit_below_mev">%1$s: %2$s مجموعة/أسبوع (أقل من %3$s)</string>
-    <string name="plan_audit_push_pull">عدم توازن الدفع والسحب: %1$d دفع مقابل %2$d سحب</string>
-    <string name="plan_audit_isolation_first">%1$s: تمرين عزل قبل المركّب (%2$s)</string>
-    <string name="plan_audit_junk_volume">%1$s: %2$d مجموعة في %3$s (أكثر من %4$d)</string>
-    <string name="plan_audit_recovery_overlap">%1$s: %2$d+ مجموعات في يومين متتاليين</string>
+    <string name="plan_audit_above_mrv">%1$s: %2$s مجموعة في الأسبوع، وهذا أكثر مما يتعافى منه معظم الناس (%3$s)</string>
+    <string name="plan_audit_below_mev">%1$s: %2$s مجموعة في الأسبوع، وهذا أقل مما تحتاجه العضلة لتنمو (%3$s)</string>
+    <string name="plan_audit_push_pull">تمارين الدفع أكثر من السحب: %1$d مجموعة دفع و%2$d مجموعة سحب في الأسبوع</string>
+    <string name="plan_audit_isolation_first">%1$s: تمرين صغير لـ%2$s يأتي قبل التمرين الأساسي</string>
+    <string name="plan_audit_junk_volume">%1$s: %2$d مجموعة يوم %3$s، وهذا أكثر مما يستفيد منه يوم واحد (%4$d)</string>
+    <string name="plan_audit_recovery_overlap">%1$s: %2$d+ مجموعات في يومين متتاليين، ولا يبقى وقت كافٍ للتعافي</string>
+    <string name="plan_audit_short_plan">خطة قصيرة: مع هذا الوقت تحصل بعض العضلات على مجموعات أقل من المثالي، لكنها تحافظ على قوتك ونشاطك.</string>
     <string name="plan_audit_day_fallback">اليوم %1$d</string>
     <string name="plan_audit_show_all">عرض الكل (%1$d)</string>
     <string name="plan_audit_show_less">عرض أقل</string>

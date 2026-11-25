@@ -54,13 +54,17 @@ object ExerciseTiers {
     )
 
     /**
-     * True when both of the last two sessions had 2+ sets, all at [READY_REPS]+ reps, none marked Failure or Pain.
-     * [last] and [previous] are the sets of the last two finished sessions of one bodyweight rep exercise.
+     * True when both of the last two sessions had 2+ sets, all at the ready reps or more, none marked Failure or Pain.
+     * The ready reps are [READY_REPS], or two past the plan's top reps [topReps] when that is lower (audit S7): an
+     * 8-12 push-up done 14 x 3 twice is ready. [last] and [previous] are the sets of the last two finished sessions of
+     * one bodyweight rep exercise.
      */
-    fun readyForHarder(last: List<Progression.PastSet>, previous: List<Progression.PastSet>): Boolean =
-        listOf(last, previous).all { session ->
-            session.size >= 2 && session.all { (it.reps ?: 0) >= READY_REPS && it.effort != SetEffort.FAILURE && it.effort != SetEffort.PAIN }
+    fun readyForHarder(last: List<Progression.PastSet>, previous: List<Progression.PastSet>, topReps: Int? = null): Boolean {
+        val ready = topReps?.let { minOf(READY_REPS, it + 2) } ?: READY_REPS
+        return listOf(last, previous).all { session ->
+            session.size >= 2 && session.all { (it.reps ?: 0) >= ready && it.effort != SetEffort.FAILURE && it.effort != SetEffort.PAIN }
         }
+    }
 
     /**
      * The next step up from [ex] that fits [equipment] (empty = not set, so anything): a bodyweight rep move one tier up

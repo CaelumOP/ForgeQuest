@@ -19,6 +19,8 @@ object RoutineAuditor {
         PUSH_PULL,
         BELOW_MEV,
         ISOLATION_FIRST,
+        /** Info only: a short plan (2 or fewer training days, or about 25 minutes or less a session) replaces every BELOW_MEV. */
+        SHORT_PLAN,
     }
 
     /** Minimal item view shared by [PlanDraft] and [ActivePlan] adapters. */
@@ -27,6 +29,7 @@ object RoutineAuditor {
         val sets: Int,
         val block: String = "Main",
         val position: Int = 0,
+        val restSeconds: Int = 90,
     )
 
     /** One training day in the audited plan; [dayOfWeek] is 1..7 (Monday..Sunday) when scheduled by weekday. */
@@ -45,9 +48,38 @@ object RoutineAuditor {
         val dayOfWeek: Int? = null,
     )
 
-    private data class Landmark(val mev: Int, val mrv: Int)
+    /** Weekly working-set landmarks for one muscle: minimum that grows it, maximum most people recover from. */
+    data class Landmark(val mev: Int, val mrv: Int)
 
-    private val BELOW_MEV_MUSCLES = setOf(
+    const val DAY_MUSCLE_LIMIT = 10
+    const val OVERLAP_SETS = 6
+    const val PUSH_PULL_MIN = 6
+    const val SHORT_PLAN_MAX_DAYS = 2
+    const val SHORT_PLAN_MAX_MINUTES = 25
+
+    /**
+     * The one counting rule for weekly volume, shared with [PlanBuilder]: each distinct primary muscle earns 1.0 per set,
+     * each secondary muscle that is not also primary earns 0.5.
+     */
+    fun credits(ex: ExerciseEntity): Map<Muscle, Double> {
+        val primary = ex.primary.distinct()
+        val out = LinkedHashMap<Muscle, Double>()
+        for (m in primary) out[m] = 1.0
+        for (m in ex.secondary.distinct()) if (m !in primary) out[m] = 0.5
+        return out
+    }
+
+    /** +1 for a push set, -1 for a pull set, 0 otherwise (same buckets as the baseline). */
+    fun pushPull(ex: ExerciseEntity): Int = when (Baseline.bucketOf(ExerciseSwapEngine.profileFor(ex).pattern)) {
+        PatternBucket.PUSH -> 1
+        PatternBucket.PULL -> -1
+        else -> 0
+    }
+
+    /** Push sets break balance once there are at least [PUSH_PULL_MIN] and they exceed 1.2 x the pull sets. */
+    fun pushPullBroken(push: Int, pull: Int): Boolean = push >= PUSH_PULL_MIN && push * 10 > pull * 12
+
+    val BELOW_MEV_MUSCLES = setOf(
         Muscle.CHEST,
         Muscle.UPPER_BACK,
         Muscle.SHOULDERS,
@@ -56,7 +88,7 @@ object RoutineAuditor {
         Muscle.GLUTES,
     )
 
-    private fun landmarkFor(muscle: Muscle): Landmark = when (muscle) {
+    fun landmarkFor(muscle: Muscle): Landmark = when (muscle) {
         Muscle.CHEST -> Landmark(8, 22)
         Muscle.UPPER_BACK -> Landmark(10, 25)
         Muscle.SHOULDERS -> Landmark(8, 26)
@@ -83,6 +115,7 @@ object RoutineAuditor {
                         sets = item.sets,
                         block = item.block,
                         position = idx,
+                        restSeconds = item.restSeconds,
                     )
                 },
             )
@@ -101,6 +134,7 @@ object RoutineAuditor {
                         sets = item.sets,
                         block = item.block,
                         position = item.position,
+                        restSeconds = item.restSeconds,
                     )
                 },
             )
@@ -114,6 +148,7 @@ object RoutineAuditor {
         days: List<AuditDay>,
         exercises: Map<String, ExerciseEntity>,
         scheduleMode: ScheduleMode = ScheduleMode.WEEKDAY,
+        shortPlanNote: Boolean = true,
     ): List<Finding> {
         val workingDays = days.map { day ->
             day.items
@@ -139,24 +174,17 @@ object RoutineAuditor {
                 val ex = exercises.getValue(item.exerciseId)
                 val sets = item.sets
                 val primaryMuscles = ex.primary.distinct()
-                val secondaryMuscles = ex.secondary.distinct().filter { it !in primaryMuscles }
-
-                for (m in primaryMuscles) {
-                    weeklyVolume[m] = (weeklyVolume[m] ?: 0.0) + sets
-                    dayPrimary[m] = (dayPrimary[m] ?: 0) + sets
+                for ((m, c) in credits(ex)) {
+                    weeklyVolume[m] = (weeklyVolume[m] ?: 0.0) + sets * c
+                    if (c >= 1.0) dayPrimary[m] = (dayPrimary[m] ?: 0) + sets
                 }
-                for (m in secondaryMuscles) {
-                    weeklyVolume[m] = (weeklyVolume[m] ?: 0.0) + sets * 0.5
-                }
-
-                val pattern = ExerciseSwapEngine.profileFor(ex).pattern
-                when (Baseline.bucketOf(pattern)) {
-                    PatternBucket.PUSH -> pushSets += sets
-                    PatternBucket.PULL -> pullSets += sets
+                when (pushPull(ex)) {
+                    1 -> pushSets += sets
+                    -1 -> pullSets += sets
                     else -> {}
                 }
 
-                if (PlanBuilder.isCompound(pattern)) {
+                if (PlanBuilder.isCompoundExercise(ex)) {
                     for (m in primaryMuscles) {
                         if (m in seenIsoMuscles && reportedIsoFirst.add(m)) {
                             findings += Finding(
@@ -175,13 +203,13 @@ object RoutineAuditor {
             }
 
             for ((m, total) in dayPrimary) {
-                if (total > 10) {
+                if (total > DAY_MUSCLE_LIMIT) {
                     findings += Finding(
                         kind = Kind.JUNK_VOLUME,
                         muscle = m,
                         dayIndex = dayIdx,
                         value = total.toDouble(),
-                        limit = 10.0,
+                        limit = DAY_MUSCLE_LIMIT.toDouble(),
                         dayOfWeek = day.dayOfWeek,
                     )
                 }
@@ -214,7 +242,7 @@ object RoutineAuditor {
             }
         }
 
-        if (pushSets >= 6 && pushSets * 10 > pullSets * 12) {
+        if (pushPullBroken(pushSets, pullSets)) {
             findings += Finding(
                 kind = Kind.PUSH_PULL,
                 value = pushSets.toDouble(),
@@ -230,18 +258,23 @@ object RoutineAuditor {
                 for (m in Muscle.entries) {
                     val s1 = first[m] ?: 0
                     val s2 = second[m] ?: 0
-                    if (s1 >= 6 && s2 >= 6) {
+                    if (s1 >= OVERLAP_SETS && s2 >= OVERLAP_SETS) {
                         findings += Finding(
                             kind = Kind.RECOVERY_OVERLAP,
                             muscle = m,
                             dayIndex = indexByDow[nextDow],
                             value = minOf(s1, s2).toDouble(),
-                            limit = 6.0,
+                            limit = OVERLAP_SETS.toDouble(),
                             dayOfWeek = nextDow,
                         )
                     }
                 }
             }
+        }
+
+        if (shortPlanNote && isShortPlan(days) && findings.any { it.kind == Kind.BELOW_MEV }) {
+            findings.removeAll { it.kind == Kind.BELOW_MEV }
+            findings += Finding(kind = Kind.SHORT_PLAN, value = workingDays.count { it.isNotEmpty() }.toDouble(), limit = SHORT_PLAN_MAX_DAYS.toDouble())
         }
 
         return findings.sortedWith(
@@ -251,5 +284,21 @@ object RoutineAuditor {
                 { it.muscle?.ordinal ?: Int.MAX_VALUE },
             ),
         )
+    }
+
+    /** Minutes one day takes: sets x (40 s + rest) for the work, plus 5 for a warm-up block and 5 for a cool-down. */
+    fun estimateMinutes(day: AuditDay): Int {
+        val work = day.items.filter { !WorkoutScore.isExtra(it.block) && it.sets > 0 }.sumOf { it.sets * (40 + it.restSeconds) }
+        val extras = (if (day.items.any { WorkoutScore.isWarmUp(it.block) }) 5 else 0) +
+            (if (day.items.any { it.block.equals(PlanBuilder.COOL_DOWN_BLOCK, ignoreCase = true) }) 5 else 0)
+        return kotlin.math.ceil(work / 60.0).toInt() + extras
+    }
+
+    /** At most [SHORT_PLAN_MAX_DAYS] training days, or an average session of [SHORT_PLAN_MAX_MINUTES] minutes or less. */
+    fun isShortPlan(days: List<AuditDay>): Boolean {
+        val training = days.filter { d -> d.items.any { !WorkoutScore.isExtra(it.block) && it.sets > 0 } }
+        if (training.isEmpty()) return false
+        if (training.size <= SHORT_PLAN_MAX_DAYS) return true
+        return training.sumOf { estimateMinutes(it) } <= SHORT_PLAN_MAX_MINUTES * training.size
     }
 }
