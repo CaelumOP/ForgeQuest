@@ -90,7 +90,10 @@ describe('web additions', () => {
     const back = next('WEIGHTED', t, sets(3, 10, 0))
     expect(back.sets[0].weightKg).toBe(2.5)
     expect(back.sets[0].reps).toBe(11)
-    const climbs = next('WEIGHTED', t, sets(3, 12, 0))
+    const atRangeTop = next('WEIGHTED', t, sets(3, 12, 0))
+    expect(atRangeTop.sets[0].weightKg).toBe(2.5)
+    expect(atRangeTop.sets[0].reps).toBe(13)
+    const climbs = next('WEIGHTED', t, sets(3, 15, 0))
     expect(climbs.sets[0].weightKg).toBe(5)
     expect(climbs.sets[0].reps).toBe(8)
   })
@@ -463,6 +466,39 @@ describe('RIR semantics', () => {
     expect(blankRes.reason).toBe('LOAD_UP')
     expect(blankRes.sets[0].weightKg!).toBeCloseTo(62.5, 2)
     expect(okRes).toEqual(blankRes)
+  })
+
+  it('highRepBridgeWaitsForRepsMaxPlusThreeWhenStepExceedsTwentyPercent', () => {
+    const light = target(3, 10, 15, null, 5)
+    // 5 -> 7.5 kg is +50 % (> 20 %): 15 reps climbs to 16 at 5 kg instead of loading up.
+    const atRangeTop = next('WEIGHTED', light, sets(3, 15, 5))
+    expect(atRangeTop.sets[0].weightKg).toBeCloseTo(5, 2)
+    expect(atRangeTop.sets[0].reps).toBe(16)
+    expect(atRangeTop.reason).toBe('MORE_REPS')
+
+    // All-Easy shortcut at 5 kg x 12 also waits for the bridge rather than jumping +50 %.
+    const easy = next('WEIGHTED', light, sets(3, 12, 5, null, 'EASY'))
+    expect(easy.sets[0].weightKg).toBeCloseTo(5, 2)
+    expect(easy.sets[0].reps).toBe(13)
+    expect(easy.reason).toBe('MORE_REPS')
+
+    // Reaching repsMax + 3 (18) on every top-weight set loads up to 7.5 kg and resets to repsMin (10).
+    const bridged = next('WEIGHTED', light, sets(3, 18, 5))
+    expect(bridged.sets[0].weightKg).toBeCloseTo(7.5, 2)
+    expect(bridged.sets[0].reps).toBe(10)
+    expect(bridged.reason).toBe('LOAD_UP')
+
+    // Step <= 20 % (40 -> 42.5 kg is +6.25 %): unchanged, loads up at repsMax (12).
+    const normal = next('WEIGHTED', target(3, 8, 12, null, 40), sets(3, 12, 40))
+    expect(normal.sets[0].weightKg).toBeCloseTo(42.5, 2)
+    expect(normal.sets[0].reps).toBe(8)
+    expect(normal.reason).toBe('LOAD_UP')
+
+    // Fixed-rep target (no range) at 5 kg is unchanged: two clean sessions load up without a bridge.
+    const fixed = target(3, 10, null, null, 5)
+    const fixedUp = next('WEIGHTED', fixed, sets(3, 10, 5), sets(3, 10, 5))
+    expect(fixedUp.sets[0].weightKg).toBeCloseTo(7.5, 2)
+    expect(fixedUp.reason).toBe('LOAD_UP')
   })
 })
 

@@ -13,7 +13,7 @@ class ProgressionSim24Test {
     @Test fun consistent() = simulate("consistent", "72|0|false|SAME|false|82.50/11/-;82.50/11/-|82.50/11/-;82.50/11/-|OK,OK")
     @Test fun layoff() = simulate("layoff", "60|12|false|SAME|false|72.50/9/-;72.50/9/-|72.50/9/-;72.50/9/-|OK,OK")
     @Test fun inconsistent() = simulate("inconsistent", "53|19|false|SAME|false|77.50/10/-;77.50/10/-|77.50/10/-;77.50/10/-|OK,OK")
-    @Test fun lightDumbbells() = simulate("light-dumbbells", "72|0|false|MISSED|false|10.00/10/-;10.00/10/-|10.00/7/-;10.00/6/-|FAILURE,FAILURE")
+    @Test fun lightDumbbells() = simulate("light-dumbbells", "72|0|false|SAME|false|7.50/18/-;7.50/18/-|7.50/18/-;7.50/18/-|OK,OK")
     @Test fun pushUp() = simulate("push-up", "72|0|true|SAME|false|-/14/-;-/14/-|-/14/-;-/14/-|OK,OK")
     @Test fun plank() = simulate("plank", "72|0|false|SAME|false|-/-/45;-/-/45|-/-/45;-/-/45|OK,OK")
     @Test fun consistentLb() = simulate("consistent-lb", "72|0|false|SAME|false|180.00/8/-;180.00/8/-|180.00/8/-;180.00/8/-|OK,OK")
@@ -111,8 +111,8 @@ class ProgressionSim24Test {
         val state = "$attended|$missed|$ready|$lastState"
         println("$name: $state")
         assertEquals(expected, state)
-        // Light dumbbells: a 2.5 kg step is +33-50 %, too big to cut (audit S5), so a slow lifter repeats the same
-        // prescription until the reps come. Accepted by design; the stall must end in a heavier weight, never a lighter one.
+        // Light dumbbells: even with the high-rep bridge, stepping 5 -> 7.5 kg (+50 %) temporarily stalls a slow lifter
+        // around week 9-10 at 7.50/10 (a step down is >10 %, audit S5) before recovering and finishing at 7.50/18.
         if (name == "light-dumbbells") assertTrue("light dumbbells never got heavier", finalTop > firstTop)
         else assertTrue("six unchanged MISSED prescriptions without recovery: $stalls", stalls.isEmpty())
     }

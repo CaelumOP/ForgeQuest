@@ -116,6 +116,9 @@ object Progression {
      *   the bottom of the range.
      * - Weighted, with a rep range: one more rep per workout; once every set reaches the top of the range, the weight
      *   goes up one load step of [unit] and the reps return to the bottom (double progression).
+     * - High-rep bridge: in weighted DOUBLE progression with a rep range, when `stepUp(top, unit) > 1.2 * top`
+     *   (more than 20 % heavier), reps climb to `repsMax + 3` (including on all-Easy sets) before the weight steps up
+     *   and reps return to the bottom.
      * - Weighted, with a fixed rep count: the weight goes up only after two clean workouts in a row at the same weight.
      * - A Pain set on a weighted exercise takes the weight one step down (never below one load step).
      * - Bodyweight reps: one more rep, up to two past the top of the range, only when minimum met and not Failure; a
@@ -177,10 +180,10 @@ object Progression {
 
         // Holds read the session's best seconds, rounded down to 5 s, never under 5 s (audit S3).
         val holdBest = (bestSeconds(last) / HOLD_STEP_SEC * HOLD_STEP_SEC).coerceAtLeast(HOLD_STEP_SEC)
-        fun hitTop(session: List<PastSet>) = session.size >= count && when (kind) {
+        fun hitTop(session: List<PastSet>, topReps: Int = repsMax) = session.size >= count && when (kind) {
             ExerciseKind.HOLD -> session.all { (it.seconds ?: 0) >= maxOf(holdTarget, holdBest) }
             ExerciseKind.REPS -> session.all { (it.reps ?: 0) >= repsMax }
-            ExerciseKind.WEIGHTED -> topSets(session).all { (it.reps ?: 0) >= repsMax }
+            ExerciseKind.WEIGHTED -> topSets(session).all { (it.reps ?: 0) >= topReps }
         }
         fun stepDownFloor(w: Float) = stepDown(w, unit).coerceAtLeast(minOf(w, unit.toKg(unit.loadStep)))
 
@@ -234,8 +237,11 @@ object Progression {
                             else Prefill(baseReps, null, top)
                         }
                         else -> {
-                            val easyUp = allEasy && top > 0f
-                            val loadUp = easyUp || (top > 0f && hitTop(last) && (
+                            // High-rep bridge: when the next step is > 20 % heavier, climb to repsMax + 3 before loading up.
+                            val bridge = hasRange && top > 0f && stepUp(top, unit) > 1.2f * top
+                            val topReps = if (bridge) repsMax + 3 else repsMax
+                            val easyUp = allEasy && top > 0f && !bridge
+                            val loadUp = easyUp || (top > 0f && hitTop(last, topReps) && (
                                 hasRange || (
                                     hitTop(previous) &&
                                         previous.none { it.effort == SetEffort.FAILURE || it.effort == SetEffort.PAIN } &&
@@ -247,7 +253,7 @@ object Progression {
                                 loadUp -> Prefill(baseReps, null, stepUp(top, unit))
                                 // A set done lighter restarts at the minimum at the top weight, with no extra rep (S1).
                                 !atTop -> Prefill(repsMin, null, top)
-                                baseReps < repsMax -> Prefill(baseReps + 1, null, top)
+                                baseReps < topReps -> Prefill(baseReps + 1, null, top)
                                 else -> Prefill(baseReps, null, top)
                             }
                         }

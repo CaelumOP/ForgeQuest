@@ -1,5 +1,5 @@
 // Today's prefill for one exercise from the last two times it was done. Same rules as Android Progression.kt:
-// - DOUBLE (default): rep range climbs reps then adds one load step and resets to bottom; single rep target needs 2 clean sessions.
+// - DOUBLE (default): rep range climbs reps then adds one load step and resets to bottom (bridge to repsMax + 3 when step > 20%); single rep target needs 2 clean sessions.
 // - LINEAR: adds +2.5 kg upper / +5 kg lower (+5 lb / +10 lb in lb) per clean session where every set hit repsMin.
 // - MAINTAIN: holds last session's weight/reps/seconds on clean sessions.
 // - Precedence: warm-up -> pain -> BACK_OFF -> deload / MAINTAIN -> FATIGUE -> failure hold -> missed -> mode rules.
@@ -143,11 +143,11 @@ export function nextPrefill(
 
   // Holds read the session's best seconds, rounded down to 5 s, never under 5 s (audit S3).
   const holdBest = Math.max(Math.trunc(bestSeconds(last) / HOLD_STEP_SEC) * HOLD_STEP_SEC, HOLD_STEP_SEC)
-  const hitTop = (session: readonly PastSet[]) =>
+  const hitTop = (session: readonly PastSet[], topReps = repsMax) =>
     session.length >= count && (
       kind === 'HOLD' ? session.every((s) => (s.seconds ?? 0) >= Math.max(holdTarget, holdBest))
       : kind === 'REPS' ? session.every((s) => (s.reps ?? 0) >= repsMax)
-      : topSets(session).every((s) => (s.reps ?? 0) >= repsMax)
+      : topSets(session).every((s) => (s.reps ?? 0) >= topReps)
     )
   const stepDownFloor = (w: number) => Math.max(stepDown(w, unit), Math.min(w, toKg(unit, loadStep(unit))))
 
@@ -199,8 +199,11 @@ export function nextPrefill(
             ? { reps: repsMin, seconds: null, weightKg: stepUpLinear(top, unit, lowerBody) }
             : { reps: baseReps, seconds: null, weightKg: top }
         }
-        const easyUp = allEasy && top > 0
-        const loadUp = easyUp || (top > 0 && hitTop(last) && (
+        // High-rep bridge: when the next step is > 20 % heavier, climb to repsMax + 3 before loading up.
+        const bridge = hasRange && top > 0 && stepUp(top, unit) > f(f(1.2) * f(top))
+        const topReps = bridge ? repsMax + 3 : repsMax
+        const easyUp = allEasy && top > 0 && !bridge
+        const loadUp = easyUp || (top > 0 && hitTop(last, topReps) && (
           hasRange || (
             hitTop(previous) &&
             !previous.some((s) => s.effort === 'FAILURE' || s.effort === 'PAIN') &&
@@ -211,7 +214,7 @@ export function nextPrefill(
         if (loadUp) return { reps: baseReps, seconds: null, weightKg: stepUp(top, unit) }
         // A set done lighter restarts at the minimum at the top weight, with no extra rep (S1).
         if (!atTop) return { reps: repsMin, seconds: null, weightKg: top }
-        if (baseReps < repsMax) return { reps: baseReps + 1, seconds: null, weightKg: top }
+        if (baseReps < topReps) return { reps: baseReps + 1, seconds: null, weightKg: top }
         return { reps: baseReps, seconds: null, weightKg: top }
       }
       case 'REPS': {

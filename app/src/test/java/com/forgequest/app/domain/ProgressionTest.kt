@@ -91,8 +91,12 @@ class ProgressionTest {
         val pain = next(ExerciseKind.WEIGHTED, t, sets(3, 12, 2.5f, effort = SetEffort.PAIN))
         assertEquals(2.5f, pain.sets[0].weightKg!!, 0.01f)
         assertTrue(pain.sets[0].weightKg!! > 0f)
-        // and a clean top-of-range session from there still loads up
-        assertEquals(5f, next(ExerciseKind.WEIGHTED, t, sets(3, 15, 2.5f)).sets[0].weightKg!!, 0.01f)
+        // and a clean session climbs the high-rep bridge (2.5 -> 5 kg is +100 %, > 20 %) to repsMax + 3 before loading up
+        val atRangeTop = next(ExerciseKind.WEIGHTED, t, sets(3, 15, 2.5f))
+        assertEquals(2.5f, atRangeTop.sets[0].weightKg!!, 0.01f)
+        assertEquals(16, atRangeTop.sets[0].reps)
+        assertEquals(Progression.Reason.MORE_REPS, atRangeTop.reason)
+        assertEquals(5f, next(ExerciseKind.WEIGHTED, t, sets(3, 18, 2.5f)).sets[0].weightKg!!, 0.01f)
         // pounds: 5 lb with pain stays at 5 lb
         val lb = WeightUnit.LB
         val p = next(ExerciseKind.WEIGHTED, t, sets(3, 12, lb.toKg(5f), effort = SetEffort.PAIN), unit = lb)
@@ -196,5 +200,39 @@ class ProgressionTest {
         assertEquals(42.5f, normal.sets[0].weightKg!!, 0.01f)
         val afterDeload = Progression.next(ExerciseKind.WEIGHTED, target, sets(2, 12, 40f), emptyList(), WeightUnit.KG, false)
         assertEquals(40f, afterDeload.sets[0].weightKg!!, 0.01f)
+    }
+
+    @Test
+    fun highRepBridgeWaitsForRepsMaxPlusThreeWhenStepExceedsTwentyPercent() {
+        val light = Progression.Target(3, 10, 15, null, 5f)
+        // 5 -> 7.5 kg is +50 % (> 20 %): 15 reps climbs to 16 at 5 kg instead of loading up.
+        val atRangeTop = next(ExerciseKind.WEIGHTED, light, sets(3, 15, 5f))
+        assertEquals(5f, atRangeTop.sets[0].weightKg!!, 0.01f)
+        assertEquals(16, atRangeTop.sets[0].reps)
+        assertEquals(Progression.Reason.MORE_REPS, atRangeTop.reason)
+
+        // All-Easy shortcut at 5 kg x 12 also waits for the bridge rather than jumping +50 %.
+        val easy = next(ExerciseKind.WEIGHTED, light, sets(3, 12, 5f, effort = SetEffort.EASY))
+        assertEquals(5f, easy.sets[0].weightKg!!, 0.01f)
+        assertEquals(13, easy.sets[0].reps)
+        assertEquals(Progression.Reason.MORE_REPS, easy.reason)
+
+        // Reaching repsMax + 3 (18) on every top-weight set loads up to 7.5 kg and resets to repsMin (10).
+        val bridged = next(ExerciseKind.WEIGHTED, light, sets(3, 18, 5f))
+        assertEquals(7.5f, bridged.sets[0].weightKg!!, 0.01f)
+        assertEquals(10, bridged.sets[0].reps)
+        assertEquals(Progression.Reason.LOAD_UP, bridged.reason)
+
+        // Step <= 20 % (40 -> 42.5 kg is +6.25 %): unchanged, loads up at repsMax (12).
+        val normal = next(ExerciseKind.WEIGHTED, Progression.Target(3, 8, 12, null, 40f), sets(3, 12, 40f))
+        assertEquals(42.5f, normal.sets[0].weightKg!!, 0.01f)
+        assertEquals(8, normal.sets[0].reps)
+        assertEquals(Progression.Reason.LOAD_UP, normal.reason)
+
+        // Fixed-rep target (no range) at 5 kg is unchanged: two clean sessions load up without a bridge.
+        val fixed = Progression.Target(3, 10, null, null, 5f)
+        val fixedUp = next(ExerciseKind.WEIGHTED, fixed, sets(3, 10, 5f), sets(3, 10, 5f))
+        assertEquals(7.5f, fixedUp.sets[0].weightKg!!, 0.01f)
+        assertEquals(Progression.Reason.LOAD_UP, fixedUp.reason)
     }
 }

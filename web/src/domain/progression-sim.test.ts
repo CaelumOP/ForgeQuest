@@ -12,7 +12,7 @@ const expected: Record<Scenario, string> = {
   consistent: '72|0|false|SAME|false|82.50/11/-;82.50/11/-|82.50/11/-;82.50/11/-|OK,OK',
   layoff: '60|12|false|SAME|false|72.50/9/-;72.50/9/-|72.50/9/-;72.50/9/-|OK,OK',
   inconsistent: '53|19|false|SAME|false|77.50/10/-;77.50/10/-|77.50/10/-;77.50/10/-|OK,OK',
-  'light-dumbbells': '72|0|false|MISSED|false|10.00/10/-;10.00/10/-|10.00/7/-;10.00/6/-|FAILURE,FAILURE',
+  'light-dumbbells': '72|0|false|SAME|false|7.50/18/-;7.50/18/-|7.50/18/-;7.50/18/-|OK,OK',
   'push-up': '72|0|true|SAME|false|-/14/-;-/14/-|-/14/-;-/14/-|OK,OK',
   plank: '72|0|false|SAME|false|-/-/45;-/-/45|-/-/45;-/-/45|OK,OK',
   'consistent-lb': '72|0|false|SAME|false|180.00/8/-;180.00/8/-|180.00/8/-;180.00/8/-|OK,OK',
@@ -100,8 +100,8 @@ it.each(scenarios)('%s progresses safely for 24 weeks', (name) => {
   if (name === 'push-up') expect(ready).toBe(true)
   const state = `${attended}|${missed}|${ready}|${lastState}`
   console.info(`${name}: ${state}`)
-  // Light dumbbells: a 2.5 kg step is +33-50 %, too big to cut (audit S5), so a slow lifter repeats the same
-  // prescription until the reps come. Accepted by design; the stall must end in a heavier weight, never a lighter one.
+  // Light dumbbells: even with the high-rep bridge, stepping 5 -> 7.5 kg (+50 %) temporarily stalls a slow lifter
+  // around week 9-10 at 7.50/10 (a step down is >10 %, audit S5) before recovering and finishing at 7.50/18.
   if (name === 'light-dumbbells') expect(finalTop).toBeGreaterThan(firstTop)
   else expect.soft(stalls, 'six unchanged MISSED prescriptions without recovery').toEqual([])
   expect(state).toBe(expected[name])
