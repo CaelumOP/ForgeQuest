@@ -14,7 +14,7 @@ no Dexie schema/version change, no dependency change, no backup format change.
 | Final production build (`npm run build`) | exit 0; JS 2,398.04 kB (gzip 610.89 kB), CSS 136.90 kB, zxing wasm 946.59 kB; PWA precache 17 entries. Vite warns about the >500 kB single app chunk; this work added no dependencies or new chunks. |
 | Files outside `web/` + `docs/` in `git diff 8d562f9..HEAD` | none |
 | Codex cold review (gpt-6-astra, read-only) | `VERDICT: DEFECTS (4)`; all 4 fixed in W2 (see below) |
-| Gemini Argon Gate 3 (gemini-4-argon-high) | First pass `CHANGES REQUESTED` (3 medium, 2 low; one overlaps Codex 1); all fixed. Re-review: ARGON_RERUN |
+| Gemini Argon Gate 3 (gemini-4-argon-high) | First pass `CHANGES REQUESTED` (3 medium, 2 low; one overlaps Codex 1); all fixed. Re-review of `dcc166a`: `CHANGES REQUESTED` (1 high, 1 medium; fixes 10-11). Re-review of `b996582`: **`APPROVED`, no findings** |
 
 ## Commits
 
@@ -27,7 +27,7 @@ no Dexie schema/version change, no dependency change, no backup format change.
 | W1d | `9dcbf63` | Planner compound / isolation reps, rest and order, focus-safe trim; RoutineAuditor warnings in plan editor and builder review |
 | W1e | `62f35ad` | Capped e1RM shared by charts and records, recovery skips warm-ups with RIR multipliers, non-barbell warm-up floor and empty-bar set, live PR pill, working-set charts and week volume |
 | W1f | `4846a99` | Re-tag a done set's effort, 48 px set-row targets, stale Hard caption fix in the web string overlay |
-| W2 | `dcc166a`, W2B_COMMIT | Review fixes (below) + this report |
+| W2 | `dcc166a`, `b996582` | Review fixes (below) + this report |
 
 Progress-only commits (`b03a5bd`, `7c63a8a`, `c010209`, `7f76290`, `4e41363`, `ee58ecb`) tick `docs/PROGRESS.md`.
 
@@ -85,6 +85,13 @@ Tests added: `triggersAdjustment` (3) in `domain/intra-session.test.ts`.
 Done in W1f (EN + AR, dev server): live workout tick / untick, effort chips, re-tag done set, Failure cue + Undo,
 Failure rest extension, hold timer stop + chips, Estimated start line, plan editor audit card, RTL layout.
 
+W2 smoke on the dev server after the fixes (EN, quick workout, 3 x 10 push-ups; rows read back from IndexedDB):
+- Edit set 1 then tick right away: the edit is stored with the tick (fix 1 / 6).
+- 11 of 10, tick, Failure: sets 2-3 back to 10, no cue; rest grew by 45 s (fix 11, Failure rest).
+- Untick that set: `effort ''`, type `WORKING` (fix 5).
+- 8 of 10, tick (carry-forward writes 8), Failure: "Adjusted: target 8 reps" cue with Undo shows (fix 10); Undo puts 10 back.
+- No console errors.
+
 To re-check by hand on the production build (`npm run build && npm run preview`):
 - [ ] Install as PWA, reload offline, start a workout.
 - [ ] Type a new weight on set 2, then quickly tick set 1 and tag Failure: the typed weight stays.
@@ -97,5 +104,9 @@ To re-check by hand on the production build (`npm run build && npm run preview`)
 - Undo restores the pre-carry numbers (same as Android).
 - The adjustment cue and the ledger are in-memory: a reload mid-workout keeps the adjusted numbers but loses Undo.
 - History effort editing stays deferred, as on Android.
+- Rapid stepper bursts (taps under ~100 ms apart) can drop taps: the stepper counts from the rendered value until the
+  row re-renders. Human-paced taps (300 ms) all land. The stepper read the rendered value before W2 too, but the queue
+  adds a read before each write, so the window is likely a little wider; not measured against the pre-W2 build.
+  Candidate follow-up: count from the latest local value.
 - Android follow-up (out of this part's fence): fixes 2, 3 and 5 apply to `LiveWorkoutViewModel.kt` too (untick at
   line ~474 keeps the `FAILURE` type; the pre-carry compare and adjustment ownership are the same shape there).
