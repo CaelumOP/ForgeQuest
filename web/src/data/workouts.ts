@@ -24,6 +24,9 @@ import { isExtraBlock, pickPrs } from '../domain/pr-picker';
 import { cursorAfterPlanEdit, cursorOnFinish, parseScheduleMode, type ScheduleMode } from '../domain/rotation';
 import { countsForPR, countsForScore, countsForProgression } from '../domain/set-types';
 import { coldStart, type BaselineStatus } from '../domain/baseline';
+import { holdTarget, repsTarget, weightedTargetInUnit } from '../domain/baseline-targets';
+import type { WeightUnit } from '../domain/units';
+import { latestBaselineTest } from './baseline-tests';
 import { normalizeDaySupersets, safeImportName, setPairWithNext as applyPairWithNext, type SharedPlan } from '../domain/plan-share';
 import { generateWarmupRamp, isHeavyBarbellCompound } from '../domain/warmup-ramp';
 import { isBarbellExercise } from '../domain/plate-math';
@@ -547,17 +550,57 @@ async function baselineHistory(): Promise<Map<string, SetRow[]>> {
   return history;
 }
 
+async function baselinePrefillFor(
+  ex: ExerciseRow | undefined,
+  item: PlanItemRow | null,
+  unit: WeightUnit,
+): Promise<{ reps?: number; seconds?: number; weightKg?: number } | null> {
+  if (!ex) return null;
+  const row = await latestBaselineTest(ex.id);
+  if (!row || row.kind !== ex.kind) return null;
+  switch (ex.kind) {
+    case 'WEIGHTED': {
+      if ((item?.weightKg ?? 0) > 0 || row.weightKg == null || row.reps == null) return null;
+      const res = weightedTargetInUnit(row.weightKg, row.reps, item?.repsMin ?? 8, unit);
+      return res.kind === 'TARGET' ? { weightKg: res.kg } : null;
+    }
+    case 'REPS': {
+      if (row.reps == null) return null;
+      const target = repsTarget(row.reps);
+      if (target == null) return null;
+      if (item?.repsMin != null && target >= item.repsMin) return null;
+      return { reps: target };
+    }
+    case 'HOLD': {
+      if (row.seconds == null) return null;
+      const target = holdTarget(row.seconds);
+      return target != null ? { seconds: target } : null;
+    }
+  }
+}
+
 /** Android resolveBaselineStatus: explicit plan loads and unloaded sets are not estimates. */
 export async function baselineStatusFor(
   ex: ExerciseRow | undefined, item: PlanItemRow | null, sessionSets: SetRow[], recentFinished: SetRow[],
 ): Promise<BaselineStatus> {
   if (recentFinished.some(countsForProgression)) return 'CALIBRATED';
-  if (!ex || ex.kind !== 'WEIGHTED' || (item?.weightKg ?? 0) > 0) return 'NONE';
-  if (!sessionSets.some((s) => countsForProgression(s) && (s.weightKg ?? 0) > 0)) return 'NONE';
+  if (!ex) return 'NONE';
   const settings = await loadSettings();
+  const unit = weightUnit(settings, ex.unitOverride);
+  const fromBaseline = await baselinePrefillFor(ex, item, unit);
+  if (fromBaseline) {
+    const applied = sessionSets.some((s) => countsForProgression(s) && (
+      fromBaseline.weightKg != null ? (s.weightKg ?? 0) > 0
+      : fromBaseline.reps != null ? (s.reps ?? 0) > 0
+      : (s.seconds ?? 0) > 0
+    ));
+    if (applied) return 'FROM_BASELINE';
+  }
+  if (ex.kind !== 'WEIGHTED' || (item?.weightKg ?? 0) > 0) return 'NONE';
+  if (!sessionSets.some((s) => countsForProgression(s) && (s.weightKg ?? 0) > 0)) return 'NONE';
   const history = await baselineHistory();
   const library = new Map((await db.exercises.toArray()).map((e) => [e.id, e]));
-  const estimate = coldStart(ex, item?.repsMin ?? 8, weightUnit(settings, ex.unitOverride), history, library);
+  const estimate = coldStart(ex, item?.repsMin ?? 8, unit, history, library);
   return estimate.status === 'ESTIMATED' && estimate.weightKg != null ? 'ESTIMATED' : 'NONE';
 }
 
@@ -598,11 +641,16 @@ async function buildSetsFor(sessionId: number, position: number, item: PlanItemR
   const base = targetLabel(kind, item);
   const label = result.holdCeilingReached ? [base, HOLD_CEILING_NOTE].filter(Boolean).join(' · ') : base;
   let prefilledSets = result.sets;
-  if (ex && kind === 'WEIGHTED' && !recent.some(countsForProgression) && (item?.weightKg ?? 0) <= 0) {
-    const history = await baselineHistory();
-    const library = new Map((await db.exercises.toArray()).map((e) => [e.id, e]));
-    const estimate = coldStart(ex, item?.repsMin ?? 8, unit, history, library);
-    if (estimate.weightKg != null) prefilledSets = result.sets.map((s) => ({ ...s, weightKg: estimate.weightKg }));
+  if (ex && !recent.some(countsForProgression)) {
+    const fromBaseline = await baselinePrefillFor(ex, item, unit);
+    if (fromBaseline) {
+      prefilledSets = result.sets.map((s) => ({ ...s, ...fromBaseline }));
+    } else if (kind === 'WEIGHTED' && (item?.weightKg ?? 0) <= 0) {
+      const history = await baselineHistory();
+      const library = new Map((await db.exercises.toArray()).map((e) => [e.id, e]));
+      const estimate = coldStart(ex, item?.repsMin ?? 8, unit, history, library);
+      if (estimate.weightKg != null) prefilledSets = result.sets.map((s) => ({ ...s, weightKg: estimate.weightKg }));
+    }
   }
   const firstWorkingKg = prefilledSets[0]?.weightKg ?? 0;
   const ramp = item?.autoWarmup && !isExtraBlock(item.block) && kind === 'WEIGHTED'

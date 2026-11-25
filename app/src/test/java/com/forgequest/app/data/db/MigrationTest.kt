@@ -19,7 +19,7 @@ import java.io.File
 // A plain Application: the real one schedules WorkManager jobs, which Robolectric has no setup for.
 @Config(sdk = [34], application = android.app.Application::class)
 class MigrationTest {
-    private val latest = 12
+    private val latest = 13
     private val dbName = "migration-test"
 
     @get:Rule
@@ -107,6 +107,24 @@ class MigrationTest {
                 assertEquals(true, c.moveToFirst())
                 assertEquals(0, c.getInt(0))
                 assertEquals(1, c.getInt(1))
+            }
+        }
+    }
+
+    @Test fun populatedTwelveUpgradesWithBaselineTestsTable() {
+        val name = "$dbName-baseline"
+        helper.createDatabase(name, 12).apply {
+            execSQL("INSERT INTO exercises (id, name, kind, `primary`, secondary, custom) VALUES ('push_up', 'Push-up', 'REPS', 'CHEST', '', 0)")
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 13, true, *AppDatabase.MIGRATIONS).use { db ->
+            db.execSQL("INSERT INTO baseline_tests (exerciseId, kind, reps, seconds, weightKg, createdAt) VALUES ('push_up', 'REPS', 12, NULL, NULL, 1000)")
+            db.query("SELECT exerciseId, kind, reps, createdAt FROM baseline_tests").use { c ->
+                assertEquals(true, c.moveToFirst())
+                assertEquals("push_up", c.getString(0))
+                assertEquals("REPS", c.getString(1))
+                assertEquals(12, c.getInt(2))
+                assertEquals(1000L, c.getLong(3))
             }
         }
     }

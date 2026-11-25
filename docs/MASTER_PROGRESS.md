@@ -12,7 +12,7 @@ Spec: `docs/MASTER_SPEC.md` (written after the owner answers the Question Gate).
   - [x] 2.4 UX rent-check, web 390x844 EN + AR, Android Compose
 - [x] Question Gate: owner answered 2026-11-26, locked in docs/MASTER_SPEC.md (defaults + 4 overrides)
 - [x] 3A grader + supersets/zero-rest (scorecards docs/master/grader-before.md / grader-after.md; overall 81.65 -> 87.85, min 41.88 -> 68.57, 3x20 coverage 17.8-18.6 -> 22.2-23.8, fat loss 6d balance 3.0-16 -> 15.1-17.6; Android grader port + floors, golden parity)
-- [ ] 3B Input & Test Baseline
+- [ ] 3B Input & Test Baseline (data + domain committed; UI next)
 - [ ] 3C wavy timer, sliding pills, approved cuts
 - [ ] Stage 4 verification, smoke, Gate 3, report
 

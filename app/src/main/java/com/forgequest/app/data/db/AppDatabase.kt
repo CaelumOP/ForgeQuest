@@ -13,8 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BodyMeasurementEntity::class, ExerciseEntity::class, PlanEntity::class, PlanDayEntity::class, PlanItemEntity::class,
         SessionEntity::class, SetEntity::class, FoodEntity::class, MealEntity::class,
         WeightEntity::class, ChatEntity::class, BadgeEntity::class, ReadinessDayEntity::class, DayNoteEntity::class,
+        BaselineTestEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -30,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun backup(): BackupDao
     abstract fun readiness(): ReadinessDao
     abstract fun dayNotes(): DayNoteDao
+    abstract fun baselineTests(): BaselineTestDao
 
     companion object {
         const val NAME = "forgequest.db"
@@ -135,8 +137,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v12 → v13: starting-point baseline test results. */
+        internal val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS baseline_tests (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, exerciseId TEXT NOT NULL, kind TEXT NOT NULL, reps INTEGER, seconds INTEGER, weightKg REAL, createdAt INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_baseline_tests_exerciseId ON baseline_tests (exerciseId)")
+            }
+        }
+
         /** Every upgrade step in order, 1 to the current version; the migration test walks the same list. */
-        internal val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+        internal val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
 
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)

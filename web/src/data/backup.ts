@@ -2,7 +2,7 @@
 // ignoreUnknownKeys = true and encodeDefaults = true): fields in Kotlin declaration order, every
 // default written out, enums as their names, nullable fields as null.
 import {
-  db, FOOD_CATEGORIES, type BadgeRow, type ChatRow, type DayNoteRow, type ExerciseRow, type FoodRow, type MealRow,
+  db, FOOD_CATEGORIES, type BadgeRow, type BaselineTestRow, type ChatRow, type DayNoteRow, type ExerciseRow, type FoodRow, type MealRow,
   type PlanDayRow, type PlanItemRow, type PlanRow, type ReadinessDayRow, type SessionRow, type SetRow,
   type WeightRow, type BodyMeasurementRow,
 } from './db';
@@ -57,6 +57,7 @@ export interface BackupFile {
   dayNotes: DayNoteRow[];
   readinessDays: ReadinessDayRow[];
   bodyMeasurements?: BodyMeasurementRow[];
+  baselineTests?: BaselineTestRow[];
   weekTargets?: Record<string, number>;
   weekStart?: string;
 }
@@ -96,6 +97,7 @@ const SPECS = {
     carbs: 0, photoPath: null, foodId: null,
   },
   bodyMeasurements: { id: 0, epochDay: REQ, metric: REQ, valueCm: REQ, loggedAt: REQ },
+  baselineTests: { id: 0, exerciseId: REQ, kind: REQ, reps: null, seconds: null, weightKg: null, createdAt: REQ },
   weights: { epochDay: REQ, kg: REQ, loggedAt: REQ },
   chat: {
     id: 0, role: REQ, text: REQ, planJson: null, planApplied: false, kind: 'chat', createdAt: REQ, detail: '',
@@ -130,6 +132,7 @@ const REQ_TYPES: Record<string, ValueKind> = {
 };
 const ENUMS: Partial<Record<Section, Record<string, readonly string[]>>> = {
   exercises: { kind: EXERCISE_KINDS, primary: MUSCLES, secondary: MUSCLES },
+  baselineTests: { kind: EXERCISE_KINDS },
   sets: { effort: ['', ...SET_EFFORTS] },
   foods: { category: FOOD_CATEGORIES },
   meals: { category: FOOD_CATEGORIES },
@@ -259,6 +262,7 @@ function shapeFile(src: unknown): BackupFile {
     dayNotes: lists.dayNotes as DayNoteRow[],
     readinessDays: lists.readinessDays as ReadinessDayRow[],
     bodyMeasurements: lists.bodyMeasurements as BodyMeasurementRow[],
+    baselineTests: lists.baselineTests as BaselineTestRow[],
   };
   if (targets !== undefined) out.weekTargets = targets;
   if (typeof src.weekStart === 'string') out.weekStart = src.weekStart;
@@ -269,7 +273,7 @@ function shapeFile(src: unknown): BackupFile {
 
 const TABLES = [
   'exercises', 'plans', 'planDays', 'planItems', 'sessions', 'sets', 'foods', 'meals', 'weights', 'chat',
-  'badges', 'dayNotes', 'readinessDays', 'bodyMeasurements',
+  'badges', 'dayNotes', 'readinessDays', 'bodyMeasurements', 'baselineTests',
 ] as const;
 
 async function readAll(settings: BackupSettings | null): Promise<BackupFile> {
@@ -350,7 +354,8 @@ export async function applyBackup(
     const current = await readAll(before);
     if (
       current.sessions.length || current.meals.length || current.weights.length ||
-      current.plans.length || current.foods.length || current.bodyMeasurements?.length || current.exercises.some((e) => e.custom)
+      current.plans.length || current.foods.length || current.bodyMeasurements?.length ||
+      current.baselineTests?.length || current.exercises.some((e) => e.custom)
     ) {
       await db.safetyCopies.add({ createdAt: current.createdAt, json: encodeBackup(current) });
       const all = await db.safetyCopies.orderBy('createdAt').reverse().primaryKeys();
@@ -360,6 +365,7 @@ export async function applyBackup(
       ...f,
       exercises: f.exercises.map((e) => applyCatalogFixes(e)),
       bodyMeasurements: f.bodyMeasurements ?? [],
+      baselineTests: f.baselineTests ?? [],
       foods: f.foods.map((r) => ({ ...r, photoPath: null })),
       // Photos never come along; a scanned meal keeps a marker so the "Snap & log" badge still counts it.
       meals: f.meals.map((r) => ({ ...r, photoPath: r.photoPath == null ? null : SCANNED_NO_PHOTO })),

@@ -1947,6 +1947,7 @@
     <string name="live_adjust_undo">Undo</string>
     <string name="live_baseline_estimated">Estimated start</string>
     <string name="live_baseline_estimated_cd">Starting weight estimated from a similar exercise</string>
+    <string name="live_baseline_from_test">From your baseline</string>
     <string name="cd_undo_adjustment">Undo set adjustment</string>
     <string name="cd_edit_effort">Change effort rating</string>
 </resources>

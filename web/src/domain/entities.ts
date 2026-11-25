@@ -89,6 +89,16 @@ export type ReadinessDayEntity = {
   updatedAt: number
 }
 
+export type BaselineTestEntity = {
+  id: number
+  exerciseId: string
+  kind: ExerciseKind
+  reps: number | null
+  seconds: number | null
+  weightKg: number | null
+  createdAt: number
+}
+
 export type PlanDraftItem = {
   exerciseId: string
   name: string | null

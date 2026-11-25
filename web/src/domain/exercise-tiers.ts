@@ -38,7 +38,7 @@ export function tierOf(ex: ExerciseEntity): Tier | null {
 export const READY_REPS = 15
 
 /** Steps inside one tier where the next move is obvious (half squats → full squats). */
-const NEXT_IN_TIER: Record<string, string> = {
+export const NEXT_IN_TIER: Record<string, string> = {
   half_squat: 'squat', half_wide_squat: 'squat', half_narrow_squat: 'squat',
   knee_scapular_push_up: 'knee_push_up',
   scapular_australian_pull_up: 'australian_pull_up', scapular_australian_chin_up: 'australian_chin_up',

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.forgequest.app.AppContainer
 import com.forgequest.app.R
+import com.forgequest.app.data.db.BaselineTestEntity
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
@@ -11,6 +12,7 @@ import com.forgequest.app.data.db.SetEntity
 import com.forgequest.app.data.prefs.Settings
 import com.forgequest.app.domain.Baseline
 import com.forgequest.app.domain.BaselineStatus
+import com.forgequest.app.domain.BaselineTargets
 import com.forgequest.app.domain.Dates
 import com.forgequest.app.domain.Equipment
 import com.forgequest.app.domain.ExerciseKind
@@ -26,6 +28,7 @@ import com.forgequest.app.domain.Records
 import com.forgequest.app.domain.SetEffort
 import com.forgequest.app.domain.SetType
 import com.forgequest.app.domain.WeightUnit
+import com.forgequest.app.domain.WeightedResult
 import com.forgequest.app.domain.WorkoutRecap
 import com.forgequest.app.domain.WorkoutScore
 import com.forgequest.app.domain.countsForPR
@@ -118,7 +121,36 @@ internal fun resolveRepsMin(set: SetEntity, kind: ExerciseKind, planItemsByPos: 
     return if (kind == ExerciseKind.WEIGHTED) 8 else null
 }
 
-/** Resolves [BaselineStatus] for one exercise in the live session from finished history and cold-start eligibility. */
+/** True when [baselineTest] applies a usable starting target for [exercise] in this session. */
+internal fun hasUsableBaselineTarget(
+    exercise: ExerciseEntity?,
+    item: PlanItemEntity?,
+    unit: WeightUnit,
+    baselineTest: BaselineTestEntity?,
+): Boolean {
+    if (exercise == null || baselineTest == null || baselineTest.kind != exercise.kind.name) return false
+    return when (exercise.kind) {
+        ExerciseKind.WEIGHTED -> {
+            if ((item?.weightKg ?: 0f) > 0f) return false
+            val w = baselineTest.weightKg ?: 0f
+            val r = baselineTest.reps ?: 0
+            if (w <= 0f || r <= 0) return false
+            BaselineTargets.weightedTarget(
+                weightKg = unit.fromKg(w).toDouble(),
+                reps = r,
+                repsMin = item?.repsMin ?: 8,
+                loadStep = unit.loadStep.toDouble(),
+            ) is WeightedResult.Target
+        }
+        ExerciseKind.REPS -> {
+            val target = baselineTest.reps?.let { BaselineTargets.repsTarget(it) } ?: return false
+            item?.repsMin == null || target < item.repsMin
+        }
+        ExerciseKind.HOLD -> baselineTest.seconds?.let { BaselineTargets.holdTarget(it) } != null
+    }
+}
+
+/** Resolves [BaselineStatus] for one exercise in the live session from finished history, baseline tests, and cold-start eligibility. */
 internal fun resolveBaselineStatus(
     exercise: ExerciseEntity?,
     item: PlanItemEntity?,
@@ -127,9 +159,16 @@ internal fun resolveBaselineStatus(
     allHistory: Map<String, List<SetEntity>>,
     library: Map<String, ExerciseEntity>,
     unit: WeightUnit,
+    baselineTest: BaselineTestEntity? = null,
 ): BaselineStatus {
     if (recentFinished.any { countsForProgression(it) }) return BaselineStatus.CALIBRATED
-    if (exercise == null || exercise.kind != ExerciseKind.WEIGHTED) return BaselineStatus.NONE
+    if (exercise == null) return BaselineStatus.NONE
+    if (hasUsableBaselineTarget(exercise, item, unit, baselineTest)) {
+        if (exercise.kind != ExerciseKind.WEIGHTED || sessionSets.any { countsForProgression(it) && (it.weightKg ?: 0f) > 0f }) {
+            return BaselineStatus.FROM_BASELINE
+        }
+    }
+    if (exercise.kind != ExerciseKind.WEIGHTED) return BaselineStatus.NONE
     if ((item?.weightKg ?: 0f) > 0f) return BaselineStatus.NONE
     val hasPositiveWorkingWeight = sessionSets.any { countsForProgression(it) && (it.weightKg ?: 0f) > 0f }
     if (!hasPositiveWorkingWeight) return BaselineStatus.NONE
@@ -288,10 +327,13 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                         null
                     }
                 }
+                val baselineById = app.baselines.latestAll().associateBy { it.exerciseId }
                 val needsColdStartCheck = recentById.any { (id, recent) ->
                     val ex = libById[id]
                     val item = itemsByExercise[id]
+                    val exUnit = currentSettings.weightUnitFor(ex?.unitOverride.orEmpty())
                     recent.none { countsForProgression(it) } &&
+                        !hasUsableBaselineTarget(ex, item, exUnit, baselineById[id]) &&
                         ex?.kind == ExerciseKind.WEIGHTED &&
                         (item?.weightKg ?: 0f) <= 0f &&
                         list.any { it.exerciseId == id && countsForProgression(it) && (it.weightKg ?: 0f) > 0f }
@@ -319,6 +361,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                         allHistory = allHistory,
                         library = libById,
                         unit = exUnit,
+                        baselineTest = baselineById[id],
                     )
                 }
                 reasons.value = reasons.value + found

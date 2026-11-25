@@ -1,5 +1,6 @@
 // What the person told the plan builder, saved (as JSON under the `plan_builder_answers` setting) so a rebuild starts
 // from the same answers. Mirrors PlanInput without the exercise library. Not part of backups. Android: PlanAnswers.kt.
+import type { BaselineTestEntity } from './entities'
 import {
   EQUIPMENT_META,
   expandLegacyEquipment,
@@ -59,8 +60,34 @@ export function defaultPlanAnswers(): PlanAnswers {
   }
 }
 
-export function planAnswersToInput(answers: Partial<PlanAnswers> = {}, offset = 0): Required<PlanInput> {
+export type BaselineMaxes = {
+  pushUpMax?: number | null
+  pullUpMax?: number | null
+}
+
+function resolveBaselineMaxes(
+  baselines?: BaselineMaxes | ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps'>>,
+): BaselineMaxes {
+  if (!baselines) return {}
+  if (typeof (baselines as ReadonlyMap<string, unknown>).get === 'function') {
+    const map = baselines as ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps'>>
+    const push = map.get('push_up')
+    const pull = map.get('pull_up')
+    return {
+      pushUpMax: push?.kind === 'REPS' ? push.reps : null,
+      pullUpMax: pull?.kind === 'REPS' ? pull.reps : null,
+    }
+  }
+  return baselines as BaselineMaxes
+}
+
+export function planAnswersToInput(
+  answers: Partial<PlanAnswers> = {},
+  offset = 0,
+  baselines?: BaselineMaxes | ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps'>>,
+): Required<PlanInput> {
   const base = defaultPlanAnswers()
+  const maxes = resolveBaselineMaxes(baselines)
   const days = new Set<number>(answers.days ?? base.days)
   const equipment = expandLegacyEquipment(answers.equipment ?? base.equipment)
   equipment.add('BODYWEIGHT')
@@ -78,8 +105,12 @@ export function planAnswersToInput(answers: Partial<PlanAnswers> = {}, offset = 
     experience: answers.experience ?? base.experience,
     injuries: new Set<Injury>(answers.injuries ?? base.injuries),
     avoidIds: new Set<string>(answers.avoidIds ?? base.avoidIds),
-    pushUpMax: answers.pushUpMax !== undefined ? answers.pushUpMax : base.pushUpMax,
-    pullUpMax: answers.pullUpMax !== undefined ? answers.pullUpMax : base.pullUpMax,
+    pushUpMax: maxes.pushUpMax != null
+      ? maxes.pushUpMax
+      : (answers.pushUpMax !== undefined ? answers.pushUpMax : base.pushUpMax),
+    pullUpMax: maxes.pullUpMax != null
+      ? maxes.pullUpMax
+      : (answers.pullUpMax !== undefined ? answers.pullUpMax : base.pullUpMax),
     focus: new Set<Muscle>(answers.focus ?? base.focus),
     minutesByDay,
     cardio: answers.cardio ?? base.cardio,

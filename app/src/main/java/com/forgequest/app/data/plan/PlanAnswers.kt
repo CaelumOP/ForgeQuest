@@ -42,9 +42,15 @@ data class PlanAnswers(
     val rest: RestPref = RestPref.AUTO,
     val style: WorkoutStyle = WorkoutStyle.AUTO,
 ) {
-    fun toInput() = PlanInput(
+    fun toInput(
+        baselinePushUpMax: Int? = null,
+        baselinePullUpMax: Int? = null,
+    ) = PlanInput(
         goal = goal, days = days, minutes = minutes, equipment = expandLegacyEquipment(equipment) + Equipment.BODYWEIGHT, experience = experience,
-        injuries = injuries, avoidIds = avoidIds, pushUpMax = pushUpMax, pullUpMax = pullUpMax, focus = focus,
+        injuries = injuries, avoidIds = avoidIds,
+        pushUpMax = baselinePushUpMax ?: pushUpMax,
+        pullUpMax = baselinePullUpMax ?: pullUpMax,
+        focus = focus,
         minutesByDay = minutesByDay.filterKeys { it in days }, cardio = cardio, warmUp = warmUp, coolDown = coolDown,
         holdsOk = holdsOk, reps = reps, rest = rest, style = style,
     )

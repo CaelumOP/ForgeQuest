@@ -10,6 +10,7 @@ import {
   updatePlanDay, updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, withoutDeloadSessions, type PlanDayWithItems,
   allRecentDoneSets, baselineStatusFor, harderHint,
 } from './workouts';
+import { saveBaselineTest } from './baseline-tests';
 import { exportSharedPlan, parseAndValidateSharedPlan } from '../domain/plan-share';
 
 const pause = () => new Promise((r) => setTimeout(r, 5));
@@ -103,6 +104,65 @@ describe('baseline prefill and live status', () => {
       items: [item('db_bench_press', 15)],
     }));
     expect(sets.filter(countsForProgression).every((s) => s.weightKg === 15)).toBe(true);
+  });
+
+  it('applies baseline precedence: history > baseline row > cold-start donor > blank', async () => {
+    await seedLibrary();
+    // Donor in history gives db_bench_press 25 kg if no baseline row exists.
+    await putSet(row(await session()));
+    // Baseline row for db_bench_press: 20 kg x 8, repsMin 8 -> target 15 kg (beats 25 kg donor).
+    await saveBaselineTest({ exerciseId: 'db_bench_press', kind: 'WEIGHTED', weightKg: 20, reps: 8, createdAt: 1000 });
+    // Baseline row for push_up: max 10 -> target 7 < repsMin 8, so replaces reps.
+    await saveBaselineTest({ exerciseId: 'push_up', kind: 'REPS', reps: 10, createdAt: 1000 });
+    // Baseline row for diamond_push_up: max 20 -> target 14 >= repsMin 8, so keeps plan reps (8).
+    await saveBaselineTest({ exerciseId: 'diamond_push_up', kind: 'REPS', reps: 20, createdAt: 1000 });
+    // Baseline row for plank: 60 s -> holdTarget 40 s.
+    await saveBaselineTest({ exerciseId: 'plank', kind: 'HOLD', seconds: 60, createdAt: 1000 });
+    // Too-light weighted baseline row falls back to donor/blank (incline_bench_press donor -> 65 kg).
+    await saveBaselineTest({ exerciseId: 'incline_bench_press', kind: 'WEIGHTED', weightKg: 20, reps: 13, createdAt: 1000 });
+
+    const day: PlanDayWithItems = {
+      day: { id: 1, planId: 1, dayOfWeek: 1, title: 'Mix', isRest: false, note: '' },
+      items: [
+        { ...item('db_bench_press'), position: 0 },
+        { ...item('push_up'), position: 1 },
+        { ...item('diamond_push_up'), position: 2 },
+        { dayId: 1, position: 3, exerciseId: 'plank', block: 'Core', circuit: false, sets: 3, repsMin: null, repsMax: null, seconds: 30, weightKg: null, restSeconds: 60, note: '' },
+        { ...item('incline_bench_press'), position: 4 },
+      ],
+    };
+    const sid = await startSession(day);
+    const sets = await getSets(sid);
+
+    const dbSets = sets.filter((s) => s.exerciseId === 'db_bench_press' && countsForProgression(s));
+    expect(dbSets.every((s) => s.weightKg === 15)).toBe(true);
+    expect(await baselineStatusFor(await db.exercises.get('db_bench_press'), day.items[0], dbSets, [])).toBe('FROM_BASELINE');
+
+    const pushSets = sets.filter((s) => s.exerciseId === 'push_up' && countsForProgression(s));
+    expect(pushSets.every((s) => s.reps === 7)).toBe(true);
+    expect(await baselineStatusFor(await db.exercises.get('push_up'), day.items[1], pushSets, [])).toBe('FROM_BASELINE');
+
+    const diamondSets = sets.filter((s) => s.exerciseId === 'diamond_push_up' && countsForProgression(s));
+    expect(diamondSets.every((s) => s.reps === 8)).toBe(true);
+    expect(await baselineStatusFor(await db.exercises.get('diamond_push_up'), day.items[2], diamondSets, [])).toBe('NONE');
+
+    const plankSets = sets.filter((s) => s.exerciseId === 'plank' && countsForProgression(s));
+    expect(plankSets.every((s) => s.seconds === 40)).toBe(true);
+    expect(await baselineStatusFor(await db.exercises.get('plank'), day.items[3], plankSets, [])).toBe('FROM_BASELINE');
+
+    const inclineSets = sets.filter((s) => s.exerciseId === 'incline_bench_press' && countsForProgression(s));
+    expect(inclineSets.every((s) => s.weightKg === 65)).toBe(true);
+    expect(await baselineStatusFor(await db.exercises.get('incline_bench_press'), day.items[4], inclineSets, [])).toBe('ESTIMATED');
+
+    // Once real history exists, history wins over baseline row and status is CALIBRATED.
+    await db.sessions.update(sid, { finishedAt: 5000 });
+    const hist = await session(102);
+    const doneRow = row(hist, 'db_bench_press', { weightKg: 22.5, reps: 8, effort: 'HARD' });
+    await putSet(doneRow);
+    const sid2 = await startSession(day);
+    const dbSets2 = (await getSets(sid2)).filter((s) => s.exerciseId === 'db_bench_press' && countsForProgression(s));
+    expect(dbSets2.every((s) => s.weightKg === 22.5)).toBe(true);
+    expect(await baselineStatusFor(await db.exercises.get('db_bench_press'), day.items[0], dbSets2, [doneRow])).toBe('CALIBRATED');
   });
 });
 

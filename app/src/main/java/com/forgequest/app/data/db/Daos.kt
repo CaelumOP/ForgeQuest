@@ -352,6 +352,9 @@ interface BackupDao {
     @Query("SELECT * FROM body_measurements") suspend fun bodyMeasurements(): List<BodyMeasurementEntity>
     @Query("DELETE FROM body_measurements") suspend fun clearBodyMeasurements()
     @Insert suspend fun putBodyMeasurements(v: List<BodyMeasurementEntity>)
+    @Query("SELECT * FROM baseline_tests") suspend fun baselineTests(): List<BaselineTestEntity>
+    @Query("DELETE FROM baseline_tests") suspend fun clearBaselineTests()
+    @Insert suspend fun putBaselineTests(v: List<BaselineTestEntity>)
     @Query("SELECT * FROM exercises") suspend fun exercises(): List<ExerciseEntity>
     @Query("SELECT * FROM plans") suspend fun plans(): List<PlanEntity>
     @Query("SELECT * FROM plan_days") suspend fun planDays(): List<PlanDayEntity>
@@ -373,8 +376,10 @@ interface BackupDao {
         weights: List<WeightEntity>, chat: List<ChatEntity>, badges: List<BadgeEntity>, dayNotes: List<DayNoteEntity>,
         readinessDays: List<ReadinessDayEntity>,
         bodyMeasurements: List<BodyMeasurementEntity> = emptyList(),
+        baselineTests: List<BaselineTestEntity> = emptyList(),
     ) {
         clearBodyMeasurements(); putBodyMeasurements(bodyMeasurements)
+        clearBaselineTests(); putBaselineTests(baselineTests)
         clearExercises(); clearPlans(); clearDays(); clearItems(); clearSessions(); clearSets()
         clearFoods(); clearMeals(); clearWeights(); clearChat(); clearBadges(); clearDayNotes()
         putExercises(exercises); putPlans(plans); putDays(days); putItems(items); putSessions(sessions); putSets(sets)
@@ -437,6 +442,30 @@ interface ReadinessDao {
 
     @Query("SELECT * FROM readiness_days ORDER BY epochDay")
     fun observeAll(): Flow<List<ReadinessDayEntity>>
+}
+
+@Dao
+interface BaselineTestDao {
+    @Query("SELECT * FROM baseline_tests ORDER BY createdAt DESC, id DESC")
+    fun observeAll(): Flow<List<BaselineTestEntity>>
+
+    @Query("SELECT * FROM baseline_tests WHERE exerciseId = :exerciseId ORDER BY createdAt DESC, id DESC LIMIT 1")
+    suspend fun latestFor(exerciseId: String): BaselineTestEntity?
+
+    @Query(
+        "SELECT b.* FROM baseline_tests b " +
+            "WHERE b.id = (SELECT b2.id FROM baseline_tests b2 WHERE b2.exerciseId = b.exerciseId ORDER BY b2.createdAt DESC, b2.id DESC LIMIT 1)"
+    )
+    suspend fun latestAll(): List<BaselineTestEntity>
+
+    @Insert
+    suspend fun insert(test: BaselineTestEntity): Long
+
+    @Query("DELETE FROM baseline_tests")
+    suspend fun deleteAll()
+
+    @Query("SELECT * FROM baseline_tests ORDER BY createdAt DESC, id DESC")
+    suspend fun all(): List<BaselineTestEntity>
 }
 
 data class DayKcal(val epochDay: Long, val kcal: Int)

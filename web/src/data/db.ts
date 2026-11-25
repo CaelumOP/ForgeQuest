@@ -3,7 +3,7 @@
 // names unchanged so a backup file moves between the Android and web apps as is.
 import Dexie, { type Table } from 'dexie';
 import type {
-  ExerciseEntity, PlanItemEntity, ReadinessDayEntity, SessionEntity, SetEntity,
+  BaselineTestEntity, ExerciseEntity, PlanItemEntity, ReadinessDayEntity, SessionEntity, SetEntity,
 } from '../domain/entities';
 
 export const FOOD_CATEGORIES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACKS', 'DRINKS'] as const;
@@ -48,6 +48,7 @@ export interface ChatRow {
 export interface BadgeRow { id: string; unlockedAt: number; seen: boolean }
 export interface DayNoteRow { epochDay: number; tag: string; note: string; updatedAt: number }
 export type ReadinessDayRow = ReadinessDayEntity;
+export type BaselineTestRow = Omit<BaselineTestEntity, 'id'> & { id?: number };
 /** A backup of this device taken right before a restore (web stand-in for Android's backups/ folder). */
 export interface SafetyCopyRow { id?: number; createdAt: number; json: string }
 /** Small key-value rows: 'settings', 'weekTargets' (web stand-in for DataStore and SharedPreferences). */
@@ -68,6 +69,7 @@ export class ForgeQuestDb extends Dexie {
   badges!: Table<BadgeRow, string>;
   dayNotes!: Table<DayNoteRow, number>;
   readinessDays!: Table<ReadinessDayRow, number>;
+  baselineTests!: Table<BaselineTestRow, number>;
   safetyCopies!: Table<SafetyCopyRow, number>;
   kv!: Table<KvRow, string>;
 
@@ -92,6 +94,7 @@ export class ForgeQuestDb extends Dexie {
     });
     this.version(2).stores({ kv: 'key' });
     this.version(3).stores({ bodyMeasurements: '++id, epochDay, metric' });
+    this.version(4).stores({ baselineTests: '++id, exerciseId, createdAt' });
     // Reading hooks cover get, queries and backup exports without rewriting historical rows.
     this.exercises.hook('reading', (row) => row && ({
       equipment: '', pattern: '', setupNote: '', aliases: '', unitOverride: '', pinned: false, mediaKey: '', ...row,
@@ -130,4 +133,5 @@ export const putSession = (row: SessionRow): Promise<number> => db.sessions.put(
 export const putMeal = (row: MealRow): Promise<number> => db.meals.put(forInsert(row));
 export const putWeight = (row: WeightRow): Promise<number> => db.weights.put(row);
 export const putDayNote = (row: DayNoteRow): Promise<number> => db.dayNotes.put(row);
+export const putBaselineTest = (row: BaselineTestRow): Promise<number> => db.baselineTests.put(forInsert(row));
 export const deleteSet = (id: number): Promise<void> => db.sets.delete(id);

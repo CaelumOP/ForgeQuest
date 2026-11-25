@@ -8,7 +8,7 @@ import kotlin.math.floor
 enum class PatternBucket { PUSH, PULL, SQUAT, HINGE, CORE }
 
 /** Readiness of an exercise's load baseline for the current session. */
-enum class BaselineStatus { NONE, ESTIMATED, CALIBRATED }
+enum class BaselineStatus { NONE, ESTIMATED, FROM_BASELINE, CALIBRATED }
 
 /**
  * Pure on-the-fly baseline and cold-start load estimation engine (spec section 4 & A5).

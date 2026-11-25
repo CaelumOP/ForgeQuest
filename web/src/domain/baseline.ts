@@ -6,7 +6,7 @@ import { isFly } from './plan-builder'
 import { countsForProgression } from './set-types'
 import { fromKg, loadStep, toKg, type WeightUnit } from './units'
 
-export type BaselineStatus = 'CALIBRATED' | 'ESTIMATED' | 'NONE'
+export type BaselineStatus = 'CALIBRATED' | 'FROM_BASELINE' | 'ESTIMATED' | 'NONE'
 export type PatternBucket = 'PUSH' | 'PULL' | 'SQUAT' | 'HINGE' | 'CORE'
 export type BaselineEstimate = { weightKg: number | null; status: BaselineStatus; donorId?: string }
 type BaselineSet = Omit<SetEntity, 'id'>

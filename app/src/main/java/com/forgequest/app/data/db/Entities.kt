@@ -276,3 +276,17 @@ data class ReadinessDayEntity(
 
 /** photoPath of a scanned meal whose photo isn't on this phone (web scans, or restored from a backup), so the "Snap & log" badge still counts it. */
 const val SCANNED_NO_PHOTO = "scan:no-photo"
+
+/** A starting-point test result for one exercise. Never stored as a session or set. */
+@Serializable
+@Entity(tableName = "baseline_tests", indices = [Index("exerciseId")])
+data class BaselineTestEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val exerciseId: String,
+    /** ExerciseKind name: "REPS", "HOLD", or "WEIGHTED". */
+    val kind: String,
+    val reps: Int? = null,
+    val seconds: Int? = null,
+    val weightKg: Float? = null,
+    val createdAt: Long,
+)

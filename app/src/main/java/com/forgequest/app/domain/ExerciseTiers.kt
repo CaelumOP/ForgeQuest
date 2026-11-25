@@ -47,6 +47,38 @@ object ExerciseTiers {
         "scapular_australian_pull_up" to "australian_pull_up", "scapular_australian_chin_up" to "australian_chin_up",
     )
 
+    private val EASIER_IN_LINE = mapOf(
+        // Push-up line
+        "pseudo_planche_push_up" to "push_up",
+        "archer_push_up" to "push_up",
+        "decline_push_up" to "push_up",
+        "push_up" to "knee_push_up",
+        "wide_knee_push_up" to "knee_scapular_push_up",
+        "knee_push_up" to "knee_scapular_push_up",
+        "diamond_push_up" to "incline_diamond_knee_push_up",
+        "handstand_push_up" to "pike_push_up",
+        "dip" to "bent_leg_bench_dip",
+        // Pull-up & row lines
+        "muscle_up" to "pull_up",
+        "archer_pull_up" to "pull_up",
+        "l_sit_pull_up" to "pull_up",
+        "wide_grip_pull_up" to "pull_up",
+        "neutral_grip_pull_up" to "negative_pull_up",
+        "pull_up" to "negative_pull_up",
+        "chin_up" to "negative_pull_up",
+        "negative_pull_up" to "scapular_pull_up",
+        "australian_pull_up" to "scapular_australian_pull_up",
+        "australian_chin_up" to "scapular_australian_chin_up",
+        // Squat & core lines
+        "squat" to "half_squat",
+        "pistol_squat" to "bulgarian_split_squat",
+        "bulgarian_split_squat" to "lunge",
+        "hanging_leg_raise" to "hanging_knee_raise",
+        "hanging_knee_raise" to "crunch",
+    )
+
+    internal fun prevInLineId(id: String): String? = EASIER_IN_LINE[id]
+
     /** When a movement has no harder version, the closest one that does: two legs → one leg, rows → pull-ups. */
     private val RELATED = mapOf(
         MovementPattern.SQUAT_BILATERAL to MovementPattern.SQUAT_UNILATERAL,

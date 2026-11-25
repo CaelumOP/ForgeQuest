@@ -17,7 +17,9 @@ import com.forgequest.app.data.prefs.SettingsRepository
 import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.CatalogFixes
 import com.forgequest.app.domain.Baseline
+import com.forgequest.app.domain.BaselineTargets
 import com.forgequest.app.domain.Dates
+import com.forgequest.app.domain.WeightedResult
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.Muscle
@@ -626,17 +628,53 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val barWeightKg = s?.barWeightKg ?: 20f
         val hasWorkingHistory = recent.any { countsForProgression(it) }
         val planWeight = item?.weightKg ?: 0f
-        val coldStartWeightKg = if (ex != null && kind == ExerciseKind.WEIGHTED && !hasWorkingHistory && planWeight <= 0f) {
+        val baseline = if (ex != null && !hasWorkingHistory) {
+            db.baselineTests().latestFor(ex.id)?.takeIf { it.kind == kind.name }
+        } else {
+            null
+        }
+        val baselineWeightKg = if (baseline != null && kind == ExerciseKind.WEIGHTED && planWeight <= 0f) {
+            val wKg = baseline.weightKg ?: 0f
+            val r = baseline.reps ?: 0
+            if (wKg > 0f && r > 0) {
+                val res = BaselineTargets.weightedTarget(
+                    weightKg = unit.fromKg(wKg).toDouble(),
+                    reps = r,
+                    repsMin = item?.repsMin ?: 8,
+                    loadStep = unit.loadStep.toDouble(),
+                )
+                (res as? WeightedResult.Target)?.let { unit.toKg(it.weightKg.toFloat()) }
+            } else {
+                null
+            }
+        } else {
+            null
+        }
+        val baselineReps = if (baseline != null && kind == ExerciseKind.REPS) {
+            val target = baseline.reps?.let { BaselineTargets.repsTarget(it) }
+            if (target != null && (item?.repsMin == null || target < item.repsMin)) target else null
+        } else {
+            null
+        }
+        val baselineSeconds = if (baseline != null && kind == ExerciseKind.HOLD) {
+            baseline.seconds?.let { BaselineTargets.holdTarget(it) }
+        } else {
+            null
+        }
+        val coldStartWeightKg = if (ex != null && kind == ExerciseKind.WEIGHTED && !hasWorkingHistory && planWeight <= 0f && baselineWeightKg == null) {
             val history = sessions.allRecentDoneSets().groupBy { it.exerciseId }
             val library = exercises.all().associateBy { it.id }
             Baseline.coldStart(ex, item?.repsMin ?: 8, unit, history, library).weightKg
         } else {
             null
         }
-        val prefilledSets = if (coldStartWeightKg != null) {
-            result.sets.map { it.copy(weightKg = coldStartWeightKg) }
-        } else {
-            result.sets
+        val resolvedWeightKg = baselineWeightKg ?: coldStartWeightKg
+        val prefilledSets = result.sets.map { pre ->
+            pre.copy(
+                reps = baselineReps ?: pre.reps,
+                seconds = baselineSeconds ?: pre.seconds,
+                weightKg = resolvedWeightKg ?: pre.weightKg,
+            )
         }
         val firstWorkingKg = prefilledSets.firstOrNull()?.weightKg ?: 0f
         val ramp = if (item != null && item.autoWarmup && !WorkoutScore.isExtra(item.block) && kind == ExerciseKind.WEIGHTED) {

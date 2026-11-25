@@ -2289,6 +2289,7 @@
     <string name="live_adjust_undo">تراجع</string>
     <string name="live_baseline_estimated">بداية مقدّرة</string>
     <string name="live_baseline_estimated_cd">الوزن الابتدائي مقدَّر من تمرين مشابه</string>
+    <string name="live_baseline_from_test">من اختبار البداية</string>
     <string name="cd_undo_adjustment">التراجع عن تعديل المجموعة</string>
     <string name="cd_edit_effort">تغيير تقييم الجهد</string>
 </resources>

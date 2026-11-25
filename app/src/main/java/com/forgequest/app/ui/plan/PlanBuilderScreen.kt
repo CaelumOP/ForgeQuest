@@ -81,6 +81,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.forgequest.app.AppContainer
 import com.forgequest.app.R
+import com.forgequest.app.data.BaselineRepository
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.data.plan.PlanAnswers
@@ -166,10 +167,17 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch {
+            app.baselines.migrateFromPlanAnswers()
             val s = app.settings.current()
-            answers.value = PlanAnswers.decode(s.planBuilderAnswers)
+            val base = PlanAnswers.decode(s.planBuilderAnswers)
                 ?: s.configuredEquipment.takeIf { it.isNotEmpty() }?.let { PlanAnswers(equipment = expandLegacyEquipment(it) + Equipment.BODYWEIGHT) }
                 ?: PlanAnswers()
+            val push = app.baselines.latest(BaselineRepository.PUSH_UP_ID)?.takeIf { it.kind == ExerciseKind.REPS.name }?.reps
+            val pull = app.baselines.latest(BaselineRepository.PULL_UP_ID)?.takeIf { it.kind == ExerciseKind.REPS.name }?.reps
+            answers.value = base.copy(
+                pushUpMax = push ?: base.pushUpMax,
+                pullUpMax = pull ?: base.pullUpMax,
+            )
             ready.value = true
         }
     }
@@ -183,7 +191,7 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
         viewModelScope.launch {
             try {
                 val lib = app.workouts.library.first()
-                val input = answers.value.toInput().copy(offset = offset)
+                val input = app.baselines.resolvePlanInput(answers.value).copy(offset = offset)
                 val plan = withContext(Dispatchers.Default) { PlanBuilder.build(input, lib) }
                 tried.clear()
                 built.value = plan
@@ -203,7 +211,7 @@ class PlanBuilderViewModel(private val app: AppContainer) : ViewModel() {
         viewModelScope.launch {
             val lib = app.workouts.library.first()
             val current = lib.firstOrNull { it.id == old.exerciseId } ?: return@launch
-            val input = answers.value.toInput()
+            val input = app.baselines.resolvePlanInput(answers.value)
             val inDay = day.items.map { it.exerciseId }.toSet()
             val key = "$dow:$index"
             val seen = (tried[key] ?: emptySet()) + old.exerciseId

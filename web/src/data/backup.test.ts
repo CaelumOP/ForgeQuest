@@ -307,4 +307,42 @@ describe('backup', () => {
     expect((await db.exercises.get('sled_row'))?.equipment).toBe('CABLE_MACHINE');
     expect((await db.exercises.get('sled_push'))?.equipment).toBe('BODYWEIGHT');
   });
+
+  it('restores old backups without baselineTests and round-trips populated baselineTests', async () => {
+    // Old backup (backup-4.1.json) without baselineTests field restores cleanly as empty.
+    const legacy = JSON.parse(fixture41) as Record<string, unknown>;
+    expect(legacy.baselineTests).toBeUndefined();
+    const decodedLegacy = decodeBackup(fixture41);
+    expect(decodedLegacy.baselineTests).toEqual([]);
+    await applyBackup(decodedLegacy);
+    expect(await db.baselineTests.count()).toBe(0);
+
+    // Populated baselineTests round-trip through export and restore.
+    const rows = [
+      { id: 1, exerciseId: 'push_up', kind: 'REPS' as const, reps: 15, seconds: null, weightKg: null, createdAt: 1761000000000 },
+      { id: 2, exerciseId: 'plank', kind: 'HOLD' as const, reps: null, seconds: 60, weightKg: null, createdAt: 1761000100000 },
+      { id: 3, exerciseId: 'bench_press', kind: 'WEIGHTED' as const, reps: 8, seconds: null, weightKg: 60, createdAt: 1761000200000 },
+    ];
+    const withBaseline = decodeBackup(JSON.stringify({ ...legacy, baselineTests: rows }));
+    expect(withBaseline.baselineTests).toEqual(rows);
+    await applyBackup(withBaseline);
+    expect(await db.baselineTests.toArray()).toEqual(rows);
+
+    const exported = decodeBackup(encodeBackup(await buildBackup()));
+    expect(exported.baselineTests).toEqual(rows);
+
+    // Invalid kind is rejected.
+    expect(() => decodeBackup(JSON.stringify({
+      ...legacy,
+      baselineTests: [{ id: 1, exerciseId: 'push_up', kind: 'CARDIO', reps: 10, seconds: null, weightKg: null, createdAt: 1 }],
+    }))).toThrow(BackupUnreadableError);
+  });
+
+  it('keeps a safety copy when only baselineTests exist on the device', async () => {
+    await db.baselineTests.add({ exerciseId: 'push_up', kind: 'REPS', reps: 12, seconds: null, weightKg: null, createdAt: 1 });
+    await applyBackup(decodeBackup(fixture41));
+    const copies = await listSafetyCopies();
+    expect(copies).toHaveLength(1);
+    expect(decodeBackup(copies[0].json).baselineTests).toHaveLength(1);
+  });
 });

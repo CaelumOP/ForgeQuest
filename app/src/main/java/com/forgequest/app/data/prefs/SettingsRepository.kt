@@ -364,7 +364,7 @@ class SettingsRepository(private val context: Context) {
             p[K.targetNudgeAnswered] = s.targetNudgeAnswered
             p[K.justLog] = s.justLog
             s.aiOptIn?.let { p[K.aiEnabled] = it }
-            s.planBuilderAnswers?.let { p[K.planBuilderAnswers] = it }
+            if (s.planBuilderAnswers != null) p[K.planBuilderAnswers] = s.planBuilderAnswers else p.remove(K.planBuilderAnswers)
         }
     }
 

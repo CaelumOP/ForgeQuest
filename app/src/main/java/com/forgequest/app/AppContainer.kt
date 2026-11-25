@@ -1,6 +1,7 @@
 package com.forgequest.app
 
 import android.content.Context
+import com.forgequest.app.data.BaselineRepository
 import com.forgequest.app.data.CatalogRepository
 import com.forgequest.app.data.FoodRepository
 import com.forgequest.app.data.ProgressRepository
@@ -31,6 +32,7 @@ class AppContainer(context: Context) {
     val gemini = GeminiClient(http)
     val models = ModelStore(settings, gemini)
     val workouts = WorkoutRepository(db, settings)
+    val baselines = BaselineRepository(db, settings)
     val progress = ProgressRepository(db, settings, workouts, appScope)
     val food = FoodRepository(context, db, settings, gemini, models)
     val catalog = CatalogRepository(context)
