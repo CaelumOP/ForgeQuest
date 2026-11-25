@@ -10,6 +10,7 @@ import {
 import { tierOf as rawTierOf, TIERS, type Tier } from './exercise-tiers'
 import { blocked, INJURIES, isInjury, type Injury } from './injury'
 import { MUSCLES, type Muscle } from './muscle'
+import { BELOW_MEV_MUSCLES, credits, DAY_MUSCLE_LIMIT, landmarkFor, OVERLAP_SETS, pushPull, pushPullBroken } from './routine-auditor'
 import { WARM_UP_BLOCK } from './workout-score'
 
 export { blocked, INJURIES, isInjury, type Injury }
@@ -82,6 +83,70 @@ export const COMPOUND_PATTERNS = new Set<MovementPattern>([
 export const isCompound = (pattern: MovementPattern): boolean => COMPOUND_PATTERNS.has(pattern)
 export const isCore = (pattern: MovementPattern): boolean =>
   pattern === 'CORE_ANTI_EXTENSION' || pattern === 'CORE_FLEXION_ROTATION'
+
+/** Machines that sit in a compound movement group but work one joint (leg extension). */
+const ISOLATION_IDS = new Set(['leg_extension'])
+
+/** A fly (chest fly, crossover, pec deck) is a one-joint chest move even though it shares the press movement group. */
+export function isFly(ex: ExerciseEntity): boolean {
+  const pattern = profileFor(ex).pattern
+  if (pattern !== 'HORIZONTAL_PUSH' && pattern !== 'DIP_PUSH') return false
+  const id = ex.id
+  return id.includes('_fly') || id.startsWith('fly') || id.includes('flye') || id.includes('crossover') || id.includes('pec_deck')
+}
+
+/** Multi-joint lift: a compound movement group, not a fly and not a one-joint machine. Shared by the auditor and the baseline. */
+export function isCompoundExercise(ex: ExerciseEntity): boolean {
+  return isCompound(profileFor(ex).pattern) && !isFly(ex) && !ISOLATION_IDS.has(ex.id)
+}
+
+/** The muscles a movement group works; a catalog row whose main muscles miss them is filed in the wrong group. */
+const PATTERN_MUSCLES: Partial<Record<MovementPattern, ReadonlySet<Muscle>>> = {
+  HORIZONTAL_PUSH: new Set(['CHEST', 'TRICEPS', 'SHOULDERS']),
+  DIP_PUSH: new Set(['CHEST', 'TRICEPS', 'SHOULDERS']),
+  VERTICAL_PUSH: new Set(['SHOULDERS', 'TRICEPS']),
+  VERTICAL_PULL: new Set(['UPPER_BACK', 'BICEPS']),
+  HORIZONTAL_PULL: new Set(['UPPER_BACK', 'BICEPS', 'TRAPS', 'SHOULDERS']),
+  UPPER_BACK_PULL: new Set(['UPPER_BACK', 'TRAPS', 'SHOULDERS']),
+  SQUAT_BILATERAL: new Set(['QUADS', 'GLUTES']),
+  SQUAT_UNILATERAL: new Set(['QUADS', 'GLUTES']),
+  HIP_HINGE: new Set(['HAMSTRINGS', 'GLUTES', 'LOWER_BACK']),
+  KNEE_FLEXION: new Set(['HAMSTRINGS']),
+  LATERAL_RAISE: new Set(['SHOULDERS']),
+  CORE_ANTI_EXTENSION: new Set(['ABS', 'OBLIQUES', 'LOWER_BACK']),
+  CORE_FLEXION_ROTATION: new Set(['ABS', 'OBLIQUES']),
+  ELBOW_FLEXION: new Set(['BICEPS', 'FOREARMS']),
+  ELBOW_EXTENSION: new Set(['TRICEPS']),
+  ANKLE_FLEXION: new Set(['CALVES', 'TIBIALIS']),
+}
+
+/** False for a catalog row whose main muscles do not belong to its movement group (a leg jump filed as a chest press). */
+export function fitsItsMovement(ex: ExerciseEntity): boolean {
+  const expected = PATTERN_MUSCLES[profileFor(ex).pattern]
+  if (!expected) return true
+  return ex.primary.some((m) => expected.has(m))
+}
+
+/** Well-known exercises that win a tie on score, so the builder picks a bench press before an odd variation. */
+export const STAPLE_IDS: ReadonlySet<string> = new Set([
+  'bench_press', 'db_bench_press', 'incline_db_press', 'push_up', 'incline_push_up', 'knee_push_up', 'chest_press_machine',
+  'chest_dip', 'bench_dip', 'overhead_press', 'db_shoulder_press', 'pike_push_up',
+  'pull_up', 'chin_up', 'lat_pulldown', 'negative_pull_up', 'band_assisted_pull_up',
+  'barbell_row', 'db_row', 'seated_cable_row', 'inverted_row', 'australian_pull_up',
+  'face_pull', 'band_pull_apart', 'rear_delt_db_fly',
+  'back_squat', 'front_squat', 'goblet_squat', 'db_squat', 'leg_press',
+  'bulgarian_split_squat', 'lunge', 'reverse_lunge', 'step_up',
+  'deadlift', 'romanian_deadlift', 'db_romanian_deadlift', 'hip_thrust', 'hip_bridge',
+  'leg_curl', 'seated_leg_curl', 'nordic_curl',
+  'plank', 'side_plank', 'dead_bug', 'hollow_hold', 'crunch', 'hanging_knee_raise', 'ab_roller', 'bird_dog',
+  'barbell_curl', 'hammer_curl', 'incline_db_curl', 'cable_curl', 'band_curl',
+  'skull_crusher', 'overhead_db_tricep_ext', 'overhead_cable_triceps_extension', 'band_overhead_triceps', 'close_grip_push_up',
+  'lateral_raise', 'cable_lateral_raise',
+  'calf_raise', 'standing_calf_raise', 'db_calf_raise', 'seated_calf_raise',
+  'incline_bench_press', 'close_grip_bench_press', 'arnold_press', 't_bar_row', 'chest_supported_row',
+  'sumo_deadlift', 'trap_bar_deadlift', 'hack_squat', 'glute_ham_raise', 'single_leg_rdl', 'diamond_push_up',
+  'db_lunge', 'db_step_up', 'db_split_squat', 'squat',
+])
 
 const SET_SECONDS = 40
 const TOLERANCE_MIN = 5
@@ -211,7 +276,7 @@ function slotsFor(focus: DayFocus): Slot[] {
     case 'PUSH':
       return [main(H_PUSH), main(V_PUSH), main(DIP), main(CORE), acc(LATERAL), acc(EXTENSION)]
     case 'PULL':
-      return [main(V_PULL), main(H_PULL), main(BACK_PULL), main(CORE), acc(CURL), acc(HINGE)]
+      return [main(V_PULL), main(H_PULL), main(BACK_PULL), main(CORE), acc(CURL), acc(BACK_PULL)]
     case 'LEGS':
       return [main(SQUAT), main(HINGE), main(UNILATERAL), main(CORE), acc(KNEE_FLEX), acc(CALF)]
     case 'CONDITIONING':
@@ -327,7 +392,13 @@ class Builder {
     }
 
     this.equipOk = this.lib.filter((e) => profileFits(this.prof(e), this.allowedEq) && !this.avoidIds.has(e.id))
-    this.eligible = this.equipOk.filter((e) => !STRETCH_IDS.has(e.id) && !blocked(e, this.prof(e), this.injuries))
+    this.eligible = this.equipOk.filter(
+      (e) =>
+        !STRETCH_IDS.has(e.id) &&
+        this.prof(e).pattern !== 'MOBILITY' &&
+        fitsItsMovement(e) &&
+        !blocked(e, this.prof(e), this.injuries),
+    )
     this.stretches = this.equipOk.filter((e) => STRETCH_IDS.has(e.id) && !blocked(e, this.prof(e), this.injuries))
 
     this.experienceCap =
@@ -368,8 +439,15 @@ class Builder {
     return s
   }
 
+  /** Within the best score: unused staples, then staples used on another day, then unused others, then the rest. */
+  private tieRank(e: ExerciseEntity): number {
+    return (STAPLE_IDS.has(e.id) ? 0 : 2) + (this.weekUsed.has(e.id) ? 1 : 0)
+  }
+
   private best(cands: ExerciseEntity[], role: Role): ExerciseEntity {
-    const sorted = [...cands].sort((a, b) => this.score(b, role) - this.score(a, role) || byIdAsc(a.id, b.id))
+    const sorted = [...cands].sort(
+      (a, b) => this.score(b, role) - this.score(a, role) || this.tieRank(a) - this.tieRank(b) || byIdAsc(a.id, b.id),
+    )
     const topScore = this.score(sorted[0], role)
     const tied: ExerciseEntity[] = []
     for (const c of sorted) {
@@ -396,9 +474,7 @@ class Builder {
           (e) => match(e) && !dayUsed.has(e.id) && (holdsAllowed || e.kind !== 'HOLD') && this.withinCap(e),
         )
         if (cands.length === 0) continue
-        const fresh = cands.filter((e) => !this.weekUsed.has(e.id))
-        const pool = fresh.length > 0 ? fresh : cands
-        const chosen = this.best(pool, slot.role)
+        const chosen = this.best(cands, slot.role)
         if (!this.holdsOk && chosen.kind === 'HOLD') tags.add('HOLD_FALLBACK')
         return chosen
       }
@@ -425,7 +501,12 @@ class Builder {
           this.withinCap(e) &&
           (this.holdsOk || e.kind !== 'HOLD'),
       )
-      .sort((a, b) => this.score(b, 'ACC') - this.score(a, 'ACC') || byIdAsc(a.id, b.id))
+      .sort(
+        (a, b) =>
+          this.score(b, 'ACC') - this.score(a, 'ACC') ||
+          (STAPLE_IDS.has(a.id) ? 0 : 1) - (STAPLE_IDS.has(b.id) ? 0 : 1) ||
+          byIdAsc(a.id, b.id),
+      )
       .slice(0, limit)
   }
 
@@ -506,7 +587,7 @@ class Builder {
   private repRangeFor(p: Pick): [number, number] {
     if (p.role === 'COND' || p.role === 'FINISHER') return [12, 20]
     const base = this.repRange()
-    if (isCompound(this.prof(p.ex).pattern)) return base
+    if (isCompoundExercise(p.ex)) return base
     if (this.reps !== 'AUTO') return base[0] >= 8 ? base : [8, 15]
     if (this.goal === 'STRENGTH') return [8, 12]
     if (this.goal === 'MUSCLE') return [10, 15]
@@ -515,41 +596,176 @@ class Builder {
 
   private restFor(p: Pick): number {
     if (p.role === 'COND' || p.role === 'FINISHER') return CONDITIONING_REST
-    const seconds = isCompound(this.prof(p.ex).pattern)
+    const seconds = isCompoundExercise(p.ex)
       ? (this.goal === 'STRENGTH' ? 180 : this.goal === 'MUSCLE' ? 150 : 120)
       : (this.goal === 'STRENGTH' || this.goal === 'MUSCLE' ? 90 : this.goal === 'GENERAL' ? 75 : 60)
     const factor = this.rest === 'AUTO' ? 1.0 : this.rest === 'SHORT' ? 0.6 : 1.5
     return clamp(Math.round(seconds * factor), 30, 240)
   }
 
+  /** Weekly effective sets the builder aims for, kept between the muscle's minimum and maximum. */
   private target(m: Muscle): number {
-    const weekly = this.experience === 'NEW' ? 8 : this.experience === 'SOME' ? 12 : 16
-    return weekly * (MAJOR_MUSCLES.has(m) ? 1.0 : 0.5) + (this.focus.has(m) ? 4 : 0)
+    const weekly = this.experience === 'NEW' ? 10 : this.experience === 'SOME' ? 12 : 14
+    const raw = weekly * (MAJOR_MUSCLES.has(m) ? 1.0 : 0.5) + (this.focus.has(m) ? 4 : 0)
+    const lm = landmarkFor(m)
+    const floor = BELOW_MEV_MUSCLES.has(m) ? lm.mev : 0
+    return clamp(raw, floor, lm.mrv)
   }
 
-  private assignSets(builds: Iterable<DayBuild>): void {
-    const counts = new Map<Muscle, number>()
-    for (const b of builds) {
-      for (const p of b.picks) {
-        if (p.role === 'MAIN' || p.role === 'FOCUS' || p.role === 'ACC') {
-          const m = p.ex.primary[0] ?? 'ABS'
-          counts.set(m, (counts.get(m) ?? 0) + 1)
+  private get maxSets(): number {
+    return this.experience === 'NEW' ? 4 : 5
+  }
+
+  private budgetSeconds(d: number, reserved: number): number {
+    return (this.dayMinutes(d) + TOLERANCE_MIN) * 60 - reserved
+  }
+
+  private removalRank(p: Pick): number {
+    if (p.role === 'FINISHER' || p.role === 'COND') return 0
+    if (p.role === 'ACC') return 1
+    if (isCore(this.prof(p.ex).pattern)) return 2
+    if (p.role === 'MAIN') return 3
+    return 4
+  }
+
+  /**
+   * Sets for every pick. Each starts at 2 (conditioning 3, finisher 2) and the day is fitted to its minutes; picks that
+   * break a Plan check rule even at their starting sets leave; then one set at a time goes to the pick that best closes
+   * the gap to the weekly targets, as long as every Plan check rule, the per-pick cap and the day's minutes still hold.
+   */
+  private allocate(builds: Map<number, DayBuild>, reserved: ReadonlyMap<number, number>): void {
+    for (const b of builds.values()) {
+      for (const p of b.picks) p.sets = p.role === 'COND' ? 3 : 2
+    }
+    const days: [number, DayBuild][] = [...builds.entries()]
+    for (const [d, b] of days) {
+      const budget = this.budgetSeconds(d, reserved.get(d)!)
+      while (this.workSeconds(b.picks) > budget && b.picks.length > 1) {
+        let drop = -1
+        for (const match of [
+          (p: Pick) => p.role === 'FINISHER',
+          (p: Pick) => p.role === 'ACC',
+          (p: Pick) => p.role !== 'FOCUS' && isCore(this.prof(p.ex).pattern),
+          (p: Pick) => p.role !== 'FOCUS',
+          () => true,
+        ]) {
+          for (let i = b.picks.length - 1; i >= 0; i--) {
+            if (match(b.picks[i])) { drop = i; break }
+          }
+          if (drop >= 0) break
         }
+        if (drop < 0) break
+        b.picks.splice(drop, 1)
+        b.tags.add('TIME_TRIMMED')
       }
     }
-    for (const b of builds) {
-      for (const p of b.picks) {
-        if (p.role === 'COND') {
-          p.sets = 3
-        } else if (p.role === 'FINISHER') {
-          p.sets = 2
-        } else {
-          const m = p.ex.primary[0] ?? 'ABS'
-          p.sets = clamp(Math.round(this.target(m) / counts.get(m)!), 2, 5)
+    let vol = new Volume(days, (m) => this.target(m))
+    for (let round = 0; round < 200; round++) {
+      const br = vol.broken()
+      if (!br) break
+      const [m, dayIdx] = br
+      const candidates: [number, Pick][] = []
+      for (let i = 0; i < days.length; i++) {
+        if (days[i][1].picks.length <= 1) continue
+        if (dayIdx != null && i !== dayIdx) continue
+        for (const p of days[i][1].picks) {
+          const matches = m == null ? pushPull(p.ex) === 1 : (credits(p.ex).get(m) ?? 0) > 0
+          if (matches) candidates.push([i, p])
         }
-        if (b.light) p.sets = Math.min(p.sets, 3)
       }
+      if (candidates.length === 0) break
+      candidates.sort((a, b) => {
+        const rankDiff = this.removalRank(a[1]) - this.removalRank(b[1])
+        if (rankDiff !== 0) return rankDiff
+        const ca = m == null ? 1.0 : (credits(a[1].ex).get(m) ?? 0)
+        const cb = m == null ? 1.0 : (credits(b[1].ex).get(m) ?? 0)
+        if (cb !== ca) return cb - ca
+        if (b[0] !== a[0]) return b[0] - a[0]
+        return days[b[0]][1].picks.indexOf(b[1]) - days[a[0]][1].picks.indexOf(a[1])
+      })
+      const victim = candidates[0]
+      const idx = days[victim[0]][1].picks.indexOf(victim[1])
+      if (idx >= 0) days[victim[0]][1].picks.splice(idx, 1)
+      vol = new Volume(days, (mu) => this.target(mu))
     }
+    vol = this.fill(days, reserved, vol)
+    // Still short of a minimum: trade one whole lift that does not feed the short muscle for more sets of those that do.
+    for (let round = 0; round < 20; round++) {
+      const short = vol.shortfall()
+      if (short <= 1e-9) break
+      const shortMuscles = vol.shortMuscles()
+      const options: [number, Pick][] = []
+      for (let i = 0; i < days.length; i++) {
+        if (days[i][1].picks.length <= 2) continue
+        for (const q of days[i][1].picks) {
+          if (q.role === 'FOCUS') continue
+          let touchesShort = false
+          for (const mu of credits(q.ex).keys()) {
+            if (shortMuscles.has(mu)) { touchesShort = true; break }
+          }
+          if (!touchesShort) options.push([i, q])
+        }
+      }
+      options.sort((a, b) => this.removalRank(a[1]) - this.removalRank(b[1]) || b[0] - a[0])
+      let improved = false
+      for (const [i, q] of options) {
+        const snapshot = days.map(([, d]) => d.picks.map((p) => [p, p.sets] as const))
+        const idx = days[i][1].picks.indexOf(q)
+        if (idx >= 0) days[i][1].picks.splice(idx, 1)
+        const trial = this.fill(days, reserved, new Volume(days, (mu) => this.target(mu)))
+        if (trial.broken() == null && trial.shortfall() < short - 1e-9) {
+          vol = trial
+          improved = true
+          break
+        }
+        for (let j = 0; j < days.length; j++) {
+          days[j][1].picks.length = 0
+          for (const [pick, sets] of snapshot[j]) {
+            pick.sets = sets
+            days[j][1].picks.push(pick)
+          }
+        }
+      }
+      if (!improved) break
+    }
+  }
+
+  /** Adds one set at a time to the pick that best closes the gap to the weekly targets while every rule still holds. */
+  private fill(days: [number, DayBuild][], reserved: ReadonlyMap<number, number>, start: Volume): Volume {
+    const vol = start
+    const cap = this.maxSets
+    while (true) {
+      const pushWanted = vol.pushBlocked() && days.some(([dow, b]) => {
+        const spare = this.budgetSeconds(dow, reserved.get(dow)!) - this.workSeconds(b.picks)
+        return !b.light && b.picks.some((p) =>
+          pushPull(p.ex) === 1 && p.sets < cap && SET_SECONDS + this.restFor(p) <= spare && vol.gain(p) >= 0.5 - 1e-9,
+        )
+      })
+      let bestIdx = -1
+      let bestPick: Pick | null = null
+      let bestGain = 0
+      for (let i = 0; i < days.length; i++) {
+        const [dow, b] = days[i]
+        if (b.light) continue
+        const spare = this.budgetSeconds(dow, reserved.get(dow)!) - this.workSeconds(b.picks)
+        for (const p of b.picks) {
+          if (p.role === 'COND' || p.role === 'FINISHER' || p.sets >= cap) continue
+          if (SET_SECONDS + this.restFor(p) > spare) continue
+          let g = vol.gain(p)
+          if (g < 0.5 - 1e-9 && pushWanted && pushPull(p.ex) === -1) g = 0.5
+          if (g < 0.5 - 1e-9 || !vol.fits(i, p)) continue
+          if (bestPick == null || g > bestGain + 1e-9 || (Math.abs(g - bestGain) < 1e-9 && p.sets < bestPick.sets)) {
+            bestIdx = i
+            bestPick = p
+            bestGain = g
+          }
+        }
+      }
+      if (!bestPick) break
+      bestPick.sets++
+      vol.add(bestIdx, bestPick, 1)
+    }
+    return vol
   }
 
   private item(p: Pick): PlanDraftItem {
@@ -651,59 +867,29 @@ class Builder {
   private orderRank(p: Pick): number {
     if (p.role === 'FINISHER') return 3
     const pattern = this.prof(p.ex).pattern
-    return isCore(pattern) ? 2 : isCompound(pattern) ? 0 : 1
+    return isCore(pattern) ? 2 : isCompoundExercise(p.ex) ? 0 : 1
   }
 
-  /** Fits the time budget, protecting focus picks until other lifts cannot be shaved. */
+  private warmFor(day: DayBuild): PlanDraftItem[] {
+    return this.warmUpItems(new Set(day.picks.map((p) => p.ex.id)))
+  }
+
+  private coolFor(day: DayBuild): PlanDraftItem[] {
+    return this.coolDownItems(new Set(day.picks.map((p) => p.ex.id)), new Set(day.picks.flatMap((p) => p.ex.primary)))
+  }
+
+  /** Turns a day's picks (already sized to the time by allocate) into a draft day: big lifts first, core, then finisher. */
   private finalizeDay(d: number, day: DayBuild): PlanDraftDay | null {
     if (day.picks.length === 0) return null
-    const pickIds = new Set(day.picks.map((p) => p.ex.id))
-    const trained = new Set(day.picks.flatMap((p) => p.ex.primary))
-    const warm = this.warmUpItems(pickIds)
-    const cool = this.coolDownItems(pickIds, trained)
-    const reservedSeconds = ((warm.length > 0 ? 5 : 0) + (cool.length > 0 ? 5 : 0)) * 60
-    const budgetSeconds = (this.dayMinutes(d) + TOLERANCE_MIN) * 60
-    const picks = day.picks
-    picks.sort((a, b) => this.orderRank(a) - this.orderRank(b))
-    let trimmed = false
-    const dropOrder: ((p: Pick) => boolean)[] = [
-      (p) => p.role === 'FINISHER',
-      (p) => p.role === 'ACC',
-      (p) => p.role !== 'FOCUS' && isCore(this.prof(p.ex).pattern),
-    ]
-    while (this.workSeconds(picks) + reservedSeconds > budgetSeconds) {
-      let drop = -1
-      for (const match of dropOrder) {
-        for (let i = picks.length - 1; i >= 0; i--) {
-          if (match(picks[i])) { drop = i; break }
-        }
-        if (drop >= 0) break
-      }
-      if (drop >= 0) {
-        picks.splice(drop, 1)
-      } else {
-        const cuttable = picks.map((_, i) => i).filter((i) => picks[i].sets > 2)
-        const spareFocus = cuttable.filter((i) => !picks[i].ex.primary.some((m) => this.focus.has(m)))
-        const candidates = spareFocus.length ? spareFocus : cuttable
-        const cut = candidates.sort((a, b) => picks[b].sets - picks[a].sets || b - a)[0]
-        let dropFocus = -1
-        for (let i = picks.length - 1; i >= 0; i--) {
-          if (picks[i].role === 'FOCUS') { dropFocus = i; break }
-        }
-        if (cut != null) picks[cut].sets--
-        else if (dropFocus >= 0) picks.splice(dropFocus, 1)
-        else if (picks.length > 1) picks.pop()
-        else break
-      }
-      trimmed = true
-    }
-    if (trimmed) day.tags.add('TIME_TRIMMED')
+    const warm = this.warmFor(day)
+    const cool = this.coolFor(day)
+    day.picks.sort((a, b) => this.orderRank(a) - this.orderRank(b))
     return {
       dayOfWeek: d,
       title: titleFor(day.focus),
       isRest: false,
       note: '',
-      items: [...warm, ...picks.map((p) => this.item(p)), ...cool],
+      items: [...warm, ...day.picks.map((p) => this.item(p)), ...cool],
     }
   }
 
@@ -729,7 +915,12 @@ class Builder {
       }
       builds.set(d, day)
     }
-    this.assignSets(builds.values())
+    for (const b of builds.values()) b.picks.sort((a, c) => this.orderRank(a) - this.orderRank(c))
+    const reserved = new Map<number, number>()
+    for (const [d, b] of builds) {
+      reserved.set(d, ((this.warmFor(b).length > 0 ? 5 : 0) + (this.coolFor(b).length > 0 ? 5 : 0)) * 60)
+    }
+    this.allocate(builds, reserved)
     const days: PlanDraftDay[] = []
     const focusByDay = new Map<number, DayFocus>()
     const why = new Map<number, WhyTag[]>()
@@ -748,10 +939,111 @@ class Builder {
   }
 }
 
+/** Running weekly totals for the plan being built, so each candidate set is checked in a few steps. */
+class Volume {
+  private readonly week = new Map<Muscle, number>()
+  private readonly dayPrimary: Map<Muscle, number>[]
+  private push = 0
+  private pull = 0
+  private readonly neighbours: number[][]
+
+  constructor(
+    private readonly days: readonly [number, DayBuild][],
+    private readonly targetOf: (m: Muscle) => number,
+  ) {
+    this.dayPrimary = days.map(() => new Map<Muscle, number>())
+    const indexByDow = new Map<number, number>(days.map(([dow], i) => [dow, i]))
+    this.neighbours = days.map(([dow], i) => {
+      const prev = indexByDow.get(dow === 1 ? 7 : dow - 1)
+      const next = indexByDow.get(dow === 7 ? 1 : dow + 1)
+      return [...new Set([prev, next].filter((idx): idx is number => idx != null && idx !== i))]
+    })
+    for (let i = 0; i < days.length; i++) {
+      for (const p of days[i][1].picks) this.add(i, p, p.sets)
+    }
+  }
+
+  add(dayIdx: number, p: Pick, n: number): void {
+    for (const [m, c] of credits(p.ex)) {
+      this.week.set(m, (this.week.get(m) ?? 0) + c * n)
+      if (c >= 1.0) this.dayPrimary[dayIdx].set(m, (this.dayPrimary[dayIdx].get(m) ?? 0) + n)
+    }
+    const pp = pushPull(p.ex)
+    if (pp === 1) this.push += n
+    else if (pp === -1) this.pull += n
+  }
+
+  private overlaps(dayIdx: number, m: Muscle, after: number): boolean {
+    return after >= OVERLAP_SETS && this.neighbours[dayIdx].some((nb) => (this.dayPrimary[nb].get(m) ?? 0) >= OVERLAP_SETS)
+  }
+
+  /** True when one more set of p on dayIdx keeps every Plan check rule. */
+  fits(dayIdx: number, p: Pick): boolean {
+    for (const [m, c] of credits(p.ex)) {
+      if ((this.week.get(m) ?? 0) + c > landmarkFor(m).mrv + 1e-9) return false
+      if (c >= 1.0) {
+        const after = (this.dayPrimary[dayIdx].get(m) ?? 0) + 1
+        if (after > DAY_MUSCLE_LIMIT || this.overlaps(dayIdx, m, after)) return false
+      }
+    }
+    return pushPull(p.ex) !== 1 || !pushPullBroken(this.push + 1, this.pull)
+  }
+
+  /** How much one more set of p closes the gap to the weekly targets. */
+  gain(p: Pick): number {
+    let sum = 0
+    for (const [m, c] of credits(p.ex)) {
+      sum += Math.min(c, Math.max(0, this.targetOf(m) - (this.week.get(m) ?? 0)))
+    }
+    return sum
+  }
+
+  /** Sets missing to reach each tracked muscle's minimum, summed over the week. */
+  shortfall(): number {
+    let sum = 0
+    for (const m of BELOW_MEV_MUSCLES) {
+      sum += Math.max(0, landmarkFor(m).mev - (this.week.get(m) ?? 0))
+    }
+    return sum
+  }
+
+  shortMuscles(): Set<Muscle> {
+    const out = new Set<Muscle>()
+    for (const m of BELOW_MEV_MUSCLES) {
+      if ((this.week.get(m) ?? 0) < landmarkFor(m).mev - 1e-9) out.add(m)
+    }
+    return out
+  }
+
+  /** A push set would still help but only the push/pull balance stops it, so a pull set is worth adding. */
+  pushBlocked(): boolean {
+    return pushPullBroken(this.push + 1, this.pull)
+  }
+
+  /** The first broken rule a pick could fix by leaving: [muscle or null for push/pull, day index or null for the week]. */
+  broken(): [Muscle | null, number | null] | null {
+    for (const m of MUSCLES) {
+      if ((this.week.get(m) ?? 0) > landmarkFor(m).mrv + 1e-9) return [m, null]
+    }
+    for (let i = 0; i < this.days.length; i++) {
+      for (const m of MUSCLES) {
+        const v = this.dayPrimary[i].get(m) ?? 0
+        if (v > DAY_MUSCLE_LIMIT || this.overlaps(i, m, v)) return [m, i]
+      }
+    }
+    if (pushPullBroken(this.push, this.pull)) return [null, null]
+    return null
+  }
+}
+
 export const PlanBuilder = {
   COOL_DOWN_BLOCK,
   FINISHER_BLOCK,
   PROGRESSION_NOTE,
+  STAPLE_IDS,
+  isFly,
+  isCompoundExercise,
+  fitsItsMovement,
   spreadDays,
   build: buildPlan,
   alternatives,

@@ -115,10 +115,10 @@ describe('web additions', () => {
       { dayOfWeek: 2, title: 'Rest', isRest: true, note: '', items: [] },
     ]
     const [adapted, swaps] = adaptPlanToEquipment({ name: 'Starter', days }, LIBRARY, presetEquipment('DUMBBELLS_AND_BAR'))
-    // bench press goes to weighted push-up (same muscles beat the curated dumbbell bench); leg press skips the goblet
-    // squat already used that day.
+    // bench press goes to dumbbell bench press (same primary + secondary muscles since db_bench_press gained SHOULDERS);
+    // leg press skips the goblet squat already used that day.
     expect(swaps).toBe(3)
-    expect(adapted.days[0].items.map((i) => i.exerciseId)).toEqual(['goblet_squat', 'weighted_push_up', 'pull_up', 'squat', 'plank'])
+    expect(adapted.days[0].items.map((i) => i.exerciseId)).toEqual(['goblet_squat', 'db_bench_press', 'pull_up', 'squat', 'plank'])
     expect(adapted.days[0].items[0].weightKg).toBeNull()
     expect(adapted.days[0].items[0].restSeconds).toBe(90)
     expect(adapted.days[1]).toBe(days[1])

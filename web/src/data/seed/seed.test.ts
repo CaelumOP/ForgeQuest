@@ -16,6 +16,7 @@ import { MUSCLES } from '../../domain/muscle'
 import { db } from '../db'
 import { seedLibrary } from '../workouts'
 import { EXERCISE_ALIASES } from './exercise-aliases'
+import { CATALOG_METADATA_FIXES } from './catalog-fixes'
 import { EXERCISE_CATALOG, STRETCH_IDS } from './exercise-catalog'
 import { EXERCISE_CUE_KEYS } from './exercise-cues'
 import { EXERCISE_LEVELS } from './exercise-levels'
@@ -117,7 +118,9 @@ describe('seed data mirrors the Android catalog', () => {
   })
 
   it('all mobility stretches are registered in STRETCH_IDS', () => {
-    const mobilityIds = EXERCISE_CATALOG.filter((e) => e.pattern === 'MOBILITY').map((e) => e.id)
+    // Neck strength holds sit in MOBILITY only so the plan builder skips them (plan audit); they are not stretches.
+    const neckFixes = new Set(CATALOG_METADATA_FIXES.filter((f) => f.pattern === 'MOBILITY').map((f) => f.id))
+    const mobilityIds = EXERCISE_CATALOG.filter((e) => e.pattern === 'MOBILITY' && !neckFixes.has(e.id)).map((e) => e.id)
     expect(mobilityIds.length).toBeGreaterThanOrEqual(100)
     for (const id of mobilityIds) {
       expect(STRETCH_IDS.has(id), id).toBe(true)
@@ -282,6 +285,58 @@ describe('seedLibrary upgrade and idempotency', () => {
     await seedLibrary('ar')
     expect(await db.exercises.count()).toBe(EXERCISE_CATALOG.length + 1)
     expect((await db.exercises.get('bench_press'))!.name).toBe('My Custom Bench')
+  })
+
+  it('applies catalog fixes to pre-fix built-in rows on seedLibrary while leaving user-edited and custom rows alone', async () => {
+    await db.exercises.bulkPut([
+      {
+        id: 'sled_overhead_backward_walk', name: 'Sled Overhead Backward Walk', kind: 'REPS',
+        primary: ['SHOULDERS'], secondary: ['CALVES', 'UPPER_BACK', 'QUADS'], videoUrl: null,
+        custom: false, equipment: 'BODYWEIGHT', pattern: 'VERTICAL_PUSH',
+      },
+      {
+        id: 'kipping_muscle_up', name: 'Kipping Muscle Up', kind: 'REPS',
+        primary: ['UPPER_BACK'], secondary: ['ABS', 'BICEPS'], videoUrl: null,
+        custom: false, equipment: 'BODYWEIGHT', pattern: 'HORIZONTAL_PULL',
+      },
+      {
+        id: 'db_bench_press', name: 'Dumbbell bench press', kind: 'WEIGHTED',
+        primary: ['CHEST'], secondary: ['TRICEPS'], videoUrl: null,
+        custom: false, equipment: 'DUMBBELLS,FLAT_BENCH', pattern: 'HORIZONTAL_PUSH',
+      },
+      {
+        // User changed equipment from BODYWEIGHT to CABLE_MACHINE, so equipment stays CABLE_MACHINE.
+        id: 'sled_row', name: 'Sled Row', kind: 'REPS',
+        primary: ['UPPER_BACK'], secondary: ['BICEPS'], videoUrl: null,
+        custom: false, equipment: 'CABLE_MACHINE', pattern: 'HORIZONTAL_PULL',
+      },
+      {
+        // Custom row with same id must never be touched.
+        id: 'sled_push', name: 'Custom Sled', kind: 'HOLD',
+        primary: ['QUADS'], secondary: [], videoUrl: null,
+        custom: true, equipment: 'BODYWEIGHT', pattern: 'CARRY_CONDITIONING',
+      },
+    ])
+
+    await seedLibrary('en')
+
+    const walk = (await db.exercises.get('sled_overhead_backward_walk'))!
+    expect(walk.equipment).toBe('MACHINE')
+    expect(walk.pattern).toBe('CARRY_CONDITIONING')
+
+    const muscleUp = (await db.exercises.get('kipping_muscle_up'))!
+    expect(muscleUp.equipment).toBe('PULL_UP_BAR')
+    expect(muscleUp.pattern).toBe('VERTICAL_PULL')
+
+    const dbBench = (await db.exercises.get('db_bench_press'))!
+    expect(dbBench.secondary).toEqual(['TRICEPS', 'SHOULDERS'])
+
+    const sledRow = (await db.exercises.get('sled_row'))!
+    expect(sledRow.equipment).toBe('CABLE_MACHINE')
+
+    const sledPush = (await db.exercises.get('sled_push'))!
+    expect(sledPush.equipment).toBe('BODYWEIGHT')
+    expect(sledPush.custom).toBe(true)
   })
 
   it('ranks bench_press above Bench Jump and Bench Press with Chains for "bench"', async () => {

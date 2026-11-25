@@ -42,6 +42,11 @@ describe('exercise tiers', () => {
     expect(readyForHarder(s([20, 18, 15], 'HARD'), s([16, 15, 15]))).toBe(true)
     expect(readyForHarder(s([20, 18, 15], 'FAILURE'), s([16, 15, 15]))).toBe(false)
     expect(readyForHarder(s([20, 18, 15], 'PAIN'), s([16, 15, 15]))).toBe(false)
+    // S7: topReps sets ready threshold to min(15, topReps + 2), so 8-12 done 14 x 3 twice is ready.
+    expect(readyForHarder(s([14, 14, 14]), s([14, 14, 14]), 12)).toBe(true)
+    expect(readyForHarder(s([14, 14, 13]), s([14, 14, 14]), 12)).toBe(false)
+    expect(readyForHarder(s([15, 15, 15]), s([15, 15, 15]), 16)).toBe(true)
+    expect(readyForHarder(s([14, 14, 14]), s([14, 14, 14]), 16)).toBe(false)
   })
 })
 

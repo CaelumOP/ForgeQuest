@@ -50,10 +50,19 @@ const RELATED: Partial<Record<MovementPattern, MovementPattern>> = {
   HORIZONTAL_PULL: 'VERTICAL_PULL',
 }
 
-/** True when both of the last two sessions had 2+ sets, all at READY_REPS+ reps, none marked Failure or Pain. */
-export const readyForHarder = (last: PastSet[], previous: PastSet[]): boolean =>
-  [last, previous].every((session) => session.length >= 2 &&
-    session.every((s) => (s.reps ?? 0) >= READY_REPS && s.effort !== 'FAILURE' && s.effort !== 'PAIN'))
+/**
+ * True when both of the last two sessions had 2+ sets, all at the ready reps or more, none marked Failure or Pain.
+ * The ready reps are READY_REPS, or two past the plan's top reps `topReps` when that is lower (audit S7): an 8-12
+ * push-up done 14 x 3 twice is ready.
+ */
+export const readyForHarder = (last: PastSet[], previous: PastSet[], topReps: number | null = null): boolean => {
+  const ready = topReps != null ? Math.min(READY_REPS, topReps + 2) : READY_REPS
+  return [last, previous].every(
+    (session) =>
+      session.length >= 2 &&
+      session.every((s) => (s.reps ?? 0) >= ready && s.effort !== 'FAILURE' && s.effort !== 'PAIN'),
+  )
+}
 
 /**
  * The next step up from `ex` that fits `equipment` (empty = not set, so anything): a bodyweight rep move one tier up

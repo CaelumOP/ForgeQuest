@@ -8,6 +8,7 @@ import {
 } from './db';
 import { fromBackupSettings, loadSettings, toBackupSettings, updateSettings, weekTargets } from './settings';
 import { SCANNED_NO_PHOTO } from './food';
+import { applyCatalogFixes } from './seed/catalog-fixes';
 import { EXERCISE_KINDS, MUSCLES } from '../domain/muscle';
 import { CUT_PACES, DAY_ACTIVITIES, GAIN_PACES, NUTRITION_GOALS } from '../domain/nutrition';
 import { DAY_TAGS } from '../domain/progress';
@@ -357,6 +358,7 @@ export async function applyBackup(
     }
     const rows: Record<(typeof TABLES)[number], unknown[]> = {
       ...f,
+      exercises: f.exercises.map((e) => applyCatalogFixes(e)),
       bodyMeasurements: f.bodyMeasurements ?? [],
       foods: f.foods.map((r) => ({ ...r, photoPath: null })),
       // Photos never come along; a scanned meal keeps a marker so the "Snap & log" badge still counts it.

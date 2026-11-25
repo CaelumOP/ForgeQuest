@@ -167,6 +167,36 @@ describe('IntraSession', () => {
     expect(result?.percent).toBeUndefined()
   })
 
+  it('S5 & Gate 17: step over 10 percent keeps weight, caps reps, and never prescribes zero reps', () => {
+    // 20 kg in KG has step = 2.5 kg > 10% of 20 kg (2.0 kg), so keep 20 kg and cap reps.
+    const s1 = makeSet(1, { setIndex: 0, reps: 5, weightKg: 20, done: true, effort: 'FAILURE' })
+    const s2 = makeSet(2, { setIndex: 1, reps: 8, weightKg: 20 })
+    const bigStep = computeAdjustment(s1, [s2], 'WEIGHTED', 8, 'KG')
+    expect(bigStep?.changed[0].weightKg).toBeCloseTo(20, 2)
+    expect(bigStep?.changed[0].reps).toBe(5)
+    expect(bigStep?.percent).toBeUndefined()
+    expect(bigStep?.reps).toBe(5)
+
+    // Gate 17: 0 reps done never prescribes 0 reps.
+    const zeroWeighted = computeAdjustment(
+      makeSet(1, { setIndex: 0, reps: 0, weightKg: 20, done: true, effort: 'FAILURE' }),
+      [makeSet(2, { setIndex: 1, reps: 8, weightKg: 20 })],
+      'WEIGHTED',
+      8,
+      'KG',
+    )
+    expect(zeroWeighted?.changed[0].reps).toBe(1)
+
+    const zeroBw = computeAdjustment(
+      makeSet(1, { setIndex: 0, reps: 0, weightKg: null, done: true, effort: 'FAILURE' }),
+      [makeSet(2, { setIndex: 1, reps: 10, weightKg: null })],
+      'REPS',
+      8,
+      'KG',
+    )
+    expect(zeroBw?.changed[0].reps).toBe(1)
+  })
+
   it('bodyweightFailureNeverRaisesTheNextTarget', () => {
     const s1 = makeSet(1, { setIndex: 0, reps: 12, weightKg: null, done: true, effort: 'FAILURE' })
     const s2 = makeSet(2, { setIndex: 1, reps: 10, weightKg: null })

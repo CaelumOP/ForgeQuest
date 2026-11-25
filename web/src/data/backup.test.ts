@@ -274,4 +274,37 @@ describe('backup', () => {
     expect(out.sets.find((s) => s.id === decoded.sets[0].id)?.autoTicked).toBe(false);
     expect(out.sets.find((s) => s.id === 99)?.autoTicked).toBe(true);
   });
+
+  it('applies catalog fixes on backup restore (Gate point 8) without touching custom or user-edited rows', async () => {
+    const f = fixture() as { exercises: Record<string, unknown>[] };
+    f.exercises.push(
+      {
+        id: 'kipping_muscle_up', name: 'Kipping Muscle Up', kind: 'REPS',
+        primary: ['UPPER_BACK'], secondary: ['BICEPS'], videoUrl: null,
+        custom: false, equipment: 'BODYWEIGHT', pattern: 'HORIZONTAL_PULL',
+      },
+      {
+        id: 'db_bench_press', name: 'Dumbbell bench press', kind: 'WEIGHTED',
+        primary: ['CHEST'], secondary: ['TRICEPS'], videoUrl: null,
+        custom: false, equipment: 'DUMBBELLS,FLAT_BENCH', pattern: 'HORIZONTAL_PUSH',
+      },
+      {
+        id: 'sled_row', name: 'Sled Row', kind: 'REPS',
+        primary: ['UPPER_BACK'], secondary: ['BICEPS'], videoUrl: null,
+        custom: false, equipment: 'CABLE_MACHINE', pattern: 'HORIZONTAL_PULL',
+      },
+      {
+        id: 'sled_push', name: 'My Custom Sled', kind: 'HOLD',
+        primary: ['QUADS'], secondary: [], videoUrl: null,
+        custom: true, equipment: 'BODYWEIGHT', pattern: 'CARRY_CONDITIONING',
+      },
+    );
+    await applyBackup(decodeBackup(JSON.stringify(f)));
+
+    expect((await db.exercises.get('kipping_muscle_up'))?.equipment).toBe('PULL_UP_BAR');
+    expect((await db.exercises.get('kipping_muscle_up'))?.pattern).toBe('VERTICAL_PULL');
+    expect((await db.exercises.get('db_bench_press'))?.secondary).toEqual(['TRICEPS', 'SHOULDERS']);
+    expect((await db.exercises.get('sled_row'))?.equipment).toBe('CABLE_MACHINE');
+    expect((await db.exercises.get('sled_push'))?.equipment).toBe('BODYWEIGHT');
+  });
 });

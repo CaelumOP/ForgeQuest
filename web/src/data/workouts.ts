@@ -6,12 +6,12 @@ import {
   type ExerciseRow, type PlanDayRow, type PlanItemRow, type PlanRow, type SessionRow, type SetRow,
 } from './db';
 import { configuredEquipment, loadSettings, weightUnit } from './settings';
+import { applyCatalogFixes } from './seed/catalog-fixes';
 import { EXERCISE_CATALOG } from './seed/exercise-catalog';
 import { EXERCISE_NAMES_AR, PREVIOUS_EXERCISE_NAMES_AR } from './seed/exercise-names-ar';
 import { STARTER_PLANS_AR, type PlanDraft } from './seed/starter-plans';
 import { useLive } from './live';
 import { todayEpochDay } from '../domain/dates';
-import { effortOf } from '../domain/effort';
 import { endTime, lastDoneAt } from '../domain/workout-end';
 import { translatePlanItem } from '../domain/exercise-swap-engine';
 import { MUSCLES, type ExerciseKind, type Muscle } from '../domain/muscle';
@@ -19,7 +19,7 @@ import { dayTagMap, fullTarget, personalRecords, recordScore, setsForXp, totalXp
 import { debriefForSession, type DebriefResult } from '../domain/debrief';
 import { analyzeFatigueAndPlateaus } from '../domain/trends';
 import { harderVersion, readyForHarder } from '../domain/exercise-tiers';
-import { isDeloadWeek, isLowerBodyExercise, nextPrefill, parseProgressionMode, progressionInputs, type PastSet, type ProgressionReason } from '../domain/progression';
+import { isDeloadWeek, isLowerBodyExercise, nextPrefill, parseProgressionMode, pastSet, progressionInputs, type PastSet, type ProgressionReason } from '../domain/progression';
 import { isExtraBlock, pickPrs } from '../domain/pr-picker';
 import { cursorAfterPlanEdit, cursorOnFinish, parseScheduleMode, type ScheduleMode } from '../domain/rotation';
 import { countsForPR, countsForScore, countsForProgression } from '../domain/set-types';
@@ -108,6 +108,12 @@ export async function seedLibrary(lang: 'en' | 'ar' = 'en'): Promise<void> {
     }
   }
   if (toPut.length) await db.exercises.bulkPut(toPut);
+  const fixed: ExerciseRow[] = [];
+  for (const row of await db.exercises.toArray()) {
+    const next = applyCatalogFixes(row);
+    if (next !== row) fixed.push(next);
+  }
+  if (fixed.length) await db.exercises.bulkPut(fixed);
 
   // Starter plan & plan-builder texts follow the language (only rows whose text is an exact built-in title).
   const EXTRA_PLAN_AR: Record<string, string> = {
@@ -716,17 +722,21 @@ export async function stepUp(sessionId: number, oldId: string, newId: string): P
  * "Ready for a harder version" for one exercise of the open workout, from its last two finished sessions: undefined
  * when not ready, `{ next: null }` when there is no harder move (the screen suggests a slower tempo).
  */
-export async function harderHint(ex: ExerciseRow, warmup: boolean, openSessionId: number): Promise<{ next: ExerciseRow | null } | undefined> {
+export async function harderHint(
+  ex: ExerciseRow,
+  warmup: boolean,
+  openSessionId: number,
+  topReps: number | null = null,
+): Promise<{ next: ExerciseRow | null } | undefined> {
   if (ex.kind !== 'REPS' || warmup || ex.id === 'jumping_jacks') return undefined;
   const recent = (await recentDoneSets(ex.id)).filter((s) => s.sessionId !== openSessionId);
   const ids = [...new Set(recent.map((s) => s.sessionId))];
   // Working sets only (no warm-up / drop / rest-pause rows), with a blank-effort FAILURE set read as Failure (A11).
-  const past = (id: number | undefined): PastSet[] => recent.filter((s) => s.sessionId === id && countsForProgression(s))
-    .map((s) => ({
-      reps: s.reps, seconds: s.seconds, weightKg: s.weightKg,
-      effort: s.effort.trim() === '' && s.setType === 'FAILURE' ? 'FAILURE' : effortOf(s.effort, s.note),
-    }));
-  if (!readyForHarder(past(ids[0]), past(ids[1]))) return undefined;
+  const past = (id: number | undefined): PastSet[] =>
+    recent.filter((s) => s.sessionId === id && countsForProgression(s))
+      .sort((a, b) => a.setIndex - b.setIndex)
+      .map(pastSet);
+  if (!readyForHarder(past(ids[0]), past(ids[1]), topReps)) return undefined;
   const next = harderVersion(ex, await getLibrary(), configuredEquipment(await loadSettings()));
   return { next: (next as ExerciseRow | null) ?? null };
 }

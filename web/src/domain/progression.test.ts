@@ -4,7 +4,7 @@ import { chipOf, effortOf, effortRir, type SetEffort } from './effort'
 import type { ExerciseEntity } from './entities'
 import { readyForHarder } from './exercise-tiers'
 import type { ExerciseKind } from './muscle'
-import { nextPrefill, progressionInputs, type PastSet, type Target } from './progression'
+import { nextPrefill, pastSet, progressionInputs, type PastSet, type Target } from './progression'
 import { fromKg, toKg, type WeightUnit } from './units'
 import { scoresForSessions } from './workout-score'
 
@@ -16,6 +16,14 @@ const next = (kind: ExerciseKind, t: Target, last: PastSet[], previous: PastSet[
   nextPrefill(kind, t, last, previous, unit, false)
 
 describe('ProgressionTest', () => {
+  it('cutSetRestartsAtMinimumAtTheSessionTopWeight', () => {
+    // Audit S1: 100 x 10, 10, then a cut 90 x 8 -> every set at 100 kg, the cut set back at the minimum with no extra rep.
+    const last: PastSet[] = [...sets(2, 10, 100), ...sets(1, 8, 90)]
+    const r = next('WEIGHTED', target(3, 8, 12, null, 100), last)
+    expect(r.sets.map((s) => s.weightKg)).toEqual([100, 100, 100])
+    expect(r.sets.map((s) => s.reps)).toEqual([11, 11, 8])
+  })
+
   it('rangeTopAddsOneStepAndResets', () => {
     const r = next('WEIGHTED', target(3, 8, 12, null, 40), sets(3, 12, 40))
     expect(r.sets[0].reps).toBe(8)
@@ -326,7 +334,7 @@ describe('RIR semantics', () => {
     expect(deloadBackOff.sets[0].weightKg!).toBeCloseTo(57.5, 2)
   })
 
-  it('bodyweightMissedRepsHoldsAtRepsDone', () => {
+  it('bodyweightMissedRepsSetsEverySetToMinOfMinimumAndBestDone', () => {
     const r = nextPrefill(
       'REPS',
       bwTarget(),
@@ -340,7 +348,7 @@ describe('RIR semantics', () => {
       false,
     )
     expect(r.reason).toBe('MISSED')
-    expect(r.sets.map((s) => s.reps)).toEqual([8, 7, 6])
+    expect(r.sets.map((s) => s.reps)).toEqual([8, 8, 8])
   })
 
   it('bodyweightFailureHolds', () => {
@@ -455,5 +463,113 @@ describe('RIR semantics', () => {
     expect(blankRes.reason).toBe('LOAD_UP')
     expect(blankRes.sets[0].weightKg!).toBeCloseTo(62.5, 2)
     expect(okRes).toEqual(blankRes)
+  })
+})
+
+describe('plan audit progression fixes (S1-S5, Gates 5/6/7/16/17)', () => {
+  it('S1 & Gate 5: weighted uses top weight for every set; lighter sets restart at minimum and do not block hitTop/metMin', () => {
+    const t = target(3, 8, 12, null, 60)
+    // Set 3 was cut to 55 kg after 10, 10 at 60 kg -> all 3 prescribe 60 kg; set 3 restarts at repsMin (8).
+    const cutLast: PastSet[] = [
+      { reps: 10, seconds: null, weightKg: 60, effort: 'OK' },
+      { reps: 10, seconds: null, weightKg: 60, effort: 'OK' },
+      { reps: 8, seconds: null, weightKg: 55, effort: 'OK' },
+    ]
+    const climb = next('WEIGHTED', t, cutLast)
+    expect(climb.reason).toBe('MORE_REPS')
+    expect(climb.sets).toEqual([
+      { reps: 11, seconds: null, weightKg: 60 },
+      { reps: 11, seconds: null, weightKg: 60 },
+      { reps: 8, seconds: null, weightKg: 60 },
+    ])
+
+    // Top-weight sets hit 12 while cut set at 55 kg hit 8 -> still loads up to 62.5 at repsMin=8!
+    const topHitWithCut: PastSet[] = [
+      { reps: 12, seconds: null, weightKg: 60, effort: 'OK' },
+      { reps: 12, seconds: null, weightKg: 60, effort: 'OK' },
+      { reps: 8, seconds: null, weightKg: 55, effort: 'OK' },
+    ]
+    const loadUp = next('WEIGHTED', t, topHitWithCut)
+    expect(loadUp.reason).toBe('LOAD_UP')
+    expect(loadUp.sets).toEqual(Array(3).fill({ reps: 8, seconds: null, weightKg: 62.5 }))
+  })
+
+  it('S2 & Gate 6: bodyweight reps never prescribe < 1, reset missed sets uniformly, and emit EASIER after two misses', () => {
+    const t = target(3, 8, 12, null, null)
+    const zeroReps = next('REPS', t, sets(3, 0, null))
+    expect(zeroReps.reason).toBe('MISSED')
+    expect(zeroReps.sets.map((s) => s.reps)).toEqual([1, 1, 1])
+
+    const oneMissed = next('REPS', t, [
+      { reps: 10, seconds: null, weightKg: null, effort: 'OK' },
+      { reps: 6, seconds: null, weightKg: null, effort: 'OK' },
+      { reps: 5, seconds: null, weightKg: null, effort: 'OK' },
+    ])
+    expect(oneMissed.reason).toBe('MISSED')
+    expect(oneMissed.sets.map((s) => s.reps)).toEqual([8, 8, 8])
+
+    // Two missed sessions in a row -> EASIER (needs non-empty previous session).
+    const twoMissed = next('REPS', t, sets(3, 6, null), sets(3, 7, null))
+    expect(twoMissed.reason).toBe('EASIER')
+    expect(twoMissed.sets.map((s) => s.reps)).toEqual([6, 6, 6])
+  })
+
+  it('S3 & Gate 6: holds use best seconds rounded down to 5 s, handle missed/Failure/EASIER', () => {
+    const t = target(3, null, null, 30, null)
+    // Missed hold without failure: best=22 -> floor5=20 -> 25 s; Failure keeps 20 s.
+    const missedClean = next('HOLD', t, [
+      { reps: null, seconds: 22, weightKg: null, effort: 'OK' },
+      { reps: null, seconds: 15, weightKg: null, effort: 'OK' },
+      { reps: null, seconds: 15, weightKg: null, effort: 'OK' },
+    ])
+    expect(missedClean.reason).toBe('MISSED')
+    expect(missedClean.sets.map((s) => s.seconds)).toEqual([25, 25, 25])
+
+    const missedFail = next('HOLD', t, sets(3, null, null, 22, 'FAILURE'))
+    expect(missedFail.reason).toBe('HARD')
+    expect(missedFail.sets.map((s) => s.seconds)).toEqual([20, 20, 20])
+
+    // Two missed holds in a row -> EASIER.
+    const twoMissedHold = next('HOLD', t, sets(3, null, null, 20), sets(3, null, null, 25))
+    expect(twoMissedHold.reason).toBe('EASIER')
+    expect(twoMissedHold.sets.map((s) => s.seconds)).toEqual([25, 25, 25])
+
+    // Mixed sets where one set < target (30, 30, 25) -> best=30 (>= target), so not missedSession, but !metMin -> MISSED at 30.
+    const partialHold = next('HOLD', t, [
+      { reps: null, seconds: 30, weightKg: null, effort: 'OK' },
+      { reps: null, seconds: 30, weightKg: null, effort: 'OK' },
+      { reps: null, seconds: 25, weightKg: null, effort: 'OK' },
+    ])
+    expect(partialHold.reason).toBe('MISSED')
+    expect(partialHold.sets.map((s) => s.seconds)).toEqual([30, 30, 30])
+  })
+
+  it('S4 & Gate 16: back-off on two untagged 2+ under misses at the same top weight only', () => {
+    const t = target(3, 8, 12, null, 60)
+    const farUnder = [...sets(2, 8, 60), ...sets(1, 6, 60)]
+    const sameWeight = next('WEIGHTED', t, farUnder, farUnder)
+    expect(sameWeight.reason).toBe('BACK_OFF')
+    expect(sameWeight.sets[0].weightKg).toBeCloseTo(57.5, 2)
+    expect(sameWeight.sets.map((s) => s.reps)).toEqual([8, 8, 8])
+
+    // Different top weights (60 vs 65) do not pair for BACK_OFF.
+    const diffWeight = next('WEIGHTED', t, farUnder, [...sets(2, 8, 65), ...sets(1, 6, 65)])
+    expect(diffWeight.reason).toBe('MISSED')
+    expect(diffWeight.sets[0].weightKg).toBeCloseTo(60, 2)
+  })
+
+  it('S5 & Gate 7: big load step (>10% of weight) keeps weight and reports MISSED on back-off', () => {
+    const t = target(3, 8, 12, null, 20)
+    // In KG, loadStep = 2.5 > 0.1 * 20 (2.0).
+    const failLow = sets(3, 6, 20, null, 'FAILURE')
+    const r = next('WEIGHTED', t, failLow, failLow, 'KG')
+    expect(r.reason).toBe('MISSED')
+    expect(r.sets[0].weightKg).toBeCloseTo(20, 2)
+    expect(r.sets.map((s) => s.reps)).toEqual([8, 8, 8])
+  })
+
+  it('pastSet reads blank effort with setType FAILURE as FAILURE', () => {
+    expect(pastSet({ reps: 8, seconds: null, weightKg: 40, effort: '', note: '', setType: 'FAILURE' }).effort).toBe('FAILURE')
+    expect(pastSet({ reps: 8, seconds: null, weightKg: 40, effort: '', note: '', setType: 'WORKING' }).effort).toBe('OK')
   })
 })

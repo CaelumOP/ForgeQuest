@@ -17,6 +17,7 @@ function findingText(f: Finding, lang: Lang): string {
     case 'ISOLATION_FIRST': return t('plan_audit_isolation_first', day, muscle)
     case 'JUNK_VOLUME': return t('plan_audit_junk_volume', muscle, f.value, day, f.limit)
     case 'RECOVERY_OVERLAP': return t('plan_audit_recovery_overlap', muscle, f.limit)
+    case 'SHORT_PLAN': return t('plan_audit_short_plan')
   }
 }
 

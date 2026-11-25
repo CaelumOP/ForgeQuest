@@ -349,4 +349,11 @@ describe("Gemini's 8 cases", () => {
     const warmupOnly = ex('bench', 'WEIGHTED', [heavyWarmup])
     expect(run([warmupOnly]).headline.type).toBe('ONLY_WARM_UPS')
   })
+
+  it('S7: debrief suggests HARDER when an 8-12 bodyweight move hits 14 x 3 twice', () => {
+    const r = run([
+      ex('push_up', 'REPS', n(3, 14, null, { effort: 'EASY' }), n(3, 14), { item: range(3, 8, 12), harder: 'Diamond push-up' }),
+    ], { planned: 3 })
+    expect(r.next).toEqual([{ type: 'HARDER', exerciseId: 'push_up', harderName: 'Diamond push-up' }])
+  })
 })

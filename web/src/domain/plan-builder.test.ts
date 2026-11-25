@@ -7,7 +7,8 @@ import { EQUIPMENT_PRESETS, presetEquipment, profileFor, type Equipment, type Mo
 import { tierOf } from './exercise-tiers'
 import type { Muscle } from './muscle'
 import {
-  blocked, COOL_DOWN_BLOCK, estimateMinutes, FINISHER_BLOCK, INJURIES, isCompound, isCore, PlanBuilder, spreadDays,
+  blocked, COOL_DOWN_BLOCK, estimateMinutes, FINISHER_BLOCK, fitsItsMovement, INJURIES, isCompound,
+  isCompoundExercise, isCore, isFly, PlanBuilder, spreadDays, STAPLE_IDS,
   type BuiltPlan, type Injury, type PlanInput, type TrainGoal,
 } from './plan-builder'
 
@@ -268,5 +269,30 @@ describe('PlanBuilder overhaul', () => {
       const withFocus = weeklySets(build(input(4, fullGym, 'MUSCLE', 45, { focus: [m] })), m)
       expect(withFocus, `${m} at 45m: ${withFocus} vs ${without}`).toBeGreaterThan(without)
     }
+  })
+
+  it('treats flyes and leg_extension as isolations, rejects mismatched pattern rows and MOBILITY, and prefers staples', () => {
+    expect(isFly(byId.get('db_fly')!)).toBe(true)
+    expect(isFly(byId.get('cable_fly')!)).toBe(true)
+    expect(isFly(byId.get('bench_press')!)).toBe(false)
+    expect(isCompoundExercise(byId.get('db_fly')!)).toBe(false)
+    expect(isCompoundExercise(byId.get('leg_extension')!)).toBe(false)
+    expect(isCompoundExercise(byId.get('bench_press')!)).toBe(true)
+
+    expect(fitsItsMovement(byId.get('single_leg_push_off')!)).toBe(false)
+    expect(fitsItsMovement(byId.get('bench_press')!)).toBe(true)
+
+    const ppl = build(input(6, fullGym, 'MUSCLE', 60))
+    const allIds = ppl.draft.days.flatMap((d) => d.items.map((i) => i.exerciseId))
+    expect(allIds.every((id) => profileFor(byId.get(id)!).pattern !== 'MOBILITY')).toBe(true)
+    expect(allIds.every((id) => fitsItsMovement(byId.get(id)!))).toBe(true)
+
+    // Pull days in 5/6-day splits no longer include HIP_HINGE accessories.
+    for (const day of ppl.draft.days) {
+      if (ppl.days.get(day.dayOfWeek) === 'PULL') {
+        expect(day.items.some((it) => profileFor(byId.get(it.exerciseId)!).pattern === 'HIP_HINGE')).toBe(false)
+      }
+    }
+    expect(STAPLE_IDS.has('bench_press')).toBe(true)
   })
 })

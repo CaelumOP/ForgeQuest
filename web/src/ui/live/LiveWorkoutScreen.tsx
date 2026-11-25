@@ -262,28 +262,47 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     return () => { live = false }
   }, [session?.id])
 
-  const hintChecked = useRef(new Set<string>())
+  const hintChecked = useRef(new Map<string, string>())
   useEffect(() => {
     if (!session?.id || exercises.size === 0) return
-    const ids = [...new Set(sets.map((s) => s.exerciseId))].filter((id) => !hintChecked.current.has(id))
-    ids.forEach((id) => hintChecked.current.add(id))
+    const planDay = activePlan?.days.find((d) => d.day.id === session.planDayId)
+    const ids = [...new Set(sets.map((s) => s.exerciseId))].filter((id) => {
+      const first = sets.find((s) => s.exerciseId === id)
+      const planItem = first ? planDay?.items.find((i) => i.position === first.itemPosition && i.exerciseId === id) ?? null : null
+      const key = `${session.id}:${planItem?.repsMax ?? ''}:${planItem?.sets ?? ''}:${planItem?.repsMin ?? ''}:${deloadWeek}`
+      if (hintChecked.current.get(id) === key) return false
+      hintChecked.current.set(id, key)
+      return true
+    })
+    if (ids.length === 0) return
     void Promise.all(ids.map(async (id) => {
       const ex = exercises.get(id)
       const warmup = sets.some((s) => s.exerciseId === id && isExtraBlock(s.block))
-      const hint = ex ? await harderHint(ex, warmup, session.id!) : undefined
       const first = sets.find((s) => s.exerciseId === id)
-      const planDay = activePlan?.days.find((d) => d.day.id === session.planDayId)
       const planItem = first ? planDay?.items.find((i) => i.position === first.itemPosition && i.exerciseId === id) ?? null : null
+      const hint = ex ? await harderHint(ex, warmup, session.id!, planItem?.repsMax ?? null) : undefined
       const recent = (await recentDoneSets(id)).filter((s) => s.sessionId !== session.id)
       const reason = await progressionReasonFor(planItem, ex, recent, deloadWeek)
       return [id, hint, reason] as const
     })).then((rows) => {
-      const ready = rows.filter((r): r is readonly [string, Hint, ProgressionReason | null] => r[1] !== undefined)
-      if (ready.length) setHarder((m) => new Map([...m, ...ready.map(([id, h]) => [id, h] as const)]))
-      const foundReasons = rows.filter((r): r is readonly [string, Hint | undefined, ProgressionReason] => r[2] != null)
-      if (foundReasons.length) setReasons((m) => new Map([...m, ...foundReasons.map(([id, , r]) => [id, r] as const)]))
+      setHarder((m) => {
+        const next = new Map(m)
+        for (const [id, h] of rows) {
+          if (h !== undefined) next.set(id, h)
+          else next.delete(id)
+        }
+        return next
+      })
+      setReasons((m) => {
+        const next = new Map(m)
+        for (const [id, , r] of rows) {
+          if (r != null) next.set(id, r)
+          else next.delete(id)
+        }
+        return next
+      })
     })
-  }, [sets.map((s) => s.exerciseId).join('|'), session?.id, exercises.size])
+  }, [sets.map((s) => s.exerciseId).join('|'), session?.id, exercises.size, activePlan, deloadWeek])
 
   const planItemsByPos = useMemo(() => {
     const map = new Map<number, PlanItemRow>()

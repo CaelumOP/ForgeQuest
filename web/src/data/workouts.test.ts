@@ -587,6 +587,16 @@ describe('W2 review fixes', () => {
     expect(await harderHint(ex, false, -1)).toBeUndefined();
   });
 
+  it('harderHint respects plan topReps (S7)', async () => {
+    for (const day of [200, 201]) {
+      const sid = await finished(day);
+      await db.sets.bulkAdd([pushUp(sid, 0, 14), pushUp(sid, 1, 14), pushUp(sid, 2, 14)]);
+    }
+    const ex = (await db.exercises.get('push_up'))!;
+    expect(await harderHint(ex, false, -1)).toBeUndefined();
+    expect(await harderHint(ex, false, -1, 12)).toBeDefined();
+  });
+
   it('a deload week halves working items but keeps the warm-up block sets', async () => {
     await applyPlan(FULL_BODY_BEGINNER, 'starter');
     const plan = (await getActivePlan())!;

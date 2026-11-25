@@ -2,6 +2,7 @@
 import type { ExerciseEntity, SetEntity } from './entities'
 import { effortOf, effortRir } from './effort'
 import { profileFor, type Equipment, type MovementPattern } from './exercise-swap-engine'
+import { isFly } from './plan-builder'
 import { countsForProgression } from './set-types'
 import { fromKg, loadStep, toKg, type WeightUnit } from './units'
 
@@ -66,6 +67,17 @@ export function equipmentRatio(ex: ExerciseEntity): number | null {
   return primary ? ratioForEquipment(primary) : null
 }
 
+/**
+ * How much of a donor movement's strength carries over to target (audit S6): the same movement 0.9; a press into an
+ * overhead press, or two legs into one leg, 0.9 x 0.6; any other pair in the same PatternBucket 0.9 x 0.8.
+ */
+export function transfer(donor: MovementPattern, target: MovementPattern): number {
+  if (donor === target) return f(0.9)
+  if (donor === 'HORIZONTAL_PUSH' && target === 'VERTICAL_PUSH') return f(f(0.9) * f(0.6))
+  if (donor === 'SQUAT_BILATERAL' && target === 'SQUAT_UNILATERAL') return f(f(0.9) * f(0.6))
+  return f(f(0.9) * f(0.8))
+}
+
 export function coldStart(
   ex: ExerciseEntity, repsMin: number, unit: WeightUnit,
   historyByExercise: ReadonlyMap<string, readonly BaselineSet[]>, library: ReadonlyMap<string, ExerciseEntity>,
@@ -74,15 +86,17 @@ export function coldStart(
     return { weightKg: null, status: 'CALIBRATED' }
   const none: BaselineEstimate = { weightKg: null, status: 'NONE' }
   if (ex.kind !== 'WEIGHTED') return none
+  // A fly's load says little about a press and the other way round (audit S6, Gate point 4).
+  if (isFly(ex)) return none
   const ratio = equipmentRatio(ex)
   if (ratio == null) return none
   const pattern = profileFor(ex).pattern
   const bucket = bucketOf(pattern)
-  let best: { id: string; e1rm: number; ratio: number; samePattern: boolean } | null = null
+  let best: { id: string; e1rm: number; ratio: number; samePattern: boolean; transfer: number } | null = null
   for (const [id, sets] of historyByExercise) {
     if (id === ex.id) continue
     const donor = library.get(id)
-    if (!donor || donor.kind !== 'WEIGHTED') continue
+    if (!donor || donor.kind !== 'WEIGHTED' || isFly(donor)) continue
     const donorRatio = equipmentRatio(donor)
     if (donorRatio == null) continue
     const donorPattern = profileFor(donor).pattern
@@ -91,11 +105,12 @@ export function coldStart(
     const e1rm = calibratedE1rm(sets)
     if (e1rm == null) continue
     // First in each preference class is the newest workout, regardless of session id.
-    if (!best || (samePattern && !best.samePattern)) best = { id, e1rm, ratio: donorRatio, samePattern }
+    if (!best || (samePattern && !best.samePattern)) {
+      best = { id, e1rm, ratio: donorRatio, samePattern, transfer: transfer(donorPattern, pattern) }
+    }
   }
   if (!best) return none
-  const discount = best.samePattern ? f(.9) : f(f(.9) * f(.8))
-  const targetE1rm = f(f(f(best.e1rm / best.ratio) * ratio) * discount)
+  const targetE1rm = f(f(f(best.e1rm / best.ratio) * ratio) * best.transfer)
   const rawKg = f(targetE1rm / f(1 + f((Math.max(1, repsMin) + 3) / 30)))
   const step = loadStep(unit)
   const display = f(Math.floor(f(fromKg(unit, rawKg) / step) + 1e-4) * step)

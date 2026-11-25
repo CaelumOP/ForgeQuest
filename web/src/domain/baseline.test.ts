@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EXERCISE_BY_ID as library } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity, SetEntity } from './entities'
-import { bucketOf, calibratedE1rm, coldStart, e1rmOf, equipmentRatio } from './baseline'
+import { bucketOf, calibratedE1rm, coldStart, e1rmOf, equipmentRatio, transfer } from './baseline'
 import { fromKg } from './units'
 
 const ex = (id: string) => library.get(id)!
@@ -52,8 +52,20 @@ describe('BaselineTest (Android parity)', () => {
   it('coldStartFromSamePatternBarbellToDumbbell', () => {
     expect(estimate('db_bench_press')).toEqual({ status: 'ESTIMATED', weightKg: 25, donorId: 'bench_press' })
   })
-  it('coldStartFallsBackToBucketWithExtraDiscount', () => {
-    expect(estimate('overhead_press')).toEqual({ status: 'ESTIMATED', weightKg: 52.5, donorId: 'bench_press' })
+  it('coldStartPressToOverheadUsesSmallerTransfer', () => {
+    // Horizontal -> vertical push transfers 0.9 x 0.6 (audit S6): 100 * 0.54 = 54 -> 54 / (1 + 11/30) = 39.5 -> 37.5
+    expect(estimate('overhead_press')).toEqual({ status: 'ESTIMATED', weightKg: 37.5, donorId: 'bench_press' })
+  })
+  it('transferRatesAndFlyRejection', () => {
+    expect(transfer('HORIZONTAL_PUSH', 'HORIZONTAL_PUSH')).toBeCloseTo(0.9, 5)
+    expect(transfer('HORIZONTAL_PUSH', 'VERTICAL_PUSH')).toBeCloseTo(0.54, 5)
+    expect(transfer('SQUAT_BILATERAL', 'SQUAT_UNILATERAL')).toBeCloseTo(0.54, 5)
+    expect(transfer('VERTICAL_PULL', 'HORIZONTAL_PULL')).toBeCloseTo(0.72, 5)
+    // Flyes never donate or receive (S6, Gate 4).
+    expect(estimate('db_bench_press', [donor('db_fly', 20)])).toEqual({ status: 'NONE', weightKg: null })
+    expect(estimate('db_fly', [donor('bench_press', 100)])).toEqual({ status: 'NONE', weightKg: null })
+    // Two-leg squat -> one-leg squat uses 0.9 x 0.6 transfer.
+    expect(estimate('db_split_squat', [donor('back_squat', 100)])).toEqual({ status: 'ESTIMATED', weightKg: 15, donorId: 'back_squat' })
   })
   it('backDatedWorkoutDoesNotWinRecency', () => {
     expect(estimate('db_bench_press', [donor(), donor('chest_press_machine', 200, 99)]).donorId).toBe('bench_press')

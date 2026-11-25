@@ -75,13 +75,16 @@ export function computeAdjustment<T extends IntraSessionSet>(
       const factor = cut === 10 ? f(0.9) : f(0.95)
       const step = loadStep(unit)
       const displayW = fromKg(unit, wKg)
+      // A load step over 10 % of the weight is too big a cut: keep the weight, cap the reps (audit S5).
       const newWeightKg =
-        displayW <= step + 1e-3
+        displayW <= step + 1e-3 || step > f(0.1) * displayW
           ? wKg
           : toKg(unit, Math.max(step, Math.min(floorToStep(f(displayW * factor), step), f(displayW - step))))
       const droppedLoad = newWeightKg < wKg - 1e-4
       // A lighter load aims for the bottom of the range again; at the lightest load, aim for what was done.
-      const targetReps = droppedLoad ? (repsMin ?? source.reps) : source.reps
+      // Never prescribes 0 reps (Gate 17).
+      const rawTargetReps = droppedLoad ? (repsMin ?? source.reps) : source.reps
+      const targetReps = rawTargetReps != null ? Math.max(1, rawTargetReps) : null
       const changed: T[] = []
       for (const next of remaining) {
         const nextReps =
