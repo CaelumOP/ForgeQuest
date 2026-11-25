@@ -13,7 +13,7 @@ import { pickEffort, type SetEffort } from '../../domain/effort'
 import { recordedHold } from '../../domain/hold-math'
 import {
   computeAdjustment, extendedRest, newAdjustmentLedger, numbersToRestore, openLaterSets, recordAdjustment, releaseAdjustment,
-  resolveRepsMin,
+  resolveRepsMin, triggersAdjustment,
 } from '../../domain/intra-session'
 import { formatWeight, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
 import { isDeloadWeek, type ProgressionReason } from '../../domain/progression'
@@ -474,19 +474,21 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const kind = ex?.kind ?? 'REPS'
     const repsMin = resolveRepsMin(source, kind, planItemsRef.current.get(source.itemPosition))
     const unit = weightUnit(settingsRef.current, ex?.unitOverride ?? '')
+    if (!triggersAdjustment(source, kind, repsMin)) return
+    // Targets come from the pre-carry rows; the write compares against the rows as they are now (after carry-forward).
     const result = computeAdjustment(source, base, kind, repsMin, unit)
-    if (!result) return
-    // Targets come from the pre-carry rows, but the write compares against the rows as they are now: a carry-forward
-    // that raised targets before a Failure tag goes back to the pre-carry numbers even when the cut itself changes nothing.
-    const changedById = new Map(result.changed.map((s) => [s.id!, s]))
-    const intended = base.map((s) => changedById.get(s.id!) ?? s)
-    const toWrite = numbersToRestore(intended, currentOpen, isEdited)
-    if (toWrite.length === 0) return
+    const changedById = new Map((result?.changed ?? []).map((s) => [s.id!, s]))
+    const toWrite = numbersToRestore(base.map((s) => changedById.get(s.id!) ?? s), currentOpen, isEdited)
     adjustedByRef.current.add(source.id)
-    const writeIds = new Set(toWrite.map((s) => s.id!))
-    recordAdjustment(ledgerRef.current, source.id, base.filter((s) => writeIds.has(s.id!)))
-    await writeNumbers(intended.filter((s) => writeIds.has(s.id!)))
-    if (result.changed.length === 0) return
+    if (!result) {
+      // The cut changes nothing against the plan, but carry-forward may have raised targets (did 12 of 10, then
+      // Failure): put the pre-carry numbers back silently, with no cue and nothing for Undo.
+      if (toWrite.length > 0) await writeNumbers(toWrite)
+      return
+    }
+    // A real cut gets the cue and Undo even when carry-forward already wrote the same numbers.
+    recordAdjustment(ledgerRef.current, source.id, base.filter((s) => changedById.has(s.id!)))
+    if (toWrite.length > 0) await writeNumbers(toWrite)
     setAdjustment({
       exerciseId: source.exerciseId,
       sourceSetId: source.id,

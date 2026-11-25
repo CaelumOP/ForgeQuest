@@ -8,6 +8,7 @@ import {
   recordAdjustment,
   releaseAdjustment,
   resolveRepsMin,
+  triggersAdjustment,
   type IntraSessionSet,
 } from './intra-session'
 import { fromKg, loadStep, toKg } from './units'
@@ -285,5 +286,27 @@ describe('computeAdjustment legacy effort', () => {
     const source = { ...makeSet(1, { reps: 8 }), effort: undefined as unknown as string }
     expect(() => computeAdjustment(source, [makeSet(2)], 'WEIGHTED', 8, 'KG')).not.toThrow()
     expect(computeAdjustment(source, [makeSet(2)], 'WEIGHTED', 8, 'KG')).toBeNull()
+  })
+})
+
+describe('triggersAdjustment', () => {
+  it('fires on Failure, A11 blank FAILURE type and a 2+ rep miss, not on a 1 rep miss or warm-ups', () => {
+    expect(triggersAdjustment(makeSet(1, { effort: 'FAILURE' }), 'WEIGHTED', 8)).toBe(true)
+    expect(triggersAdjustment(makeSet(1, { effort: '', setType: 'FAILURE' }), 'REPS', 10)).toBe(true)
+    expect(triggersAdjustment(makeSet(1, { reps: 6 }), 'WEIGHTED', 8)).toBe(true)
+    expect(triggersAdjustment(makeSet(1, { reps: 7 }), 'WEIGHTED', 8)).toBe(false)
+    expect(triggersAdjustment(makeSet(1, { reps: 6, setType: 'WARMUP' }), 'WEIGHTED', 8)).toBe(false)
+  })
+
+  it('on a hold only Failure counts', () => {
+    expect(triggersAdjustment(makeSet(1, { reps: null, seconds: 10 }), 'HOLD', null)).toBe(false)
+    expect(triggersAdjustment(makeSet(1, { reps: null, seconds: 10, effort: 'FAILURE' }), 'HOLD', null)).toBe(true)
+  })
+
+  it('agrees with computeAdjustment whenever computeAdjustment returns a result', () => {
+    const sources = [makeSet(1, { effort: 'FAILURE' }), makeSet(1, { reps: 5 }), makeSet(1, { reps: 7 }), makeSet(1)]
+    for (const src of sources) {
+      if (computeAdjustment(src, [makeSet(2)], 'WEIGHTED', 8, 'KG')) expect(triggersAdjustment(src, 'WEIGHTED', 8)).toBe(true)
+    }
   })
 })

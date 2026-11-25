@@ -42,6 +42,15 @@ export function extendedRest(currentTotalSec: number): number {
   return Math.max(currentTotalSec, Math.min(currentTotalSec + FAILURE_REST_BONUS_SEC, FAILURE_REST_CAP_SEC))
 }
 
+/** Whether `source` triggers an intra-session adjustment: a working set tagged Failure (A11 included) or 2+ reps short. */
+export function triggersAdjustment(source: IntraSessionSet, kind: ExerciseKind, repsMin: number | null): boolean {
+  if (!countsForProgression(source)) return false
+  const isFailure = source.effort === 'FAILURE' || ((source.effort ?? '').trim() === '' && source.setType === 'FAILURE')
+  if (kind === 'HOLD') return isFailure
+  const repsMiss = repsMin != null && source.reps != null && source.reps <= repsMin - 2
+  return isFailure || repsMiss
+}
+
 /**
  * Computes adjusted copies of `remaining` when `source` triggers an intra-session adjustment, or null if none.
  * Caller filters `remaining` (same itemPosition + exerciseId, higher setIndex, not done, not hand-edited, countsForProgression).

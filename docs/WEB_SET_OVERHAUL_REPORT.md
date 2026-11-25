@@ -9,9 +9,9 @@ no Dexie schema/version change, no dependency change, no backup format change.
 | Check | Result |
 |---|---|
 | Baseline (W0) | vitest exit 0, 70 files / 617 tests; tsc exit 0; production bundle exit 0 |
-| Final vitest | exit 0, 75 files / 722 tests |
+| Final vitest | exit 0, 75 files / 725 tests |
 | Final tsc (`tsc --noEmit`) | exit 0 |
-| Final production build (`npm run build`) | exit 0; JS 2,397.88 kB (gzip 610.85 kB), CSS 136.90 kB, zxing wasm 946.59 kB; PWA precache 17 entries. Vite warns about the >500 kB single app chunk; this work added no dependencies or new chunks. |
+| Final production build (`npm run build`) | exit 0; JS 2,398.04 kB (gzip 610.89 kB), CSS 136.90 kB, zxing wasm 946.59 kB; PWA precache 17 entries. Vite warns about the >500 kB single app chunk; this work added no dependencies or new chunks. |
 | Files outside `web/` + `docs/` in `git diff 8d562f9..HEAD` | none |
 | Codex cold review (gpt-6-astra, read-only) | `VERDICT: DEFECTS (4)`; all 4 fixed in W2 (see below) |
 | Gemini Argon Gate 3 (gemini-4-argon-high) | First pass `CHANGES REQUESTED` (3 medium, 2 low; one overlaps Codex 1); all fixed. Re-review: ARGON_RERUN |
@@ -27,7 +27,7 @@ no Dexie schema/version change, no dependency change, no backup format change.
 | W1d | `9dcbf63` | Planner compound / isolation reps, rest and order, focus-safe trim; RoutineAuditor warnings in plan editor and builder review |
 | W1e | `62f35ad` | Capped e1RM shared by charts and records, recovery skips warm-ups with RIR multipliers, non-barbell warm-up floor and empty-bar set, live PR pill, working-set charts and week volume |
 | W1f | `4846a99` | Re-tag a done set's effort, 48 px set-row targets, stale Hard caption fix in the web string overlay |
-| W2 | W2_COMMIT | Review fixes (below) + this report |
+| W2 | `dcc166a`, W2B_COMMIT | Review fixes (below) + this report |
 
 Progress-only commits (`b03a5bd`, `7c63a8a`, `c010209`, `7f76290`, `4e41363`, `ee58ecb`) tick `docs/PROGRESS.md`.
 
@@ -51,6 +51,15 @@ Tests added: `adjustment ledger` (3) and `computeAdjustment legacy effort` (1) i
 | 9 | Argon | low | In a deload week, warm-up / cool-down plan items were halved too (Android gates deload with `!isExtra(block)`). | `buildSetsFor` and `progressionReasonFor` gate deload on `item != null && !isExtraBlock(item.block)`. |
 
 Tests added: `W2 review fixes` (3) in `data/workouts.test.ts`; the deload test was checked against a mutant (fails without the gate).
+
+Argon re-review of `dcc166a` found two gaps in fix 2 (both in `applyIntraSession`), fixed in the next commit:
+
+| # | Source | Severity | Defect | Fix |
+|---|---|---|---|---|
+| 10 | Argon re-review | high | When carry-forward had already written the same lowered numbers (e.g. 6 of 10 push-ups), the "nothing to write" early return skipped the cue, Undo and the ledger, so untick no longer restored the targets. | A real cut always records the ledger and shows the cue; only the write is skipped when there is nothing to write. |
+| 11 | Argon re-review | medium | `computeAdjustment` returns `null` when nothing changes against the pre-carry rows, so the silent restore of a carried raise (12 of 10, then Failure) never ran. | New `triggersAdjustment(source, kind, repsMin)` in `domain/intra-session.ts`; when it fires and the cut is `null`, the pre-carry numbers are written back silently (no cue, nothing for Undo). |
+
+Tests added: `triggersAdjustment` (3) in `domain/intra-session.test.ts`.
 
 ## Parity checklist (vs `docs/WEB_SET_AUDIT_LEDGER.md`)
 
