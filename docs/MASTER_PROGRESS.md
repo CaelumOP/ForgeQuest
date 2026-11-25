@@ -11,10 +11,10 @@ Spec: `docs/MASTER_SPEC.md` (written after the owner answers the Question Gate).
   - [x] 2.3 Wavy rest timer + Build my plan pills map
   - [x] 2.4 UX rent-check, web 390x844 EN + AR, Android Compose
 - [x] Question Gate: owner answered 2026-11-26, locked in docs/MASTER_SPEC.md (defaults + 4 overrides)
-- [ ] 3A grader + supersets/zero-rest
+- [x] 3A grader + supersets/zero-rest (scorecards docs/master/grader-before.md / grader-after.md; overall 81.65 -> 87.85, min 41.88 -> 68.57, 3x20 coverage 17.8-18.6 -> 22.2-23.8, fat loss 6d balance 3.0-16 -> 15.1-17.6; Android grader port + floors, golden parity)
 - [ ] 3B Input & Test Baseline
 - [ ] 3C wavy timer, sliding pills, approved cuts
 - [ ] Stage 4 verification, smoke, Gate 3, report
 
 ## Next step
-Start 3A: brief Gemini Hydrogen (Android + web, sequential) for MASTER_SPEC 3A; first measure grader BEFORE scores (web: `npx vitest run src/domain/plan-grader.dev.test.ts`, report in the shared notes stage2-grader-scorecard.md). Gradle: `.claude/scratch/gw.sh` pattern (worktree copy: sed the cd line to this worktree). Autopilot, no questions.
+3B Input & Test Baseline: shared spec in the untracked temp folder docs/master/3b-spec.md. Build Android data/domain, then Android UI, then web data/domain, then web UI (Gemini Hydrogen, briefs under 25 min each, no Gradle inside agy). Then 3C (docs/master/3c-spec.md), Stage 4.

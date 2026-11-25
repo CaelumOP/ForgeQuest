@@ -135,6 +135,7 @@ object PlanShare {
                         muscles = i.muscles,
                         block = i.block,
                         circuit = i.circuit,
+                        supersetGroup = i.supersetGroup,
                         sets = i.sets,
                         repsMin = i.repsMin,
                         repsMax = i.repsMax,

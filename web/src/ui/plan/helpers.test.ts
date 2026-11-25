@@ -5,12 +5,14 @@ import { DEFAULT_SETTINGS, loadSettings, toBackupSettings, updateSettings } from
 import { encodeEquipmentSet, presetEquipment, profileFor, type Equipment } from '../../domain/exercise-swap-engine'
 import { tierOf } from '../../domain/exercise-tiers'
 import { decodePlanAnswers } from '../../domain/plan-answers'
+import { tIn } from '../../i18n'
+import { audit, fromDraft } from '../../domain/routine-auditor'
 import {
-  PlanBuilder, defaultPlanAnswers, encodePlanAnswers, planAnswersToInput, spreadDays,
+  PlanBuilder, WORKOUT_STYLES, defaultPlanAnswers, encodePlanAnswers, planAnswersToInput, spreadDays,
 } from '../../domain/plan-builder'
 import {
   activeEquipmentPreset, equipmentSetting, initialAnswers, localizeBuiltPlan,
-  presetShortLabel, rowSummaries, scheme, swapBuiltPlanItem, stepperCountFromValue,
+  presetShortLabel, rowSummaries, scheme, swapBuiltPlanItem, stepperCountFromValue, workoutStyleKey,
 } from './helpers'
 
 describe('PlanBuilderStepperTest (Android parity)', () => {
@@ -133,5 +135,35 @@ describe('plan builder helpers', () => {
 
     const fallback = initialAnswers({ ...DEFAULT_SETTINGS, equipment: 'DUMBBELLS' })
     expect(fallback.equipment).toEqual(new Set<Equipment>(['DUMBBELLS', 'BODYWEIGHT']))
+  })
+
+  it('maps workout styles to EN/AR labels and shows chosen style in the Style row summary', () => {
+    expect(WORKOUT_STYLES).toEqual(['AUTO', 'STRAIGHT', 'SUPERSET', 'CIRCUIT'])
+    expect(WORKOUT_STYLES.map((s) => tIn('en', workoutStyleKey(s)))).toEqual([
+      'Auto', 'Straight sets', 'Supersets', 'Circuit',
+    ])
+    expect(WORKOUT_STYLES.map((s) => tIn('ar', workoutStyleKey(s)))).toEqual([
+      'تلقائي', 'مجموعات عادية', 'مجموعات مزدوجة', 'دائرة',
+    ])
+    expect(tIn('en', 'pb_style')).toBe('Workout style')
+    expect(tIn('ar', 'pb_style')).toBe('أسلوب التمرين')
+    expect(tIn('en', 'pb_style_auto_hint')).toBe('Supersets on sessions of 30 min or less')
+    expect(tIn('ar', 'pb_style_auto_hint')).toBe('مجموعات مزدوجة في الجلسات التي لا تتجاوز 30 دقيقة')
+
+    const tr = (k: string, ...args: (string | number)[]) =>
+      k === 'list_separator' ? ', ' : args.length ? `${k}:${args.join(',')}` : k
+    const base = defaultPlanAnswers()
+    expect(rowSummaries(base, tr, 'en').style).toBe('pb_auto')
+    expect(rowSummaries({ ...base, style: 'STRAIGHT' }, tr, 'en').style).toBe('pb_style_straight')
+    expect(rowSummaries({ ...base, style: 'SUPERSET' }, tr, 'en').style).toBe('pb_style_superset')
+    expect(rowSummaries({ ...base, style: 'CIRCUIT' }, tr, 'en').style).toBe('pb_style_circuit')
+  })
+
+  it('produces no Plan check findings for a freshly built plan with default answers', () => {
+    const byId = new Map(EXERCISE_CATALOG.map((e) => [e.id, e]))
+    for (const style of WORKOUT_STYLES) {
+      const built = PlanBuilder.build(planAnswersToInput({ ...defaultPlanAnswers(), style }), EXERCISE_CATALOG)
+      expect(audit(fromDraft(built.draft), byId)).toEqual([])
+    }
   })
 })

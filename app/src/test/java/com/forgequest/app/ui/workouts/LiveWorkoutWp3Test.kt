@@ -57,12 +57,15 @@ class LiveWorkoutWp3Test {
     }
 
     @Test
-    fun effectiveRestHandlesWarmupRestPauseAndSupersetTransition() {
+    fun effectiveRestHandlesWarmupRestPauseAndSupersetAndCircuitTransition() {
         val a1r1 = set(0, 0, restSeconds = 90)
         val a2r1 = set(1, 0, restSeconds = 90)
         val warmup = set(2, 0, restSeconds = 90, setType = SetType.WARMUP)
         val restPause = set(2, 1, restSeconds = 90, setType = SetType.RESTPAUSE)
-        val groups = group(listOf(a1r1, a2r1, warmup, restPause)) { pos ->
+        val c1 = set(3, 0, restSeconds = 30, block = "Circuit A", circuit = true)
+        val c2 = set(4, 0, restSeconds = 30, block = "Circuit A", circuit = true)
+        val c3 = set(5, 0, restSeconds = 30, block = "Circuit A", circuit = true)
+        val groups = group(listOf(a1r1, a2r1, warmup, restPause, c1, c2, c3)) { pos ->
             if (pos == 0 || pos == 1) 1 else null
         }
 
@@ -70,9 +73,16 @@ class LiveWorkoutWp3Test {
         assertEquals(0, effectiveRestSeconds(warmup, groups))
         assertEquals(15, effectiveRestSeconds(restPause, groups))
 
-        // A1 in an undone superset round gets 10s transition; A2 gets full 90s rest
-        assertEquals(10, effectiveRestSeconds(a1r1, groups))
+        // Non-last member in superset/circuit gets 0s (short transition); last member gets full rest
+        assertEquals(0, effectiveRestSeconds(a1r1, groups))
         assertEquals(90, effectiveRestSeconds(a2r1, groups))
+        assertEquals(EffectiveRest(0, isShortTransition = true), effectiveRest(a1r1, groups))
+        assertEquals(EffectiveRest(90, isShortTransition = false), effectiveRest(a2r1, groups))
+        assertEquals(EffectiveRest(15, isShortTransition = false), effectiveRest(restPause, groups))
+        assertEquals(EffectiveRest(0, isShortTransition = false), effectiveRest(warmup, groups))
+        assertEquals(EffectiveRest(0, isShortTransition = true), effectiveRest(c1, groups))
+        assertEquals(EffectiveRest(0, isShortTransition = true), effectiveRest(c2, groups))
+        assertEquals(EffectiveRest(30, isShortTransition = false), effectiveRest(c3, groups))
     }
 
     @Test

@@ -122,4 +122,29 @@ describe('RoutineAuditorTest', () => {
     expect(audit([], exercises)).toEqual([])
     expect(audit([day(1, [])], exercises)).toEqual([])
   })
+
+  it('estimateMinutes costs superset pairs and circuits by round rather than per-exercise', () => {
+    const pairDay = day(1, [
+      { ...item(bench, 3, 0, 'Main', 40), supersetGroup: 1 },
+      { ...item(row, 3, 1, 'Main', 40), supersetGroup: 1 },
+    ])
+    // 3 * (2*40 + 40) = 360 s = 6 min
+    expect(estimateMinutes(pairDay)).toBe(6)
+
+    const circuitDay = day(1, [
+      { ...item(bench, 3, 0, 'Circuit A', 30), circuit: true },
+      { ...item(row, 3, 1, 'Circuit A', 30), circuit: true },
+      { ...item(squat, 3, 2, 'Circuit A', 30), circuit: true },
+    ])
+    // 3 * (3*40 + 30) = 450 s -> ceil(7.5) = 8 min
+    expect(estimateMinutes(circuitDay)).toBe(8)
+
+    // Unequal sets inside a group: min rounds grouped, extra sets straight
+    const uneven = day(1, [
+      { ...item(bench, 4, 0, 'Main', 60), supersetGroup: 1 },
+      { ...item(row, 2, 1, 'Main', 90), supersetGroup: 1 },
+    ])
+    // 2 * (80 + 90) + 2 * (40 + 60) = 340 + 200 = 540 s = 9 min
+    expect(estimateMinutes(uneven)).toBe(9)
+  })
 })

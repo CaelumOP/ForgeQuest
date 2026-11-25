@@ -11,8 +11,12 @@ import com.forgequest.app.data.db.PlanEntity
 import com.forgequest.app.data.db.PlanItemEntity
 import com.forgequest.app.data.db.SessionEntity
 import com.forgequest.app.data.db.SetEntity
+import com.forgequest.app.data.plan.PlanDraft
+import com.forgequest.app.data.plan.PlanDraftDay
+import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.Muscle
+import com.forgequest.app.domain.SupersetRules
 import com.forgequest.app.domain.countsForPR
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -122,6 +126,109 @@ class WorkoutRepositoryV42Test {
             assertTrue(setsAfterEdit[0].isPr)
             assertTrue(setsAfterEdit[1].autoTicked)
             assertFalse(setsAfterEdit[1].isPr)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun applyPlanCopiesSupersetGroupToStoredPlanItemEntityAndKeepsValidBuilderPairs() = runBlocking {
+        val db = newDb()
+        try {
+            val repo = WorkoutRepository(db)
+            db.exercises().upsertAll(
+                listOf(
+                    ExerciseEntity("db_bench_press", "DB Bench", ExerciseKind.WEIGHTED, listOf(Muscle.CHEST), emptyList()),
+                    ExerciseEntity("db_row", "DB Row", ExerciseKind.WEIGHTED, listOf(Muscle.UPPER_BACK), emptyList()),
+                ),
+            )
+            repo.applyPlan(
+                PlanDraft(
+                    name = "Superset Plan",
+                    description = "",
+                    days = listOf(
+                        PlanDraftDay(
+                            dayOfWeek = 1,
+                            title = "Full body",
+                            isRest = false,
+                            note = "",
+                            items = listOf(
+                                PlanDraftItem(
+                                    exerciseId = "db_bench_press", block = "Main", circuit = false, supersetGroup = 1,
+                                    sets = 3, repsMin = 8, repsMax = 12, restSeconds = 40,
+                                ),
+                                PlanDraftItem(
+                                    exerciseId = "db_row", block = "Main", circuit = false, supersetGroup = 1,
+                                    sets = 3, repsMin = 8, repsMax = 12, restSeconds = 40,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                source = "builder",
+            )
+            val plan = db.plans().active()!!
+            val day = db.plans().days(plan.id).first { !it.isRest }
+            val items = db.plans().items(day.id)
+            assertEquals(1, items[0].supersetGroup)
+            assertEquals(1, items[1].supersetGroup)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun saveItemWithGroupingMatchesDifferingSetsAndClearsCircuitOrPairingWhenTurnedOff() = runBlocking {
+        val db = newDb()
+        try {
+            val repo = WorkoutRepository(db)
+            db.exercises().upsertAll(
+                listOf(
+                    ExerciseEntity("db_bench_press", "DB Bench", ExerciseKind.WEIGHTED, listOf(Muscle.CHEST), emptyList()),
+                    ExerciseEntity("db_row", "DB Row", ExerciseKind.WEIGHTED, listOf(Muscle.UPPER_BACK), emptyList()),
+                    ExerciseEntity("goblet_squat", "Goblet Squat", ExerciseKind.WEIGHTED, listOf(Muscle.QUADS), emptyList()),
+                ),
+            )
+            val planId = db.plans().insertPlan(PlanEntity(name = "P", description = "", source = "manual", active = true, createdAt = 1L))
+            val dayId = db.plans().insertDay(PlanDayEntity(planId = planId, dayOfWeek = 1, title = "Day 1", isRest = false))
+            db.plans().insertItems(
+                listOf(
+                    PlanItemEntity(dayId = dayId, position = 0, exerciseId = "db_bench_press", block = "Main", circuit = false, sets = 3),
+                    PlanItemEntity(dayId = dayId, position = 1, exerciseId = "db_row", block = "Main", circuit = false, sets = 3),
+                    PlanItemEntity(dayId = dayId, position = 2, exerciseId = "goblet_squat", block = "Main", circuit = false, sets = 3),
+                ),
+            )
+
+            var items = db.plans().items(dayId).sortedBy { it.position }
+            // Differing set counts: saving updates next item's sets to match first item's sets so the pair is valid.
+            repo.saveItemWithGrouping(dayId, items[0].copy(sets = 4), items[1], groupWithNext = true, showGroup = true)
+            items = db.plans().items(dayId).sortedBy { it.position }
+            assertEquals(4, items[0].sets)
+            assertEquals(4, items[1].sets)
+            assertTrue(SupersetRules.isPairedWithNext(items, 0))
+
+            // Turning off unpairs.
+            repo.saveItemWithGrouping(dayId, items[0], items[1], groupWithNext = false, showGroup = true)
+            items = db.plans().items(dayId).sortedBy { it.position }
+            assertFalse(SupersetRules.isPairedWithNext(items, 0))
+            assertEquals(null, items[0].supersetGroup)
+
+            // Circuit item kept ON preserves circuit without forcing supersetGroup; turning OFF clears circuit and pairing.
+            repo.saveItemWithGrouping(dayId, items[0].copy(circuit = true), items[1], groupWithNext = true, showGroup = true)
+            items = db.plans().items(dayId).sortedBy { it.position }
+            assertTrue(items[0].circuit)
+            assertEquals(null, items[0].supersetGroup)
+
+            repo.saveItemWithGrouping(dayId, items[0].copy(circuit = false), items[1], groupWithNext = false, showGroup = true)
+            items = db.plans().items(dayId).sortedBy { it.position }
+            assertFalse(items[0].circuit)
+            assertEquals(null, items[0].supersetGroup)
+
+            // No next non-extra item (showGroup = false): saves item without pairing.
+            repo.saveItemWithGrouping(dayId, items[2].copy(sets = 5), null, groupWithNext = true, showGroup = false)
+            items = db.plans().items(dayId).sortedBy { it.position }
+            assertEquals(5, items[2].sets)
+            assertEquals(null, items[2].supersetGroup)
         } finally {
             db.close()
         }

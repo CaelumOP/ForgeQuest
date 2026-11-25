@@ -2,10 +2,13 @@ package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.plan.PlanDraft
+import com.forgequest.app.data.plan.PlanDraftDay
+import com.forgequest.app.data.plan.PlanDraftItem
 import com.forgequest.app.data.seed.ExerciseCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -318,5 +321,196 @@ class PlanBuilderTest {
         val ids = plan.draft.days.single().items.map { it.exerciseId }
         assertTrue("Expected t_core_focus to survive repair, got $ids", "t_core_focus" in ids)
         assertFalse("Expected t_core_main to be removed first, got $ids", "t_core_main" in ids)
+    }
+
+    @Test fun auto3d20mMuscleFullGymProducesAdjacentSafeSupersetPairsWithEqualSetsAndRest40() {
+        val plan = build(input(3, fullGym, TrainGoal.MUSCLE, 20))
+        for (day in plan.draft.days) {
+            val work = day.items.filter { !WorkoutScore.isExtra(it.block) }
+            val byGroup = linkedMapOf<Int, MutableList<PlanDraftItem>>()
+            work.forEachIndexed { idx, it ->
+                val sg = it.supersetGroup ?: return@forEachIndexed
+                byGroup.getOrPut(sg) { mutableListOf() }.add(it)
+                val prevSame = idx > 0 && work[idx - 1].supersetGroup == sg
+                val nextSame = idx + 1 < work.size && work[idx + 1].supersetGroup == sg
+                assertTrue("Superset group $sg not adjacent on day ${day.dayOfWeek}", prevSame || nextSame)
+            }
+            assertTrue("Expected superset groups on day ${day.dayOfWeek}", byGroup.isNotEmpty())
+            for ((_, pair) in byGroup) {
+                assertEquals(2, pair.size)
+                assertEquals(pair[0].sets, pair[1].sets)
+                assertEquals(PlanBuilder.SUPERSET_POST_ROUND_SHORT, pair[0].restSeconds)
+                assertEquals(PlanBuilder.SUPERSET_POST_ROUND_SHORT, pair[1].restSeconds)
+                assertFalse(pair[0].circuit)
+                assertFalse(pair[1].circuit)
+                assertFalse(pair[0].exerciseId in PlanBuilder.NO_PAIR_IDS)
+                assertFalse(pair[1].exerciseId in PlanBuilder.NO_PAIR_IDS)
+                assertTrue(PlanBuilder.safePair(byId.getValue(pair[0].exerciseId), byId.getValue(pair[1].exerciseId)))
+            }
+        }
+    }
+
+    @Test fun strengthKeepsFirstMainPickAloneOnSupersetDays() {
+        val plan = build(input(3, fullGym, TrainGoal.STRENGTH, 20))
+        for (day in plan.draft.days) {
+            val work = day.items.filter { !WorkoutScore.isExtra(it.block) }
+            assertTrue(work.isNotEmpty())
+            assertNull(work[0].supersetGroup)
+        }
+        val over30 = build(input(4, fullGym, TrainGoal.STRENGTH, 60) { it.copy(style = WorkoutStyle.SUPERSET) })
+        for (day in over30.draft.days) {
+            val work = day.items.filter { !WorkoutScore.isExtra(it.block) }
+            assertNull(work[0].supersetGroup)
+        }
+        assertTrue(over30.draft.days.any { d -> d.items.any { it.supersetGroup != null } })
+    }
+
+    @Test fun fatLoss6d20mAlternatesPushLegsAndPullHingeWithoutHeavyConsecutiveDayOverlap() {
+        val plan = build(input(6, fullGym, TrainGoal.FAT_LOSS, 20))
+        val focuses = plan.days.entries.sortedBy { it.key }.map { it.value }
+        assertEquals(
+            listOf(
+                DayFocus.PUSH_LEGS, DayFocus.PULL_HINGE,
+                DayFocus.PUSH_LEGS, DayFocus.PULL_HINGE,
+                DayFocus.PUSH_LEGS, DayFocus.PULL_HINGE,
+            ),
+            focuses,
+        )
+        val findings = RoutineAuditor.audit(RoutineAuditor.fromDraft(plan.draft), byId)
+        val badKinds = setOf(
+            RoutineAuditor.Kind.RECOVERY_OVERLAP,
+            RoutineAuditor.Kind.ABOVE_MRV,
+            RoutineAuditor.Kind.JUNK_VOLUME,
+            RoutineAuditor.Kind.ISOLATION_FIRST,
+        )
+        assertEquals(emptyList<RoutineAuditor.Finding>(), findings.filter { it.kind in badKinds })
+        fun primarySets(dayIdx: Int): Map<Muscle, Int> {
+            val m = LinkedHashMap<Muscle, Int>()
+            for (item in plan.draft.days[dayIdx].items) {
+                if (WorkoutScore.isExtra(item.block)) continue
+                for (mu in byId.getValue(item.exerciseId).primary) {
+                    m[mu] = (m[mu] ?: 0) + item.sets
+                }
+            }
+            return m
+        }
+        for (i in 0 until plan.draft.days.size - 1) {
+            val cur = primarySets(i)
+            val nxt = primarySets(i + 1)
+            for ((mu, s1) in cur) {
+                val s2 = nxt[mu] ?: 0
+                if (s2 > 0) {
+                    // Catalog squats/lunges list GLUTES as co-primary alongside QUADS, kept well below OVERLAP_SETS.
+                    assertEquals(Muscle.GLUTES, mu)
+                    assertTrue(minOf(s1, s2) < RoutineAuditor.OVERLAP_SETS)
+                }
+            }
+        }
+    }
+
+    @Test fun circuitDaysProduceAtMost3PairwiseSafeMovesInDistinctNonExtraBlocksWith30Or40Or60Rest() {
+        val c20 = build(input(3, fullGym, TrainGoal.FAT_LOSS, 20))
+        for (day in c20.draft.days) {
+            val work = day.items.filter { !WorkoutScore.isExtra(it.block) }
+            val byBlock = linkedMapOf<String, MutableList<PlanDraftItem>>()
+            for (it in work) {
+                assertFalse(WorkoutScore.isExtra(it.block))
+                if (it.circuit) byBlock.getOrPut(it.block) { mutableListOf() }.add(it)
+            }
+            assertTrue(byBlock.isNotEmpty())
+            for ((blk, members) in byBlock) {
+                assertTrue(blk in PlanBuilder.CIRCUIT_BLOCKS)
+                assertTrue(members.size in 2..3)
+                val expectedRest = if (members.size == 2) PlanBuilder.SUPERSET_POST_ROUND_SHORT else PlanBuilder.CIRCUIT_POST_ROUND_SHORT
+                for (m in members) {
+                    assertEquals(members[0].sets, m.sets)
+                    assertEquals(expectedRest, m.restSeconds)
+                    assertNull(m.supersetGroup)
+                }
+                for (a in members.indices) {
+                    for (b in a + 1 until members.size) {
+                        assertTrue(PlanBuilder.safePair(byId.getValue(members[a].exerciseId), byId.getValue(members[b].exerciseId)))
+                    }
+                }
+            }
+        }
+
+        val c45 = build(input(3, fullGym, TrainGoal.MUSCLE, 45) { it.copy(style = WorkoutStyle.CIRCUIT) })
+        for (day in c45.draft.days) {
+            val circ = day.items.filter { !WorkoutScore.isExtra(it.block) && it.circuit }
+            assertTrue(circ.isNotEmpty())
+            assertTrue(circ.all { it.restSeconds == PlanBuilder.CIRCUIT_POST_ROUND })
+        }
+    }
+
+    @Test fun straightOver30MinMatchesAutoForNonFatLossAndKeepsCondAndFinisherAsCircuits() {
+        val autoPlan = build(input(4, fullGym, TrainGoal.MUSCLE, 60) { it.copy(cardio = Cardio.FINISHER) })
+        val straightPlan = build(input(4, fullGym, TrainGoal.MUSCLE, 60) { it.copy(cardio = Cardio.FINISHER, style = WorkoutStyle.STRAIGHT) })
+        assertEquals(autoPlan, straightPlan)
+        for (day in straightPlan.draft.days) {
+            val main = day.items.filter { it.block == "Main" }
+            assertTrue(main.all { !it.circuit && it.supersetGroup == null })
+            val fin = day.items.filter { it.block == PlanBuilder.FINISHER_BLOCK }
+            assertTrue(fin.all { it.circuit })
+        }
+    }
+
+    @Test fun estimateMinutesCostsSupersetPairsAsGroupedRounds() {
+        val plan = build(input(3, fullGym, TrainGoal.MUSCLE, 20))
+        val first = plan.draft.days[0]
+        val mins = PlanBuilder.estimateMinutes(first)
+        assertTrue(mins <= 25)
+        val pairDay = PlanDraftDay(
+            dayOfWeek = 1,
+            title = "Test",
+            isRest = false,
+            note = "",
+            items = listOf(
+                PlanDraftItem(
+                    exerciseId = "db_bench_press", name = "DB Bench", kind = "WEIGHTED",
+                    muscles = listOf("CHEST"), block = "Main", circuit = false, supersetGroup = 1,
+                    sets = 3, repsMin = 8, repsMax = 12, seconds = null, weightKg = null, restSeconds = 40,
+                ),
+                PlanDraftItem(
+                    exerciseId = "db_row", name = "DB Row", kind = "WEIGHTED",
+                    muscles = listOf("UPPER_BACK"), block = "Main", circuit = false, supersetGroup = 1,
+                    sets = 3, repsMin = 8, repsMax = 12, seconds = null, weightKg = null, restSeconds = 40,
+                ),
+            ),
+        )
+        assertEquals(6, PlanBuilder.estimateMinutes(pairDay))
+    }
+
+    @Test fun warmUpsMatchDayFocusAndNeverIncludeCalfRaiseOnUpperDays() {
+        val ppl = build(input(6, fullGym, TrainGoal.MUSCLE, 60))
+        for (day in ppl.draft.days) {
+            val focus = ppl.days.getValue(day.dayOfWeek)
+            val warmIds = day.items.filter { it.block == WorkoutScore.WARM_UP_BLOCK }.map { it.exerciseId }
+            assertEquals(2, warmIds.size)
+            when (focus) {
+                DayFocus.UPPER, DayFocus.PUSH, DayFocus.PULL -> {
+                    assertFalse("calf_raise" in warmIds)
+                    assertEquals("jumping_jacks", warmIds[0])
+                    assertTrue(warmIds[1] in setOf("band_pull_apart", "scapular_pull_up", "scapular_australian_pull_up", "knee_scapular_push_up"))
+                }
+                DayFocus.LOWER, DayFocus.LEGS -> {
+                    assertEquals(listOf("jumping_jacks", "half_squat"), warmIds)
+                }
+                else -> {}
+            }
+        }
+    }
+
+    @Test fun fatLoss5d45mNewBicepsClearsShortPlanWithoutViolatingAuditRulesOrBudget() {
+        val plan = build(input(5, fullGym, TrainGoal.FAT_LOSS, 45) {
+            it.copy(experience = Experience.NEW, focus = setOf(Muscle.BICEPS))
+        })
+        val avg = plan.draft.days.sumOf { PlanBuilder.estimateMinutes(it) }.toDouble() / plan.draft.days.size
+        assertTrue("Expected avg > 25, got $avg", avg > 25.0)
+        for (day in plan.draft.days) {
+            assertTrue(PlanBuilder.estimateMinutes(day) <= 50)
+        }
+        val kinds = RoutineAuditor.audit(RoutineAuditor.fromDraft(plan.draft), byId).map { it.kind }
+        assertEquals(emptyList<RoutineAuditor.Kind>(), kinds.filter { it != RoutineAuditor.Kind.BELOW_MEV })
     }
 }

@@ -1,10 +1,11 @@
 import { plural, t } from '../../i18n'
 import type { ExerciseRow, PlanItemRow } from '../../data/db'
 import { filterExercisesBySearch } from '../../data/seed/search'
-import { isWebUrl } from '../../data/workouts'
+import { isWebUrl, setPairWithNext, updatePlanItem } from '../../data/workouts'
 import { formatWeight, type WeightUnit } from '../../domain/units'
 import { expandLegacyEquipment, profileFits, profileFor, type Equipment } from '../../domain/exercise-swap-engine'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
+import { isExtraBlock } from '../../domain/pr-picker'
 
 const AR_DAYS = ['اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد']
 
@@ -40,7 +41,16 @@ export const musclesLabel = (ex: Pick<ExerciseRow, 'primary' | 'secondary'>): st
 export const primaryMusclesLabel = (ex: Pick<ExerciseRow, 'primary' | 'secondary'>): string =>
   [...new Set(ex.primary.length ? ex.primary : ex.secondary)].slice(0, 2).map(muscleLabel).join(t('list_separator'))
 
-const BLOCKS: Record<string, string> = { 'Warm-up': 'block_warm_up', Core: 'block_core', Main: 'block_main', Legs: 'block_legs' }
+const BLOCKS: Record<string, string> = {
+  'Warm-up': 'block_warm_up',
+  Core: 'block_core',
+  Main: 'block_main',
+  Legs: 'block_legs',
+  'Circuit A': 'block_circuit_a',
+  'Circuit B': 'block_circuit_b',
+  'Circuit C': 'block_circuit_c',
+  'Circuit D': 'block_circuit_d',
+}
 export const blockLabel = (b: string): string => (BLOCKS[b] ? t(BLOCKS[b]) : b)
 
 /** "3 × 10 reps", "3 × 30 s", "4 × 6–8 reps"; a circuit item drops the sets. */
@@ -111,6 +121,30 @@ export function fitExerciseRows(availableHeight: number, itemCount: number): Exe
   }
   const visibleCount = cells - 1
   return { rows, visibleCount, hiddenCount: itemCount - visibleCount }
+}
+
+/**
+ * Saves an edited plan item and applies "Group with next" pairing.
+ * When pairing straight items whose set counts differ, updates the next item's sets first so the pair is valid.
+ * Circuit items stay in their circuit unless the switch is turned off (which clears `circuit` and any pairing).
+ */
+export async function savePlanItemGrouping(
+  dayId: number | undefined,
+  item: PlanItemRow,
+  nextItem: PlanItemRow | undefined,
+  groupNext: boolean,
+  showGroup: boolean,
+): Promise<void> {
+  await updatePlanItem(item)
+  if (dayId == null || item.id == null || !showGroup) return
+  if (groupNext && !item.circuit) {
+    if (nextItem && !isExtraBlock(nextItem.block) && nextItem.sets !== item.sets) {
+      await updatePlanItem({ ...nextItem, sets: item.sets })
+    }
+    await setPairWithNext(dayId, item.id, true)
+  } else if (!groupNext) {
+    await setPairWithNext(dayId, item.id, false)
+  }
 }
 
 

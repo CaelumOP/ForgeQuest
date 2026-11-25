@@ -8,7 +8,9 @@ import com.forgequest.app.domain.ExerciseTiers
 import com.forgequest.app.domain.Experience
 import com.forgequest.app.domain.MovementPattern
 import com.forgequest.app.domain.PlanBuilder
+import com.forgequest.app.domain.RoutineAuditor
 import com.forgequest.app.domain.Tier
+import com.forgequest.app.domain.WorkoutStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,5 +39,15 @@ class PlanBuilderStepperTest {
 
         assertTrue(verticalPulls.isNotEmpty())
         assertTrue(verticalPulls.all { (ExerciseTiers.of(it) ?: Tier.FOUNDATION) == Tier.FOUNDATION })
+    }
+
+    @Test
+    fun freshPlanWithDefaultAnswersProducesNoAuditFindings() {
+        val byId = ExerciseCatalog.all.associateBy { it.id }
+        for (style in WorkoutStyle.entries) {
+            val built = PlanBuilder.build(PlanAnswers(style = style).toInput(), ExerciseCatalog.all)
+            val findings = RoutineAuditor.audit(RoutineAuditor.fromDraft(built.draft), byId)
+            assertEquals("style=$style", emptyList<RoutineAuditor.Finding>(), findings)
+        }
     }
 }

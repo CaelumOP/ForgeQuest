@@ -232,4 +232,39 @@ class RoutineAuditorTest {
         assertEquals(emptyList<RoutineAuditor.Finding>(), RoutineAuditor.audit(emptyList(), exercises))
         assertEquals(emptyList<RoutineAuditor.Finding>(), RoutineAuditor.audit(listOf(AuditDay(1, emptyList())), exercises))
     }
+
+    @Test
+    fun estimateMinutesCostsSupersetPairsAndCircuitsByRoundRatherThanPerExercise() {
+        val pairDay = AuditDay(
+            dayOfWeek = 1,
+            items = listOf(
+                AuditItem(bench.id, 3, block = "Main", position = 0, restSeconds = 40, supersetGroup = 1),
+                AuditItem(row.id, 3, block = "Main", position = 1, restSeconds = 40, supersetGroup = 1),
+            ),
+        )
+        // 3 * (2*40 + 40) = 360 s = 6 min
+        assertEquals(6, RoutineAuditor.estimateMinutes(pairDay))
+
+        val circuitDay = AuditDay(
+            dayOfWeek = 1,
+            items = listOf(
+                AuditItem(bench.id, 3, block = "Circuit A", position = 0, restSeconds = 30, circuit = true),
+                AuditItem(row.id, 3, block = "Circuit A", position = 1, restSeconds = 30, circuit = true),
+                AuditItem(squat.id, 3, block = "Circuit A", position = 2, restSeconds = 30, circuit = true),
+            ),
+        )
+        // 3 * (3*40 + 30) = 450 s -> ceil(7.5) = 8 min
+        assertEquals(8, RoutineAuditor.estimateMinutes(circuitDay))
+
+        // Unequal sets inside a group: min rounds grouped, extra sets straight
+        val uneven = AuditDay(
+            dayOfWeek = 1,
+            items = listOf(
+                AuditItem(bench.id, 4, block = "Main", position = 0, restSeconds = 60, supersetGroup = 1),
+                AuditItem(row.id, 2, block = "Main", position = 1, restSeconds = 90, supersetGroup = 1),
+            ),
+        )
+        // 2 * (80 + 90) + 2 * (40 + 60) = 340 + 200 = 540 s = 9 min
+        assertEquals(9, RoutineAuditor.estimateMinutes(uneven))
+    }
 }

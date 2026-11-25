@@ -624,4 +624,23 @@ describe('W2 review fixes', () => {
     expect(sets.filter((s) => s.itemPosition === warm.position)).toHaveLength(warm.sets);
     expect(count(main.position)).toBe(Math.trunc((main.sets + 1) / 2));
   });
+
+  it('applyPlan copies supersetGroup to stored PlanItemEntity and keeps valid builder pairs', async () => {
+    await applyPlan({
+      name: 'Superset Plan',
+      description: '',
+      days: [
+        {
+          dayOfWeek: 1, title: 'Full body', isRest: false, note: '',
+          items: [
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'db_bench_press', block: 'Main', circuit: false, supersetGroup: 1, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 40, note: '' },
+            { name: null, kind: null, muscles: [], videoUrl: null, exerciseId: 'db_row', block: 'Main', circuit: false, supersetGroup: 1, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 40, note: '' },
+          ],
+        },
+      ],
+    }, 'builder');
+    const day = (await getActivePlan())!.days.find((d) => !d.day.isRest)!;
+    expect(day.items[0].supersetGroup).toBe(1);
+    expect(day.items[1].supersetGroup).toBe(1);
+  });
 });

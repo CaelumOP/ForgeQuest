@@ -38,6 +38,7 @@ data class PlanDraftItem(
     val muscles: List<String> = emptyList(),
     val block: String = "Main",
     val circuit: Boolean = false,
+    val supersetGroup: Int? = null,
     val sets: Int = 3,
     val repsMin: Int? = null,
     val repsMax: Int? = null,

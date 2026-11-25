@@ -852,8 +852,6 @@
     <string name="plan_rounds">الجولات</string>
     <string name="plan_reps_min">العدّات (الأدنى)</string>
     <string name="plan_reps_max">العدّات (الأقصى)</string>
-    <string name="plan_part_circuit">ضمن تمرين دائري</string>
-    <string name="plan_circuit_hint">تُؤدّى جولةً جولة مع تمارين التمرين الدائري الأخرى في «%1$s»</string>
     <string name="plan_order">الترتيب</string>
     <string name="plan_move_up">تحريك للأعلى</string>
     <string name="plan_move_down">تحريك للأسفل</string>
@@ -901,6 +899,10 @@
     <string name="block_core">الجذع والبطن</string>
     <string name="block_main">الأساسي</string>
     <string name="block_legs">الأرجل</string>
+    <string name="block_circuit_a">الدائرة أ</string>
+    <string name="block_circuit_b">الدائرة ب</string>
+    <string name="block_circuit_c">الدائرة ج</string>
+    <string name="block_circuit_d">الدائرة د</string>
     <string name="live_rest_minus">−15 ث</string>
     <string name="live_rest_plus">+15 ث</string>
     <string name="live_tick_all_finish">أنجزتها كلها: علّمها وأنهِ</string>
@@ -1626,6 +1628,8 @@
     <string name="pb_day_push">دفع</string>
     <string name="pb_day_pull">سحب</string>
     <string name="pb_day_legs">الساقان</string>
+    <string name="pb_day_push_legs">الدفع والساقان</string>
+    <string name="pb_day_pull_hinge">السحب ومفصل الورك والجذع</string>
     <string name="pb_day_cond">لياقة وتحمّل</string>
     <string name="pb_why_injury">استُبعدت تمارين قد تفاقم إصابتك.</string>
     <string name="pb_why_equipment">بعض التمارين تحتاج معدات لم تخترها.</string>

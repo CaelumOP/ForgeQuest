@@ -10,12 +10,14 @@
     <string name="plan41_missed_yesterday">فاتك تمرين أمس: %1$s</string>
     <string name="plan41_do_missed_today">أدِّه اليوم</string>
 
-    <string name="plan41_pair_next">اربط بالتمرين التالي (سوبر سِت)</string>
-    <string name="plan41_pair_hint_ready">تبادل المجموعات مع %1$s.</string>
-    <string name="plan41_pair_hint_active">مربوط سوبر سِت مع %1$s.</string>
-    <string name="plan41_pair_hint_prev">مربوط مسبقًا مع %1$s.</string>
-    <string name="plan41_pair_hint_sets">يجب أن يطابق عدد المجموعات تمرين %1$s (%2$d مجموعات).</string>
+    <string name="plan41_group_next">اجمعه مع التالي</string>
     <string name="plan41_superset_tag">سوبر سِت</string>
+
+    <string name="pb_style">أسلوب التمرين</string>
+    <string name="pb_style_straight">مجموعات عادية</string>
+    <string name="pb_style_superset">مجموعات مزدوجة</string>
+    <string name="pb_style_circuit">دائرة</string>
+    <string name="pb_style_auto_hint">مجموعات مزدوجة في الجلسات التي لا تتجاوز 30 دقيقة</string>
 
     <string name="plan41_auto_warmup">مجموعات تسخين تلقائية</string>
     <string name="plan41_auto_warmup_hint">يضيف 2–3 مجموعات تسخين متدرجة (50% / 70% / 85%) قبل المجموعة الأولى.</string>

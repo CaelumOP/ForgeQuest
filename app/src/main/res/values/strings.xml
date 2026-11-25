@@ -743,8 +743,6 @@
     <string name="plan_rounds">Rounds</string>
     <string name="plan_reps_min">Reps (min)</string>
     <string name="plan_reps_max">Reps (max)</string>
-    <string name="plan_part_circuit">Part of a circuit</string>
-    <string name="plan_circuit_hint">Done round by round with the other circuit exercises in \"%1$s\"</string>
     <string name="plan_order">Order</string>
     <string name="plan_move_up">Move up</string>
     <string name="plan_move_down">Move down</string>
@@ -788,6 +786,10 @@
     <string name="block_core">Core</string>
     <string name="block_main">Main</string>
     <string name="block_legs">Legs</string>
+    <string name="block_circuit_a">Circuit A</string>
+    <string name="block_circuit_b">Circuit B</string>
+    <string name="block_circuit_c">Circuit C</string>
+    <string name="block_circuit_d">Circuit D</string>
     <string name="live_rest_minus">−15 s</string>
     <string name="live_rest_plus">+15 s</string>
     <string name="live_tick_all_finish">I did them all: tick &amp; finish</string>
@@ -1435,6 +1437,8 @@
     <string name="pb_day_push">Push</string>
     <string name="pb_day_pull">Pull</string>
     <string name="pb_day_legs">Legs</string>
+    <string name="pb_day_push_legs">Push and legs</string>
+    <string name="pb_day_pull_hinge">Pull, hinge and core</string>
     <string name="pb_day_cond">Conditioning</string>
     <string name="pb_why_injury">Left out exercises that could aggravate your injury.</string>
     <string name="pb_why_equipment">Some exercises need gear you didn\'t pick.</string>

@@ -10,6 +10,7 @@ import com.forgequest.app.domain.RepPref
 import com.forgequest.app.domain.RestPref
 import com.forgequest.app.domain.TrainGoal
 import com.forgequest.app.domain.WhyTag
+import com.forgequest.app.domain.WorkoutStyle
 
 /** The builder's enums are text-free; these give each one its string (EN and AR live in the resource files). */
 @StringRes
@@ -63,6 +64,14 @@ internal fun RestPref.pbRes(): Int = when (this) {
 }
 
 @StringRes
+internal fun WorkoutStyle.pbRes(): Int = when (this) {
+    WorkoutStyle.AUTO -> R.string.pb_auto
+    WorkoutStyle.STRAIGHT -> R.string.pb_style_straight
+    WorkoutStyle.SUPERSET -> R.string.pb_style_superset
+    WorkoutStyle.CIRCUIT -> R.string.pb_style_circuit
+}
+
+@StringRes
 internal fun Cardio.pbRes(): Int = when (this) {
     Cardio.NONE -> R.string.pb_cardio_none
     Cardio.FINISHER -> R.string.pb_cardio_finisher
@@ -77,6 +86,8 @@ internal fun DayFocus.pbRes(): Int = when (this) {
     DayFocus.PUSH -> R.string.pb_day_push
     DayFocus.PULL -> R.string.pb_day_pull
     DayFocus.LEGS -> R.string.pb_day_legs
+    DayFocus.PUSH_LEGS -> R.string.pb_day_push_legs
+    DayFocus.PULL_HINGE -> R.string.pb_day_pull_hinge
     DayFocus.CONDITIONING -> R.string.pb_day_cond
 }
 

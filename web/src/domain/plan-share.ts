@@ -134,6 +134,7 @@ export function sharedPlanToDraft(shared: SharedPlan): PlanDraft {
         muscles: i.muscles,
         block: i.block,
         circuit: i.circuit,
+        supersetGroup: i.supersetGroup ?? null,
         sets: i.sets,
         repsMin: i.repsMin,
         repsMax: i.repsMax,

@@ -10,12 +10,14 @@
     <string name="plan41_missed_yesterday">Missed yesterday: %1$s</string>
     <string name="plan41_do_missed_today">Do it today</string>
 
-    <string name="plan41_pair_next">Pair with next (Superset)</string>
-    <string name="plan41_pair_hint_ready">Alternate sets with %1$s.</string>
-    <string name="plan41_pair_hint_active">Paired as superset with %1$s.</string>
-    <string name="plan41_pair_hint_prev">Already paired with %1$s.</string>
-    <string name="plan41_pair_hint_sets">Set count must match %1$s (%2$d sets).</string>
+    <string name="plan41_group_next">Group with next</string>
     <string name="plan41_superset_tag">Superset</string>
+
+    <string name="pb_style">Workout style</string>
+    <string name="pb_style_straight">Straight sets</string>
+    <string name="pb_style_superset">Supersets</string>
+    <string name="pb_style_circuit">Circuit</string>
+    <string name="pb_style_auto_hint">Supersets on sessions of 30 min or less</string>
 
     <string name="plan41_auto_warmup">Auto warm-up sets</string>
     <string name="plan41_auto_warmup_hint">Adds 2–3 ramp sets (50% / 70% / 85%) before set 1.</string>

@@ -72,24 +72,24 @@ export function groupSetsByExercise(
 
 export type EffectiveRest = { seconds: number; isShortTransition: boolean }
 
-/** Rest duration and transition-flag after ticking `set`: warm-ups skip auto-rest, rest-pause uses 15 s, superset A1 gets 10 s transition. */
+/** Rest duration and transition-flag after ticking `set`: warm-ups skip auto-rest, rest-pause uses 15 s, non-last members of a superset or circuit round skip rest (0 s). */
 export function effectiveRest(set: SetRow, groups: readonly Group[]): EffectiveRest {
   const type = set.setType ?? 'WORKING'
   if (type === 'WARMUP') return { seconds: 0, isShortTransition: false }
   if (type === 'RESTPAUSE') return { seconds: 15, isShortTransition: false }
   if (set.restSeconds <= 0) return { seconds: 0, isShortTransition: false }
   for (const g of groups) {
-    if (g.kind !== 'circuit' || g.supersetGroup == null) continue
+    if (g.kind !== 'circuit') continue
     const round = g.rounds.find((r) => r.some((s) => s.id === set.id))
     if (!round) continue
     const isLast = round[round.length - 1]?.id === set.id
     const otherUndone = round.some((s) => s.id !== set.id && !s.done)
-    if (!isLast && otherUndone) return { seconds: Math.min(set.restSeconds, 10), isShortTransition: true }
+    if (!isLast && otherUndone) return { seconds: 0, isShortTransition: true }
   }
   return { seconds: set.restSeconds, isShortTransition: false }
 }
 
-/** Rest seconds after ticking `set`: warm-ups skip auto-rest, rest-pause uses 15 s, superset A1 gets 10 s transition. */
+/** Rest seconds after ticking `set`: warm-ups skip auto-rest, rest-pause uses 15 s, non-last round members skip rest (0 s). */
 export function effectiveRestSeconds(set: SetRow, groups: readonly Group[]): number {
   return effectiveRest(set, groups).seconds
 }

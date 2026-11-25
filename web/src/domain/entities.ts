@@ -98,6 +98,7 @@ export type PlanDraftItem = {
   muscles: string[]
   block: string
   circuit: boolean
+  supersetGroup?: number | null
   sets: number
   repsMin: number | null
   repsMax: number | null

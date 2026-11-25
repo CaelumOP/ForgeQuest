@@ -11,8 +11,8 @@ import {
 import { isInjury, type Injury } from './injury'
 import { isMuscle, type Muscle } from './muscle'
 import {
-  CARDIOS, EXPERIENCES, REP_PREFS, REST_PREFS, spreadDays, TRAIN_GOALS,
-  type Cardio, type Experience, type PlanInput, type RepPref, type RestPref, type TrainGoal,
+  CARDIOS, EXPERIENCES, REP_PREFS, REST_PREFS, spreadDays, TRAIN_GOALS, WORKOUT_STYLES,
+  type Cardio, type Experience, type PlanInput, type RepPref, type RestPref, type TrainGoal, type WorkoutStyle,
 } from './plan-builder'
 
 export type PlanAnswers = {
@@ -33,6 +33,7 @@ export type PlanAnswers = {
   holdsOk: boolean
   reps: RepPref
   rest: RestPref
+  style: WorkoutStyle
 }
 
 export function defaultPlanAnswers(): PlanAnswers {
@@ -54,6 +55,7 @@ export function defaultPlanAnswers(): PlanAnswers {
     holdsOk: true,
     reps: 'AUTO',
     rest: 'AUTO',
+    style: 'AUTO',
   }
 }
 
@@ -86,6 +88,7 @@ export function planAnswersToInput(answers: Partial<PlanAnswers> = {}, offset = 
     holdsOk: answers.holdsOk ?? base.holdsOk,
     reps: answers.reps ?? base.reps,
     rest: answers.rest ?? base.rest,
+    style: answers.style ?? base.style,
     offset,
   }
 }
@@ -124,6 +127,7 @@ export function encodePlanAnswers(answers: PlanAnswers): string {
     holdsOk: answers.holdsOk,
     reps: answers.reps,
     rest: answers.rest,
+    style: answers.style,
   })
 }
 
@@ -141,6 +145,7 @@ export function decodePlanAnswers(raw: string | null | undefined): PlanAnswers |
     if (obj.cardio !== undefined && !isIn(CARDIOS, obj.cardio)) return null
     if (obj.reps !== undefined && !isIn(REP_PREFS, obj.reps)) return null
     if (obj.rest !== undefined && !isIn(REST_PREFS, obj.rest)) return null
+    if (obj.style !== undefined && !isIn(WORKOUT_STYLES, obj.style)) return null
 
     if (obj.days !== undefined) {
       if (!Array.isArray(obj.days) || !obj.days.every((x) => typeof x === 'number' && Number.isInteger(x))) return null
@@ -197,6 +202,7 @@ export function decodePlanAnswers(raw: string | null | undefined): PlanAnswers |
     if (obj.cardio !== undefined) d.cardio = obj.cardio
     if (obj.reps !== undefined) d.reps = obj.reps
     if (obj.rest !== undefined) d.rest = obj.rest
+    if (obj.style !== undefined) d.style = obj.style
     if (obj.warmUp !== undefined) {
       if (typeof obj.warmUp !== 'boolean') return null
       d.warmUp = obj.warmUp

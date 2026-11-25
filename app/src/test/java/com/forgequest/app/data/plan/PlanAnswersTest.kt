@@ -9,6 +9,7 @@ import com.forgequest.app.domain.Muscle
 import com.forgequest.app.domain.PlanBuilder
 import com.forgequest.app.domain.RepPref
 import com.forgequest.app.domain.TrainGoal
+import com.forgequest.app.domain.WorkoutStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -21,9 +22,17 @@ class PlanAnswersTest {
             goal = TrainGoal.STRENGTH, days = setOf(1, 3, 6), minutes = 30, equipment = EquipmentPreset.HOME_GYM.equipment,
             injuries = setOf(Injury.KNEE, Injury.WRIST), avoidIds = setOf("burpee"), pushUpMax = 12, pullUpMax = 3,
             focus = setOf(Muscle.GLUTES), minutesByDay = mapOf(3 to 20), cardio = Cardio.FINISHER, warmUp = false,
-            coolDown = true, holdsOk = false, reps = RepPref.LOW,
+            coolDown = true, holdsOk = false, reps = RepPref.LOW, style = WorkoutStyle.SUPERSET,
         )
         assertEquals(a, PlanAnswers.decode(a.encode()))
+    }
+
+    @Test fun styleDefaultsToAutoWhenOmittedAndRejectsUnknownValue() {
+        val omitted = PlanAnswers.decode("""{"goal":"MUSCLE"}""")
+        assertNotNull(omitted)
+        assertEquals(WorkoutStyle.AUTO, omitted!!.style)
+        assertNull(PlanAnswers.decode("""{"goal":"MUSCLE","style":"UNKNOWN_STYLE"}"""))
+        assertNull(PlanAnswers.decode("""{"goal":"MUSCLE","style":null}"""))
     }
 
     @Test fun nothingSavedOrDamagedTextReadsAsNull() {

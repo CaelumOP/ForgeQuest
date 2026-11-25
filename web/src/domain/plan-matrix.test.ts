@@ -31,13 +31,14 @@ it('audits a deterministic matrix sample and matches the shared standard-plan go
         if (kinds.includes('SHORT_PLAN')) shortNotes++
       }
       total++
+      // Every sampled plan (incl. short supersets and circuits); day and item order are significant; null is literal "null".
+      hash.update(`${key}	${plan.draft.days.map((d) => `${d.dayOfWeek}:` + d.items.map((i) =>
+        `${i.exerciseId}/${i.sets}/${i.repsMin ?? 'null'}-${i.repsMax ?? 'null'}/${i.seconds ?? 'null'}/${i.restSeconds}/${i.block}/${i.circuit}/${i.supersetGroup ?? 'null'}`).join(';')).join(' || ')}
+`)
       if (n < 3 || n > 6 || minutes < 45) continue
       standard++
       if (kinds.length === 0) clean++
       expect(kinds.filter((k) => k !== 'BELOW_MEV'), key).toEqual([])
-      // Day and item order are significant; null is literal "null"; no localized titles.
-      hash.update(`${key}\t${plan.draft.days.map((d) => `${d.dayOfWeek}:` + d.items.map((i) =>
-        `${i.exerciseId}/${i.sets}/${i.repsMin ?? 'null'}-${i.repsMax ?? 'null'}/${i.seconds ?? 'null'}/${i.restSeconds}`).join(';')).join(' || ')}\n`)
     }
   expect(total).toBe(11340)
   expect(standard).toBe(9240)
@@ -46,4 +47,4 @@ it('audits a deterministic matrix sample and matches the shared standard-plan go
   const digest = hash.digest('hex')
   console.info(`matrix: ${clean}/${standard} clean; SHA-256 ${digest}`)
   expect(digest).toBe(readFileSync('../tools/plan-matrix.golden', 'utf8').trim())
-}, 90_000)
+}, 180_000)

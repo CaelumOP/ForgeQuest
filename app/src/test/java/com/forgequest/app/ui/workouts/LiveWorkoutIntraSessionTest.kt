@@ -20,13 +20,15 @@ class LiveWorkoutIntraSessionTest {
         restSeconds: Int = 90,
         setType: SetType = SetType.WORKING,
         done: Boolean = false,
+        block: String = "Main",
+        circuit: Boolean = false,
     ) = SetEntity(
         id = ++id,
         sessionId = 1L,
         exerciseId = exerciseId,
         itemPosition = pos,
-        block = "Main",
-        circuit = false,
+        block = block,
+        circuit = circuit,
         setIndex = idx,
         targetLabel = "",
         restSeconds = restSeconds,
@@ -36,14 +38,16 @@ class LiveWorkoutIntraSessionTest {
     )
 
     @Test
-    fun effectiveRestFlagsSupersetTransitionOnlyWhenUndonePartnerRemains() {
+    fun effectiveRestFlagsSupersetAndCircuitTransitionOnlyWhenUndonePartnerRemains() {
         val a1 = set(0, 0, restSeconds = 90)
         val a2 = set(1, 0, restSeconds = 90)
         val straight = set(2, 0, restSeconds = 90)
-        val groups = group(listOf(a1, a2, straight)) { pos -> if (pos == 0 || pos == 1) 1 else null }
+        val c1 = set(3, 0, restSeconds = 30, block = "Circuit A", circuit = true)
+        val c2 = set(4, 0, restSeconds = 30, block = "Circuit A", circuit = true)
+        val groups = group(listOf(a1, a2, straight, c1, c2)) { pos -> if (pos == 0 || pos == 1) 1 else null }
 
         val r1 = effectiveRest(a1, groups)
-        assertEquals(10, r1.seconds)
+        assertEquals(0, r1.seconds)
         assertTrue(r1.isShortTransition)
 
         val r2 = effectiveRest(a2, groups)
@@ -53,6 +57,14 @@ class LiveWorkoutIntraSessionTest {
         val r3 = effectiveRest(straight, groups)
         assertEquals(90, r3.seconds)
         assertFalse(r3.isShortTransition)
+
+        val rc1 = effectiveRest(c1, groups)
+        assertEquals(0, rc1.seconds)
+        assertTrue(rc1.isShortTransition)
+
+        val rc2 = effectiveRest(c2, groups)
+        assertEquals(30, rc2.seconds)
+        assertFalse(rc2.isShortTransition)
     }
 
     @Test

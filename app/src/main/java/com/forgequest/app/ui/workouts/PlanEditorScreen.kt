@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -181,9 +182,14 @@ class PlanEditorViewModel(val app: AppContainer) : ViewModel() {
         app.workouts.setPlanScheduleMode(planId, mode)
     }
 
-    fun saveItemWithSuperset(dayId: Long, item: PlanItemEntity, pairWithNext: Boolean) = viewModelScope.launch {
-        app.workouts.updatePlanItem(item)
-        app.workouts.setPairWithNext(dayId, item.id, pairWithNext)
+    fun saveItemWithGrouping(
+        dayId: Long,
+        item: PlanItemEntity,
+        nextItem: PlanItemEntity?,
+        groupWithNext: Boolean,
+        showGroup: Boolean,
+    ) = viewModelScope.launch {
+        app.workouts.saveItemWithGrouping(dayId, item, nextItem, groupWithNext, showGroup)
     }
 
     fun adaptPending(exercises: Map<String, ExerciseEntity>, userEquipment: Set<Equipment>) {
@@ -550,14 +556,12 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
             canMoveUp = index > 0,
             canMoveDown = index >= 0 && index < siblings.lastIndex,
             prevItem = prevItem,
-            prevName = prevItem?.let { s.exercises[it.exerciseId]?.name ?: it.exerciseId },
             nextItem = nextItem,
-            nextName = nextItem?.let { s.exercises[it.exerciseId]?.name ?: it.exerciseId },
             // Both carry the sheet's draft, so sets, reps or rest changed there are not lost.
             onMove = { draft, delta -> vm.saveAndMove(draft, delta); editing = null },
             onSwap = { draft -> vm.updateItem(draft); editing = null; swappingItem = draft },
-            onSave = { updated, pairWithNext ->
-                if (day != null) vm.saveItemWithSuperset(day.day.id, updated, pairWithNext)
+            onSave = { updated, groupWithNext, showGroup ->
+                if (day != null) vm.saveItemWithGrouping(day.day.id, updated, nextItem, groupWithNext, showGroup)
                 else vm.updateItem(updated)
                 editing = null
             },
@@ -886,21 +890,20 @@ private fun ItemEditorSheet(
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     prevItem: PlanItemEntity? = null,
-    prevName: String? = null,
     nextItem: PlanItemEntity? = null,
-    nextName: String? = null,
     onMove: (PlanItemEntity, Int) -> Unit,
     onSwap: (PlanItemEntity) -> Unit,
-    onSave: (PlanItemEntity, Boolean) -> Unit,
+    onSave: (PlanItemEntity, Boolean, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val c = Fit.colors
     var draft by remember { mutableStateOf(item) }
     val initiallyPairedWithNext = nextItem != null && item.supersetGroup != null && nextItem.supersetGroup == item.supersetGroup
     val pairedWithPrev = prevItem != null && item.supersetGroup != null && prevItem.supersetGroup == item.supersetGroup
-    var pairWithNext by remember { mutableStateOf(initiallyPairedWithNext) }
+    var groupWithNext by remember { mutableStateOf(initiallyPairedWithNext || item.circuit) }
     val isExtra = WorkoutScore.isExtra(draft.block)
-    val canPair = nextItem != null && !isExtra && !WorkoutScore.isExtra(nextItem.block) && !pairedWithPrev && draft.sets == nextItem.sets
+    val showGroup = nextItem != null && !isExtra && !WorkoutScore.isExtra(nextItem.block)
+    val groupDisabled = pairedWithPrev && !draft.circuit
     val progModes = ProgressionMode.entries
 
     ModalBottomSheet(sheetState = rememberFullSheetState(), onDismissRequest = onDismiss, containerColor = c.card) {
@@ -913,11 +916,7 @@ private fun ItemEditorSheet(
             EditorRow(
                 if (draft.circuit) stringResource(R.string.plan_rounds) else stringResource(R.string.live_sets),
                 draft.sets.toFloat(),
-                { v ->
-                    val nextSets = v.toInt()
-                    draft = draft.copy(sets = nextSets)
-                    if (nextItem == null || nextSets != nextItem.sets) pairWithNext = false
-                },
+                { v -> draft = draft.copy(sets = v.toInt()) },
                 step = 1f, min = 1f, max = 10f,
             )
             if (kind == ExerciseKind.HOLD) {
@@ -942,13 +941,6 @@ private fun ItemEditorSheet(
                 EditorRow(stringResource(R.string.stepper_weight), unit.fromKg(draft.weightKg ?: 0f), { draft = draft.copy(weightKg = unit.toKg(it)) }, step = unit.loadStep, min = 0f, max = unit.fromKg(999f), unit = unit.label, decimals = 1)
             }
             EditorRow(stringResource(R.string.live_rest), draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = stringResource(R.string.unit_s))
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.plan_part_circuit), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                    Text(stringResource(R.string.plan_circuit_hint, draft.block), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-                Switch(checked = draft.circuit, onCheckedChange = { draft = draft.copy(circuit = it) }, colors = com.forgequest.app.ui.components.fitSwitchColors(c.teal))
-            }
             if (!isExtra) {
                 val curMode = ProgressionMode.parse(draft.progressionMode)
                 Spacer(Modifier.height(8.dp))
@@ -987,20 +979,31 @@ private fun ItemEditorSheet(
                         FitSwitch(checked = draft.autoWarmup, onCheckedChange = { draft = draft.copy(autoWarmup = it) })
                     }
                 }
-                if (nextItem != null && !WorkoutScore.isExtra(nextItem.block)) {
-                    val partnerTitle = nextName ?: nextItem.exerciseId
-                    val pairSub = when {
-                        pairedWithPrev -> stringResource(R.string.plan41_pair_hint_prev, prevName ?: prevItem?.exerciseId.orEmpty())
-                        nextItem.sets != draft.sets -> stringResource(R.string.plan41_pair_hint_sets, partnerTitle, nextItem.sets)
-                        pairWithNext -> stringResource(R.string.plan41_pair_hint_active, partnerTitle)
-                        else -> stringResource(R.string.plan41_pair_hint_ready, partnerTitle)
-                    }
-                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.plan41_pair_next), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                            Text(pairSub, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                        }
-                        FitSwitch(checked = pairWithNext, onCheckedChange = { if (canPair) pairWithNext = it }, enabled = canPair)
+                if (showGroup) {
+                    val checked = groupWithNext && !groupDisabled
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(
+                                value = checked,
+                                enabled = !groupDisabled,
+                                role = Role.Switch,
+                                onValueChange = { next ->
+                                    groupWithNext = next
+                                    if (!next) draft = draft.copy(circuit = false)
+                                },
+                            )
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.plan41_group_next),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (groupDisabled) c.textSecondary else c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        FitSwitch(checked = checked, onCheckedChange = null, enabled = !groupDisabled)
                     }
                 }
             }
@@ -1011,7 +1014,7 @@ private fun ItemEditorSheet(
                 PillButton(stringResource(R.string.plan_move_down), onClick = { onMove(draft, 1) }, icon = Icons.Rounded.ArrowDownward, container = c.cardHigh, content = c.textPrimary, enabled = canMoveDown)
             }
             Spacer(Modifier.height(16.dp))
-            PillButton(stringResource(R.string.action_save), onClick = { onSave(draft, pairWithNext) }, modifier = Modifier.fillMaxWidth())
+            PillButton(stringResource(R.string.action_save), onClick = { onSave(draft, groupWithNext && !groupDisabled, showGroup) }, modifier = Modifier.fillMaxWidth())
         }
     }
 }

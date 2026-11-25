@@ -82,6 +82,8 @@ it('writes the deterministic matrix scorecard within two minutes', () => {
     '## 15 worst groups (goal | days | preset | minutes)', '', header,
     ...[...groups].sort((a, b) => mean(a[1], r => r.grade.total) - mean(b[1], r => r.grade.total) || a[0].localeCompare(b[0])).slice(0, 15)
       .map(([key, s]) => `| ${key.replaceAll('|', ' / ')} | ${s.length} | ${columns(s)} |`), '',
+    '## Fat loss 6 days: every preset x minutes', '', header,
+    ...EQUIPMENT_PRESETS.flatMap(p => [20, 30, 45, 60].map(m => { const s = rows.filter(r => r.goal === 'FAT_LOSS' && r.days === 6 && r.minutes === m && r.preset === p); return `| ${p} / ${m} | ${s.length} | ${columns(s)} |` })), '',
     '## Three days x 20 minutes: every equipment preset', '', header,
     ...EQUIPMENT_PRESETS.map(p => { const s = rows.filter(r => r.days === 3 && r.minutes === 20 && r.preset === p); return `| ${p} | ${s.length} | ${columns(s)} |` }), '',
     'BODYWEIGHT_ONLY = no gear; HOME_GYM and both DUMBBELLS presets cover home/dumbbell setups; FULL_GYM = full gym. All remaining presets are shown separately.', '',

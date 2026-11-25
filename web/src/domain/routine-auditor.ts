@@ -3,7 +3,7 @@ import type { ExerciseEntity, PlanDraft } from './entities'
 import { bucketOf } from './baseline'
 import { profileFor } from './exercise-swap-engine'
 import { MUSCLES, type Muscle } from './muscle'
-import { COOL_DOWN_BLOCK, isCompoundExercise } from './plan-builder'
+import { COOL_DOWN_BLOCK, groupedWorkSeconds, isCompoundExercise } from './plan-builder'
 import { isExtraBlock } from './pr-picker'
 import type { ScheduleMode } from './rotation'
 import { isWarmUp } from './workout-score'
@@ -12,7 +12,15 @@ export const AUDIT_KINDS = [
   'ABOVE_MRV', 'RECOVERY_OVERLAP', 'JUNK_VOLUME', 'PUSH_PULL', 'BELOW_MEV', 'ISOLATION_FIRST', 'SHORT_PLAN',
 ] as const
 export type AuditKind = (typeof AUDIT_KINDS)[number]
-export type AuditItem = { exerciseId: string; sets: number; block?: string; position?: number; restSeconds?: number }
+export type AuditItem = {
+  exerciseId: string
+  sets: number
+  block?: string
+  position?: number
+  restSeconds?: number
+  circuit?: boolean
+  supersetGroup?: number | null
+}
 export type AuditDay = { dayOfWeek?: number | null; items: readonly AuditItem[] }
 export type Finding = {
   kind: AuditKind; muscle?: Muscle; dayIndex?: number; value: number; limit: number; dayOfWeek?: number | null
@@ -90,11 +98,19 @@ export function fromActivePlan(plan: {
     }))
 }
 
-/** Minutes one day takes: sets x (40 s + rest) for the work, plus 5 for a warm-up block and 5 for a cool-down. */
+/** Minutes one day takes: grouped sets/rounds with 40 s work + rest, plus 5 for a warm-up block and 5 for a cool-down. */
 export function estimateMinutes(day: AuditDay): number {
-  const work = day.items
+  const workItems = [...day.items]
     .filter((it) => !isExtraBlock(it.block) && it.sets > 0)
-    .reduce((sum, it) => sum + it.sets * (40 + (it.restSeconds ?? 90)), 0)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .map((it) => ({
+      sets: it.sets,
+      restSeconds: it.restSeconds ?? 90,
+      block: it.block,
+      circuit: it.circuit ?? false,
+      supersetGroup: it.supersetGroup ?? null,
+    }))
+  const work = groupedWorkSeconds(workItems)
   const extras =
     (day.items.some((it) => isWarmUp(it.block)) ? 5 : 0) +
     (day.items.some((it) => it.block?.toLowerCase() === COOL_DOWN_BLOCK.toLowerCase()) ? 5 : 0)

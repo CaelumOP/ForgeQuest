@@ -311,6 +311,8 @@ object StarterPlans {
         "Workout" to "تمرين",
         "Upper" to "الجزء العلوي",
         "Lower" to "الجزء السفلي",
+        "Push and legs" to "الدفع والساقان",
+        "Pull, hinge and core" to "السحب ومفصل الورك والجذع",
         "Conditioning" to "اللياقة",
     )
 

@@ -67,7 +67,8 @@ fun ActivePlan.toDraft(): PlanDraft = PlanDraft(
             note = d.day.note,
             items = d.items.sortedBy { it.position }.map { i ->
                 PlanDraftItem(
-                    exerciseId = i.exerciseId, block = i.block, circuit = i.circuit, sets = i.sets, repsMin = i.repsMin,
+                    exerciseId = i.exerciseId, block = i.block, circuit = i.circuit, supersetGroup = i.supersetGroup,
+                    sets = i.sets, repsMin = i.repsMin,
                     repsMax = i.repsMax, seconds = i.seconds, weightKg = i.weightKg, restSeconds = i.restSeconds, note = i.note,
                 )
             },
@@ -221,12 +222,13 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
                     val autoWarmup = !WorkoutScore.isExtra(item.block) && WarmupRamp.isHeavyBarbellCompound(ex)
                     PlanItemEntity(
                         dayId = dayId, position = index, exerciseId = item.exerciseId, block = item.block, circuit = item.circuit,
+                        supersetGroup = item.supersetGroup,
                         sets = item.sets.coerceIn(1, 10), repsMin = item.repsMin, repsMax = item.repsMax, seconds = item.seconds,
                         weightKg = item.weightKg, restSeconds = item.restSeconds, note = item.note,
                         autoWarmup = autoWarmup,
                     )
                 }
-                plans.insertItems(items)
+                plans.insertItems(SupersetRules.normalizeDaySupersets(items))
             }
         }
         planId
@@ -396,6 +398,51 @@ class WorkoutRepository(private val db: AppDatabase, private val settings: Setti
         val updated = SupersetRules.setPairWithNext(items, index, pair)
         updated.forEachIndexed { idx, next ->
             if (items[idx] != next) plans.updateItem(next)
+        }
+    }
+
+    /**
+     * Saves [item] and applies "Group with next" pairing.
+     * When pairing straight items whose set counts differ, updates [nextItem]'s sets first so the pair is valid.
+     * Circuit items stay in their circuit unless the switch is turned off (which clears `circuit` and any pairing).
+     */
+    suspend fun saveItemWithGrouping(
+        dayId: Long,
+        item: PlanItemEntity,
+        nextItem: PlanItemEntity?,
+        groupWithNext: Boolean,
+        showGroup: Boolean,
+    ) = db.withTransaction {
+        plans.updateItem(item)
+        if (!showGroup) {
+            normalizeDaySupersetsInDb(dayId)
+            return@withTransaction
+        }
+        if (groupWithNext && !item.circuit) {
+            if (nextItem != null && !WorkoutScore.isExtra(nextItem.block) && nextItem.sets != item.sets) {
+                plans.updateItem(nextItem.copy(sets = item.sets))
+            }
+            normalizeDaySupersetsInDb(dayId)
+            val items = plans.items(dayId).sortedBy { it.position }
+            val index = items.indexOfFirst { it.id == item.id }
+            if (index >= 0) {
+                val updated = SupersetRules.setPairWithNext(items, index, true)
+                updated.forEachIndexed { idx, next ->
+                    if (items[idx] != next) plans.updateItem(next)
+                }
+            }
+        } else {
+            normalizeDaySupersetsInDb(dayId)
+            if (!groupWithNext) {
+                val items = plans.items(dayId).sortedBy { it.position }
+                val index = items.indexOfFirst { it.id == item.id }
+                if (index >= 0) {
+                    val updated = SupersetRules.setPairWithNext(items, index, false)
+                    updated.forEachIndexed { idx, next ->
+                        if (items[idx] != next) plans.updateItem(next)
+                    }
+                }
+            }
         }
     }
 

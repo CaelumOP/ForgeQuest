@@ -9,9 +9,9 @@ import { applyPlan, useLibrary } from '../../data/workouts'
 import { WEEK_ORDER } from '../../domain/dates'
 import type { ExerciseEntity, PlanDraftDay } from '../../domain/entities'
 import {
-  CARDIOS, EXPERIENCES, INJURIES, PlanBuilder, REP_PREFS, REST_PREFS, TRAIN_GOALS,
+  CARDIOS, EXPERIENCES, INJURIES, PlanBuilder, REP_PREFS, REST_PREFS, TRAIN_GOALS, WORKOUT_STYLES,
   defaultPlanAnswers, encodePlanAnswers, planAnswersToInput, spreadDays,
-  type BuiltPlan, type Cardio, type Experience, type PlanAnswers, type RepPref, type RestPref, type TrainGoal,
+  type BuiltPlan, type Cardio, type Experience, type PlanAnswers, type RepPref, type RestPref, type TrainGoal, type WorkoutStyle,
 } from '../../domain/plan-builder'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { Button, Card, Chip, IconButton, Segmented, Stepper, haptics, toast } from '../kit'
@@ -23,7 +23,7 @@ import {
   DAY_COUNT_OPTIONS, FOCUS_MUSCLES, MINUTE_OPTIONS,
   cardioKey, dayFocusKey, equipmentSetting, experienceKey, goalDescKey, goalKey,
   initialAnswers, injuryKey, localizeBuiltPlan, repPrefKey, restPrefKey,
-  rowSummaries, scheme, swapBuiltPlanItem, whyTagKey, stepperCountFromValue,
+  rowSummaries, scheme, swapBuiltPlanItem, whyTagKey, workoutStyleKey, stepperCountFromValue,
 } from './helpers'
 import { weeklyMuscleVolume } from '../../domain/plan-share'
 import './plan-builder.css'
@@ -525,6 +525,15 @@ function StyleRow({ a, change }: { a: PlanAnswers; change: (fn: (a: PlanAnswers)
         options={REST_PREFS.map((r) => ({ value: r, label: t(restPrefKey(r)) }))}
         onChange={(r: RestPref) => change((it) => ({ ...it, rest: r }))}
       />
+
+      <p class="pb-hint">{t('pb_style')}</p>
+      <Segmented
+        label={t('pb_style')}
+        value={a.style}
+        options={WORKOUT_STYLES.map((s) => ({ value: s, label: t(workoutStyleKey(s)) }))}
+        onChange={(s: WorkoutStyle) => change((it) => ({ ...it, style: s }))}
+      />
+      {a.style === 'AUTO' && <p class="pb-hint">{t('pb_style_auto_hint')}</p>}
 
       <p class="pb-hint">{t('pb_cardio')}</p>
       <Segmented

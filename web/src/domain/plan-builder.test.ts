@@ -7,10 +7,12 @@ import { EQUIPMENT_PRESETS, presetEquipment, profileFor, type Equipment, type Mo
 import { tierOf } from './exercise-tiers'
 import type { Muscle } from './muscle'
 import {
-  blocked, COOL_DOWN_BLOCK, estimateMinutes, FINISHER_BLOCK, fitsItsMovement, INJURIES, isCompound,
-  isCompoundExercise, isCore, isFly, PlanBuilder, spreadDays, STAPLE_IDS,
+  blocked, CIRCUIT_BLOCKS, CIRCUIT_POST_ROUND, CIRCUIT_POST_ROUND_SHORT, COOL_DOWN_BLOCK, estimateMinutes,
+  FINISHER_BLOCK, fitsItsMovement, INJURIES, isCompound, isCompoundExercise, isCore, isFly, NO_PAIR_IDS,
+  PlanBuilder, safePair, spreadDays, STAPLE_IDS, SUPERSET_POST_ROUND_SHORT,
   type BuiltPlan, type Injury, type PlanInput, type TrainGoal,
 } from './plan-builder'
+import { audit, fromDraft, OVERLAP_SETS } from './routine-auditor'
 
 const library: ExerciseEntity[] = EXERCISE_CATALOG
 const byId = new Map(library.map((e) => [e.id, e]))
@@ -358,5 +360,171 @@ describe('PlanBuilder overhaul', () => {
     const ids = plan.draft.days[0].items.map((i) => i.exerciseId)
     expect(ids).toContain('t_core_focus')
     expect(ids).not.toContain('t_core_main')
+  })
+})
+
+describe('Workout styles, supersets, circuits, fat-loss A/B & warm-ups', () => {
+  it('AUTO 3d x 20m MUSCLE FULL_GYM produces adjacent, safe superset pairs with equal sets and rest 40', () => {
+    const plan = build(input(3, fullGym, 'MUSCLE', 20))
+    for (const day of plan.draft.days) {
+      const work = day.items.filter((i) => !isExtraBlock(i.block))
+      const byGroup = new Map<number, typeof work>()
+      work.forEach((it, idx) => {
+        if (it.supersetGroup == null) return
+        byGroup.set(it.supersetGroup, [...(byGroup.get(it.supersetGroup) ?? []), it])
+        // Pairs must be adjacent
+        const prevSame = idx > 0 && work[idx - 1].supersetGroup === it.supersetGroup
+        const nextSame = idx + 1 < work.length && work[idx + 1].supersetGroup === it.supersetGroup
+        expect(prevSame || nextSame).toBe(true)
+      })
+      expect(byGroup.size).toBeGreaterThan(0)
+      for (const [, pair] of byGroup) {
+        expect(pair).toHaveLength(2)
+        expect(pair[0].sets).toBe(pair[1].sets)
+        expect(pair[0].restSeconds).toBe(SUPERSET_POST_ROUND_SHORT)
+        expect(pair[1].restSeconds).toBe(SUPERSET_POST_ROUND_SHORT)
+        expect(pair[0].circuit).toBe(false)
+        expect(pair[1].circuit).toBe(false)
+        expect(NO_PAIR_IDS.has(pair[0].exerciseId)).toBe(false)
+        expect(NO_PAIR_IDS.has(pair[1].exerciseId)).toBe(false)
+        expect(safePair(byId.get(pair[0].exerciseId)!, byId.get(pair[1].exerciseId)!)).toBe(true)
+      }
+    }
+  })
+
+  it('STRENGTH keeps the first MAIN pick alone on SUPERSET days', () => {
+    const plan = build(input(3, fullGym, 'STRENGTH', 20))
+    for (const day of plan.draft.days) {
+      const work = day.items.filter((i) => !isExtraBlock(i.block))
+      expect(work.length).toBeGreaterThan(0)
+      expect(work[0].supersetGroup).toBeNull()
+    }
+    const over30 = build(input(4, fullGym, 'STRENGTH', 60, { style: 'SUPERSET' }))
+    for (const day of over30.draft.days) {
+      const work = day.items.filter((i) => !isExtraBlock(i.block))
+      expect(work[0].supersetGroup).toBeNull()
+    }
+    expect(over30.draft.days.some((d) => d.items.some((i) => i.supersetGroup != null))).toBe(true)
+  })
+
+  it('FAT_LOSS 6d x 20m alternates PUSH_LEGS and PULL_HINGE without heavy consecutive-day overlap', () => {
+    const plan = build(input(6, fullGym, 'FAT_LOSS', 20))
+    const focuses = [...plan.days.entries()].sort((a, b) => a[0] - b[0]).map(([, f]) => f)
+    expect(focuses).toEqual(['PUSH_LEGS', 'PULL_HINGE', 'PUSH_LEGS', 'PULL_HINGE', 'PUSH_LEGS', 'PULL_HINGE'])
+    const findings = audit(fromDraft(plan.draft), byId)
+    expect(findings.filter((f) => ['RECOVERY_OVERLAP', 'ABOVE_MRV', 'JUNK_VOLUME', 'ISOLATION_FIRST'].includes(f.kind))).toEqual([])
+    const primarySets = (dayIdx: number) => {
+      const m = new Map<Muscle, number>()
+      for (const item of plan.draft.days[dayIdx].items) {
+        if (isExtraBlock(item.block)) continue
+        for (const mu of byId.get(item.exerciseId)!.primary) m.set(mu, (m.get(mu) ?? 0) + item.sets)
+      }
+      return m
+    }
+    for (let i = 0; i < plan.draft.days.length - 1; i++) {
+      const cur = primarySets(i)
+      const nxt = primarySets(i + 1)
+      for (const [mu, s1] of cur) {
+        const s2 = nxt.get(mu) ?? 0
+        if (s2 > 0) {
+          // Catalog squats/lunges list GLUTES as co-primary alongside QUADS, kept well below OVERLAP_SETS.
+          expect(mu).toBe('GLUTES')
+          expect(Math.min(s1, s2)).toBeLessThan(OVERLAP_SETS)
+        }
+      }
+    }
+  })
+
+  it('CIRCUIT days produce <= 3 pairwise-safe moves in distinct non-extra blocks with 30/40/60 rest', () => {
+    const c20 = build(input(3, fullGym, 'FAT_LOSS', 20))
+    for (const day of c20.draft.days) {
+      const work = day.items.filter((i) => !isExtraBlock(i.block))
+      const byBlock = new Map<string, typeof work>()
+      for (const it of work) {
+        expect(isExtraBlock(it.block)).toBe(false)
+        if (it.circuit) byBlock.set(it.block, [...(byBlock.get(it.block) ?? []), it])
+      }
+      expect(byBlock.size).toBeGreaterThan(0)
+      for (const [blk, members] of byBlock) {
+        expect((CIRCUIT_BLOCKS as readonly string[]).includes(blk)).toBe(true)
+        expect(members.length).toBeGreaterThanOrEqual(2)
+        expect(members.length).toBeLessThanOrEqual(3)
+        const expectedRest = members.length === 2 ? SUPERSET_POST_ROUND_SHORT : CIRCUIT_POST_ROUND_SHORT
+        for (const m of members) {
+          expect(m.sets).toBe(members[0].sets)
+          expect(m.restSeconds).toBe(expectedRest)
+          expect(m.supersetGroup).toBeNull()
+        }
+        for (let a = 0; a < members.length; a++) {
+          for (let b = a + 1; b < members.length; b++) {
+            expect(safePair(byId.get(members[a].exerciseId)!, byId.get(members[b].exerciseId)!)).toBe(true)
+          }
+        }
+      }
+    }
+
+    const c45 = build(input(3, fullGym, 'MUSCLE', 45, { style: 'CIRCUIT' }))
+    for (const day of c45.draft.days) {
+      const circ = day.items.filter((i) => !isExtraBlock(i.block) && i.circuit)
+      expect(circ.length).toBeGreaterThan(0)
+      expect(circ.every((i) => i.restSeconds === CIRCUIT_POST_ROUND)).toBe(true)
+    }
+  })
+
+  it('STRAIGHT over 30 min matches AUTO for non-fat-loss and keeps COND/FINISHER as circuits', () => {
+    const autoPlan = build(input(4, fullGym, 'MUSCLE', 60, { cardio: 'FINISHER' }))
+    const straightPlan = build(input(4, fullGym, 'MUSCLE', 60, { cardio: 'FINISHER', style: 'STRAIGHT' }))
+    expect(straightPlan).toEqual(autoPlan)
+    for (const day of straightPlan.draft.days) {
+      const main = day.items.filter((i) => i.block === 'Main')
+      expect(main.every((i) => !i.circuit && i.supersetGroup == null)).toBe(true)
+      const fin = day.items.filter((i) => i.block === FINISHER_BLOCK)
+      expect(fin.every((i) => i.circuit)).toBe(true)
+    }
+  })
+
+  it('estimateMinutes costs superset pairs as grouped rounds', () => {
+    const plan = build(input(3, fullGym, 'MUSCLE', 20))
+    const first = plan.draft.days[0]
+    const mins = estimateMinutes(first)
+    expect(mins).toBeLessThanOrEqual(25)
+    const pairDay = {
+      dayOfWeek: 1,
+      title: 'Test',
+      isRest: false,
+      note: '',
+      items: [
+        { exerciseId: 'db_bench_press', name: 'DB Bench', kind: 'WEIGHTED', muscles: ['CHEST'], block: 'Main', circuit: false, supersetGroup: 1, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 40, note: '', videoUrl: null },
+        { exerciseId: 'db_row', name: 'DB Row', kind: 'WEIGHTED', muscles: ['UPPER_BACK'], block: 'Main', circuit: false, supersetGroup: 1, sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: null, restSeconds: 40, note: '', videoUrl: null },
+      ],
+    }
+    expect(estimateMinutes(pairDay)).toBe(6)
+  })
+
+  it('warm-ups match day focus and never include calf_raise on upper days', () => {
+    const ppl = build(input(6, fullGym, 'MUSCLE', 60))
+    for (const day of ppl.draft.days) {
+      const focus = ppl.days.get(day.dayOfWeek)!
+      const warmIds = day.items.filter((i) => i.block === 'Warm-up').map((i) => i.exerciseId)
+      expect(warmIds.length).toBe(2)
+      if (focus === 'UPPER' || focus === 'PUSH' || focus === 'PULL') {
+        expect(warmIds).not.toContain('calf_raise')
+        expect(warmIds[0]).toBe('jumping_jacks')
+        expect(['band_pull_apart', 'scapular_pull_up', 'scapular_australian_pull_up', 'knee_scapular_push_up']).toContain(warmIds[1])
+      } else if (focus === 'LOWER' || focus === 'LEGS') {
+        expect(warmIds).toEqual(['jumping_jacks', 'half_squat'])
+      }
+    }
+  })
+
+  it('FAT_LOSS 5d x 45m NEW BICEPS clears SHORT_PLAN without violating audit rules or budget', () => {
+    const plan = build(input(5, fullGym, 'FAT_LOSS', 45, { experience: 'NEW', focus: ['BICEPS'] }))
+    const avg = plan.draft.days.reduce((sum, d) => sum + estimateMinutes(d), 0) / plan.draft.days.length
+    expect(avg).toBeGreaterThan(25)
+    for (const day of plan.draft.days) {
+      expect(estimateMinutes(day)).toBeLessThanOrEqual(50)
+    }
+    const kinds = audit(fromDraft(plan.draft), byId).map((f) => f.kind)
+    expect(kinds.filter((k) => k !== 'BELOW_MEV')).toEqual([])
   })
 })

@@ -54,6 +54,7 @@ export function planToDraft(p: ActivePlan): PlanDraft {
       dayOfWeek: d.day.dayOfWeek, title: d.day.title, isRest: d.day.isRest, note: d.day.note,
       items: [...d.items].sort((a, b) => a.position - b.position).map((i) => ({
         exerciseId: i.exerciseId, name: null, kind: null, muscles: [], block: i.block, circuit: i.circuit,
+        supersetGroup: i.supersetGroup ?? null,
         sets: i.sets, repsMin: i.repsMin, repsMax: i.repsMax, seconds: i.seconds, weightKg: i.weightKg,
         restSeconds: i.restSeconds, note: i.note, videoUrl: null,
       })),
@@ -129,6 +130,8 @@ export async function seedLibrary(lang: 'en' | 'ar' = 'en'): Promise<void> {
     'Lower': 'الجزء السفلي',
     'Conditioning': 'لياقة وتحمّل',
     'Legs': 'الساقان',
+    'Push and legs': 'الدفع والساقان',
+    'Pull, hinge and core': 'السحب ومفصل الورك والجذع',
     'Progression: when you hit the top of the range on every set, add load or reps. Every 4th week, halve the sets.':
       'التدرّج: عند بلوغ الحد الأعلى من التكرارات في كل المجموعات، زد الحمل أو التكرارات. كل رابع أسبوع، خفّض المجموعات للنصف.',
   };
@@ -217,12 +220,13 @@ export function applyPlan(draft: PlanDraft, source: string, scheduleMode: Schedu
           const autoWarmup = !isExtraBlock(item.block) && isHeavyBarbellCompound(ex);
           rows.push({
             dayId, position, exerciseId: item.exerciseId, block: item.block, circuit: item.circuit,
+            supersetGroup: item.supersetGroup ?? null,
             sets: Math.min(10, Math.max(1, item.sets)), repsMin: item.repsMin, repsMax: item.repsMax, seconds: item.seconds,
             weightKg: item.weightKg, restSeconds: item.restSeconds, note: item.note,
             autoWarmup,
           });
         }
-        await db.planItems.bulkAdd(rows);
+        await db.planItems.bulkAdd(normalizeDaySupersets(rows));
       }
     }
     return planId;

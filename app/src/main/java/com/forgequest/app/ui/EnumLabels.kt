@@ -234,6 +234,10 @@ fun blockLabel(block: String): String = when (block) {
     "Core" -> stringResource(R.string.block_core)
     "Main" -> stringResource(R.string.block_main)
     "Legs" -> stringResource(R.string.block_legs)
+    "Circuit A" -> stringResource(R.string.block_circuit_a)
+    "Circuit B" -> stringResource(R.string.block_circuit_b)
+    "Circuit C" -> stringResource(R.string.block_circuit_c)
+    "Circuit D" -> stringResource(R.string.block_circuit_d)
     else -> block
 }
 

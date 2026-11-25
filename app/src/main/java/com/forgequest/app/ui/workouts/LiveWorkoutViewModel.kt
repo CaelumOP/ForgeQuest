@@ -89,28 +89,24 @@ internal sealed interface TtsCue {
 
 internal data class EffectiveRest(val seconds: Int, val isShortTransition: Boolean = false)
 
-/** Pure rest duration and transition-flag helper for live sets: warm-ups skip rest, rest-pause uses 15s, superset A1 gets a 10s short transition. */
+/** Pure rest duration and transition-flag helper for live sets: warm-ups skip rest, rest-pause uses 15s, non-last members of a superset or circuit round skip rest (0s). */
 internal fun effectiveRest(set: SetEntity, groups: List<Group>): EffectiveRest {
     if (set.setType == SetType.WARMUP.name) return EffectiveRest(0)
     if (set.setType == SetType.RESTPAUSE.name) return EffectiveRest(15)
     if (set.restSeconds <= 0) return EffectiveRest(0)
-    val circuit = groups.filterIsInstance<Group.Circuit>().firstOrNull { g ->
-        g.supersetGroup != null && g.allSets.any { it.id == set.id }
-    }
-    if (circuit != null) {
-        val round = circuit.rounds.firstOrNull { r -> r.any { it.id == set.id } }
-        if (round != null) {
-            val otherUndone = round.any { it.id != set.id && !it.done }
-            val isLastInRound = round.lastOrNull()?.id == set.id
-            if (!isLastInRound && otherUndone) {
-                return EffectiveRest(minOf(set.restSeconds, 10), isShortTransition = true)
-            }
+    for (g in groups) {
+        if (g !is Group.Circuit) continue
+        val round = g.rounds.firstOrNull { r -> r.any { it.id == set.id } } ?: continue
+        val otherUndone = round.any { it.id != set.id && !it.done }
+        val isLastInRound = round.lastOrNull()?.id == set.id
+        if (!isLastInRound && otherUndone) {
+            return EffectiveRest(0, isShortTransition = true)
         }
     }
     return EffectiveRest(set.restSeconds)
 }
 
-/** Pure rest duration helper for live sets: warm-ups skip rest, rest-pause uses 15s, superset A1 gets a 10s transition. */
+/** Pure rest duration helper for live sets: warm-ups skip rest, rest-pause uses 15s, non-last round members skip rest (0s). */
 internal fun effectiveRestSeconds(set: SetEntity, groups: List<Group>): Int =
     effectiveRest(set, groups).seconds
 

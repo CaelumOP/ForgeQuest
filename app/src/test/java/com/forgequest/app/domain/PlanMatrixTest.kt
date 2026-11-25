@@ -36,17 +36,17 @@ class PlanMatrixTest {
                     if (RoutineAuditor.Kind.SHORT_PLAN in kinds) shortNotes++
                 }
                 total++
+                // Every sampled plan (incl. short supersets and circuits); day and item order are significant; null is literal "null".
+                val record = key + "\t" + plan.draft.days.joinToString(" || ") { d ->
+                    "${d.dayOfWeek}:" + d.items.joinToString(";") { i ->
+                        "${i.exerciseId}/${i.sets}/${i.repsMin ?: "null"}-${i.repsMax ?: "null"}/${i.seconds ?: "null"}/${i.restSeconds}/${i.block}/${i.circuit}/${i.supersetGroup ?: "null"}"
+                    }
+                } + "\n"
+                hash.update(record.toByteArray(Charsets.UTF_8))
                 if (n !in 3..6 || minutes < 45) continue
                 standard++
                 if (kinds.isEmpty()) clean++
                 assertTrue("$key: $kinds", kinds.all { it == RoutineAuditor.Kind.BELOW_MEV })
-                // Day and item order are significant; null is literal "null"; no localized titles.
-                val record = key + "\t" + plan.draft.days.joinToString(" || ") { d ->
-                    "${d.dayOfWeek}:" + d.items.joinToString(";") { i ->
-                        "${i.exerciseId}/${i.sets}/${i.repsMin}-${i.repsMax}/${i.seconds}/${i.restSeconds}"
-                    }
-                } + "\n"
-                hash.update(record.toByteArray(Charsets.UTF_8))
             }
         assertEquals(11340, total)
         assertEquals(9240, standard)

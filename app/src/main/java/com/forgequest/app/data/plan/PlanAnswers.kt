@@ -11,6 +11,7 @@ import com.forgequest.app.domain.PlanInput
 import com.forgequest.app.domain.RepPref
 import com.forgequest.app.domain.RestPref
 import com.forgequest.app.domain.TrainGoal
+import com.forgequest.app.domain.WorkoutStyle
 import com.forgequest.app.domain.expandLegacyEquipment
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -39,12 +40,13 @@ data class PlanAnswers(
     val holdsOk: Boolean = true,
     val reps: RepPref = RepPref.AUTO,
     val rest: RestPref = RestPref.AUTO,
+    val style: WorkoutStyle = WorkoutStyle.AUTO,
 ) {
     fun toInput() = PlanInput(
         goal = goal, days = days, minutes = minutes, equipment = expandLegacyEquipment(equipment) + Equipment.BODYWEIGHT, experience = experience,
         injuries = injuries, avoidIds = avoidIds, pushUpMax = pushUpMax, pullUpMax = pullUpMax, focus = focus,
         minutesByDay = minutesByDay.filterKeys { it in days }, cardio = cardio, warmUp = warmUp, coolDown = coolDown,
-        holdsOk = holdsOk, reps = reps, rest = rest,
+        holdsOk = holdsOk, reps = reps, rest = rest, style = style,
     )
 
     fun encode(): String = json.encodeToString(
@@ -52,7 +54,7 @@ data class PlanAnswers(
     )
 
     companion object {
-        private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; encodeDefaults = true }
+        private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
         /** Null for nothing saved or text that no longer parses (a changed enum, a damaged file): the screen then starts fresh. */
         fun decode(raw: String?): PlanAnswers? =

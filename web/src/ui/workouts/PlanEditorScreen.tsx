@@ -7,7 +7,7 @@ import { useProgress } from '../../data/progress'
 import { configuredEquipment, updateSettings, weightUnit } from '../../data/settings'
 import {
   activatePlan, addCustomExercise, addPlanItem, applyPlan, deletePlan, deletePlanItem, importSharedPlan,
-  movePlanItem, restorePlanItem, setPairWithNext, setPlanScheduleMode, swapPlanDays, swapPlanItem,
+  movePlanItem, restorePlanItem, setPlanScheduleMode, swapPlanDays, swapPlanItem,
   updatePlanDay, updatePlanItem, useAllPlans, useLibrary, type PlanDayWithItems,
 } from '../../data/workouts'
 import { localizePlan, STARTER_PLANS, type PlanDraft } from '../../data/seed/starter-plans'
@@ -15,7 +15,7 @@ import { ALL_ACTIVE_EQUIPMENT, adaptPlanToEquipment, expandLegacyEquipment, type
 import { dayOfWeek, todayEpochDay, WEEK_ORDER } from '../../domain/dates'
 import type { ExerciseKind, Muscle } from '../../domain/muscle'
 import {
-  canPairWithNext, exportSharedPlan, isPairedWithNext, isPairedWithPrev, parseAndValidateSharedPlan,
+  exportSharedPlan, isPairedWithNext, isPairedWithPrev, parseAndValidateSharedPlan,
   weeklyMuscleVolume, type PlanParseResult,
 } from '../../domain/plan-share'
 import { PROGRESSION_MODES, parseProgressionMode, type ProgressionMode } from '../../domain/progression'
@@ -27,7 +27,7 @@ import { PlanEquipmentRow } from '../profile/GearSheet'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
 import { CopyIcon, DeleteIcon, DocIcon, DownIcon, DragIcon, EditIcon, InfoIcon, ListIcon, HistoryIcon, SparkleIcon, SwapIcon, UpIcon, AddIcon } from './glyphs'
-import { blockLabel, dayName, dayShort, isRestTitle, muscleLabel, prescription } from './helpers'
+import { blockLabel, dayName, dayShort, isRestTitle, muscleLabel, prescription, savePlanItemGrouping } from './helpers'
 import { stepReorder } from './reorder'
 import { PastePlanSheet } from '../coach/PastePlanSheet'
 import '../plan/plan41.css'
@@ -286,10 +286,7 @@ export function PlanEditorScreen({ param }: { param?: string }) {
           key={editing.id}
           item={editing}
           exercise={s.exercises.get(editing.exerciseId)}
-          prevItem={editingIdx > 0 ? day.items[editingIdx - 1] : undefined}
-          prevName={editingIdx > 0 ? (s.exercises.get(day.items[editingIdx - 1].exerciseId)?.name ?? day.items[editingIdx - 1].exerciseId) : ''}
           nextItem={editingIdx >= 0 && editingIdx < day.items.length - 1 ? day.items[editingIdx + 1] : undefined}
-          nextName={editingIdx >= 0 && editingIdx < day.items.length - 1 ? (s.exercises.get(day.items[editingIdx + 1].exerciseId)?.name ?? day.items[editingIdx + 1].exerciseId) : ''}
           pairedInitially={isPairedWithNext(day.items, editingIdx)}
           pairedWithPrev={isPairedWithPrev(day.items, editingIdx)}
           unit={unit}
@@ -297,9 +294,9 @@ export function PlanEditorScreen({ param }: { param?: string }) {
           canMoveDown={editingIdx >= 0 && editingIdx < day.items.length - 1}
           onMove={async (draft, delta) => { await updatePlanItem(draft); await movePlanItem(draft, delta); setEditing(null) }}
           onSwap={async (draft) => { await updatePlanItem(draft); setSwapping(draft); setEditing(null) }}
-          onSave={async (it, pairNext) => {
-            await updatePlanItem(it)
-            if (day.day.id != null && it.id != null) await setPairWithNext(day.day.id, it.id, pairNext)
+          onSave={async (it, groupNext, showGroup) => {
+            const next = editingIdx >= 0 && editingIdx < day.items.length - 1 ? day.items[editingIdx + 1] : undefined
+            await savePlanItemGrouping(day.day.id, it, next, groupNext, showGroup)
             setEditing(null)
           }}
           onClose={() => setEditing(null)}
@@ -384,20 +381,19 @@ export function PlanEditorScreen({ param }: { param?: string }) {
 // ---------------------------------------------------------------- Item editor
 
 function ItemEditor({
-  item, exercise, prevName, nextItem, nextName, pairedInitially, pairedWithPrev, unit,
+  item, exercise, nextItem, pairedInitially, pairedWithPrev, unit,
   canMoveUp, canMoveDown, onMove, onSwap, onSave, onClose,
 }: {
   item: PlanItemRow; exercise: ExerciseRow | undefined
-  prevItem?: PlanItemRow; prevName: string
-  nextItem?: PlanItemRow; nextName: string
+  nextItem?: PlanItemRow
   pairedInitially: boolean; pairedWithPrev: boolean
   unit: WeightUnit; canMoveUp: boolean; canMoveDown: boolean
   onMove: (draft: PlanItemRow, delta: number) => void; onSwap: (draft: PlanItemRow) => void
-  onSave: (i: PlanItemRow, pairNext: boolean) => void; onClose: () => void
+  onSave: (i: PlanItemRow, groupNext: boolean, showGroup: boolean) => void; onClose: () => void
 }) {
   const arabic = getLang() === 'ar'
   const [d, setD] = useState(item)
-  const [pairNext, setPairNext] = useState(pairedInitially)
+  const [groupNext, setGroupNext] = useState(pairedInitially || item.circuit)
   const kind = exercise?.kind ?? 'REPS'
   const sec = t('unit_s')
   const minReps = d.repsMin ?? 10
@@ -405,16 +401,8 @@ function ItemEditor({
   const wUnit = unitLabel(unit, arabic)
   const isExtra = isExtraBlock(d.block)
   const pMode = parseProgressionMode(d.progressionMode)
-  const showPair = !!nextItem && !isExtra && !isExtraBlock(nextItem.block)
-  const setsMatch = !!nextItem && d.sets === nextItem.sets
-  const canTogglePair = showPair && !pairedWithPrev && canPairWithNext([d, nextItem!], 0)
-  const pairHint = pairedWithPrev
-    ? t('plan41_pair_hint_prev', prevName)
-    : !setsMatch && nextItem
-      ? t('plan41_pair_hint_sets', nextName, nextItem.sets)
-      : pairNext && canTogglePair
-        ? t('plan41_pair_hint_active', nextName)
-        : t('plan41_pair_hint_ready', nextName)
+  const showGroup = !!nextItem && !isExtra && !isExtraBlock(nextItem.block)
+  const groupDisabled = pairedWithPrev && !d.circuit
   const progHint = pMode === 'LINEAR' ? t('plan41_prog_linear_hint')
     : pMode === 'MAINTAIN' ? t('plan41_prog_maintain_hint')
       : t('plan41_prog_double_hint')
@@ -425,10 +413,7 @@ function ItemEditor({
       <Row label={d.circuit ? t('plan_rounds') : t('live_sets')}>
         <Stepper
           label={d.circuit ? t('plan_rounds') : t('live_sets')} value={d.sets} min={1} max={10}
-          onChange={(v) => {
-            setD({ ...d, sets: v })
-            if (nextItem && v !== nextItem.sets) setPairNext(false)
-          }}
+          onChange={(v) => setD({ ...d, sets: v })}
         />
       </Row>
       {kind === 'HOLD' ? (
@@ -491,28 +476,32 @@ function ItemEditor({
           <input id="wk-warmup" type="checkbox" role="switch" class="wk-switch" checked={Boolean(d.autoWarmup)} onChange={(e) => setD({ ...d, autoWarmup: (e.target as HTMLInputElement).checked })} />
         </div>
       )}
-      {showPair && (
-        <div class={cx('wk-setting', !canTogglePair && 'p41-switch-disabled')}>
+      {showGroup && (
+        <div class={cx('wk-setting', groupDisabled && 'p41-switch-disabled')}>
           <div class="wk-grow">
-            <label for="wk-pair" class="wk-lbl">{t('plan41_pair_next')}</label>
-            <span class="wk-s">{pairHint}</span>
+            <label for="wk-group" class="wk-lbl">{t('plan41_group_next')}</label>
           </div>
-          <input id="wk-pair" type="checkbox" role="switch" class="wk-switch" disabled={!canTogglePair} checked={pairNext && canTogglePair} onChange={(e) => setPairNext((e.target as HTMLInputElement).checked)} />
+          <input
+            id="wk-group"
+            type="checkbox"
+            role="switch"
+            class="wk-switch"
+            disabled={groupDisabled}
+            checked={groupNext && !groupDisabled}
+            onChange={(e) => {
+              const checked = (e.target as HTMLInputElement).checked
+              setGroupNext(checked)
+              if (!checked) setD({ ...d, circuit: false })
+            }}
+          />
         </div>
       )}
-      <div class="wk-setting">
-        <div class="wk-grow">
-          <label for="wk-circ" class="wk-lbl">{t('plan_part_circuit')}</label>
-          <span class="wk-s">{t('plan_circuit_hint', d.block)}</span>
-        </div>
-        <input id="wk-circ" type="checkbox" role="switch" class="wk-switch" checked={d.circuit} onChange={(e) => setD({ ...d, circuit: (e.target as HTMLInputElement).checked })} />
-      </div>
       <div class="wk-edit-row">
         <span>{t('plan_order')}</span>
         <Button variant="tonal" icon={<UpIcon size={18} />} disabled={!canMoveUp} onClick={() => onMove(d, -1)}>{t('plan_move_up')}</Button>
         <Button variant="tonal" icon={<DownIcon size={18} />} disabled={!canMoveDown} onClick={() => onMove(d, 1)}>{t('plan_move_down')}</Button>
       </div>
-      <Button block onClick={() => onSave(d, pairNext && canTogglePair)}>{t('action_save')}</Button>
+      <Button block onClick={() => onSave(d, groupNext && !groupDisabled, showGroup)}>{t('action_save')}</Button>
     </Sheet>
   )
 }

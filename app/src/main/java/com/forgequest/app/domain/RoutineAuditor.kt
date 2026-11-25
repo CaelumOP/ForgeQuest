@@ -30,6 +30,8 @@ object RoutineAuditor {
         val block: String = "Main",
         val position: Int = 0,
         val restSeconds: Int = 90,
+        val circuit: Boolean = false,
+        val supersetGroup: Int? = null,
     )
 
     /** One training day in the audited plan; [dayOfWeek] is 1..7 (Monday..Sunday) when scheduled by weekday. */
@@ -116,6 +118,8 @@ object RoutineAuditor {
                         block = item.block,
                         position = idx,
                         restSeconds = item.restSeconds,
+                        circuit = item.circuit,
+                        supersetGroup = item.supersetGroup,
                     )
                 },
             )
@@ -135,6 +139,8 @@ object RoutineAuditor {
                         block = item.block,
                         position = item.position,
                         restSeconds = item.restSeconds,
+                        circuit = item.circuit,
+                        supersetGroup = item.supersetGroup,
                     )
                 },
             )
@@ -286,9 +292,21 @@ object RoutineAuditor {
         )
     }
 
-    /** Minutes one day takes: sets x (40 s + rest) for the work, plus 5 for a warm-up block and 5 for a cool-down. */
+    /** Minutes one day takes: grouped sets/rounds with 40 s work + rest, plus 5 for a warm-up block and 5 for a cool-down. */
     fun estimateMinutes(day: AuditDay): Int {
-        val work = day.items.filter { !WorkoutScore.isExtra(it.block) && it.sets > 0 }.sumOf { it.sets * (40 + it.restSeconds) }
+        val workItems = day.items
+            .filter { !WorkoutScore.isExtra(it.block) && it.sets > 0 }
+            .sortedBy { it.position }
+            .map {
+                PlanBuilder.GroupedWorkItem(
+                    sets = it.sets,
+                    restSeconds = it.restSeconds,
+                    block = it.block,
+                    circuit = it.circuit,
+                    supersetGroup = it.supersetGroup,
+                )
+            }
+        val work = PlanBuilder.groupedWorkSeconds(workItems)
         val extras = (if (day.items.any { WorkoutScore.isWarmUp(it.block) }) 5 else 0) +
             (if (day.items.any { it.block.equals(PlanBuilder.COOL_DOWN_BLOCK, ignoreCase = true) }) 5 else 0)
         return kotlin.math.ceil(work / 60.0).toInt() + extras

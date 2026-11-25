@@ -11,7 +11,7 @@ import { MUSCLES, type Muscle } from '../../domain/muscle'
 import {
   INJURIES, PlanBuilder, defaultPlanAnswers, decodePlanAnswers, planAnswersToInput, spreadDays,
   type BuiltPlan, type Cardio, type DayFocus, type Experience, type Injury,
-  type PlanAnswers, type RepPref, type RestPref, type TrainGoal, type WhyTag,
+  type PlanAnswers, type RepPref, type RestPref, type TrainGoal, type WhyTag, type WorkoutStyle,
 } from '../../domain/plan-builder'
 import { dayShort } from '../workouts/helpers'
 
@@ -82,6 +82,15 @@ export function restPrefKey(r: RestPref): string {
   }
 }
 
+export function workoutStyleKey(s: WorkoutStyle): string {
+  switch (s) {
+    case 'AUTO': return 'pb_auto'
+    case 'STRAIGHT': return 'pb_style_straight'
+    case 'SUPERSET': return 'pb_style_superset'
+    case 'CIRCUIT': return 'pb_style_circuit'
+  }
+}
+
 export function cardioKey(c: Cardio): string {
   switch (c) {
     case 'NONE': return 'pb_cardio_none'
@@ -98,6 +107,8 @@ export function dayFocusKey(d: DayFocus): string {
     case 'PUSH': return 'pb_day_push'
     case 'PULL': return 'pb_day_pull'
     case 'LEGS': return 'pb_day_legs'
+    case 'PUSH_LEGS': return 'pb_day_push_legs'
+    case 'PULL_HINGE': return 'pb_day_pull_hinge'
     case 'CONDITIONING': return 'pb_day_cond'
   }
 }
@@ -222,10 +233,12 @@ export function rowSummaries(
   const gearCustom = activeEquipmentPreset(gearClean) == null && matchTrainingPlace(gearClean) == null
   const gear = gearCustom ? tr('pb_custom') : auto
 
-  const styleCustom =
+  const otherStyleCustom =
     a.reps !== 'AUTO' || a.rest !== 'AUTO' || !a.holdsOk ||
     a.cardio !== 'NONE' || !a.warmUp || a.coolDown
-  const style = styleCustom ? tr('pb_custom') : auto
+  const style = a.style !== 'AUTO'
+    ? tr(workoutStyleKey(a.style))
+    : (otherStyleCustom ? tr('pb_custom') : auto)
 
   const avoid = a.avoidIds.size === 0 ? auto : tr('pb_avoid_count', a.avoidIds.size)
 

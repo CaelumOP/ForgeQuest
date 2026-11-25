@@ -102,6 +102,7 @@ import com.forgequest.app.domain.RestPref
 import com.forgequest.app.domain.RoutineAuditor
 import com.forgequest.app.domain.ScheduleMode
 import com.forgequest.app.domain.TrainGoal
+import com.forgequest.app.domain.WorkoutStyle
 import com.forgequest.app.domain.expandLegacyEquipment
 import com.forgequest.app.ui.appViewModel
 import com.forgequest.app.ui.workouts.RoutineAuditCard
@@ -518,8 +519,13 @@ private fun FitMeSection(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) 
                 open == "schedule", { toggle("schedule") },
             ) { ScheduleRow(a, change) }
 
-            val styleCustom = a.reps != RepPref.AUTO || a.rest != RestPref.AUTO || !a.holdsOk || a.cardio != Cardio.NONE || !a.warmUp || a.coolDown
-            DeepRow(stringResource(R.string.pb_row_style), if (styleCustom) stringResource(R.string.pb_custom) else auto, open == "style", { toggle("style") }) { StyleRow(a, change) }
+            val otherStyleCustom = a.reps != RepPref.AUTO || a.rest != RestPref.AUTO || !a.holdsOk || a.cardio != Cardio.NONE || !a.warmUp || a.coolDown
+            val styleSummary = when {
+                a.style != WorkoutStyle.AUTO -> stringResource(a.style.pbRes())
+                otherStyleCustom -> stringResource(R.string.pb_custom)
+                else -> auto
+            }
+            DeepRow(stringResource(R.string.pb_row_style), styleSummary, open == "style", { toggle("style") }) { StyleRow(a, change) }
 
             DeepRow(
                 stringResource(R.string.pb_row_avoid),
@@ -676,6 +682,21 @@ private fun StyleRow(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -> U
         modifier = Modifier.heightIn(min = 48.dp),
         wrap = true,
     )
+    Label(stringResource(R.string.pb_style))
+    SegmentedTabs(
+        options = WorkoutStyle.entries.map { stringResource(it.pbRes()) },
+        selected = a.style.ordinal,
+        onSelect = { i -> change { it.copy(style = WorkoutStyle.entries[i]) } },
+        modifier = Modifier.heightIn(min = 48.dp),
+        wrap = true,
+    )
+    if (a.style == WorkoutStyle.AUTO) {
+        Text(
+            stringResource(R.string.pb_style_auto_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = Fit.colors.textSecondary,
+        )
+    }
     Label(stringResource(R.string.pb_cardio))
     SegmentedTabs(
         options = Cardio.entries.map { stringResource(it.pbRes()) },
