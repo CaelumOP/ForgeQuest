@@ -10,11 +10,11 @@ Spec: `docs/MASTER_SPEC.md` (written after the owner answers the Question Gate).
   - [x] 2.2 Input & Test Baseline integration map
   - [x] 2.3 Wavy rest timer + Build my plan pills map
   - [x] 2.4 UX rent-check, web 390x844 EN + AR, Android Compose
-- [ ] Question Gate (single stop): questions in docs/MASTER_GATE.md, waiting for the owner
+- [x] Question Gate: owner answered 2026-11-26, locked in docs/MASTER_SPEC.md (defaults + 4 overrides)
 - [ ] 3A grader + supersets/zero-rest
 - [ ] 3B Input & Test Baseline
 - [ ] 3C wavy timer, sliding pills, approved cuts
 - [ ] Stage 4 verification, smoke, Gate 3, report
 
 ## Next step
-Owner answers docs/MASTER_GATE.md -> write docs/MASTER_SPEC.md -> 3A (Gemini Hydrogen builds, Codex + Argon reviews).
+Start 3A: brief Gemini Hydrogen (Android + web, sequential) for MASTER_SPEC 3A; first measure grader BEFORE scores (web: `npx vitest run src/domain/plan-grader.dev.test.ts`, report in the shared notes stage2-grader-scorecard.md). Gradle: `.claude/scratch/gw.sh` pattern (worktree copy: sed the cd line to this worktree). Autopilot, no questions.
