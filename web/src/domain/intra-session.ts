@@ -87,8 +87,9 @@ export function computeAdjustment<T extends IntraSessionSet>(
       const targetReps = rawTargetReps != null ? Math.max(1, rawTargetReps) : null
       const changed: T[] = []
       for (const next of remaining) {
-        const nextReps =
+        const rawNextReps =
           targetReps != null ? (droppedLoad ? targetReps : Math.min(targetReps, next.reps ?? targetReps)) : next.reps
+        const nextReps = rawNextReps != null ? Math.max(1, rawNextReps) : next.reps
         if (next.weightKg !== newWeightKg || next.reps !== nextReps) {
           changed.push({ ...next, weightKg: newWeightKg, reps: nextReps })
         }
@@ -102,7 +103,7 @@ export function computeAdjustment<T extends IntraSessionSet>(
       // Never raises a target: failing at 12 when 10 was planned leaves the 10.
       const changed: T[] = []
       for (const next of remaining) {
-        const nextReps = Math.min(targetReps, next.reps ?? targetReps)
+        const nextReps = Math.max(1, Math.min(targetReps, next.reps ?? targetReps))
         if (nextReps !== next.reps) {
           changed.push({ ...next, reps: nextReps })
         }

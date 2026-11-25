@@ -597,6 +597,17 @@ describe('W2 review fixes', () => {
     expect(await harderHint(ex, false, -1, 12)).toBeDefined();
   });
 
+  it('harderHint marks a 10-rep fixed item (repsMax null) ready at 12 x 3 twice', async () => {
+    for (const day of [202, 203]) {
+      const sid = await finished(day);
+      await db.sets.bulkAdd([pushUp(sid, 0, 12), pushUp(sid, 1, 12), pushUp(sid, 2, 12)]);
+    }
+    const ex = (await db.exercises.get('push_up'))!;
+    expect(await harderHint(ex, false, -1)).toBeUndefined();
+    const fixed = { repsMin: 10, repsMax: null as number | null };
+    expect(await harderHint(ex, false, -1, fixed.repsMax ?? fixed.repsMin)).toBeDefined();
+  });
+
   it('a deload week halves working items but keeps the warm-up block sets', async () => {
     await applyPlan(FULL_BODY_BEGINNER, 'starter');
     const plan = (await getActivePlan())!;

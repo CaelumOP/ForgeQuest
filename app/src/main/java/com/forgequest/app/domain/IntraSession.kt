@@ -74,9 +74,10 @@ object IntraSession {
                 // Never prescribes 0 reps (Gate 17).
                 val targetReps = (if (droppedLoad) repsMin ?: source.reps else source.reps)?.coerceAtLeast(1)
                 val changed = remaining.mapNotNull { next ->
+                    val nextReps = (targetReps?.let { t -> if (droppedLoad) t else minOf(t, next.reps ?: t) } ?: next.reps)?.coerceAtLeast(1)
                     val updated = next.copy(
                         weightKg = newWeightKg,
-                        reps = targetReps?.let { t -> if (droppedLoad) t else minOf(t, next.reps ?: t) } ?: next.reps,
+                        reps = nextReps,
                     )
                     updated.takeIf { it != next }
                 }
@@ -92,7 +93,7 @@ object IntraSession {
                 val targetReps = sourceReps.coerceAtLeast(1)
                 // Never raises a target: failing at 12 when 10 was planned leaves the 10.
                 val changed = remaining.mapNotNull { next ->
-                    val updated = next.copy(reps = minOf(targetReps, next.reps ?: targetReps))
+                    val updated = next.copy(reps = minOf(targetReps, next.reps ?: targetReps).coerceAtLeast(1))
                     updated.takeIf { it != next }
                 }
                 if (changed.isEmpty()) return null

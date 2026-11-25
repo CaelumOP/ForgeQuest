@@ -623,6 +623,7 @@ class Builder {
   private removalRank(p: Pick): number {
     if (p.role === 'FINISHER' || p.role === 'COND') return 0
     if (p.role === 'ACC') return 1
+    if (p.role === 'FOCUS') return 4
     if (isCore(this.prof(p.ex).pattern)) return 2
     if (p.role === 'MAIN') return 3
     return 4
@@ -735,10 +736,12 @@ class Builder {
     const vol = start
     const cap = this.maxSets
     while (true) {
-      const pushWanted = vol.pushBlocked() && days.some(([dow, b]) => {
+      const pushWanted = vol.pushBlocked() && days.some(([dow, b], i) => {
         const spare = this.budgetSeconds(dow, reserved.get(dow)!) - this.workSeconds(b.picks)
         return !b.light && b.picks.some((p) =>
-          pushPull(p.ex) === 1 && p.sets < cap && SET_SECONDS + this.restFor(p) <= spare && vol.gain(p) >= 0.5 - 1e-9,
+          p.role !== 'COND' && p.role !== 'FINISHER' &&
+          pushPull(p.ex) === 1 && p.sets < cap && SET_SECONDS + this.restFor(p) <= spare &&
+          vol.gain(p) >= 0.5 - 1e-9 && vol.fitsMuscleRules(i, p),
         )
       })
       let bestIdx = -1
@@ -754,7 +757,7 @@ class Builder {
           let g = vol.gain(p)
           if (g < 0.5 - 1e-9 && pushWanted && pushPull(p.ex) === -1) g = 0.5
           if (g < 0.5 - 1e-9 || !vol.fits(i, p)) continue
-          if (bestPick == null || g > bestGain + 1e-9 || (Math.abs(g - bestGain) < 1e-9 && p.sets < bestPick.sets)) {
+          if (bestPick == null || g > bestGain + 1e-9) {
             bestIdx = i
             bestPick = p
             bestGain = g
@@ -977,8 +980,8 @@ class Volume {
     return after >= OVERLAP_SETS && this.neighbours[dayIdx].some((nb) => (this.dayPrimary[nb].get(m) ?? 0) >= OVERLAP_SETS)
   }
 
-  /** True when one more set of p on dayIdx keeps every Plan check rule. */
-  fits(dayIdx: number, p: Pick): boolean {
+  /** True when one more set of p on dayIdx keeps MRV, day-muscle limit, and back-to-back overlap. */
+  fitsMuscleRules(dayIdx: number, p: Pick): boolean {
     for (const [m, c] of credits(p.ex)) {
       if ((this.week.get(m) ?? 0) + c > landmarkFor(m).mrv + 1e-9) return false
       if (c >= 1.0) {
@@ -986,7 +989,12 @@ class Volume {
         if (after > DAY_MUSCLE_LIMIT || this.overlaps(dayIdx, m, after)) return false
       }
     }
-    return pushPull(p.ex) !== 1 || !pushPullBroken(this.push + 1, this.pull)
+    return true
+  }
+
+  /** True when one more set of p on dayIdx keeps every Plan check rule. */
+  fits(dayIdx: number, p: Pick): boolean {
+    return this.fitsMuscleRules(dayIdx, p) && (pushPull(p.ex) !== 1 || !pushPullBroken(this.push + 1, this.pull))
   }
 
   /** How much one more set of p closes the gap to the weekly targets. */

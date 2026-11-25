@@ -497,4 +497,14 @@ class WorkoutDebriefMathTest {
         assertTrue(r.wins.none { it is Win.Pr || it is Win.BestGain })
         assertEquals(480.0, WorkoutDebriefMath.volume(workingNow), 0.001)
     }
+
+    @Test
+    fun gate3FixedRepPlanItemUsesRepsMinWhenRepsMaxIsNull() {
+        val fixed = PlanItemEntity(dayId = 1, position = 0, exerciseId = "push_up", block = "Main", circuit = false, sets = 3, repsMin = 10, repsMax = null)
+        val r = run(
+            listOf(ex("push_up", ExerciseKind.REPS, n(3, 12, effort = "EASY"), n(3, 12), item = fixed, harder = "Diamond push-up")),
+            planned = 3,
+        )
+        assertEquals(listOf(Next.Harder("push_up", "Diamond push-up")), r.next)
+    }
 }

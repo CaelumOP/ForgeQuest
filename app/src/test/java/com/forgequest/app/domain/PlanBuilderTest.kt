@@ -1,5 +1,6 @@
 package com.forgequest.app.domain
 
+import com.forgequest.app.data.db.ExerciseEntity
 import com.forgequest.app.data.plan.PlanDraft
 import com.forgequest.app.data.seed.ExerciseCatalog
 import org.junit.Assert.assertEquals
@@ -248,5 +249,74 @@ class PlanBuilderTest {
             val with = weeklySets(build(input(4, minutes = 45) { it.copy(focus = setOf(m)) }), m)
             assertTrue("$m at 45m: $with vs $without", with > without)
         }
+    }
+
+    @Test fun gate3FillBreaksTiesByEarlierDayThenPlanOrder() {
+        val calf = byId.getValue("calf_raise")
+        val plan = PlanBuilder.build(
+            PlanInput(
+                goal = TrainGoal.MUSCLE,
+                days = setOf(1, 4),
+                minutes = 60,
+                equipment = setOf(Equipment.BODYWEIGHT),
+                experience = Experience.SOME,
+                warmUp = false,
+            ),
+            listOf(calf),
+        )
+        assertEquals(listOf(4, 2), plan.draft.days.map { it.items.single().sets })
+    }
+
+    @Test fun gate3ZeroGainPullAllowanceRequiresPushBlockedOnlyByPushPull() {
+        fun ex(id: String, pattern: MovementPattern, primary: List<Muscle>, secondary: List<Muscle> = emptyList()) =
+            ExerciseEntity(id = id, name = id, kind = ExerciseKind.REPS, primary = primary, secondary = secondary, pattern = pattern.name)
+        val tiny = listOf(
+            ex("t_push", MovementPattern.HORIZONTAL_PUSH, listOf(Muscle.CHEST, Muscle.GLUTES), listOf(Muscle.SHOULDERS)),
+            ex("t_pull", MovementPattern.HORIZONTAL_PULL, listOf(Muscle.TRAPS)),
+            ex("t_squat", MovementPattern.SQUAT_BILATERAL, listOf(Muscle.QUADS, Muscle.GLUTES)),
+            ex("t_hinge", MovementPattern.HIP_HINGE, listOf(Muscle.HAMSTRINGS)),
+        )
+        val plan = PlanBuilder.build(
+            PlanInput(
+                goal = TrainGoal.MUSCLE,
+                days = setOf(1, 3, 5),
+                minutes = 90,
+                equipment = setOf(Equipment.BODYWEIGHT),
+                experience = Experience.SOME,
+                warmUp = false,
+            ),
+            tiny,
+        )
+        val pullSets = plan.draft.days.flatMap { it.items }.filter { it.exerciseId == "t_pull" }.sumOf { it.sets }
+        assertEquals(6, pullSets)
+    }
+
+    @Test fun gate3CoreFocusPickIsRemovedLastInRepair() {
+        fun ex(id: String, pattern: MovementPattern, primary: List<Muscle>) =
+            ExerciseEntity(id = id, name = id, kind = ExerciseKind.REPS, primary = primary, secondary = emptyList(), pattern = pattern.name)
+        val tiny = listOf(
+            ex("t_sq", MovementPattern.SQUAT_BILATERAL, listOf(Muscle.QUADS, Muscle.ABS)),
+            ex("t_hp", MovementPattern.HORIZONTAL_PUSH, listOf(Muscle.CHEST, Muscle.ABS)),
+            ex("t_hpl", MovementPattern.HORIZONTAL_PULL, listOf(Muscle.UPPER_BACK, Muscle.ABS)),
+            ex("t_hg", MovementPattern.HIP_HINGE, listOf(Muscle.HAMSTRINGS, Muscle.ABS)),
+            ex("t_vp", MovementPattern.VERTICAL_PUSH, listOf(Muscle.SHOULDERS, Muscle.ABS)),
+            ex("t_core_main", MovementPattern.CORE_ANTI_EXTENSION, listOf(Muscle.ABS)),
+            ex("t_core_focus", MovementPattern.CORE_FLEXION_ROTATION, listOf(Muscle.ABS)),
+        )
+        val plan = PlanBuilder.build(
+            PlanInput(
+                goal = TrainGoal.MUSCLE,
+                days = setOf(1),
+                minutes = 90,
+                equipment = setOf(Equipment.BODYWEIGHT),
+                experience = Experience.SOME,
+                focus = setOf(Muscle.ABS),
+                warmUp = false,
+            ),
+            tiny,
+        )
+        val ids = plan.draft.days.single().items.map { it.exerciseId }
+        assertTrue("Expected t_core_focus to survive repair, got $ids", "t_core_focus" in ids)
+        assertFalse("Expected t_core_main to be removed first, got $ids", "t_core_main" in ids)
     }
 }

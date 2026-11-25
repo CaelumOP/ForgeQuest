@@ -470,8 +470,8 @@ object PlanBuilder {
             private fun overlaps(dayIdx: Int, m: Muscle, after: Int) =
                 after >= RoutineAuditor.OVERLAP_SETS && neighbours[dayIdx].any { (dayPrimary[it][m] ?: 0) >= RoutineAuditor.OVERLAP_SETS }
 
-            /** True when one more set of [p] on [dayIdx] keeps every Plan check rule. */
-            fun fits(dayIdx: Int, p: Pick): Boolean {
+            /** True when one more set of [p] on [dayIdx] keeps MRV, day-muscle limit, and back-to-back overlap. */
+            fun fitsMuscleRules(dayIdx: Int, p: Pick): Boolean {
                 for ((m, c) in RoutineAuditor.credits(p.ex)) {
                     if ((week[m] ?: 0.0) + c > RoutineAuditor.landmarkFor(m).mrv + 1e-9) return false
                     if (c >= 1.0) {
@@ -479,8 +479,12 @@ object PlanBuilder {
                         if (after > RoutineAuditor.DAY_MUSCLE_LIMIT || overlaps(dayIdx, m, after)) return false
                     }
                 }
-                return RoutineAuditor.pushPull(p.ex) != 1 || !RoutineAuditor.pushPullBroken(push + 1, pull)
+                return true
             }
+
+            /** True when one more set of [p] on [dayIdx] keeps every Plan check rule. */
+            fun fits(dayIdx: Int, p: Pick): Boolean =
+                fitsMuscleRules(dayIdx, p) && (RoutineAuditor.pushPull(p.ex) != 1 || !RoutineAuditor.pushPullBroken(push + 1, pull))
 
             /** How much one more set of [p] closes the gap to the weekly targets. */
             fun gain(p: Pick): Double = RoutineAuditor.credits(p.ex).entries.sumOf { (m, c) ->
@@ -516,6 +520,7 @@ object PlanBuilder {
         private fun removalRank(p: Pick): Int = when {
             p.role == Role.FINISHER || p.role == Role.COND -> 0
             p.role == Role.ACC -> 1
+            p.role == Role.FOCUS -> 4
             isCore(prof(p.ex).pattern) -> 2
             p.role == Role.MAIN -> 3
             else -> 4
@@ -595,10 +600,12 @@ object PlanBuilder {
             val vol = start
             val cap = maxSets
             while (true) {
-                val pushWanted = vol.pushBlocked() && days.withIndex().any { (_, d) ->
+                val pushWanted = vol.pushBlocked() && days.withIndex().any { (i, d) ->
                     val spare = budgetSeconds(d.first, reserved.getValue(d.first)) - workSeconds(d.second.picks)
                     !d.second.light && d.second.picks.any { p ->
-                        RoutineAuditor.pushPull(p.ex) == 1 && p.sets < cap && SET_SECONDS + restFor(p) <= spare && vol.gain(p) >= 0.5 - 1e-9
+                        p.role != Role.COND && p.role != Role.FINISHER &&
+                            RoutineAuditor.pushPull(p.ex) == 1 && p.sets < cap && SET_SECONDS + restFor(p) <= spare &&
+                            vol.gain(p) >= 0.5 - 1e-9 && vol.fitsMuscleRules(i, p)
                     }
                 }
                 var bestIdx = -1
@@ -614,8 +621,7 @@ object PlanBuilder {
                         var g = vol.gain(p)
                         if (g < 0.5 - 1e-9 && pushWanted && RoutineAuditor.pushPull(p.ex) == -1) g = 0.5
                         if (g < 0.5 - 1e-9 || !vol.fits(i, p)) continue
-                        val chosen = bestPick
-                        if (chosen == null || g > bestGain + 1e-9 || (kotlin.math.abs(g - bestGain) < 1e-9 && p.sets < chosen.sets)) {
+                        if (bestPick == null || g > bestGain + 1e-9) {
                             bestIdx = i; bestPick = p; bestGain = g
                         }
                     }

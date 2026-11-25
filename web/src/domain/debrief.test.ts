@@ -356,4 +356,12 @@ describe("Gemini's 8 cases", () => {
     ], { planned: 3 })
     expect(r.next).toEqual([{ type: 'HARDER', exerciseId: 'push_up', harderName: 'Diamond push-up' }])
   })
+
+  it('Gate 3: debrief suggests HARDER when a fixed 10-rep item (repsMax null) hits 12 x 3 twice', () => {
+    const fixed = { ...range(3, 10, 12), repsMax: null }
+    const r = run([
+      ex('push_up', 'REPS', n(3, 12, null, { effort: 'EASY' }), n(3, 12), { item: fixed, harder: 'Diamond push-up' }),
+    ], { planned: 3 })
+    expect(r.next).toEqual([{ type: 'HARDER', exerciseId: 'push_up', harderName: 'Diamond push-up' }])
+  })
 })

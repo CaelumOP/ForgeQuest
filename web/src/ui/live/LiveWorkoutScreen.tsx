@@ -280,7 +280,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       const warmup = sets.some((s) => s.exerciseId === id && isExtraBlock(s.block))
       const first = sets.find((s) => s.exerciseId === id)
       const planItem = first ? planDay?.items.find((i) => i.position === first.itemPosition && i.exerciseId === id) ?? null : null
-      const hint = ex ? await harderHint(ex, warmup, session.id!, planItem?.repsMax ?? null) : undefined
+      const hint = ex ? await harderHint(ex, warmup, session.id!, planItem?.repsMax ?? planItem?.repsMin ?? null) : undefined
       const recent = (await recentDoneSets(id)).filter((s) => s.sessionId !== session.id)
       const reason = await progressionReasonFor(planItem, ex, recent, deloadWeek)
       return [id, hint, reason] as const

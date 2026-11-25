@@ -328,7 +328,7 @@ function nextLine(x: Ex, p: ProgressionInputs, r: ProgressionResult): { order: n
   if (x.pain && x.painLast) return { order: 1, line: { type: 'SWAP', exerciseId: x.id } }
   if (kind === 'WEIGHTED' && nextTop < f(nowTop - SAME_WEIGHT_KG)) return { order: 2, line: { type: 'LIGHTER', exerciseId: x.id, weightKg: nextTop, reps: firstReps } }
   const harder = (kind === 'HOLD' && r.holdCeilingReached) ||
-    (kind === 'REPS' && x.id !== 'jumping_jacks' && readyForHarder(p.last, p.previous, p.target?.repsMax ?? null))
+    (kind === 'REPS' && x.id !== 'jumping_jacks' && readyForHarder(p.last, p.previous, p.target?.repsMax ?? p.target?.repsMin ?? null))
   if (harder) return { order: 3, line: { type: 'HARDER', exerciseId: x.id, harderName: x.e.harderName } }
   if (nextTop > f(nowTop + SAME_WEIGHT_KG)) return { order: 4, line: { type: 'LOAD_UP', exerciseId: x.id, weightKg: nextTop, reps: firstReps } }
   const lastAt = (i: number) => p.last[i] ?? p.last[p.last.length - 1]

@@ -205,4 +205,34 @@ class IntraSessionTest {
         assertEquals(240, IntraSession.extendedRest(240))
         assertEquals(300, IntraSession.extendedRest(300))
     }
+
+    @Test
+    fun gate17NeverWritesZeroRepsWhenRemainingSetHasZeroReps() {
+        val weightedKeep = IntraSession.compute(
+            set(1L, setIndex = 0, reps = 5, weightKg = 20f, done = true, effort = SetEffort.FAILURE.name),
+            listOf(set(2L, setIndex = 1, reps = 0, weightKg = 20f)),
+            ExerciseKind.WEIGHTED,
+            repsMin = 8,
+            WeightUnit.KG,
+        )
+        assertTrue((weightedKeep?.changed?.single()?.reps ?: 0) >= 1)
+
+        val weightedDrop = IntraSession.compute(
+            set(1L, setIndex = 0, reps = 5, weightKg = 100f, done = true, effort = SetEffort.FAILURE.name),
+            listOf(set(2L, setIndex = 1, reps = 0, weightKg = 100f)),
+            ExerciseKind.WEIGHTED,
+            repsMin = 8,
+            WeightUnit.KG,
+        )
+        assertTrue((weightedDrop?.changed?.single()?.reps ?: 0) >= 1)
+
+        val bodyweight = IntraSession.compute(
+            set(1L, setIndex = 0, reps = 5, weightKg = null, done = true, effort = SetEffort.FAILURE.name),
+            listOf(set(2L, setIndex = 1, reps = 0, weightKg = null)),
+            ExerciseKind.REPS,
+            repsMin = 8,
+            WeightUnit.KG,
+        )
+        assertTrue((bodyweight?.changed?.single()?.reps ?: 0) >= 1)
+    }
 }

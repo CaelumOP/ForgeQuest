@@ -295,4 +295,68 @@ describe('PlanBuilder overhaul', () => {
     }
     expect(STAPLE_IDS.has('bench_press')).toBe(true)
   })
+
+  it('Gate 3: fill breaks ties by earlier day then plan order', () => {
+    const calf = byId.get('calf_raise')!
+    const plan = PlanBuilder.build(
+      input(2, new Set<Equipment>(['BODYWEIGHT']), 'MUSCLE', 60, { experience: 'SOME', warmUp: false }),
+      [calf],
+    )
+    expect(plan.draft.days.map((d) => d.items[0].sets)).toEqual([4, 2])
+  })
+
+  it('Gate 3: zero-gain pull allowance only enables when push is blocked by push/pull alone', () => {
+    const mk = (id: string, pattern: MovementPattern, primary: Muscle[], secondary: Muscle[] = []): ExerciseEntity => ({
+      id, name: id, kind: 'REPS', primary, secondary, pattern,
+    })
+    const tiny = [
+      mk('t_push', 'HORIZONTAL_PUSH', ['CHEST', 'GLUTES'], ['SHOULDERS']),
+      mk('t_pull', 'HORIZONTAL_PULL', ['TRAPS']),
+      mk('t_squat', 'SQUAT_BILATERAL', ['QUADS', 'GLUTES']),
+      mk('t_hinge', 'HIP_HINGE', ['HAMSTRINGS']),
+    ]
+    const plan = PlanBuilder.build(
+      {
+        goal: 'MUSCLE',
+        days: new Set([1, 3, 5]),
+        minutes: 90,
+        equipment: new Set<Equipment>(['BODYWEIGHT']),
+        experience: 'SOME',
+        warmUp: false,
+      },
+      tiny,
+    )
+    const pullSets = plan.draft.days.flatMap((d) => d.items).filter((i) => i.exerciseId === 't_pull').reduce((s, i) => s + i.sets, 0)
+    expect(pullSets).toBe(6)
+  })
+
+  it('Gate 3: core FOCUS pick is removed last in repair', () => {
+    const mk = (id: string, pattern: MovementPattern, primary: Muscle[]): ExerciseEntity => ({
+      id, name: id, kind: 'REPS', primary, secondary: [], pattern,
+    })
+    const tiny = [
+      mk('t_sq', 'SQUAT_BILATERAL', ['QUADS', 'ABS']),
+      mk('t_hp', 'HORIZONTAL_PUSH', ['CHEST', 'ABS']),
+      mk('t_hpl', 'HORIZONTAL_PULL', ['UPPER_BACK', 'ABS']),
+      mk('t_hg', 'HIP_HINGE', ['HAMSTRINGS', 'ABS']),
+      mk('t_vp', 'VERTICAL_PUSH', ['SHOULDERS', 'ABS']),
+      mk('t_core_main', 'CORE_ANTI_EXTENSION', ['ABS']),
+      mk('t_core_focus', 'CORE_FLEXION_ROTATION', ['ABS']),
+    ]
+    const plan = PlanBuilder.build(
+      {
+        goal: 'MUSCLE',
+        days: new Set([1]),
+        minutes: 90,
+        equipment: new Set<Equipment>(['BODYWEIGHT']),
+        experience: 'SOME',
+        focus: new Set<Muscle>(['ABS']),
+        warmUp: false,
+      },
+      tiny,
+    )
+    const ids = plan.draft.days[0].items.map((i) => i.exerciseId)
+    expect(ids).toContain('t_core_focus')
+    expect(ids).not.toContain('t_core_main')
+  })
 })

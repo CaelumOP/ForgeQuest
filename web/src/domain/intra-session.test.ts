@@ -195,6 +195,34 @@ describe('IntraSession', () => {
       'KG',
     )
     expect(zeroBw?.changed[0].reps).toBe(1)
+
+    // Remaining set with reps 0, source Failure at 5 -> written reps >= 1 across keep-weight, drop-weight, and REPS.
+    const remZeroKeep = computeAdjustment(
+      makeSet(1, { setIndex: 0, reps: 5, weightKg: 20, done: true, effort: 'FAILURE' }),
+      [makeSet(2, { setIndex: 1, reps: 0, weightKg: 20 })],
+      'WEIGHTED',
+      8,
+      'KG',
+    )
+    expect(remZeroKeep?.changed[0].reps).toBeGreaterThanOrEqual(1)
+
+    const remZeroDrop = computeAdjustment(
+      makeSet(1, { setIndex: 0, reps: 5, weightKg: 100, done: true, effort: 'FAILURE' }),
+      [makeSet(2, { setIndex: 1, reps: 0, weightKg: 100 })],
+      'WEIGHTED',
+      8,
+      'KG',
+    )
+    expect(remZeroDrop?.changed[0].reps).toBeGreaterThanOrEqual(1)
+
+    const remZeroBw = computeAdjustment(
+      makeSet(1, { setIndex: 0, reps: 5, weightKg: null, done: true, effort: 'FAILURE' }),
+      [makeSet(2, { setIndex: 1, reps: 0, weightKg: null })],
+      'REPS',
+      8,
+      'KG',
+    )
+    expect(remZeroBw?.changed[0].reps).toBeGreaterThanOrEqual(1)
   })
 
   it('bodyweightFailureNeverRaisesTheNextTarget', () => {

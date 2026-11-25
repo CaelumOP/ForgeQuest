@@ -889,7 +889,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             // The plan's top reps set how many reps count as ready (audit S7); the plan item is read here, after it loads.
             val first = sets.firstOrNull { it.exerciseId == id }
             val topReps = currentSession?.let { s -> first?.let { repo.planItemAt(s, it.itemPosition) } }
-                ?.takeIf { it.exerciseId == id }?.repsMax
+                ?.takeIf { it.exerciseId == id }?.let { it.repsMax ?: it.repsMin }
             if (!ExerciseTiers.readyForHarder(past(sessionIds.getOrNull(0)), past(sessionIds.getOrNull(1)), topReps)) return@mapNotNull null
             id to HarderHint(ExerciseTiers.harderVersion(ex, library, equipment))
         }.toMap()
