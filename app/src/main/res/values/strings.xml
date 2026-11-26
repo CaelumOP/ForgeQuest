@@ -221,6 +221,7 @@
     <string name="workouts_start">Start workout</string>
     <string name="workouts_start_this">Start this workout</string>
     <string name="workouts_details">Details</string>
+    <string name="workouts_muscle_recovery_empty">Muscle recovery shows here after your first workout</string>
     <string name="workouts_quick_short">Quick</string>
     <plurals name="workouts_more_n">
         <item quantity="one">+%1$d more</item>
@@ -306,8 +307,6 @@
     <string name="coach_home_b">Tap Start to begin.</string>
     <string name="coach_home_noplan_t">Start with a plan</string>
     <string name="coach_home_noplan_b">Answer a few questions to build your weekly plan.</string>
-    <string name="coach_tick_t">Tick each set</string>
-    <string name="coach_tick_b">Tick when done. Rest starts on its own.</string>
     <string name="coach_food_t">Log food fast</string>
     <string name="coach_food_b_noai">Search your foods, or tap the code icon to scan a barcode.</string>
     <string name="coach_food_b">Search, use the camera to scan a meal, or the code icon for a barcode.</string>
@@ -909,8 +908,8 @@
     <string name="journal_add_note">+ Add a note</string>
     <string name="live_now">Now: %1$s</string>
     <string name="live_warmup_not_counted">Warm-up · not in set count</string>
-    <string name="live_mark_warmup_done">Mark warm-up done</string>
-    <string name="live_warmup_done">Warm-up done ✓</string>
+    <string name="cd_rest_presets_show">Show rest presets and copy last set</string>
+    <string name="cd_rest_presets_hide">Hide rest presets and copy last set</string>
     <string name="live_effort_caption">How did that set feel?</string>
     <string name="live_swap_confirm_title">Swap %1$s?</string>
     <plurals name="live_swap_confirm_body">

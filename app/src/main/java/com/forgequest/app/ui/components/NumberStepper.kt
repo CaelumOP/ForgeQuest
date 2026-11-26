@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.container
+import com.forgequest.app.domain.PlateMath
 import com.forgequest.app.ui.theme.Fit
 import kotlin.math.roundToInt
 
@@ -48,6 +49,7 @@ fun KeypadNumberStepper(
     quickDeltas: List<Float> = emptyList(),
     lastTimeValue: Float? = null,
     lastTimeLabel: String? = null,
+    plateCalculator: ((Float) -> PlateMath.Breakdown)? = null,
 ) {
     var keypadOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -111,6 +113,7 @@ fun KeypadNumberStepper(
             quickDeltas = quickDeltas,
             lastTimeValue = lastTimeValue,
             lastTimeLabel = lastTimeLabel,
+            plateCalculator = plateCalculator,
             onDismiss = { keypadOpen = false },
             onConfirm = {
                 keypadOpen = false

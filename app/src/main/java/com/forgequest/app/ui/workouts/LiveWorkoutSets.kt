@@ -211,7 +211,6 @@ internal fun SetRowContent(
     val flashColor by animateColorAsState(if (flashing) c.gold else c.textPrimary, label = "flash")
     var noteDialog by remember { mutableStateOf(false) }
     var typeSheet by remember { mutableStateOf(false) }
-    var plateBreakdown by remember { mutableStateOf<PlateMath.Breakdown?>(null) }
 
     if (noteDialog) {
         SetNoteDialog(
@@ -227,12 +226,6 @@ internal fun SetRowContent(
             selected = setType,
             onSelect = { chosen -> onSetTypeSelect(chosen); typeSheet = false },
             onDismiss = { typeSheet = false },
-        )
-    }
-    plateBreakdown?.let { breakdown ->
-        PlateBreakdownSheet(
-            breakdown = breakdown,
-            onDismiss = { plateBreakdown = null },
         )
     }
 
@@ -354,6 +347,12 @@ internal fun SetRowContent(
     }
 
     val isBarbell = remember(exercise?.id, exercise?.equipment) { PlateMath.isBarbellExercise(exercise) }
+    val plateCalculator: ((Float) -> PlateMath.Breakdown)? = remember(isBarbell, effectiveUnit, barWeightKg, plateInventory) {
+        if (!isBarbell) null
+        else { displayWeight ->
+            PlateMath.calculate(effectiveUnit.toKg(displayWeight), effectiveUnit, barWeightKg, plateInventory)
+        }
+    }
     val weightQuickDeltas = remember(effectiveUnit) {
         if (effectiveUnit == WeightUnit.LB) listOf(5f, 10f, 25f) else listOf(2.5f, 5f, 10f)
     }
@@ -396,6 +395,7 @@ internal fun SetRowContent(
                     quickDeltas = weightQuickDeltas,
                     lastTimeValue = lastWeight?.let { effectiveUnit.fromKg(it) },
                     lastTimeLabel = lastWeight?.let { effectiveUnit.format(it) },
+                    plateCalculator = plateCalculator,
                 )
             }
         }
@@ -411,44 +411,9 @@ internal fun SetRowContent(
                 lastTimeLabel = lastExtra?.let { effectiveUnit.format(it) },
             )
         }
-        val weightKg = set.weightKg ?: 0f
-        if (isBarbell && weightKg > 0f) {
-            val breakdown = remember(weightKg, effectiveUnit, barWeightKg, plateInventory) {
-                PlateMath.calculate(weightKg, effectiveUnit, barWeightKg, plateInventory)
-            }
-            if (!breakdown.belowBar) {
-                val summaryText = if (breakdown.barOnly) {
-                    stringResource(R.string.live41_plates_bar_only, "${PlateMath.formatPlate(breakdown.barWeight)} ${effectiveUnit.label}")
-                } else {
-                    stringResource(R.string.live41_plates_side, PlateMath.formatPerSideSummary(breakdown.perSide))
-                }
-                val cd = stringResource(R.string.live41_plates_breakdown_cd, effectiveUnit.format(weightKg))
-                Box(
-                    Modifier
-                        .heightIn(min = 48.dp)
-                        .clip(ForgeShape.Full)
-                        .clickable(role = Role.Button) { plateBreakdown = breakdown }
-                        .semantics { contentDescription = cd }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        summaryText,
-                        style = MaterialTheme.typography.labelSmall.tabular(),
-                        color = c.blue,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
     }
-    val preview = LocalInspectionMode.current
     val tick: @Composable () -> Unit = {
-        if (preview) {
-            SetTick(set.done, pr, onToggle)
-        } else {
-            com.forgequest.app.ui.components.CoachMarkBox("coach_tick", R.string.coach_tick_t, R.string.coach_tick_b, below = true) { SetTick(set.done, pr, onToggle) }
-        }
+        SetTick(set.done, pr, onToggle)
     }
     Column {
         if (reflow) {
@@ -494,6 +459,7 @@ private fun SetRowStepper(
     lastTimeValue: Float? = null,
     lastTimeLabel: String? = null,
     placeholder: String? = null,
+    plateCalculator: ((Float) -> PlateMath.Breakdown)? = null,
 ) {
     if (LocalInspectionMode.current) {
         val shown = placeholder ?: (formatNumber(value, decimals) + if (unit.isNotEmpty()) " $unit" else "")
@@ -522,6 +488,7 @@ private fun SetRowStepper(
             lastTimeValue = lastTimeValue,
             lastTimeLabel = lastTimeLabel,
             placeholder = placeholder,
+            plateCalculator = plateCalculator,
         )
     }
 }
@@ -601,88 +568,6 @@ private fun SetTypeSheet(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PlateBreakdownSheet(
-    breakdown: PlateMath.Breakdown,
-    onDismiss: () -> Unit,
-) {
-    val c = Fit.colors
-    val unitLabel = breakdown.unit.label
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberFullSheetState(),
-        containerColor = c.card,
-        shape = RoundedCornerShape(topStart = ForgeShape.LgRadius, topEnd = ForgeShape.LgRadius),
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.live41_plates_title), style = MaterialTheme.typography.titleLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = c.textSecondary)
-                }
-            }
-            Text(
-                listOf(
-                    stringResource(R.string.live41_plates_target, "${PlateMath.formatPlate(breakdown.targetWeight)} $unitLabel"),
-                    stringResource(R.string.live41_plates_bar, "${PlateMath.formatPlate(breakdown.barWeight)} $unitLabel"),
-                ).joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium.tabular(),
-                color = c.textSecondary,
-            )
-            if (breakdown.perSide.isEmpty()) {
-                Box(
-                    Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.cardHigh).padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(stringResource(R.string.live41_plates_none_needed), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary)
-                }
-            } else {
-                Column(
-                    Modifier.fillMaxWidth().clip(ForgeShape.Md).background(c.cardHigh).padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    breakdown.perSide.forEach { p ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "${PlateMath.formatPlate(p.weight)} $unitLabel",
-                                style = MaterialTheme.typography.titleMedium.tabular(),
-                                color = c.blue,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text(
-                                "× ${p.count}",
-                                style = MaterialTheme.typography.titleMedium.tabular(),
-                                color = c.textPrimary,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-                }
-            }
-            Text(
-                stringResource(R.string.live41_plates_loaded, "${PlateMath.formatPlate(breakdown.loadedWeight)} $unitLabel"),
-                style = MaterialTheme.typography.labelLarge.tabular(),
-                color = c.textPrimary,
-            )
-            if (breakdown.remainder >= 0.05f) {
-                Text(
-                    stringResource(R.string.live41_plates_remainder, "${PlateMath.formatPlate(breakdown.remainder)} $unitLabel"),
-                    style = MaterialTheme.typography.bodySmall.tabular(),
-                    color = c.gold,
-                )
             }
         }
     }

@@ -24,9 +24,9 @@
     <string name="plan41_auto_warmup_tag">تسخين متدرج</string>
 
     <string name="plan41_prog_mode">نظام التدرّج</string>
-    <string name="plan41_prog_double">مزدوج</string>
-    <string name="plan41_prog_linear">خطي</string>
-    <string name="plan41_prog_maintain">تثبيت</string>
+    <string name="plan41_prog_double">زد التكرارات أولًا</string>
+    <string name="plan41_prog_linear">زد الوزن كل مرة</string>
+    <string name="plan41_prog_maintain">أبقِه كما هو</string>
     <string name="plan41_prog_double_hint">زد العدّات حتى الحد الأعلى ثم أضف وزنًا.</string>
     <string name="plan41_prog_linear_hint">أضف 2.5 كغ للعلوي أو 5 كغ للسفلي بعد كل تمرين مكتمل.</string>
     <string name="plan41_prog_maintain_hint">حافظ على الأوزان والعدّات الحالية دون زيادة.</string>

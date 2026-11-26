@@ -1,5 +1,6 @@
 package com.forgequest.app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,12 +46,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.container
+import com.forgequest.app.domain.PlateMath
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.tabular
@@ -131,6 +136,7 @@ fun NumberEntryKeypadSheet(
     quickDeltas: List<Float> = emptyList(),
     lastTimeValue: Float? = null,
     lastTimeLabel: String? = null,
+    plateCalculator: ((Float) -> PlateMath.Breakdown)? = null,
     onDismiss: () -> Unit,
     onConfirm: (Float) -> Unit,
 ) {
@@ -139,6 +145,7 @@ fun NumberEntryKeypadSheet(
     var draft by remember(initial) {
         mutableStateOf(KeypadDraft(formatCompactNumber(initial, decimals), fresh = true))
     }
+    var platesExpanded by remember { mutableStateOf(false) }
     val parsed = draft.parsed()
     val valid = draft.isValid(min, max)
 
@@ -205,6 +212,104 @@ fun NumberEntryKeypadSheet(
                         style = MaterialTheme.typography.bodySmall.tabular(),
                         color = if (draft.text.isNotEmpty() && !valid) c.coral else c.textSecondary,
                     )
+                }
+            }
+
+            val breakdown = remember(parsed, initial, plateCalculator) {
+                val target = parsed ?: initial
+                if (plateCalculator != null && target > 0f) plateCalculator(target) else null
+            }
+            if (breakdown != null && !breakdown.belowBar) {
+                Spacer(Modifier.height(10.dp))
+                val unitLabel = breakdown.unit.label
+                val summaryText = if (breakdown.barOnly) {
+                    stringResource(R.string.live41_plates_bar_only, "${PlateMath.formatPlate(breakdown.barWeight)} $unitLabel")
+                } else {
+                    stringResource(R.string.live41_plates_side, PlateMath.formatPerSideSummary(breakdown.perSide))
+                }
+                val breakdownCd = stringResource(R.string.live41_plates_breakdown_cd, "${PlateMath.formatPlate(breakdown.targetWeight)} $unitLabel")
+                val stateLabel = stringResource(if (platesExpanded) R.string.cd_expanded else R.string.cd_collapsed)
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(ForgeShape.Md)
+                        .background(c.cardHigh),
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable(role = Role.Button) { platesExpanded = !platesExpanded }
+                            .semantics {
+                                contentDescription = breakdownCd
+                                stateDescription = stateLabel
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.live41_plates_title),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = c.textSecondary,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            summaryText,
+                            style = MaterialTheme.typography.labelLarge.tabular(),
+                            color = c.blue,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Icon(
+                            if (platesExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                            contentDescription = null,
+                            tint = c.textSecondary,
+                            modifier = Modifier.padding(start = 6.dp).size(18.dp),
+                        )
+                    }
+                    AnimatedVisibility(platesExpanded) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                listOf(
+                                    stringResource(R.string.live41_plates_bar, "${PlateMath.formatPlate(breakdown.barWeight)} $unitLabel"),
+                                    stringResource(R.string.live41_plates_loaded, "${PlateMath.formatPlate(breakdown.loadedWeight)} $unitLabel"),
+                                ).joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall.tabular(),
+                                color = c.textSecondary,
+                            )
+                            if (breakdown.perSide.isEmpty()) {
+                                Text(stringResource(R.string.live41_plates_none_needed), style = MaterialTheme.typography.bodySmall, color = c.textPrimary)
+                            } else {
+                                breakdown.perSide.forEach { p ->
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "${PlateMath.formatPlate(p.weight)} $unitLabel",
+                                            style = MaterialTheme.typography.bodyMedium.tabular(),
+                                            color = c.blue,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Text(
+                                            "× ${p.count}",
+                                            style = MaterialTheme.typography.bodyMedium.tabular(),
+                                            color = c.textPrimary,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                    }
+                                }
+                            }
+                            if (breakdown.remainder >= 0.05f) {
+                                Text(
+                                    stringResource(R.string.live41_plates_remainder, "${PlateMath.formatPlate(breakdown.remainder)} $unitLabel"),
+                                    style = MaterialTheme.typography.bodySmall.tabular(),
+                                    color = c.gold,
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

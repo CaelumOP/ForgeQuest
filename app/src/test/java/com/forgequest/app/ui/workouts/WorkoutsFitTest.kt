@@ -1,9 +1,21 @@
 package com.forgequest.app.ui.workouts
 
+import com.forgequest.app.data.db.SessionEntity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WorkoutsFitTest {
+    @Test
+    fun shouldShowMuscleRecoveryMapRequiresFinishedWorkout() {
+        assertFalse(shouldShowMuscleRecoveryMap(emptyList()))
+        val unfinished = SessionEntity(id = 1L, planDayId = null, title = "Push", startedAt = 1000L, finishedAt = null, epochDay = 20000L)
+        assertFalse(shouldShowMuscleRecoveryMap(listOf(unfinished)))
+        val finished = unfinished.copy(id = 2L, finishedAt = 2000L)
+        assertTrue(shouldShowMuscleRecoveryMap(listOf(unfinished, finished)))
+    }
+
     @Test
     fun fitsExerciseCellsIntoTwoRowsByDefaultOrThreeFourOnTallScreens() {
         assertEquals(ExerciseFit(2, 0, 0), fitExerciseRows(300, 0))

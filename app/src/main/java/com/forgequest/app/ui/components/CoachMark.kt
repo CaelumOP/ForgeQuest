@@ -28,9 +28,12 @@ import com.forgequest.app.ui.theme.Fit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+internal fun canShowCoachMark(firstTickDone: Boolean, tourSeen: Boolean, stepSeen: Boolean): Boolean =
+    firstTickDone && !tourSeen && !stepSeen
+
 /**
- * First-run hints that point at the real button, once each, after the screen has content (replaces the swipe tour).
- * Existing installs already have `tour_seen`, so they never see them. At most one shows at a time.
+ * First-run hints that point at the real button, once each, after the first ticked set and once the screen has content
+ * (replaces the swipe tour). Existing installs already have `tour_seen`, so they never see them. At most one shows at a time.
  */
 object CoachMarks {
     private const val PREFS = "ui_prefs"
@@ -38,7 +41,8 @@ object CoachMarks {
 
     fun seen(c: Context, key: String) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(key, false)
     fun markSeen(c: Context, key: String) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(key, true).apply()
-    fun shouldShow(c: Context, key: String) = !TourPrefs.tourSeen(c) && !seen(c, key)
+    fun shouldShow(c: Context, key: String) =
+        canShowCoachMark(TourPrefs.firstTickDone(c), TourPrefs.tourSeen(c), seen(c, key))
 }
 
 /** Wraps [content] and shows a small persistent tip above it the first time; one tap on "Got it" or outside closes it. */

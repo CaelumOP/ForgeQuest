@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.forgequest.app.domain.NutritionGoal
 import com.forgequest.app.domain.TrainGoal
 import com.forgequest.app.ui.components.CoachMarks
+import com.forgequest.app.ui.components.canShowCoachMark
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -58,11 +59,23 @@ class OnboardingGoalMappingTest {
     }
 
     @Test
-    fun resetTipsClearsAllCoachKeysAndTourSeenWithoutClearingOtherUiPrefs() {
+    fun coachMarksRequireFirstTickBeforeShowingAndRespectResetTips() {
         TourPrefs.setLanguageChosen(context)
         TourPrefs.setGsEligible(context)
         TourPrefs.setGsDismissed(context)
         TourPrefs.setGsFriendDone(context)
+
+        // Before the first set tick, no coach tips show.
+        assertFalse(TourPrefs.firstTickDone(context))
+        AppTour.ALL_COACH_KEYS.forEach { key ->
+            assertFalse("Expected $key to stay hidden before first tick", CoachMarks.shouldShow(context, key))
+        }
+
+        TourPrefs.setFirstTickDone(context)
+        AppTour.ALL_COACH_KEYS.forEach { key ->
+            assertTrue("Expected $key to show after first tick", CoachMarks.shouldShow(context, key))
+        }
+
         AppTour.ALL_COACH_KEYS.forEach { CoachMarks.markSeen(context, it) }
         assertTrue(AppTour.skip(context))
         assertFalse(AppTour.skip(context))
@@ -75,9 +88,18 @@ class OnboardingGoalMappingTest {
             assertFalse("Expected $key to be cleared", CoachMarks.seen(context, key))
             assertTrue("Expected $key to show again", CoachMarks.shouldShow(context, key))
         }
+        assertTrue(TourPrefs.firstTickDone(context))
         assertTrue(TourPrefs.languageChosen(context))
         assertTrue(TourPrefs.gsEligible(context))
         assertTrue(TourPrefs.gsDismissed(context))
         assertTrue(TourPrefs.gsFriendDone(context))
+    }
+
+    @Test
+    fun canShowCoachMarkChecksFirstTickTourAndSeenFlags() {
+        assertFalse(canShowCoachMark(firstTickDone = false, tourSeen = false, stepSeen = false))
+        assertFalse(canShowCoachMark(firstTickDone = true, tourSeen = true, stepSeen = false))
+        assertFalse(canShowCoachMark(firstTickDone = true, tourSeen = false, stepSeen = true))
+        assertTrue(canShowCoachMark(firstTickDone = true, tourSeen = false, stepSeen = false))
     }
 }

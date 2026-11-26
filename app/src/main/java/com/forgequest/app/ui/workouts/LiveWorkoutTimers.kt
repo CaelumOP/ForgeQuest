@@ -1,6 +1,7 @@
 package com.forgequest.app.ui.workouts
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.rememberScrollState
@@ -38,6 +39,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -109,6 +113,8 @@ internal fun RestBar(
     next: String?,
     isRestPause: Boolean,
     canCopyLastSet: Boolean,
+    showPresets: Boolean = false,
+    onTogglePresets: () -> Unit = {},
     onAdd: () -> Unit,
     onRemove: () -> Unit,
     onSelectPreset: (Int) -> Unit,
@@ -124,54 +130,68 @@ internal fun RestBar(
             TextButton(onClick = onAdd) { Text(stringResource(R.string.live_rest_plus), color = c.textPrimary, maxLines = 1) }
             TextButton(onClick = onSkip) { Text(stringResource(R.string.live_skip), color = c.teal, maxLines = 1) }
         }
+        val toggleLabel = stringResource(if (showPresets) R.string.cd_rest_presets_hide else R.string.cd_rest_presets_show)
+        val toggleState = stringResource(if (showPresets) R.string.cd_expanded else R.string.cd_collapsed)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
-            Spacer(Modifier.width(12.dp))
-            Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge.tabular(), color = c.blue, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+            Row(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .clip(ForgeShape.Sm)
+                    .clickable(role = Role.Button, onClickLabel = toggleLabel, onClick = onTogglePresets)
+                    .semantics { stateDescription = toggleState }
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.live_rest), style = MaterialTheme.typography.titleSmall, color = c.textSecondary, maxLines = 1)
+                Spacer(Modifier.width(12.dp))
+                Text(clock(secondsLeft), style = MaterialTheme.typography.titleLarge.tabular(), color = c.blue, maxLines = 1, softWrap = false)
+            }
             if (!big) buttons()
         }
         if (big) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { buttons() }
         if (next != null) Text(stringResource(R.string.live_next, next), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
 
-        Spacer(Modifier.height(8.dp))
         val presets = if (isRestPause) listOf(15) + REST_PRESETS else REST_PRESETS
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            presets.forEach { preset ->
-                val selected = total == preset
-                Surface(
-                    onClick = { onSelectPreset(preset) },
-                    shape = ForgeShape.Full,
-                    color = if (selected) c.teal else c.card,
-                    contentColor = if (selected) c.onTeal else c.textPrimary,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            stringResource(R.string.live41_rest_preset_s, preset),
-                            style = MaterialTheme.typography.labelMedium.tabular(),
-                            fontWeight = FontWeight.Medium,
-                        )
+        AnimatedVisibility(showPresets) {
+            FlowRow(
+                Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                presets.forEach { preset ->
+                    val selected = total == preset
+                    Surface(
+                        onClick = { onSelectPreset(preset) },
+                        shape = ForgeShape.Full,
+                        color = if (selected) c.teal else c.card,
+                        contentColor = if (selected) c.onTeal else c.textPrimary,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                stringResource(R.string.live41_rest_preset_s, preset),
+                                style = MaterialTheme.typography.labelMedium.tabular(),
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                     }
                 }
-            }
-            if (canCopyLastSet) {
-                Surface(
-                    onClick = onCopyLastSet,
-                    shape = ForgeShape.Full,
-                    color = c.tealTrack,
-                    contentColor = c.teal,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            stringResource(R.string.live41_copy_last_set),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
+                if (canCopyLastSet) {
+                    Surface(
+                        onClick = onCopyLastSet,
+                        shape = ForgeShape.Full,
+                        color = c.tealTrack,
+                        contentColor = c.teal,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                stringResource(R.string.live41_copy_last_set),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
             }

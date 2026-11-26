@@ -43,6 +43,8 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.SwapHoriz
@@ -75,6 +77,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -93,6 +96,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -326,38 +330,6 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                     }
                 }
             } else {
-                val activePlan = s.plan
-                val mode = ScheduleMode.parse(activePlan.plan.scheduleMode)
-                val nextRotDay = if (mode == ScheduleMode.ROTATION) Rotation.dueDay(activePlan, Dates.todayDayOfWeek()) else null
-                FitCard {
-                    Text(stringResource(R.string.plan41_schedule_mode), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        stringResource(if (mode == ScheduleMode.ROTATION) R.string.plan41_schedule_rotation_hint else R.string.plan41_schedule_weekday_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = c.textSecondary,
-                    )
-                    if (nextRotDay != null) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            stringResource(R.string.plan41_rotation_next, StarterPlans.displayTitle(nextRotDay.day.title)),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = c.blue,
-                        )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    SegmentedTabs(
-                        options = listOf(stringResource(R.string.plan41_mode_weekday), stringResource(R.string.plan41_mode_rotation)),
-                        selected = if (mode == ScheduleMode.ROTATION) 1 else 0,
-                        onSelect = { idx ->
-                            val nextMode = if (idx == 1) ScheduleMode.ROTATION else ScheduleMode.WEEKDAY
-                            if (nextMode != mode) vm.setScheduleMode(activePlan.plan.id, nextMode)
-                        },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        wrap = true,
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
                 EditorDayStrip(selectedDay = selectedDay, onSelect = { selectedDay = it })
                 Spacer(Modifier.height(12.dp))
             }
@@ -585,6 +557,46 @@ fun PlanEditorScreen(nav: NavHostController, initialDay: Int = 0, openPaste: Boo
                 }
                 if (allPlans.size > 1) {
                     ChoiceRow(Icons.Rounded.History, stringResource(R.string.plan_previous), stringResource(R.string.plan_previous_info), onClick = { changePlan = false; previous = true })
+                }
+                s.plan?.let { activePlan ->
+                    val mode = ScheduleMode.parse(activePlan.plan.scheduleMode)
+                    val nextRotDay = if (mode == ScheduleMode.ROTATION) Rotation.dueDay(activePlan, Dates.todayDayOfWeek()) else null
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = ForgeSpace.Gutter)
+                            .clip(ForgeShape.Md)
+                            .background(c.cardHigh)
+                            .padding(16.dp),
+                    ) {
+                        Text(stringResource(R.string.plan41_schedule_mode), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            stringResource(if (mode == ScheduleMode.ROTATION) R.string.plan41_schedule_rotation_hint else R.string.plan41_schedule_weekday_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textSecondary,
+                        )
+                        if (nextRotDay != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                stringResource(R.string.plan41_rotation_next, StarterPlans.displayTitle(nextRotDay.day.title)),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = c.blue,
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        SegmentedTabs(
+                            options = listOf(stringResource(R.string.plan41_mode_weekday), stringResource(R.string.plan41_mode_rotation)),
+                            selected = if (mode == ScheduleMode.ROTATION) 1 else 0,
+                            onSelect = { idx ->
+                                val nextMode = if (idx == 1) ScheduleMode.ROTATION else ScheduleMode.WEEKDAY
+                                if (nextMode != mode) vm.setScheduleMode(activePlan.plan.id, nextMode)
+                            },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            wrap = true,
+                        )
+                    }
                 }
             }
         }
@@ -942,33 +954,6 @@ private fun ItemEditorSheet(
             }
             EditorRow(stringResource(R.string.live_rest), draft.restSeconds.toFloat(), { draft = draft.copy(restSeconds = it.toInt()) }, step = 15f, min = 0f, max = 900f, unit = stringResource(R.string.unit_s))
             if (!isExtra) {
-                val curMode = ProgressionMode.parse(draft.progressionMode)
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.plan41_prog_mode), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(
-                        when (curMode) {
-                            ProgressionMode.DOUBLE -> R.string.plan41_prog_double_hint
-                            ProgressionMode.LINEAR -> R.string.plan41_prog_linear_hint
-                            ProgressionMode.MAINTAIN -> R.string.plan41_prog_maintain_hint
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = c.textSecondary,
-                )
-                Spacer(Modifier.height(8.dp))
-                SegmentedTabs(
-                    options = listOf(
-                        stringResource(R.string.plan41_prog_double),
-                        stringResource(R.string.plan41_prog_linear),
-                        stringResource(R.string.plan41_prog_maintain),
-                    ),
-                    selected = progModes.indexOf(curMode).coerceAtLeast(0),
-                    onSelect = { idx -> draft = draft.copy(progressionMode = progModes[idx].name) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                    wrap = true,
-                )
                 if (kind == ExerciseKind.WEIGHTED) {
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1004,6 +989,70 @@ private fun ItemEditorSheet(
                             modifier = Modifier.weight(1f),
                         )
                         FitSwitch(checked = checked, onCheckedChange = null, enabled = !groupDisabled)
+                    }
+                }
+                val curMode = ProgressionMode.parse(draft.progressionMode)
+                val curModeLabel = stringResource(
+                    when (curMode) {
+                        ProgressionMode.DOUBLE -> R.string.plan41_prog_double
+                        ProgressionMode.LINEAR -> R.string.plan41_prog_linear
+                        ProgressionMode.MAINTAIN -> R.string.plan41_prog_maintain
+                    },
+                )
+                var advancedOpen by remember { mutableStateOf(false) }
+                val expandedText = stringResource(if (advancedOpen) R.string.cd_expanded else R.string.cd_collapsed)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .clip(ForgeShape.Sm)
+                        .clickable(role = Role.Button) { advancedOpen = !advancedOpen }
+                        .semantics { stateDescription = expandedText }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.you_advanced), style = MaterialTheme.typography.bodyLarge, color = c.textPrimary)
+                        Text(
+                            "${stringResource(R.string.plan41_prog_mode)} · $curModeLabel",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textSecondary,
+                        )
+                    }
+                    Icon(
+                        if (advancedOpen) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null,
+                        tint = c.textSecondary,
+                    )
+                }
+                AnimatedVisibility(advancedOpen) {
+                    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                        Text(stringResource(R.string.plan41_prog_mode), style = MaterialTheme.typography.labelLarge, color = c.textPrimary)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(
+                                when (curMode) {
+                                    ProgressionMode.DOUBLE -> R.string.plan41_prog_double_hint
+                                    ProgressionMode.LINEAR -> R.string.plan41_prog_linear_hint
+                                    ProgressionMode.MAINTAIN -> R.string.plan41_prog_maintain_hint
+                                },
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textSecondary,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        SegmentedTabs(
+                            options = listOf(
+                                stringResource(R.string.plan41_prog_double),
+                                stringResource(R.string.plan41_prog_linear),
+                                stringResource(R.string.plan41_prog_maintain),
+                            ),
+                            selected = progModes.indexOf(curMode).coerceAtLeast(0),
+                            onSelect = { idx -> draft = draft.copy(progressionMode = progModes[idx].name) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            wrap = true,
+                        )
                     }
                 }
             }

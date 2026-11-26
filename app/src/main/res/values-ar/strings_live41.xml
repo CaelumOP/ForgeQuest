@@ -11,12 +11,10 @@
     <string name="live41_plates_side">%1$s / جانب</string>
     <string name="live41_plates_bar_only">البار فقط (%1$s)</string>
     <string name="live41_plates_title">الأوزان لكل جانب</string>
-    <string name="live41_plates_target">الهدف: %1$s</string>
     <string name="live41_plates_bar">البار: %1$s</string>
     <string name="live41_plates_loaded">المحمول: %1$s</string>
     <string name="live41_plates_remainder">أقرب وزن متاح (فرق %1$s)</string>
     <string name="live41_plates_none_needed">البار فارغ، لا حاجة لأقراص إضافية</string>
-    <string name="live41_plates_below_bar">أقل من وزن البار (%1$s)</string>
     <string name="live41_plates_breakdown_cd">تفصيل الأقراص لوزن %1$s</string>
 
     <!-- Set types -->

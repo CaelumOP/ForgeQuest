@@ -38,6 +38,7 @@ object TourPrefs {
     const val KEY_GS_ELIGIBLE = "gs_eligible"
     const val KEY_GS_DISMISSED = "gs_dismissed"
     const val KEY_GS_FRIEND_DONE = "gs_friend_done"
+    const val KEY_FIRST_TICK_DONE = "first_tick_done"
 
     private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -45,6 +46,8 @@ object TourPrefs {
     fun setLanguageChosen(c: Context) = prefs(c).edit().putBoolean(KEY_LANGUAGE_CHOSEN, true).apply()
     fun tourSeen(c: Context) = prefs(c).getBoolean(KEY_TOUR_SEEN, false)
     fun setTourSeen(c: Context) = prefs(c).edit().putBoolean(KEY_TOUR_SEEN, true).apply()
+    fun firstTickDone(c: Context) = prefs(c).getBoolean(KEY_FIRST_TICK_DONE, false)
+    fun setFirstTickDone(c: Context) = prefs(c).edit().putBoolean(KEY_FIRST_TICK_DONE, true).apply()
 
     fun gsEligible(c: Context) = prefs(c).getBoolean(KEY_GS_ELIGIBLE, false)
     fun setGsEligible(c: Context) = prefs(c).edit().putBoolean(KEY_GS_ELIGIBLE, true).apply()
@@ -55,19 +58,18 @@ object TourPrefs {
 }
 
 /**
- * The first-visit tour: one tip per main tab, shown next to the one button that matters there, the first time that tab
- * is opened (Home: start the workout; Workouts: change plan; Food: search and log), plus the set tick inside
- * a workout. Optional things, such as the Fitbit readiness row, get no tip. The tips themselves are drawn by
- * `CoachMarkBox`; this object only knows which ones make up the tour and when it is over.
+ * The first-visit tour: one tip per main tab, shown next to the one button that matters there, only after the first
+ * set tick (Home: start the workout; Workouts: change plan; Food: search and log; Profile; Progress). Optional things,
+ * such as the Fitbit readiness row, get no tip. The tips themselves are drawn by `CoachMarkBox`; this object only knows
+ * which ones make up the tour and when it is over.
  */
 object AppTour {
     const val HOME = "coach_home"
     const val WORKOUTS = "coach_plan"
     const val FOOD = "coach_food"
-    const val SET_TICK = "coach_tick"
     const val PROFILE = "coach_profile"
     const val PROGRESS = "coach_progress"
-    val ALL_COACH_KEYS = listOf(HOME, WORKOUTS, FOOD, SET_TICK, PROFILE, PROGRESS)
+    val ALL_COACH_KEYS = listOf(HOME, WORKOUTS, FOOD, PROFILE, PROGRESS)
 
     /** Called after a tip was shown: once every step has been seen, the tour is marked finished for good. */
     fun stepSeen(c: Context) {

@@ -24,9 +24,9 @@
     <string name="plan41_auto_warmup_tag">Warm-up ramp</string>
 
     <string name="plan41_prog_mode">Progression</string>
-    <string name="plan41_prog_double">Double</string>
-    <string name="plan41_prog_linear">Linear</string>
-    <string name="plan41_prog_maintain">Maintain</string>
+    <string name="plan41_prog_double">Add reps first</string>
+    <string name="plan41_prog_linear">Add weight each time</string>
+    <string name="plan41_prog_maintain">Keep the same</string>
     <string name="plan41_prog_double_hint">Climb reps to the top of the range, then add weight.</string>
     <string name="plan41_prog_linear_hint">Add 2.5 kg upper / 5 kg lower after every clean workout.</string>
     <string name="plan41_prog_maintain_hint">Keep your current weights and reps steady.</string>

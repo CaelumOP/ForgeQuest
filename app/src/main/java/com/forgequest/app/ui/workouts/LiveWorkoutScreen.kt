@@ -19,8 +19,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,7 +47,6 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material3.AlertDialog
@@ -81,6 +78,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -112,7 +110,6 @@ import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.toast
-import com.forgequest.app.ui.exerciseCues
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeMotion
 import com.forgequest.app.ui.theme.ForgeShape
@@ -369,7 +366,9 @@ fun LiveWorkoutScreen(nav: NavHostController) {
     val effortSet = sets.firstOrNull { it.id == effortSetId && it.done }
     var noteSet by remember { mutableStateOf<SetEntity?>(null) }
     var menu by remember { mutableStateOf(false) }
-    val bottomPad = (if (rest != null) 310.dp else 160.dp) + (if (effortSet != null) 88.dp else 0.dp)
+    var showRestPresets by remember(rest?.instanceId) { mutableStateOf(false) }
+    LaunchedEffect(rest == null) { if (rest == null) showRestPresets = false }
+    val bottomPad = (if (rest != null) (if (showRestPresets) 310.dp else 230.dp) else 160.dp) + (if (effortSet != null) 88.dp else 0.dp)
     val openPeek: (String) -> Unit = { id ->
         vm.loadQuickPeekHistory(id)
         peekExerciseId = id
@@ -494,6 +493,8 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                         next = nextLabel,
                         isRestPause = r.isRestPause,
                         canCopyLastSet = nextSet != null && copySource != null,
+                        showPresets = showRestPresets,
+                        onTogglePresets = { showRestPresets = !showRestPresets },
                         onAdd = { vm.addRest(15) },
                         onRemove = { if (left > 15) vm.addRest(-15) else vm.skipRest() },
                         onSelectPreset = { sec -> vm.setRestPreset(sec) },
@@ -883,8 +884,7 @@ internal fun GroupCard(
     }
 }
 
-/** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; tapping the row opens the per-set rows. */
-@OptIn(ExperimentalLayoutApi::class)
+/** One warm-up exercise as a single row ("Jumping jacks · 5 × 10") with one tick; title opens cues, ⋮ menu has cues & swap, expand reveals per-set rows. */
 @Composable
 internal fun WarmupCard(
     g: Group.Straight,
@@ -902,35 +902,38 @@ internal fun WarmupCard(
     val doneCount = g.sets.count { it.done }
     val allDone = doneCount == g.sets.size
     val each = if (ex?.kind == ExerciseKind.HOLD) stringResource(R.string.rx_seconds, first.seconds ?: 0) else "${first.reps ?: 0}"
+    var menu by remember { mutableStateOf(false) }
     FitCard(modifier = Modifier.animateContentSize(), padding = PaddingValues(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier.weight(1f).clip(ForgeShape.Sm).clickable(onClick = onToggleExpand).padding(horizontal = 4.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .clip(ForgeShape.Sm)
+                    .clickable(role = Role.Button, onClick = onPeek)
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text("${ex?.name ?: first.exerciseId} · ${g.sets.size} × $each", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-                    Text(stringResource(R.string.live_warmup_not_counted), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                    if (doneCount > 0 && !allDone) Text("$doneCount/${g.sets.size}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                }
-                Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+                Text("${ex?.name ?: first.exerciseId} · ${g.sets.size} × $each", style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
+                Text(stringResource(R.string.live_warmup_not_counted), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                if (doneCount > 0 && !allDone) Text("$doneCount/${g.sets.size}", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
-            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = onToggleExpand) {
+                Icon(
+                    if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = stringResource(if (expanded) R.string.cd_expanded else R.string.cd_collapsed),
+                    tint = c.textSecondary,
+                )
+            }
+            Box {
+                IconButton(onClick = { menu = true }) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary)
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.cues_title)) }, onClick = { menu = false; onPeek() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.live_swap_exercise)) }, onClick = { menu = false; onSwap() })
+                }
+            }
             SetTick(allDone, pr = false) { vm.toggleAll(g.sets) }
-        }
-        FlowRow(
-            Modifier.padding(start = 4.dp, top = 4.dp, end = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            TonalPill(stringResource(R.string.cues_title), onClick = onPeek, icon = Icons.Rounded.Info, tint = c.teal)
-            TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
-            TonalPill(
-                stringResource(if (allDone) R.string.live_warmup_done else R.string.live_mark_warmup_done),
-                onClick = { vm.toggleAll(g.sets) },
-                icon = Icons.Rounded.Check,
-                tint = if (allDone) c.teal else c.textPrimary,
-            )
         }
         if (ex?.kind == ExerciseKind.WEIGHTED && g.sets.any { !it.done && (it.weightKg ?: 0f) <= 0f }) {
             TextButton(onClick = { onTestBaseline(ex.id) }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -1010,7 +1013,6 @@ internal fun StraightCard(
                 val target = localizeTargetLabel(g.sets.first().targetLabel, stringResource(R.string.rx_reps_only))
                 Text(if (target.isNotBlank()) stringResource(R.string.live_target, g.sets.size, target) else ex?.musclesLabel().orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 reasons[g.sets.first().exerciseId]?.let { Text(stringResource(whyRes(it)), style = MaterialTheme.typography.labelSmall, color = c.textSecondary) }
-                exerciseCues(g.sets.first().exerciseId)?.let { Text(stringResource(it.first), style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                 if (!ex?.setupNote.isNullOrBlank()) {
                     Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.PushPin, contentDescription = null, tint = c.blue, modifier = Modifier.size(14.dp))
@@ -1027,6 +1029,7 @@ internal fun StraightCard(
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.cd_options), tint = c.textSecondary) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.cardHigh) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.cues_title)) }, onClick = { menu = false; onPeek() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.cd_watch_form)) }, onClick = { menu = false; onVideo(ex) })
                     if (ex != null) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.live41_setup_note_label)) }, onClick = { menu = false; onEditSetupNote(ex) })
@@ -1042,10 +1045,6 @@ internal fun StraightCard(
                     DropdownMenuItem(text = { Text(stringResource(R.string.live_remove_last_set)) }, onClick = { menu = false; vm.removeLastSet(g.position) })
                 }
             }
-        }
-        Row(Modifier.padding(start = 4.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TonalPill(stringResource(R.string.cues_title), onClick = onPeek, icon = Icons.Rounded.Info, tint = c.teal)
-            TonalPill(stringResource(R.string.live_swap_exercise), onClick = onSwap, icon = Icons.Rounded.SwapHoriz, tint = c.teal)
         }
         if (ex?.kind == ExerciseKind.WEIGHTED && g.sets.any { !it.done && (it.weightKg ?: 0f) <= 0f }) {
             TextButton(onClick = { onTestBaseline(ex.id) }, modifier = Modifier.heightIn(min = 48.dp)) {

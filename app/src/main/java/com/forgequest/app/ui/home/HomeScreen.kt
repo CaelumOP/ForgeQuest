@@ -150,6 +150,10 @@ fun HomeScreen(nav: NavHostController) {
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
 
     val today = s.plan?.day(Dates.todayDayOfWeek())
+    val homeTipClaimsScreen = remember {
+        (open != null || s.plan == null || (today != null && !today.day.isRest)) &&
+            com.forgequest.app.ui.components.CoachMarks.shouldShow(context, com.forgequest.app.ui.onboarding.AppTour.HOME)
+    }
     // "Just log" mode: no streak, levels, badges on Home; the data stays and comes back when it's turned off.
     val justLog = s.settings.justLog
     // The done state's line is the day's top insight; read-only here, so Home never starts a cooldown (the finish screen does).
@@ -260,6 +264,7 @@ fun HomeScreen(nav: NavHostController) {
                 Header(
                     s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROFILE) }, photoUrl = profilePhoto,
                     avatarName = pickAvatarName(s.settings.name, friendsName),
+                    allowProfileTip = !homeTipClaimsScreen,
                 )
                 UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
             }
@@ -379,7 +384,7 @@ private fun ColumnScope.FlexGap(weighted: Boolean = true) {
 }
 
 @Composable
-private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, photoUrl: String?, avatarName: String) {
+private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, photoUrl: String?, avatarName: String, allowProfileTip: Boolean = true) {
     val c = Fit.colors
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
@@ -400,7 +405,7 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
             )
         }
         // The avatar is the way into Profile and settings; the rank letter rides on it as a small badge.
-        com.forgequest.app.ui.components.CoachMarkBox("coach_profile", R.string.home41_profile_hint_t, R.string.home41_profile_hint_b, below = true) {
+        com.forgequest.app.ui.components.CoachMarkBox("coach_profile", R.string.home41_profile_hint_t, R.string.home41_profile_hint_b, enabled = allowProfileTip, below = true) {
             ProfileAvatar(avatarName, photoUrl, if (showRank) s.level.rank.mark(s.level.level) else null, onRankClick)
         }
     }

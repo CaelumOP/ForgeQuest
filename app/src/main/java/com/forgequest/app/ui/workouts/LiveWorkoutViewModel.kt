@@ -62,7 +62,10 @@ data class RestTimer(
     val isRestPause: Boolean = false,
     val setId: Long? = null,
     val isShortTransition: Boolean = false,
+    val instanceId: Long = 0L,
 )
+
+private val nextRestId = java.util.concurrent.atomic.AtomicLong(1L)
 
 /** Outlives the screen, so leaving a workout mid-rest and resuming it keeps the countdown. */
 private val runningRest = MutableStateFlow<RestTimer?>(null)
@@ -498,6 +501,9 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
 
     fun toggle(set: SetEntity) {
         val done = !set.done
+        if (done) {
+            com.forgequest.app.ui.onboarding.TourPrefs.setFirstTickDone(app.appContext)
+        }
         if (done && _adjustment.value?.exerciseId != null && _adjustment.value?.exerciseId != set.exerciseId) {
             clearAdjustment()
         }
@@ -548,6 +554,9 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     /** The warm-up's single tick: marks all of one exercise's sets done (or all undone) and starts no rest timer. */
     fun toggleAll(group: List<SetEntity>) {
         val done = !group.all { it.done }
+        if (done) {
+            com.forgequest.app.ui.onboarding.TourPrefs.setFirstTickDone(app.appContext)
+        }
         if (done && _adjustment.value?.exerciseId != null && group.none { it.exerciseId == _adjustment.value?.exerciseId }) {
             clearAdjustment()
         }
@@ -635,9 +644,10 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         isRestPause: Boolean = rest.value?.isRestPause ?: false,
         setId: Long? = null,
         isShortTransition: Boolean = false,
+        instanceId: Long = nextRestId.getAndIncrement(),
     ) {
         val endsAt = System.currentTimeMillis() + seconds * 1000L
-        rest.value = RestTimer(seconds, endsAt, nextExercise, isRestPause, setId, isShortTransition)
+        rest.value = RestTimer(seconds, endsAt, nextExercise, isRestPause, setId, isShortTransition, instanceId)
         app.notifier.showRest(endsAt, nextExercise)
         app.restAlert.start(endsAt, nextExercise)
         if (app.restAlarms.shouldOfferExact()) offerExactAlarm.value = true
@@ -646,7 +656,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     fun setRestPreset(seconds: Int) {
         val current = rest.value ?: return
         app.haptics.tick()
-        startRest(seconds, current.nextExercise, current.isRestPause, current.setId, current.isShortTransition)
+        startRest(seconds, current.nextExercise, current.isRestPause, current.setId, current.isShortTransition, current.instanceId)
     }
 
     /** Asked once: the system refuses exact alarms until the person allows them, and without them the alert can be late. */
@@ -750,6 +760,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val held = h.elapsed(System.currentTimeMillis()).coerceIn(0, 3600)
         val set = sets.value.firstOrNull { it.id == h.setId } ?: return
         if (held == 0) return
+        com.forgequest.app.ui.onboarding.TourPrefs.setFirstTickDone(app.appContext)
         if (_adjustment.value?.exerciseId != null && _adjustment.value?.exerciseId != set.exerciseId) {
             clearAdjustment()
         }

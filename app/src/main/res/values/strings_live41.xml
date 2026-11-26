@@ -11,12 +11,10 @@
     <string name="live41_plates_side">%1$s / side</string>
     <string name="live41_plates_bar_only">Bar only (%1$s)</string>
     <string name="live41_plates_title">Plates per side</string>
-    <string name="live41_plates_target">Target: %1$s</string>
     <string name="live41_plates_bar">Bar: %1$s</string>
     <string name="live41_plates_loaded">Loaded: %1$s</string>
     <string name="live41_plates_remainder">Nearest loadable (%1$s short)</string>
     <string name="live41_plates_none_needed">Empty bar, no plates needed</string>
-    <string name="live41_plates_below_bar">Under bar weight (%1$s)</string>
     <string name="live41_plates_breakdown_cd">Plate breakdown for %1$s</string>
 
     <!-- Set types -->

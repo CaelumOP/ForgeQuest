@@ -258,6 +258,7 @@
     <string name="workouts_start">بدء التمرين</string>
     <string name="workouts_start_this">بدء هذا التمرين</string>
     <string name="workouts_details">التفاصيل</string>
+    <string name="workouts_muscle_recovery_empty">تظهر حالة تعافي العضلات هنا بعد أول تمرين</string>
     <string name="workouts_quick_short">سريع</string>
     <plurals name="workouts_more_n">
         <item quantity="zero">+%1$d أخرى</item>
@@ -359,8 +360,6 @@
     <string name="coach_home_b">اضغط ابدأ لتبدأ.</string>
     <string name="coach_home_noplan_t">ابدأ بخطتك</string>
     <string name="coach_home_noplan_b">أجب عن بضعة أسئلة لبناء خطتك الأسبوعية.</string>
-    <string name="coach_tick_t">علّم كل مجموعة</string>
-    <string name="coach_tick_b">علّم المجموعة عند الانتهاء. تبدأ الراحة تلقائيًا.</string>
     <string name="coach_food_t">سجّل طعامك بسرعة</string>
     <string name="coach_food_b_noai">ابحث في أطعمتك، أو اضغط أيقونة الرمز لمسح الباركود.</string>
     <string name="coach_food_b">ابحث، أو استخدم الكاميرا لتصوير وجبة، أو أيقونة الرمز لمسح الباركود.</string>
@@ -1026,8 +1025,8 @@
     <string name="journal_add_note">+ أضف ملاحظة</string>
     <string name="live_now">الآن: %1$s</string>
     <string name="live_warmup_not_counted">تسخين · لا يُحتسب ضمن المجموعات</string>
-    <string name="live_mark_warmup_done">تحديد التسخين كمنجز</string>
-    <string name="live_warmup_done">تم التسخين ✓</string>
+    <string name="cd_rest_presets_show">إظهار أزرار الراحة ونسخ آخر مجموعة</string>
+    <string name="cd_rest_presets_hide">إخفاء أزرار الراحة ونسخ آخر مجموعة</string>
     <string name="live_effort_caption">كيف كانت هذه المجموعة؟</string>
     <string name="live_swap_confirm_title">استبدال %1$s؟</string>
     <plurals name="live_swap_confirm_body">

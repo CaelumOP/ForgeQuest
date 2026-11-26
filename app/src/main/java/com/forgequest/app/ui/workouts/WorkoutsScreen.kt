@@ -122,6 +122,9 @@ class WorkoutsViewModel(val app: AppContainer) : ViewModel() {
 
 data class ExerciseFit(val rows: Int, val visibleCount: Int, val hiddenCount: Int)
 
+internal fun shouldShowMuscleRecoveryMap(sessions: List<SessionEntity>): Boolean =
+    sessions.any { it.finishedAt != null }
+
 internal const val ROW_HEIGHT_2COL = 46
 internal const val MIN_EXERCISE_ROWS = 2
 internal const val MAX_EXERCISE_ROWS = 4
@@ -287,7 +290,8 @@ fun WorkoutsScreen(nav: NavHostController) {
                 DayStrip(plan.days, selectedDay, s.workoutDoneToday) { selectedDay = it }
             }
 
-            val heroMod = if (fallbackScroll) Modifier.fillMaxWidth() else Modifier.weight(1f).fillMaxWidth()
+            val hasFinishedWorkout = remember(s.sessions) { shouldShowMuscleRecoveryMap(s.sessions) }
+            val heroMod = if (fallbackScroll || !hasFinishedWorkout) Modifier.fillMaxWidth() else Modifier.weight(1f).fillMaxWidth()
             RecoveryHeroCard(
                 s = s,
                 open = open,
@@ -297,6 +301,7 @@ fun WorkoutsScreen(nav: NavHostController) {
                 isToday = isToday,
                 isDue = isDue,
                 isRest = isRest,
+                hasFinishedWorkout = hasFinishedWorkout,
                 fallbackScroll = fallbackScroll,
                 onSeeExercises = { muscleSheet = it },
                 exerciseCount = { m -> MuscleExercises.list(m, library, planIds, equipment).size },
@@ -364,6 +369,10 @@ fun WorkoutsScreen(nav: NavHostController) {
                         )
                     }
                 }
+            }
+
+            if (!fallbackScroll && !hasFinishedWorkout) {
+                Spacer(Modifier.weight(1f))
             }
 
             BottomActionRow(
@@ -434,6 +443,7 @@ private fun RecoveryHeroCard(
     isToday: Boolean,
     isDue: Boolean = false,
     isRest: Boolean,
+    hasFinishedWorkout: Boolean,
     fallbackScroll: Boolean,
     onSeeExercises: (Muscle) -> Unit,
     exerciseCount: (Muscle) -> Int,
@@ -497,15 +507,23 @@ private fun RecoveryHeroCard(
             }
         }
         Spacer(Modifier.height(4.dp))
-        val mapMod = if (fallbackScroll) Modifier.fillMaxWidth() else Modifier.weight(1f).fillMaxWidth()
-        MuscleRecoveryMap(
-            recovery = s.recovery,
-            bodyType = s.settings.bodyType,
-            modifier = mapMod,
-            fallbackScroll = fallbackScroll,
-            onSeeExercises = onSeeExercises,
-            exerciseCount = exerciseCount,
-        )
+        if (hasFinishedWorkout) {
+            val mapMod = if (fallbackScroll) Modifier.fillMaxWidth() else Modifier.weight(1f).fillMaxWidth()
+            MuscleRecoveryMap(
+                recovery = s.recovery,
+                bodyType = s.settings.bodyType,
+                modifier = mapMod,
+                fallbackScroll = fallbackScroll,
+                onSeeExercises = onSeeExercises,
+                exerciseCount = exerciseCount,
+            )
+        } else {
+            Text(
+                stringResource(R.string.workouts_muscle_recovery_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = c.textSecondary,
+            )
+        }
     }
 }
 
