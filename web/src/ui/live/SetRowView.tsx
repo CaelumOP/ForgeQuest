@@ -70,6 +70,9 @@ export type SetRowProps = {
   /** Tapping a done set's effort label shows the chips again so it can be re-tagged. */
   onReopenEffort?: (set: SetRow) => void
   onLabelClick?: () => void
+  /** Show the "Test this move" button when a weighted set has no weight yet. Defaults to true when blank. */
+  showTestMove?: boolean
+  onTestMove?: () => void
 }
 
 /** "Last time" text for one previous set. */
@@ -149,6 +152,7 @@ export function SetRowView(p: SetRowProps) {
       step={loadStep(unit)}
       decimals={1}
       unit={u}
+      placeholder={kind === 'WEIGHTED' && weightKg <= 0 ? t('live_add_weight') : null}
       quickDeltas={weightQuickDeltas}
       lastTimeValue={lastWeightDisplay}
       lastTimeLabel={lastWeight != null ? `${weightNumber(unit, lastWeight)} ${u}` : null}
@@ -156,6 +160,7 @@ export function SetRowView(p: SetRowProps) {
       onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) }, 'weightKg')}
     />
   )
+  const canTestMove = kind === 'WEIGHTED' && !set.done && weightKg <= 0 && p.showTestMove !== false && !!set.exerciseId
 
   return (
     <div class="lw-setwrap">
@@ -236,6 +241,18 @@ export function SetRowView(p: SetRowProps) {
                 ? t('live41_plates_bar_only', `${formatPlateNumber(breakdown.barWeight)} ${u}`)
                 : t('live41_plates_side', formatPlatesSummary(breakdown.perSide))}
             </button>
+          )}
+          {canTestMove && (
+            <Button
+              variant="text"
+              class="lw-test-move"
+              onClick={() => {
+                if (p.onTestMove) p.onTestMove()
+                else location.hash = `#/baseline/${encodeURIComponent(set.exerciseId)}`
+              }}
+            >
+              {t('live_test_this_move')}
+            </Button>
           )}
         </div>
         <CoachMark id="coach_tick" title={t('coach_tick_t')} body={t('coach_tick_b')} below>

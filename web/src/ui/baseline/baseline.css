@@ -1,0 +1,254 @@
+/* Find your starting point (BaselineScreen): Soft Coach tokens & logical properties only. */
+
+.bl-shell { position: relative; }
+.bl-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-block-size: 56px;
+  padding-block: max(8px, env(safe-area-inset-top)) 8px;
+  padding-inline: max(4px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+  background: var(--bg);
+}
+.bl-head-title {
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bl-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-block: 4px max(24px, env(safe-area-inset-bottom));
+  padding-inline: max(var(--gutter), env(safe-area-inset-left), env(safe-area-inset-right));
+  max-inline-size: 640px;
+  margin-inline: auto;
+  inline-size: 100%;
+}
+
+.bl-intro, .bl-muted {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.bl-err {
+  margin: 0;
+  font-size: 14px;
+  color: var(--coral);
+}
+
+.bl-moverow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-block-size: 48px;
+}
+
+.bl-move-text {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bl-move-name {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bl-move-sub {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-2);
+}
+
+.bl-move-target {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--teal);
+}
+
+.bl-move-check {
+  flex: none;
+  color: var(--teal);
+  display: inline-flex;
+}
+
+.bl-move-chev {
+  flex: none;
+  color: var(--text-2);
+  display: inline-flex;
+}
+
+.bl-counter-btn {
+  inline-size: 100%;
+  min-block-size: 180px;
+  padding: 24px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--teal-track);
+  color: var(--teal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.bl-counter-btn:active { opacity: 0.9; }
+
+.bl-counter-num {
+  font-size: 56px;
+  line-height: 64px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--teal);
+}
+
+.bl-counter-cap {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: center;
+}
+
+.bl-center-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.bl-timer-badge {
+  inline-size: 56px;
+  block-size: 56px;
+  border-radius: var(--r-full);
+  background: var(--teal-track);
+  color: var(--teal);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bl-field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bl-field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bl-field-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.bl-target-box {
+  inline-size: 100%;
+  padding: 16px;
+  border-radius: var(--r-md);
+  background: var(--teal-track);
+  color: var(--teal);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.bl-result-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bl-result-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bl-result-msg {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.bl-rest-dock {
+  padding-block: 8px max(12px, env(safe-area-inset-bottom));
+  padding-inline: max(var(--gutter), env(safe-area-inset-left), env(safe-area-inset-right));
+  max-inline-size: 640px;
+  margin-inline: auto;
+  inline-size: 100%;
+}
+
+.bl-rest {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--card-high);
+}
+
+.bl-rest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bl-rest-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bl-rest-label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+
+.bl-rest-clock {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.bl-rest-bar {
+  block-size: 4px;
+  border-radius: var(--r-sm);
+  background: var(--blue-track);
+  overflow: hidden;
+}
+
+.bl-rest-bar > div {
+  block-size: 100%;
+  background: var(--blue);
+}

@@ -2,19 +2,25 @@ import { audit, fromDraft } from '../../domain/routine-auditor'
 import { AuditCard } from './AuditCard'
 // Port of app/src/main/java/com/forgequest/app/ui/plan/PlanBuilderScreen.kt.
 import type { ComponentChildren } from 'preact'
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { intlLocale, t, useLang, type Lang } from '../../i18n'
+import {
+  latestAllBaselines, migratePlanBuilderBaselines, planInputWithBaselines,
+  PULL_UP_ID, PUSH_UP_ID, saveBaselineTest, useLatestBaselines,
+} from '../../data/baseline-tests'
+import { db } from '../../data/db'
 import { loadSettings, updateSettings } from '../../data/settings'
 import { applyPlan, useLibrary } from '../../data/workouts'
 import { WEEK_ORDER } from '../../domain/dates'
 import type { ExerciseEntity, PlanDraftDay } from '../../domain/entities'
+import { decodePlanAnswers } from '../../domain/plan-answers'
 import {
   CARDIOS, EXPERIENCES, INJURIES, PlanBuilder, REP_PREFS, REST_PREFS, TRAIN_GOALS, WORKOUT_STYLES,
-  defaultPlanAnswers, encodePlanAnswers, planAnswersToInput, spreadDays,
+  defaultPlanAnswers, encodePlanAnswers, spreadDays,
   type BuiltPlan, type Cardio, type Experience, type PlanAnswers, type RepPref, type RestPref, type TrainGoal, type WorkoutStyle,
 } from '../../domain/plan-builder'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
-import { Button, Card, Chip, IconButton, Segmented, Stepper, haptics, toast } from '../kit'
+import { Button, Card, Chip, IconButton, ListRow, Segmented, Stepper, haptics, toast } from '../kit'
 import { GearCustomizeRow, GearSheet, TrainingPlaceSelector } from '../profile/GearSheet'
 import { ExercisePicker } from '../workouts/ExercisePicker'
 import { SwapIcon } from '../workouts/glyphs'
@@ -52,33 +58,96 @@ export function PlanBuilderScreen(_: { param?: string }) {
   const [offset, setOffset] = useState(0)
   const [tried, setTried] = useState<Map<string, Set<string>>>(() => new Map())
   const [busy, setBusy] = useState(false)
+  const latestBaselines = useLatestBaselines()
+  const [pendingBaselineWrites, setPendingBaselineWrites] = useState(0)
+  const [baselineSaveFailed, setBaselineSaveFailed] = useState(false)
+  const baselineQueueRef = useRef<Promise<unknown>>(Promise.resolve())
+  const answersRef = useRef(answers)
+  answersRef.current = answers
 
   useEffect(() => {
     let active = true
-    void loadSettings().then((s) => {
-      if (active) setAnswers(initialAnswers(s))
-    })
+    void (async () => {
+      await migratePlanBuilderBaselines()
+      const [s, latest] = await Promise.all([loadSettings(), latestAllBaselines()])
+      if (!active) return
+      const base = initialAnswers(s)
+      const push = latest.get(PUSH_UP_ID)
+      const pull = latest.get(PULL_UP_ID)
+      setAnswers({
+        ...base,
+        pushUpMax: push?.kind === 'REPS' ? (push.reps ?? null) : base.pushUpMax,
+        pullUpMax: pull?.kind === 'REPS' ? (pull.reps ?? null) : base.pullUpMax,
+      })
+    })()
     return () => { active = false }
   }, [])
 
+  useEffect(() => {
+    if (pendingBaselineWrites > 0) return
+    const push = latestBaselines.get(PUSH_UP_ID)
+    const pull = latestBaselines.get(PULL_UP_ID)
+    if (!push && !pull) return
+    setAnswers((prev) => {
+      const nextPush = push?.kind === 'REPS' ? (push.reps ?? null) : prev.pushUpMax
+      const nextPull = pull?.kind === 'REPS' ? (pull.reps ?? null) : prev.pullUpMax
+      if (nextPush === prev.pushUpMax && nextPull === prev.pullUpMax) return prev
+      return { ...prev, pushUpMax: nextPush, pullUpMax: nextPull }
+    })
+  }, [latestBaselines, pendingBaselineWrites])
+
   const change = (fn: (a: PlanAnswers) => PlanAnswers) => {
-    setAnswers((prev) => fn(prev))
+    const old = answersRef.current
+    const next = fn(old)
+    answersRef.current = next
+    setAnswers(next)
+    const changes = ([
+      [PUSH_UP_ID, old.pushUpMax, next.pushUpMax],
+      [PULL_UP_ID, old.pullUpMax, next.pullUpMax],
+    ] as const).filter(([, prevVal, nextVal]) => prevVal !== nextVal)
+    if (changes.length === 0) return
+    setPendingBaselineWrites((n) => n + 1)
+    const run = async () => {
+      try {
+        await updateSettings((s) => {
+          const saved = decodePlanAnswers(s.planBuilderAnswers) ?? next
+          return {
+            ...s,
+            planBuilderAnswers: encodePlanAnswers({ ...saved, pushUpMax: next.pushUpMax, pullUpMax: next.pullUpMax }),
+          }
+        })
+        for (const [id, , reps] of changes) {
+          if (reps == null) await db.baselineTests.where('exerciseId').equals(id).delete()
+          else await saveBaselineTest({ exerciseId: id, kind: 'REPS', reps })
+        }
+        setBaselineSaveFailed(false)
+      } catch {
+        setBaselineSaveFailed(true)
+      } finally {
+        setPendingBaselineWrites((n) => Math.max(0, n - 1))
+      }
+    }
+    const queued = baselineQueueRef.current.then(run, run)
+    baselineQueueRef.current = queued.then(() => {}, () => {})
   }
 
   const toggleRow = (id: string) => {
     setOpenRow((prev) => (prev === id ? '' : id))
   }
 
-  const build = (different = false) => {
-    if (answers.days.size === 0 || library.length === 0 || busy) return
+  const build = async (different = false) => {
+    if (answers.days.size === 0 || library.length === 0 || busy || pendingBaselineWrites > 0 || baselineSaveFailed) return
     const nextOffset = different ? offset + 1 : 0
     setBusy(true)
-    const built = PlanBuilder.build(planAnswersToInput(answers, nextOffset), library)
-    setOffset(nextOffset)
-    setTried(new Map())
-    setReview(built)
-    setBusy(false)
-    document.querySelector('.scroll')?.scrollTo(0, 0) // the review starts at its first day, not where the answers were scrolled to
+    try {
+      const built = PlanBuilder.build(await planInputWithBaselines(answers, nextOffset), library)
+      setOffset(nextOffset)
+      setTried(new Map())
+      setReview(built)
+      document.querySelector('.scroll')?.scrollTo(0, 0) // the review starts at its first day, not where the answers were scrolled to
+    } finally {
+      setBusy(false)
+    }
   }
 
   const swap = (dayOfWeek: number, index: number) => {
@@ -116,6 +185,15 @@ export function PlanBuilderScreen(_: { param?: string }) {
       {review == null ? (
         <>
           <QuickCard a={answers} lang={lang} change={change} />
+          <Card padded={false}>
+            <ListRow
+              title={t('baseline_pb_entry')}
+              subtitle={t('baseline_pb_entry_hint')}
+              icon={<TuneIcon size={20} />}
+              href="#/baseline"
+            />
+          </Card>
+          {baselineSaveFailed && <p class="pb-hint" style={{ color: 'var(--coral)' }} role="alert">{t('baseline_save_failed')}</p>}
           <FitMeSection
             a={answers}
             lang={lang}
@@ -131,9 +209,9 @@ export function PlanBuilderScreen(_: { param?: string }) {
             block
             class="pb-cta"
             icon={<TuneIcon size={18} />}
-            disabled={answers.days.size === 0 || library.length === 0 || busy}
+            disabled={answers.days.size === 0 || library.length === 0 || busy || pendingBaselineWrites > 0 || baselineSaveFailed}
             loading={busy}
-            onClick={() => build(false)}
+            onClick={() => void build(false)}
           >
             {t(busy ? 'pb_building' : 'pb_build')}
           </Button>
@@ -146,7 +224,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
           busy={busy}
           onSwap={swap}
           onUse={use}
-          onAnother={() => build(true)}
+          onAnother={() => void build(true)}
           onChange={() => setReview(null)}
         />
       )}

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { getLang, plural, setLang, t, useLang, type Lang, intlLocale } from '../../i18n'
 import { setTheme, useTheme, type Theme } from '../theme'
 import { isAiOn, DEFAULT_PLATE_INVENTORY, updateSettings, useSettings, weightUnit, type Settings } from '../../data/settings'
+import { useLatestBaselines } from '../../data/baseline-tests'
 import { db, type ExerciseRow } from '../../data/db'
 import { foodSkillPrompt, PLAN_PROMPT } from '../../data/ai'
 import { logWeight, useProgress, type ProgressSnapshot } from '../../data/progress'
@@ -256,6 +257,7 @@ export function ProfileScreen({ param }: { param?: string }) {
   const [exUnitsOpen, setExUnitsOpen] = useState(false)
   const [exUnitsQuery, setExUnitsQuery] = useState('')
   const library = useLibrary()
+  const baselineRows = useLatestBaselines()
   const toggle = (id: string) => {
     const next = openIds.includes(id) ? openIds.filter((x) => x !== id) : [...openIds, id]
     setOpenIds(next); saveOpen(next)
@@ -424,6 +426,14 @@ export function ProfileScreen({ param }: { param?: string }) {
 
       <Group id="you" accent="teal" icon="goals" title={t('settings_group_you')} open={isOpen('you')} onToggle={() => toggle('you')}
         sum={summary(!bodySet ? t('summary_body_not_set') : null, goalLabel(s.nutritionGoal), `${num(s.kcalGoal)} ${t('unit_kcal')}`, t('summary_protein', s.proteinGoal))}>
+        <Card padded={false}>
+          <ListRow
+            title={t('baseline_entry_title')}
+            subtitle={plural('baseline_tested_count', baselineRows.size, baselineRows.size)}
+            icon={<span class="pf-ic pf-teal"><Glyph name="goals" /></span>}
+            href="#/baseline"
+          />
+        </Card>
         <Card>
           <CardTitle icon="body" accent="teal" title={t('profile_about_you')} hint={t('profile_about_you_hint')} />
           <TextField label={t('onb_your_name')} value={nameDraft ?? s.name} onInput={(v) => { const next = v.slice(0, 24); setNameDraft(next); void set({ name: next.trim() }) }} />

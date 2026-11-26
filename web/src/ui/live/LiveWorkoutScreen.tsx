@@ -17,6 +17,7 @@ import {
 } from '../../domain/intra-session'
 import { formatWeight, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
 import { isDeloadWeek, type ProgressionReason } from '../../domain/progression'
+import type { BaselineStatus } from '../../domain/baseline'
 import { isExtraBlock, pickPrs } from '../../domain/pr-picker'
 import { countsForPR, countsForScore } from '../../domain/set-types'
 import type { RecapExercise } from '../../domain/workout-recap'
@@ -102,7 +103,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const [previous, setPrevious] = useState<Map<string, SetRow[]>>(new Map())
   const [harder, setHarder] = useState<Map<string, Hint>>(new Map())
   const [reasons, setReasons] = useState<Map<string, ProgressionReason>>(new Map())
-  const [estimated, setEstimated] = useState<Set<string>>(new Set())
+  const [baselineStatuses, setBaselineStatuses] = useState<Map<string, BaselineStatus>>(new Map())
   const [newBestId, setNewBestId] = useState<number | null>(null)
   const [showWelcomeBack, setShowWelcomeBack] = useState(false)
   const activePlan = useActivePlan()
@@ -314,7 +315,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
 
   useEffect(() => {
     let live = true
-    if (!session?.id) { setEstimated(new Set()); return }
+    if (!session?.id) { setBaselineStatuses(new Map()); return }
     // Worked out when exercises appear (like the reason line), not on every tap: a cold-start check reads all history.
     const rowsNow = setsRef.current
     void Promise.all([...new Set(rowsNow.map((s) => s.exerciseId))].map(async (id) => {
@@ -324,7 +325,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       const status = await baselineStatusFor(exercises.get(id), item?.exerciseId === id ? item : null, ownSets, recent)
       return [id, status] as const
     })).then((rows) => {
-      if (live) setEstimated(new Set(rows.filter(([, status]) => status === 'ESTIMATED').map(([id]) => id)))
+      if (live) setBaselineStatuses(new Map(rows))
     })
     return () => { live = false }
   }, [session?.id, sets.map((s) => s.exerciseId).join('|'), exercises.size, planItemsByPos, settings.unit])
@@ -887,7 +888,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       prIds={prIds}
       newBestId={newBestId}
       reasons={reasons}
-      estimated={estimated}
+      baselineStatuses={baselineStatuses}
       unitFor={unitFor}
       barWeightKg={settings.barWeightKg}
       plateInventory={settings.plateInventory}
@@ -1194,7 +1195,7 @@ type CardProps = {
   prIds: Set<number>
   newBestId: number | null
   reasons: Map<string, ProgressionReason>
-  estimated: Set<string>
+  baselineStatuses: Map<string, BaselineStatus>
   unitFor: (exerciseId: string) => WeightUnit
   barWeightKg: number
   plateInventory: readonly number[]
@@ -1293,6 +1294,20 @@ function WarmupRow(p: {
   )
 }
 
+function BaselineStatusLine({ status, exerciseName }: { status: BaselineStatus | undefined; exerciseName?: string | null }) {
+  if (status !== 'ESTIMATED' && status !== 'FROM_BASELINE') return null
+  const labelKey = status === 'FROM_BASELINE' ? 'live_baseline_from_test' : 'live_baseline_estimated'
+  const cdKey = status === 'FROM_BASELINE' ? 'live_baseline_from_test_cd' : 'live_baseline_estimated_cd'
+  const shortLabel = t(labelKey)
+  const label = exerciseName ? `${exerciseName} · ${shortLabel}` : shortLabel
+  const cd = t(cdKey)
+  return (
+    <span class="lw-small" title={cd} aria-label={cd}>
+      {label}
+    </span>
+  )
+}
+
 function GroupCard(p: CardProps) {
   const { g, exercises } = p
   const all = groupSets(g)
@@ -1301,6 +1316,16 @@ function GroupCard(p: CardProps) {
   useEffect(() => setOpen(!allDone), [allDone])
   const first = all[0]
   const name = (id: string) => exercises.get(id)?.name ?? id
+  const firstBlankWeightedSetId = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of all) {
+      if (s.id == null || map.has(s.exerciseId)) continue
+      if (exercises.get(s.exerciseId)?.kind === 'WEIGHTED' && !s.done && (s.weightKg ?? 0) <= 0) {
+        map.set(s.exerciseId, s.id)
+      }
+    }
+    return map
+  }, [all, exercises])
   const rowProps = (set: SetRow, round: number | null) => ({
     set,
     unit: p.unitFor(set.exerciseId),
@@ -1312,6 +1337,7 @@ function GroupCard(p: CardProps) {
     pr: prIds(p, set),
     flash: set.id != null && p.newBestId === set.id,
     showEffort: p.effortSetId === set.id,
+    showTestMove: set.id != null && firstBlankWeightedSetId.get(set.exerciseId) === set.id,
     onChange: p.onChange,
     onToggle: p.onToggle,
     onSetEffort: p.onSetEffort,
@@ -1356,7 +1382,7 @@ function GroupCard(p: CardProps) {
               <span class="lw-name">{name(first.exerciseId)}</span>
               <span class="lw-small">{target ? t('live_target', g.sets.length, target) : ex ? [...ex.primary].map((m) => t('muscle_' + m.toLowerCase())).join(' · ') : ''}</span>
               {reason && <span class="lw-small">{t(`rx_why_${reason.toLowerCase()}`)}</span>}
-              {p.estimated.has(first.exerciseId) && <span class="lw-small" title={t('live_baseline_estimated_cd')} aria-label={t('live_baseline_estimated_cd')}>{t('live_baseline_estimated')}</span>}
+              <BaselineStatusLine status={p.baselineStatuses.get(first.exerciseId)} />
               {firstCueKey && <span class="lw-small">{t(firstCueKey)}</span>}
               {ex?.setupNote && <span class="lw-setup-note">{t('live41_setup_note_prefix', ex.setupNote)}</span>}
             </button>
@@ -1398,7 +1424,7 @@ function GroupCard(p: CardProps) {
         </div>
         {distinctEx.map((e) => (
           <div key={e.id}>
-            {p.estimated.has(e.id) && <div class="lw-small" title={t('live_baseline_estimated_cd')} aria-label={t('live_baseline_estimated_cd')}>{e.name}: {t('live_baseline_estimated')}</div>}
+            <BaselineStatusLine status={p.baselineStatuses.get(e.id)} exerciseName={e.name} />
             {e.setupNote && <div class="lw-setup-note">{`${e.name}: ${e.setupNote}`}</div>}
             <HarderNote ex={e} hint={p.harder.get(e.id)} onStepUp={p.onStepUp} />
             <AdjustmentCue adjustment={p.adjustment} exerciseId={e.id} onUndo={p.onUndoAdjustment} />

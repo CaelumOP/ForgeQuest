@@ -2,9 +2,13 @@ import type { RefObject } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { plural, t, useLang } from '../../i18n'
 import type { ExerciseRow } from '../../data/db'
+import { db } from '../../data/db'
+import { hasAnyBaselineTest } from '../../data/baseline-tests'
+import { useLive } from '../../data/live'
 import { useProgress } from '../../data/progress'
 import { configuredEquipment, weightUnit } from '../../data/settings'
 import { startSession, useOpenSession, type PlanDayWithItems } from '../../data/workouts'
+import { BASELINE_DISMISSED_KEY, shouldShowBaselineEntry } from '../baseline/helpers'
 import { dayOfWeek, todayEpochDay, WEEK_ORDER } from '../../domain/dates'
 import type { SetEntity } from '../../domain/entities'
 import { dueDay, missedYesterday, parseScheduleMode } from '../../domain/rotation'
@@ -30,6 +34,12 @@ export function WorkoutsScreen(_: { param?: string }) {
   const lang = useLang()
   const s = useProgress()
   const open = useOpenSession()
+  const hasBaseline = useLive(hasAnyBaselineTest, [], true)
+  const baselineDismissed = useLive(
+    () => db.kv.get(BASELINE_DISMISSED_KEY).then((r) => r?.value === true),
+    [],
+    true,
+  )
   const todayEpoch = todayEpochDay()
   const today = dayOfWeek(todayEpoch)
   const [selected, setSelected] = useState(today)
@@ -104,6 +114,7 @@ export function WorkoutsScreen(_: { param?: string }) {
     : ''
 
   const restHint = isRest ? (day?.day.note.trim() || t('workouts_rest_hint')) : ''
+  const showBaseline = shouldShowBaselineEntry(s.sessions.length > 0, hasBaseline, baselineDismissed)
 
   return (
     <div class="content wk wk-one">
@@ -116,6 +127,22 @@ export function WorkoutsScreen(_: { param?: string }) {
         <a class="wk-iconlink" href="#/history" aria-label={t('cd_workout_history')}><HistoryIcon /></a>
         {plan && <a class="wk-iconlink" href={`#/plan/day-${selected}`} aria-label={t('cd_edit_plan')}><EditIcon /></a>}
       </div>
+
+      {showBaseline && (
+        <Card class="wk-baseline-card">
+          <h2 class="wk-card-title">{t('baseline_title')}</h2>
+          <p class="wk-s">{t('baseline_workouts_card_body')}</p>
+          <div class="wk-baseline-actions">
+            <Button block onClick={() => go('#/baseline')}>{t('baseline_workouts_card_cta')}</Button>
+            <Button
+              variant="text"
+              onClick={() => { void db.kv.put({ key: BASELINE_DISMISSED_KEY, value: true }) }}
+            >
+              {t('baseline_card_dismiss_cd')}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {plan && (
         <div class="wk-strip" role="tablist" aria-label={t('workouts_web_days')}>

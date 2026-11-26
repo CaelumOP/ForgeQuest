@@ -17,6 +17,7 @@ import { CsvImportScreen } from './ui/profile/CsvImportScreen'
 import { GuideScreen } from './ui/profile/GuideScreen'
 import { ProgressScreen } from './ui/progress/ProgressScreen'
 import { AboutScreen } from './ui/screens'
+import { BaselineScreen } from './ui/baseline/BaselineScreen'
 import { ExerciseDetailScreen } from './ui/workouts/ExerciseDetailScreen'
 import { LibraryScreen } from './ui/workouts/LibraryScreen'
 import { PlanEditorScreen } from './ui/workouts/PlanEditorScreen'
@@ -36,6 +37,7 @@ export const routes: Record<string, Route> = {
   '/live': { title: 'tab_workouts', Screen: LiveWorkoutScreen, bare: true },
   '/plan': { title: 'tab_workouts', Screen: PlanEditorScreen },
   '/plan-builder': { title: 'pb_title', Screen: PlanBuilderScreen },
+  '/baseline': { title: 'baseline_title', Screen: BaselineScreen, bare: true },
   '/library': { title: 'tab_workouts', Screen: LibraryScreen },
   '/exercise': { title: 'tab_workouts', Screen: ExerciseDetailScreen },
   '/history': { title: 'tab_workouts', Screen: HistoryScreen },

@@ -13,6 +13,7 @@ export type NumberStepperProps = {
   decimals?: number
   unit?: string
   label: string
+  placeholder?: string | null
   format?: (n: number) => string
   quickDeltas?: readonly number[]
   lastTimeValue?: number | null
@@ -32,6 +33,7 @@ export function NumberStepper({
   decimals = 0,
   unit = '',
   label,
+  placeholder = null,
   format,
   quickDeltas = [],
   lastTimeValue = null,
@@ -53,6 +55,7 @@ export function NumberStepper({
   }
 
   const shown = format ? format(value) : unit ? `${round(value)} ${unit}` : String(round(value))
+  const display = placeholder ?? shown
 
   return (
     <>
@@ -60,7 +63,7 @@ export function NumberStepper({
         <button
           type="button"
           class="kit-iconbtn kit-iconbtn-tonal"
-          aria-label={t('cd_decrease', shown)}
+          aria-label={t('cd_decrease', display)}
           disabled={value <= min}
           onClick={() => step1(-1)}
         >
@@ -68,13 +71,13 @@ export function NumberStepper({
         </button>
         <button
           type="button"
-          class="kit-stepper-val"
+          class={`kit-stepper-val${placeholder != null ? ' kit-stepper-placeholder' : ''}`}
           role="slider"
           aria-label={label}
           aria-valuenow={value}
           aria-valuemin={Number.isFinite(min) ? min : undefined}
           aria-valuemax={Number.isFinite(max) ? max : undefined}
-          aria-valuetext={shown}
+          aria-valuetext={display}
           onClick={() => setKeypadOpen(true)}
           onKeyDown={(e) => {
             if (e.key === 'ArrowUp') { e.preventDefault(); step1(1) }
@@ -82,16 +85,16 @@ export function NumberStepper({
           }}
         >
           <span
-            key={shown}
+            key={display}
             class={dir.current === 0 ? 'kit-roll' : `kit-roll ${dir.current > 0 ? 'kit-roll-up' : 'kit-roll-down'}`}
           >
-            {shown}
+            {display}
           </span>
         </button>
         <button
           type="button"
           class="kit-iconbtn kit-iconbtn-tonal"
-          aria-label={t('cd_increase', shown)}
+          aria-label={t('cd_increase', display)}
           disabled={value >= max}
           onClick={() => step1(1)}
         >
