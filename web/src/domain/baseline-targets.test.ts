@@ -41,7 +41,7 @@ describe('baseline targets', () => {
     expect(easierVariation(kneeScapular, EXERCISE_CATALOG, bodyweight)).toBeNull()
 
     expect(easierVariation(pullUp, EXERCISE_CATALOG, pullUpBar)?.id).toBe('negative_pull_up')
-    expect(easierVariation(pullUp, EXERCISE_CATALOG, bodyweight)).toBeNull()
+    expect(easierVariation(pullUp, EXERCISE_CATALOG, bodyweight)?.id).toBe('towel_floor_pull')
 
     expect(easierVariation(pistolSquat, EXERCISE_CATALOG, bodyweight)?.id).toBe('lunge')
     expect(easierVariation(pistolSquat, EXERCISE_CATALOG, allActive)?.id).toBe('bulgarian_split_squat')

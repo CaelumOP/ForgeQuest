@@ -342,9 +342,11 @@ export type BiomechanicalProfile = {
   angle: JointAngle
   preferredSwaps: string[]
   requires?: readonly Equipment[]
+  unavailableEquipment?: boolean
 }
 
 export function profileFits(profile: BiomechanicalProfile, available: ReadonlySet<Equipment>): boolean {
+  if (profile.unavailableEquipment) return false
   const req = profile.requires ?? [profile.equipment]
   return req.every((r) => available.has(r) || (r === 'FLAT_BENCH' && available.has('ADJ_BENCH')))
 }
@@ -576,9 +578,21 @@ export const CATALOG_PROFILES: ReadonlyMap<string, BiomechanicalProfile> = new M
   ['shin_stretch', prof('BODYWEIGHT', 'MOBILITY', 'STRETCH', 'calf_stretch', 'quad_stretch')],
 ])
 
+function strictEquipment(ex: ExerciseEntity, profile: BiomechanicalProfile): BiomechanicalProfile {
+  const text = (ex.id + ' ' + ex.name).toLowerCase().replace(/[_-]/g, ' ')
+  // These apparatus have no selectable Equipment value; do not silently call them bodyweight.
+  const unavailableEquipment = /straps|suspend|suspension|trx|\brings?\b|ab wheel|ab roller|\bball\b|bosu|\bbox\b|platform|rope climb|sled|harness|\bsmr\b|overhead throw|overhead slam/.test(text)
+    || ex.id === 'london_bridges' || ex.id === 'iron_cross'
+  const requires = new Set(profile.requires ?? [profile.equipment])
+  if (/\bbench\b/.test(text) || /decline.*push|feet elevated/.test(text)) requires.add('FLAT_BENCH')
+  if (/\bband(s)?\b/.test(text)) requires.add('BAND')
+  if (/\bhang(ing)?\b|\bchins\b|chin crunch/.test(text)) requires.add('PULL_UP_BAR')
+  return { ...profile, requires: [...requires], unavailableEquipment }
+}
+
 export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
   const known = CATALOG_PROFILES.get(ex.id)
-  if (known) return known
+  if (known) return strictEquipment(ex, known)
   const lower = (ex.id + ' ' + ex.name).toLowerCase()
   const has = (...parts: string[]) => parts.some((p) => lower.includes(p))
   const rawRequires = (ex.equipment ?? '')
@@ -657,13 +671,13 @@ export function profileFor(ex: ExerciseEntity): BiomechanicalProfile {
   }
   const pattern: MovementPattern =
     rawPattern && rawPattern in angle ? (rawPattern as MovementPattern) : inferredPattern
-  return {
+  return strictEquipment(ex, {
     equipment: eq,
     pattern,
     angle: angle[pattern],
     preferredSwaps: [],
     requires: parsedRequires.length > 0 ? parsedRequires : [eq],
-  }
+  })
 }
 
 const SYNERGISTIC: ReadonlyArray<readonly [MovementPattern, MovementPattern]> = [

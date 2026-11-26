@@ -55,6 +55,10 @@ data class BuiltPlan(val draft: PlanDraft, val days: Map<Int, DayFocus>, val why
  * trims each day to the time available. Pure and deterministic (ties break by score, then id); only catalog ids are
  * produced so applying the draft never creates custom exercises.
  */
+// withinCap runs for every candidate: compile the push-up / pull-up family patterns once.
+private val PUSH_UP_FAMILY = Regex("push_?up")
+private val PULL_UP_FAMILY = Regex("pull_?up|chin_?up|chins")
+
 object PlanBuilder {
     const val COOL_DOWN_BLOCK = "Cool-down"
     const val FINISHER_BLOCK = "Finisher"
@@ -373,7 +377,8 @@ object PlanBuilder {
 
         private val equipOk = lib.filter { prof(it).fits(allowedEq) && it.id !in input.avoidIds }
         private val eligible = equipOk.filter {
-            it.id !in ExerciseCatalog.STRETCH_IDS && prof(it).pattern != MP.MOBILITY && fitsItsMovement(it) &&
+            // Catalog has no yoga/balance category.
+            it.id != "downward_facing_balance" && it.id !in ExerciseCatalog.STRETCH_IDS && prof(it).pattern != MP.MOBILITY && fitsItsMovement(it) &&
                 !blocked(it, prof(it), input.injuries)
         }
         private val stretches = equipOk.filter { it.id in ExerciseCatalog.STRETCH_IDS && !blocked(it, prof(it), input.injuries) }
@@ -385,13 +390,20 @@ object PlanBuilder {
         }
 
         private fun capFor(pattern: MP): Tier = when (pattern) {
-            in PUSH_PATTERNS -> input.pushUpMax?.let { if (it < 5) Tier.FOUNDATION else if (it <= 20) Tier.INTERMEDIATE else Tier.ADVANCED }
+            in PUSH_PATTERNS -> input.pushUpMax?.let { if (it < 8) Tier.FOUNDATION else if (it <= 20) Tier.INTERMEDIATE else Tier.ADVANCED }
             in PULL_PATTERNS -> input.pullUpMax?.let { if (it <= 0) Tier.FOUNDATION else if (it <= 7) Tier.INTERMEDIATE else Tier.ADVANCED }
             else -> null
         } ?: experienceCap
 
         private fun tierOf(e: ExerciseEntity) = ExerciseTiers.of(e) ?: Tier.FOUNDATION
-        private fun withinCap(e: ExerciseEntity) = tierOf(e).ordinal <= capFor(prof(e).pattern).ordinal
+        private fun withinCap(e: ExerciseEntity): Boolean {
+            val family = when {
+                PUSH_UP_FAMILY.containsMatchIn(e.id) -> MP.HORIZONTAL_PUSH
+                PULL_UP_FAMILY.containsMatchIn(e.id) -> MP.VERTICAL_PULL
+                else -> prof(e).pattern
+            }
+            return tierOf(e).ordinal <= capFor(family).ordinal
+        }
 
         private fun score(e: ExerciseEntity, role: Role): Int {
             var s = 40 - 12 * (capFor(prof(e).pattern).ordinal - tierOf(e).ordinal)
@@ -410,9 +422,13 @@ object PlanBuilder {
             return tied[input.offset.mod(tied.size)]
         }
 
-        private fun groupsOf(slot: Slot): List<(ExerciseEntity) -> Boolean> =
-            if (slot.focus != null) listOf { e -> slot.focus in e.primary }
-            else slot.patterns.map { p -> { e: ExerciseEntity -> prof(e).pattern == p } }
+        private fun groupsOf(slot: Slot): List<(ExerciseEntity) -> Boolean> {
+            if (slot.focus != null) return listOf { e -> slot.focus in e.primary }
+            val groups = slot.patterns.map { p -> { e: ExerciseEntity -> prof(e).pattern == p } }.toMutableList()
+            // The catalog's floor back exercise is a hinge, not a row; never borrow unavailable gear.
+            if (slot.patterns.any { it in PULL_PATTERNS }) groups.add { e -> e.id == "superman_hold" }
+            return groups
+        }
 
         private fun pick(slot: Slot, dayUsed: Set<String>, tags: MutableSet<WhyTag>): ExerciseEntity? {
             val passes = if (input.holdsOk) listOf(true) else if (slot.core) listOf(false, true) else listOf(false)
@@ -1001,7 +1017,9 @@ object PlanBuilder {
                     val idx = days[i].second.picks.indexOf(q)
                     if (idx >= 0) removePick(days[i].second.picks, idx)
                     val trial = fill(days, reserved, Volume(days))
-                    if (trial.broken() == null && trial.shortfall() < short - 1e-9) {
+                    // Dropping a superset partner turns the other lift into a straight set with full rest: the day must still fit.
+                    val fits = days.all { (dow, d) -> workSeconds(dow, d.picks) <= budgetSeconds(dow, reserved.getValue(dow)) }
+                    if (fits && trial.broken() == null && trial.shortfall() < short - 1e-9) {
                         vol = trial
                         improved = true
                         break
@@ -1048,7 +1066,7 @@ object PlanBuilder {
                 var bestScore = -1
                 for (i in days.indices) {
                     val (dow, b) = days[i]
-                    if (b.light || resolveStyle(dow) == WorkoutStyle.STRAIGHT) continue
+                    if (b.light) continue
                     val spare = budgetSeconds(dow, reserved.getValue(dow)) - workSeconds(dow, b.picks)
                     val seen = HashSet<Pick>()
                     for (p in b.picks) {

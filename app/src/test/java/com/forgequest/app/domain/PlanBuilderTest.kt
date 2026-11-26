@@ -30,6 +30,26 @@ class PlanBuilderTest {
 
     private fun PlanDraft.exercises() = days.flatMap { d -> d.items.map { byId.getValue(it.exerciseId) } }
 
+    @Test fun knownLowMaximaAndSelectedGearConstrainEverySlot() {
+        var sawIncline = false
+        for (goal in TrainGoal.entries) for (days in 2..6) for (minutes in listOf(20, 30, 45, 60)) {
+            for (equipment in listOf(setOf(Equipment.BODYWEIGHT), setOf(Equipment.BODYWEIGHT, Equipment.PULL_UP_BAR))) {
+                val plan = build(input(days, equipment, goal, minutes) {
+                    it.copy(pushUpMax = 1, pullUpMax = 0, experience = Experience.SEASONED, cardio = Cardio.FINISHER, coolDown = true)
+                })
+                assertEquals(days, plan.draft.days.size)
+                for (ex in plan.draft.exercises()) {
+                    assertTrue(ex.id, ExerciseSwapEngine.profileFor(ex).fits(equipment))
+                    if (ex.id == "incline_push_up") sawIncline = true
+                    assertFalse(ex.id, ex.id in setOf("diamond_push_up", "decline_push_up", "archer_push_up", "single_arm_push_up", "plyo_push_up", "pseudo_planche_push_up", "inverted_row_with_straps", "suspended_row", "ab_roller", "downward_facing_balance", "ball_leg_curl"))
+                    if (Regex("push_?up|pull_?up|chin_?up|chins").containsMatchIn(ex.id)) assertEquals(ex.id, Tier.FOUNDATION, ExerciseTiers.of(ex))
+                }
+            }
+        }
+        // Hands-elevated push-ups need only a wall or counter: the owner's expected scaling for a max of 1.
+        assertTrue(sawIncline)
+    }
+
     @Test fun everyOutputIdExistsInTheCatalog() {
         for (preset in EquipmentPreset.entries) for (n in 2..6) {
             val ids = build(input(n, preset.equipment)).draft.days.flatMap { d -> d.items.map { it.exerciseId } }

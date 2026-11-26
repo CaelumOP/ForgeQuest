@@ -515,6 +515,8 @@ class Builder {
     this.eligible = this.equipOk.filter(
       (e) =>
         !STRETCH_IDS.has(e.id) &&
+        // Catalog has no yoga/balance category.
+        e.id !== 'downward_facing_balance' &&
         this.prof(e).pattern !== 'MOBILITY' &&
         fitsItsMovement(e) &&
         !blocked(e, this.prof(e), this.injuries),
@@ -533,7 +535,7 @@ class Builder {
 
   private capFor(pattern: MovementPattern): Tier {
     if (PUSH_PATTERNS.has(pattern) && this.pushUpMax != null) {
-      return this.pushUpMax < 5 ? 'FOUNDATION' : this.pushUpMax <= 20 ? 'INTERMEDIATE' : 'ADVANCED'
+      return this.pushUpMax < 8 ? 'FOUNDATION' : this.pushUpMax <= 20 ? 'INTERMEDIATE' : 'ADVANCED'
     }
     if (PULL_PATTERNS.has(pattern) && this.pullUpMax != null) {
       return this.pullUpMax <= 0 ? 'FOUNDATION' : this.pullUpMax <= 7 ? 'INTERMEDIATE' : 'ADVANCED'
@@ -546,7 +548,9 @@ class Builder {
   }
 
   private withinCap(e: ExerciseEntity): boolean {
-    return tierOrd(this.tierOf(e)) <= tierOrd(this.capFor(this.prof(e).pattern))
+    const family = /push_?up/.test(e.id) ? 'HORIZONTAL_PUSH'
+      : /pull_?up|chin_?up|chins/.test(e.id) ? 'VERTICAL_PULL' : this.prof(e).pattern
+    return tierOrd(this.tierOf(e)) <= tierOrd(this.capFor(family))
   }
 
   private score(e: ExerciseEntity, role: Role): number {
@@ -583,7 +587,10 @@ class Builder {
       const f = slot.focus
       return [(e) => e.primary.includes(f)]
     }
-    return slot.patterns.map((p) => (e: ExerciseEntity) => this.prof(e).pattern === p)
+    const groups = slot.patterns.map((p) => (e: ExerciseEntity) => this.prof(e).pattern === p)
+    // The catalog's floor back exercise is a hinge, not a row; never borrow unavailable gear.
+    if (slot.patterns.some((p) => PULL_PATTERNS.has(p))) groups.push((e) => e.id === 'superman_hold')
+    return groups
   }
 
   private pick(slot: Slot, dayUsed: Set<string>, tags: Set<WhyTag>): ExerciseEntity | null {
@@ -1111,7 +1118,9 @@ class Builder {
         const idx = days[i][1].picks.indexOf(q)
         if (idx >= 0) this.removePick(days[i][1].picks, idx)
         const trial = this.fill(days, reserved, new Volume(days, (mu) => this.target(mu)))
-        if (trial.broken() == null && trial.shortfall() < short - 1e-9) {
+        // Dropping a superset partner turns the other lift into a straight set with full rest: the day must still fit.
+        const fits = days.every(([dow, d]) => this.workSeconds(dow, d.picks) <= this.budgetSeconds(dow, reserved.get(dow)!))
+        if (fits && trial.broken() == null && trial.shortfall() < short - 1e-9) {
           vol = trial
           improved = true
           break
@@ -1158,7 +1167,7 @@ class Builder {
       let bestScore = -1
       for (let i = 0; i < days.length; i++) {
         const [dow, b] = days[i]
-        if (b.light || this.resolveStyle(dow) === 'STRAIGHT') continue
+        if (b.light) continue
         const spare = this.budgetSeconds(dow, reserved.get(dow)!) - this.workSeconds(dow, b.picks)
         const seen = new Set<Pick>()
         for (const p of b.picks) {

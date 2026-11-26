@@ -13,10 +13,10 @@ const bodyweight = presetEquipment('BODYWEIGHT_ONLY')
 const gym = new Set<Equipment>(EQUIPMENT)
 
 describe('exercise tiers', () => {
-  it('rates all 861: 531 Foundation, 267 Intermediate, 63 Advanced; custom has none', () => {
-    expect(all.length).toBe(861)
+  it('rates all 866: 533 Foundation, 266 Intermediate, 67 Advanced; custom has none', () => {
+    expect(all.length).toBe(866)
     const count = (t: string) => all.filter((e) => tierOf(e) === t).length
-    expect([count('FOUNDATION'), count('INTERMEDIATE'), count('ADVANCED')]).toEqual([531, 267, 63])
+    expect([count('FOUNDATION'), count('INTERMEDIATE'), count('ADVANCED')]).toEqual([533, 266, 67])
     expect(tierOf({ ...ex('push_up'), id: 'my_push_up', custom: true })).toBeNull()
   })
 
@@ -26,7 +26,7 @@ describe('exercise tiers', () => {
     expect(next('half_squat', bodyweight)).toBe('squat')
     expect(next('squat', bodyweight)).toBe('weighted_squat')
     expect(next('lunge')).toBe('reverse_lunge')
-    expect(next('australian_chin_up')).toBe('rope_climb')
+    expect(next('australian_chin_up')).toBe('australian_pull_up')
     expect(next('negative_pull_up')).toBe('pull_up')
     expect(next('incline_diamond_knee_push_up', bodyweight)).toBe('body_up')
     expect(next('calf_raise', bodyweight)).toBeNull()

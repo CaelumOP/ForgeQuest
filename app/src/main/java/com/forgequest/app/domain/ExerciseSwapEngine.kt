@@ -187,6 +187,12 @@ fun inferEquipmentFromText(vararg texts: String): Set<Equipment>? {
 private fun words(alternatives: String) = Regex("""(?<![\p{L}\p{N}_])($alternatives)(?![\p{L}\p{N}_])""")
 
 private val NEGATION = words("""no|not|don['’]?t|doesn['’]?t|without|never|بدون|لا|ما|ليس|ماعندي|مافي""")
+// strictEquipment runs on every profile lookup: compile its patterns once.
+private val STRICT_SEPARATORS = Regex("[_-]")
+private val STRICT_UNAVAILABLE = Regex("""straps|suspend|suspension|trx|\brings?\b|ab wheel|ab roller|\bball\b|bosu|\bbox\b|platform|rope climb|sled|harness|\bsmr\b|overhead throw|overhead slam""")
+private val STRICT_BENCH = Regex("""\bbench\b|decline.*push|feet elevated""")
+private val STRICT_BAND = Regex("""\bband(s)?\b""")
+private val STRICT_BAR = Regex("""\bhang(ing)?\b|\bchins\b|chin crunch""")
 private val CLAUSE_BREAK = Regex("""[.,،;!?؟\n]|(?<![\p{L}])(but|لكن|ولكن|بل|بس)(?![\p{L}])""")
 
 /** True when some match is not negated in its own clause: "no dumbbells" and «ما عندي دمبل» don't count. */
@@ -370,8 +376,9 @@ data class BiomechanicalProfile(
     val angle: JointAngle,
     val preferredSwaps: List<String> = emptyList(),
     val requires: Set<Equipment> = setOf(equipment),
+    val unavailableEquipment: Boolean = false,
 ) {
-    fun fits(available: Set<Equipment>): Boolean = requires.all { req ->
+    fun fits(available: Set<Equipment>): Boolean = !unavailableEquipment && requires.all { req ->
         req in available || (req == Equipment.FLAT_BENCH && Equipment.ADJ_BENCH in available)
     }
 }
@@ -617,8 +624,25 @@ object ExerciseSwapEngine {
         "shin_stretch" to prof(Equipment.BODYWEIGHT, MovementPattern.MOBILITY, JointAngle.STRETCH, "calf_stretch", "quad_stretch"),
     )
 
-    fun profileFor(ex: ExerciseEntity): BiomechanicalProfile {
-        catalogProfiles[ex.id]?.let { return it }
+    private fun strictEquipment(ex: ExerciseEntity, profile: BiomechanicalProfile): BiomechanicalProfile {
+        val text = (ex.id + " " + ex.name).lowercase().replace(STRICT_SEPARATORS, " ")
+        // These apparatus have no selectable Equipment value; do not silently call them bodyweight.
+        val unavailableEquipment = STRICT_UNAVAILABLE.containsMatchIn(text) ||
+            ex.id == "london_bridges" || ex.id == "iron_cross"
+        val requires = profile.requires.toMutableSet()
+        if (STRICT_BENCH.containsMatchIn(text)) requires.add(Equipment.FLAT_BENCH)
+        if (STRICT_BAND.containsMatchIn(text)) requires.add(Equipment.BAND)
+        if (STRICT_BAR.containsMatchIn(text)) requires.add(Equipment.PULL_UP_BAR)
+        return profile.copy(requires = requires, unavailableEquipment = unavailableEquipment)
+    }
+
+    // Pure function of the entity (a data class, so an edited custom exercise is a new key); the plan matrix calls it millions of times.
+    private val profileMemo = java.util.concurrent.ConcurrentHashMap<ExerciseEntity, BiomechanicalProfile>()
+
+    fun profileFor(ex: ExerciseEntity): BiomechanicalProfile = profileMemo.getOrPut(ex) { computeProfile(ex) }
+
+    private fun computeProfile(ex: ExerciseEntity): BiomechanicalProfile {
+        catalogProfiles[ex.id]?.let { return strictEquipment(ex, it) }
         val lower = (ex.id + " " + ex.name).lowercase()
         val parsedRequires = ex.equipment.split(",")
             .mapNotNull { token ->
@@ -700,12 +724,12 @@ object ExerciseSwapEngine {
             MovementPattern.HIP_ADDUCTION -> JointAngle.FRONTAL_ADDUCTION
             MovementPattern.MOBILITY -> JointAngle.STRETCH
         }
-        return BiomechanicalProfile(
+        return strictEquipment(ex, BiomechanicalProfile(
             equipment = eq,
             pattern = pattern,
             angle = angle,
             requires = if (parsedRequires.isNotEmpty()) parsedRequires else setOf(eq),
-        )
+        ))
     }
 
     fun rankSubstitutes(

@@ -3,13 +3,13 @@ import { isExtraBlock } from './pr-picker'
 import { describe, expect, it } from 'vitest'
 import { EXERCISE_CATALOG, STRETCH_IDS } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity, PlanDraft } from './entities'
-import { EQUIPMENT_PRESETS, presetEquipment, profileFor, type Equipment, type MovementPattern } from './exercise-swap-engine'
+import { EQUIPMENT_PRESETS, presetEquipment, profileFits, profileFor, type Equipment, type MovementPattern } from './exercise-swap-engine'
 import { tierOf } from './exercise-tiers'
 import type { Muscle } from './muscle'
 import {
   blocked, CIRCUIT_BLOCKS, CIRCUIT_POST_ROUND, CIRCUIT_POST_ROUND_SHORT, COOL_DOWN_BLOCK, estimateMinutes,
   FINISHER_BLOCK, fitsItsMovement, INJURIES, isCompound, isCompoundExercise, isCore, isFly, NO_PAIR_IDS,
-  PlanBuilder, safePair, spreadDays, STAPLE_IDS, SUPERSET_POST_ROUND_SHORT,
+  PlanBuilder, safePair, spreadDays, STAPLE_IDS, TRAIN_GOALS, SUPERSET_POST_ROUND_SHORT,
   type BuiltPlan, type Injury, type PlanInput, type TrainGoal,
 } from './plan-builder'
 import { audit, fromDraft, OVERLAP_SETS } from './routine-auditor'
@@ -40,6 +40,24 @@ const exercisesOf = (draft: PlanDraft): ExerciseEntity[] =>
   draft.days.flatMap((d) => d.items.map((it) => byId.get(it.exerciseId)!))
 
 describe('PlanBuilderTest', () => {
+  it('known low maxima and selected gear constrain every slot', () => {
+    let sawIncline = false
+    for (const goal of TRAIN_GOALS) for (let days = 2; days <= 6; days++) for (const minutes of [20, 30, 45, 60]) {
+      for (const equipment of [new Set<Equipment>(['BODYWEIGHT']), new Set<Equipment>(['BODYWEIGHT', 'PULL_UP_BAR'])]) {
+        const plan = build(input(days, equipment, goal, minutes, { pushUpMax: 1, pullUpMax: 0, experience: 'SEASONED', cardio: 'FINISHER', coolDown: true }))
+        expect(plan.draft.days.length).toBe(days)
+        for (const ex of exercisesOf(plan.draft)) {
+          expect(profileFits(profileFor(ex), equipment), ex.id).toBe(true)
+          if (ex.id === 'incline_push_up') sawIncline = true
+          expect(['diamond_push_up', 'decline_push_up', 'archer_push_up', 'single_arm_push_up', 'plyo_push_up', 'pseudo_planche_push_up', 'inverted_row_with_straps', 'suspended_row', 'ab_roller', 'downward_facing_balance', 'ball_leg_curl'], ex.id).not.toContain(ex.id)
+          if (/push_?up|pull_?up|chin_?up|chins/.test(ex.id)) expect(tierOf(ex), ex.id).toBe('FOUNDATION')
+        }
+      }
+    }
+    // Hands-elevated push-ups need only a wall or counter: the owner's expected scaling for a max of 1.
+    expect(sawIncline).toBe(true)
+  })
+
   it('every output id exists in the catalog', () => {
     for (const preset of EQUIPMENT_PRESETS) {
       for (let n = 2; n <= 6; n++) {

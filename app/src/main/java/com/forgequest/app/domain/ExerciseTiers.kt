@@ -18,12 +18,15 @@ object ExerciseTiers {
         "copenhagen_plank_short", "cossack_squat",
         "single_leg_rdl", "good_morning", "kb_windmill",
         "neutral_grip_pull_up", "wide_grip_pull_up", "decline_push_up", "single_leg_hip_thrust", "incline_bench_press", "front_squat",
+        "table_inverted_row",
     )
     private val ADVANCED = setOf(
         "pistol_squat", "nordic_curl", "hanging_leg_raise", "muscle_up", "l_sit", "handstand_hold", "handstand_push_up",
         "tuck_planche", "pseudo_planche_push_up", "tuck_front_lever", "front_lever_row", "back_lever_tuck",
         "weighted_pull_up", "weighted_chin_up", "weighted_dip", "kb_snatch", "copenhagen_plank_long",
         "archer_pull_up", "l_sit_pull_up", "archer_push_up",
+        // Imported levels label explosive and unilateral push-ups as beginner.
+        "plyo_push_up", "single_arm_push_up", "incline_push_up_depth_jump", "drop_push",
     )
 
     fun of(ex: ExerciseEntity): Tier? = when {

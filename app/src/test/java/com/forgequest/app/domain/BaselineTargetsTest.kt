@@ -77,7 +77,7 @@ class BaselineTargetsTest {
         assertNull(BaselineTargets.easierVariation(kneeScapular, ExerciseCatalog.all, setOf(Equipment.BODYWEIGHT)))
 
         assertEquals("negative_pull_up", BaselineTargets.easierVariation(pullUp, ExerciseCatalog.all, setOf(Equipment.PULL_UP_BAR))?.id)
-        assertNull(BaselineTargets.easierVariation(pullUp, ExerciseCatalog.all, setOf(Equipment.BODYWEIGHT)))
+        assertEquals("towel_floor_pull", BaselineTargets.easierVariation(pullUp, ExerciseCatalog.all, setOf(Equipment.BODYWEIGHT))?.id)
 
         assertEquals("lunge", BaselineTargets.easierVariation(pistolSquat, ExerciseCatalog.all, setOf(Equipment.BODYWEIGHT))?.id)
         assertEquals("bulgarian_split_squat", BaselineTargets.easierVariation(pistolSquat, ExerciseCatalog.all, Equipment.allActive)?.id)

@@ -15,11 +15,11 @@ class ExerciseTiersTest {
     private val gym = Equipment.entries.toSet()
 
     @Test fun tierCounts() {
-        assertEquals(861, all.size)
+        assertEquals(866, all.size)
         val counts = all.groupingBy { ExerciseTiers.of(it) }.eachCount()
-        assertEquals(531, counts[Tier.FOUNDATION])
-        assertEquals(267, counts[Tier.INTERMEDIATE])
-        assertEquals(63, counts[Tier.ADVANCED])
+        assertEquals(533, counts[Tier.FOUNDATION])
+        assertEquals(266, counts[Tier.INTERMEDIATE])
+        assertEquals(67, counts[Tier.ADVANCED])
         assertNull(ExerciseTiers.of(ex("push_up").copy(id = "my_push_up", custom = true)))
     }
 
@@ -29,7 +29,7 @@ class ExerciseTiersTest {
         assertEquals("squat", next("half_squat", bodyweight))
         assertEquals("weighted_squat", next("squat", bodyweight))
         assertEquals("reverse_lunge", next("lunge"))
-        assertEquals("rope_climb", next("australian_chin_up"))
+        assertEquals("australian_pull_up", next("australian_chin_up"))
         assertEquals("pull_up", next("negative_pull_up"))
         assertEquals("body_up", next("incline_diamond_knee_push_up", bodyweight))
         assertNull(next("calf_raise", bodyweight)) // no harder version yet: the screen suggests a slower tempo
