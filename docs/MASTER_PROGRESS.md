@@ -17,4 +17,4 @@ Spec: `docs/MASTER_SPEC.md` (written after the owner answers the Question Gate).
 - [ ] Stage 4 verification, smoke, Gate 3, report
 
 ## Next step
-3C running: 3c1 android A built (uncommitted, Gradle check pending), then 3c4 web A, 3c2 android B, 3c5 web B, 3c3 android D, 3c6 web D, 3c7 catalog; then Stage 4. Briefs in docs/master/briefs/. Gradle: copy .claude/scratch/gw.sh, point cd at this worktree, log to mu-tmp/; wrap with python ~/.claude/hooks/quiet.py.
+3C: 3c1 a6d6476, 3c4 3de06ac, 3c2 a32ea20, 3c5 6f3ed43, 3c3 992195c done; 3c6 web D and 3c7 catalog building. Then Stage 4. Run vitest from web/ (golden paths are cwd-relative). Gradle: gw.sh wrapped in python ~/.claude/hooks/quiet.py from the worktree root.
