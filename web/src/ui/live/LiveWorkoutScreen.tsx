@@ -8,7 +8,6 @@ import {
   stepUp, swapExercise, trainingDays, updateExercise, updateSet, useActivePlan, useLibrary,
   getSets, useOpenSession, useSets, workoutDebrief, type FinishResult,
 } from '../../data/workouts'
-import { exerciseCueKeys } from '../../data/seed/exercise-cues'
 import { pickEffort, type SetEffort } from '../../domain/effort'
 import { recordedHold } from '../../domain/hold-math'
 import {
@@ -27,7 +26,7 @@ import {
 } from '../../domain/finish-summary'
 import { muscleWeekTargets, pickInsights } from '../../domain/insights'
 import type { PlanItemEntity, SessionEntity, SetEntity } from '../../domain/entities'
-import { Button, Card, Dialog, EmptyState, IconButton, ListRow, Sheet, TextField, haptics, toast } from '../kit'
+import { Button, Card, Dialog, EmptyState, IconButton, ListRow, Sheet, TextField, haptics, markFirstTickDone, toast } from '../kit'
 import { recordScore, welcomeBack as isWelcomeBack } from '../../domain/progress'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
 import { ExercisePicker } from '../workouts/ExercisePicker'
@@ -85,6 +84,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
 
   const [now, setNow] = useState(Date.now())
   const [rest, setRest] = useState<RestTimer | null>(null)
+  const [showRestPresets, setShowRestPresets] = useState(false)
   const [hold, setHold] = useState<HoldTimer | null>(null)
   const [focus, setFocus] = useState(readFocus)
   const [page, setPage] = useState(0)
@@ -163,6 +163,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const persist = (r: RestTimer | null, h: HoldTimer | null) => { if (session?.id) saveTimers(store(), { sessionId: session.id, rest: r, hold: h }) }
   const setRestSaved = (r: RestTimer | null) => { setRest(r); restRef.current = r; persist(r, holdRef.current) }
   const setHoldSaved = (h: HoldTimer | null) => { setHold(h); holdRef.current = h; persist(restRef.current, h) }
+  useEffect(() => { if (!rest) setShowRestPresets(false) }, [rest == null])
 
   // Clock: wall time only. Runs on an interval and again the moment the tab comes back.
   useEffect(() => {
@@ -418,6 +419,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     if (restPlan.seconds <= 0) return
     const next = nextUntickedSet(nextGroups)
     const isRp = (set.setType ?? 'WORKING') === 'RESTPAUSE'
+    setShowRestPresets(false)
     setRestSaved(startRest(restPlan.seconds, Date.now(), next ? nameOf(next.exerciseId) : null, isRp, set.id, restPlan.isShortTransition))
   }
 
@@ -542,6 +544,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const toggleAll = (group: SetRow[]) => {
     unlockAudio()
     const done = !group.every((s) => s.done)
+    if (done) markFirstTickDone()
     if (done) setAdjustment((cur) => (cur && !group.some((s) => s.exerciseId === cur.exerciseId) ? null : cur))
     setEffortSetId(null)
     if (done) haptics.check(); else haptics.tick()
@@ -558,6 +561,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const toggle = (set: SetRow) => {
     unlockAudio()
     const done = !set.done
+    if (done) markFirstTickDone()
     if (done) setAdjustment((cur) => (cur && cur.exerciseId !== set.exerciseId ? null : cur))
     const doneAt = done ? Date.now() : null
     const effort = done ? set.effort : ''
@@ -699,6 +703,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
     const held = holdSaved(h, Date.now())
     const set = setsRef.current.find((s) => s.id === h.setId)
     if (!set || held === 0) return
+    markFirstTickDone()
     setAdjustment((cur) => (cur && cur.exerciseId !== set.exerciseId ? null : cur))
     const saved = recordedHold(held, h.target)
     const doneAt = Date.now()
@@ -971,6 +976,8 @@ export function LiveWorkoutScreen(_: { param?: string }) {
             now={now}
             nextLabel={nextLabel}
             canCopyLastSet={nextSet != null && copySource != null}
+            showPresets={showRestPresets}
+            onTogglePresets={() => setShowRestPresets((v) => !v)}
             onAdd={() => addRest(15)}
             onRemove={() => { if (restLeftNow(rest) > 15) addRest(-15); else setRestSaved(null) }}
             onSelectPreset={selectRestPreset}
@@ -1259,7 +1266,7 @@ function WarmupRow(p: {
   name: string
   rowProps: (set: SetRow, round: number | null) => Omit<SetRowProps, 'label' | 'sublabel'>
   onToggleAll: (sets: SetRow[]) => void
-  onSwap: (position: number) => void
+  onMenu: (position: number, swapOnly: boolean) => void
   onPeek: (exerciseId: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -1272,21 +1279,20 @@ function WarmupRow(p: {
     <div data-gkey={g.key}>
       <Card>
         <div class="lw-warm">
-          <button type="button" class="lw-warm-main" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+          <button type="button" class="lw-warm-main" onClick={() => p.onPeek(first.exerciseId)}>
             <span class="lw-warm-text">
               <span class="lw-name">{`${p.name} · ${g.sets.length} × ${each}`}</span>
               <span class="lw-warm-note">{t('live_warmup_not_counted')}{doneCount > 0 && !allDone ? ` · ${doneCount}/${g.sets.length}` : ''}</span>
             </span>
-            <ExpandMoreIcon size={20} />
           </button>
+          <IconButton
+            label={t(expanded ? 'cd_expanded' : 'cd_collapsed')}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <span class={`lw-warm-chev${expanded ? ' lw-warm-chev-open' : ''}`}><ExpandMoreIcon size={20} /></span>
+          </IconButton>
+          <IconButton label={t('cd_options')} onClick={() => p.onMenu(g.position, true)}><MoreVert /></IconButton>
           <SetTick checked={allDone} onToggle={() => p.onToggleAll(g.sets)} />
-        </div>
-        <div class="lw-warm-foot">
-          <div class="lw-quick">
-            <button type="button" class="lw-quickbtn" onClick={() => p.onPeek(first.exerciseId)}>{t('cues_title')}</button>
-            <button type="button" class="lw-quickbtn" onClick={() => p.onSwap(g.position)}>{t('live_swap_exercise')}</button>
-          </div>
-          {!allDone && <Button variant="text" onClick={() => p.onToggleAll(g.sets)}>{t('live_warmup_done')}</Button>}
         </div>
         {expanded && g.sets.map((set) => <SetRowView key={set.id} label={String(set.setIndex + 1)} sublabel={null} {...p.rowProps(set, null)} />)}
       </Card>
@@ -1347,7 +1353,7 @@ function GroupCard(p: CardProps) {
   })
 
   if (g.kind === 'straight' && isExtraBlock(g.block)) {
-    return <WarmupRow g={g} ex={exercises.get(first.exerciseId)} name={name(first.exerciseId)} rowProps={rowProps} onToggleAll={p.onToggleAll} onSwap={p.onSwap} onPeek={p.onPeek} />
+    return <WarmupRow g={g} ex={exercises.get(first.exerciseId)} name={name(first.exerciseId)} rowProps={rowProps} onToggleAll={p.onToggleAll} onMenu={p.onMenu} onPeek={p.onPeek} />
   }
 
   if (!open && !p.forceOpen) {
@@ -1373,7 +1379,6 @@ function GroupCard(p: CardProps) {
     const target = first.targetLabel ? formatTargetLabel(first.targetLabel) : ''
     const ex = exercises.get(first.exerciseId)
     const reason = p.reasons.get(first.exerciseId)
-    const firstCueKey = exerciseCueKeys(first.exerciseId)?.[0]
     return (
       <div data-gkey={g.key}>
         <Card>
@@ -1383,14 +1388,9 @@ function GroupCard(p: CardProps) {
               <span class="lw-small">{target ? t('live_target', g.sets.length, target) : ex ? [...ex.primary].map((m) => t('muscle_' + m.toLowerCase())).join(' · ') : ''}</span>
               {reason && <span class="lw-small">{t(`rx_why_${reason.toLowerCase()}`)}</span>}
               <BaselineStatusLine status={p.baselineStatuses.get(first.exerciseId)} />
-              {firstCueKey && <span class="lw-small">{t(firstCueKey)}</span>}
               {ex?.setupNote && <span class="lw-setup-note">{t('live41_setup_note_prefix', ex.setupNote)}</span>}
             </button>
             <IconButton label={t('cd_options')} onClick={() => p.onMenu(g.position, false)}><MoreVert /></IconButton>
-          </div>
-          <div class="lw-quick">
-            <button type="button" class="lw-quickbtn" onClick={() => p.onPeek(first.exerciseId)}>{t('cues_title')}</button>
-            <button type="button" class="lw-quickbtn" onClick={() => p.onSwap(g.position)}>{t('live_swap_exercise')}</button>
           </div>
           {ex && <HarderNote ex={ex} hint={p.harder.get(ex.id)} onStepUp={p.onStepUp} />}
           <AdjustmentCue adjustment={p.adjustment} exerciseId={first.exerciseId} onUndo={p.onUndoAdjustment} />

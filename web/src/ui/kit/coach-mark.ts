@@ -3,11 +3,12 @@
 // never gets the tips again. Every storage access is guarded for private-browsing / blocked-storage contexts.
 
 export const TOUR_SEEN_KEY = 'fq_tour_seen'
+export const FIRST_TICK_DONE_KEY = 'fq_first_tick_done'
 export const COACH_SKIP_TOAST_KEY = 'fq_coach_skip_toast'
-export const COACH_STEPS = ['coach_home', 'coach_plan', 'coach_food', 'coach_tick', 'coach_profile', 'coach_progress'] as const
+export const COACH_STEPS = ['coach_home', 'coach_plan', 'coach_food', 'coach_profile', 'coach_progress'] as const
 export type CoachStep = (typeof COACH_STEPS)[number]
 export const COACH_RESET_KEYS: readonly string[] = [
-  ...new Set<string>([...COACH_STEPS, 'coach_profile', 'coach_progress', TOUR_SEEN_KEY, COACH_SKIP_TOAST_KEY]),
+  ...new Set<string>([...COACH_STEPS, 'coach_tick', 'coach_profile', 'coach_progress', TOUR_SEEN_KEY, COACH_SKIP_TOAST_KEY]),
 ]
 
 export type CoachStore = Pick<Storage, 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
@@ -39,6 +40,18 @@ export function markTourSeen(store?: CoachStore | null): void {
   setFlag(TOUR_SEEN_KEY, store)
 }
 
+export function firstTickDone(store?: CoachStore | null): boolean {
+  return getFlag(FIRST_TICK_DONE_KEY, store)
+}
+
+export function markFirstTickDone(store?: CoachStore | null): void {
+  setFlag(FIRST_TICK_DONE_KEY, store)
+}
+
+export function canShowCoachMark(firstTick: boolean, isTourSeen: boolean, isStepSeen: boolean): boolean {
+  return firstTick && !isTourSeen && !isStepSeen
+}
+
 export function seen(id: CoachStep, store?: CoachStore | null): boolean {
   return getFlag(id, store)
 }
@@ -48,7 +61,7 @@ export function markSeen(id: CoachStep, store?: CoachStore | null): void {
 }
 
 export function shouldShow(id: CoachStep, enabled = true, store?: CoachStore | null): boolean {
-  return Boolean(enabled) && !tourSeen(store) && !seen(id, store)
+  return Boolean(enabled) && canShowCoachMark(firstTickDone(store), tourSeen(store), seen(id, store))
 }
 
 export function allSeen(store?: CoachStore | null): boolean {

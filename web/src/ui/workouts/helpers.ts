@@ -102,6 +102,10 @@ export const ROW_HEIGHT_2COL = 46
 export const MIN_EXERCISE_ROWS = 2
 export const MAX_EXERCISE_ROWS = 4
 
+export function shouldShowMuscleRecoveryMap(sessions: readonly { finishedAt?: number | null }[]): boolean {
+  return sessions.some((s) => s.finishedAt != null)
+}
+
 export type ExerciseFit = { rows: number; visibleCount: number; hiddenCount: number }
 
 /**

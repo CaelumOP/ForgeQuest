@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { getLang, plural, t, intlLocale } from '../../i18n'
 import { logWeight, setDayTag, useProgress, type ProgressSnapshot } from '../../data/progress'
 import { planDay, startSession, useOpenSession } from '../../data/workouts'
@@ -12,7 +12,7 @@ import type { PlanItemEntity, SessionEntity, SetEntity } from '../../domain/enti
 import { muscleWeekTargets, pickInsights } from '../../domain/insights'
 import { gramsLeft } from '../../domain/nutrition'
 import { formatInsight } from '../progress/insightText'
-import { Button, Card, Chip, CoachMark, type CoachStep, Ring, Sheet, Stat, Stepper, useSwept, useTweened } from '../kit'
+import { Button, Card, Chip, CoachMark, type CoachStep, Ring, Sheet, Stat, Stepper, shouldShow, useSwept, useTweened } from '../kit'
 import {
   CheckCircleIcon, DumbbellIcon, EditIcon, FireIcon, MoonIcon, PauseIcon, TickIcon, TrophyIcon,
 } from './glyphs'
@@ -35,10 +35,14 @@ export function HomeScreen(_: { param?: string }) {
   const open = useOpenSession()
   const [weightOpen, setWeightOpen] = useState(false)
   const [tagDay, setTagDay] = useState<number | null>(null)
-  if (!s) return <div class="content home" />
   const today = todayEpochDay()
-  const plan = s.plan
+  const plan = s?.plan ?? null
   const todayPlan = plan ? planDay(plan, dayOfWeek(today)) ?? null : null
+  const homeTipClaimsScreen = useMemo(
+    () => !!s && (!s.workoutDoneToday || !!open) && (!!open || !s.plan || (!!todayPlan && !todayPlan.day.isRest)) && shouldShow('coach_home'),
+    [Boolean(s)],
+  )
+  if (!s) return <div class="content home" />
   // "Just log" mode: no streak, rank or badges here; the data stays and comes back when it's turned off.
   const justLog = s.settings.justLog
   const unseen = s.badges.filter((b) => !b.seen).map((b) => BADGES.find((d) => d.id === b.id)).filter((d) => d != null)
@@ -85,7 +89,7 @@ export function HomeScreen(_: { param?: string }) {
 
   return (
     <div class="content home">
-      <Header s={s} showRank={!justLog} />
+      <Header s={s} showRank={!justLog} allowProfileTip={!homeTipClaimsScreen} />
       <Rings s={s} />
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {startOnTop && todayCard}
@@ -119,7 +123,7 @@ function badgeTitle(id: string, fallback: string): string {
   return v === key ? fallback : v
 }
 
-function Header({ s, showRank }: { s: ProgressSnapshot; showRank: boolean }) {
+function Header({ s, showRank, allowProfileTip = true }: { s: ProgressSnapshot; showRank: boolean; allowProfileTip?: boolean }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
   const date = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
@@ -137,7 +141,7 @@ function Header({ s, showRank }: { s: ProgressSnapshot; showRank: boolean }) {
         <div class="home-date">{date}</div>
         <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
       </div>
-      <CoachMark id={'coach_profile' as CoachStep} title={t('home41_profile_hint_t')} body={t('home41_profile_hint_b')} below>
+      <CoachMark id={'coach_profile' as CoachStep} title={t('home41_profile_hint_t')} body={t('home41_profile_hint_b')} enabled={allowProfileTip} below>
         <a class="home41-avatar-wrap" href="#/profile" aria-label={t('home41_profile_cd')}>
           <span class="home41-avatar" aria-hidden="true">
             {photo && !imgFailed

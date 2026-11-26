@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ExerciseRow } from '../../data/db'
-import { dayName, dayShort, filterExercises, fitExerciseRows, formVideoUrl } from './helpers'
+import { dayName, dayShort, filterExercises, fitExerciseRows, formVideoUrl, shouldShowMuscleRecoveryMap } from './helpers'
 
 const ex = (id: string, name: string, primary: ExerciseRow['primary'], secondary: ExerciseRow['secondary'] = []): ExerciseRow =>
   ({ id, name, kind: 'REPS', primary, secondary, videoUrl: null, custom: false })
@@ -38,5 +38,10 @@ describe('workouts helpers', () => {
     expect(fitExerciseRows(310, 12)).toEqual({ rows: 4, visibleCount: 7, hiddenCount: 5 })
     // When itemCount <= 4 on a tall screen, card stays at 2 rows
     expect(fitExerciseRows(310, 4)).toEqual({ rows: 2, visibleCount: 4, hiddenCount: 0 })
+  })
+  it('shows the muscle recovery map only after at least one finished workout', () => {
+    expect(shouldShowMuscleRecoveryMap([])).toBe(false)
+    expect(shouldShowMuscleRecoveryMap([{ finishedAt: null }])).toBe(false)
+    expect(shouldShowMuscleRecoveryMap([{ finishedAt: null }, { finishedAt: 1700000000000 }])).toBe(true)
   })
 })

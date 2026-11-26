@@ -103,8 +103,7 @@ div.wk-choice-main { cursor: default; }
 .wk-tier-foundation { background: var(--teal-track); color: var(--teal); }
 .wk-tier-intermediate { background: var(--gold-track); color: var(--gold); }
 .wk-tier-advanced { background: var(--coral-track); color: var(--coral); }
-.wk-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-block: 2px; }
-.wk-chips::-webkit-scrollbar { display: none; }
+.wk-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 2px; }
 .wk-chips .kit-chip { flex: none; white-space: nowrap; line-height: 1.4; }
 .wk-pick { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 0; background: none; border: 0; font: inherit; color: var(--text); text-align: start; cursor: pointer; }
 .wk-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -158,6 +157,15 @@ div.wk-choice-main { cursor: default; }
   padding-block: 6px;
   padding-inline: 16px;
   overflow: hidden;
+}
+.wk-hero-compact {
+  flex: none;
+}
+.wk-recovery-empty {
+  margin: 4px 0 6px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-2);
 }
 
 .wk-hero-top {

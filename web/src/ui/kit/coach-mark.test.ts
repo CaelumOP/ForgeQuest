@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  COACH_RESET_KEYS, COACH_STEPS, TOUR_SEEN_KEY, acquireTip, allSeen, markSkipToastOnce, placeTip,
-  releaseTip, resetCoachMarks, resetTipSlot, seen, shouldShow, skipTour, stepSeen, tourSeen, waitForTipSlot,
-  type CoachStore,
+  COACH_RESET_KEYS, COACH_STEPS, TOUR_SEEN_KEY, acquireTip, allSeen, canShowCoachMark, firstTickDone,
+  markFirstTickDone, markSkipToastOnce, placeTip, releaseTip, resetCoachMarks, resetTipSlot, seen,
+  shouldShow, skipTour, stepSeen, tourSeen, waitForTipSlot, type CoachStore,
 } from './coach-mark'
 
 const memoryStore = (): CoachStore & { data: Map<string, string> } => {
@@ -18,8 +18,15 @@ const memoryStore = (): CoachStore & { data: Map<string, string> } => {
 afterEach(() => resetTipSlot())
 
 describe('coach mark tour state', () => {
-  it('shows once per id while the tour is not over, and respects enabled', () => {
+  it('stays quiet until first tick is done, then shows once per id while tour is not over', () => {
     const store = memoryStore()
+    expect(canShowCoachMark(false, false, false)).toBe(false)
+    expect(canShowCoachMark(true, false, false)).toBe(true)
+    expect(firstTickDone(store)).toBe(false)
+    expect(shouldShow('coach_home', true, store)).toBe(false)
+
+    markFirstTickDone(store)
+    expect(firstTickDone(store)).toBe(true)
     expect(shouldShow('coach_home', true, store)).toBe(true)
     expect(shouldShow('coach_home', false, store)).toBe(false)
 
@@ -32,6 +39,7 @@ describe('coach mark tour state', () => {
 
   it('keeps tips quiet when fq_tour_seen is already set from the old tour', () => {
     const store = memoryStore()
+    markFirstTickDone(store)
     store.setItem(TOUR_SEEN_KEY, '1')
     for (const id of COACH_STEPS) {
       expect(shouldShow(id, true, store)).toBe(false)
@@ -40,6 +48,7 @@ describe('coach mark tour state', () => {
 
   it('ends the tour when all steps have been seen', () => {
     const store = memoryStore()
+    markFirstTickDone(store)
     for (const id of COACH_STEPS.slice(0, -1)) {
       stepSeen(id, store)
       expect(allSeen(store)).toBe(false)
@@ -51,14 +60,16 @@ describe('coach mark tour state', () => {
     expect(store.data.get(TOUR_SEEN_KEY)).toBe('1')
   })
 
-  it('includes coach_profile and coach_progress and resets all coach-mark keys', () => {
+  it('includes coach_profile and coach_progress (not coach_tick) and resets all coach-mark keys', () => {
     expect(COACH_STEPS).toContain('coach_profile')
     expect(COACH_STEPS).toContain('coach_progress')
+    expect(COACH_STEPS).not.toContain('coach_tick')
     expect(COACH_RESET_KEYS).toEqual(
       expect.arrayContaining([...COACH_STEPS, 'coach_profile', 'coach_progress', TOUR_SEEN_KEY]),
     )
 
     const store = memoryStore()
+    markFirstTickDone(store)
     for (const id of COACH_STEPS) stepSeen(id, store)
     expect(markSkipToastOnce(store)).toBe(true)
     expect(markSkipToastOnce(store)).toBe(false)
@@ -75,11 +86,12 @@ describe('coach mark tour state', () => {
 
   it('skipTour ends the tour for good so remaining steps never show', () => {
     const store = memoryStore()
+    markFirstTickDone(store)
     stepSeen('coach_home', store)
     skipTour(store)
     expect(tourSeen(store)).toBe(true)
     expect(shouldShow('coach_plan', true, store)).toBe(false)
-    expect(shouldShow('coach_tick', true, store)).toBe(false)
+    expect(shouldShow('coach_food', true, store)).toBe(false)
   })
 
   it('survives missing or throwing storage without crashing', () => {
@@ -87,14 +99,16 @@ describe('coach mark tour state', () => {
       getItem: () => { throw new Error('blocked') },
       setItem: () => { throw new Error('blocked') },
     }
-    expect(shouldShow('coach_home', true, null)).toBe(true)
-    expect(shouldShow('coach_home', true, broken)).toBe(true)
+    expect(shouldShow('coach_home', true, null)).toBe(false)
+    expect(shouldShow('coach_home', true, broken)).toBe(false)
+    expect(() => markFirstTickDone(broken)).not.toThrow()
     expect(() => stepSeen('coach_home', broken)).not.toThrow()
     expect(() => skipTour(broken)).not.toThrow()
   })
 
   it('allows only one active tip at a time and wakes waiters when closed', () => {
     const store = memoryStore()
+    markFirstTickDone(store)
     const first = Symbol('row-1')
     const second = Symbol('row-2')
     const otherScreen = Symbol('food')
@@ -103,16 +117,16 @@ describe('coach mark tour state', () => {
     expect(acquireTip(first)).toBe(true)
     expect(acquireTip(second)).toBe(false)
 
-    // Second row with the same id waits; when the first row finishes, coach_tick is already seen so row 2 stays quiet.
+    // Second instance with the same id waits; when the first finishes, coach_home is already seen so instance 2 stays quiet.
     waitForTipSlot(() => {
-      if (shouldShow('coach_tick', true, store) && acquireTip(second)) shown.push(second)
+      if (shouldShow('coach_home', true, store) && acquireTip(second)) shown.push(second)
     })
     // Another tip with an unseen id wakes up next and claims the slot.
     waitForTipSlot(() => {
       if (shouldShow('coach_food', true, store) && acquireTip(otherScreen)) shown.push(otherScreen)
     })
 
-    stepSeen('coach_tick', store)
+    stepSeen('coach_home', store)
     releaseTip(first)
     expect(shown).toEqual([otherScreen])
   })

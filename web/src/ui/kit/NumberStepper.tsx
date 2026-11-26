@@ -1,5 +1,6 @@
 import { useRef, useState } from 'preact/hooks'
 import { t } from '../../i18n'
+import type { PlateBreakdown } from '../../domain/plate-math'
 import { AddIcon, RemoveIcon } from '../icons'
 import { haptics } from './haptics'
 import { NumberEntryKeypad } from './NumberEntryKeypad'
@@ -18,6 +19,7 @@ export type NumberStepperProps = {
   quickDeltas?: readonly number[]
   lastTimeValue?: number | null
   lastTimeLabel?: string | null
+  plateCalculator?: ((displayWeight: number) => PlateBreakdown | null) | null
 }
 
 /**
@@ -38,6 +40,7 @@ export function NumberStepper({
   quickDeltas = [],
   lastTimeValue = null,
   lastTimeLabel = null,
+  plateCalculator = null,
 }: NumberStepperProps) {
   const [keypadOpen, setKeypadOpen] = useState(false)
   const dir = useRef<0 | 1 | -1>(0)
@@ -112,6 +115,7 @@ export function NumberStepper({
         quickDeltas={quickDeltas}
         lastTimeValue={lastTimeValue}
         lastTimeLabel={lastTimeLabel}
+        plateCalculator={plateCalculator}
         onClose={() => setKeypadOpen(false)}
         onConfirm={(next) => {
           setKeypadOpen(false)

@@ -23,6 +23,7 @@ import { isExtraBlock } from '../../domain/pr-picker'
 import { dueDay, parseScheduleMode, type ScheduleMode } from '../../domain/rotation'
 import { fromKg, loadStep, toKg, unitLabel, type WeightUnit } from '../../domain/units'
 import { Button, Card, CoachMark, Dialog, EmptyState, Segmented, Sheet, Stepper, TextField, haptics, reducedMotion, toast } from '../kit'
+import { ExpandMoreIcon } from '../icons'
 import { PlanEquipmentRow } from '../profile/GearSheet'
 import planPrompt from './plan-prompt.txt?raw'
 import { ExercisePicker } from './ExercisePicker'
@@ -132,31 +133,6 @@ export function PlanEditorScreen({ param }: { param?: string }) {
       <CoachMark id="coach_plan" title={t('coach_plan_t')} body={t('coach_plan_b')} below>
         <Button variant="tonal" block icon={<SwapIcon />} onClick={() => setPanel('change')}>{t('plan_change')}</Button>
       </CoachMark>
-
-      {plan && (
-        <Card>
-          <div class="p41-card-stack">
-            <div class="p41-card-head">
-              <div class="p41-card-title">{t('plan41_schedule_mode')}</div>
-              <div class="p41-card-sub">
-                {t(scheduleMode === 'ROTATION' ? 'plan41_schedule_rotation_hint' : 'plan41_schedule_weekday_hint')}
-              </div>
-              {nextRotation && (
-                <div class="p41-next-note">{t('plan41_rotation_next', nextRotation.day.title)}</div>
-              )}
-            </div>
-            <Segmented
-              label={t('plan41_schedule_mode')}
-              value={scheduleMode}
-              options={[
-                { value: 'WEEKDAY', label: t('plan41_mode_weekday') },
-                { value: 'ROTATION', label: t('plan41_mode_rotation') },
-              ]}
-              onChange={(m: ScheduleMode) => { if (plan.plan.id != null) void setPlanScheduleMode(plan.plan.id, m) }}
-            />
-          </div>
-        </Card>
-      )}
 
       <AuditCard findings={findings} />
 
@@ -305,6 +281,11 @@ export function PlanEditorScreen({ param }: { param?: string }) {
 
       <ChangePlanSheet
         open={panel === 'change'} onClose={() => setPanel(null)} hasPrevious={allPlans.length > 1} hasPlan={!!plan}
+        schedule={plan?.plan.id != null ? {
+          mode: scheduleMode,
+          nextRotationTitle: nextRotation?.day.title ?? null,
+          onChange: (m: ScheduleMode) => { void setPlanScheduleMode(plan.plan.id!, m) },
+        } : null}
         onBuilder={() => { setPanel(null); location.replace('#/plan-builder') }}
         onTemplates={() => setPanel('templates')} onPrevious={() => setPanel('previous')} onPaste={() => setPanel('paste')}
         onShare={() => setPanel('share')} onImport={() => setPanel('import')}
@@ -394,6 +375,7 @@ function ItemEditor({
   const arabic = getLang() === 'ar'
   const [d, setD] = useState(item)
   const [groupNext, setGroupNext] = useState(pairedInitially || item.circuit)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const kind = exercise?.kind ?? 'REPS'
   const sec = t('unit_s')
   const minReps = d.repsMin ?? 10
@@ -403,6 +385,7 @@ function ItemEditor({
   const pMode = parseProgressionMode(d.progressionMode)
   const showGroup = !!nextItem && !isExtra && !isExtraBlock(nextItem.block)
   const groupDisabled = pairedWithPrev && !d.circuit
+  const progLabelKey = pMode === 'LINEAR' ? 'plan41_prog_linear' : pMode === 'MAINTAIN' ? 'plan41_prog_maintain' : 'plan41_prog_double'
   const progHint = pMode === 'LINEAR' ? t('plan41_prog_linear_hint')
     : pMode === 'MAINTAIN' ? t('plan41_prog_maintain_hint')
       : t('plan41_prog_double_hint')
@@ -450,23 +433,6 @@ function ItemEditor({
       <Row label={t('live_rest')}>
         <Stepper label={t('live_rest')} value={d.restSeconds} min={0} max={900} step={15} format={(n) => `${n} ${sec}`} onChange={(v) => setD({ ...d, restSeconds: v })} />
       </Row>
-      {!isExtra && (
-        <div class="p41-card-stack">
-          <div class="p41-card-head">
-            <span class="wk-lbl">{t('plan41_prog_mode')}</span>
-            <span class="wk-s">{progHint}</span>
-          </div>
-          <Segmented
-            label={t('plan41_prog_mode')}
-            value={pMode}
-            options={PROGRESSION_MODES.map((m) => ({
-              value: m,
-              label: t(m === 'LINEAR' ? 'plan41_prog_linear' : m === 'MAINTAIN' ? 'plan41_prog_maintain' : 'plan41_prog_double'),
-            }))}
-            onChange={(m: ProgressionMode) => setD({ ...d, progressionMode: m })}
-          />
-        </div>
-      )}
       {!isExtra && kind === 'WEIGHTED' && (
         <div class="wk-setting">
           <div class="wk-grow">
@@ -494,6 +460,41 @@ function ItemEditor({
               if (!checked) setD({ ...d, circuit: false })
             }}
           />
+        </div>
+      )}
+      {!isExtra && (
+        <div class="p41-adv">
+          <button
+            type="button"
+            class="p41-adv-btn"
+            aria-expanded={advancedOpen}
+            onClick={() => setAdvancedOpen((v) => !v)}
+          >
+            <span class="p41-adv-text">
+              <span class="wk-lbl">{t('you_advanced')}</span>
+              <span class="wk-s">{`${t('plan41_prog_mode')} · ${t(progLabelKey)}`}</span>
+            </span>
+            <span class={cx('p41-adv-chev', advancedOpen && 'p41-adv-chev-open')} aria-hidden="true">
+              <ExpandMoreIcon size={20} />
+            </span>
+          </button>
+          {advancedOpen && (
+            <div class="p41-card-stack">
+              <div class="p41-card-head">
+                <span class="wk-lbl">{t('plan41_prog_mode')}</span>
+                <span class="wk-s">{progHint}</span>
+              </div>
+              <Segmented
+                label={t('plan41_prog_mode')}
+                value={pMode}
+                options={PROGRESSION_MODES.map((m) => ({
+                  value: m,
+                  label: t(m === 'LINEAR' ? 'plan41_prog_linear' : m === 'MAINTAIN' ? 'plan41_prog_maintain' : 'plan41_prog_double'),
+                }))}
+                onChange={(m: ProgressionMode) => setD({ ...d, progressionMode: m })}
+              />
+            </div>
+          )}
         </div>
       )}
       <div class="wk-edit-row">
@@ -541,8 +542,9 @@ const ShareIcon = () => (
   </svg>
 )
 
-function ChangePlanSheet({ open, onClose, hasPrevious, hasPlan, onBuilder, onTemplates, onPrevious, onPaste, onShare, onImport }: {
+function ChangePlanSheet({ open, onClose, hasPrevious, hasPlan, schedule, onBuilder, onTemplates, onPrevious, onPaste, onShare, onImport }: {
   open: boolean; onClose: () => void; hasPrevious: boolean; hasPlan: boolean
+  schedule: { mode: ScheduleMode; nextRotationTitle: string | null; onChange: (m: ScheduleMode) => void } | null
   onBuilder: () => void; onTemplates: () => void; onPrevious: () => void; onPaste: () => void; onShare: () => void; onImport: () => void
 }) {
   const copy = async () => {
@@ -556,6 +558,30 @@ function ChangePlanSheet({ open, onClose, hasPrevious, hasPlan, onBuilder, onTem
       <ChoiceRow icon={<DocIcon />} title={t('plan41_import_plan')} info={t('plan41_import_plan_info')} onClick={onImport} />
       {hasPlan && <ChoiceRow icon={<ShareIcon />} title={t('plan41_share_plan')} info={t('plan41_share_plan_info')} onClick={onShare} />}
       {hasPrevious && <ChoiceRow icon={<HistoryIcon />} title={t('plan_previous')} info={t('plan_previous_info')} onClick={onPrevious} />}
+      {schedule && (
+        <div class="p41-schedule-box">
+          <div class="p41-card-stack">
+            <div class="p41-card-head">
+              <div class="p41-card-title">{t('plan41_schedule_mode')}</div>
+              <div class="p41-card-sub">
+                {t(schedule.mode === 'ROTATION' ? 'plan41_schedule_rotation_hint' : 'plan41_schedule_weekday_hint')}
+              </div>
+              {schedule.nextRotationTitle && (
+                <div class="p41-next-note">{t('plan41_rotation_next', schedule.nextRotationTitle)}</div>
+              )}
+            </div>
+            <Segmented
+              label={t('plan41_schedule_mode')}
+              value={schedule.mode}
+              options={[
+                { value: 'WEEKDAY', label: t('plan41_mode_weekday') },
+                { value: 'ROTATION', label: t('plan41_mode_rotation') },
+              ]}
+              onChange={schedule.onChange}
+            />
+          </div>
+        </div>
+      )}
     </Sheet>
   )
 }

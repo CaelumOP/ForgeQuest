@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { calculatePlates, DEFAULT_KG_PLATES } from '../../domain/plate-math'
 import {
   createKeypadDraft,
   keypadApplyDelta,
@@ -7,6 +8,7 @@ import {
   keypadPressDigit,
   keypadSetExact,
   parseKeypadText,
+  resolveKeypadPlateBreakdown,
 } from './NumberEntryKeypad'
 
 describe('NumberEntryKeypad pure helpers', () => {
@@ -35,5 +37,13 @@ describe('NumberEntryKeypad pure helpers', () => {
 
     const exact = keypadSetExact(77.5, 0, 999, 2)
     expect(exact.text).toBe('77.5')
+  })
+
+  it('resolves barbell plate breakdown inside keypad when weight is at or above bar weight', () => {
+    const calc = (w: number) => calculatePlates(w, 'KG', 20, DEFAULT_KG_PLATES)
+    expect(resolveKeypadPlateBreakdown(null, 60, calc)?.perSide[0]).toEqual({ weight: 20, count: 1 })
+    expect(resolveKeypadPlateBreakdown(15, 60, calc)).toBeNull()
+    expect(resolveKeypadPlateBreakdown(0, 0, calc)).toBeNull()
+    expect(resolveKeypadPlateBreakdown(60, 60, null)).toBeNull()
   })
 })

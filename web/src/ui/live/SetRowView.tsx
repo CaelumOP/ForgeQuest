@@ -5,11 +5,10 @@ import type { ExerciseKind } from '../../domain/muscle'
 import { EFFORT_CHIPS, chipOf, parseEffort, pickEffort, type SetEffort } from '../../domain/effort'
 import { SET_TYPES, type SetType } from '../../domain/set-types'
 import {
-  calculatePlates, DEFAULT_KG_PLATES, formatPlateNumber, formatPlatesSummary,
-  isBarbellExercise, type PlateBreakdown,
+  calculatePlates, DEFAULT_KG_PLATES, isBarbellExercise,
 } from '../../domain/plate-math'
 import { fromKg, loadStep, toKg, unitLabel, weightNumber, type WeightUnit } from '../../domain/units'
-import { Button, Chip, CoachMark, Sheet, TextField, haptics } from '../kit'
+import { Button, Chip, Sheet, TextField, haptics } from '../kit'
 import { NumberStepper } from '../kit/NumberStepper'
 import { CheckIcon } from '../icons'
 import { clampField } from './groups'
@@ -116,7 +115,6 @@ export function SetRowView(p: SetRowProps) {
   const u = unitLabel(unit, ar)
   const [noteMode, setNoteMode] = useState<'normal' | 'pain' | null>(null)
   const [typeOpen, setTypeOpen] = useState(false)
-  const [plateBreakdown, setPlateBreakdown] = useState<PlateBreakdown | null>(null)
   const timer = useRef<number | undefined>(undefined)
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = undefined } }
   const save = (patch: Partial<SetRow>, editedField?: EditedField) => p.onChange(set, patch, editedField)
@@ -138,10 +136,11 @@ export function SetRowView(p: SetRowProps) {
   const lastWeightDisplay = lastWeight != null ? Math.round(fromKg(unit, lastWeight) * 10) / 10 : null
 
   const weightKg = set.weightKg ?? 0
-  const breakdown = useMemo(() => {
-    if (!isBarbell || weightKg <= 0) return null
-    return calculatePlates(weightKg, unit, p.barWeightKg ?? 20, p.plateInventory ?? DEFAULT_KG_PLATES)
-  }, [isBarbell, weightKg, unit, p.barWeightKg, p.plateInventory])
+  const plateCalculator = useMemo(() => {
+    if (!isBarbell) return null
+    return (displayWeight: number) =>
+      calculatePlates(toKg(unit, displayWeight), unit, p.barWeightKg ?? 20, p.plateInventory ?? DEFAULT_KG_PLATES)
+  }, [isBarbell, unit, p.barWeightKg, p.plateInventory])
 
   const weightStepper = (
     <NumberStepper
@@ -156,6 +155,7 @@ export function SetRowView(p: SetRowProps) {
       quickDeltas={weightQuickDeltas}
       lastTimeValue={lastWeightDisplay}
       lastTimeLabel={lastWeight != null ? `${weightNumber(unit, lastWeight)} ${u}` : null}
+      plateCalculator={plateCalculator}
       format={(n) => `${Math.round(n * 10) / 10} ${u}`}
       onChange={(v) => save({ weightKg: clampField('weightKg', toKg(unit, v)) }, 'weightKg')}
     />
@@ -230,18 +230,6 @@ export function SetRowView(p: SetRowProps) {
             />
           )}
           {(kind === 'WEIGHTED' || set.weightKg != null) && weightStepper}
-          {breakdown && !breakdown.belowBar && (
-            <button
-              type="button"
-              class="lw-plates-btn"
-              aria-label={t('live41_plates_breakdown_cd', `${weightNumber(unit, weightKg)} ${u}`)}
-              onClick={() => setPlateBreakdown(breakdown)}
-            >
-              {breakdown.barOnly
-                ? t('live41_plates_bar_only', `${formatPlateNumber(breakdown.barWeight)} ${u}`)
-                : t('live41_plates_side', formatPlatesSummary(breakdown.perSide))}
-            </button>
-          )}
           {canTestMove && (
             <Button
               variant="text"
@@ -255,9 +243,7 @@ export function SetRowView(p: SetRowProps) {
             </Button>
           )}
         </div>
-        <CoachMark id="coach_tick" title={t('coach_tick_t')} body={t('coach_tick_b')} below>
-          <SetTick checked={set.done} pr={set.isPr || p.pr} onToggle={() => p.onToggle(set)} />
-        </CoachMark>
+        <SetTick checked={set.done} pr={set.isPr || p.pr} onToggle={() => p.onToggle(set)} />
       </div>
       {set.done && p.showEffort && (
         <div class="lw-efforts">
@@ -301,12 +287,6 @@ export function SetRowView(p: SetRowProps) {
           setTypeOpen(false)
         }}
       />
-
-      <PlateBreakdownSheet
-        breakdown={plateBreakdown}
-        arabic={ar}
-        onClose={() => setPlateBreakdown(null)}
-      />
     </div>
   )
 }
@@ -344,51 +324,6 @@ function SetTypeSheet({
             </button>
           )
         })}
-      </div>
-    </Sheet>
-  )
-}
-
-function PlateBreakdownSheet({
-  breakdown,
-  arabic,
-  onClose,
-}: {
-  breakdown: PlateBreakdown | null
-  arabic: boolean
-  onClose: () => void
-}) {
-  if (!breakdown) return null
-  const u = unitLabel(breakdown.unit, arabic)
-  return (
-    <Sheet open onClose={onClose} title={t('live41_plates_title')}>
-      <div class="lw-plates-sheet">
-        <div class="lw-small">
-          {[
-            t('live41_plates_target', `${formatPlateNumber(breakdown.targetWeight)} ${u}`),
-            t('live41_plates_bar', `${formatPlateNumber(breakdown.barWeight)} ${u}`),
-          ].join(' · ')}
-        </div>
-        {breakdown.perSide.length === 0 ? (
-          <div class="lw-peek-box">{t('live41_plates_none_needed')}</div>
-        ) : (
-          <div class="lw-peek-box">
-            {breakdown.perSide.map((p) => (
-              <div key={p.weight} class="lw-plate-row">
-                <span class="lw-plate-w">{`${formatPlateNumber(p.weight)} ${u}`}</span>
-                <span class="lw-plate-c">{`× ${p.count}`}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        <div class="lw-plate-loaded">
-          {t('live41_plates_loaded', `${formatPlateNumber(breakdown.loadedWeight)} ${u}`)}
-        </div>
-        {breakdown.remainder >= 0.05 && (
-          <div class="lw-plate-rem">
-            {t('live41_plates_remainder', `${formatPlateNumber(breakdown.remainder)} ${u}`)}
-          </div>
-        )}
       </div>
     </Sheet>
   )

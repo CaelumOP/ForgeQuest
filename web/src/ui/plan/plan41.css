@@ -125,3 +125,49 @@
 .p41-switch-disabled {
   opacity: 0.55;
 }
+
+.p41-schedule-box {
+  padding: 16px;
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.p41-adv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.p41-adv-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  inline-size: 100%;
+  min-block-size: 48px;
+  padding-block: 8px;
+  padding-inline: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.p41-adv-text {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.p41-adv-chev {
+  display: inline-flex;
+  color: var(--text-2);
+  transition: transform var(--dur-short) var(--ease-standard);
+}
+
+.p41-adv-chev-open {
+  transform: rotate(180deg);
+}

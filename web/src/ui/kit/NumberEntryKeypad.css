@@ -24,3 +24,20 @@
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 .nk-key:active, .nk-chip:active { opacity: 0.78; }
+
+.nk-plates { border-radius: var(--r-md); background: var(--card); overflow: hidden; }
+.nk-plates-toggle {
+  inline-size: 100%; min-block-size: 48px; padding: 10px 16px; border: 0; background: transparent;
+  color: var(--text); font: inherit; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: start;
+}
+.nk-plates-title { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.nk-plates-summary { flex: 1; text-align: end; font-size: 13px; color: var(--blue); font-weight: 600; font-variant-numeric: tabular-nums; }
+.nk-plates-chev { display: inline-flex; color: var(--text-2); transition: transform var(--dur-short) var(--ease-standard); }
+.nk-plates-chev-open { transform: rotate(180deg); }
+.nk-plates-body { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+.nk-plates-meta { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.nk-plates-none { font-size: 13px; color: var(--text); }
+.nk-plate-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-variant-numeric: tabular-nums; }
+.nk-plate-w { color: var(--blue); font-weight: 500; }
+.nk-plate-c { color: var(--text); font-weight: 600; }
+.nk-plate-rem { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; }

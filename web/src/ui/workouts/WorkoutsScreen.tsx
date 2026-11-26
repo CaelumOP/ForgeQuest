@@ -18,6 +18,7 @@ import { Button, Card, Sheet } from '../kit'
 import { BoltIcon, EditIcon, HistoryIcon, LibraryIcon, PlayCircleIcon, PlayIcon, RepeatIcon, Sparkline } from './glyphs'
 import {
   blockLabel, dayName, dayShort, fitExerciseRows, openFormVideo, prescription, ROW_HEIGHT_2COL,
+  shouldShowMuscleRecoveryMap,
 } from './helpers'
 import { BodyMap } from '../progress/BodyMap'
 import type { Equipment } from '../../domain/exercise-swap-engine'
@@ -115,6 +116,7 @@ export function WorkoutsScreen(_: { param?: string }) {
 
   const restHint = isRest ? (day?.day.note.trim() || t('workouts_rest_hint')) : ''
   const showBaseline = shouldShowBaselineEntry(s.sessions.length > 0, hasBaseline, baselineDismissed)
+  const hasFinishedWorkout = shouldShowMuscleRecoveryMap(s.sessions)
 
   return (
     <div class="content wk wk-one">
@@ -163,7 +165,7 @@ export function WorkoutsScreen(_: { param?: string }) {
         </div>
       )}
 
-      <Card padded={false} class="wk-hero">
+      <Card padded={false} class={`wk-hero${hasFinishedWorkout ? '' : ' wk-hero-compact'}`}>
         <div class="wk-hero-top">
           <div class="wk-hero-lead">
             <span class="wk-hero-tag">{heroTag}</span>
@@ -171,18 +173,22 @@ export function WorkoutsScreen(_: { param?: string }) {
           </div>
           {heroCount && <span class="wk-hero-count">{heroCount}</span>}
         </div>
-        <BodyMap
-          recovery={s.recovery}
-          bodyType={s.settings.bodyType}
-          selected={selectedMuscle}
-          onSelect={setSelectedMuscle}
-          exerciseCount={(m) => {
-            const res = muscleExercises(m, library, planIds, equipment, false)
-            return res.inPlan.length + res.others.length
-          }}
-          onSeeExercises={(m) => { setSelectedMuscle(null); setMuscle(m) }}
-          figuresRef={figuresRef}
-        />
+        {hasFinishedWorkout ? (
+          <BodyMap
+            recovery={s.recovery}
+            bodyType={s.settings.bodyType}
+            selected={selectedMuscle}
+            onSelect={setSelectedMuscle}
+            exerciseCount={(m) => {
+              const res = muscleExercises(m, library, planIds, equipment, false)
+              return res.inPlan.length + res.others.length
+            }}
+            onSeeExercises={(m) => { setSelectedMuscle(null); setMuscle(m) }}
+            figuresRef={figuresRef}
+          />
+        ) : (
+          <p class="wk-recovery-empty">{t('workouts_muscle_recovery_empty')}</p>
+        )}
       </Card>
 
       {!plan ? (

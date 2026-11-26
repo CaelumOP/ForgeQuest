@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
-import { t } from '../../i18n'
+import { getLang, t } from '../../i18n'
+import { formatPlateNumber, formatPlatesSummary, type PlateBreakdown } from '../../domain/plate-math'
+import { unitLabel } from '../../domain/units'
+import { ExpandMoreIcon } from '../icons'
 import { Button } from './basics'
 import { haptics } from './haptics'
 import { Sheet } from './Overlays'
@@ -70,6 +73,19 @@ export function keypadSetExact(value: number, min: number, max: number, decimals
   return { text: formatCompactNumber(clamped, decimals), fresh: false }
 }
 
+/** Resolves barbell plate breakdown for the current keypad readout (or initial value when cleared). */
+export function resolveKeypadPlateBreakdown(
+  parsed: number | null,
+  initial: number,
+  plateCalculator?: ((displayWeight: number) => PlateBreakdown | null) | null,
+): PlateBreakdown | null {
+  if (!plateCalculator) return null
+  const target = parsed ?? initial
+  if (target <= 0) return null
+  const res = plateCalculator(target)
+  return res && !res.belowBar ? res : null
+}
+
 export type NumberEntryKeypadProps = {
   open: boolean
   title: string
@@ -81,6 +97,7 @@ export type NumberEntryKeypadProps = {
   quickDeltas?: readonly number[]
   lastTimeValue?: number | null
   lastTimeLabel?: string | null
+  plateCalculator?: ((displayWeight: number) => PlateBreakdown | null) | null
   onClose: () => void
   onConfirm: (value: number) => void
 }
@@ -96,17 +113,24 @@ export function NumberEntryKeypad({
   quickDeltas = [],
   lastTimeValue = null,
   lastTimeLabel = null,
+  plateCalculator = null,
   onClose,
   onConfirm,
 }: NumberEntryKeypadProps) {
   const [draft, setDraft] = useState<KeypadDraft>(() => createKeypadDraft(initial, decimals))
+  const [platesExpanded, setPlatesExpanded] = useState(false)
   useEffect(() => {
-    if (open) setDraft(createKeypadDraft(initial, decimals))
+    if (open) {
+      setDraft(createKeypadDraft(initial, decimals))
+      setPlatesExpanded(false)
+    }
   }, [open, initial, decimals])
 
   const parsed = parseKeypadText(draft.text)
   const valid = parsed != null && parsed >= min && parsed <= max
   const showErr = draft.text !== '' && !valid
+  const breakdown = resolveKeypadPlateBreakdown(parsed, initial, plateCalculator)
+  const plateUnit = breakdown ? unitLabel(breakdown.unit, getLang() === 'ar') : ''
   const rangeText = t(
     'stepper_range',
     formatCompactNumber(min, decimals),
@@ -122,6 +146,53 @@ export function NumberEntryKeypad({
           </span>
           <span class={`nk-range${showErr ? ' nk-range-err' : ''}`}>{rangeText}</span>
         </div>
+
+        {breakdown && (
+          <div class="nk-plates">
+            <button
+              type="button"
+              class="nk-plates-toggle"
+              aria-expanded={platesExpanded}
+              aria-label={t('live41_plates_breakdown_cd', `${formatPlateNumber(breakdown.targetWeight)} ${plateUnit}`)}
+              onClick={() => setPlatesExpanded((v) => !v)}
+            >
+              <span class="nk-plates-title">{t('live41_plates_title')}</span>
+              <span class="nk-plates-summary">
+                {breakdown.barOnly
+                  ? t('live41_plates_bar_only', `${formatPlateNumber(breakdown.barWeight)} ${plateUnit}`)
+                  : t('live41_plates_side', formatPlatesSummary(breakdown.perSide))}
+              </span>
+              <span class={`nk-plates-chev${platesExpanded ? ' nk-plates-chev-open' : ''}`} aria-hidden="true">
+                <ExpandMoreIcon size={18} />
+              </span>
+            </button>
+            {platesExpanded && (
+              <div class="nk-plates-body">
+                <div class="nk-plates-meta">
+                  {[
+                    t('live41_plates_bar', `${formatPlateNumber(breakdown.barWeight)} ${plateUnit}`),
+                    t('live41_plates_loaded', `${formatPlateNumber(breakdown.loadedWeight)} ${plateUnit}`),
+                  ].join(' · ')}
+                </div>
+                {breakdown.perSide.length === 0 ? (
+                  <div class="nk-plates-none">{t('live41_plates_none_needed')}</div>
+                ) : (
+                  breakdown.perSide.map((p) => (
+                    <div key={p.weight} class="nk-plate-row">
+                      <span class="nk-plate-w">{`${formatPlateNumber(p.weight)} ${plateUnit}`}</span>
+                      <span class="nk-plate-c">{`× ${p.count}`}</span>
+                    </div>
+                  ))
+                )}
+                {breakdown.remainder >= 0.05 && (
+                  <div class="nk-plate-rem">
+                    {t('live41_plates_remainder', `${formatPlateNumber(breakdown.remainder)} ${plateUnit}`)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {(quickDeltas.length > 0 || lastTimeValue != null || draft.text !== '') && (
           <div class="nk-chips">

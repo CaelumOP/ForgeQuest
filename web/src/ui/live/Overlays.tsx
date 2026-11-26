@@ -11,6 +11,8 @@ export function RestBar({
   now,
   nextLabel,
   canCopyLastSet,
+  showPresets,
+  onTogglePresets,
   onAdd,
   onRemove,
   onSelectPreset,
@@ -21,6 +23,8 @@ export function RestBar({
   now: number
   nextLabel: string | null
   canCopyLastSet: boolean
+  showPresets: boolean
+  onTogglePresets: () => void
   onAdd: () => void
   onRemove: () => void
   onSelectPreset: (seconds: number) => void
@@ -32,30 +36,40 @@ export function RestBar({
   return (
     <div class="lw-rest" role="timer" aria-label={t('live_rest')}>
       <div class="lw-rest-row">
-        <span class="lw-rest-title">{t('live_rest')}</span>
-        <span class="lw-rest-clock">{clock(left)}</span>
+        <button
+          type="button"
+          class="lw-rest-toggle"
+          aria-expanded={showPresets}
+          aria-label={t(showPresets ? 'cd_rest_presets_hide' : 'cd_rest_presets_show')}
+          onClick={onTogglePresets}
+        >
+          <span class="lw-rest-title">{t('live_rest')}</span>
+          <span class="lw-rest-clock">{clock(left)}</span>
+        </button>
         <Button variant="text" onClick={onRemove}>{t('live_rest_minus')}</Button>
         <Button variant="text" onClick={onAdd}>{t('live_rest_plus')}</Button>
         <Button variant="text" onClick={onSkip}>{t('live_skip')}</Button>
       </div>
       {nextLabel && <div class="lw-rest-next">{t('live_next', nextLabel)}</div>}
-      <div class="lw-rest-presets">
-        {presets.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            class={`lw-rest-chip${rest.totalSeconds === preset ? ' lw-rest-chip-on' : ''}`}
-            onClick={() => onSelectPreset(preset)}
-          >
-            {t('live41_rest_preset_s', preset)}
-          </button>
-        ))}
-        {canCopyLastSet && (
-          <button type="button" class="lw-rest-chip lw-rest-chip-copy" onClick={onCopyLastSet}>
-            {t('live41_copy_last_set')}
-          </button>
-        )}
-      </div>
+      {showPresets && (
+        <div class="lw-rest-presets">
+          {presets.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              class={`lw-rest-chip${rest.totalSeconds === preset ? ' lw-rest-chip-on' : ''}`}
+              onClick={() => onSelectPreset(preset)}
+            >
+              {t('live41_rest_preset_s', preset)}
+            </button>
+          ))}
+          {canCopyLastSet && (
+            <button type="button" class="lw-rest-chip lw-rest-chip-copy" onClick={onCopyLastSet}>
+              {t('live41_copy_last_set')}
+            </button>
+          )}
+        </div>
+      )}
       <WaveBar progress={rest.totalSeconds ? Math.min(1, left / rest.totalSeconds) : 0} />
     </div>
   )
