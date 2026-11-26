@@ -1,17 +1,28 @@
 // Pure helpers and formatting for BaselineScreen ("Find your starting point").
 import { t, plural, type Lang } from '../../i18n'
 import type { BaselineTestRow, ExerciseRow } from '../../data/db'
-import { PULL_UP_ID, PUSH_UP_ID } from '../../data/baseline-tests'
 import { configuredEquipment, weightUnit, type Settings } from '../../data/settings'
 import type { ActivePlan } from '../../data/workouts'
 import { repsTarget, holdTarget, weightedTargetInUnit, easierVariation } from '../../domain/baseline-targets'
-import { expandLegacyEquipment, type Equipment } from '../../domain/exercise-swap-engine'
+import { expandLegacyEquipment, profileFits, profileFor, isEquipment, type Equipment } from '../../domain/exercise-swap-engine'
 import type { ExerciseKind } from '../../domain/muscle'
+import { isCompoundExercise } from '../../domain/plan-builder'
 import { isExtraBlock } from '../../domain/pr-picker'
 import { formatWeight, type WeightUnit } from '../../domain/units'
 
 export const PLANK_ID = 'plank'
-export const MAX_PLAN_WEIGHTED_MOVES = 3
+const BASELINE_PREFERENCES = [
+  ['bench_press', 'db_bench_press', 'push_up'],
+  ['pull_up', 'lat_pulldown', 'barbell_row', 'db_row', 'australian_pull_up'],
+  ['back_squat', 'goblet_squat', 'squat'],
+  ['romanian_deadlift', 'db_romanian_deadlift', 'hip_bridge'],
+  ['plank'],
+]
+
+export function baselineCallerEquipment(param?: string): Set<Equipment> | undefined {
+  if (!param?.startsWith('equipment=')) return undefined
+  return new Set(param.slice('equipment='.length).split(',').filter(isEquipment))
+}
 export const DEFAULT_WEIGHTED_REPS_MIN = 8
 export const BASELINE_HOLD_BENCHMARK_SECONDS = 60
 export const BASELINE_REST_SECONDS = 90
@@ -86,10 +97,13 @@ export function buildBaselineMoves(
   settings: Settings,
   activePlan: ActivePlan | null,
   latestById: ReadonlyMap<string, BaselineTestRow>,
+  callerEquipment?: ReadonlySet<Equipment>,
 ): BaselineMoveItem[] {
   if (library.length === 0) return []
   const byId = new Map(library.map((e) => [e.id, e]))
-  const equipment = expandLegacyEquipment(configuredEquipment(settings))
+  const equipment = expandLegacyEquipment(callerEquipment ?? configuredEquipment(settings))
+  equipment.add('BODYWEIGHT')
+  const fits = (ex: ExerciseRow) => profileFits(profileFor(ex), equipment)
   const planRepsMin = new Map<string, number>()
   const planWeightedMainIds: string[] = []
 
@@ -102,30 +116,32 @@ export function buildBaselineMoves(
         planRepsMin.set(item.exerciseId, item.repsMin)
       }
       if (
-        planWeightedMainIds.length < MAX_PLAN_WEIGHTED_MOVES &&
         !isExtraBlock(item.block) &&
         item.block.toLowerCase() !== 'finisher'
       ) {
         const ex = byId.get(item.exerciseId)
-        if (ex && ex.kind === 'WEIGHTED' && !planWeightedMainIds.includes(item.exerciseId)) {
+        if (ex && ex.kind === 'WEIGHTED' && [...equipment].some((eq) => eq !== 'BODYWEIGHT') &&
+            fits(ex) && isCompoundExercise(ex) &&
+            ex.id !== 'around_the_worlds' && !planWeightedMainIds.includes(item.exerciseId)) {
           planWeightedMainIds.push(item.exerciseId)
         }
       }
     }
   }
 
-  const suggestedIds: string[] = []
-  if (byId.has(PUSH_UP_ID)) suggestedIds.push(PUSH_UP_ID)
-  if (equipment.has('PULL_UP_BAR') && byId.has(PULL_UP_ID)) suggestedIds.push(PULL_UP_ID)
-  if (byId.has(PLANK_ID)) suggestedIds.push(PLANK_ID)
-  for (const id of planWeightedMainIds) {
-    if (!suggestedIds.includes(id)) suggestedIds.push(id)
-  }
+  const suggestedIds = BASELINE_PREFERENCES.flatMap((ids) => {
+    const candidates = ids.flatMap((id) => { const ex = byId.get(id); return ex ? [ex] : [] })
+    const patterns = new Set(candidates.map((ex) => profileFor(ex).pattern))
+    // Around-the-worlds is catalogued as a push but is a single-joint isolation.
+    const planId = planWeightedMainIds.find((id) => patterns.has(profileFor(byId.get(id)!).pattern))
+    const id = planId ?? candidates.find(fits)?.id
+    return id ? [id] : []
+  })
 
   const suggestedSet = new Set(suggestedIds)
   const extraTestedIds = [...latestById.values()]
     .filter((row) => !suggestedSet.has(row.exerciseId) && byId.has(row.exerciseId))
-    .filter((row) => row.exerciseId !== PULL_UP_ID || equipment.has('PULL_UP_BAR'))
+    .filter((row) => fits(byId.get(row.exerciseId)!))
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((row) => row.exerciseId)
 

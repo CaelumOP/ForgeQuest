@@ -1970,4 +1970,5 @@
     <string name="cd_undo_adjustment">Undo set adjustment</string>
     <string name="cd_edit_effort">Change effort rating</string>
     <string name="baseline_save_failed">Could not save your test. Please try again.</string>
+    <string name="baseline_show_all_moves">Show all moves</string>
 </resources>

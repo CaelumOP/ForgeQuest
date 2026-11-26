@@ -208,6 +208,7 @@
   "baseline_save_failed": "Could not save your test. Please try again.",
   "baseline_seconds_label": "Hold time",
   "baseline_see_all_moves": "See all moves",
+  "baseline_show_all_moves": "Show all moves",
   "baseline_start_hold": "Start hold timer",
   "baseline_start_reps": {
     "one": "Start with {1} rep",

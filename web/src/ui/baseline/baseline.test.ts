@@ -1,15 +1,17 @@
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { db, type BaselineTestRow, type ExerciseRow, type SetRow } from '../../data/db'
-import { PULL_UP_ID, PUSH_UP_ID, saveBaselineTest } from '../../data/baseline-tests'
+import { PUSH_UP_ID, saveBaselineTest } from '../../data/baseline-tests'
 import { EXERCISE_CATALOG } from '../../data/seed/exercise-catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../data/settings'
 import type { ActivePlan } from '../../data/workouts'
+import { ALL_ACTIVE_EQUIPMENT, type Equipment } from '../../domain/exercise-swap-engine'
 import { formatWeight } from '../../domain/units'
 import { setLang } from '../../i18n'
 import {
   BASELINE_REST_KEY,
   buildBaselineMoves,
+  baselineCallerEquipment,
   computeTargetDisplay,
   formatLastResult,
   formatTargetText,
@@ -52,7 +54,58 @@ afterEach(() => {
 })
 
 describe('baseline helpers', () => {
-  it('gates pull-up by PULL_UP_BAR equipment and includes first 3 main weighted lifts from active plan', () => {
+  const noGear = ['push_up', 'squat', 'hip_bridge', 'plank']
+  const gym = ['bench_press', 'pull_up', 'back_squat', 'romanian_deadlift', 'plank']
+  const cases: [string, Equipment[], string[]][] = [
+    ['no gear', [], noGear],
+    ['bodyweight', ['BODYWEIGHT'], noGear],
+    ['dumbbells and bench', ['DUMBBELLS', 'FLAT_BENCH'], ['db_bench_press', 'db_row', 'goblet_squat', 'db_romanian_deadlift', 'plank']],
+    ['dumbbells only', ['DUMBBELLS'], ['push_up', 'db_row', 'goblet_squat', 'db_romanian_deadlift', 'plank']],
+    ['full gym', [...ALL_ACTIVE_EQUIPMENT], gym],
+    ['gym without pull-up bar', ALL_ACTIVE_EQUIPMENT.filter((e) => e !== 'PULL_UP_BAR'), ['bench_press', 'lat_pulldown', 'back_squat', 'romanian_deadlift', 'plank']],
+  ]
+  it.each(cases)('%s uses the same staple ids as Android', (_, gear, expected) => {
+    const moves = buildBaselineMoves(catalog, settingsWith({ equipment: 'all' }), null, new Map(), new Set(gear))
+    expect(moves.map((m) => m.exercise.id)).toEqual(expected)
+    expect(moves.every((m) => m.isSuggested)).toBe(true)
+    if (gear.length === 0) expect(moves.every((m) => m.exercise.kind !== 'WEIGHTED')).toBe(true)
+  })
+
+  it('parses explicit caller gear, including empty gear, without leaking drafts into other entries', () => {
+    expect(baselineCallerEquipment('equipment=')).toEqual(new Set())
+    expect(baselineCallerEquipment('equipment=DUMBBELLS,INVALID')).toEqual(new Set(['DUMBBELLS']))
+    expect(baselineCallerEquipment()).toBeUndefined()
+    expect(baselineCallerEquipment('push_up')).toBeUndefined()
+    expect(buildBaselineMoves(catalog, settingsWith({ equipment: 'BODYWEIGHT' }), null, new Map()).map((m) => m.exercise.id)).toEqual(noGear)
+  })
+
+  const planWith = (ids: string[], block = 'Main'): ActivePlan => ({
+    plan: { id: 1, name: 'Test', description: '', source: 'builder', active: true, createdAt: 1 },
+    days: [{ day: { id: 1, planId: 1, dayOfWeek: 1, title: 'Day', isRest: false, note: '' },
+      items: ids.map((exerciseId, position) => ({ id: position + 1, dayId: 1, position, exerciseId, block,
+        circuit: false, sets: 3, repsMin: 6, repsMax: 8, seconds: null, weightKg: null, restSeconds: 90, note: '' })) }],
+  })
+  it('rejects isolation and vertical push plan moves, and only replaces the matching compound slot', () => {
+    const rejected = ['around_the_worlds', 'dumbbell_lying_rear_lateral_raise', 'arnold_press', 'leg_extension', 'cable_fly']
+    expect(rejected.every((id) => catalog.some((e) => e.id === id))).toBe(true)
+    const settings = settingsWith({ equipment: 'all' })
+    expect(buildBaselineMoves(catalog, settings, planWith(rejected), new Map()).map((m) => m.exercise.id)).toEqual(gym)
+    const moves = buildBaselineMoves(catalog, settings, planWith([...rejected, 'front_squat', 'db_row']), new Map())
+    expect(moves.map((m) => m.exercise.id)).toEqual(['bench_press', 'db_row', 'front_squat', 'romanian_deadlift', 'plank'])
+    expect(moves[2]?.repsMin).toBe(6)
+    expect(buildBaselineMoves(catalog, settings, planWith(['front_squat'], 'Finisher'), new Map()).map((m) => m.exercise.id)).toEqual(gym)
+    expect(buildBaselineMoves(catalog, settings, planWith(['front_squat', 'weighted_push_up']), new Map(), new Set()).map((m) => m.exercise.id)).toEqual(noGear)
+  })
+  it('hides tested moves whose gear is unavailable', () => {
+    const latest = new Map<string, BaselineTestRow>(['pull_up', 'db_row', 'knee_push_up'].map((id, i) => [id, {
+      id: i, exerciseId: id, kind: id === 'db_row' ? 'WEIGHTED' : 'REPS', reps: 8, seconds: null, weightKg: null, createdAt: i,
+    }]))
+    const moves = buildBaselineMoves(catalog, settingsWith({ equipment: 'all' }), null, latest, new Set())
+    expect(moves.map((m) => m.exercise.id)).toEqual([...noGear, 'knee_push_up'])
+    expect(moves[4]?.isSuggested).toBe(false)
+  })
+
+  it('replaces only matching patterns with compatible plan main lifts', () => {
     const plan: ActivePlan = {
       plan: { id: 1, name: 'Test', description: '', source: 'builder', active: true, createdAt: 1 },
       days: [
@@ -75,25 +128,12 @@ describe('baseline helpers', () => {
       ],
     }
 
-    const noBar = buildBaselineMoves(catalog, settingsWith({ equipment: 'DUMBBELLS' }), plan, new Map())
-    expect(noBar.map((m) => m.exercise.id)).toEqual([
-      PUSH_UP_ID,
-      PLANK_ID,
-      'goblet_squat',
-      'db_bench_press',
-      'romanian_deadlift',
-    ])
+    const noBar = buildBaselineMoves(catalog, settingsWith({ equipment: 'DUMBBELLS,FLAT_BENCH' }), plan, new Map())
+    expect(noBar.map((m) => m.exercise.id)).toEqual(['db_bench_press', 'db_row', 'goblet_squat', 'db_romanian_deadlift', 'plank'])
     expect(noBar.find((m) => m.exercise.id === 'db_bench_press')?.repsMin).toBe(6)
 
-    const withBar = buildBaselineMoves(catalog, settingsWith({ equipment: 'DUMBBELLS,PULL_UP_BAR' }), plan, new Map())
-    expect(withBar.map((m) => m.exercise.id)).toEqual([
-      PUSH_UP_ID,
-      PULL_UP_ID,
-      PLANK_ID,
-      'goblet_squat',
-      'db_bench_press',
-      'romanian_deadlift',
-    ])
+    const withBar = buildBaselineMoves(catalog, settingsWith({ equipment: 'DUMBBELLS,FLAT_BENCH,PULL_UP_BAR' }), plan, new Map())
+    expect(withBar.map((m) => m.exercise.id)).toEqual(['db_bench_press', 'pull_up', 'goblet_squat', 'db_romanian_deadlift', 'plank'])
   })
 
   it('appends extra tested moves newest first and ignores mismatched kind rows', () => {
@@ -103,9 +143,9 @@ describe('baseline helpers', () => {
       [PUSH_UP_ID, { id: 3, exerciseId: PUSH_UP_ID, kind: 'HOLD', reps: null, seconds: 20, weightKg: null, createdAt: 3000 }],
     ])
     const moves = buildBaselineMoves(catalog, settingsWith({ equipment: 'BARBELL' }), null, latest)
-    expect(moves.map((m) => m.exercise.id)).toEqual([PUSH_UP_ID, PLANK_ID, 'overhead_press', 'barbell_row'])
+    expect(moves.map((m) => m.exercise.id)).toEqual([PUSH_UP_ID, 'barbell_row', 'squat', 'romanian_deadlift', PLANK_ID, 'overhead_press'])
     expect(moves[0]?.latest).toBeNull()
-    expect(moves[2]?.isSuggested).toBe(false)
+    expect(moves[5]?.isSuggested).toBe(false)
   })
 
   it('computes REPS, HOLD, WEIGHTED, 0-rep easier variation, and too-light targets', () => {

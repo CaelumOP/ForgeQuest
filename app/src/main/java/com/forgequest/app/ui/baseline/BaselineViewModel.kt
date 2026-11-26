@@ -11,6 +11,7 @@ import com.forgequest.app.data.prefs.BodyType
 import com.forgequest.app.data.prefs.Settings
 import com.forgequest.app.domain.BaselineTargets
 import com.forgequest.app.domain.Equipment
+import com.forgequest.app.domain.ExerciseSwapEngine
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.PlanBuilder
 import com.forgequest.app.domain.WeightUnit
@@ -61,16 +62,26 @@ data class BaselineSaveResult(
 internal fun showBaselineEntry(hasFinishedWorkout: Boolean, hasBaseline: Boolean, dismissed: Boolean): Boolean =
     !hasFinishedWorkout && !hasBaseline && !dismissed
 
-/** Builds the ordered list of moves to test per 3B spec ("The flow"). */
+private val BASELINE_PREFERENCES = listOf(
+    listOf("bench_press", "db_bench_press", "push_up"),
+    listOf("pull_up", "lat_pulldown", "barbell_row", "db_row", "australian_pull_up"),
+    listOf("back_squat", "goblet_squat", "squat"),
+    listOf("romanian_deadlift", "db_romanian_deadlift", "hip_bridge"),
+    listOf("plank"),
+)
+
+/** One gear-compatible staple per movement, followed by compatible tested moves. */
 internal fun buildBaselineMoves(
     library: List<ExerciseEntity>,
     settings: Settings,
     activePlan: ActivePlan?,
     latestById: Map<String, BaselineTestEntity>,
+    callerEquipment: Set<Equipment>? = null,
 ): List<BaselineMoveItem> {
     if (library.isEmpty()) return emptyList()
     val byId = library.associateBy { it.id }
-    val equipment = expandLegacyEquipment(settings.configuredEquipment)
+    val equipment = expandLegacyEquipment(callerEquipment ?: settings.configuredEquipment) + Equipment.BODYWEIGHT
+    fun fits(ex: ExerciseEntity) = ExerciseSwapEngine.profileFor(ex).fits(equipment)
     val planRepsMin = mutableMapOf<String, Int>()
     val planWeightedMainIds = mutableListOf<String>()
 
@@ -82,13 +93,13 @@ internal fun buildBaselineMoves(
             if (item.exerciseId !in planRepsMin && item.repsMin != null) {
                 planRepsMin[item.exerciseId] = item.repsMin
             }
-            if (planWeightedMainIds.size < MAX_PLAN_WEIGHTED_MOVES &&
-                !WorkoutScore.isExtra(item.block) &&
+            if (!WorkoutScore.isExtra(item.block) &&
                 !item.block.equals(PlanBuilder.FINISHER_BLOCK, ignoreCase = true)
             ) {
                 val ex = byId[item.exerciseId]
                 if (ex != null &&
-                    ex.kind == ExerciseKind.WEIGHTED &&
+                    ex.kind == ExerciseKind.WEIGHTED && equipment.any { it != Equipment.BODYWEIGHT } && fits(ex) &&
+                    PlanBuilder.isCompoundExercise(ex) && ex.id != "around_the_worlds" &&
                     item.exerciseId !in planWeightedMainIds
                 ) {
                     planWeightedMainIds += item.exerciseId
@@ -97,21 +108,20 @@ internal fun buildBaselineMoves(
         }
     }
 
-    val suggestedIds = buildList {
-        if (BaselineRepository.PUSH_UP_ID in byId) add(BaselineRepository.PUSH_UP_ID)
-        if (Equipment.PULL_UP_BAR in equipment && BaselineRepository.PULL_UP_ID in byId) {
-            add(BaselineRepository.PULL_UP_ID)
+    val suggestedIds = BASELINE_PREFERENCES.mapNotNull { ids ->
+        val candidates = ids.mapNotNull(byId::get)
+        val patterns = candidates.map { ExerciseSwapEngine.profileFor(it).pattern }.toSet()
+        // Around-the-worlds is catalogued as a push but is a single-joint isolation.
+        val planId = planWeightedMainIds.firstOrNull { id ->
+            ExerciseSwapEngine.profileFor(byId.getValue(id)).pattern in patterns
         }
-        if (PLANK_ID in byId) add(PLANK_ID)
-        for (id in planWeightedMainIds) {
-            if (id !in this) add(id)
-        }
+        planId ?: candidates.firstOrNull { fits(it) }?.id
     }
 
     val suggestedSet = suggestedIds.toSet()
     val extraTestedIds = latestById.values
         .filter { it.exerciseId !in suggestedSet && it.exerciseId in byId }
-        .filter { it.exerciseId != BaselineRepository.PULL_UP_ID || Equipment.PULL_UP_BAR in equipment }
+        .filter { fits(byId.getValue(it.exerciseId)) }
         .sortedByDescending { it.createdAt }
         .map { it.exerciseId }
 
@@ -188,7 +198,6 @@ internal fun computeTargetDisplay(
 }
 
 private const val PLANK_ID = "plank"
-private const val MAX_PLAN_WEIGHTED_MOVES = 3
 internal const val DEFAULT_WEIGHTED_REPS_MIN = 8
 internal const val BASELINE_HOLD_BENCHMARK_SECONDS = 60
 internal const val BASELINE_REST_SECONDS = 90
@@ -201,15 +210,17 @@ class BaselineViewModel(
     private val haptics: Haptics? = null,
     val initialExerciseId: String? = null,
     private val clockMillis: () -> Long = { System.currentTimeMillis() },
+    private val callerEquipment: Set<Equipment>? = null,
 ) : ViewModel() {
 
-    constructor(app: AppContainer, initialExerciseId: String? = null) : this(
+    constructor(app: AppContainer, initialExerciseId: String? = null, callerEquipment: Set<Equipment>? = null) : this(
         baselines = app.baselines,
         libraryFlow = app.workouts.library,
         activePlanFlow = app.workouts.activePlan,
         settingsFlow = app.settings.settings,
         haptics = app.haptics,
         initialExerciseId = initialExerciseId,
+        callerEquipment = callerEquipment,
     )
 
     val library: StateFlow<List<ExerciseEntity>> = libraryFlow
@@ -218,7 +229,7 @@ class BaselineViewModel(
     val settings: StateFlow<Settings> = settingsFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
 
-    val userEquipment: StateFlow<Set<Equipment>> = settings.map { it.configuredEquipment }
+    val userEquipment: StateFlow<Set<Equipment>> = settings.map { expandLegacyEquipment(callerEquipment ?: it.configuredEquipment) + Equipment.BODYWEIGHT }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     val bodyType: StateFlow<BodyType> = settings.map { it.bodyType }
@@ -233,7 +244,7 @@ class BaselineViewModel(
     val moves: StateFlow<List<BaselineMoveItem>> = combine(
         library, settings, activePlan, latestById,
     ) { lib, s, plan, latest ->
-        buildBaselineMoves(lib, s, plan, latest)
+        buildBaselineMoves(lib, s, plan, latest, callerEquipment)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val activeExerciseId = MutableStateFlow(initialExerciseId?.takeIf { it.isNotBlank() })
@@ -402,7 +413,7 @@ class BaselineViewModel(
         val ex = lib.firstOrNull { it.id == exerciseId } ?: return null
         if (ex.kind != kind) return null
         val curSettings = settingsFlow.first()
-        val equipment = expandLegacyEquipment(curSettings.configuredEquipment)
+        val equipment = expandLegacyEquipment(callerEquipment ?: curSettings.configuredEquipment) + Equipment.BODYWEIGHT
         val unit = curSettings.weightUnitFor(ex.unitOverride)
         val plan = activePlan.value
         val repsMin = plan?.days

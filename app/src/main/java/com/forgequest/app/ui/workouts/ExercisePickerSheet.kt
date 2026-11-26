@@ -124,6 +124,7 @@ fun ExercisePickerSheet(
     /** Recently used exercise IDs shown at the top of the picker when unfiltered. */
     recentIds: List<String> = emptyList(),
     bodyType: BodyType = BodyType.MALE,
+    showAllMovesToggle: Boolean = false,
 ) {
     val c = Fit.colors
     // "My equipment" is only offered when the person owns some, but not all, of it.
@@ -131,7 +132,7 @@ fun ExercisePickerSheet(
     val partialEquipment = expandedUserEquipment.isNotEmpty() && !expandedUserEquipment.containsAll(Equipment.allActive)
     var query by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf(if (sourceExercise != null) null else initialMuscle) }
-    var onlyMyEquipment by remember { mutableStateOf(partialEquipment) }
+    var onlyMyEquipment by remember { mutableStateOf(showAllMovesToggle || partialEquipment) }
     var selectedEquipment by remember { mutableStateOf<Equipment?>(null) }
     var creating by remember { mutableStateOf(false) }
     var mapFilterOpen by remember { mutableStateOf(false) }
@@ -199,8 +200,8 @@ fun ExercisePickerSheet(
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (partialEquipment) {
                     ChoiceChip(
-                        text = stringResource(R.string.picker_my_equipment),
-                        selected = onlyMyEquipment && selectedEquipment == null,
+                        text = stringResource(if (showAllMovesToggle) R.string.baseline_show_all_moves else R.string.picker_my_equipment),
+                        selected = (if (showAllMovesToggle) !onlyMyEquipment else onlyMyEquipment) && selectedEquipment == null,
                         onClick = { onlyMyEquipment = !onlyMyEquipment; selectedEquipment = null },
                     )
                 }

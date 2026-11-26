@@ -187,7 +187,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
               icon={<TuneIcon size={20} />}
               onClick={() => {
                 savePlanBuilderDraft(answersRef.current)
-                location.hash = '#/baseline'
+                location.hash = `#/baseline/equipment=${encodeURIComponent([...answersRef.current.equipment].join(','))}`
               }}
             />
           </Card>

@@ -22,6 +22,7 @@ import {
   BASELINE_HOLD_BENCHMARK_SECONDS,
   BASELINE_REST_SECONDS,
   buildBaselineMoves,
+  baselineCallerEquipment,
   computeTargetDisplay,
   DEFAULT_WEIGHTED_REPS_MIN,
   formatLastResult,
@@ -56,7 +57,8 @@ export function BaselineScreen({ param }: { param?: string }) {
   const activePlan = useActivePlan()
   const latestById = useLatestBaselines()
 
-  const initialExerciseId = param?.trim() || null
+  const callerEquipment = useMemo(() => baselineCallerEquipment(param), [param])
+  const initialExerciseId = callerEquipment ? null : param?.trim() || null
   const openedSingleMove = initialExerciseId != null
 
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(initialExerciseId)
@@ -74,10 +76,14 @@ export function BaselineScreen({ param }: { param?: string }) {
     setHold(null)
   }, [initialExerciseId])
 
-  const equipment = useMemo(() => expandLegacyEquipment(configuredEquipment(settings)), [settings])
+  const equipment = useMemo(() => {
+    const active = expandLegacyEquipment(callerEquipment ?? configuredEquipment(settings))
+    active.add('BODYWEIGHT')
+    return active
+  }, [settings, callerEquipment])
   const moves = useMemo(
-    () => buildBaselineMoves(library, settings, activePlan, latestById),
-    [library, settings, activePlan, latestById],
+    () => buildBaselineMoves(library, settings, activePlan, latestById, equipment),
+    [library, settings, activePlan, latestById, equipment],
   )
 
   const activeMove = useMemo<BaselineMoveItem | null>(() => {
@@ -334,6 +340,7 @@ export function BaselineScreen({ param }: { param?: string }) {
         title={t('baseline_picker_title')}
         library={library}
         userEquipment={equipment}
+        showAllMovesToggle
         onPick={(ex) => {
           setPickerOpen(false)
           openMove(ex.id)

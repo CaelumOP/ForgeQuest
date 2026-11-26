@@ -93,8 +93,9 @@ import kotlinx.coroutines.delay
 fun BaselineScreen(
     nav: NavHostController,
     exerciseId: String? = null,
+    callerEquipment: Set<com.forgequest.app.domain.Equipment>? = null,
 ) {
-    val vm = appViewModel { BaselineViewModel(it, exerciseId) }
+    val vm = appViewModel { BaselineViewModel(it, exerciseId, callerEquipment) }
     val moves by vm.moves.collectAsState()
     val library by vm.library.collectAsState()
     val settings by vm.settings.collectAsState()
@@ -289,6 +290,7 @@ fun BaselineScreen(
             onDismiss = { pickerOpen = false },
             userEquipment = equipment,
             allowCreate = false,
+            showAllMovesToggle = true,
             bodyType = bodyType,
         )
     }

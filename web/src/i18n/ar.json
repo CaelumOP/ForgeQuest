@@ -224,6 +224,7 @@
   "baseline_save_failed": "تعذّر حفظ الاختبار. حاول مرة أخرى.",
   "baseline_seconds_label": "مدة الثبات",
   "baseline_see_all_moves": "عرض كل التمارين",
+  "baseline_show_all_moves": "اعرض كل التمارين",
   "baseline_start_hold": "ابدأ مؤقّت الثبات",
   "baseline_start_reps": {
     "zero": "ابدأ بـ 0 تكرار",

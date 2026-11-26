@@ -38,6 +38,7 @@ export type ExercisePickerProps = {
   /** Swap mode: the plan anchor exercise being replaced; its best biomechanical matches come first. */
   sourceExercise?: ExerciseRow
   userEquipment?: ReadonlySet<Equipment>
+  showAllMovesToggle?: boolean
   /** Currently active exercise in this live slot (marked "Current" in Swap mode). */
   currentExerciseId?: string | null
   /** Recently used exercise IDs shown at the top when unfiltered. */
@@ -86,13 +87,13 @@ function PickerRow({ ex, prof, difficulty, isCurrent, highlighted, onClick }: {
   )
 }
 
-function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, userEquipment, currentExerciseId, recentIds }: ExercisePickerProps) {
+function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, userEquipment, currentExerciseId, recentIds, showAllMovesToggle }: ExercisePickerProps) {
   const settings = useSettings()
   const mine = useMemo(() => expandLegacyEquipment(userEquipment ?? new Set<Equipment>()), [userEquipment])
   const limited = mine.size > 0 && !ALL_ACTIVE_EQUIPMENT.every((e) => mine.has(e))
   const [query, setQuery] = useState('')
   const [muscle, setMuscle] = useState<Muscle | null>(sourceExercise ? null : initialMuscle ?? null)
-  const [onlyMine, setOnlyMine] = useState(limited)
+  const [onlyMine, setOnlyMine] = useState(showAllMovesToggle || limited)
   const [eq, setEq] = useState<Equipment | null>(null)
   const [creating, setCreating] = useState(false)
   const [mapFilterOpen, setMapFilterOpen] = useState(false)
@@ -185,7 +186,7 @@ function PickerBody({ library, onPick, onCreate, initialMuscle, sourceExercise, 
         </button>
       </div>
       <div class="wk-scroll" role="group" aria-label={t('workouts_web_filter_equipment')}>
-        {limited && <Chip label={t('picker_my_equipment')} selected={onlyMine && !eq} onClick={() => { setOnlyMine(!onlyMine); setEq(null) }} />}
+        {limited && <Chip label={t(showAllMovesToggle ? 'baseline_show_all_moves' : 'picker_my_equipment')} selected={(showAllMovesToggle ? !onlyMine : onlyMine) && !eq} onClick={() => { setOnlyMine(!onlyMine); setEq(null) }} />}
         {ALL_ACTIVE_EQUIPMENT.map((e) => (
           <Chip key={e} label={eqName(e)} selected={eq === e} onClick={() => { const next = eq === e ? null : e; setEq(next); if (next) setOnlyMine(false) }} />
         ))}

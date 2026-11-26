@@ -2324,4 +2324,5 @@
     <string name="cd_undo_adjustment">التراجع عن تعديل المجموعة</string>
     <string name="cd_edit_effort">تغيير تقييم الجهد</string>
     <string name="baseline_save_failed">تعذّر حفظ الاختبار. حاول مرة أخرى.</string>
+    <string name="baseline_show_all_moves">اعرض كل التمارين</string>
 </resources>

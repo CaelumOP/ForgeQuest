@@ -117,8 +117,14 @@ object Routes {
     const val LIBRARY = "library"
     const val PROGRESS = "progress"
     const val PLAN_BUILDER = "plan_builder"
-    const val BASELINE = "baseline?exerciseId={exerciseId}"
-    fun baseline(exerciseId: String? = null) = "baseline" + (exerciseId?.let { "?exerciseId=${android.net.Uri.encode(it)}" } ?: "")
+    const val BASELINE = "baseline?exerciseId={exerciseId}&equipment={equipment}"
+    fun baseline(exerciseId: String? = null, equipment: Set<com.forgequest.app.domain.Equipment>? = null): String {
+        val args = listOfNotNull(
+            exerciseId?.let { "exerciseId=${android.net.Uri.encode(it)}" },
+            equipment?.let { "equipment=${android.net.Uri.encode(it.joinToString(",") { eq -> eq.name })}" },
+        )
+        return "baseline" + if (args.isEmpty()) "" else "?" + args.joinToString("&")
+    }
     const val SETTINGS = "settings"
     const val SETTINGS_GROUP = "settings/{id}"
     const val CSV_IMPORT = "csv_import"
@@ -297,8 +303,13 @@ private fun MainScaffold() {
                 composable(Routes.PLAN_BUILDER) { com.forgequest.app.ui.plan.PlanBuilderScreen(nav) }
                 composable(Routes.BASELINE, arguments = listOf(navArgument("exerciseId") {
                     type = NavType.StringType; nullable = true; defaultValue = null
+                }, navArgument("equipment") {
+                    type = NavType.StringType; nullable = true; defaultValue = null
                 })) { entry ->
-                    com.forgequest.app.ui.baseline.BaselineScreen(nav, entry.arguments?.getString("exerciseId"))
+                    com.forgequest.app.ui.baseline.BaselineScreen(
+                        nav, entry.arguments?.getString("exerciseId"),
+                        entry.arguments?.getString("equipment")?.let { com.forgequest.app.domain.parseEquipmentSet(it) },
+                    )
                 }
                 composable(Routes.SCAN) { ScanScreen(nav) }
                 composable(Routes.EXERCISE, arguments = listOf(navArgument("id") { type = NavType.StringType }, navArgument("fromLive") { type = NavType.BoolType; defaultValue = false })) { entry ->

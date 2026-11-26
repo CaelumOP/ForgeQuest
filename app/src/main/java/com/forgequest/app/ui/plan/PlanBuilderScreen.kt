@@ -351,7 +351,7 @@ fun PlanBuilderScreen(nav: NavHostController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 QuickCard(a, vm::change)
-                TonalPill(stringResource(R.string.baseline_pb_entry), onClick = { nav.navigate(com.forgequest.app.ui.Routes.baseline()) }, modifier = Modifier.fillMaxWidth(), tint = c.teal)
+                TonalPill(stringResource(R.string.baseline_pb_entry), onClick = { nav.navigate(com.forgequest.app.ui.Routes.baseline(equipment = a.equipment)) }, modifier = Modifier.fillMaxWidth(), tint = c.teal)
                 if (baselineSaveFailed) Text(stringResource(R.string.baseline_save_failed), color = c.coral)
                 FitMeSection(a, vm::change, library)
             }

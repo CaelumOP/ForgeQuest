@@ -1,4 +1,4 @@
-﻿import { writeFileSync } from 'node:fs'
+﻿import { mkdirSync, writeFileSync } from 'node:fs'
 import { expect, it } from 'vitest'
 import { EXERCISE_CATALOG } from '../data/seed/exercise-catalog'
 import type { PlanDraft, PlanDraftItem } from './entities'
@@ -106,6 +106,7 @@ it('writes the deterministic matrix scorecard within two minutes', () => {
     'Command: `cd web && npx vitest run src/domain/plan-grader.dev.test.ts`. Unit checks cover purity/determinism, missing coverage, extra-block exclusion, unsafe circuits, spinal exclusion, and exact pairing capacity. Matrix asserts bounded finite totals and all 700 coarse groups.', '',
     'Gemini Gate 1 and Gate 3 did not run: agy-read writes scratch/log files outside the three authorized paths. Caller must run these reviews. Sampling may miss worse unsampled plans. Spinal/odd-pick classification is a catalog heuristic; equipment transitions, loads and effort cannot be inferred.', '')
   expect(elapsed).toBeLessThan(115)
+  mkdirSync(new URL('../../../disc-tmp/', import.meta.url), { recursive: true })
   writeFileSync(new URL('../../../disc-tmp/grader-scorecard.md', import.meta.url), report.join('\n'), 'utf8')
   console.info(`grader: ${rows.length} plans; mean ${fmt(mean(rows, r => r.grade.total))}; min ${fmt(worst[0].grade.total)}; ${fmt(elapsed)}s`)
 }, 115_000)
