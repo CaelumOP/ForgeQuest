@@ -4,6 +4,8 @@ import { Button, reducedMotion } from '../kit'
 import { CloseIcon } from '../icons'
 import { clock, holdElapsed, holdPhase, restLeft, restWaveProgress, type HoldTimer, type RestTimer } from './timers'
 
+import { restWaveTaper, restWaveTrackStart } from './restWave'
+
 const REST_PRESETS = [60, 90, 120, 180] as const
 
 export function RestBar({
@@ -75,13 +77,13 @@ export function RestBar({
   )
 }
 
-// Calmer wave targets matching Android RestWave: 3.5 px stroke, 32 px wavelength, 3.5 px amplitude, 0.5 cycles/s, 16% track.
-const WAVE_STROKE = 3.5
+// Match Android Material wave: 4 px strokes, 6 px visible gap, 32 px wavelength, 16 px/s.
+const WAVE_STROKE = 4
 const WAVE_LEN = 32
-const WAVE_AMP = 3.5
+const WAVE_AMP = 3
 const WAVE_CYCLES_PER_SEC = 0.5
 const WAVE_H = 12
-const WAVE_STEP = 2.5
+const WAVE_STEP = 1
 
 function useReducedMotionPref(): boolean {
   const [reduced, setReduced] = useState(reducedMotion)
@@ -98,7 +100,7 @@ function useReducedMotionPref(): boolean {
 
 /**
  * Calmer 60 FPS wavy rest countdown driven directly from `endsAt` via requestAnimationFrame,
- * over a visible flat track. Under prefers-reduced-motion renders a flat line whose progress still updates.
+ * with a separated flat track. Under prefers-reduced-motion renders a flat line whose progress still updates.
  */
 function WaveBar({ endsAt, totalSeconds }: { endsAt: number; totalSeconds: number }) {
   const ref = useRef<SVGSVGElement>(null)
@@ -154,7 +156,8 @@ function WaveBar({ endsAt, totalSeconds }: { endsAt: number; totalSeconds: numbe
   const usableW = Math.max(0, w - WAVE_STROKE)
   const cy = WAVE_H / 2
   const activeW = usableW * Math.max(0, Math.min(1, frame.progress))
-  const hasActive = w > WAVE_STROKE && activeW > 0.5
+  const hasActive = w > WAVE_STROKE && activeW > 0
+  const trackStart = restWaveTrackStart(usableW, frame.progress)
 
   let wave = ''
   if (hasActive && !reduced) {
@@ -164,18 +167,21 @@ function WaveBar({ endsAt, totalSeconds }: { endsAt: number; totalSeconds: numbe
     const pts: string[] = []
     for (let d = 0; d < activeW; d += WAVE_STEP) {
       const x = pad + d
-      const y = cy + amp * Math.sin((d / WAVE_LEN) * twoPi - frame.phaseRad)
+      const y = cy + amp * restWaveTaper(d, activeW) * Math.sin((d / WAVE_LEN) * twoPi - frame.phaseRad)
       pts.push(`${pts.length === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`)
     }
     const endX = pad + activeW
-    const endY = cy + amp * Math.sin((activeW / WAVE_LEN) * twoPi - frame.phaseRad)
+    const endY = cy
     pts.push(`${pts.length === 0 ? 'M' : 'L'}${endX.toFixed(2)} ${endY.toFixed(2)}`)
     wave = pts.join(' ')
   }
 
   return (
     <svg ref={ref} class="lw-wavebar" width="100%" height={WAVE_H} aria-hidden="true">
-      {w > WAVE_STROKE && <line class="lw-wave-track" x1={pad} x2={w - pad} y1={cy} y2={cy} />}
+      {trackStart !== null && <>
+        <line class="lw-wave-track" x1={pad + trackStart} x2={w - pad} y1={cy} y2={cy} />
+        <circle class="lw-wave-stop" cx={w - pad} cy={cy} r={WAVE_STROKE / 2} />
+      </>}
       {hasActive && (
         <>
           {!reduced && <path class="lw-wave" d={wave} />}

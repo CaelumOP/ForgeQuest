@@ -2,7 +2,6 @@ package com.forgequest.app.ui.workouts
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,12 +25,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -40,11 +42,10 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -52,7 +53,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.ui.components.PillButton
@@ -62,8 +62,6 @@ import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.LocalReducedMotion
 import com.forgequest.app.ui.theme.tabular
 import kotlinx.coroutines.isActive
-import kotlin.math.PI
-import kotlin.math.sin
 
 /** Full-screen clock for a timed hold: 3-2-1, the countdown to the target, then extra time counting up. */
 @Composable
@@ -214,10 +212,8 @@ internal fun RestBar(
     }
 }
 
-private val WAVE_STROKE = 3.5.dp
+private val WAVE_STROKE = 4.dp
 private val WAVE_LENGTH = 32.dp
-private val WAVE_AMPLITUDE = 3.5.dp
-private const val WAVE_CYCLES_PER_SEC = 0.5f
 private const val TRACK_CONTRAST_ALPHA = 0.16f
 
 /** Normalized remaining progress (0f..1f) for the rest timer wave at [nowMillis]. */
@@ -227,97 +223,51 @@ internal fun restWaveProgress(endsAtMillis: Long, totalSeconds: Int, nowMillis: 
     return (remaining / (totalSeconds * 1000f)).coerceIn(0f, 1f)
 }
 
-/**
- * Calmer 60 FPS wavy rest countdown driven directly from [endsAt] on the frame clock,
- * over a visible flat track. With reduced motion, renders a still flat line whose progress still updates.
- */
+/** Remaining time is sampled every frame; Material owns the wave and separated track. */
 @Composable
 internal fun RestWave(endsAt: Long, totalSeconds: Int, modifier: Modifier = Modifier) {
     val c = Fit.colors
     val reduced = LocalReducedMotion.current
+    val density = LocalDensity.current
+    val stroke = with(density) { Stroke(width = WAVE_STROKE.toPx(), cap = StrokeCap.Round) }
+    var widthDp by remember { mutableFloatStateOf(0f) }
     var progress by remember(endsAt, totalSeconds) {
         mutableFloatStateOf(restWaveProgress(endsAt, totalSeconds, System.currentTimeMillis()))
     }
-    var phaseRad by remember { mutableFloatStateOf(0f) }
-    val wavePath = remember { Path() }
 
-    LaunchedEffect(endsAt, totalSeconds, reduced) {
-        var lastFrameMs = -1L
+    LaunchedEffect(endsAt, totalSeconds) {
         while (isActive) {
-            withFrameMillis { frameMs ->
-                val nextProgress = restWaveProgress(endsAt, totalSeconds, System.currentTimeMillis())
-                progress = nextProgress
-                if (!reduced && nextProgress > 0f && lastFrameMs >= 0L) {
-                    val dtSec = (frameMs - lastFrameMs).coerceIn(0L, 100L) / 1000f
-                    val twoPi = (2.0 * PI).toFloat()
-                    phaseRad = (phaseRad + dtSec * WAVE_CYCLES_PER_SEC * twoPi) % twoPi
-                }
-                lastFrameMs = frameMs
+            withFrameMillis {
+                progress = restWaveProgress(endsAt, totalSeconds, System.currentTimeMillis())
             }
             if (progress <= 0f) break
         }
     }
 
-    Canvas(modifier.fillMaxWidth().height(12.dp)) {
-        val strokePx = WAVE_STROKE.toPx()
-        val pad = strokePx / 2f
-        val usableW = (size.width - strokePx).coerceAtLeast(0f)
-        val centerY = size.height / 2f
-        val trackColor = c.blue.copy(alpha = TRACK_CONTRAST_ALPHA)
-
-        drawLine(
-            color = trackColor,
-            start = Offset(pad, centerY),
-            end = Offset(size.width - pad, centerY),
-            strokeWidth = strokePx,
-            cap = StrokeCap.Round,
-        )
-
-        val activeW = usableW * progress
-        if (activeW <= 0.5f) return@Canvas
-
-        val rtl = layoutDirection == LayoutDirection.Rtl
-        val startX = if (rtl) size.width - pad else pad
-        val dir = if (rtl) -1f else 1f
-
-        if (reduced) {
-            drawLine(
-                color = c.blue,
-                start = Offset(startX, centerY),
-                end = Offset(startX + dir * activeW, centerY),
-                strokeWidth = strokePx,
-                cap = StrokeCap.Round,
-            )
-            return@Canvas
-        }
-
-        val wavelengthPx = WAVE_LENGTH.toPx().coerceAtLeast(1f)
-        val amplitudePx = WAVE_AMPLITUDE.toPx().coerceAtMost(((size.height - strokePx) / 2f).coerceAtLeast(0f))
-        val twoPi = (2.0 * PI).toFloat()
-        val stepPx = 2.5f
-
-        wavePath.reset()
-        var d = 0f
-        var first = true
-        while (d < activeW) {
-            val x = startX + dir * d
-            val y = centerY + amplitudePx * sin((d / wavelengthPx) * twoPi - phaseRad)
-            if (first) {
-                wavePath.moveTo(x, y)
-                first = false
-            } else {
-                wavePath.lineTo(x, y)
-            }
-            d += stepPx
-        }
-        val endX = startX + dir * activeW
-        val endY = centerY + amplitudePx * sin((activeW / wavelengthPx) * twoPi - phaseRad)
-        if (first) wavePath.moveTo(endX, endY) else wavePath.lineTo(endX, endY)
-
-        drawPath(
-            path = wavePath,
+    val usableWidth = (widthDp - WAVE_STROKE.value).coerceAtLeast(0f)
+    // Only flips near the end, so the bar does not recompose on every frame.
+    val showStop by remember(endsAt, totalSeconds) {
+        derivedStateOf { restWaveTrackStart((widthDp - WAVE_STROKE.value).coerceAtLeast(0f), progress) != null }
+    }
+    // Recreate on preference changes so Material's amplitude animation cannot delay flat mode.
+    key(reduced) {
+        LinearWavyProgressIndicator(
+            progress = { progress },
+            modifier = modifier.fillMaxWidth().height(12.dp).onSizeChanged {
+                widthDp = with(density) { it.width.toDp().value }
+            },
             color = c.blue,
-            style = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            trackColor = c.blue.copy(alpha = TRACK_CONTRAST_ALPHA),
+            stroke = stroke,
+            trackStroke = stroke,
+            gapSize = 6.dp,
+            stopSize = if (showStop) 4.dp else 0.dp,
+            amplitude = { fraction ->
+                val activeWidth = usableWidth * fraction
+                if (reduced) 0f else 0.75f * restWaveTaper(activeWidth / 2f, activeWidth)
+            },
+            wavelength = WAVE_LENGTH,
+            waveSpeed = if (reduced) 0.dp else 16.dp,
         )
     }
 }

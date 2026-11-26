@@ -97,7 +97,8 @@ describe('RestBar WaveBar', () => {
     await vi.advanceTimersByTimeAsync(100)
 
     expect(raf).toHaveBeenCalled()
-    expect(findAll(root, (n) => (n.attributes.class ?? '').includes('lw-wave-track'))).toHaveLength(1)
+    expect(findAll(root, (n) => n.attributes.class === 'lw-wave-track')).toHaveLength(0)
+    expect(findAll(root, (n) => n.attributes.class === 'lw-wave-stop')).toHaveLength(0)
     expect(findAll(root, (n) => (n.attributes.class ?? '').includes('lw-wave'))).not.toHaveLength(0)
 
     const scheduledId = raf.mock.results[0]?.value as number
@@ -105,6 +106,23 @@ describe('RestBar WaveBar', () => {
     const firstCb = rafCallbacks.get(scheduledId)
     firstCb?.(16)
     await vi.advanceTimersByTimeAsync(0)
+    expect(raf).toHaveBeenCalledTimes(2)
+    const track = findAll(root, (n) => n.attributes.class === 'lw-wave-track')[0]
+    const flat = findAll(root, (n) => n.attributes.class === 'lw-wave-flat')[0]
+    expect(Number(track.attributes.x1) - Number(flat.attributes.x2) - 4).toBe(6)
+    expect(track.attributes.x2).toBe('318')
+    const stop = findAll(root, (n) => n.attributes.class === 'lw-wave-stop')[0]
+    expect(stop.attributes.cx).toBe('318')
+    expect(stop.attributes.r).toBe('2')
+    const wave = findAll(root, (n) => n.attributes.class === 'lw-wave')[0]
+    expect(wave.attributes.d).toMatch(/^M2\.00 6\.00 /)
+    expect(wave.attributes.d).toMatch(/L160\.00 6\.00$/)
+
+    vi.setSystemTime(70_000)
+    rafCallbacks.get(raf.mock.results[1].value)?.(32)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(findAll(root, (n) => n.attributes.class === 'lw-wave')).toHaveLength(0)
+    expect(findAll(root, (n) => n.attributes.class === 'lw-wave-track')[0].attributes.x1).toBe('2')
     expect(raf).toHaveBeenCalledTimes(2)
 
     // Unmount cleanup (cancelAnimationFrame) is not exercised by this hand-rolled fake DOM;

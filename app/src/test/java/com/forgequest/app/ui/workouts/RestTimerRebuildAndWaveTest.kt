@@ -19,6 +19,33 @@ class RestTimerRebuildAndWaveTest {
     }
 
     @Test
+    fun waveTrackLeavesSixDpBetweenRoundCapsAndHidesWhenFull() {
+        val start = restWaveTrackStart(316f, 0.5f)!!
+        assertEquals(6f, (start - 2f) - (158f + 2f), 0.0001f)
+        assertEquals(0f, restWaveTrackStart(316f, 0f)!!, 0.0001f)
+        assertEquals(0f, restWaveTrackStart(316f, -1f)!!, 0.0001f)
+        assertNull(restWaveTrackStart(316f, 1f))
+        assertNull(restWaveTrackStart(316f, 2f))
+        assertNull(restWaveTrackStart(316f, 0.99f))
+        assertNull(restWaveTrackStart(20f, 0.5f))
+        assertNull(restWaveTrackStart(0f, 0.5f))
+    }
+
+    @Test
+    fun waveTaperIsSmoothAndSymmetricIncludingShortWaves() {
+        assertEquals(0f, restWaveTaper(0f, 160f), 0f)
+        assertEquals(0f, restWaveTaper(160f, 160f), 0f)
+        assertEquals(0.5f, restWaveTaper(16f, 160f), 0.0001f)
+        assertEquals(0.5f, restWaveTaper(144f, 160f), 0.0001f)
+        assertEquals(1f, restWaveTaper(80f, 160f), 0f)
+        assertEquals(0.15625f, restWaveTaper(8f, 16f), 0.0001f)
+        assertEquals(0f, restWaveTaper(0f, 0f), 0f)
+        assertEquals(0f, restWaveTaper(-1f, 160f), 0f)
+        assertEquals(0f, restWaveTaper(161f, 160f), 0f)
+        assertEquals(0f, restWaveTaper(0.01f, 160f) / 0.01f, 0.0001f)
+    }
+
+    @Test
     fun rebuildRestFromSavedRestoresActiveRestAfterProcessDeath() {
         val saved = RestAlert.SavedRest(
             endsAtMillis = 150_000L,

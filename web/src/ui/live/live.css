@@ -170,10 +170,11 @@ html[dir='rtl'] .lw-chev-next { transform: rotate(45deg); }
   background: transparent; color: var(--teal); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 
-/* Rest countdown: calmer 60 FPS wavy bar driven from endsAt via requestAnimationFrame, over a 16% flat track. */
+/* Rest countdown: calmer 60 FPS wavy bar driven from endsAt via requestAnimationFrame, with a separated 16% flat track. */
 .lw-wavebar { display: block; inline-size: 100%; block-size: 12px; overflow: visible; }
 html[dir='rtl'] .lw-wavebar { transform: scaleX(-1); }
-.lw-wave, .lw-wave-flat, .lw-wave-track { fill: none; stroke-width: 3.5px; stroke-linecap: round; stroke-linejoin: round; }
+.lw-wave-stop { fill: var(--blue); }
+.lw-wave, .lw-wave-flat, .lw-wave-track { fill: none; stroke-width: 4px; stroke-linecap: round; stroke-linejoin: round; }
 .lw-wave, .lw-wave-flat { stroke: var(--blue); }
 .lw-wave-track { stroke: color-mix(in srgb, var(--blue) 16%, transparent); }
 .lw-wave-flat { display: none; }
