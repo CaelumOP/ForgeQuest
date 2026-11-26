@@ -5,17 +5,17 @@ import { configuredEquipment, updateSettings, weightUnit } from '../../data/sett
 import { swapPlanItem, trainingDays } from '../../data/workouts'
 import { todayEpochDay } from '../../domain/dates'
 import type { PlanItemEntity, SetEntity, SessionEntity } from '../../domain/entities'
-import { muscleWeekTargets, pickInsights, recoverySplit } from '../../domain/insights'
+import { muscleWeekTargets, pickInsights } from '../../domain/insights'
 import type { ExerciseKind } from '../../domain/muscle'
 import { countsForPR, countsForScore } from '../../domain/set-types'
 import {
   TREND_RANGE_DAYS, TREND_RANGES, analyzeFatigueAndPlateaus, bestSetSeries, consistencyGrid, lifetime, movingAverage, percentChange, proteinDaysPerWeek,
-  thenNow, topExercises, trainingLoad, trendRangeFrom, weeklyCounts, weeklySets, type TrendPoint, type TrendRange,
+  thenNow, topExercises, trendRangeFrom, weeklyCounts, weeklySets, type TrendPoint, type TrendRange,
 } from '../../domain/trends'
 import { nextVariation, recentlyCycledIds, recordCycle } from '../../domain/variation-cycle'
 import { fromKg, toKg, unitLabel, weightNumber, formatWeight, type WeightUnit } from '../../domain/units'
-import { Button, Card, Chip, ChipGroup, EmptyState, LineChart, Ring, toast } from '../kit'
-import { carbWeeks, formatDelta, formatValue, grouped } from './helpers'
+import { Button, Card, Chip, ChipGroup, EmptyState, LineChart, toast } from '../kit'
+import { carbWeeks, formatDelta, formatValue, grouped, trainingLoadDelta } from './helpers'
 import { formatInsight } from './insightText'
 import { strengthToBodyweight } from './metrics'
 import { MeasurementsCard, MoreToolsSection, WeeklyVolumeCard } from './ProgressExtras'
@@ -50,7 +50,7 @@ function derive(s: ProgressSnapshot, range: TrendRange) {
   return {
     today, from, sessionDay, workoutDays, weeklySets: sets12, topIds, series,
     weeklyWorkouts: weeklyCounts(workoutDays, weeksInRange, today),
-    load: trainingLoad(sets12),
+    loadDelta: trainingLoadDelta(sets12),
     grid: consistencyGrid(workoutDays, recordDays, weeksInRange, today),
     weightPoints, weightAvg: movingAverage(weightPoints),
     proteinWeeks: proteinDaysPerWeek(s.nutritionByDay.map((d) => [d.epochDay, d.protein] as const), s.settings.proteinGoal, 12, today),
@@ -89,22 +89,15 @@ function LoadCard({ d }: { d: Derived }) {
   const lastWeek = d.weeklySets[d.weeklySets.length - 2] ?? 0
   const change = percentChange(lastWeek, thisWeek)
   const max = Math.max(1, ...d.weeklySets)
+  const signedDelta = d.loadDelta > 0 ? `+${d.loadDelta}` : d.loadDelta < 0 ? `-${-d.loadDelta}` : '0'
   return (
     <Card>
-      <div class="pg-load">
-        <Ring value={Math.min(1, Math.max(0, d.load / 100))} color="--chart-strength" track="--chart-gain-track" size={84} stroke={8} label={t('progress_load')}>
-          <span class="pg-load-num">{Math.round(d.load)}<small>%</small></span>
-        </Ring>
-        <div class="pg-load-text">
-          <h3 class="pg-h3">{t('progress_load')}</h3>
-          <p class="pg-hint">{t('progress_load_hint')}</p>
-          <div class="pg-load-line">
-            <span class="pg-strong">{plural('progress_sets_this_week', thisWeek)}</span>
-            {change == null && thisWeek > 0 && <Delta text={t('progress_first_week')} positive />}
-            {change != null && change > 0 && <Delta text={t('progress_vs_last_week', `+${change}%`)} positive />}
-            {change != null && change <= 0 && <Delta text={t('progress_vs_last_week', `${change}%`)} positive={false} />}
-          </div>
-        </div>
+      <p class="pg-load-usual">{t('progress_vs_usual', signedDelta)}</p>
+      <div class="pg-load-line">
+        <span class="pg-strong">{plural('progress_sets_this_week', thisWeek)}</span>
+        {change == null && thisWeek > 0 && <Delta text={t('progress_first_week')} positive />}
+        {change != null && change > 0 && <Delta text={t('progress_vs_last_week', `+${change}%`)} positive />}
+        {change != null && change <= 0 && <Delta text={t('progress_vs_last_week', `${change}%`)} positive={false} />}
       </div>
       <div class="pg-bars" aria-hidden="true">
         {d.weeklySets.map((v, i) => (
@@ -203,37 +196,6 @@ function StrengthCard({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: W
   )
 }
 
-function ThenNowCard({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: WeightUnit }) {
-  const ar = getLang() === 'ar'
-  const sUnit = t('unit_s')
-  const rows: { then: string; now: string; label: string; up: boolean }[] = []
-  for (const id of d.topIds.slice(0, 3)) {
-    const ex = s.exercises.get(id)
-    const pair = ex ? thenNow(d.series.get(id) ?? [], d.from) : null
-    if (ex && pair) rows.push({ then: formatValue(pair[0], ex.kind, unit, sUnit, ar), now: formatValue(pair[1], ex.kind, unit, sUnit, ar), label: ex.name, up: pair[1] > pair[0] })
-  }
-  if (d.weeklyWorkouts.length >= 2) {
-    const a = d.weeklyWorkouts[0], b = d.weeklyWorkouts[d.weeklyWorkouts.length - 1]
-    rows.push({ then: t('progress_per_week', a), now: t('progress_per_week', b), label: t('progress_tile_workouts').split(' · ')[0], up: b > a })
-  }
-  const w = thenNow(d.weightAvg, d.from)
-  if (w) rows.push({ then: formatWeight(unit, w[0], ar), now: formatWeight(unit, w[1], ar), label: t('weight_body'), up: false })
-  if (!rows.length) return null
-  return (
-    <Card>
-      <h3 class="pg-h3">{t('progress_then_now')}</h3>
-      <p class="pg-hint">{t('progress_then_now_hint')}</p>
-      {rows.map((r, i) => (
-        <div class="pg-tn" key={i}>
-          <span class="pg-tn-then">{r.then}</span>
-          <span class={`pg-tn-arrow${r.up ? ' up' : ''}`} aria-hidden="true">{ar ? '←' : '→'}</span>
-          <span class="pg-tn-now"><b class={r.up ? 'up' : ''}>{r.now}</b><small>{r.label}</small></span>
-        </div>
-      ))}
-    </Card>
-  )
-}
-
 function Total({ value, label }: { value: string; label: string }) {
   return <div class="pg-total"><b>{value}</b><span>{label}</span></div>
 }
@@ -245,23 +207,18 @@ function Legend({ color, label, alpha }: { color: string; label: string; alpha?:
 function TodayCards({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: WeightUnit }) {
   const ar = getLang() === 'ar'
   const sUnit = t('unit_s')
-  const sep = t('list_separator')
   const today = d.today
   const sessions = s.sessions as SessionEntity[]
   const sets = s.doneSets as SetEntity[]
   const targets = muscleWeekTargets((s.plan ? s.plan.days.flatMap((x) => x.items) : []) as PlanItemEntity[], s.exercises)
   const insights = pickInsights({ sessions, sets, exercises: s.exercises, streak: s.streak, muscleWeekTargets: targets }, s.settings.insightHistory, today, 3)
     .map((ins) => formatInsight(ins, s.exercises, unit))
-  const { fresh, recovering } = recoverySplit(s.recovery)
-  const muscleLabel = (m: string) => t(`muscle_${m.toLowerCase()}`)
   const report = analyzeFatigueAndPlateaus(sessions, sets, s.exercises, today)
   const stalled = report.stalledLifts.slice(0, 3)
   const library = [...s.exercises.values()]
   const planIds = new Set(s.plan ? s.plan.days.flatMap((x) => x.items.map((it) => it.exerciseId)) : [])
   const eq = configuredEquipment(s.settings)
   const cycled = recentlyCycledIds(s.settings.cycleHistory, today)
-  const weekWorkouts = weeklyCounts(d.workoutDays, 1, today)[0] ?? 0
-  const weekSets = d.weeklySets[d.weeklySets.length - 1] ?? 0
 
   const onSwitch = async (fromId: string, toId: string, toName: string) => {
     if (!s.plan) return
@@ -277,13 +234,6 @@ function TodayCards({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: Wei
         <Card>
           <h3 class="pg-h3">{t('progress_insights_title')}</h3>
           {insights.map((line, i) => <p class="pg-hint" key={i}>{line}</p>)}
-        </Card>
-      )}
-      {(fresh.length > 0 || recovering.length > 0) && (
-        <Card>
-          <h3 class="pg-h3">{t('coach_today_recovery_title')}</h3>
-          {fresh.length > 0 && <p class="pg-hint">{t('coach_fresh', fresh.map(muscleLabel).join(sep))}</p>}
-          {recovering.length > 0 && <p class="pg-hint">{t('coach_recovering', recovering.map(muscleLabel).join(sep))}</p>}
         </Card>
       )}
       {stalled.length > 0 && (
@@ -316,11 +266,6 @@ function TodayCards({ s, d, unit }: { s: ProgressSnapshot; d: Derived; unit: Wei
           <p class="pg-hint">{t('coach_deload_hint')}</p>
         </Card>
       )}
-      {(weekWorkouts > 0 || weekSets > 0) && (
-        <Card>
-          <p class="pg-hint">{t('coach_week_line', weekWorkouts, weekSets)}</p>
-        </Card>
-      )}
     </>
   )
 }
@@ -334,7 +279,6 @@ export function ProgressScreen(_: { param?: string }) {
   const head = (
     <div class="pg-head">
       <h2 class="pg-title">{t('progress_title')}</h2>
-      <p class="pg-sub">{t('progress_subtitle')}</p>
     </div>
   )
   if (!snap || !d) return <div class="content">{head}</div>
@@ -389,7 +333,6 @@ export function ProgressScreen(_: { param?: string }) {
             <Legend color="--gold" label={t('progress_legend_record')} />
           </div>
         </Card>
-        <ThenNowCard s={snap} d={d} unit={unit} />
         <Card>
           <h3 class="pg-h3">{t('progress_all_time')}</h3>
           <div class="pg-totals">

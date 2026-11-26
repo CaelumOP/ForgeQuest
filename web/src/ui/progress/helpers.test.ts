@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { carbWeeks, formatDelta, formatValue, grouped, recoveryFill } from './helpers'
+import { carbWeeks, formatDelta, formatValue, grouped, recoveryFill, trainingLoadDelta } from './helpers'
 
 describe('progress helpers', () => {
   it('maps fatigue to the legend colors', () => {
@@ -24,4 +24,11 @@ describe('progress helpers', () => {
     expect(out[0]).toBe(0)
   })
   it('groups thousands', () => expect(grouped(12345)).toBe('12,345'))
+  it('computes signed training load delta against prior active weeks', () => {
+    expect(trainingLoadDelta([])).toBe(0)
+    expect(trainingLoadDelta([0, 0, 12])).toBe(0)
+    expect(trainingLoadDelta([0, 25, 28])).toBe(12)
+    expect(trainingLoadDelta([0, 25, 16])).toBe(-36)
+    expect(trainingLoadDelta([20, 20, 20])).toBe(0)
+  })
 })

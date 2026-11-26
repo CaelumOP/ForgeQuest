@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
-import type { SetRow } from '../../data/db'
+import { putSession, type SetRow } from '../../data/db'
 import { getSession, useWorkoutScore } from '../../data/workouts'
 import { useSettings, weightUnit } from '../../data/settings'
 import { deleteFinishedSet, deleteSession, moveSession, updateFinishedSet, useLibrary, useSession, useSets } from '../../data/workouts'
@@ -69,6 +69,8 @@ export function SessionScreen({ param }: { param?: string }) {
   const [pendingDelete, setPendingDelete] = useState<SetRow | null>(null)
   const [noteFor, setNoteFor] = useState<SetRow | null>(null)
   const [noteText, setNoteText] = useState('')
+  const [editingSessionNote, setEditingSessionNote] = useState(false)
+  const [sessionNoteText, setSessionNoteText] = useState('')
 
   useEffect(() => { void getSession(id).then((s) => { if (!s) setMissing(true) }) }, [id])
 
@@ -109,8 +111,14 @@ export function SessionScreen({ param }: { param?: string }) {
       </div>
       <div class="hs-list">
         <p class="hs-hint">{t('hist_edit_hint')}</p>
-        {session.note && <p class="hs-hint"><i>{session.note}</i></p>}
         {score && <Card><DebriefCard sessionId={id} score={score} /></Card>}
+        <button
+          type="button"
+          class={`hs-notebtn${session.note ? ' has' : ''}`}
+          onClick={() => { setSessionNoteText(session.note); setEditingSessionNote(true) }}
+        >
+          {session.note || t('journal_add_note')}
+        </button>
         {groups.map((group) => {
           const first = group[0]
           const ex = exercises.get(first.exerciseId)
@@ -176,6 +184,19 @@ export function SessionScreen({ param }: { param?: string }) {
           )}
           <TextField label={noteTitle} value={noteText} onInput={(v) => setNoteText(v.slice(0, 120))} placeholder={isPainNote ? t('v42_pain_note_hint') : t('v42_note_hint')} />
           <Button onClick={() => { if (noteFor) void updateFinishedSet({ ...noteFor, note: noteText.trim().slice(0, 120) }); setNoteFor(null) }}>{t('action_save')}</Button>
+        </div>
+      </Sheet>
+
+      <Sheet open={editingSessionNote} onClose={() => setEditingSessionNote(false)} title={t('history_web_note_title')}>
+        <div class="hs-sheet">
+          <TextField
+            label={t('history_web_note_title')}
+            value={sessionNoteText}
+            onInput={(v) => setSessionNoteText(v.slice(0, 300))}
+            multiline
+            placeholder={t('history_web_note_hint')}
+          />
+          <Button onClick={() => { void putSession({ ...session, note: sessionNoteText.trim().slice(0, 300) }); setEditingSessionNote(false) }}>{t('action_save')}</Button>
         </div>
       </Sheet>
 

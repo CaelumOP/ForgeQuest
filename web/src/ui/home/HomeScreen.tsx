@@ -68,13 +68,6 @@ export function HomeScreen(_: { param?: string }) {
         return picked ? formatInsight(picked, s.exercises, weightUnit(s.settings)) : null
       })()
     : null
-  const homeStatus = open ? 'IN_PROGRESS'
-    : s.workoutDoneToday ? 'DONE'
-    : s.excusedToday != null ? 'EXCUSED'
-    : !plan || !todayPlan ? 'NO_PLAN'
-    : todayPlan.day.isRest ? 'REST'
-    : 'TRAIN'
-
   // On a training day with the workout still to do (or one in progress, or no plan yet), today's card leads the page.
   const startOnTop = !!open || ((!plan || (!!todayPlan && !todayPlan.day.isRest)) && !s.workoutDoneToday && !s.excusedToday)
 
@@ -92,7 +85,7 @@ export function HomeScreen(_: { param?: string }) {
 
   return (
     <div class="content home">
-      <Header s={s} showRank={!justLog} status={homeStatus} dayTitle={todayPlan?.day.title ?? ''} />
+      <Header s={s} showRank={!justLog} />
       <Rings s={s} />
       <StatRow s={s} onWeight={() => setWeightOpen(true)} />
       {startOnTop && todayCard}
@@ -126,22 +119,7 @@ function badgeTitle(id: string, fallback: string): string {
   return v === key ? fallback : v
 }
 
-type HomeStatus = 'IN_PROGRESS' | 'TRAIN' | 'DONE' | 'EXCUSED' | 'REST' | 'NO_PLAN'
-
-function statusText(status: HomeStatus, dayTitle: string, s: ProgressSnapshot): string {
-  const day = status === 'IN_PROGRESS' ? t('home_status_in_progress')
-    : status === 'TRAIN' ? t('home_status_train', dayTitle)
-    : status === 'DONE' ? t('home_status_done')
-    : status === 'EXCUSED' ? t('home_status_excused')
-    : status === 'REST' ? t('home_status_rest')
-    : t('home_status_no_plan')
-  if (status === 'IN_PROGRESS') return day
-  const left = gramsLeft(s.settings.proteinGoal, s.today.protein)
-  const food = left <= 0 ? t('home_status_protein_met') : t('home_status_protein_left', left)
-  return `${day}\u00A0· ${food.replace(/ /g, '\u00A0')}`
-}
-
-function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRank: boolean; status: HomeStatus; dayTitle: string }) {
+function Header({ s, showRank }: { s: ProgressSnapshot; showRank: boolean }) {
   const greeting = t(greetingKey(new Date().getHours()))
   const name = s.settings.name.trim()
   const date = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date())
@@ -158,7 +136,6 @@ function Header({ s, showRank, status, dayTitle }: { s: ProgressSnapshot; showRa
       <div class="home-head-text">
         <div class="home-date">{date}</div>
         <h2 class="home-greet">{name ? t('home_greeting_name', greeting, name) : greeting}</h2>
-        <div class="home-status">{statusText(status, dayTitle, s)}</div>
       </div>
       <CoachMark id={'coach_profile' as CoachStep} title={t('home41_profile_hint_t')} body={t('home41_profile_hint_b')} below>
         <a class="home41-avatar-wrap" href="#/profile" aria-label={t('home41_profile_cd')}>
@@ -233,13 +210,11 @@ function Rings({ s }: { s: ProgressSnapshot }) {
 function StatRow({ s, onWeight }: { s: ProgressSnapshot; onWeight: () => void }) {
   const { settings: st, today: n } = s
   // The numbers glide to their new values after a meal is logged.
-  const proteinLeft = Math.round(useTweened(gramsLeft(st.proteinGoal, n.protein)))
   const kcalLeft = Math.round(useTweened(st.kcalGoal - n.kcal))
   const unit = weightUnit(st)
   const ar = getLang() === 'ar'
   return (
     <div class="home-stats">
-      <Stat value={proteinLeft > 0 ? t('home_protein_left_value', proteinLeft) : t('home_done')} label={proteinLeft > 0 ? t('home_protein_left') : t('home_protein_goal')} accent="teal" />
       {st.trackCarbs && <Stat value={t('home_protein_left_value', Math.max(0, gramsLeft(st.carbsGoal, n.carbs)))} label={t('home_carbs_left')} accent="purple" />}
       <Stat value={nf().format(Math.abs(kcalLeft))} label={kcalLeft >= 0 ? t('home_cal_left') : t('home_cal_surplus')} accent={kcalLeft >= 0 ? 'blue' : 'gold'} />
       <button type="button" class="home-statbtn" aria-label={t('home_web_weight_cd')} onClick={onWeight}>

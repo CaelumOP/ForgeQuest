@@ -1,5 +1,6 @@
 import type { ExerciseKind } from '../../domain/muscle'
 import { weekStart } from '../../domain/dates'
+import { trainingLoad } from '../../domain/trends'
 import { formatWeight, weightNumber, type WeightUnit } from '../../domain/units'
 
 /** Fill for a muscle by fatigue (Android recoveryColor): resting grey, teal, gold, coral. CSS variables only. */
@@ -42,3 +43,11 @@ export function carbWeeks(byDay: readonly Day[], today: number): number[] {
 
 /** Number with thousands separators, Latin digits like the rest of the app text. */
 export const grouped = (n: number): string => Math.round(n).toLocaleString('en-US')
+
+/** Difference in percent between this week's working sets and the 12-week usual average (Android Trends.trainingLoadDelta). */
+export function trainingLoadDelta(weeklySetCounts: readonly number[]): number {
+  if (weeklySetCounts.length === 0) return 0
+  const previous = weeklySetCounts.slice(0, -1).filter((n) => n > 0)
+  if (previous.length === 0) return 0
+  return trainingLoad(weeklySetCounts) - 100
+}

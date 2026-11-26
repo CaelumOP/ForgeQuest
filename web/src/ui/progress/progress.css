@@ -9,11 +9,7 @@
 .pg-delta { display: inline-block; padding: 2px 8px; border-radius: var(--r-full); background: var(--card-high); color: var(--text-2); font-size: 12px; font-weight: 500; white-space: nowrap; }
 .pg-delta.pos { background: var(--chart-gain-track); color: var(--chart-gain); }
 
-.pg-load { display: flex; align-items: center; gap: 16px; }
-.pg-load-num { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-.pg-load-num small { font-size: 11px; font-weight: 400; color: var(--text-2); }
-.pg-load-text { flex: 1; min-width: 0; }
-.pg-load-text .pg-hint { margin-block-end: 6px; }
+.pg-load-usual { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
 .pg-load-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .pg-bars { display: flex; align-items: flex-end; gap: 4px; block-size: 44px; margin-block-start: 12px; }
 .pg-bars span { flex: 1; border-radius: var(--r-sm); background: var(--chart-gain-track); }
@@ -38,14 +34,6 @@ html[dir='rtl'] .pg-spark { transform: scaleX(-1); }
 .pg-cell.record { background: var(--gold); }
 .pg-legend { display: flex; flex-wrap: wrap; gap: 16px; }
 .pg-leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2); }
-
-.pg-tn { display: flex; align-items: center; gap: 12px; padding-block: 8px; }
-.pg-tn-then { flex: 1; font-size: 16px; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
-.pg-tn-arrow { font-weight: 700; color: var(--text-2); }
-.pg-tn-arrow.up, .pg-tn-now b.up { color: var(--chart-gain); }
-.pg-tn-now { flex: 1.4; min-width: 0; display: flex; flex-direction: column; }
-.pg-tn-now b { font-size: 16px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-.pg-tn-now small { font-size: 11px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .pg-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-block-start: 10px; }
 .pg-total { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }

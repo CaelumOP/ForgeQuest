@@ -48,7 +48,7 @@ export function WorkoutSummary({ sum, onDone }: { sum: WorkoutSummaryData; onDon
   const type = sum.dayType ?? 'ORDINARY'
   const insights = sum.insights ?? []
   const milestone = type === 'MILESTONE' ? insights.find((i) => MILESTONE_KINDS.has(i.kind)) ?? null : null
-  const extraInsights = insights.filter((i) => i !== milestone).slice(0, 2)
+  const extraInsights = insights.filter((i) => i !== milestone).slice(0, 1)
 
   const lines = sum.debrief
     ? debriefLines(sum.debrief, lang, (id) => names.get(id) ?? id, (kg) => formatWeight(unit, kg, arabic))

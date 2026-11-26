@@ -20,8 +20,6 @@
 .hs-sname { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text); }
 .hs-sname > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hs-ellip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hs-debrief { margin: 4px 0 0; padding-inline: 12px 8px; font-size: 13px; color: var(--text-2); }
-.hs-score { color: var(--text-2); }
 .hs-notebtn { align-self: flex-start; min-height: 44px; padding-inline: 12px; background: none; border: 0; font: inherit; font-size: 13px; color: var(--teal); text-align: start; cursor: pointer; }
 .hs-notebtn.has { color: var(--text-2); font-style: italic; }
 .hs-hint { margin: 0; font-size: 13px; color: var(--text-2); }
@@ -60,7 +58,6 @@ html[dir='rtl'] .hs-deb-scorering svg { transform: scaleX(-1); }
 @keyframes hs-deb-rise { from { opacity: 0; transform: translateY(16px); } }
 @media (prefers-reduced-motion: reduce) { .hs-deb-rise { animation: kit-fade var(--forge-reduced-fade) linear both; } }
 .hs-deb-foot { margin: 6px 0 0; font-size: 12px; color: var(--text-2); }
-.hs-actions { display: flex; align-items: center; flex-wrap: wrap; }
 
 /* Undo bar after a swiped-away workout (same look as the Food screen's). */
 .hs-undo { position: fixed; inset-inline: 16px; inset-block-end: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 4px 16px; padding-inline: 16px 4px; border-radius: var(--r-sm); background: var(--text); color: var(--bg); font-size: 14px; }

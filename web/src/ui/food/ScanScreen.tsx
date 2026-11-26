@@ -317,7 +317,7 @@ export function ScanScreen({ param }: { param?: string }) {
                 <p>{t('ai_key_needed_food')}</p>
                 <div class="scan-actions">
                   {!labelCode && <Button variant="tonal" onClick={() => setPasteOpen(true)}>{t('food_paste_meal')}</Button>}
-                  <Button onClick={() => { location.hash = '#/profile' }}>{t('ai_key_needed_button')}</Button>
+                  <Button onClick={() => { location.hash = '#/profile/coach' }}>{t('ai_key_needed_button')}</Button>
                 </div>
               </div>
             </Card>
@@ -338,7 +338,7 @@ export function ScanScreen({ param }: { param?: string }) {
                 <div class="scan-actions">
                   <Button variant="tonal" onClick={retake}>{t('scan_retake')}</Button>
                   {state.keyProblem
-                    ? <Button onClick={() => { location.hash = '#/profile' }}>{t('scan_open_profile')}</Button>
+                    ? <Button onClick={() => { location.hash = '#/profile/coach' }}>{t('scan_open_profile')}</Button>
                     : state.photo && <Button onClick={() => analyze(state.photo!)}>{t('action_try_again')}</Button>}
                 </div>
               </div>

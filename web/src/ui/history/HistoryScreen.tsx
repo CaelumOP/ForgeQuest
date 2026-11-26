@@ -1,20 +1,18 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t } from '../../i18n'
 import type { SessionRow, SetRow } from '../../data/db'
-import { putSession } from '../../data/db'
 import { useLive } from '../../data/live'
 import { useSettings, weightUnit } from '../../data/settings'
-import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary, useWorkoutScores } from '../../data/workouts'
+import { allDoneSets, deleteSession, getSets, restoreSession, useFinishedSessions, useLibrary } from '../../data/workouts'
 import { dayOfWeek, todayEpochDay } from '../../domain/dates'
 import { countsAsWorkingSet } from '../../domain/set-types'
 import { formatDay } from '../day-format'
 import { fromKg, unitLabel } from '../../domain/units'
 import type { WeightUnit } from '../../domain/units'
-import { Button, Card, EmptyState, Sheet, SwipeRow, TextField } from '../kit'
+import { Button, Card, EmptyState, SwipeRow } from '../kit'
 import { ExpandMoreIcon } from '../icons'
-import { groupWeeks, minutesOf, scoreLine } from './helpers'
+import { groupWeeks, minutesOf } from './helpers'
 import { dayShort } from '../workouts/helpers'
-import { DebriefSheet } from './DebriefSheet'
 import './history.css'
 
 /** "4,210 kg": whole numbers with grouping, number and unit kept in order in right-to-left text. */
@@ -36,10 +34,6 @@ export function HistoryScreen(_: { param?: string }) {
   const unit = weightUnit(settings)
   const lang = getLang()
   const [open, setOpen] = useState<Record<number, boolean>>({})
-  const [noteFor, setNoteFor] = useState<SessionRow | null>(null)
-  const [noteText, setNoteText] = useState('')
-  const scores = useWorkoutScores()
-  const [debriefId, setDebriefId] = useState<number | null>(null)
   const [undo, setUndo] = useState<{ text: string; session: SessionRow; sets: SetRow[] } | null>(null)
   const undoTimer = useRef<number>(0)
   useEffect(() => () => clearTimeout(undoTimer.current), [])
@@ -59,18 +53,12 @@ export function HistoryScreen(_: { param?: string }) {
     if (u) await restoreSession(u.session, u.sets)
   }
 
-  const debriefSession = sessions.find((x) => x.id === debriefId)
   const names = new Map(library.map((e) => [e.id, e.name]))
   const bySession = new Map<number, SetRow[]>()
   for (const s of doneSets) bySession.set(s.sessionId, [...(bySession.get(s.sessionId) ?? []), s])
   // Weeks start on Sunday, like the streak, Home and Trends, so a journal week's count matches the weekly target.
   const weeks = groupWeeks(sessions, 6)
   const thisWeek = weeks.length ? groupWeeks([{ epochDay: todayEpochDay(), startedAt: 0 } as SessionRow], 6)[0].start : 0
-
-  const saveNote = async () => {
-    if (noteFor) await putSession({ ...noteFor, note: noteText.trim().slice(0, 300) })
-    setNoteFor(null)
-  }
 
   const header = (
     <div class="hs-head">
@@ -146,13 +134,6 @@ export function HistoryScreen(_: { param?: string }) {
                           </div>
                         </Card>
                         </SwipeRow>
-                        {scores.get(s.id!) && <p class="hs-debrief hs-score">{scoreLine(scores.get(s.id!)!)}</p>}
-                        <div class="hs-actions">
-                          <button type="button" class={`hs-notebtn${s.note ? ' has' : ''}`} onClick={() => { setNoteFor(s); setNoteText(s.note) }}>
-                            {s.note || t('journal_add_note')}
-                          </button>
-                          {ss.length > 0 && <button type="button" class="hs-notebtn" onClick={() => setDebriefId(s.id!)}>{t('debrief_open')}</button>}
-                        </div>
                       </div>
                     )
                   })}
@@ -163,13 +144,6 @@ export function HistoryScreen(_: { param?: string }) {
         })}
       </div>
       {undo && <div class="hs-undo" role="status"><span>{undo.text}</span><button type="button" onClick={() => void doUndo()}>{t('action_undo')}</button></div>}
-      {debriefSession && <DebriefSheet key={debriefSession.id} session={debriefSession} score={scores.get(debriefSession.id!)} onClose={() => setDebriefId(null)} />}
-      <Sheet open={noteFor != null} onClose={() => setNoteFor(null)} title={t('history_web_note_title')}>
-        <div class="hs-sheet">
-          <TextField label={t('history_web_note_title')} value={noteText} onInput={(v) => setNoteText(v.slice(0, 300))} multiline placeholder={t('history_web_note_hint')} />
-          <Button onClick={() => void saveNote()}>{t('action_save')}</Button>
-        </div>
-      </Sheet>
     </div>
   )
 }

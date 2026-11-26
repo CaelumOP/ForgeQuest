@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'preact/hooks'
 import { t, useLang } from '../../i18n'
-import { useFriends } from '../../data/friends'
 import { useLive } from '../../data/live'
 import { CloseIcon, ForwardChevron } from '../icons'
 import { Card } from '../kit'
 import { CheckCircleIcon } from './glyphs'
 import {
-  buildGettingStartedItems, markFriendDone, markGettingStartedDismissed,
-  queryGettingStartedDone, shouldShowGettingStarted, syncFriendDone, hasFriendOrOutgoing,
+  buildGettingStartedItems, markGettingStartedDismissed,
+  queryGettingStartedDone, shouldShowGettingStarted,
   type GettingStartedCounts,
 } from './getting-started'
 
@@ -17,14 +16,8 @@ export function GettingStarted() {
   useLang()
   const [hidden, setHidden] = useState(() => !shouldShowGettingStarted())
   const counts = useLive(queryGettingStartedDone, [], null as GettingStartedCounts | null)
-  const friends = useFriends()
 
-  useEffect(() => {
-    if (hasFriendOrOutgoing(friends.view)) markFriendDone()
-  }, [friends.view])
-
-  const friendDone = syncFriendDone(friends.view)
-  const items = counts ? buildGettingStartedItems(counts, friendDone) : null
+  const items = counts ? buildGettingStartedItems(counts) : null
   const doneCount = items ? items.filter((i) => i.done).length : 0
   const allDone = items != null && doneCount === items.length
 

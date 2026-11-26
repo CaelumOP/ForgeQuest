@@ -265,10 +265,10 @@ export function ProfileScreen({ param }: { param?: string }) {
   const openGroup = (id: string) => { if (!openIds.includes(id)) { const next = [...openIds, id]; setOpenIds(next); saveOpen(next) } }
   const isOpen = (id: string) => openIds.includes(id)
   useEffect(() => {
-    if (param !== 'backup') return
-    openGroup('backup')
+    if (param !== 'backup' && param !== 'coach') return
+    openGroup(param)
     const frame = requestAnimationFrame(() => {
-      document.getElementById('pf-group-backup')?.scrollIntoView({ block: 'start' })
+      document.getElementById(`pf-group-${param}`)?.scrollIntoView({ block: 'start' })
     })
     return () => cancelAnimationFrame(frame)
   }, [param])
@@ -301,20 +301,6 @@ export function ProfileScreen({ param }: { param?: string }) {
 
   return (
     <div class="content pf">
-      {s.apiKey === '' && (
-        <Card>
-          <CardTitle icon="coach" accent="teal" title={t('profile_setup_title')} hint={t('profile_setup_body')} />
-          <div class="pf-actions"><Button onClick={() => { openGroup('coach'); document.getElementById('pf-coach')?.scrollIntoView({ block: 'center' }) }}>{t('profile_add_key')}</Button></div>
-        </Card>
-      )}
-
-      <Card onClick={() => { document.getElementById('pf-settings')?.scrollIntoView({ block: 'start' }) }}>
-        <div class="pf-row">
-          <span class="pf-ic pf-teal"><Glyph name="app" /></span>
-          <span class="pf-grow"><span class="pf-h3 pf-block">{t('home41_settings_cd')}</span></span>
-        </div>
-      </Card>
-
       {snap && <RankCard snap={snap} name={s.name} justLog={s.justLog} />}
 
       {/* "Just log" mode: no badges entry (they keep unlocking and come back when it's turned off). */}
