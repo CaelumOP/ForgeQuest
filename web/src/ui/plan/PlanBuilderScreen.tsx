@@ -20,7 +20,7 @@ import {
   type BuiltPlan, type Cardio, type Experience, type PlanAnswers, type RepPref, type RestPref, type TrainGoal, type WorkoutStyle,
 } from '../../domain/plan-builder'
 import { AddIcon, CheckIcon, CloseIcon, ExpandMoreIcon } from '../icons'
-import { Button, Card, Chip, IconButton, ListRow, Segmented, Stepper, haptics, toast } from '../kit'
+import { Button, Card, Chip, IconButton, ListRow, Segmented, SlidingSegmentedPills, Stepper, haptics, toast } from '../kit'
 import { GearCustomizeRow, GearSheet, TrainingPlaceSelector } from '../profile/GearSheet'
 import { ExercisePicker } from '../workouts/ExercisePicker'
 import { SwapIcon } from '../workouts/glyphs'
@@ -301,7 +301,7 @@ function QuickCard({
         <TrainGoalSelector selected={a.goal} onSelect={(g) => change((it) => ({ ...it, goal: g }))} />
 
         <h2 class="pb-label">{t('pb_days')}</h2>
-        <Segmented
+        <SlidingSegmentedPills
           label={t('pb_days')}
           value={String(a.days.size)}
           options={DAY_COUNT_OPTIONS.map((d) => ({ value: String(d), label: nf.format(d) }))}
@@ -309,7 +309,7 @@ function QuickCard({
         />
 
         <h2 class="pb-label">{t('pb_minutes')}</h2>
-        <Segmented
+        <SlidingSegmentedPills
           label={t('pb_minutes')}
           value={String(a.minutes)}
           options={MINUTE_OPTIONS.map((m) => ({ value: String(m), label: nf.format(m) }))}

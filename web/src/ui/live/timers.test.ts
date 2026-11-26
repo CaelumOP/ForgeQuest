@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { adjustRest, holdDisplay, holdPhase, holdSaved, loadTimers, restDone, restLeft, saveTimers, startHold, startRest, type TimerStore } from './timers'
+import { adjustRest, holdDisplay, holdPhase, holdSaved, loadTimers, restDone, restLeft, restWaveProgress, saveTimers, startHold, startRest, type TimerStore } from './timers'
 
 const memory = (): TimerStore & { data: Map<string, string> } => {
   const data = new Map<string, string>()
@@ -25,6 +25,14 @@ describe('rest timer', () => {
     const r = adjustRest(startRest(30, 0, null), -30)
     expect(r.totalSeconds).toBe(15)
     expect(adjustRest(startRest(60, 0, null), 15).endsAt).toBe(75_000)
+  })
+  it('restWaveProgress computes continuous fraction from endsAt', () => {
+    expect(restWaveProgress(90_000, 90, 0)).toBe(1)
+    expect(restWaveProgress(90_000, 90, 45_000)).toBe(0.5)
+    expect(restWaveProgress(90_000, 90, 67_050)).toBeCloseTo(0.255, 4)
+    expect(restWaveProgress(90_000, 90, 95_000)).toBe(0)
+    expect(restWaveProgress(90_000, 0, 10_000)).toBe(0)
+    expect(restWaveProgress(120_000, 60, 0)).toBe(1)
   })
 })
 

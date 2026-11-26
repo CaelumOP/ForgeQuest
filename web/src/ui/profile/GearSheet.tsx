@@ -14,7 +14,7 @@ import {
   type EquipmentGroup,
   type TrainingPlace,
 } from '../../domain/exercise-swap-engine'
-import { Button, Card, Segmented, Sheet, haptics } from '../kit'
+import { Button, Card, Sheet, SlidingSegmentedPills, haptics } from '../kit'
 import { CheckIcon, ForwardChevron } from '../icons'
 import { gearCustomizeSummary } from './helpers'
 import './gear.css'
@@ -53,7 +53,7 @@ export function TrainingPlaceSelector({
     label: ar ? TRAINING_PLACE_INFO[p].labelAr : TRAINING_PLACE_INFO[p].labelEn,
   }))
   return (
-    <Segmented
+    <SlidingSegmentedPills
       label={t('pb_equipment')}
       value={matched}
       options={options}

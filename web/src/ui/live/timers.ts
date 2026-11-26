@@ -19,6 +19,13 @@ export function restLeft(endsAt: number, now: number): number {
   return Math.max(0, Math.ceil((endsAt - now) / 1000))
 }
 
+/** Normalized remaining progress (0..1) for the rest timer wave at `now`. */
+export function restWaveProgress(endsAt: number, totalSeconds: number, now: number): number {
+  if (totalSeconds <= 0) return 0
+  const remaining = Math.max(0, endsAt - now)
+  return Math.min(1, Math.max(0, remaining / (totalSeconds * 1000)))
+}
+
 export const restDone = (r: RestTimer, now: number): boolean => now >= r.endsAt
 
 export function startRest(

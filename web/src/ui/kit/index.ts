@@ -1,6 +1,7 @@
 import './kit.css'
 
 export * from './basics'
+export * from './SlidingSegmentedPills'
 export * from './Ring'
 export * from './Charts'
 export * from './Overlays'

@@ -232,6 +232,32 @@ button.kit-stepper-val { overflow: hidden; }
 .kit-seg-label { font-size: 14px; font-weight: 600; line-height: 18px; text-wrap: balance; overflow-wrap: anywhere; }
 .kit-seg-sub { font-size: 12px; line-height: 16px; opacity: 0.8; }
 
+/* Sliding segmented pills (Android SlidingSegmentedPills): single indicator slides via translateX, mirrored in RTL, >= 48 px tall. */
+.kit-slide-seg { --seg-dir: 1; padding: 4px; border-radius: var(--r-full); background: var(--card-high); }
+html[dir='rtl'] .kit-slide-seg, [dir='rtl'] .kit-slide-seg { --seg-dir: -1; }
+.kit-slide-track { position: relative; display: grid; align-items: stretch; }
+.kit-slide-pill {
+  position: absolute; inset-block: 0; inset-inline-start: 0;
+  border-radius: var(--r-full); background: var(--acc); pointer-events: none;
+  transition: transform 220ms var(--md-sys-motion-easing-standard);
+}
+.kit-slide-pill-snap { transition: none; }
+.kit-slide-opt {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  min-inline-size: 0; min-block-size: 48px;
+  padding-block: 8px; padding-inline: 6px;
+  border: 0; border-radius: var(--r-full); background: transparent;
+  color: var(--text); font: inherit; text-align: center; cursor: pointer;
+  transition: color 220ms var(--md-sys-motion-easing-standard);
+}
+.kit-slide-opt:disabled { opacity: 0.4; cursor: default; }
+.kit-slide-opt-on { color: var(--on-acc); }
+.kit-slide-label { font-size: 14px; font-weight: 600; line-height: 18px; text-wrap: balance; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .kit-slide-pill, .kit-slide-opt { transition: none; }
+}
+
 /* Swipe to delete (SwipeRow.tsx): the row slides toward its start edge over a red layer. */
 .kit-swipe { position: relative; overflow: hidden; }
 .kit-swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-inline: 20px; background: var(--coral); color: #fff; pointer-events: none; }

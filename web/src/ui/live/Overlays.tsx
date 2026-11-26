@@ -1,8 +1,8 @@
-import { useEffect, useId, useRef, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { t } from '../../i18n'
-import { Button } from '../kit'
+import { Button, reducedMotion } from '../kit'
 import { CloseIcon } from '../icons'
-import { clock, holdElapsed, holdPhase, restLeft, type HoldTimer, type RestTimer } from './timers'
+import { clock, holdElapsed, holdPhase, restLeft, restWaveProgress, type HoldTimer, type RestTimer } from './timers'
 
 const REST_PRESETS = [60, 90, 120, 180] as const
 
@@ -70,22 +70,45 @@ export function RestBar({
           )}
         </div>
       )}
-      <WaveBar progress={rest.totalSeconds ? Math.min(1, left / rest.totalSeconds) : 0} />
+      <WaveBar endsAt={rest.endsAt} totalSeconds={rest.totalSeconds} />
     </div>
   )
 }
 
-// Android LinearWavyProgressIndicator tokens: 4 px strokes, 3 px wave amplitude, 40 px wavelength, 4 px gap, 10 px tall.
-const WAVE_LEN = 40
-const WAVE_AMP = 3
-const WAVE_GAP = 4
-const WAVE_H = 10
+// Calmer wave targets matching Android RestWave: 3.5 px stroke, 32 px wavelength, 3.5 px amplitude, 0.5 cycles/s, 16% track.
+const WAVE_STROKE = 3.5
+const WAVE_LEN = 32
+const WAVE_AMP = 3.5
+const WAVE_CYCLES_PER_SEC = 0.5
+const WAVE_H = 12
+const WAVE_STEP = 2.5
 
-/** The rest countdown as an Expressive wavy bar. Under prefers-reduced-motion the wave is swapped for a flat, still line (CSS). */
-function WaveBar({ progress }: { progress: number }) {
+function useReducedMotionPref(): boolean {
+  const [reduced, setReduced] = useState(reducedMotion)
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return
+    const mq = matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
+    const onChange = () => setReduced(mq.matches)
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [])
+  return reduced
+}
+
+/**
+ * Calmer 60 FPS wavy rest countdown driven directly from `endsAt` via requestAnimationFrame,
+ * over a visible flat track. Under prefers-reduced-motion renders a flat line whose progress still updates.
+ */
+function WaveBar({ endsAt, totalSeconds }: { endsAt: number; totalSeconds: number }) {
   const ref = useRef<SVGSVGElement>(null)
-  const clip = useId()
   const [w, setW] = useState(0)
+  const reduced = useReducedMotionPref()
+  const [frame, setFrame] = useState(() => ({
+    progress: restWaveProgress(endsAt, totalSeconds, Date.now()),
+    phaseRad: 0,
+  }))
+
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -95,19 +118,68 @@ function WaveBar({ progress }: { progress: number }) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const active = w * Math.max(0, Math.min(1, progress))
+
+  useEffect(() => {
+    const initialProgress = restWaveProgress(endsAt, totalSeconds, Date.now())
+    setFrame((prev) => ({ ...prev, progress: initialProgress }))
+    if (initialProgress <= 0 || typeof requestAnimationFrame !== 'function') return
+
+    let raf = 0
+    let lastFrameMs = -1
+    let cancelled = false
+    const twoPi = Math.PI * 2
+
+    const step = (frameMs: number) => {
+      if (cancelled) return
+      const nextProgress = restWaveProgress(endsAt, totalSeconds, Date.now())
+      const dtSec = !reduced && nextProgress > 0 && lastFrameMs >= 0
+        ? Math.min(0.1, Math.max(0, (frameMs - lastFrameMs) / 1000))
+        : 0
+      lastFrameMs = frameMs
+      setFrame((prev) => ({
+        progress: nextProgress,
+        phaseRad: dtSec > 0 ? (prev.phaseRad + dtSec * WAVE_CYCLES_PER_SEC * twoPi) % twoPi : prev.phaseRad,
+      }))
+      if (nextProgress > 0) raf = requestAnimationFrame(step)
+    }
+
+    raf = requestAnimationFrame(step)
+    return () => {
+      cancelled = true
+      if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
+    }
+  }, [endsAt, totalSeconds, reduced])
+
+  const pad = WAVE_STROKE / 2
+  const usableW = Math.max(0, w - WAVE_STROKE)
   const cy = WAVE_H / 2
-  let wave = `M ${-WAVE_LEN} ${cy} q ${WAVE_LEN / 4} ${-2 * WAVE_AMP} ${WAVE_LEN / 2} 0`
-  for (let x = -WAVE_LEN / 2; x < active + WAVE_LEN; x += WAVE_LEN / 2) wave += ` t ${WAVE_LEN / 2} 0`
-  const trackFrom = active > 0 ? active + WAVE_GAP + 2 : 2
+  const activeW = usableW * Math.max(0, Math.min(1, frame.progress))
+  const hasActive = w > WAVE_STROKE && activeW > 0.5
+
+  let wave = ''
+  if (hasActive && !reduced) {
+    const maxAmp = Math.max(0, (WAVE_H - WAVE_STROKE) / 2)
+    const amp = Math.min(WAVE_AMP, maxAmp)
+    const twoPi = Math.PI * 2
+    const pts: string[] = []
+    for (let d = 0; d < activeW; d += WAVE_STEP) {
+      const x = pad + d
+      const y = cy + amp * Math.sin((d / WAVE_LEN) * twoPi - frame.phaseRad)
+      pts.push(`${pts.length === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`)
+    }
+    const endX = pad + activeW
+    const endY = cy + amp * Math.sin((activeW / WAVE_LEN) * twoPi - frame.phaseRad)
+    pts.push(`${pts.length === 0 ? 'M' : 'L'}${endX.toFixed(2)} ${endY.toFixed(2)}`)
+    wave = pts.join(' ')
+  }
+
   return (
     <svg ref={ref} class="lw-wavebar" width="100%" height={WAVE_H} aria-hidden="true">
-      {w > 0 && trackFrom < w - 2 && <line class="lw-wave-track" x1={trackFrom} x2={w - 2} y1={cy} y2={cy} />}
-      {w > 0 && active > 2 && (
+      {w > WAVE_STROKE && <line class="lw-wave-track" x1={pad} x2={w - pad} y1={cy} y2={cy} />}
+      {hasActive && (
         <>
-          <clipPath id={clip}><rect x="0" y="0" width={active} height={WAVE_H} /></clipPath>
-          <g clip-path={`url(#${clip})`}><path class="lw-wave" d={wave} /></g>
-          <line class="lw-wave-flat" x1="2" x2={Math.max(2, active - 2)} y1={cy} y2={cy} />
+          {!reduced && <path class="lw-wave" d={wave} />}
+          <line class={`lw-wave-flat${reduced ? ' lw-wave-flat-on' : ''}`} x1={pad} x2={pad + activeW} y1={cy} y2={cy} />
         </>
       )}
     </svg>
