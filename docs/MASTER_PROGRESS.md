@@ -17,6 +17,14 @@ Spec: `docs/MASTER_SPEC.md` (written after the owner answers the Question Gate).
 - [x] Stage 4 verification, smoke, Gate 3, report (docs/MASTER_UPGRADE_REPORT.md): Android 665/665 + debug build, web 810/810 + tsc + build, smoke EN/AR clean, Gate 3 APPROVED (Argon)
 
 ## Next step
+Owner-test fixes 2026-11-26 (three bugs from testing 9188616), committed and installed on ForgeQuest_Pixel at 18:47 (APK = app/build/outputs/apk/debug/app-debug.apk). Not pushed or merged.
+- 5d4ff9f Fix 3, wavy rest bar: Android uses the official Material 3 LinearWavyProgressIndicator, progress sampled every frame from endsAt; matching web SVG wave. Android 670, web 821.
+- 635ad2a Fix 1, plan builder: No gear means no gear (strict equipment, push/pull capability ceiling, incline push-ups stay no-gear), plus five new no-gear back moves (doorframe row, table inverted row, prone Y-T-W raise, reverse snow angel, towel floor pull; EN/AR) so no-gear plans stay full. Matrix clean 0.9255, every preset >= 0.92, no short plans, grader floors unchanged. Android 671, web 822.
+- 480f906 Fix 2, starting point: 25+ reps on a bodyweight move offers a harder version with a Test button (reuses harderVersion); "weighted" moves need a load, so no-gear squat steps up to jump squat. Android 674/674 (the commit message says 676 by mistake), web 825/825, tsc + build OK, goldens matched on both platforms.
+Owner to check on the phone: rest bar smoothness, a No gear plan with push-up max 1, and 51 reps on Bodyweight squat in "Find your starting point" (should offer Jump squat).
+Follow-ups: tools/catalog/build_catalog.py has drifted from the hand-edited ExerciseCatalog.kt / exercise-catalog.ts (reconcile before its next full run); push_up with no gear steps up to drop_push (an Advanced plyo push-up), which may be a big jump; the five new moves have no images yet (placeholder shown).
+
+Earlier state:
 Upgrade committed through 4b8b0a8 (Android 665/665 + debug build, web 810/810 + tsc + build, Gate 3 APPROVED). That build is installed on the ForgeQuest_Pixel emulator (06:12); APK = app/build/outputs/apk/debug/app-debug.apk.
 
 FIXED 2026-11-26 16:30 by Codex Astra (see the commit after 6c1a94d): starting-point list = one staple per Push/Pull/Squat/Hinge/Core fitting the active gear (No gear: push_up, squat, hip_bridge, plank; full gym: bench_press, pull_up or lat_pulldown, back_squat, romanian_deadlift, plank), Build my plan passes its unsaved gear, picker filtered by gear with "Show all moves" (EN/AR exported, no overlay). Android 668/668 + assembleDebug, web 819/819 + tsc + build. Installed on ForgeQuest_Pixel; ready for owner test and merge to main.
