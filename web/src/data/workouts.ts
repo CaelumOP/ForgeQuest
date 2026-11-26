@@ -26,7 +26,7 @@ import { countsForPR, countsForScore, countsForProgression } from '../domain/set
 import { coldStart, type BaselineStatus } from '../domain/baseline';
 import { holdTarget, repsTarget, weightedTargetInUnit } from '../domain/baseline-targets';
 import type { WeightUnit } from '../domain/units';
-import { latestBaselineTest } from './baseline-tests';
+import { latestBaselineTest, migratePlanBuilderBaselines } from './baseline-tests';
 import { normalizeDaySupersets, safeImportName, setPairWithNext as applyPairWithNext, type SharedPlan } from '../domain/plan-share';
 import { generateWarmupRamp, isHeavyBarbellCompound } from '../domain/warmup-ramp';
 import { isBarbellExercise } from '../domain/plate-math';
@@ -606,6 +606,7 @@ export async function baselineStatusFor(
 
 /** Starts a workout from a plan day (or an empty quick workout) with sets prefilled from history. Returns the open one if there is one. */
 export async function startSession(day: PlanDayWithItems | null, lighter = false): Promise<number> {
+  await migratePlanBuilderBaselines();
   const open = await openSessionNow();
   if (open) return open.id!;
   const now = Date.now();

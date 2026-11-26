@@ -11,7 +11,7 @@ import { fromKg, loadStep, toKg, unitLabel, weightNumber, type WeightUnit } from
 import { Button, Chip, Sheet, TextField, haptics } from '../kit'
 import { NumberStepper } from '../kit/NumberStepper'
 import { CheckIcon } from '../icons'
-import { clampField } from './groups'
+import { clampField, formatTargetLabel } from './groups'
 import { PlayIcon } from './glyphs'
 
 const EFFORT_KEY: Record<SetEffort, string> = { EASY: 'effort_easy', OK: '', HARD: 'effort_hard', FAILURE: 'effort41_failure', PAIN: 'effort_pain' }
@@ -188,7 +188,7 @@ export function SetRowView(p: SetRowProps) {
           )}
           {p.previous && <span class="lw-small">{t('live_last_time', previousText(p.previous, kind, unit))}</span>}
           <span class="lw-small">
-            {set.targetLabel && p.sublabel != null && <span>{set.targetLabel} </span>}
+            {set.targetLabel && p.sublabel != null && <span>{formatTargetLabel(set.targetLabel)} </span>}
             {set.done && (set.isPr || p.pr) && <span class="lw-pr">{t('live_pr')}</span>}
             {set.effort !== '' && effort !== 'OK' && (set.done && p.onReopenEffort
               ? <button type="button" class={`lw-effort lw-effort-btn lw-effort-${accentOf(effort)}`} aria-label={t('cd_edit_effort')}

@@ -3,10 +3,9 @@ import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity } from './entities'
 import {
   ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, profileFits, profileFor,
-  type Equipment, type MovementPattern,
+  type Equipment,
 } from './exercise-swap-engine'
-import { NEXT_IN_TIER, tierOf, TIERS, type Tier } from './exercise-tiers'
-import { STAPLE_IDS } from './plan-builder'
+import { prevInLineId, tierOf, TIERS } from './exercise-tiers'
 import { fromKg, loadStep, toKg, type WeightUnit } from './units'
 
 export type WeightedTarget =
@@ -61,76 +60,56 @@ export function weightedTargetInUnit(
   return { kind: 'TARGET', kg: toKg(unit, res.kg) }
 }
 
-const PREV_IN_TIER: Record<string, string> = (() => {
-  const out: Record<string, string> = {}
-  for (const [easier, harder] of Object.entries(NEXT_IN_TIER)) {
-    if (!(harder in out)) out[harder] = easier
-  }
-  return out
-})()
-
-const tierIndex = (t: Tier | null): number => (t ? TIERS.indexOf(t) : TIERS.length)
-
 /**
- * Finds an easier variation for a bodyweight REPS move: first one tier easier in the same
- * progression line (or explicit in-tier predecessor), else the easiest same-movement-pattern
- * exercise allowed by `equipment`, else null.
+ * Walks easier along the same progression line in `exercise-tiers` until one fits `equipment`,
+ * else the easiest same-movement-pattern exercise that `equipment` allows (ties by id), else null.
  */
 export function easierVariation(
   exercise: ExerciseEntity,
   catalog: readonly ExerciseEntity[],
-  equipment: ReadonlySet<Equipment>,
+  equipment: ReadonlySet<Equipment> = new Set(),
 ): ExerciseEntity | null {
-  if (exercise.kind !== 'REPS') return null
+  if (STRETCH_IDS.has(exercise.id)) return null
   const exp = expandLegacyEquipment(equipment)
-  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : ALL_ACTIVE_EQUIPMENT)
+  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : [...ALL_ACTIVE_EQUIPMENT, 'BODYWEIGHT'])
+  const byId = new Map<string, ExerciseEntity>(catalog.map((e) => [e.id, e]))
 
-  const prevId = PREV_IN_TIER[exercise.id]
-  const named = prevId ? catalog.find((e) => e.id === prevId) : undefined
-  if (named && profileFits(profileFor(named), allowed)) return named
-
-  const tier = tierOf(exercise)
-  const pattern = profileFor(exercise).pattern
-  const fits = catalog.filter(
-    (e) =>
-      e.id !== exercise.id &&
-      e.kind === 'REPS' &&
-      !STRETCH_IDS.has(e.id) &&
-      profileFits(profileFor(e), allowed),
-  )
-
-  const pick = (p: MovementPattern, targetTier: Tier | null): ExerciseEntity | null => {
-    let best: ExerciseEntity | null = null
-    const rank = (c: ExerciseEntity): [number, number, number, number, string] => [
-      targetTier == null ? tierIndex(tierOf(c)) : 0,
-      -c.primary.filter((m) => exercise.primary.includes(m)).length,
-      STAPLE_IDS.has(c.id) ? 0 : 1,
-      c.name.length,
-      c.id,
-    ]
-    for (const c of fits) {
-      if (profileFor(c).pattern !== p) continue
-      if (targetTier != null && tierOf(c) !== targetTier) continue
-      if (!best) {
-        best = c
-        continue
-      }
-      const a = rank(c)
-      const b = rank(best)
-      const cmp = a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || (a[4] < b[4] ? -1 : a[4] > b[4] ? 1 : 0)
-      if (cmp < 0) best = c
+  let curId: string | undefined = exercise.id
+  const visited = new Set<string>()
+  while (curId != null && !visited.has(curId)) {
+    visited.add(curId)
+    const prevId = prevInLineId(curId)
+    if (!prevId) break
+    const candidate = byId.get(prevId)
+    if (
+      candidate &&
+      !STRETCH_IDS.has(candidate.id) &&
+      candidate.kind === exercise.kind &&
+      profileFits(profileFor(candidate), allowed)
+    ) {
+      return candidate
     }
-    return best
+    curId = prevId
   }
 
-  if (tier === 'ADVANCED') {
-    return pick(pattern, 'INTERMEDIATE') ?? pick(pattern, 'FOUNDATION')
+  const srcTier = tierOf(exercise)
+  if (srcTier === 'FOUNDATION') return null
+  const srcOrd = srcTier ? TIERS.indexOf(srcTier) : null
+  const pattern = profileFor(exercise).pattern
+  let best: ExerciseEntity | null = null
+  let bestOrd = Infinity
+  for (const c of catalog) {
+    if (c.id === exercise.id || STRETCH_IDS.has(c.id) || c.kind !== exercise.kind) continue
+    const profile = profileFor(c)
+    if (profile.pattern !== pattern || !profileFits(profile, allowed)) continue
+    const candTier = tierOf(c)
+    if (!candTier) continue
+    const candOrd = TIERS.indexOf(candTier)
+    if (srcOrd != null && candOrd >= srcOrd) continue
+    if (!best || candOrd < bestOrd || (candOrd === bestOrd && c.id < best.id)) {
+      best = c
+      bestOrd = candOrd
+    }
   }
-  if (tier === 'INTERMEDIATE') {
-    return pick(pattern, 'FOUNDATION')
-  }
-  if (tier === null) {
-    return pick(pattern, null)
-  }
-  return null
+  return best
 }

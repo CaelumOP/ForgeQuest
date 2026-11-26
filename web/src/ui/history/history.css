@@ -20,7 +20,7 @@
 .hs-sname { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text); }
 .hs-sname > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hs-ellip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hs-notebtn { align-self: flex-start; min-height: 44px; padding-inline: 12px; background: none; border: 0; font: inherit; font-size: 13px; color: var(--teal); text-align: start; cursor: pointer; }
+.hs-notebtn { align-self: flex-start; min-height: 48px; padding-inline: 12px; background: none; border: 0; font: inherit; font-size: 13px; color: var(--teal); text-align: start; cursor: pointer; }
 .hs-notebtn.has { color: var(--text-2); font-style: italic; }
 .hs-hint { margin: 0; font-size: 13px; color: var(--text-2); }
 .hs-ex { display: block; text-decoration: none; color: inherit; border-radius: var(--r-sm); padding-block: 2px; }

@@ -11,8 +11,10 @@ import {
   PlanBuilder, WORKOUT_STYLES, defaultPlanAnswers, encodePlanAnswers, planAnswersToInput, spreadDays,
 } from '../../domain/plan-builder'
 import {
-  activeEquipmentPreset, equipmentSetting, initialAnswers, localizeBuiltPlan,
-  presetShortLabel, rowSummaries, scheme, swapBuiltPlanItem, stepperCountFromValue, workoutStyleKey,
+  PLAN_BUILDER_DRAFT_KEY, activeEquipmentPreset, consumePlanBuilderDraft, equipmentSetting,
+  initialAnswers, localizeBuiltPlan, mergeBaselineMaxes, presetShortLabel, rowSummaries,
+  savePlanBuilderDraft, scheme, swapBuiltPlanItem, stepperCountFromValue, workoutStyleKey,
+  type DraftStore,
 } from './helpers'
 
 describe('PlanBuilderStepperTest (Android parity)', () => {
@@ -165,5 +167,62 @@ describe('plan builder helpers', () => {
       const built = PlanBuilder.build(planAnswersToInput({ ...defaultPlanAnswers(), style }), EXERCISE_CATALOG)
       expect(audit(fromDraft(built.draft), byId)).toEqual([])
     }
+  })
+
+  it('round-trips plan builder draft via sessionStorage, removes key on consume, and merges latest baseline maxes', () => {
+    const backing = new Map<string, string>()
+    const store: DraftStore = {
+      getItem: (k) => backing.get(k) ?? null,
+      setItem: (k, v) => { backing.set(k, v) },
+      removeItem: (k) => { backing.delete(k) },
+    }
+
+    const draft = {
+      ...defaultPlanAnswers(),
+      goal: 'STRENGTH' as const,
+      days: new Set([1, 3, 5, 6]),
+      minutes: 60,
+      equipment: presetEquipment('FULL_GYM'),
+      experience: 'SEASONED' as const,
+      injuries: new Set(['WRIST'] as const),
+      avoidIds: new Set(['burpee']),
+      pushUpMax: 12,
+      pullUpMax: 4,
+      focus: new Set(['CHEST', 'UPPER_BACK'] as const),
+      minutesByDay: new Map([[1, 40], [5, 75]]),
+      cardio: 'FINISHER' as const,
+      warmUp: false,
+      coolDown: true,
+      holdsOk: false,
+      reps: 'LOW' as const,
+      rest: 'LONG' as const,
+      style: 'SUPERSET' as const,
+    }
+
+    savePlanBuilderDraft(draft, store)
+    expect(backing.has(PLAN_BUILDER_DRAFT_KEY)).toBe(true)
+
+    const restored = consumePlanBuilderDraft(store)
+    expect(restored).toEqual(draft)
+    expect(backing.has(PLAN_BUILDER_DRAFT_KEY)).toBe(false)
+    expect(consumePlanBuilderDraft(store)).toBeNull()
+
+    const merged = mergeBaselineMaxes(
+      restored!,
+      new Map([
+        ['push_up', { kind: 'REPS', reps: 25 }],
+        ['pull_up', { kind: 'REPS', reps: 9 }],
+      ]),
+    )
+    expect(merged).toEqual({ ...draft, pushUpMax: 25, pullUpMax: 9 })
+
+    // Throwing storage is safely ignored without throwing
+    const brokenStore: DraftStore = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+    }
+    expect(() => savePlanBuilderDraft(draft, brokenStore)).not.toThrow()
+    expect(consumePlanBuilderDraft(brokenStore)).toBeNull()
   })
 })

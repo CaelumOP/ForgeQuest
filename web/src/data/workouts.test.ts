@@ -10,7 +10,9 @@ import {
   updatePlanDay, updatePlanItem, updateSet, deleteSession, restoreSession, recentDoneSets, withoutDeloadSessions, type PlanDayWithItems,
   allRecentDoneSets, baselineStatusFor, harderHint,
 } from './workouts';
-import { saveBaselineTest } from './baseline-tests';
+import { PUSH_UP_ID, latestBaselineTest, saveBaselineTest } from './baseline-tests';
+import { updateSettings } from './settings';
+import { defaultPlanAnswers, encodePlanAnswers } from '../domain/plan-answers';
 import { exportSharedPlan, parseAndValidateSharedPlan } from '../domain/plan-share';
 
 const pause = () => new Promise((r) => setTimeout(r, 5));
@@ -163,6 +165,26 @@ describe('baseline prefill and live status', () => {
     const dbSets2 = (await getSets(sid2)).filter((s) => s.exerciseId === 'db_bench_press' && countsForProgression(s));
     expect(dbSets2.every((s) => s.weightKg === 22.5)).toBe(true);
     expect(await baselineStatusFor(await db.exercises.get('db_bench_press'), day.items[0], dbSets2, [doneRow])).toBe('CALIBRATED');
+  });
+
+  it('migrates legacy plan-builder pushUpMax on startSession and prefills sets from the migrated row', async () => {
+    await updateSettings((s) => ({
+      ...s,
+      planBuilderAnswers: encodePlanAnswers({ ...defaultPlanAnswers(), pushUpMax: 10 }),
+    }));
+    expect(await db.baselineTests.count()).toBe(0);
+
+    const day: PlanDayWithItems = {
+      day: { id: 1, planId: 1, dayOfWeek: 1, title: 'Push', isRest: false, note: '' },
+      items: [{ ...item(PUSH_UP_ID), position: 0 }],
+    };
+    const sid = await startSession(day);
+    const pushSets = (await getSets(sid)).filter((s) => s.exerciseId === PUSH_UP_ID && countsForProgression(s));
+    expect(pushSets.length).toBeGreaterThan(0);
+    expect(pushSets.every((s) => s.reps === 7)).toBe(true);
+    expect((await latestBaselineTest(PUSH_UP_ID))?.reps).toBe(10);
+    expect(await db.baselineTests.where('exerciseId').equals(PUSH_UP_ID).count()).toBe(1);
+    expect(await baselineStatusFor(await db.exercises.get(PUSH_UP_ID), day.items[0], pushSets, [])).toBe('FROM_BASELINE');
   });
 });
 

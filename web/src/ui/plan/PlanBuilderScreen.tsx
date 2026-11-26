@@ -27,9 +27,9 @@ import { SwapIcon } from '../workouts/glyphs'
 import { dayName, dayShort, muscleLabel } from '../workouts/helpers'
 import {
   DAY_COUNT_OPTIONS, FOCUS_MUSCLES, MINUTE_OPTIONS,
-  cardioKey, dayFocusKey, equipmentSetting, experienceKey, goalDescKey, goalKey,
-  initialAnswers, injuryKey, localizeBuiltPlan, repPrefKey, restPrefKey,
-  rowSummaries, scheme, swapBuiltPlanItem, whyTagKey, workoutStyleKey, stepperCountFromValue,
+  cardioKey, consumePlanBuilderDraft, dayFocusKey, equipmentSetting, experienceKey, goalDescKey, goalKey,
+  initialAnswers, injuryKey, localizeBuiltPlan, mergeBaselineMaxes, repPrefKey, restPrefKey,
+  rowSummaries, savePlanBuilderDraft, scheme, swapBuiltPlanItem, whyTagKey, workoutStyleKey, stepperCountFromValue,
 } from './helpers'
 import { weeklyMuscleVolume } from '../../domain/plan-share'
 import './plan-builder.css'
@@ -59,6 +59,7 @@ export function PlanBuilderScreen(_: { param?: string }) {
   const [tried, setTried] = useState<Map<string, Set<string>>>(() => new Map())
   const [busy, setBusy] = useState(false)
   const latestBaselines = useLatestBaselines()
+  const [baselinesReady, setBaselinesReady] = useState(false)
   const [pendingBaselineWrites, setPendingBaselineWrites] = useState(0)
   const [baselineSaveFailed, setBaselineSaveFailed] = useState(false)
   const baselineQueueRef = useRef<Promise<unknown>>(Promise.resolve())
@@ -71,30 +72,24 @@ export function PlanBuilderScreen(_: { param?: string }) {
       await migratePlanBuilderBaselines()
       const [s, latest] = await Promise.all([loadSettings(), latestAllBaselines()])
       if (!active) return
-      const base = initialAnswers(s)
-      const push = latest.get(PUSH_UP_ID)
-      const pull = latest.get(PULL_UP_ID)
-      setAnswers({
-        ...base,
-        pushUpMax: push?.kind === 'REPS' ? (push.reps ?? null) : base.pushUpMax,
-        pullUpMax: pull?.kind === 'REPS' ? (pull.reps ?? null) : base.pullUpMax,
-      })
+      const base = consumePlanBuilderDraft() ?? initialAnswers(s)
+      setAnswers(mergeBaselineMaxes(base, latest))
+      setBaselinesReady(true)
     })()
     return () => { active = false }
   }, [])
 
   useEffect(() => {
-    if (pendingBaselineWrites > 0) return
+    if (!baselinesReady || pendingBaselineWrites > 0) return
     const push = latestBaselines.get(PUSH_UP_ID)
     const pull = latestBaselines.get(PULL_UP_ID)
-    if (!push && !pull) return
+    const nextPush = push?.kind === 'REPS' ? (push.reps ?? null) : null
+    const nextPull = pull?.kind === 'REPS' ? (pull.reps ?? null) : null
     setAnswers((prev) => {
-      const nextPush = push?.kind === 'REPS' ? (push.reps ?? null) : prev.pushUpMax
-      const nextPull = pull?.kind === 'REPS' ? (pull.reps ?? null) : prev.pullUpMax
       if (nextPush === prev.pushUpMax && nextPull === prev.pullUpMax) return prev
       return { ...prev, pushUpMax: nextPush, pullUpMax: nextPull }
     })
-  }, [latestBaselines, pendingBaselineWrites])
+  }, [baselinesReady, latestBaselines, pendingBaselineWrites])
 
   const change = (fn: (a: PlanAnswers) => PlanAnswers) => {
     const old = answersRef.current
@@ -190,7 +185,10 @@ export function PlanBuilderScreen(_: { param?: string }) {
               title={t('baseline_pb_entry')}
               subtitle={t('baseline_pb_entry_hint')}
               icon={<TuneIcon size={20} />}
-              href="#/baseline"
+              onClick={() => {
+                savePlanBuilderDraft(answersRef.current)
+                location.hash = '#/baseline'
+              }}
             />
           </Card>
           {baselineSaveFailed && <p class="pb-hint" style={{ color: 'var(--coral)' }} role="alert">{t('baseline_save_failed')}</p>}

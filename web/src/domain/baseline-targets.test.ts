@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EXERCISE_BY_ID, EXERCISE_CATALOG } from '../data/seed/exercise-catalog'
 import { easierVariation, holdTarget, repsTarget, weightedTarget } from './baseline-targets'
-import { presetEquipment } from './exercise-swap-engine'
+import { ALL_ACTIVE_EQUIPMENT, type Equipment } from './exercise-swap-engine'
 
 describe('baseline targets', () => {
   it('computes bodyweight reps targets', () => {
@@ -26,9 +26,24 @@ describe('baseline targets', () => {
     expect(weightedTarget(2, 5, 10, 2.5)).toEqual({ kind: 'NONE' })
   })
 
-  it('finds an easier variation for a real catalog bodyweight push move', () => {
+  it('easierVariation follows tier line and equipment (Android BaselineTargetsTest parity)', () => {
     const pushUp = EXERCISE_BY_ID.get('push_up')!
-    const easier = easierVariation(pushUp, EXERCISE_CATALOG, presetEquipment('BODYWEIGHT_ONLY'))
-    expect(easier?.id).toBe('knee_push_up')
+    const kneePushUp = EXERCISE_BY_ID.get('knee_push_up')!
+    const kneeScapular = EXERCISE_BY_ID.get('knee_scapular_push_up')!
+    const pullUp = EXERCISE_BY_ID.get('pull_up')!
+    const pistolSquat = EXERCISE_BY_ID.get('pistol_squat')!
+    const bodyweight = new Set<Equipment>(['BODYWEIGHT'])
+    const pullUpBar = new Set<Equipment>(['PULL_UP_BAR'])
+    const allActive = new Set<Equipment>(ALL_ACTIVE_EQUIPMENT)
+
+    expect(easierVariation(pushUp, EXERCISE_CATALOG, bodyweight)?.id).toBe('knee_push_up')
+    expect(easierVariation(kneePushUp, EXERCISE_CATALOG, bodyweight)?.id).toBe('knee_scapular_push_up')
+    expect(easierVariation(kneeScapular, EXERCISE_CATALOG, bodyweight)).toBeNull()
+
+    expect(easierVariation(pullUp, EXERCISE_CATALOG, pullUpBar)?.id).toBe('negative_pull_up')
+    expect(easierVariation(pullUp, EXERCISE_CATALOG, bodyweight)).toBeNull()
+
+    expect(easierVariation(pistolSquat, EXERCISE_CATALOG, bodyweight)?.id).toBe('lunge')
+    expect(easierVariation(pistolSquat, EXERCISE_CATALOG, allActive)?.id).toBe('bulgarian_split_squat')
   })
 })

@@ -1,5 +1,9 @@
-import type { SetRow } from '../../data/db'
+import type { BaselineTestRow, PlanItemRow, SetRow } from '../../data/db'
+import type { ExerciseEntity } from '../../domain/entities'
+import { weightedTargetInUnit } from '../../domain/baseline-targets'
 import { countsForProgression } from '../../domain/set-types'
+import type { WeightUnit } from '../../domain/units'
+import { plural, t } from '../../i18n'
 
 /** One visual group: a circuit/superset block (shown round by round) or a single straight-sets exercise (Android LiveWorkoutScreen.group). */
 export type Group =
@@ -168,4 +172,46 @@ export function clampField(field: 'reps' | 'seconds' | 'weightKg', value: number
   if (field === 'reps') return Math.min(999, Math.max(0, Math.round(value)))
   if (field === 'seconds') return Math.min(3600, Math.max(0, Math.round(value)))
   return Math.min(999, Math.max(0, Math.round(value * 100) / 100))
+}
+
+/** Localizes a saved targetLabel ("8-12 reps", "10 reps", "30 s") for display without altering what is stored. */
+export function formatTargetLabel(label: string): string {
+  const rangeMatch = /^(\d+)-(\d+)\s+reps$/i.exec(label.trim())
+  if (rangeMatch) return `${rangeMatch[1]}–${rangeMatch[2]} ${t('unit_reps')}`
+  const singleMatch = /^(\d+)\s+reps$/i.exec(label.trim())
+  if (singleMatch) return plural('rx_reps_n', Number(singleMatch[1]), Number(singleMatch[1]))
+  const secMatch = /^(\d+)\s+s$/i.exec(label.trim())
+  if (secMatch) return t('rx_seconds', Number(secMatch[1]))
+  return label
+}
+
+/**
+ * Returns updated SetRow objects for `exercise` when a WEIGHTED `baselineTest` applies
+ * (no working-set history, no explicit positive plan weight, and a usable `weightedTargetInUnit`).
+ * Never creates sets; only updates existing undone sets whose weightKg is <= 0 / null.
+ */
+export function fillBlankSetsFromWeightedBaseline(
+  exercise: ExerciseEntity | undefined,
+  item: PlanItemRow | null | undefined,
+  sessionSets: readonly SetRow[],
+  recentFinished: readonly SetRow[],
+  unit: WeightUnit,
+  baselineTest: BaselineTestRow | null | undefined,
+): SetRow[] {
+  if (!exercise || exercise.kind !== 'WEIGHTED') return []
+  if (!baselineTest || baselineTest.kind !== 'WEIGHTED') return []
+  if (recentFinished.some(countsForProgression)) return []
+  if ((item?.weightKg ?? 0) > 0) return []
+  const wKg = baselineTest.weightKg ?? 0
+  const r = baselineTest.reps ?? 0
+  if (wKg <= 0 || r <= 0) return []
+  const res = weightedTargetInUnit(wKg, r, item?.repsMin ?? 8, unit)
+  if (res.kind !== 'TARGET' || res.kg <= 0) return []
+  const updates: SetRow[] = []
+  for (const s of sessionSets) {
+    if (s.exerciseId === exercise.id && !s.done && (s.weightKg ?? 0) <= 0) {
+      updates.push({ ...s, weightKg: res.kg })
+    }
+  }
+  return updates
 }

@@ -157,7 +157,7 @@ textarea.kit-input { resize: vertical; }
 .kit-stepper { display: inline-flex; align-items: center; gap: 4px; }
 .kit-stepper-val { min-inline-size: 56px; text-align: center; font-size: 20px; line-height: 26px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* The number is a button (tap to type): looks like plain text with a faint underline hint. */
-button.kit-stepper-val { min-block-size: 44px; padding-inline: 6px; background: none; color: var(--text); border-radius: var(--r-sm); text-decoration: underline dotted var(--text-2); text-underline-offset: 6px; }
+button.kit-stepper-val { min-block-size: 48px; padding-inline: 6px; background: none; color: var(--text); border-radius: var(--r-sm); text-decoration: underline dotted var(--text-2); text-underline-offset: 6px; }
 button.kit-stepper-val.kit-stepper-placeholder { color: var(--text-2); font-size: 14px; font-weight: 500; }
 /* Stepper roll: the new number slides in from below on +, from above on − (clipped). */
 button.kit-stepper-val { overflow: hidden; }

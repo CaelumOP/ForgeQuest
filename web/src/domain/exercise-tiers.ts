@@ -44,6 +44,39 @@ export const NEXT_IN_TIER: Record<string, string> = {
   scapular_australian_pull_up: 'australian_pull_up', scapular_australian_chin_up: 'australian_chin_up',
 }
 
+/** Explicit easier steps along a progression line (Android ExerciseTiers.EASIER_IN_LINE). */
+export const EASIER_IN_LINE: Record<string, string> = {
+  // Push-up line
+  pseudo_planche_push_up: 'push_up',
+  archer_push_up: 'push_up',
+  decline_push_up: 'push_up',
+  push_up: 'knee_push_up',
+  wide_knee_push_up: 'knee_scapular_push_up',
+  knee_push_up: 'knee_scapular_push_up',
+  diamond_push_up: 'incline_diamond_knee_push_up',
+  handstand_push_up: 'pike_push_up',
+  dip: 'bent_leg_bench_dip',
+  // Pull-up & row lines
+  muscle_up: 'pull_up',
+  archer_pull_up: 'pull_up',
+  l_sit_pull_up: 'pull_up',
+  wide_grip_pull_up: 'pull_up',
+  neutral_grip_pull_up: 'negative_pull_up',
+  pull_up: 'negative_pull_up',
+  chin_up: 'negative_pull_up',
+  negative_pull_up: 'scapular_pull_up',
+  australian_pull_up: 'scapular_australian_pull_up',
+  australian_chin_up: 'scapular_australian_chin_up',
+  // Squat & core lines
+  squat: 'half_squat',
+  pistol_squat: 'bulgarian_split_squat',
+  bulgarian_split_squat: 'lunge',
+  hanging_leg_raise: 'hanging_knee_raise',
+  hanging_knee_raise: 'crunch',
+}
+
+export const prevInLineId = (id: string): string | undefined => EASIER_IN_LINE[id]
+
 /** When a movement has no harder version, the closest one that does: two legs → one leg, rows → pull-ups. */
 const RELATED: Partial<Record<MovementPattern, MovementPattern>> = {
   SQUAT_BILATERAL: 'SQUAT_UNILATERAL',

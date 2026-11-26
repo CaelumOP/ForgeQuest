@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { SetRow } from '../../data/db'
-import { carryForwardUpdates, clampField, currentGroupIndex, effectiveRest, effectiveRestSeconds, groupSetsByExercise, nextUntickedSet } from './groups'
+import type { BaselineTestRow, PlanItemRow, SetRow } from '../../data/db'
+import { EXERCISE_BY_ID } from '../../data/seed/exercise-catalog'
+import { setLang } from '../../i18n'
+import {
+  carryForwardUpdates, clampField, currentGroupIndex, effectiveRest, effectiveRestSeconds,
+  fillBlankSetsFromWeightedBaseline, formatTargetLabel, groupSetsByExercise, nextUntickedSet,
+} from './groups'
 
 let id = 0
 const s = (itemPosition: number, setIndex: number, o: Partial<SetRow> = {}): SetRow => ({
@@ -140,5 +145,73 @@ describe('supersetGroup & effectiveRestSeconds', () => {
     expect(effectiveRest(c1, groups)).toEqual({ seconds: 0, isShortTransition: true })
     expect(effectiveRest(c2, groups)).toEqual({ seconds: 0, isShortTransition: true })
     expect(effectiveRest(c3, groups)).toEqual({ seconds: 30, isShortTransition: false })
+  })
+})
+
+describe('fillBlankSetsFromWeightedBaseline', () => {
+  it('updates only undone 0/null kg sets when no history or explicit plan weight exists', () => {
+    const dbBench = EXERCISE_BY_ID.get('db_bench_press')!
+    const pushUp = EXERCISE_BY_ID.get('push_up')!
+    const baseline: BaselineTestRow = {
+      id: 1, exerciseId: dbBench.id, kind: 'WEIGHTED', reps: 8, seconds: null, weightKg: 20, createdAt: 100,
+    }
+    const itemBlank: PlanItemRow = {
+      dayId: 1, position: 0, exerciseId: dbBench.id, block: 'Main', circuit: false,
+      sets: 3, repsMin: 8, repsMax: 12, seconds: null, weightKg: 0, restSeconds: 90, note: '',
+    }
+    const doneBlank = s(0, 0, { exerciseId: dbBench.id, weightKg: 0, done: true })
+    const undoneZero = s(0, 1, { exerciseId: dbBench.id, weightKg: 0, done: false })
+    const undoneNull = s(0, 2, { exerciseId: dbBench.id, weightKg: null, done: false })
+    const undoneLoaded = s(0, 3, { exerciseId: dbBench.id, weightKg: 17.5, done: false })
+
+    // 20 * (1 + 8/30) / (1 + 11/30) * 0.9 = 16.68... -> floor to 2.5 = 15 kg
+    expect(
+      fillBlankSetsFromWeightedBaseline(
+        dbBench, itemBlank, [doneBlank, undoneZero, undoneNull, undoneLoaded], [], 'KG', baseline,
+      ),
+    ).toEqual([
+      { ...undoneZero, weightKg: 15 },
+      { ...undoneNull, weightKg: 15 },
+    ])
+
+    // Precedence: existing working history blocks baseline fill
+    expect(
+      fillBlankSetsFromWeightedBaseline(
+        dbBench, itemBlank, [undoneZero], [s(0, 0, { exerciseId: dbBench.id, weightKg: 20, done: true })], 'KG', baseline,
+      ),
+    ).toEqual([])
+
+    // Precedence: explicit positive plan weight blocks baseline fill
+    expect(
+      fillBlankSetsFromWeightedBaseline(
+        dbBench, { ...itemBlank, weightKg: 12.5 }, [undoneZero], [], 'KG', baseline,
+      ),
+    ).toEqual([])
+
+    // Non-WEIGHTED or TooLight baseline never fills
+    expect(
+      fillBlankSetsFromWeightedBaseline(
+        pushUp, null, [s(0, 0, { exerciseId: pushUp.id, weightKg: 0, done: false })], [], 'KG',
+        { id: 2, exerciseId: pushUp.id, kind: 'REPS', reps: 12, seconds: null, weightKg: null, createdAt: 100 },
+      ),
+    ).toEqual([])
+    expect(
+      fillBlankSetsFromWeightedBaseline(
+        dbBench, itemBlank, [undoneZero], [], 'KG', { ...baseline, reps: 15 },
+      ),
+    ).toEqual([])
+  })
+})
+
+describe('formatTargetLabel', () => {
+  it('localizes rep ranges, single reps, and seconds in Arabic', () => {
+    setLang('ar')
+    try {
+      expect(formatTargetLabel('8-12 reps')).toBe('8–12 عدّة')
+      expect(formatTargetLabel('30 s')).toBe('30 ث')
+    } finally {
+      setLang('en')
+    }
+    expect(formatTargetLabel('8-12 reps')).toBe('8–12 reps')
   })
 })

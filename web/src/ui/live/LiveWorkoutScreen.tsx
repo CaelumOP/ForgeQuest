@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { getLang, plural, t, useLang } from '../../i18n'
 import type { ExerciseRow, PlanItemRow, SessionRow, SetRow } from '../../data/db'
+import { useLatestBaselines } from '../../data/baseline-tests'
 import { configuredEquipment, updateSettings, useSettings, weightUnit } from '../../data/settings'
 import {
   addCustomExercise, addExercise, addSet, allWorkoutScores, discardSession, finishedSessions,
@@ -36,8 +37,8 @@ import { blockLabel, openFormVideo } from '../workouts/helpers'
 import { alarm, beep, buzz, keepScreenOn, unlockAudio } from './feedback'
 import { FocusIcon, ListIcon, MoreVert, RepeatIcon } from './glyphs'
 import {
-  carryForwardUpdates, currentGroupIndex, effectiveRest, groupSets,
-  groupSetsByExercise, nextUntickedSet, type Group,
+  carryForwardUpdates, currentGroupIndex, effectiveRest, fillBlankSetsFromWeightedBaseline, formatTargetLabel,
+  groupSets, groupSetsByExercise, nextUntickedSet, type Group,
 } from './groups'
 import { HoldOverlay, RestBar } from './Overlays'
 import { QuickPeekSheet, type PeekHistoryEntry } from './QuickPeekSheet'
@@ -125,6 +126,24 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   const holdRef = useRef(hold); holdRef.current = hold
   const nowRef = useRef(now)
   const setsRef = useRef(sets); setsRef.current = sets
+  const latestBaselines = useLatestBaselines()
+  const appliedBaselinesRef = useRef(new Map<string, string>())
+  // A render can put an older liveQuery snapshot back into setsRef while a queued step is between writes, so queued
+  // steps read the rows from Dexie itself before deciding anything.
+  const sessionIdRef = useRef(session?.id); sessionIdRef.current = session?.id
+  const freshRows = async (): Promise<SetRow[]> => {
+    const id = sessionIdRef.current
+    if (id == null) return setsRef.current
+    const rows = await getSets(id)
+    setsRef.current = rows
+    return rows
+  }
+  const locked = <T,>(fn: () => Promise<T>): Promise<T> => {
+    const run = async () => { await freshRows(); return fn() }
+    const next = liveQueue.current.then(run, run)
+    liveQueue.current = next.then(() => {}, () => {})
+    return next
+  }
   const exercisesRef = useRef(exercises); exercisesRef.current = exercises
   const settingsRef = useRef(settings); settingsRef.current = settings
   const hapticsOn = settings.hapticsEnabled !== false
@@ -314,22 +333,53 @@ export function LiveWorkoutScreen(_: { param?: string }) {
   }, [activePlan, session?.planDayId])
   const planItemsRef = useRef(planItemsByPos); planItemsRef.current = planItemsByPos
 
+  const setsBaselineKey = sets.map((s) => `${s.id ?? ''}:${s.exerciseId}:${(s.weightKg ?? 0) > 0 ? 1 : 0}:${s.done ? 1 : 0}:${s.setType ?? ''}`).join('|')
+  const baselinesKey = [...latestBaselines.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => `${k}:${v.id ?? ''}:${v.createdAt}:${v.kind}:${v.weightKg ?? ''}:${v.reps ?? ''}`)
+    .join('|')
+
   useEffect(() => {
     let live = true
-    if (!session?.id) { setBaselineStatuses(new Map()); return }
-    // Worked out when exercises appear (like the reason line), not on every tap: a cold-start check reads all history.
+    const sid = session?.id
+    if (!sid) { setBaselineStatuses(new Map()); return }
     const rowsNow = setsRef.current
-    void Promise.all([...new Set(rowsNow.map((s) => s.exerciseId))].map(async (id) => {
+    const distinctIds = [...new Set(rowsNow.map((s) => s.exerciseId))]
+    if (distinctIds.length === 0) { setBaselineStatuses(new Map()); return }
+    void Promise.all(distinctIds.map(async (id) => {
       const ownSets = rowsNow.filter((s) => s.exerciseId === id)
       const item = planItemsByPos.get(ownSets[0].itemPosition)
+      const planItem = item?.exerciseId === id ? item : null
       const recent = await recentDoneSets(id)
-      const status = await baselineStatusFor(exercises.get(id), item?.exerciseId === id ? item : null, ownSets, recent)
+      const ex = exercises.get(id)
+      const baseline = latestBaselines.get(id)
+      let effectiveOwnSets = ownSets
+      if (ex && baseline && baseline.kind === 'WEIGHTED') {
+        const applyKey = `${sid}:${id}`
+        const sig = `${baseline.id ?? ''}:${baseline.createdAt}:${baseline.weightKg ?? ''}:${baseline.reps ?? ''}`
+        if (appliedBaselinesRef.current.get(applyKey) !== sig) {
+          appliedBaselinesRef.current.set(applyKey, sig)
+          if (ownSets.some((s) => !s.done && (s.weightKg ?? 0) <= 0)) {
+            const updated = await locked(async () => {
+              const freshOwn = setsRef.current.filter((s) => s.exerciseId === id)
+              const toUpdate = fillBlankSetsFromWeightedBaseline(ex, planItem, freshOwn, recent, unitFor(id), baseline)
+              if (toUpdate.length > 0) await Promise.all(toUpdate.map((u) => updateSet(u)))
+              return toUpdate
+            })
+            if (updated.length > 0) {
+              const byId = new Map(updated.map((u) => [u.id, u]))
+              effectiveOwnSets = ownSets.map((s) => byId.get(s.id) ?? s)
+            }
+          }
+        }
+      }
+      const status = await baselineStatusFor(ex, planItem, effectiveOwnSets, recent)
       return [id, status] as const
     })).then((rows) => {
       if (live) setBaselineStatuses(new Map(rows))
     })
     return () => { live = false }
-  }, [session?.id, sets.map((s) => s.exerciseId).join('|'), exercises.size, planItemsByPos, settings.unit])
+  }, [session?.id, setsBaselineKey, baselinesKey, exercises, planItemsByPos, settings.unit])
 
   const supersetMap = useMemo(() => {
     const map = new Map<number, number | null>()
@@ -449,24 +499,6 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       setNewBestId(updated.id)
       window.setTimeout(() => setNewBestId((cur) => (cur === updated.id ? null : cur)), 1400)
     }
-  }
-
-  // A render can put an older liveQuery snapshot back into setsRef while a queued step is between writes, so queued
-  // steps read the rows from Dexie itself before deciding anything.
-  const sessionIdRef = useRef(session?.id); sessionIdRef.current = session?.id
-  const freshRows = async (): Promise<SetRow[]> => {
-    const id = sessionIdRef.current
-    if (id == null) return setsRef.current
-    const rows = await getSets(id)
-    setsRef.current = rows
-    return rows
-  }
-
-  const locked = <T,>(fn: () => Promise<T>): Promise<T> => {
-    const run = async () => { await freshRows(); return fn() }
-    const next = liveQueue.current.then(run, run)
-    liveQueue.current = next.then(() => {}, () => {})
-    return next
   }
 
   const isEdited = (id: number) =>
@@ -1181,16 +1213,6 @@ function setSummary(set: SetRow, kind: ExerciseRow['kind'], unit: WeightUnit): s
   const main = kind === 'HOLD' ? t('rx_seconds', set.seconds ?? 0) : plural('rx_reps_n', set.reps ?? 0, set.reps ?? 0)
   const kg = set.weightKg
   return kg != null && (kg > 0 || kind === 'WEIGHTED') ? `${main} · ${weightNumber(unit, kg)} ${unitLabel(unit, getLang() === 'ar')}` : main
-}
-
-function formatTargetLabel(label: string): string {
-  const rangeMatch = /^(\d+)-(\d+)\s+reps$/i.exec(label.trim())
-  if (rangeMatch) return `${rangeMatch[1]}–${rangeMatch[2]} ${t('unit_reps')}`
-  const singleMatch = /^(\d+)\s+reps$/i.exec(label.trim())
-  if (singleMatch) return plural('rx_reps_n', Number(singleMatch[1]), Number(singleMatch[1]))
-  const secMatch = /^(\d+)\s+s$/i.exec(label.trim())
-  if (secMatch) return t('rx_seconds', Number(secMatch[1]))
-  return label
 }
 
 type CardProps = {

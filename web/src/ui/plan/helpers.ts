@@ -11,8 +11,9 @@ import { MUSCLES, type Muscle } from '../../domain/muscle'
 import {
   INJURIES, PlanBuilder, defaultPlanAnswers, decodePlanAnswers, planAnswersToInput, spreadDays,
   type BuiltPlan, type Cardio, type DayFocus, type Experience, type Injury,
-  type PlanAnswers, type RepPref, type RestPref, type TrainGoal, type WhyTag, type WorkoutStyle,
+  type RepPref, type RestPref, type TrainGoal, type WhyTag, type WorkoutStyle,
 } from '../../domain/plan-builder'
+import { PlanAnswers } from '../../domain/plan-answers'
 import { dayShort } from '../workouts/helpers'
 
 export const FOCUS_MUSCLES: readonly Muscle[] = [
@@ -22,6 +23,58 @@ export const FOCUS_MUSCLES: readonly Muscle[] = [
 
 export const DAY_COUNT_OPTIONS = [2, 3, 4, 5, 6] as const
 export const MINUTE_OPTIONS = [20, 30, 45, 60] as const
+export const PLAN_BUILDER_DRAFT_KEY = 'fq_plan_builder_draft'
+
+export type DraftStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+function defaultDraftStore(): DraftStore | null {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage : null
+  } catch {
+    return null
+  }
+}
+
+/** Saves the current unsaved PlanBuilderScreen answers to sessionStorage before leaving for #/baseline. */
+export function savePlanBuilderDraft(
+  answers: PlanAnswers,
+  store: DraftStore | null = defaultDraftStore(),
+): void {
+  try {
+    store?.setItem(PLAN_BUILDER_DRAFT_KEY, PlanAnswers.encode(answers))
+  } catch {
+    // storage blocked or full
+  }
+}
+
+/** Reads and removes any saved PlanBuilderScreen draft from sessionStorage. */
+export function consumePlanBuilderDraft(
+  store: DraftStore | null = defaultDraftStore(),
+): PlanAnswers | null {
+  try {
+    if (!store) return null
+    const raw = store.getItem(PLAN_BUILDER_DRAFT_KEY)
+    if (!raw) return null
+    store.removeItem(PLAN_BUILDER_DRAFT_KEY)
+    return PlanAnswers.decode(raw)
+  } catch {
+    return null
+  }
+}
+
+/** Merges push-up and pull-up values from the latest baseline rows onto restored/initial answers. */
+export function mergeBaselineMaxes(
+  base: PlanAnswers,
+  latest: ReadonlyMap<string, { kind: string; reps: number | null }>,
+): PlanAnswers {
+  const push = latest.get('push_up')
+  const pull = latest.get('pull_up')
+  return {
+    ...base,
+    pushUpMax: push?.kind === 'REPS' ? (push.reps ?? null) : base.pushUpMax,
+    pullUpMax: pull?.kind === 'REPS' ? (pull.reps ?? null) : base.pullUpMax,
+  }
+}
 
 /** Zero is an entered count; null is cleared separately, as in Android. */
 export const stepperCountFromValue = (value: number): number => Math.max(0, Math.trunc(value))

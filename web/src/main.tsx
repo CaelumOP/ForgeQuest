@@ -2,6 +2,7 @@ import { render } from 'preact'
 import { getLang, t } from './i18n' // sets <html lang dir> before the first paint
 import './ui/theme' // sets <html data-theme>
 import { App } from './app'
+import { migratePlanBuilderBaselines } from './data/baseline-tests'
 import { requestPersistence } from './data/db'
 import { autoBackup, preloadGis } from './data/drive'
 import { saveCrash } from './data/crash'
@@ -30,6 +31,7 @@ addEventListener('unhandledrejection', (e) => { saveCrash(e.reason); toast(t('er
 // Built-in exercises (names in the current language) and a request to keep data under storage pressure.
 void seedLibrary(getLang())
 void requestPersistence()
+void migratePlanBuilderBaselines().catch(() => undefined)
 
 // Drive: load the sign-in script early (a later tap can then open its popup at once) and back up when stale.
 void loadSettings().then((s) => { if (s.driveEmail) { void preloadGis().catch(() => undefined); void autoBackup('open') } })
