@@ -9,7 +9,6 @@ import type { PlanInput } from '../domain/plan-builder';
 
 export const PUSH_UP_ID = 'push_up';
 export const PULL_UP_ID = 'pull_up';
-const PLAN_ANSWERS_MIGRATED_KEY = 'baselinePlanAnswersMigrated';
 
 export type SaveBaselineTestInput = {
   exerciseId: string;
@@ -64,20 +63,19 @@ export const useLatestBaselines = (): Map<string, BaselineTestRow> =>
 export const hasAnyBaselineTest = async (): Promise<boolean> => (await db.baselineTests.count()) > 0;
 
 /**
- * One-time migration of existing `pushUpMax` / `pullUpMax` values from saved plan-builder answers
+ * Idempotent migration of existing `pushUpMax` / `pullUpMax` values from saved plan-builder answers
  * into `baselineTests` (kind REPS), only if no baseline row already exists for that exerciseId.
  * Keeps `planBuilderAnswers` intact and readable.
  */
 export async function migratePlanBuilderBaselines(): Promise<boolean> {
-  if ((await db.kv.get(PLAN_ANSWERS_MIGRATED_KEY))?.value === true) return false;
   const settings = await loadSettings();
   const decoded = decodePlanAnswers(settings.planBuilderAnswers);
   const pushUpMax = decoded?.pushUpMax ?? null;
   const pullUpMax = decoded?.pullUpMax ?? null;
   if (pushUpMax == null && pullUpMax == null) return false;
 
-  return db.transaction('rw', [db.baselineTests, db.kv], async () => {
-    if ((await db.kv.get(PLAN_ANSWERS_MIGRATED_KEY))?.value === true) return false;
+  // No persisted "done" flag (same as Android): insert-if-no-row keeps it idempotent and lets a restored old backup re-import its maxima.
+  return db.transaction('rw', [db.baselineTests], async () => {
     const now = Date.now();
     let inserted = false;
     const maybeInsert = async (exerciseId: string, max: number | null) => {
@@ -95,7 +93,6 @@ export async function migratePlanBuilderBaselines(): Promise<boolean> {
     };
     await maybeInsert(PUSH_UP_ID, pushUpMax);
     await maybeInsert(PULL_UP_ID, pullUpMax);
-    await db.kv.put({ key: PLAN_ANSWERS_MIGRATED_KEY, value: true });
     return inserted;
   });
 }

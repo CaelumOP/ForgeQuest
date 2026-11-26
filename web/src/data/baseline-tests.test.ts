@@ -15,6 +15,15 @@ beforeEach(async () => {
 });
 
 describe('baseline-tests data module', () => {
+  it('re-imports plan-builder maxima after the rows are cleared (old backup restored)', async () => {
+    const encoded = encodePlanAnswers({ ...defaultPlanAnswers(), pushUpMax: 12 });
+    await updateSettings((s) => ({ ...s, planBuilderAnswers: encoded }));
+    expect(await migratePlanBuilderBaselines()).toBe(true);
+    await db.baselineTests.clear();
+    expect(await migratePlanBuilderBaselines()).toBe(true);
+    expect((await latestBaselineTest(PUSH_UP_ID))?.reps).toBe(12);
+  });
+
   it('verifies standard push-up and pull-up IDs exist in the catalog', () => {
     expect(EXERCISE_BY_ID.get(PUSH_UP_ID)?.kind).toBe('REPS');
     expect(EXERCISE_BY_ID.get(PULL_UP_ID)?.kind).toBe('REPS');

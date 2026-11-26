@@ -354,7 +354,9 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       const ex = exercises.get(id)
       const baseline = latestBaselines.get(id)
       let effectiveOwnSets = ownSets
-      if (ex && baseline && baseline.kind === 'WEIGHTED') {
+      // Wait for the active plan on planned sessions, or the fill would use the default rep range and never re-run.
+      const planReady = session?.planDayId == null || activePlan != null
+      if (ex && baseline && baseline.kind === 'WEIGHTED' && planReady) {
         const applyKey = `${sid}:${id}`
         const sig = `${baseline.id ?? ''}:${baseline.createdAt}:${baseline.weightKg ?? ''}:${baseline.reps ?? ''}`
         if (appliedBaselinesRef.current.get(applyKey) !== sig) {
@@ -379,7 +381,7 @@ export function LiveWorkoutScreen(_: { param?: string }) {
       if (live) setBaselineStatuses(new Map(rows))
     })
     return () => { live = false }
-  }, [session?.id, setsBaselineKey, baselinesKey, exercises, planItemsByPos, settings.unit])
+  }, [session?.id, setsBaselineKey, baselinesKey, exercises, planItemsByPos, settings.unit, activePlan])
 
   const supersetMap = useMemo(() => {
     const map = new Map<number, number | null>()
