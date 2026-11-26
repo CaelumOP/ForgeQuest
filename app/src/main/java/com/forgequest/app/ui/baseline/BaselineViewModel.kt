@@ -42,7 +42,7 @@ data class BaselineMoveItem(
 
 /** Computed starting target or guidance displayed after saving (and on each move row). */
 sealed interface BaselineTargetDisplay {
-    data class Reps(val reps: Int) : BaselineTargetDisplay
+    data class Reps(val reps: Int, val harderExercise: ExerciseEntity? = null) : BaselineTargetDisplay
     data class Hold(val seconds: Int) : BaselineTargetDisplay
     data class Weight(val weightKg: Float, val unit: WeightUnit) : BaselineTargetDisplay
     data class EasierVariation(val easierExercise: ExerciseEntity?) : BaselineTargetDisplay
@@ -167,7 +167,12 @@ internal fun computeTargetDisplay(
         val reps = test.reps ?: 0
         val target = BaselineTargets.repsTarget(reps)
         if (target != null) {
-            BaselineTargetDisplay.Reps(target)
+            val harder = if (BaselineTargets.isOutgrown(exercise.kind, reps)) {
+                BaselineTargets.harderVariation(exercise, library, equipment)
+            } else {
+                null
+            }
+            BaselineTargetDisplay.Reps(target, harder)
         } else {
             BaselineTargetDisplay.EasierVariation(
                 BaselineTargets.easierVariation(exercise, library, equipment),

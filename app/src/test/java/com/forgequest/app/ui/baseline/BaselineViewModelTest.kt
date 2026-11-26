@@ -44,6 +44,24 @@ class BaselineViewModelTest {
         }
     }
 
+    @Test fun outgrownRepsOfferHarderVariation() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).build()
+        val vm = BaselineViewModel(BaselineRepository(db), flowOf(ExerciseCatalog.all), flowOf(null), flowOf(Settings()))
+        try {
+            val big = vm.recordReps("squat", 51)?.target as BaselineTargetDisplay.Reps
+            assertEquals(35, big.reps)
+            assertEquals("jump_squat", big.harderExercise?.id)
+            assertEquals(51, db.baselineTests().latestFor("squat")?.reps)
+            assertEquals("jump_squat", (vm.recordReps("squat", 25)?.target as BaselineTargetDisplay.Reps).harderExercise?.id)
+            assertEquals(BaselineTargetDisplay.Reps(16), vm.recordReps("squat", 24)?.target)
+        } finally {
+            vm.viewModelScope.cancel()
+            db.close()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun zeroRepsOffersEasierVariation() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).build()

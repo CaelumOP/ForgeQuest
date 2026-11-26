@@ -27,7 +27,7 @@ class ExerciseTiersTest {
         fun next(id: String, eq: Set<Equipment> = gym) = ExerciseTiers.harderVersion(ex(id), all, eq)?.id
         assertEquals("push_up", next("wide_knee_push_up", bodyweight))
         assertEquals("squat", next("half_squat", bodyweight))
-        assertEquals("weighted_squat", next("squat", bodyweight))
+        assertEquals("jump_squat", next("squat", bodyweight))
         assertEquals("reverse_lunge", next("lunge"))
         assertEquals("australian_pull_up", next("australian_chin_up"))
         assertEquals("pull_up", next("negative_pull_up"))

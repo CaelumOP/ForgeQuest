@@ -2,7 +2,9 @@ package com.forgequest.app.domain
 
 import com.forgequest.app.data.seed.ExerciseCatalog
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BaselineTargetsTest {
@@ -62,6 +64,25 @@ class BaselineTargetsTest {
             WeightedResult.NoTarget,
             BaselineTargets.weightedTarget(40.0, reps = 0, repsMin = 8, loadStep = 2.5),
         )
+    }
+
+    @Test
+    fun harderVariationForSquatWithNoGearFitsNoGear() {
+        val noGear = setOf(Equipment.BODYWEIGHT)
+        val harder = BaselineTargets.harderVariation(byId.getValue("squat"), ExerciseCatalog.all, noGear)
+        assertEquals("jump_squat", harder?.id)
+        assertTrue(ExerciseSwapEngine.profileFor(harder!!).fits(noGear))
+    }
+
+    @Test
+    fun outgrownRuleIsRepsKindAtTwentyFiveOrMore() {
+        assertEquals(25, BaselineTargets.OUTGROWN_REPS)
+        assertTrue(BaselineTargets.isOutgrown(ExerciseKind.REPS, 51))
+        assertTrue(BaselineTargets.isOutgrown(ExerciseKind.REPS, 25))
+        assertFalse(BaselineTargets.isOutgrown(ExerciseKind.REPS, 24))
+        assertFalse(BaselineTargets.isOutgrown(ExerciseKind.REPS, 0))
+        assertFalse(BaselineTargets.isOutgrown(ExerciseKind.WEIGHTED, 51))
+        assertFalse(BaselineTargets.isOutgrown(ExerciseKind.HOLD, 99))
     }
 
     @Test

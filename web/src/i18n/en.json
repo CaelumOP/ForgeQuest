@@ -198,6 +198,7 @@
   "baseline_mode_guided": "Guided",
   "baseline_mode_manual": "Manual",
   "baseline_not_tested": "Not tested yet",
+  "baseline_outgrown_try_harder": "You've outgrown this move. Try a harder version: {1}",
   "baseline_pb_entry": "Test your starting point",
   "baseline_pb_entry_hint": "Find your starting reps, holds, and weights",
   "baseline_picker_title": "Choose a move to test",

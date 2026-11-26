@@ -710,6 +710,20 @@ private fun BaselineResultStep(
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
+                            val harder = (t as? BaselineTargetDisplay.Reps)?.harderExercise
+                            if (harder != null) {
+                                Text(
+                                    text = stringResource(R.string.baseline_outgrown_try_harder, harder.name),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = c.textPrimary,
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                PillButton(
+                                    text = stringResource(R.string.baseline_test_move_named, harder.name),
+                                    onClick = { onTestEasier(harder.id) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
                         }
                     }
                     is BaselineTargetDisplay.EasierVariation -> {

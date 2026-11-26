@@ -148,6 +148,27 @@ describe('baseline helpers', () => {
     expect(moves[5]?.isSuggested).toBe(false)
   })
 
+  it('51 reps on squat is outgrown with a harder move; 24 is not; 25 is; weighted and hold never', () => {
+    const squat = catalog.find((e) => e.id === 'squat')!
+    const plank = catalog.find((e) => e.id === PLANK_ID)!
+    const bench = catalog.find((e) => e.id === 'db_bench_press')!
+    const noGear = new Set<Equipment>(['BODYWEIGHT'])
+    const at = (reps: number) => computeTargetDisplay(squat, { reps, seconds: null, weightKg: null }, catalog, noGear, 'KG')
+
+    const big = at(51)
+    expect(big).toMatchObject({ kind: 'REPS', reps: 35 })
+    expect(big.kind === 'REPS' && big.harderExercise?.id).toBe('jump_squat')
+    const tgt = at(25)
+    expect(tgt.kind === 'REPS' && tgt.harderExercise?.id).toBe('jump_squat')
+    expect(at(24)).toEqual({ kind: 'REPS', reps: 16 })
+    expect(at(0).kind).toBe('EASIER_VARIATION')
+
+    const hold = computeTargetDisplay(plank, { reps: 51, seconds: 90, weightKg: null }, catalog, noGear, 'KG')
+    expect(hold).toEqual({ kind: 'HOLD', seconds: 60 })
+    const weighted = computeTargetDisplay(bench, { reps: 51, seconds: null, weightKg: 20 }, catalog, new Set(['DUMBBELLS', 'FLAT_BENCH'] as const), 'KG')
+    expect(JSON.stringify(weighted)).not.toContain('harderExercise')
+  })
+
   it('computes REPS, HOLD, WEIGHTED, 0-rep easier variation, and too-light targets', () => {
     const pushUp = catalog.find((e) => e.id === PUSH_UP_ID)!
     const plank = catalog.find((e) => e.id === PLANK_ID)!

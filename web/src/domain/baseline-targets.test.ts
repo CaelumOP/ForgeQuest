@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { EXERCISE_BY_ID, EXERCISE_CATALOG } from '../data/seed/exercise-catalog'
-import { easierVariation, holdTarget, repsTarget, weightedTarget } from './baseline-targets'
-import { ALL_ACTIVE_EQUIPMENT, type Equipment } from './exercise-swap-engine'
+import {
+  easierVariation, harderVariation, holdTarget, isOutgrown, OUTGROWN_REPS, repsTarget, weightedTarget,
+} from './baseline-targets'
+import { ALL_ACTIVE_EQUIPMENT, profileFits, profileFor, type Equipment } from './exercise-swap-engine'
 
 describe('baseline targets', () => {
   it('computes bodyweight reps targets', () => {
@@ -45,5 +47,24 @@ describe('baseline targets', () => {
 
     expect(easierVariation(pistolSquat, EXERCISE_CATALOG, bodyweight)?.id).toBe('lunge')
     expect(easierVariation(pistolSquat, EXERCISE_CATALOG, allActive)?.id).toBe('bulgarian_split_squat')
+  })
+
+  it('harderVariation for squat with no gear is a move that fits no gear', () => {
+    const squat = EXERCISE_BY_ID.get('squat')!
+    const noGear = new Set<Equipment>(['BODYWEIGHT'])
+    const harder = harderVariation(squat, EXERCISE_CATALOG, noGear)
+    expect(harder).not.toBeNull()
+    expect(harder?.id).toBe('jump_squat')
+    expect(profileFits(profileFor(harder!), noGear)).toBe(true)
+  })
+
+  it('outgrown rule: reps kind at 25 or more, never weighted or hold', () => {
+    expect(OUTGROWN_REPS).toBe(25)
+    expect(isOutgrown('REPS', 51)).toBe(true)
+    expect(isOutgrown('REPS', 25)).toBe(true)
+    expect(isOutgrown('REPS', 24)).toBe(false)
+    expect(isOutgrown('REPS', 0)).toBe(false)
+    expect(isOutgrown('WEIGHTED', 51)).toBe(false)
+    expect(isOutgrown('HOLD', 99)).toBe(false)
   })
 })

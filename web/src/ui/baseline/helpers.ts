@@ -3,7 +3,7 @@ import { t, plural, type Lang } from '../../i18n'
 import type { BaselineTestRow, ExerciseRow } from '../../data/db'
 import { configuredEquipment, weightUnit, type Settings } from '../../data/settings'
 import type { ActivePlan } from '../../data/workouts'
-import { repsTarget, holdTarget, weightedTargetInUnit, easierVariation } from '../../domain/baseline-targets'
+import { repsTarget, holdTarget, weightedTargetInUnit, easierVariation, harderVariation, isOutgrown } from '../../domain/baseline-targets'
 import { expandLegacyEquipment, profileFits, profileFor, isEquipment, type Equipment } from '../../domain/exercise-swap-engine'
 import type { ExerciseKind } from '../../domain/muscle'
 import { isCompoundExercise } from '../../domain/plan-builder'
@@ -30,7 +30,7 @@ export const BASELINE_REST_KEY = 'fq.baseline.restEndsAt'
 export const BASELINE_DISMISSED_KEY = 'baseline_card_dismissed'
 
 export type BaselineTargetDisplay =
-  | { kind: 'REPS'; reps: number }
+  | { kind: 'REPS'; reps: number; harderExercise?: ExerciseRow }
   | { kind: 'HOLD'; seconds: number }
   | { kind: 'WEIGHT'; weightKg: number; unit: WeightUnit }
   | { kind: 'EASIER_VARIATION'; easierExercise: ExerciseRow | null }
@@ -73,7 +73,12 @@ export function computeTargetDisplay(
   switch (exercise.kind) {
     case 'REPS': {
       const target = repsTarget(test.reps ?? 0)
-      if (target != null) return { kind: 'REPS', reps: target }
+      if (target != null) {
+        const harder = isOutgrown(exercise.kind, test.reps ?? 0)
+          ? (harderVariation(exercise, library, equipment) as ExerciseRow | null)
+          : null
+        return harder ? { kind: 'REPS', reps: target, harderExercise: harder } : { kind: 'REPS', reps: target }
+      }
       const easier = easierVariation(exercise, library, equipment) as ExerciseRow | null
       return { kind: 'EASIER_VARIATION', easierExercise: easier }
     }

@@ -192,6 +192,7 @@ private val STRICT_SEPARATORS = Regex("[_-]")
 private val STRICT_UNAVAILABLE = Regex("""straps|suspend|suspension|trx|\brings?\b|ab wheel|ab roller|\bball\b|bosu|\bbox\b|platform|rope climb|sled|harness|\bsmr\b|overhead throw|overhead slam""")
 private val STRICT_BENCH = Regex("""\bbench\b|decline.*push|feet elevated""")
 private val STRICT_BAND = Regex("""\bband(s)?\b""")
+private val STRICT_LOAD = Regex("""\bweighted\b""")
 private val STRICT_BAR = Regex("""\bhang(ing)?\b|\bchins\b|chin crunch""")
 private val CLAUSE_BREAK = Regex("""[.,،;!?؟\n]|(?<![\p{L}])(but|لكن|ولكن|بل|بس)(?![\p{L}])""")
 
@@ -632,6 +633,8 @@ object ExerciseSwapEngine {
         val requires = profile.requires.toMutableSet()
         if (STRICT_BENCH.containsMatchIn(text)) requires.add(Equipment.FLAT_BENCH)
         if (STRICT_BAND.containsMatchIn(text)) requires.add(Equipment.BAND)
+        // Imported "weighted" moves are tagged bodyweight but need a load (e.g. weighted_squat holds a weight between benches).
+        if (STRICT_LOAD.containsMatchIn(text)) requires.add(Equipment.DUMBBELLS)
         if (STRICT_BAR.containsMatchIn(text)) requires.add(Equipment.PULL_UP_BAR)
         return profile.copy(requires = requires, unavailableEquipment = unavailableEquipment)
     }

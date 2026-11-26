@@ -2303,6 +2303,7 @@
     <string name="baseline_start_weight">ابدأ بـ %1$s</string>
     <string name="baseline_try_easier">جرّب نسخة أسهل: %1$s</string>
     <string name="baseline_try_easier_generic">جرّب نسخة أسهل عندما تكون مستعدًا.</string>
+    <string name="baseline_outgrown_try_harder">تجاوزت هذا التمرين. جرّب نسخة أصعب: %1$s</string>
     <string name="baseline_test_move_named">اختبر %1$s</string>
     <string name="baseline_too_light">الوزن خفيف جدًا للحكم: جرّب وزنًا أثقل</string>
     <string name="baseline_hold_zero_hint">اثبت لثانية واحدة على الأقل لتحديد هدف البداية.</string>

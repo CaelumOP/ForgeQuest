@@ -214,6 +214,7 @@
   "baseline_mode_guided": "موجّه",
   "baseline_mode_manual": "يدوي",
   "baseline_not_tested": "لم يُختبر بعد",
+  "baseline_outgrown_try_harder": "تجاوزت هذا التمرين. جرّب نسخة أصعب: {1}",
   "baseline_pb_entry": "اختبر نقطة بدايتك",
   "baseline_pb_entry_hint": "حدّد تكراراتك ومدة ثباتك وأوزان البداية",
   "baseline_picker_title": "اختر تمرينًا للاختبار",

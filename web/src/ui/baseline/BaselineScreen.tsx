@@ -607,6 +607,14 @@ function BaselineResultStep({
           {(tgt.kind === 'REPS' || tgt.kind === 'HOLD' || tgt.kind === 'WEIGHT') && targetText && (
             <div class="bl-target-box">{targetText}</div>
           )}
+          {tgt.kind === 'REPS' && tgt.harderExercise && (
+            <>
+              <p class="bl-result-msg">{t('baseline_outgrown_try_harder', tgt.harderExercise.name)}</p>
+              <Button block onClick={() => onTestEasier(tgt.harderExercise!.id)}>
+                {t('baseline_test_move_named', tgt.harderExercise.name)}
+              </Button>
+            </>
+          )}
           {tgt.kind === 'EASIER_VARIATION' && (
             <>
               <p class="bl-result-msg">

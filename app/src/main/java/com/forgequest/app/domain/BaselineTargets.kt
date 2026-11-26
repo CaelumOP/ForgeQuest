@@ -18,6 +18,19 @@ object BaselineTargets {
     fun repsTarget(max: Int): Int? =
         if (max <= 0) null else max(1, floor(0.7 * max + 1e-9).toInt())
 
+    /** A bodyweight reps test at or above this many reps means the move is outgrown (progression caps near 15). */
+    const val OUTGROWN_REPS = 25
+
+    /** True for a REPS-kind max-reps result of [OUTGROWN_REPS] or more; WEIGHTED and HOLD results never are. */
+    fun isOutgrown(kind: ExerciseKind, maxReps: Int): Boolean = kind == ExerciseKind.REPS && maxReps >= OUTGROWN_REPS
+
+    /** The next step up that fits [equipment] (reuses [ExerciseTiers.harderVersion]), or null. */
+    fun harderVariation(
+        exercise: ExerciseEntity,
+        library: List<ExerciseEntity>,
+        equipment: Set<Equipment> = emptySet(),
+    ): ExerciseEntity? = ExerciseTiers.harderVersion(exercise, library, equipment)
+
     /** Working hold seconds from a max-hold test: 70% floored to the 5 s grid, minimum 5 s; null when <= 0. */
     fun holdTarget(maxSeconds: Int): Int? =
         if (maxSeconds <= 0) null else max(5, floor(0.7 * maxSeconds / 5.0 + 1e-9).toInt() * 5)

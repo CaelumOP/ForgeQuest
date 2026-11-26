@@ -5,7 +5,7 @@ import {
   ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, profileFits, profileFor,
   type Equipment,
 } from './exercise-swap-engine'
-import { prevInLineId, tierOf, TIERS } from './exercise-tiers'
+import { harderVersion, prevInLineId, tierOf, TIERS } from './exercise-tiers'
 import { fromKg, loadStep, toKg, type WeightUnit } from './units'
 
 export type WeightedTarget =
@@ -17,6 +17,23 @@ export type WeightedTarget =
 export function repsTarget(max: number): number | null {
   if (!Number.isFinite(max) || max <= 0) return null
   return Math.max(1, Math.floor(0.7 * max + 1e-9))
+}
+
+/** A bodyweight reps test at or above this many reps means the move is outgrown (progression caps near 15). */
+export const OUTGROWN_REPS = 25
+
+/** True for a REPS-kind max-reps result of OUTGROWN_REPS or more; WEIGHTED and HOLD results never are. */
+export function isOutgrown(kind: ExerciseEntity['kind'], maxReps: number): boolean {
+  return kind === 'REPS' && Number.isFinite(maxReps) && maxReps >= OUTGROWN_REPS
+}
+
+/** The next step up that fits `equipment` (reuses ExerciseTiers.harderVersion), or null. */
+export function harderVariation(
+  exercise: ExerciseEntity,
+  catalog: readonly ExerciseEntity[],
+  equipment: ReadonlySet<Equipment> = new Set(),
+): ExerciseEntity | null {
+  return harderVersion(exercise, catalog as ExerciseEntity[], equipment as Set<Equipment>)
 }
 
 /** Working hold target (seconds) from a max-hold test: null when <= 0, else max(5, floor(0.7 * s / 5) * 5). */

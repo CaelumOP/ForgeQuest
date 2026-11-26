@@ -1953,6 +1953,7 @@
     <string name="baseline_start_weight">Start with %1$s</string>
     <string name="baseline_try_easier">Try an easier version: %1$s</string>
     <string name="baseline_try_easier_generic">Try an easier version when you feel ready.</string>
+    <string name="baseline_outgrown_try_harder">You\'ve outgrown this move. Try a harder version: %1$s</string>
     <string name="baseline_test_move_named">Test %1$s</string>
     <string name="baseline_too_light">Too light to judge: try a heavier weight</string>
     <string name="baseline_hold_zero_hint">Hold at least 1 second to set a starting target.</string>

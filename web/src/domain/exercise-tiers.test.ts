@@ -24,7 +24,7 @@ describe('exercise tiers', () => {
     const next = (id: string, eq: Set<Equipment> = gym) => harderVersion(ex(id), all, eq)?.id ?? null
     expect(next('wide_knee_push_up', bodyweight)).toBe('push_up')
     expect(next('half_squat', bodyweight)).toBe('squat')
-    expect(next('squat', bodyweight)).toBe('weighted_squat')
+    expect(next('squat', bodyweight)).toBe('jump_squat')
     expect(next('lunge')).toBe('reverse_lunge')
     expect(next('australian_chin_up')).toBe('australian_pull_up')
     expect(next('negative_pull_up')).toBe('pull_up')

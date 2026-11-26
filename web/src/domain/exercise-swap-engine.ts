@@ -586,6 +586,8 @@ function strictEquipment(ex: ExerciseEntity, profile: BiomechanicalProfile): Bio
   const requires = new Set(profile.requires ?? [profile.equipment])
   if (/\bbench\b/.test(text) || /decline.*push|feet elevated/.test(text)) requires.add('FLAT_BENCH')
   if (/\bband(s)?\b/.test(text)) requires.add('BAND')
+  // Imported "weighted" moves are tagged bodyweight but need a load (e.g. weighted_squat holds a weight between benches).
+  if (/\bweighted\b/.test(text)) requires.add('DUMBBELLS')
   if (/\bhang(ing)?\b|\bchins\b|chin crunch/.test(text)) requires.add('PULL_UP_BAR')
   return { ...profile, requires: [...requires], unavailableEquipment }
 }
