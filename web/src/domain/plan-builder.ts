@@ -60,6 +60,12 @@ export type PlanInput = {
   avoidIds?: ReadonlySet<string> | readonly string[]
   pushUpMax?: number | null
   pullUpMax?: number | null
+  /** Latest baseline max reps of a bodyweight squat; null/undefined = use the experience cap. */
+  squatMax?: number | null
+  /** Latest baseline max reps of a hip bridge; null/undefined = use the experience cap. */
+  hingeMax?: number | null
+  /** Latest baseline plank hold in seconds; null/undefined = use the experience cap. */
+  plankSeconds?: number | null
   /** Muscles to give extra volume (max 3 are used). */
   focus?: ReadonlySet<Muscle> | readonly Muscle[]
   minutesByDay?: ReadonlyMap<number, number> | Record<number, number>
@@ -445,6 +451,9 @@ class Builder {
   private readonly avoidIds: Set<string>
   private readonly pushUpMax: number | null
   private readonly pullUpMax: number | null
+  private readonly squatMax: number | null
+  private readonly hingeMax: number | null
+  private readonly plankSeconds: number | null
   private readonly focus: Set<Muscle>
   private readonly minutesByDay: Map<number, number>
   private readonly cardio: Cardio
@@ -476,6 +485,9 @@ class Builder {
     this.avoidIds = new Set<string>(input.avoidIds ?? [])
     this.pushUpMax = input.pushUpMax ?? null
     this.pullUpMax = input.pullUpMax ?? null
+    this.squatMax = input.squatMax ?? null
+    this.hingeMax = input.hingeMax ?? null
+    this.plankSeconds = input.plankSeconds ?? null
     this.focus = new Set(
       [...new Set<Muscle>(input.focus ?? [])]
         .sort((a, b) => muscleOrd(a) - muscleOrd(b))
@@ -539,6 +551,15 @@ class Builder {
     }
     if (PULL_PATTERNS.has(pattern) && this.pullUpMax != null) {
       return this.pullUpMax <= 0 ? 'FOUNDATION' : this.pullUpMax <= 7 ? 'INTERMEDIATE' : 'ADVANCED'
+    }
+    if ((pattern === 'SQUAT_BILATERAL' || pattern === 'SQUAT_UNILATERAL') && this.squatMax != null) {
+      return this.squatMax < 15 ? 'FOUNDATION' : this.squatMax <= 30 ? 'INTERMEDIATE' : 'ADVANCED'
+    }
+    if ((pattern === 'HIP_HINGE' || pattern === 'KNEE_FLEXION') && this.hingeMax != null) {
+      return this.hingeMax < 12 ? 'FOUNDATION' : this.hingeMax <= 30 ? 'INTERMEDIATE' : 'ADVANCED'
+    }
+    if ((pattern === 'CORE_ANTI_EXTENSION' || pattern === 'CORE_FLEXION_ROTATION') && this.plankSeconds != null) {
+      return this.plankSeconds < 30 ? 'FOUNDATION' : this.plankSeconds <= 60 ? 'INTERMEDIATE' : 'ADVANCED'
     }
     return this.experienceCap
   }

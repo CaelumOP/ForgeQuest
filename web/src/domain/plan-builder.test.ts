@@ -58,6 +58,22 @@ describe('PlanBuilderTest', () => {
     expect(sawIncline).toBe(true)
   })
 
+  it('baseline squat, hinge and plank results cap their movement patterns at Foundation', () => {
+    const cases: [Partial<PlanInput>, MovementPattern[]][] = [
+      [{ squatMax: 5 }, ['SQUAT_BILATERAL', 'SQUAT_UNILATERAL']],
+      [{ hingeMax: 5 }, ['HIP_HINGE', 'KNEE_FLEXION']],
+      [{ plankSeconds: 10 }, ['CORE_ANTI_EXTENSION', 'CORE_FLEXION_ROTATION']],
+    ]
+    for (const [overrides, patterns] of cases) {
+      for (const equipment of [fullGym, new Set<Equipment>(['BODYWEIGHT'])]) {
+        const plan = build(input(4, equipment, 'MUSCLE', 60, { experience: 'SEASONED', ...overrides }))
+        for (const ex of exercisesOf(plan.draft)) {
+          if (patterns.includes(profileFor(ex).pattern)) expect(tierOf(ex), ex.id).toBe('FOUNDATION')
+        }
+      }
+    }
+  })
+
   it('every output id exists in the catalog', () => {
     for (const preset of EQUIPMENT_PRESETS) {
       for (let n = 2; n <= 6; n++) {

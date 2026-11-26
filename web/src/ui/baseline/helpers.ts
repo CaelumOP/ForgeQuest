@@ -3,7 +3,7 @@ import { t, plural, type Lang } from '../../i18n'
 import type { BaselineTestRow, ExerciseRow } from '../../data/db'
 import { configuredEquipment, weightUnit, type Settings } from '../../data/settings'
 import type { ActivePlan } from '../../data/workouts'
-import { repsTarget, holdTarget, weightedTargetInUnit, easierVariation, harderVariation, isOutgrown } from '../../domain/baseline-targets'
+import { repsTarget, holdTarget, weightedTargetInUnit, easierVariation, harderVariation, isOutgrown, isTooHard, formatHoldSeconds } from '../../domain/baseline-targets'
 import { expandLegacyEquipment, profileFits, profileFor, isEquipment, type Equipment } from '../../domain/exercise-swap-engine'
 import type { ExerciseKind } from '../../domain/muscle'
 import { isCompoundExercise } from '../../domain/plan-builder'
@@ -30,12 +30,13 @@ export const BASELINE_REST_KEY = 'fq.baseline.restEndsAt'
 export const BASELINE_DISMISSED_KEY = 'baseline_card_dismissed'
 
 export type BaselineTargetDisplay =
-  | { kind: 'REPS'; reps: number; harderExercise?: ExerciseRow }
-  | { kind: 'HOLD'; seconds: number }
+  | { kind: 'REPS'; reps: number; harderExercise?: ExerciseRow | null; easierExercise?: ExerciseRow | null }
+  | { kind: 'HOLD'; seconds: number; harderExercise?: ExerciseRow | null; easierExercise?: ExerciseRow | null }
   | { kind: 'WEIGHT'; weightKg: number; unit: WeightUnit }
   | { kind: 'EASIER_VARIATION'; easierExercise: ExerciseRow | null }
   | { kind: 'TOO_LIGHT' }
-  | { kind: 'HOLD_TOO_SHORT' }
+  | { kind: 'HOLD_TOO_SHORT'; easierExercise?: ExerciseRow | null }
+  | { kind: 'TOO_HEAVY' }
   | { kind: 'WEIGHT_NO_TARGET' }
 
 export type BaselineMoveItem = {
@@ -72,19 +73,33 @@ export function computeTargetDisplay(
 ): BaselineTargetDisplay {
   switch (exercise.kind) {
     case 'REPS': {
-      const target = repsTarget(test.reps ?? 0)
+      const reps = test.reps ?? 0
+      const target = repsTarget(reps)
       if (target != null) {
-        const harder = isOutgrown(exercise.kind, test.reps ?? 0)
+        const harder = isOutgrown(exercise.kind, reps)
           ? (harderVariation(exercise, library, equipment) as ExerciseRow | null)
           : null
-        return harder ? { kind: 'REPS', reps: target, harderExercise: harder } : { kind: 'REPS', reps: target }
+        const easier = isTooHard(exercise.kind, reps)
+          ? (easierVariation(exercise, library, equipment) as ExerciseRow | null)
+          : null
+        return { kind: 'REPS', reps: target, harderExercise: harder, easierExercise: easier }
       }
       const easier = easierVariation(exercise, library, equipment) as ExerciseRow | null
       return { kind: 'EASIER_VARIATION', easierExercise: easier }
     }
     case 'HOLD': {
-      const target = holdTarget(test.seconds ?? 0)
-      return target != null ? { kind: 'HOLD', seconds: target } : { kind: 'HOLD_TOO_SHORT' }
+      const seconds = test.seconds ?? 0
+      const target = holdTarget(seconds)
+      if (target == null) {
+        return { kind: 'HOLD_TOO_SHORT', easierExercise: easierVariation(exercise, library, equipment) as ExerciseRow | null }
+      }
+      const harder = isOutgrown(exercise.kind, seconds)
+        ? (harderVariation(exercise, library, equipment) as ExerciseRow | null)
+        : null
+      const easier = isTooHard(exercise.kind, seconds)
+        ? (easierVariation(exercise, library, equipment) as ExerciseRow | null)
+        : null
+      return { kind: 'HOLD', seconds: target, harderExercise: harder, easierExercise: easier }
     }
     case 'WEIGHTED': {
       const wKg = test.weightKg ?? 0
@@ -92,6 +107,7 @@ export function computeTargetDisplay(
       const res = weightedTargetInUnit(wKg, r, repsMin, unit)
       if (res.kind === 'TARGET') return { kind: 'WEIGHT', weightKg: res.kg, unit }
       if (res.kind === 'TOO_LIGHT') return { kind: 'TOO_LIGHT' }
+      if (res.kind === 'TOO_HEAVY') return { kind: 'TOO_HEAVY' }
       return { kind: 'WEIGHT_NO_TARGET' }
     }
   }
@@ -188,7 +204,7 @@ export function formatLastResult(
     }
     case 'HOLD': {
       if (test.seconds == null) return null
-      return t('baseline_last_seconds', test.seconds)
+      return t('baseline_last_seconds', formatHoldSeconds(test.seconds, t('unit_s')))
     }
     case 'WEIGHTED': {
       if (test.weightKg == null || test.reps == null) return null
@@ -197,17 +213,32 @@ export function formatLastResult(
   }
 }
 
+/** Subtle second line on a summary row: too easy (outgrown) or hard start (too low), else null. */
+export function baselineRowFlag(
+  kind: ExerciseKind,
+  test: Pick<BaselineTestRow, 'reps' | 'seconds'> | null,
+): 'baseline_row_too_easy' | 'baseline_row_too_hard' | null {
+  if (!test) return null
+  const value = kind === 'REPS' ? test.reps : kind === 'HOLD' ? test.seconds : null
+  if (value == null) return null
+  if (isOutgrown(kind, value)) return 'baseline_row_too_easy'
+  if (isTooHard(kind, value)) return 'baseline_row_too_hard'
+  return null
+}
+
 export function formatTargetText(target: BaselineTargetDisplay | null, lang: Lang): string | null {
   if (!target) return null
   const arabic = lang === 'ar'
   switch (target.kind) {
     case 'REPS': return plural('baseline_start_reps', target.reps, target.reps)
-    case 'HOLD': return t('baseline_start_seconds', target.seconds)
+    case 'HOLD': return t('baseline_start_seconds', formatHoldSeconds(target.seconds, t('unit_s')))
     case 'WEIGHT': return t('baseline_start_weight', formatWeight(target.unit, target.weightKg, arabic))
     case 'EASIER_VARIATION':
       return target.easierExercise
         ? t('baseline_try_easier', target.easierExercise.name)
         : t('baseline_try_easier_generic')
+    case 'TOO_HEAVY':
+      return t('baseline_too_heavy')
     case 'TOO_LIGHT':
     case 'WEIGHT_NO_TARGET':
       return t('baseline_too_light')

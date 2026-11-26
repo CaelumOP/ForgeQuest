@@ -65,6 +65,7 @@ describe('baseline targets', () => {
     expect(isOutgrown('REPS', 24)).toBe(false)
     expect(isOutgrown('REPS', 0)).toBe(false)
     expect(isOutgrown('WEIGHTED', 51)).toBe(false)
-    expect(isOutgrown('HOLD', 99)).toBe(false)
+    expect(isOutgrown('HOLD', 89)).toBe(false)
+    expect(isOutgrown('HOLD', 90)).toBe(true)
   })
 })

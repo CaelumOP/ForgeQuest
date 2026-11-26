@@ -42,12 +42,21 @@ data class BaselineMoveItem(
 
 /** Computed starting target or guidance displayed after saving (and on each move row). */
 sealed interface BaselineTargetDisplay {
-    data class Reps(val reps: Int, val harderExercise: ExerciseEntity? = null) : BaselineTargetDisplay
-    data class Hold(val seconds: Int) : BaselineTargetDisplay
+    data class Reps(
+        val reps: Int,
+        val harderExercise: ExerciseEntity? = null,
+        val easierExercise: ExerciseEntity? = null,
+    ) : BaselineTargetDisplay
+    data class Hold(
+        val seconds: Int,
+        val harderExercise: ExerciseEntity? = null,
+        val easierExercise: ExerciseEntity? = null,
+    ) : BaselineTargetDisplay
     data class Weight(val weightKg: Float, val unit: WeightUnit) : BaselineTargetDisplay
     data class EasierVariation(val easierExercise: ExerciseEntity?) : BaselineTargetDisplay
     data object TooLight : BaselineTargetDisplay
-    data object HoldTooShort : BaselineTargetDisplay
+    data class HoldTooShort(val easierExercise: ExerciseEntity? = null) : BaselineTargetDisplay
+    data object TooHeavy : BaselineTargetDisplay
     data object WeightNoTarget : BaselineTargetDisplay
 }
 
@@ -172,7 +181,12 @@ internal fun computeTargetDisplay(
             } else {
                 null
             }
-            BaselineTargetDisplay.Reps(target, harder)
+            val easier = if (BaselineTargets.isTooHard(exercise.kind, reps)) {
+                BaselineTargets.easierVariation(exercise, library, equipment)
+            } else {
+                null
+            }
+            BaselineTargetDisplay.Reps(target, harder, easier)
         } else {
             BaselineTargetDisplay.EasierVariation(
                 BaselineTargets.easierVariation(exercise, library, equipment),
@@ -182,7 +196,21 @@ internal fun computeTargetDisplay(
     ExerciseKind.HOLD -> {
         val seconds = test.seconds ?: 0
         val target = BaselineTargets.holdTarget(seconds)
-        if (target != null) BaselineTargetDisplay.Hold(target) else BaselineTargetDisplay.HoldTooShort
+        if (target == null) {
+            BaselineTargetDisplay.HoldTooShort(BaselineTargets.easierVariation(exercise, library, equipment))
+        } else {
+            val harder = if (BaselineTargets.isOutgrown(exercise.kind, seconds)) {
+                BaselineTargets.harderVariation(exercise, library, equipment)
+            } else {
+                null
+            }
+            val easier = if (BaselineTargets.isTooHard(exercise.kind, seconds)) {
+                BaselineTargets.easierVariation(exercise, library, equipment)
+            } else {
+                null
+            }
+            BaselineTargetDisplay.Hold(target, harder, easier)
+        }
     }
     ExerciseKind.WEIGHTED -> {
         val wKg = test.weightKg ?: 0f
@@ -197,6 +225,7 @@ internal fun computeTargetDisplay(
         ) {
             is WeightedResult.Target -> BaselineTargetDisplay.Weight(unit.toKg(res.weightKg.toFloat()), unit)
             WeightedResult.TooLight -> BaselineTargetDisplay.TooLight
+            WeightedResult.TooHeavy -> BaselineTargetDisplay.TooHeavy
             WeightedResult.NoTarget -> BaselineTargetDisplay.WeightNoTarget
         }
     }
@@ -310,7 +339,7 @@ class BaselineViewModel(
     fun stopHold(exerciseId: String, nowMillis: Long = clockMillis()) {
         val h = hold.value ?: return
         hold.value = null
-        val held = h.elapsed(nowMillis).coerceIn(0, 3600)
+        val held = BaselineTargets.clampHoldInput(h.elapsed(nowMillis))
         if (held <= 0) {
             viewModelScope.launch {
                 val ex = library.value.firstOrNull { it.id == exerciseId }
@@ -324,7 +353,13 @@ class BaselineViewModel(
                         seconds = 0,
                         createdAt = clockMillis(),
                     ),
-                    target = BaselineTargetDisplay.HoldTooShort,
+                    target = BaselineTargetDisplay.HoldTooShort(
+                        BaselineTargets.easierVariation(
+                            ex,
+                            library.value.ifEmpty { libraryFlow.first() },
+                            expandLegacyEquipment(callerEquipment ?: settings.value.configuredEquipment) + Equipment.BODYWEIGHT,
+                        ),
+                    ),
                     unit = settings.value.weightUnitFor(ex.unitOverride),
                 )
             }
@@ -366,7 +401,7 @@ class BaselineViewModel(
     fun saveWeighted(exerciseId: String, displayWeight: Float, reps: Int) = save { recordWeighted(exerciseId, displayWeight, reps) }
 
     internal suspend fun recordReps(exerciseId: String, reps: Int): BaselineSaveResult? {
-        val cleanReps = reps.coerceIn(0, 999)
+        val cleanReps = BaselineTargets.clampRepsInput(reps)
         return persistAndCompute(
             exerciseId = exerciseId,
             kind = ExerciseKind.REPS,
@@ -377,7 +412,7 @@ class BaselineViewModel(
     }
 
     internal suspend fun recordHold(exerciseId: String, seconds: Int): BaselineSaveResult? {
-        val cleanSeconds = seconds.coerceIn(0, 3600)
+        val cleanSeconds = BaselineTargets.clampHoldInput(seconds)
         return persistAndCompute(
             exerciseId = exerciseId,
             kind = ExerciseKind.HOLD,
@@ -396,8 +431,8 @@ class BaselineViewModel(
         val ex = lib.firstOrNull { it.id == exerciseId } ?: return null
         val curSettings = settingsFlow.first()
         val unit = curSettings.weightUnitFor(ex.unitOverride)
-        val weightKg = unit.toKg(displayWeight).coerceIn(0f, 999f)
-        val cleanReps = reps.coerceIn(1, 999)
+        val weightKg = BaselineTargets.clampWeightKgInput(unit.toKg(displayWeight).toDouble()).toFloat()
+        val cleanReps = BaselineTargets.clampWeightedRepsInput(reps).coerceAtLeast(1)
         return persistAndCompute(
             exerciseId = exerciseId,
             kind = ExerciseKind.WEIGHTED,

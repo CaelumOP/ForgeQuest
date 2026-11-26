@@ -82,7 +82,8 @@ class BaselineTargetsTest {
         assertFalse(BaselineTargets.isOutgrown(ExerciseKind.REPS, 24))
         assertFalse(BaselineTargets.isOutgrown(ExerciseKind.REPS, 0))
         assertFalse(BaselineTargets.isOutgrown(ExerciseKind.WEIGHTED, 51))
-        assertFalse(BaselineTargets.isOutgrown(ExerciseKind.HOLD, 99))
+        assertFalse(BaselineTargets.isOutgrown(ExerciseKind.HOLD, 89))
+        assertTrue(BaselineTargets.isOutgrown(ExerciseKind.HOLD, 90))
     }
 
     @Test

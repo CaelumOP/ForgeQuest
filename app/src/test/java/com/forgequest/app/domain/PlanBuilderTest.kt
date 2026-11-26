@@ -50,6 +50,22 @@ class PlanBuilderTest {
         assertTrue(sawIncline)
     }
 
+    @Test fun baselineSquatHingeAndPlankResultsCapTheirMovementPatternsAtFoundation() {
+        val cases = listOf<Pair<(PlanInput) -> PlanInput, Set<MovementPattern>>>(
+            { i: PlanInput -> i.copy(squatMax = 5) } to setOf(MovementPattern.SQUAT_BILATERAL, MovementPattern.SQUAT_UNILATERAL),
+            { i: PlanInput -> i.copy(hingeMax = 5) } to setOf(MovementPattern.HIP_HINGE, MovementPattern.KNEE_FLEXION),
+            { i: PlanInput -> i.copy(plankSeconds = 10) } to setOf(MovementPattern.CORE_ANTI_EXTENSION, MovementPattern.CORE_FLEXION_ROTATION),
+        )
+        for ((apply, patterns) in cases) {
+            for (equipment in listOf(fullGym, setOf(Equipment.BODYWEIGHT))) {
+                val plan = build(input(4, equipment, TrainGoal.MUSCLE, 60) { apply(it.copy(experience = Experience.SEASONED)) })
+                for (ex in plan.draft.exercises()) {
+                    if (ExerciseSwapEngine.profileFor(ex).pattern in patterns) assertEquals(ex.id, Tier.FOUNDATION, ExerciseTiers.of(ex))
+                }
+            }
+        }
+    }
+
     @Test fun everyOutputIdExistsInTheCatalog() {
         for (preset in EquipmentPreset.entries) for (n in 2..6) {
             val ids = build(input(n, preset.equipment)).draft.days.flatMap { d -> d.items.map { it.exerciseId } }

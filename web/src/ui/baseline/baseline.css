@@ -74,6 +74,12 @@
   color: var(--text-2);
 }
 
+.bl-move-flag {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+
 .bl-move-target {
   font-size: 13px;
   line-height: 18px;

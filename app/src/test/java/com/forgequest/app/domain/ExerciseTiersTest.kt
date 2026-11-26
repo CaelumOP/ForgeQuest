@@ -37,6 +37,28 @@ class ExerciseTiersTest {
         assertNull(next("bench_press")) // weighted moves add load instead
     }
 
+    @Test fun namedRungsStepUpWithinOneTier() {
+        fun next(id: String, eq: Set<Equipment> = gym) = ExerciseTiers.harderVersion(ex(id), all, eq)?.id
+        assertEquals("diamond_push_up", next("push_up"))
+        assertEquals("diamond_push_up", next("push_up", bodyweight))
+        assertEquals("push_up", next("knee_push_up", bodyweight))
+        assertEquals("archer_pull_up", next("pull_up"))
+        assertEquals("archer_pull_up", next("chin_up"))
+        assertEquals("pull_up", next("australian_pull_up"))
+        assertEquals("jump_squat", next("squat"))
+    }
+
+    @Test fun holdLadderHasHarderAndEasierRungs() {
+        fun nextHold(id: String, eq: Set<Equipment> = gym) = ExerciseTiers.harderHoldVersion(ex(id), all, eq)?.id
+        assertEquals("hollow_hold", nextHold("plank", bodyweight))
+        assertEquals("l_sit", nextHold("hollow_hold"))
+        assertEquals("copenhagen_plank_short", nextHold("side_plank"))
+        assertNull(nextHold("push_up")) // reps moves use harderVersion
+        assertEquals("incline_hollow_plank", BaselineTargets.easierVariation(ex("plank"), all, bodyweight)?.id)
+        assertEquals("plank", BaselineTargets.easierVariation(ex("hollow_hold"), all, bodyweight)?.id)
+        assertEquals("hollow_hold", BaselineTargets.easierVariation(ex("l_sit"), all, bodyweight)?.id)
+    }
+
     @Test fun readyNeedsTwoCleanSessionsAt15() {
         fun s(vararg reps: Int, effort: SetEffort = SetEffort.OK) = reps.map { Progression.PastSet(it, null, null, effort) }
         assertTrue(ExerciseTiers.readyForHarder(s(20, 18, 15), s(16, 15, 15)))

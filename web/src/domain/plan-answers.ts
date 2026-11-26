@@ -63,19 +63,28 @@ export function defaultPlanAnswers(): PlanAnswers {
 export type BaselineMaxes = {
   pushUpMax?: number | null
   pullUpMax?: number | null
+  squatMax?: number | null
+  hingeMax?: number | null
+  plankSeconds?: number | null
 }
 
 function resolveBaselineMaxes(
-  baselines?: BaselineMaxes | ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps'>>,
+  baselines?: BaselineMaxes | ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps' | 'seconds'>>,
 ): BaselineMaxes {
   if (!baselines) return {}
   if (typeof (baselines as ReadonlyMap<string, unknown>).get === 'function') {
-    const map = baselines as ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps'>>
+    const map = baselines as ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps' | 'seconds'>>
     const push = map.get('push_up')
     const pull = map.get('pull_up')
+    const squat = map.get('squat')
+    const bridge = map.get('hip_bridge')
+    const plank = map.get('plank')
     return {
       pushUpMax: push?.kind === 'REPS' ? push.reps : null,
       pullUpMax: pull?.kind === 'REPS' ? pull.reps : null,
+      squatMax: squat?.kind === 'REPS' ? squat.reps : null,
+      hingeMax: bridge?.kind === 'REPS' ? bridge.reps : null,
+      plankSeconds: plank?.kind === 'HOLD' ? plank.seconds : null,
     }
   }
   return baselines as BaselineMaxes
@@ -84,7 +93,7 @@ function resolveBaselineMaxes(
 export function planAnswersToInput(
   answers: Partial<PlanAnswers> = {},
   offset = 0,
-  baselines?: BaselineMaxes | ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps'>>,
+  baselines?: BaselineMaxes | ReadonlyMap<string, Pick<BaselineTestEntity, 'kind' | 'reps' | 'seconds'>>,
 ): Required<PlanInput> {
   const base = defaultPlanAnswers()
   const maxes = resolveBaselineMaxes(baselines)
@@ -111,6 +120,9 @@ export function planAnswersToInput(
     pullUpMax: maxes.pullUpMax != null
       ? maxes.pullUpMax
       : (answers.pullUpMax !== undefined ? answers.pullUpMax : base.pullUpMax),
+    squatMax: maxes.squatMax ?? null,
+    hingeMax: maxes.hingeMax ?? null,
+    plankSeconds: maxes.plankSeconds ?? null,
     focus: new Set<Muscle>(answers.focus ?? base.focus),
     minutesByDay,
     cardio: answers.cardio ?? base.cardio,

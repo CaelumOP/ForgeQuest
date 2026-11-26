@@ -45,11 +45,17 @@ data class PlanAnswers(
     fun toInput(
         baselinePushUpMax: Int? = null,
         baselinePullUpMax: Int? = null,
+        baselineSquatMax: Int? = null,
+        baselineHingeMax: Int? = null,
+        baselinePlankSeconds: Int? = null,
     ) = PlanInput(
         goal = goal, days = days, minutes = minutes, equipment = expandLegacyEquipment(equipment) + Equipment.BODYWEIGHT, experience = experience,
         injuries = injuries, avoidIds = avoidIds,
         pushUpMax = baselinePushUpMax ?: pushUpMax,
         pullUpMax = baselinePullUpMax ?: pullUpMax,
+        squatMax = baselineSquatMax,
+        hingeMax = baselineHingeMax,
+        plankSeconds = baselinePlankSeconds,
         focus = focus,
         minutesByDay = minutesByDay.filterKeys { it in days }, cardio = cardio, warmUp = warmUp, coolDown = coolDown,
         holdsOk = holdsOk, reps = reps, rest = rest, style = style,

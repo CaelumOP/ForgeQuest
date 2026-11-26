@@ -7,6 +7,11 @@ import type { BaselineTestRow } from '../../data/db'
 import { configuredEquipment, useSettings, weightUnit } from '../../data/settings'
 import { useActivePlan, useLibrary } from '../../data/workouts'
 import { expandLegacyEquipment } from '../../domain/exercise-swap-engine'
+import {
+  MAX_HOLD_INPUT, MAX_REPS_INPUT, MAX_WEIGHT_KG_INPUT, MAX_WEIGHTED_REPS_INPUT,
+  clampHoldInput, clampRepsInput, clampWeightKgInput, clampWeightedRepsInput, easierVariation,
+} from '../../domain/baseline-targets'
+import type { ExerciseRow } from '../../data/db'
 import { fromKg, loadStep, toKg, unitLabel } from '../../domain/units'
 import { AddIcon, BackChevron, ForwardChevron, RemoveIcon } from '../icons'
 import { Button, Card, Segmented, haptics } from '../kit'
@@ -27,6 +32,7 @@ import {
   DEFAULT_WEIGHTED_REPS_MIN,
   formatLastResult,
   formatTargetText,
+  baselineRowFlag,
   loadBaselineRest,
   saveBaselineRest,
   type BaselineMoveItem,
@@ -252,12 +258,15 @@ export function BaselineScreen({ param }: { param?: string }) {
           weightKg: null,
           createdAt: Date.now(),
         },
-        target: { kind: 'HOLD_TOO_SHORT' },
+        target: {
+          kind: 'HOLD_TOO_SHORT',
+          easierExercise: easierVariation(activeMove.exercise, library, equipment) as ExerciseRow | null,
+        },
         unit: activeMove.unit,
       })
       return
     }
-    void persistResult(activeMove, { seconds: held })
+    void persistResult(activeMove, { seconds: clampHoldInput(held) })
   }
 
   const resultForActive = lastResult && activeMove && lastResult.exercise.id === activeMove.exercise.id
@@ -298,11 +307,11 @@ export function BaselineScreen({ param }: { param?: string }) {
                 lang={lang}
                 saving={saving}
                 onStartHold={() => startHoldTimer(activeMove)}
-                onSaveReps={(reps) => void persistResult(activeMove, { reps: Math.max(0, Math.min(999, Math.trunc(reps))) })}
-                onSaveHold={(seconds) => void persistResult(activeMove, { seconds: Math.max(0, Math.min(3600, Math.trunc(seconds))) })}
+                onSaveReps={(reps) => void persistResult(activeMove, { reps: clampRepsInput(reps) })}
+                onSaveHold={(seconds) => void persistResult(activeMove, { seconds: clampHoldInput(seconds) })}
                 onSaveWeighted={(displayWeight, reps) => {
-                  const weightKg = Math.max(0, Math.min(999, toKg(activeMove.unit, displayWeight)))
-                  void persistResult(activeMove, { weightKg, reps: Math.max(1, Math.min(999, Math.trunc(reps))) })
+                  const weightKg = clampWeightKgInput(toKg(activeMove.unit, displayWeight))
+                  void persistResult(activeMove, { weightKg, reps: Math.max(1, clampWeightedRepsInput(reps)) })
                 }}
               />
             )
@@ -354,6 +363,7 @@ export function BaselineScreen({ param }: { param?: string }) {
 function BaselineMoveRow({ move, lang, onClick }: { move: BaselineMoveItem; lang: Lang; onClick: () => void }) {
   const lastText = formatLastResult(move.latest, move.exercise.kind, move.unit, lang)
   const targetText = lastText ? formatTargetText(move.target, lang) : null
+  const flagKey = lastText ? baselineRowFlag(move.exercise.kind, move.latest) : null
   const muscles = musclesLabel(move.exercise)
   return (
     <Card onClick={onClick}>
@@ -365,6 +375,7 @@ function BaselineMoveRow({ move, lang, onClick }: { move: BaselineMoveItem; lang
             <>
               <span class="bl-move-sub">{lastText}</span>
               {targetText && <span class="bl-move-target">{targetText}</span>}
+              {flagKey && <span class="bl-move-flag">{t(flagKey)}</span>}
             </>
           ) : (
             <span class="bl-move-sub">{muscles || t('baseline_not_tested')}</span>
@@ -434,7 +445,7 @@ function BaselineTestMoveStep({
                     aria-label={t('baseline_reps_counter_cd', count)}
                     onClick={() => {
                       haptics.check()
-                      setCount((c) => (c < 999 ? c + 1 : c))
+                      setCount((c) => (c < MAX_REPS_INPUT ? c + 1 : c))
                     }}
                   >
                     <span class="bl-counter-num">{count}</span>
@@ -467,11 +478,11 @@ function BaselineTestMoveStep({
                     label={t('stepper_reps')}
                     value={manualReps}
                     min={0}
-                    max={999}
+                    max={MAX_REPS_INPUT}
                     step={1}
                     unit={t('unit_reps')}
                     format={(n) => plural('rx_reps', n, n)}
-                    onChange={(v) => setManualReps(Math.max(0, Math.min(999, Math.trunc(v))))}
+                    onChange={(v) => setManualReps(clampRepsInput(v))}
                   />
                 </div>
               </Card>
@@ -505,10 +516,10 @@ function BaselineTestMoveStep({
                     label={t('stepper_hold_time')}
                     value={manualSeconds}
                     min={0}
-                    max={3600}
+                    max={MAX_HOLD_INPUT}
                     step={5}
                     unit={t('unit_s')}
-                    onChange={(v) => setManualSeconds(Math.max(0, Math.min(3600, Math.trunc(v))))}
+                    onChange={(v) => setManualSeconds(clampHoldInput(v))}
                   />
                 </div>
               </Card>
@@ -533,7 +544,7 @@ function BaselineTestMoveStep({
                     label={t('stepper_weight')}
                     value={displayWeight}
                     min={0}
-                    max={Math.round(fromKg(move.unit, 999))}
+                    max={Math.round(fromKg(move.unit, MAX_WEIGHT_KG_INPUT))}
                     step={loadStep(move.unit)}
                     decimals={1}
                     unit={u}
@@ -547,11 +558,11 @@ function BaselineTestMoveStep({
                     label={t('stepper_reps')}
                     value={weightedReps}
                     min={1}
-                    max={50}
+                    max={MAX_WEIGHTED_REPS_INPUT}
                     step={1}
                     unit={t('unit_reps')}
                     format={(n) => plural('rx_reps', n, n)}
-                    onChange={(v) => setWeightedReps(Math.max(1, Math.min(50, Math.trunc(v))))}
+                    onChange={(v) => setWeightedReps(Math.max(1, clampWeightedRepsInput(v)))}
                   />
                 </div>
               </div>
@@ -607,11 +618,19 @@ function BaselineResultStep({
           {(tgt.kind === 'REPS' || tgt.kind === 'HOLD' || tgt.kind === 'WEIGHT') && targetText && (
             <div class="bl-target-box">{targetText}</div>
           )}
-          {tgt.kind === 'REPS' && tgt.harderExercise && (
+          {(tgt.kind === 'REPS' || tgt.kind === 'HOLD') && tgt.harderExercise && (
             <>
               <p class="bl-result-msg">{t('baseline_outgrown_try_harder', tgt.harderExercise.name)}</p>
               <Button block onClick={() => onTestEasier(tgt.harderExercise!.id)}>
                 {t('baseline_test_move_named', tgt.harderExercise.name)}
+              </Button>
+            </>
+          )}
+          {(tgt.kind === 'REPS' || tgt.kind === 'HOLD' || tgt.kind === 'HOLD_TOO_SHORT') && tgt.easierExercise && (
+            <>
+              <p class="bl-result-msg">{t('baseline_try_easier', tgt.easierExercise.name)}</p>
+              <Button block onClick={() => onTestEasier(tgt.easierExercise!.id)}>
+                {t('baseline_test_move_named', tgt.easierExercise.name)}
               </Button>
             </>
           )}
@@ -629,7 +648,7 @@ function BaselineResultStep({
               )}
             </>
           )}
-          {(tgt.kind === 'TOO_LIGHT' || tgt.kind === 'WEIGHT_NO_TARGET' || tgt.kind === 'HOLD_TOO_SHORT') && (
+          {(tgt.kind === 'TOO_LIGHT' || tgt.kind === 'TOO_HEAVY' || tgt.kind === 'WEIGHT_NO_TARGET' || tgt.kind === 'HOLD_TOO_SHORT') && (
             <>
               {targetText && <p class="bl-muted">{targetText}</p>}
               <Button variant="tonal" block onClick={onRetest}>{t('baseline_retest')}</Button>

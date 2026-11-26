@@ -209,7 +209,7 @@
     "many": "السابق: {1} تكرارًا",
     "other": "السابق: {1} تكرار"
   },
-  "baseline_last_seconds": "السابق: {1} ث",
+  "baseline_last_seconds": "السابق: {1}",
   "baseline_last_weight": "السابق: {1} × {2}",
   "baseline_mode_guided": "موجّه",
   "baseline_mode_manual": "يدوي",
@@ -222,6 +222,8 @@
   "baseline_reps_label": "التكرارات",
   "baseline_rest_between": "راحة قبل التمرين التالي",
   "baseline_retest": "اختبر مجددًا",
+  "baseline_row_too_easy": "سهل جدًا: جرّب نسخة أصعب",
+  "baseline_row_too_hard": "بداية صعبة: جرّب نسخة أسهل",
   "baseline_save_failed": "تعذّر حفظ الاختبار. حاول مرة أخرى.",
   "baseline_seconds_label": "مدة الثبات",
   "baseline_see_all_moves": "عرض كل التمارين",
@@ -235,7 +237,7 @@
     "many": "ابدأ بـ {1} تكرارًا",
     "other": "ابدأ بـ {1} تكرار"
   },
-  "baseline_start_seconds": "ابدأ بـ {1} ث",
+  "baseline_start_seconds": "ابدأ بـ {1}",
   "baseline_start_weight": "ابدأ بـ {1}",
   "baseline_tap_after_rep": "اضغط بعد كل عدّة",
   "baseline_test_another": "اختبر تمرينًا آخر",
@@ -249,6 +251,7 @@
     "other": "{1} تمرين مُختبر"
   },
   "baseline_title": "حدّد نقطة البداية",
+  "baseline_too_heavy": "الوزن ثقيل جدًا لاختبار آمن. اختر وزنًا أخف تستطيع رفعه من 6 إلى 10 مرات.",
   "baseline_too_light": "الوزن خفيف جدًا للحكم: جرّب وزنًا أثقل",
   "baseline_try_easier": "جرّب نسخة أسهل: {1}",
   "baseline_try_easier_generic": "جرّب نسخة أسهل عندما تكون مستعدًا.",

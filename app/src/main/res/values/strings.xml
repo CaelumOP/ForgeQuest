@@ -1949,19 +1949,22 @@
         <item quantity="one">Start with %1$d rep</item>
         <item quantity="other">Start with %1$d reps</item>
     </plurals>
-    <string name="baseline_start_seconds">Start with %1$d s</string>
+    <string name="baseline_start_seconds">Start with %1$s</string>
     <string name="baseline_start_weight">Start with %1$s</string>
     <string name="baseline_try_easier">Try an easier version: %1$s</string>
     <string name="baseline_try_easier_generic">Try an easier version when you feel ready.</string>
     <string name="baseline_outgrown_try_harder">You\'ve outgrown this move. Try a harder version: %1$s</string>
     <string name="baseline_test_move_named">Test %1$s</string>
     <string name="baseline_too_light">Too light to judge: try a heavier weight</string>
+    <string name="baseline_too_heavy">Too heavy to test safely. Pick a lighter weight you can lift 6-10 times.</string>
+    <string name="baseline_row_too_easy">Too easy: try a harder version</string>
+    <string name="baseline_row_too_hard">Hard start: try an easier version</string>
     <string name="baseline_hold_zero_hint">Hold at least 1 second to set a starting target.</string>
     <plurals name="baseline_last_reps">
         <item quantity="one">Last: %1$d rep</item>
         <item quantity="other">Last: %1$d reps</item>
     </plurals>
-    <string name="baseline_last_seconds">Last: %1$d s</string>
+    <string name="baseline_last_seconds">Last: %1$s</string>
     <string name="baseline_last_weight">Last: %1$s × %2$d</string>
     <string name="baseline_not_tested">Not tested yet</string>
     <string name="baseline_rest_between">Rest before next move</string>

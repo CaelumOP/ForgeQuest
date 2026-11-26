@@ -33,6 +33,12 @@ data class PlanInput(
     val avoidIds: Set<String> = emptySet(),
     val pushUpMax: Int? = null,
     val pullUpMax: Int? = null,
+    /** Latest baseline max reps of a bodyweight squat; null = use the experience cap. */
+    val squatMax: Int? = null,
+    /** Latest baseline max reps of a hip bridge; null = use the experience cap. */
+    val hingeMax: Int? = null,
+    /** Latest baseline plank hold in seconds; null = use the experience cap. */
+    val plankSeconds: Int? = null,
     /** Muscles to give extra volume (max 3 are used). */
     val focus: Set<Muscle> = emptySet(),
     val minutesByDay: Map<Int, Int> = emptyMap(),
@@ -392,6 +398,12 @@ object PlanBuilder {
         private fun capFor(pattern: MP): Tier = when (pattern) {
             in PUSH_PATTERNS -> input.pushUpMax?.let { if (it < 8) Tier.FOUNDATION else if (it <= 20) Tier.INTERMEDIATE else Tier.ADVANCED }
             in PULL_PATTERNS -> input.pullUpMax?.let { if (it <= 0) Tier.FOUNDATION else if (it <= 7) Tier.INTERMEDIATE else Tier.ADVANCED }
+            MP.SQUAT_BILATERAL, MP.SQUAT_UNILATERAL ->
+                input.squatMax?.let { if (it < 15) Tier.FOUNDATION else if (it <= 30) Tier.INTERMEDIATE else Tier.ADVANCED }
+            MP.HIP_HINGE, MP.KNEE_FLEXION ->
+                input.hingeMax?.let { if (it < 12) Tier.FOUNDATION else if (it <= 30) Tier.INTERMEDIATE else Tier.ADVANCED }
+            MP.CORE_ANTI_EXTENSION, MP.CORE_FLEXION_ROTATION ->
+                input.plankSeconds?.let { if (it < 30) Tier.FOUNDATION else if (it <= 60) Tier.INTERMEDIATE else Tier.ADVANCED }
             else -> null
         } ?: experienceCap
 

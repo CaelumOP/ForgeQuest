@@ -2299,13 +2299,16 @@
         <item quantity="many">ابدأ بـ %1$d تكرارًا</item>
         <item quantity="other">ابدأ بـ %1$d تكرار</item>
     </plurals>
-    <string name="baseline_start_seconds">ابدأ بـ %1$d ث</string>
+    <string name="baseline_start_seconds">ابدأ بـ %1$s</string>
     <string name="baseline_start_weight">ابدأ بـ %1$s</string>
     <string name="baseline_try_easier">جرّب نسخة أسهل: %1$s</string>
     <string name="baseline_try_easier_generic">جرّب نسخة أسهل عندما تكون مستعدًا.</string>
     <string name="baseline_outgrown_try_harder">تجاوزت هذا التمرين. جرّب نسخة أصعب: %1$s</string>
     <string name="baseline_test_move_named">اختبر %1$s</string>
     <string name="baseline_too_light">الوزن خفيف جدًا للحكم: جرّب وزنًا أثقل</string>
+    <string name="baseline_too_heavy">الوزن ثقيل جدًا لاختبار آمن. اختر وزنًا أخف تستطيع رفعه من 6 إلى 10 مرات.</string>
+    <string name="baseline_row_too_easy">سهل جدًا: جرّب نسخة أصعب</string>
+    <string name="baseline_row_too_hard">بداية صعبة: جرّب نسخة أسهل</string>
     <string name="baseline_hold_zero_hint">اثبت لثانية واحدة على الأقل لتحديد هدف البداية.</string>
     <plurals name="baseline_last_reps">
         <item quantity="zero">السابق: 0 تكرار</item>
@@ -2315,7 +2318,7 @@
         <item quantity="many">السابق: %1$d تكرارًا</item>
         <item quantity="other">السابق: %1$d تكرار</item>
     </plurals>
-    <string name="baseline_last_seconds">السابق: %1$d ث</string>
+    <string name="baseline_last_seconds">السابق: %1$s</string>
     <string name="baseline_last_weight">السابق: %1$s × %2$d</string>
     <string name="baseline_not_tested">لم يُختبر بعد</string>
     <string name="baseline_rest_between">راحة قبل التمرين التالي</string>

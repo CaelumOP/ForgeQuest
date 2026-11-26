@@ -1,5 +1,6 @@
 // Difficulty of the built-in exercises (docs/plans/exercise-tiers.md) and the "ready for a harder version" ladder for
 // bodyweight rep moves. Custom exercises have no tier. Android: ExerciseTiers.kt.
+import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 import { EXERCISE_LEVELS } from '../data/seed/exercise-levels'
 import type { ExerciseEntity } from './entities'
 import { ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, profileFits, profileFor, type Equipment, type MovementPattern } from './exercise-swap-engine'
@@ -76,6 +77,27 @@ export const EASIER_IN_LINE: Record<string, string> = {
   bulgarian_split_squat: 'lunge',
   hanging_leg_raise: 'hanging_knee_raise',
   hanging_knee_raise: 'crunch',
+  // Hold line
+  plank: 'incline_hollow_plank',
+  hollow_hold: 'plank',
+  l_sit: 'hollow_hold',
+}
+
+/** Ordered harder candidates tried first by harderVersion: the first that exists, has the same kind and fits the gear wins. */
+export const HARDER_IN_LINE: Record<string, string[]> = {
+  push_up: ['diamond_push_up', 'decline_push_up'],
+  knee_push_up: ['push_up'],
+  pull_up: ['archer_pull_up', 'l_sit_pull_up'],
+  chin_up: ['archer_pull_up'],
+  australian_pull_up: ['pull_up', 'chin_up'],
+  squat: ['jump_squat'],
+}
+
+/** Ordered harder candidates for holds, tried first by harderHoldVersion. */
+export const HARDER_HOLD_IN_LINE: Record<string, string[]> = {
+  plank: ['hollow_hold'],
+  hollow_hold: ['l_sit'],
+  side_plank: ['copenhagen_plank_short'],
 }
 
 export const prevInLineId = (id: string): string | undefined => EASIER_IN_LINE[id]
@@ -111,6 +133,10 @@ export function harderVersion(ex: ExerciseEntity, library: ExerciseEntity[], equ
   if (!tier) return null
   const exp = expandLegacyEquipment(equipment)
   const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : ALL_ACTIVE_EQUIPMENT)
+  for (const id of HARDER_IN_LINE[ex.id] ?? []) {
+    const cand = library.find((e) => e.id === id)
+    if (cand && cand.kind === ex.kind && profileFits(profileFor(cand), allowed)) return cand
+  }
   const nextId = NEXT_IN_TIER[ex.id]
   const named = nextId ? library.find((e) => e.id === nextId) : undefined
   if (named && profileFits(profileFor(named), allowed)) return named
@@ -133,4 +159,36 @@ export function harderVersion(ex: ExerciseEntity, library: ExerciseEntity[], equ
     return best
   }
   return pick(pattern, up) ?? pick(RELATED[pattern], tier) ?? pick(RELATED[pattern], up)
+}
+
+/**
+ * The next step up from a HOLD `ex` that fits `equipment`: a named harder hold first, else a hold of the same movement
+ * pattern exactly one tier up (closest primary muscles, then id). Null when there is none.
+ */
+export function harderHoldVersion(ex: ExerciseEntity, library: ExerciseEntity[], equipment: Set<Equipment>): ExerciseEntity | null {
+  if (ex.kind !== 'HOLD') return null
+  const exp = expandLegacyEquipment(equipment)
+  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : [...ALL_ACTIVE_EQUIPMENT, 'BODYWEIGHT'])
+  for (const id of HARDER_HOLD_IN_LINE[ex.id] ?? []) {
+    const cand = library.find((e) => e.id === id)
+    if (cand && cand.kind === 'HOLD' && profileFits(profileFor(cand), allowed)) return cand
+  }
+  const tier = tierOf(ex)
+  if (!tier || tier === 'ADVANCED') return null
+  const up = TIERS[TIERS.indexOf(tier) + 1]
+  const pattern = profileFor(ex).pattern
+  if (pattern === 'MOBILITY' || pattern === 'CARRY_CONDITIONING') return null
+  let best: ExerciseEntity | null = null
+  let bestScore = -1
+  for (const c of library) {
+    if (c.id === ex.id || c.kind !== 'HOLD' || STRETCH_IDS.has(c.id)) continue
+    const prof = profileFor(c)
+    if (prof.pattern !== pattern || !profileFits(prof, allowed) || tierOf(c) !== up) continue
+    const score = c.primary.filter((m) => ex.primary.includes(m)).length
+    if (!best || score > bestScore || (score === bestScore && c.id < best.id)) {
+      best = c
+      bestScore = score
+    }
+  }
+  return best
 }

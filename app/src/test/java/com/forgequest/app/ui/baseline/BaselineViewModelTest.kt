@@ -50,7 +50,7 @@ class BaselineViewModelTest {
         val vm = BaselineViewModel(BaselineRepository(db), flowOf(ExerciseCatalog.all), flowOf(null), flowOf(Settings()))
         try {
             val big = vm.recordReps("squat", 51)?.target as BaselineTargetDisplay.Reps
-            assertEquals(35, big.reps)
+            assertEquals(20, big.reps)
             assertEquals("jump_squat", big.harderExercise?.id)
             assertEquals(51, db.baselineTests().latestFor("squat")?.reps)
             assertEquals("jump_squat", (vm.recordReps("squat", 25)?.target as BaselineTargetDisplay.Reps).harderExercise?.id)
@@ -72,6 +72,35 @@ class BaselineViewModelTest {
             assertNotNull(target.easierExercise)
             assertNotEquals("push_up", target.easierExercise?.id)
             assertEquals(0, db.baselineTests().latestFor("push_up")?.reps)
+        } finally {
+            vm.viewModelScope.cancel()
+            db.close()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun holdAndLowRepBoundariesOfferHarderAndEasierMoves() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).build()
+        val vm = BaselineViewModel(BaselineRepository(db), flowOf(ExerciseCatalog.all), flowOf(null), flowOf(Settings()))
+        try {
+            val long = vm.recordHold("plank", 825)?.target as BaselineTargetDisplay.Hold
+            assertEquals(60, long.seconds)
+            assertEquals("hollow_hold", long.harderExercise?.id)
+            assertNull(long.easierExercise)
+            assertEquals(600, db.baselineTests().latestFor("plank")?.seconds)
+            val short = vm.recordHold("plank", 3)?.target as BaselineTargetDisplay.Hold
+            assertEquals(3, short.seconds)
+            assertNull(short.harderExercise)
+            assertNotNull(short.easierExercise)
+            val low = vm.recordReps("push_up", 2)?.target as BaselineTargetDisplay.Reps
+            assertEquals(1, low.reps)
+            assertNull(low.harderExercise)
+            assertEquals("knee_push_up", low.easierExercise?.id)
+            val huge = vm.recordReps("squat", 51)?.target as BaselineTargetDisplay.Reps
+            assertEquals(20, huge.reps)
+            assertEquals("jump_squat", huge.harderExercise?.id)
+            assertNull(huge.easierExercise)
         } finally {
             vm.viewModelScope.cancel()
             db.close()

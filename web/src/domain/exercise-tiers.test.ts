@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { EXERCISE_CATALOG } from '../data/seed/exercise-catalog'
 import type { SetEffort } from './effort'
 import { EQUIPMENT, presetEquipment, type Equipment } from './exercise-swap-engine'
-import { harderVersion, readyForHarder, tierOf } from './exercise-tiers'
+import { easierVariation } from './baseline-targets'
+import { harderHoldVersion, harderVersion, readyForHarder, tierOf } from './exercise-tiers'
 import { listSize, muscleExercises, replaceOrder } from './muscle-exercises'
 import type { PastSet } from './progression'
 
@@ -32,6 +33,28 @@ describe('exercise tiers', () => {
     expect(next('calf_raise', bodyweight)).toBeNull()
     expect(next('lunge', bodyweight)).toBe('reverse_lunge')
     expect(next('bench_press')).toBeNull()
+  })
+
+  it('named rungs step up within one tier', () => {
+    const next = (id: string, eq: Set<Equipment> = gym) => harderVersion(ex(id), all, eq)?.id ?? null
+    expect(next('push_up')).toBe('diamond_push_up')
+    expect(next('push_up', bodyweight)).toBe('diamond_push_up')
+    expect(next('knee_push_up', bodyweight)).toBe('push_up')
+    expect(next('pull_up')).toBe('archer_pull_up')
+    expect(next('chin_up')).toBe('archer_pull_up')
+    expect(next('australian_pull_up')).toBe('pull_up')
+    expect(next('squat')).toBe('jump_squat')
+  })
+
+  it('hold ladder has harder and easier rungs', () => {
+    const nextHold = (id: string, eq: Set<Equipment> = gym) => harderHoldVersion(ex(id), all, eq)?.id ?? null
+    expect(nextHold('plank', bodyweight)).toBe('hollow_hold')
+    expect(nextHold('hollow_hold')).toBe('l_sit')
+    expect(nextHold('side_plank')).toBe('copenhagen_plank_short')
+    expect(nextHold('push_up')).toBeNull()
+    expect(easierVariation(ex('plank'), all, bodyweight)?.id).toBe('incline_hollow_plank')
+    expect(easierVariation(ex('hollow_hold'), all, bodyweight)?.id).toBe('plank')
+    expect(easierVariation(ex('l_sit'), all, bodyweight)?.id).toBe('hollow_hold')
   })
 
   it('is ready after two clean sessions at 15+', () => {

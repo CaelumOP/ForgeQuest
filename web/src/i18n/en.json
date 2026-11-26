@@ -193,7 +193,7 @@
     "one": "Last: {1} rep",
     "other": "Last: {1} reps"
   },
-  "baseline_last_seconds": "Last: {1} s",
+  "baseline_last_seconds": "Last: {1}",
   "baseline_last_weight": "Last: {1} × {2}",
   "baseline_mode_guided": "Guided",
   "baseline_mode_manual": "Manual",
@@ -206,6 +206,8 @@
   "baseline_reps_label": "Reps",
   "baseline_rest_between": "Rest before next move",
   "baseline_retest": "Test again",
+  "baseline_row_too_easy": "Too easy: try a harder version",
+  "baseline_row_too_hard": "Hard start: try an easier version",
   "baseline_save_failed": "Could not save your test. Please try again.",
   "baseline_seconds_label": "Hold time",
   "baseline_see_all_moves": "See all moves",
@@ -215,7 +217,7 @@
     "one": "Start with {1} rep",
     "other": "Start with {1} reps"
   },
-  "baseline_start_seconds": "Start with {1} s",
+  "baseline_start_seconds": "Start with {1}",
   "baseline_start_weight": "Start with {1}",
   "baseline_tap_after_rep": "Tap after each rep",
   "baseline_test_another": "Test another move",
@@ -225,6 +227,7 @@
     "other": "{1} moves tested"
   },
   "baseline_title": "Find your starting point",
+  "baseline_too_heavy": "Too heavy to test safely. Pick a lighter weight you can lift 6-10 times.",
   "baseline_too_light": "Too light to judge: try a heavier weight",
   "baseline_try_easier": "Try an easier version: {1}",
   "baseline_try_easier_generic": "Try an easier version when you feel ready.",

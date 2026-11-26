@@ -156,15 +156,16 @@ describe('baseline helpers', () => {
     const at = (reps: number) => computeTargetDisplay(squat, { reps, seconds: null, weightKg: null }, catalog, noGear, 'KG')
 
     const big = at(51)
-    expect(big).toMatchObject({ kind: 'REPS', reps: 35 })
+    expect(big).toMatchObject({ kind: 'REPS', reps: 20 })
     expect(big.kind === 'REPS' && big.harderExercise?.id).toBe('jump_squat')
     const tgt = at(25)
     expect(tgt.kind === 'REPS' && tgt.harderExercise?.id).toBe('jump_squat')
-    expect(at(24)).toEqual({ kind: 'REPS', reps: 16 })
+    expect(at(24)).toMatchObject({ kind: 'REPS', reps: 16, harderExercise: null, easierExercise: null })
     expect(at(0).kind).toBe('EASIER_VARIATION')
 
     const hold = computeTargetDisplay(plank, { reps: 51, seconds: 90, weightKg: null }, catalog, noGear, 'KG')
-    expect(hold).toEqual({ kind: 'HOLD', seconds: 60 })
+    expect(hold).toMatchObject({ kind: 'HOLD', seconds: 60 })
+    expect(hold.kind === 'HOLD' && hold.harderExercise?.id).toBe('hollow_hold')
     const weighted = computeTargetDisplay(bench, { reps: 51, seconds: null, weightKg: 20 }, catalog, new Set(['DUMBBELLS', 'FLAT_BENCH'] as const), 'KG')
     expect(JSON.stringify(weighted)).not.toContain('harderExercise')
   })
@@ -176,7 +177,7 @@ describe('baseline helpers', () => {
     const eq = new Set(['BODYWEIGHT', 'DUMBBELLS'] as const)
 
     const repsOk = computeTargetDisplay(pushUp, { reps: 12, seconds: null, weightKg: null }, catalog, eq, 'KG')
-    expect(repsOk).toEqual({ kind: 'REPS', reps: 8 })
+    expect(repsOk).toMatchObject({ kind: 'REPS', reps: 8, harderExercise: null, easierExercise: null })
 
     const repsZero = computeTargetDisplay(pushUp, { reps: 0, seconds: null, weightKg: null }, catalog, eq, 'KG')
     expect(repsZero.kind).toBe('EASIER_VARIATION')
@@ -185,12 +186,15 @@ describe('baseline helpers', () => {
       expect(repsZero.easierExercise?.id).not.toBe(PUSH_UP_ID)
     }
 
-    expect(computeTargetDisplay(plank, { reps: null, seconds: 45, weightKg: null }, catalog, eq, 'KG')).toEqual({
+    expect(computeTargetDisplay(plank, { reps: null, seconds: 45, weightKg: null }, catalog, eq, 'KG')).toMatchObject({
       kind: 'HOLD',
       seconds: 30,
+      harderExercise: null,
+      easierExercise: null,
     })
-    expect(computeTargetDisplay(plank, { reps: null, seconds: 0, weightKg: null }, catalog, eq, 'KG')).toEqual({
+    expect(computeTargetDisplay(plank, { reps: null, seconds: 0, weightKg: null }, catalog, eq, 'KG')).toMatchObject({
       kind: 'HOLD_TOO_SHORT',
+      easierExercise: { id: 'incline_hollow_plank' },
     })
 
     const wOk = computeTargetDisplay(bench, { reps: 8, seconds: null, weightKg: 40 }, catalog, eq, 'KG', 8)

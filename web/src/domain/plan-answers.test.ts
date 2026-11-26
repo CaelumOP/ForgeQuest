@@ -18,4 +18,21 @@ describe('planAnswersToInput baseline overrides', () => {
     const zeroPull = planAnswersToInput(answers, 0, baselines)
     expect(zeroPull.pullUpMax).toBe(0)
   })
+
+  it('feeds squat, hip bridge and plank baselines into the plan input, and nothing without rows', () => {
+    const row = (exerciseId: string, kind: 'REPS' | 'HOLD', reps: number | null, seconds: number | null): BaselineTestEntity =>
+      ({ id: 1, exerciseId, kind, reps, seconds, weightKg: null, createdAt: 100 })
+    const baselines = new Map<string, BaselineTestEntity>([
+      ['squat', row('squat', 'REPS', 12, null)],
+      ['hip_bridge', row('hip_bridge', 'REPS', 20, null)],
+      ['plank', row('plank', 'HOLD', null, 45)],
+    ])
+    const input = planAnswersToInput(defaultPlanAnswers(), 0, baselines)
+    expect([input.squatMax, input.hingeMax, input.plankSeconds]).toEqual([12, 20, 45])
+    // A row of the wrong kind is ignored.
+    baselines.set('plank', row('plank', 'REPS', 9, null))
+    expect(planAnswersToInput(defaultPlanAnswers(), 0, baselines).plankSeconds).toBeNull()
+    const none = planAnswersToInput(defaultPlanAnswers())
+    expect([none.squatMax, none.hingeMax, none.plankSeconds]).toEqual([null, null, null])
+  })
 })

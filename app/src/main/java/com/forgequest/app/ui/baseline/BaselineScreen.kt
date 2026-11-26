@@ -68,6 +68,7 @@ import com.forgequest.app.R
 import com.forgequest.app.container
 import com.forgequest.app.data.db.BaselineTestEntity
 import com.forgequest.app.data.db.ExerciseEntity
+import com.forgequest.app.domain.BaselineTargets
 import com.forgequest.app.domain.ExerciseKind
 import com.forgequest.app.domain.WeightUnit
 import com.forgequest.app.ui.appViewModel
@@ -337,6 +338,14 @@ private fun BaselineMoveRow(
                             color = c.teal,
                         )
                     }
+                    val flag = rowFlagRes(move)
+                    if (flag != null) {
+                        Text(
+                            text = stringResource(flag),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.textSecondary,
+                        )
+                    }
                 } else {
                     Text(
                         text = move.exercise.musclesLabel().ifBlank { stringResource(R.string.baseline_not_tested) },
@@ -419,7 +428,7 @@ private fun BaselineTestMoveStep(
                             Surface(
                                 onClick = {
                                     haptics.check()
-                                    if (count < 999) count++
+                                    if (count < BaselineTargets.MAX_REPS_INPUT) count++
                                 },
                                 shape = ForgeShape.Lg,
                                 color = c.tealTrack,
@@ -485,10 +494,10 @@ private fun BaselineTestMoveStep(
                             )
                             NumberStepper(
                                 value = manualReps.toFloat(),
-                                onValueChange = { manualReps = it.toInt().coerceIn(0, 999) },
+                                onValueChange = { manualReps = BaselineTargets.clampRepsInput(it.toInt()) },
                                 step = 1f,
                                 min = 0f,
-                                max = 999f,
+                                max = BaselineTargets.MAX_REPS_INPUT.toFloat(),
                                 unit = stringResource(R.string.unit_reps),
                                 title = stringResource(R.string.stepper_reps),
                                 minValueWidth = 72.dp,
@@ -559,10 +568,10 @@ private fun BaselineTestMoveStep(
                             )
                             NumberStepper(
                                 value = manualSeconds.toFloat(),
-                                onValueChange = { manualSeconds = it.toInt().coerceIn(0, 3600) },
+                                onValueChange = { manualSeconds = BaselineTargets.clampHoldInput(it.toInt()) },
                                 step = 5f,
                                 min = 0f,
-                                max = 3600f,
+                                max = BaselineTargets.MAX_HOLD_INPUT.toFloat(),
                                 unit = stringResource(R.string.unit_s),
                                 title = stringResource(R.string.stepper_hold_time),
                                 minValueWidth = 72.dp,
@@ -607,10 +616,10 @@ private fun BaselineTestMoveStep(
                             )
                             NumberStepper(
                                 value = displayWeight,
-                                onValueChange = { displayWeight = it },
+                                onValueChange = { displayWeight = it.coerceIn(0f, unit.fromKg(BaselineTargets.MAX_WEIGHT_KG_INPUT.toFloat())) },
                                 step = unit.loadStep,
                                 min = 0f,
-                                max = unit.fromKg(999f),
+                                max = unit.fromKg(BaselineTargets.MAX_WEIGHT_KG_INPUT.toFloat()),
                                 unit = unit.label,
                                 decimals = 1,
                                 title = stringResource(R.string.stepper_weight),
@@ -629,10 +638,10 @@ private fun BaselineTestMoveStep(
                             )
                             NumberStepper(
                                 value = reps.toFloat(),
-                                onValueChange = { reps = it.toInt().coerceIn(1, 50) },
+                                onValueChange = { reps = BaselineTargets.clampWeightedRepsInput(it.toInt()).coerceAtLeast(1) },
                                 step = 1f,
                                 min = 1f,
-                                max = 50f,
+                                max = BaselineTargets.MAX_WEIGHTED_REPS_INPUT.toFloat(),
                                 unit = stringResource(R.string.unit_reps),
                                 title = stringResource(R.string.stepper_reps),
                                 minValueWidth = 72.dp,
@@ -710,7 +719,16 @@ private fun BaselineResultStep(
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
-                            val harder = (t as? BaselineTargetDisplay.Reps)?.harderExercise
+                            val harder = when (t) {
+                                is BaselineTargetDisplay.Reps -> t.harderExercise
+                                is BaselineTargetDisplay.Hold -> t.harderExercise
+                                else -> null
+                            }
+                            val easierSuggestion = when (t) {
+                                is BaselineTargetDisplay.Reps -> t.easierExercise
+                                is BaselineTargetDisplay.Hold -> t.easierExercise
+                                else -> null
+                            }
                             if (harder != null) {
                                 Text(
                                     text = stringResource(R.string.baseline_outgrown_try_harder, harder.name),
@@ -721,6 +739,19 @@ private fun BaselineResultStep(
                                 PillButton(
                                     text = stringResource(R.string.baseline_test_move_named, harder.name),
                                     onClick = { onTestEasier(harder.id) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            if (easierSuggestion != null) {
+                                Text(
+                                    text = stringResource(R.string.baseline_try_easier, easierSuggestion.name),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = c.textPrimary,
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                PillButton(
+                                    text = stringResource(R.string.baseline_test_move_named, easierSuggestion.name),
+                                    onClick = { onTestEasier(easierSuggestion.id) },
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -747,13 +778,28 @@ private fun BaselineResultStep(
                         }
                     }
                     BaselineTargetDisplay.TooLight,
+                    BaselineTargetDisplay.TooHeavy,
                     BaselineTargetDisplay.WeightNoTarget,
-                    BaselineTargetDisplay.HoldTooShort -> {
+                    is BaselineTargetDisplay.HoldTooShort -> {
                         if (targetText != null) {
                             Text(
                                 text = targetText,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = c.textSecondary,
+                            )
+                        }
+                        val holdEasier = (t as? BaselineTargetDisplay.HoldTooShort)?.easierExercise
+                        if (holdEasier != null) {
+                            Text(
+                                text = stringResource(R.string.baseline_try_easier, holdEasier.name),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = c.textPrimary,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            PillButton(
+                                text = stringResource(R.string.baseline_test_move_named, holdEasier.name),
+                                onClick = { onTestEasier(holdEasier.id) },
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                         Spacer(Modifier.height(4.dp))
@@ -866,7 +912,7 @@ private fun formatLastResult(
         }
         ExerciseKind.HOLD -> {
             val s = test.seconds ?: return null
-            stringResource(R.string.baseline_last_seconds, s)
+            stringResource(R.string.baseline_last_seconds, BaselineTargets.formatHoldSeconds(s, stringResource(R.string.unit_s)))
         }
         ExerciseKind.WEIGHTED -> {
             val w = test.weightKg ?: return null
@@ -880,7 +926,10 @@ private fun formatLastResult(
 private fun formatTargetText(target: BaselineTargetDisplay?): String? = when (target) {
     null -> null
     is BaselineTargetDisplay.Reps -> pluralStringResource(R.plurals.baseline_start_reps, target.reps, target.reps)
-    is BaselineTargetDisplay.Hold -> stringResource(R.string.baseline_start_seconds, target.seconds)
+    is BaselineTargetDisplay.Hold -> stringResource(
+        R.string.baseline_start_seconds,
+        BaselineTargets.formatHoldSeconds(target.seconds, stringResource(R.string.unit_s)),
+    )
     is BaselineTargetDisplay.Weight -> stringResource(R.string.baseline_start_weight, target.unit.format(target.weightKg))
     is BaselineTargetDisplay.EasierVariation -> {
         val easier = target.easierExercise
@@ -889,5 +938,21 @@ private fun formatTargetText(target: BaselineTargetDisplay?): String? = when (ta
     }
     BaselineTargetDisplay.TooLight,
     BaselineTargetDisplay.WeightNoTarget -> stringResource(R.string.baseline_too_light)
-    BaselineTargetDisplay.HoldTooShort -> stringResource(R.string.baseline_hold_zero_hint)
+    BaselineTargetDisplay.TooHeavy -> stringResource(R.string.baseline_too_heavy)
+    is BaselineTargetDisplay.HoldTooShort -> stringResource(R.string.baseline_hold_zero_hint)
+}
+
+/** Subtle second line on a summary row: too easy (outgrown) or hard start (too low), null otherwise. */
+private fun rowFlagRes(move: BaselineMoveItem): Int? {
+    val latest = move.latest ?: return null
+    val value = when (move.exercise.kind) {
+        ExerciseKind.REPS -> latest.reps
+        ExerciseKind.HOLD -> latest.seconds
+        ExerciseKind.WEIGHTED -> null
+    } ?: return null
+    return when {
+        BaselineTargets.isOutgrown(move.exercise.kind, value) -> R.string.baseline_row_too_easy
+        BaselineTargets.isTooHard(move.exercise.kind, value) -> R.string.baseline_row_too_hard
+        else -> null
+    }
 }

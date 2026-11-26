@@ -1,6 +1,7 @@
 package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
+import com.forgequest.app.data.seed.ExerciseCatalog
 import com.forgequest.app.data.seed.ExerciseLevels
 
 /** How hard a movement is to learn and its leverage, not the load (the person picks the weight). */
@@ -78,6 +79,27 @@ object ExerciseTiers {
         "bulgarian_split_squat" to "lunge",
         "hanging_leg_raise" to "hanging_knee_raise",
         "hanging_knee_raise" to "crunch",
+        // Hold line
+        "plank" to "incline_hollow_plank",
+        "hollow_hold" to "plank",
+        "l_sit" to "hollow_hold",
+    )
+
+    /** Ordered harder candidates tried first by [harderVersion]: the first that exists, has the same kind and fits the gear wins. */
+    private val HARDER_IN_LINE = mapOf(
+        "push_up" to listOf("diamond_push_up", "decline_push_up"),
+        "knee_push_up" to listOf("push_up"),
+        "pull_up" to listOf("archer_pull_up", "l_sit_pull_up"),
+        "chin_up" to listOf("archer_pull_up"),
+        "australian_pull_up" to listOf("pull_up", "chin_up"),
+        "squat" to listOf("jump_squat"),
+    )
+
+    /** Ordered harder candidates for holds, tried first by [harderHoldVersion]. */
+    private val HARDER_HOLD_IN_LINE = mapOf(
+        "plank" to listOf("hollow_hold"),
+        "hollow_hold" to listOf("l_sit"),
+        "side_plank" to listOf("copenhagen_plank_short"),
     )
 
     internal fun prevInLineId(id: String): String? = EASIER_IN_LINE[id]
@@ -112,6 +134,9 @@ object ExerciseTiers {
         val tier = of(ex) ?: return null
         val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
         val byId = library.associateBy { it.id }
+        HARDER_IN_LINE[ex.id]?.forEach { id ->
+            byId[id]?.takeIf { it.kind == ex.kind && ExerciseSwapEngine.profileFor(it).fits(allowed) }?.let { return it }
+        }
         NEXT_IN_TIER[ex.id]?.let { id -> byId[id]?.takeIf { ExerciseSwapEngine.profileFor(it).fits(allowed) }?.let { return it } }
         if (tier == Tier.ADVANCED) return null
         val up = Tier.entries[tier.ordinal + 1]
@@ -123,5 +148,32 @@ object ExerciseTiers {
                 .maxWithOrNull(compareBy<ExerciseEntity> { c -> c.primary.count { it in ex.primary } }.thenBy { c -> -c.name.length })
         }
         return pick(pattern, up) ?: pick(RELATED[pattern], tier) ?: pick(RELATED[pattern], up)
+    }
+
+    /**
+     * The next step up from a HOLD [ex] that fits [equipment]: a named harder hold first, else a hold of the same
+     * movement pattern exactly one tier up (closest primary muscles, then id). Null when there is none.
+     */
+    fun harderHoldVersion(ex: ExerciseEntity, library: List<ExerciseEntity>, equipment: Set<Equipment>): ExerciseEntity? {
+        if (ex.kind != ExerciseKind.HOLD) return null
+        val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
+        val byId = library.associateBy { it.id }
+        HARDER_HOLD_IN_LINE[ex.id]?.forEach { id ->
+            byId[id]?.takeIf { it.kind == ExerciseKind.HOLD && ExerciseSwapEngine.profileFor(it).fits(allowed) }?.let { return it }
+        }
+        val tier = of(ex) ?: return null
+        if (tier == Tier.ADVANCED) return null
+        val up = Tier.entries[tier.ordinal + 1]
+        val pattern = ExerciseSwapEngine.profileFor(ex).pattern
+        if (pattern == MovementPattern.MOBILITY || pattern == MovementPattern.CARRY_CONDITIONING) return null
+        return library
+            .filter { c ->
+                c.id != ex.id && c.kind == ExerciseKind.HOLD && c.id !in ExerciseCatalog.STRETCH_IDS &&
+                    ExerciseSwapEngine.profileFor(c).pattern == pattern &&
+                    ExerciseSwapEngine.profileFor(c).fits(allowed) && of(c) == up
+            }
+            .minWithOrNull(
+                compareBy<ExerciseEntity> { c -> -c.primary.count { it in ex.primary } }.thenBy { it.id },
+            )
     }
 }

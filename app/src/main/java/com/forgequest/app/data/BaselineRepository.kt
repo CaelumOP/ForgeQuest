@@ -85,11 +85,23 @@ class BaselineRepository(
         migrateFromPlanAnswers()
         val push = latest(PUSH_UP_ID)?.takeIf { it.kind == ExerciseKind.REPS.name }?.reps
         val pull = latest(PULL_UP_ID)?.takeIf { it.kind == ExerciseKind.REPS.name }?.reps
-        return answers.toInput(baselinePushUpMax = push, baselinePullUpMax = pull)
+        val squat = latest(SQUAT_ID)?.takeIf { it.kind == ExerciseKind.REPS.name }?.reps
+        val hinge = latest(HIP_BRIDGE_ID)?.takeIf { it.kind == ExerciseKind.REPS.name }?.reps
+        val plank = latest(PLANK_ID)?.takeIf { it.kind == ExerciseKind.HOLD.name }?.seconds
+        return answers.toInput(
+            baselinePushUpMax = push,
+            baselinePullUpMax = pull,
+            baselineSquatMax = squat,
+            baselineHingeMax = hinge,
+            baselinePlankSeconds = plank,
+        )
     }
 
     companion object {
         const val PUSH_UP_ID = "push_up"
         const val PULL_UP_ID = "pull_up"
+        const val SQUAT_ID = "squat"
+        const val HIP_BRIDGE_ID = "hip_bridge"
+        const val PLANK_ID = "plank"
     }
 }
