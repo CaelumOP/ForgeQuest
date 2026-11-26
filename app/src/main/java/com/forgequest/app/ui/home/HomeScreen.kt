@@ -132,23 +132,13 @@ fun HomeScreen(nav: NavHostController) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val health by vm.health.collectAsState()
-    val hasMeasurement by vm.hasMeasurement.collectAsState()
-    val hasFriendOrOutgoing by vm.hasFriendOrOutgoing.collectAsState()
     var gsEligible by remember { mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.gsEligible(context)) }
     var gsDismissed by remember { mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.gsDismissed(context)) }
-    var gsFriendDone by remember { mutableStateOf(com.forgequest.app.ui.onboarding.TourPrefs.gsFriendDone(context)) }
-    LaunchedEffect(hasFriendOrOutgoing) {
-        if (hasFriendOrOutgoing && !gsFriendDone) {
-            com.forgequest.app.ui.onboarding.TourPrefs.setGsFriendDone(context)
-            gsFriendDone = true
-        }
-    }
     // Re-read Health Connect (steps, calories burned, weight) on resume; update notice refreshes every 6 hours.
     androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
         vm.resumeHealth(); vm.checkBadges(); vm.app.updateNotice.refresh()
         gsEligible = com.forgequest.app.ui.onboarding.TourPrefs.gsEligible(context)
         gsDismissed = com.forgequest.app.ui.onboarding.TourPrefs.gsDismissed(context)
-        gsFriendDone = com.forgequest.app.ui.onboarding.TourPrefs.gsFriendDone(context) || hasFriendOrOutgoing
         onPauseOrDispose {}
     }
     val updateBanner by vm.app.updateNotice.banner.collectAsState()
@@ -235,14 +225,12 @@ fun HomeScreen(nav: NavHostController) {
     val hasCalorieCard = remember(s, health) { com.forgequest.app.ui.CalorieUi.card(s, health) } != null
     val friends by vm.friends.collectAsState()
     val friendsShown = !justLog && friends.isNotEmpty()
-    val gsState = remember(s.sessions, s.stats.mealsLogged, s.weights, hasMeasurement, gsFriendDone) {
+    val gsState = remember(s.sessions, s.stats.mealsLogged, s.weights) {
         computeGettingStarted(
             GettingStartedInput(
                 hasWorkout = s.sessions.isNotEmpty(),
                 hasMeal = s.stats.mealsLogged > 0,
                 hasWeight = s.weights.isNotEmpty(),
-                hasMeasurement = hasMeasurement,
-                friendDone = gsFriendDone,
             )
         )
     }
@@ -272,11 +260,6 @@ fun HomeScreen(nav: NavHostController) {
                 Header(
                     s, showRank = !justLog, onRankClick = { nav.navigate(Routes.PROFILE) }, photoUrl = profilePhoto,
                     avatarName = pickAvatarName(s.settings.name, friendsName),
-                    status = homeStatus(
-                        hasOpen = open != null, noPlan = today == null, isRest = today?.day?.isRest == true,
-                        done = s.workoutDoneToday, excused = s.excusedToday != null,
-                    ),
-                    dayTitle = com.forgequest.app.data.seed.StarterPlans.displayTitle(today?.day?.title.orEmpty()),
                 )
                 UpdateOverlay(updateBanner, onUpdate = vm.app.updateNotice::update, onLater = vm.app.updateNotice::later, modifier = Modifier.align(Alignment.TopCenter))
             }
@@ -292,11 +275,6 @@ fun HomeScreen(nav: NavHostController) {
                     onWorkout = { nav.goToTab(Routes.WORKOUTS) },
                     onFood = { nav.goToTab(Routes.FOOD) },
                     onWeight = { nav.goToTab(Routes.PROGRESS) },
-                    onMeasure = {
-                        com.forgequest.app.ui.progress.ProgressMeasureLink.openAdd = true
-                        nav.goToTab(Routes.PROGRESS)
-                    },
-                    onFriend = { nav.goToTab(Routes.FRIENDS) },
                     modifier = Modifier.padding(top = ForgeSpace.Sm),
                 )
             }
@@ -400,41 +378,8 @@ private fun ColumnScope.FlexGap(weighted: Boolean = true) {
     if (weighted) Spacer(Modifier.weight(1f))
 }
 
-/** What the day is about, for the one calm line under the greeting. */
-internal enum class HomeStatus { IN_PROGRESS, TRAIN, DONE, EXCUSED, REST, NO_PLAN }
-
-internal fun homeStatus(hasOpen: Boolean, noPlan: Boolean, isRest: Boolean, done: Boolean, excused: Boolean): HomeStatus {
-    // An open workout matters most; a finished one beats an excused or rest day (someone trained anyway).
-    return when {
-        hasOpen -> HomeStatus.IN_PROGRESS
-        done -> HomeStatus.DONE
-        excused -> HomeStatus.EXCUSED
-        noPlan -> HomeStatus.NO_PLAN
-        isRest -> HomeStatus.REST
-        else -> HomeStatus.TRAIN
-    }
-}
-
 @Composable
-private fun statusText(status: HomeStatus, dayTitle: String, s: ProgressSnapshot): String {
-    val day = when (status) {
-        HomeStatus.IN_PROGRESS -> stringResource(R.string.home_status_in_progress)
-        HomeStatus.TRAIN -> stringResource(R.string.home_status_train, dayTitle)
-        HomeStatus.DONE -> stringResource(R.string.home_status_done)
-        HomeStatus.EXCUSED -> stringResource(R.string.home_status_excused)
-        HomeStatus.REST -> stringResource(R.string.home_status_rest)
-        HomeStatus.NO_PLAN -> stringResource(R.string.home_status_no_plan)
-    }
-    // A workout in progress is the only thing worth saying; otherwise the day plus protein, the one food number that matters most.
-    if (status == HomeStatus.IN_PROGRESS) return day
-    val left = Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein)
-    val food = if (left <= 0) stringResource(R.string.home_status_protein_met) else stringResource(R.string.home_status_protein_left, left)
-    // No-break spaces: if the line is too long, "127 g protein to go" moves down whole instead of leaving "go" alone.
-    return day + "\u00A0· " + food.replace(' ', '\u00A0')
-}
-
-@Composable
-private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, photoUrl: String?, avatarName: String, status: HomeStatus, dayTitle: String) {
+private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Unit, photoUrl: String?, avatarName: String) {
     val c = Fit.colors
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
@@ -452,15 +397,6 @@ private fun Header(s: ProgressSnapshot, showRank: Boolean, onRankClick: () -> Un
                 color = c.textPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            // On two lines the day and the protein stand on their own lines, without a dot left hanging at the end of the first.
-            val line = statusText(status, dayTitle, s)
-            var wrapped by androidx.compose.runtime.remember(line) { androidx.compose.runtime.mutableStateOf(false) }
-            Text(
-                if (wrapped) line.replace("\u00A0· ", "\n") else line,
-                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                onTextLayout = { if (it.lineCount > 1) wrapped = true },
             )
         }
         // The avatar is the way into Profile and settings; the rank letter rides on it as a small badge.
@@ -525,16 +461,10 @@ private class HomeStat(val value: String, val label: String, val dot: Color?, va
 @Composable
 private fun homeStats(s: ProgressSnapshot, onWeight: () -> Unit, onFood: () -> Unit): List<HomeStat> {
     // The numbers glide to their new values after a meal is logged.
-    val proteinLeft = tweenedInt(Nutrition.gramsLeft(s.settings.proteinGoal, s.today.protein))
     val kcalLeft = tweenedInt(s.settings.kcalGoal - s.today.kcal)
     val c = Fit.colors
     // The dot names the ring the number belongs to (it replaces the old legend row). Weight comes last.
     return listOfNotNull(
-        HomeStat(
-            if (proteinLeft > 0) stringResource(R.string.home_protein_left_value, proteinLeft) else stringResource(R.string.home_done),
-            if (proteinLeft > 0) stringResource(R.string.home_protein_left) else stringResource(R.string.home_protein_goal),
-            c.gold, onFood,
-        ),
         if (s.settings.trackCarbs) HomeStat(
             stringResource(R.string.home_protein_left_value, Nutrition.gramsLeft(s.settings.carbsGoal, s.today.carbs).coerceAtLeast(0)),
             stringResource(R.string.home_carbs_left),

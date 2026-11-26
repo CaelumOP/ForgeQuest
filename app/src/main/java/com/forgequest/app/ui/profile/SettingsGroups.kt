@@ -35,7 +35,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PanTool
@@ -500,7 +499,6 @@ internal fun BackupSettingsGroup(
 internal fun AboutSettingsGroup(
     vm: SettingsViewModel,
     toggleGroup: (String) -> Unit,
-    onOpenGuide: () -> Unit,
 ) {
     val c = Fit.colors
     val context = LocalContext.current
@@ -510,14 +508,6 @@ internal fun AboutSettingsGroup(
         stringResource(R.string.profile_version, com.forgequest.app.BuildConfig.VERSION_NAME),
         onToggle = { toggleGroup("about") },
     ) {
-        SettingsRow(
-            Icons.AutoMirrored.Rounded.HelpOutline,
-            c.teal,
-            c.tealTrack,
-            stringResource(R.string.v42_guide_title),
-            stringResource(R.string.v42_guide_row_sub),
-            onClick = onOpenGuide,
-        )
         FitCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconCircle(Icons.Rounded.Info, c.textSecondary, c.cardHigh)

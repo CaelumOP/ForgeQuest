@@ -22,14 +22,6 @@ class HomeViewModel(val app: AppContainer) : ViewModel() {
         .map { d -> if (d?.view?.me?.joined == true) d.view.friends else emptyList() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val hasMeasurement: StateFlow<Boolean> = app.db.bodyMeasurements().observeAll()
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    val hasFriendOrOutgoing: StateFlow<Boolean> = app.friends.state
-        .map { d -> d?.view?.let { it.friends.isNotEmpty() || it.outgoing.isNotEmpty() } == true }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
     /** Home avatar photo: the Friends sign-in photo (cache, no network). The Drive account photo has no getter yet. */
     val profilePhoto: StateFlow<String?> = app.friends.state
         .map { d -> pickAvatarPhoto(d?.view?.me?.photoUrl, null) }

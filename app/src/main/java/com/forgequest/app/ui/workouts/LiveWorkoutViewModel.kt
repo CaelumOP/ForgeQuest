@@ -1020,11 +1020,12 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                 val dayType = if (score != null && debrief != null) com.forgequest.app.domain.dayType(score, debrief, insights) else com.forgequest.app.domain.DayType.ORDINARY
                 // A rough day stays quiet: nothing extra, and nothing counted as shown.
                 if (dayType == com.forgequest.app.domain.DayType.ROUGH) insights = emptyList()
+                val shownInsights = if (dayType == com.forgequest.app.domain.DayType.MILESTONE) insights else insights.take(1)
                 val headline = debrief?.headline?.let { h -> com.forgequest.app.domain.pickHeadlineVariant(h.type, history)?.let { h.copy(variant = it) } ?: h }
                 val bigDay = dayType == com.forgequest.app.domain.DayType.PR || dayType == com.forgequest.app.domain.DayType.MILESTONE
                 // Only what the screen shows goes into the history; History never writes to it.
                 if (!justLog) {
-                    var updated = com.forgequest.app.domain.appendHistory(history, insights, day)
+                    var updated = com.forgequest.app.domain.appendHistory(history, shownInsights, day)
                     if (headline != null && dayType != com.forgequest.app.domain.DayType.ROUGH && com.forgequest.app.domain.pickHeadlineVariant(headline.type, "") != null) {
                         updated = com.forgequest.app.domain.appendHistory(updated, com.forgequest.app.domain.headlineKey(headline.type), headline.variant, day)
                     }
@@ -1088,7 +1089,7 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                     dayType = dayType,
                     tier = score?.let { com.forgequest.app.domain.scoreTier(it) },
                     headline = headline,
-                    insights = insights,
+                    insights = shownInsights,
                     prHero = debrief?.wins?.filterIsInstance<com.forgequest.app.domain.WorkoutDebriefMath.Win.Pr>()?.firstOrNull()?.let { prHeroOf(it, snap.doneSets, snap.exercises, s.id) },
                     recap = recap,
                 )

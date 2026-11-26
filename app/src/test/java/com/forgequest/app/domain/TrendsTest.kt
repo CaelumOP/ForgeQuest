@@ -30,6 +30,16 @@ class TrendsTest {
     }
 
     @Test
+    fun trainingLoadDeltaSignedVsUsual() {
+        assertEquals(0, Trends.trainingLoadDelta(emptyList()))
+        assertEquals(0, Trends.trainingLoadDelta(listOf(0, 0)))
+        assertEquals(0, Trends.trainingLoadDelta(listOf(12)))
+        assertEquals(50, Trends.trainingLoadDelta(listOf(10, 0, 10, 15)))
+        assertEquals(12, Trends.trainingLoadDelta(listOf(25, 25, 28)))
+        assertEquals(-36, Trends.trainingLoadDelta(listOf(25, 25, 16)))
+    }
+
+    @Test
     fun bestSetSeriesMarksRecordsAgainstAllEarlierDays() {
         val sessionDay = mapOf(1L to today - 20, 2L to today - 10, 3L to today - 5, 4L to today)
         val sets = listOf(set(1, 6), set(1, 5), set(2, 7), set(3, 7), set(4, 9))

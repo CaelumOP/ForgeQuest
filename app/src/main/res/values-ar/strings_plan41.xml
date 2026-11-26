@@ -43,13 +43,13 @@
     </plurals>
 
     <string name="plan41_share_plan">مشاركة الخطة</string>
-    <string name="plan41_share_plan_info">انسخ هذه الخطة أو أرسلها بصيغة JSON موثّقة.</string>
-    <string name="plan41_copy_json">نسخ رمز الخطة</string>
+    <string name="plan41_share_plan_info">انسخ هذه الخطة أو أرسلها.</string>
+    <string name="plan41_copy_json">نسخ الخطة</string>
     <string name="plan41_send_share">مشاركة عبر…</string>
     <string name="plan41_copied">تم نسخ الخطة</string>
-    <string name="plan41_import_plan">استيراد خطة مشتركة</string>
-    <string name="plan41_import_plan_info">ألصق رمز خطة ForgeQuest المشتركة. تبقى خططك السابقة محفوظة.</string>
-    <string name="plan41_import_hint">ألصق رمز JSON للخطة هنا</string>
+    <string name="plan41_import_plan">استيراد خطة</string>
+    <string name="plan41_import_plan_info">ألصق خطة ForgeQuest مشتركة. تبقى خططك السابقة محفوظة.</string>
+    <string name="plan41_import_hint">ألصق الخطة المشتركة هنا</string>
     <string name="plan41_import_preview">معاينة الاستيراد</string>
     <string name="plan41_import_confirm">استيراد كخطة جديدة</string>
     <string name="plan41_import_safe_note">تُحفظ كخطة جديدة، وتبقى خططك الحالية محفوظة كما هي.</string>

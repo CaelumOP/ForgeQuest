@@ -13,12 +13,10 @@ class GettingStartedLogicTest {
                 hasWorkout = false,
                 hasMeal = false,
                 hasWeight = false,
-                hasMeasurement = false,
-                friendDone = false,
             )
         )
         assertEquals(0, none.doneCount)
-        assertEquals(5, none.total)
+        assertEquals(3, none.total)
         assertFalse(none.allDone)
 
         val partial = computeGettingStarted(
@@ -26,16 +24,12 @@ class GettingStartedLogicTest {
                 hasWorkout = true,
                 hasMeal = false,
                 hasWeight = true,
-                hasMeasurement = false,
-                friendDone = true,
             )
         )
-        assertEquals(3, partial.doneCount)
+        assertEquals(2, partial.doneCount)
         assertTrue(partial.workoutDone)
         assertFalse(partial.foodDone)
         assertTrue(partial.weightDone)
-        assertFalse(partial.measureDone)
-        assertTrue(partial.friendDone)
         assertFalse(partial.allDone)
 
         val all = computeGettingStarted(
@@ -43,11 +37,9 @@ class GettingStartedLogicTest {
                 hasWorkout = true,
                 hasMeal = true,
                 hasWeight = true,
-                hasMeasurement = true,
-                friendDone = true,
             )
         )
-        assertEquals(5, all.doneCount)
+        assertEquals(3, all.doneCount)
         assertTrue(all.allDone)
     }
 

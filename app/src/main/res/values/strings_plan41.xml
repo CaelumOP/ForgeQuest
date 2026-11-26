@@ -39,13 +39,13 @@
     </plurals>
 
     <string name="plan41_share_plan">Share plan</string>
-    <string name="plan41_share_plan_info">Copy or send this plan as validated JSON.</string>
-    <string name="plan41_copy_json">Copy plan JSON</string>
+    <string name="plan41_share_plan_info">Copy or send this plan.</string>
+    <string name="plan41_copy_json">Copy plan</string>
     <string name="plan41_send_share">Share via…</string>
     <string name="plan41_copied">Plan copied to clipboard</string>
-    <string name="plan41_import_plan">Import shared plan</string>
+    <string name="plan41_import_plan">Import a plan</string>
     <string name="plan41_import_plan_info">Paste a shared ForgeQuest plan. Existing plans stay saved.</string>
-    <string name="plan41_import_hint">Paste shared plan JSON here</string>
+    <string name="plan41_import_hint">Paste shared plan here</string>
     <string name="plan41_import_preview">Preview import</string>
     <string name="plan41_import_confirm">Import as new plan</string>
     <string name="plan41_import_safe_note">Saved as a new plan. Your existing plans remain untouched.</string>

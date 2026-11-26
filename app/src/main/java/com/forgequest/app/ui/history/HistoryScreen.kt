@@ -98,12 +98,8 @@ import com.forgequest.app.ui.workouts.musclesLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -113,14 +109,6 @@ import kotlin.math.roundToInt
 class HistoryViewModel(val app: AppContainer) : ViewModel() {
     val snapshot: StateFlow<ProgressSnapshot?> = app.progress.snapshot.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val unit: StateFlow<WeightUnit> = app.settings.settings.map { it.weightUnit }.stateIn(viewModelScope, SharingStarted.Eagerly, WeightUnit.KG)
-    /** The calculated score of every workout, worked out once per snapshot from what is already loaded, never per row. */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val scores: StateFlow<Map<Long, WorkoutScore.Result>> = snapshot
-        .distinctUntilChanged { a, b -> a?.sessions == b?.sessions && a?.doneSets == b?.doneSets }
-        .mapLatest { snap -> snap?.let { app.workouts.scores(it) }.orEmpty() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
-    fun setNote(session: SessionEntity, note: String) = viewModelScope.launch { app.db.sessions().update(session.copy(note = note.trim().take(300))) }
 
     /** A workout deleted by swipe: removed right away, and [undo] puts it back (same ids) while the snackbar is up. */
     val undo = UndoState(viewModelScope)
@@ -130,17 +118,6 @@ class HistoryViewModel(val app: AppContainer) : ViewModel() {
         app.workouts.deleteSession(session.id)
         undo.offer(app.str(R.string.food_removed, com.forgequest.app.data.seed.StarterPlans.displayTitle(session.title))) { app.workouts.restoreSession(session, sets) }
     }
-
-    /** The debrief sheet: which workout it is open for. */
-    val debriefFor = MutableStateFlow<Long?>(null)
-
-    fun openDebrief(session: SessionEntity) { debriefFor.value = session.id }
-
-    /** The open workout's calculated debrief, worked out again whenever a set or the history changes. */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val debrief: StateFlow<WorkoutDebriefMath.Result?> = combine(snapshot, debriefFor) { snap, id -> snap to id }
-        .mapLatest { (snap, id) -> if (snap == null || id == null) null else app.workouts.debrief(snap, id) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 }
 
 /** The journal: a feed of weeks, newest first, each opening into its days and workouts (like Google Fit's journal). */
@@ -152,7 +129,6 @@ fun HistoryScreen(nav: NavHostController) {
     val s = snap ?: return Box(Modifier.fillMaxSize().background(c.background))
     val setsBySession = s.doneSets.groupBy { it.sessionId }
     val unit by vm.unit.collectAsState()
-    val scores by vm.scores.collectAsState()
     // Weeks start on Sunday, like the streak and weekly target (Dates.weekStart), so a journal week's count matches them.
     val firstDay = java.time.DayOfWeek.SUNDAY
     val weeks = remember(s.sessions) {
@@ -161,17 +137,7 @@ fun HistoryScreen(nav: NavHostController) {
     }
     val thisWeek = LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(firstDay))
     val open = remember { androidx.compose.runtime.mutableStateMapOf<LocalDate, Boolean>() }
-    var noteFor by remember { mutableStateOf<SessionEntity?>(null) }
-    noteFor?.let { ses ->
-        com.forgequest.app.ui.workouts.SetNoteDialog(ses.note, onDismiss = { noteFor = null }, onSave = { vm.setNote(ses, it); noteFor = null })
-    }
-    val snackbar = LocalSnackbar.current
     UndoSnackbarEffect(vm.undo, SnackbarDuration.Long)
-    val debriefFor by vm.debriefFor.collectAsState()
-    val names = remember(s.exercises) { s.exercises.mapValues { it.value.name } }
-    s.sessions.firstOrNull { it.id == debriefFor }?.let { ses ->
-        DebriefSheet(vm, ses, names, unit)
-    }
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -207,30 +173,9 @@ fun HistoryScreen(nav: NavHostController) {
                             )
                         }
                         items(daySessions, key = { it.id }) { session ->
-                            Column(Modifier.animateItem().padding(start = 8.dp)) {
+                            Box(Modifier.animateItem().padding(start = 8.dp)) {
                                 SwipeToDelete(onDelete = { vm.deleteWorkout(session) }, shape = CardShape) {
-                                SessionRow(session, setsBySession[session.id].orEmpty(), s.exercises) { nav.navigate(Routes.session(session.id)) }
-                                }
-                                scores[session.id]?.let { r ->
-                                    Text(
-                                        com.forgequest.app.ui.workouts.scoreReasons(r),
-                                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-                                        modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 8.dp),
-                                    )
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    TextButton(onClick = { noteFor = session }, modifier = Modifier.weight(1f, fill = false)) {
-                                        Text(
-                                            session.note.ifBlank { stringResource(R.string.journal_add_note) },
-                                            style = MaterialTheme.typography.bodySmall, color = if (session.note.isBlank()) c.teal else c.textSecondary,
-                                            fontStyle = if (session.note.isBlank()) null else androidx.compose.ui.text.font.FontStyle.Italic,
-                                        )
-                                    }
-                                    if (setsBySession[session.id].orEmpty().isNotEmpty()) {
-                                        TextButton(onClick = { vm.openDebrief(session) }) {
-                                            Text(stringResource(R.string.debrief_open), style = MaterialTheme.typography.bodySmall, color = c.teal)
-                                        }
-                                    }
+                                    SessionRow(session, setsBySession[session.id].orEmpty(), s.exercises) { nav.navigate(Routes.session(session.id)) }
                                 }
                             }
                         }
@@ -242,30 +187,6 @@ fun HistoryScreen(nav: NavHostController) {
 }
 
 /** One week: how many workouts, time, kg lifted and records; tap to open its days. */
-/** The journal's debrief for one workout, calculated from its numbers; it changes when a set is edited. */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-private fun DebriefSheet(vm: HistoryViewModel, session: SessionEntity, names: Map<String, String>, unit: WeightUnit) {
-    val c = Fit.colors
-    val debrief by vm.debrief.collectAsState()
-    val score = vm.scores.collectAsState().value[session.id]
-    // Opens fully: with system animations off, a half-open sheet landed low and couldn't be dragged up.
-    androidx.compose.material3.ModalBottomSheet(
-        onDismissRequest = { vm.debriefFor.value = null }, containerColor = c.background,
-        sheetState = com.forgequest.app.ui.components.rememberFullSheetState(),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
-            Text(com.forgequest.app.data.seed.StarterPlans.displayTitle(session.title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-            Text(
-                LocalDate.ofEpochDay(session.epochDay).format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
-                style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
-            )
-            Spacer(Modifier.height(12.dp))
-            com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit)
-            Spacer(Modifier.height(24.dp))
-        }
-    }
-}
 
 @Composable
 private fun WeekCard(
@@ -385,6 +306,10 @@ class SessionDetailViewModel(val app: AppContainer, private val sessionId: Long)
 
     fun deleteSet(set: SetEntity) = viewModelScope.launch { app.workouts.deleteFinishedSet(set) }
     fun setNote(set: SetEntity, note: String) = viewModelScope.launch { app.workouts.updateFinishedSet(set.copy(note = note.trim().take(120))) }
+    fun setSessionNote(note: String) {
+        val s = session.value?.session ?: return
+        viewModelScope.launch { app.db.sessions().update(s.copy(note = note.trim().take(300))) }
+    }
 
     /** The screen closes itself once the session flow emits null. */
     fun deleteWorkout() = viewModelScope.launch { app.workouts.deleteSession(sessionId) }
@@ -409,6 +334,7 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
     var picking by remember { mutableStateOf(false) }
     var pendingSetDelete by remember { mutableStateOf<SetEntity?>(null) }
     var noteFor by remember { mutableStateOf<SetEntity?>(null) }
+    var editingSessionNote by remember { mutableStateOf(false) }
 
     val session = loaded?.session
     if (session == null) {
@@ -442,6 +368,16 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
             }
             if (debrief != null || score != null) {
                 item(key = "debrief") { com.forgequest.app.ui.workouts.DebriefCard(debrief, score, names, unit) }
+            }
+            item(key = "session_note") {
+                TextButton(onClick = { editingSessionNote = true }) {
+                    Text(
+                        session.note.ifBlank { stringResource(R.string.journal_add_note) },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (session.note.isBlank()) c.teal else c.textSecondary,
+                        fontStyle = if (session.note.isBlank()) null else androidx.compose.ui.text.font.FontStyle.Italic,
+                    )
+                }
             }
             items(groups, key = { it.first().itemPosition }) { group ->
                 val ex = exercises[group.first().exerciseId]
@@ -491,6 +427,9 @@ fun SessionDetailScreen(nav: NavHostController, sessionId: Long) {
 
     noteFor?.let { set ->
         SetNoteDialog(set.note, isPain = set.effort == com.forgequest.app.domain.SetEffort.PAIN.name, onDismiss = { noteFor = null }, onSave = { vm.setNote(set, it); noteFor = null })
+    }
+    if (editingSessionNote) {
+        SetNoteDialog(session.note, onDismiss = { editingSessionNote = false }, onSave = { vm.setSessionNote(it); editingSessionNote = false })
     }
 
     pendingSetDelete?.let { set ->

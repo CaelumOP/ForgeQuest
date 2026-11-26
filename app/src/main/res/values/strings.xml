@@ -33,20 +33,10 @@
     <string name="home_good_afternoon">Good afternoon</string>
     <string name="home_good_evening">Good evening</string>
     <string name="home_greeting_name">%1$s, %2$s</string>
-    <string name="home_status_in_progress">Your workout is still open</string>
-    <string name="home_status_train">%1$s today</string>
-    <string name="home_status_done">Workout done today</string>
-    <string name="home_status_excused">Resting today</string>
-    <string name="home_status_rest">Rest day</string>
-    <string name="home_status_no_plan">No plan yet</string>
-    <string name="home_status_protein_left">%1$d g protein to go</string>
-    <string name="home_status_protein_met">protein goal met</string>
     <string name="home_date_pattern">EEEE, MMM d</string>
     <string name="home_legend_protein">Protein (g)</string>
     <string name="home_legend_calories">Calories</string>
     <string name="home_protein_left_value">%1$d g</string>
-    <string name="home_protein_left">Protein left</string>
-    <string name="home_protein_goal">Protein goal</string>
     <string name="home_cal_left">kcal left</string>
     <string name="home_cal_surplus">kcal over</string>
     <string name="home_weight_unit">Weight (%1$s)</string>
@@ -490,9 +480,6 @@
     <string name="backup_restore_failed">Couldn\'t restore that backup.</string>
     <string name="backup_share_subject">ForgeQuest backup</string>
     <string name="backup_share_title">Save your backup</string>
-    <string name="profile_setup_title">Turn on meal photo scanning</string>
-    <string name="profile_setup_body">Paste a free Gemini key. Takes about a minute.</string>
-    <string name="profile_add_key">Add key</string>
     <string name="profile_default_name">Athlete</string>
     <string name="profile_rank_line">Rank %1$s · %2$s · Level %3$d</string>
     <string name="profile_xp_line">%1$d / %2$d XP to level %3$d</string>
@@ -504,8 +491,8 @@
     <string name="action_see_all">See all</string>
     <string name="profile_daily_protein">Daily protein</string>
     <string name="profile_daily_calories">Daily calories</string>
-    <string name="profile_ai_key">Gemini key</string>
-    <string name="profile_key_not_set">Not set · coach, meal scan and plans are off</string>
+    <string name="profile_ai_key">Connect Gemini</string>
+    <string name="profile_key_not_set">Not connected · coach, meal scan and plans are off</string>
     <string name="profile_key_connected">Connected · runs the coach, meal scans and plans</string>
     <string name="profile_appearance">Appearance</string>
     <string name="profile_theme">Theme</string>
@@ -547,7 +534,7 @@
     <string name="profile_credits">Credits</string>
     <string name="profile_credits_body">Foundation plan by Hemo Calisthenics. Anatomy art from react-native-body-highlighter (MIT).</string>
     <string name="profile_hemo_youtube">Hemo Calisthenics on YouTube</string>
-    <string name="key_dialog_title">Gemini AI key</string>
+    <string name="key_dialog_title">Connect Gemini</string>
     <string name="key_dialog_body">Get a free key from Google AI Studio, then paste it here. It stays encrypted on this phone.</string>
     <string name="key_dialog_privacy">Meal photos and training data go to Google Gemini under this key. Free keys let Google use them for training models.</string>
     <string name="key_dialog_open_studio">Open Google AI Studio</string>
@@ -711,7 +698,7 @@
     <string name="detail_link_body">Paste a YouTube link for this exercise. Leave empty to search YouTube instead.</string>
     <string name="plan_switched_to">Plan switched to %1$s</string>
     <string name="plan_reading">Reading your plan…</string>
-    <string name="plan_paste_unreadable">Couldn\'t find a plan in that text. Copy the Gem\'s whole answer, then paste it again.</string>
+    <string name="plan_paste_unreadable">Couldn\'t find a plan in that text. Copy Gemini\'s whole answer, then paste it again.</string>
     <string name="plan_workout">Workout</string>
     <string name="plan_switched">Switched to %1$s</string>
     <string name="plan_days_swapped">%1$s and %2$s swapped</string>
@@ -804,14 +791,12 @@
     <string name="food_list_loading">Loading food list…</string>
     <!-- Progress -->
     <string name="progress_title">Progress</string>
-    <string name="progress_subtitle">Every number with its direction</string>
     <string name="progress_range_1m">1M</string>
     <string name="progress_range_3m">3M</string>
     <string name="progress_range_6m">6M</string>
     <string name="progress_range_1y">1Y</string>
     <string name="progress_range_all">All</string>
-    <string name="progress_load">Training load</string>
-    <string name="progress_load_hint">This week against your 12-week average</string>
+    <string name="progress_vs_usual">This week vs your usual: %1$s %%</string>
     <plurals name="progress_sets_this_week"><item quantity="one">%d set this week</item><item quantity="other">%d sets this week</item></plurals>
     <string name="progress_vs_last_week">%1$s vs last week</string>
     <string name="progress_first_week">your first week</string>
@@ -833,9 +818,6 @@
     <string name="progress_legend_rest">rest</string>
     <string name="progress_legend_workout">workout</string>
     <string name="progress_legend_record">record day</string>
-    <string name="progress_then_now">Then vs now</string>
-    <string name="progress_then_now_hint">Start of this range → today</string>
-    <string name="progress_per_week">%1$d / wk</string>
     <string name="progress_all_time">All time</string>
     <plurals name="progress_total_workouts">
         <item quantity="one">workout day</item>
@@ -875,8 +857,6 @@
     <string name="profile_backup_file">Backup file</string>
     <string name="unit_g_per_kg">g/kg</string>
     <string name="profile_fat_share">Fat share of calories</string>
-    <string name="hc_test_title">Check Health Connect</string>
-    <string name="hc_failed">Health Connect check failed: %1$s</string>
     <string name="hc_unavailable">Health Connect isn\'t available on this phone</string>
     <string name="dur_hm">%1$dh %2$dm</string>
     <string name="band_light">Light</string>
@@ -889,12 +869,10 @@
     <string name="profile_body_not_set">Not set yet. Tap + to set yours.</string>
     <string name="profile_version">Version %1$s</string>
     <string name="bridge_sync">Sync now</string>
-    <string name="bridge_prompt_copied">Prompt copied. Paste it into your Gem in the Gemini app.</string>
+    <string name="bridge_prompt_copied">Prompt copied. Paste it into the Gemini app.</string>
     <string name="bridge_week_title">**Weekly analysis from Gemini**</string>
     <string name="bridge_plan_card">Gemini suggests a new week. Preview it, and apply it if it looks right.</string>
     <string name="drive_signin_cancelled">Google sign-in didn\'t finish, so nothing was connected. Try again when you\'re ready.</string>
-    <string name="hc_check_ok">Health Connect works: %1$d of %2$d data types have readings (%3$s).</string>
-    <string name="hc_check_empty">Health Connect works, but nothing was recorded in the last 14 days. Check that Google Health shares with Health Connect.</string>
     <string name="zone_1">Light movement</string>
     <string name="zone_2">Moderate</string>
     <string name="zone_3">Hard</string>
@@ -1120,7 +1098,6 @@
         <item quantity="one">%1$d new best</item>
         <item quantity="other">%1$d new bests</item>
     </plurals>
-    <string name="debrief_open">Workout debrief</string>
     <!-- Profile: folding settings categories -->
     <string name="settings_section_settings">Settings</string>
     <string name="settings_group_coach">Gemini</string>
@@ -1135,7 +1112,7 @@
     <string name="summary_reminder_off">No reminder</string>
     <string name="summary_equipment_unset">Equipment not set</string>
     <string name="summary_gemini_on">Gemini connected</string>
-    <string name="summary_gemini_off">Gemini key not set</string>
+    <string name="summary_gemini_off">Gemini not connected</string>
     <string name="summary_drive_off">Google Drive not connected</string>
     <string name="summary_drive_last">Drive · last backup %1$s</string>
     <string name="summary_drive_none">Drive connected · no backup yet</string>
@@ -1167,22 +1144,22 @@
     <string name="ex_type_strength">Strength training</string>
     <string name="ex_type_workout">Workout</string>
     <string name="goals_fitbit_burn">Formula estimate: %1$s kcal a day · Watch 14-day average: %2$s kcal</string>
-    <!-- Meals from the Gemini Gem -->
+    <!-- Meals from Gemini -->
     <string name="meals_title">Meals from Gemini</string>
-    <string name="meals_hint">In Gemini, share the reply from your \"ForgeQuest Food\" Gem to ForgeQuest. New meals wait on the Food tab to confirm.</string>
-    <string name="meals_copy_gem">Copy Gem instructions</string>
+    <string name="meals_hint">In Gemini, share the reply from your \"ForgeQuest Food\" assistant to ForgeQuest. New meals wait on the Food tab to confirm.</string>
+    <string name="meals_copy_gem">Copy meal instructions</string>
     <string name="meals_syncing">Checking for meals…</string>
     <string name="meals_synced">%d new meals from Gemini on the Food tab</string>
     <string name="meals_none_new">No new meals from Gemini</string>
     <string name="meals_doc_placeholder" translatable="false">ForgeQuest meals from Gemini. The ForgeQuest Food Gem adds one block per meal below this line, and the ForgeQuest app reads them. Do not edit by hand.</string>
     <string name="meals_paste">Paste from Gemini</string>
-    <string name="meals_paste_wrong">Copy the Gem\'s whole answer first, then tap Paste.</string>
+    <string name="meals_paste_wrong">Copy Gemini\'s whole answer first, then tap Paste.</string>
     <string name="meals_share_wrong">That doesn\'t look like a ForgeQuest meal.</string>
     <string name="meals_already_logged">This meal is already logged.</string>
     <string name="food_paste_meal">Paste meal reply</string>
     <string name="food_copy_skill">Copy Food AI Skill</string>
     <string name="coach_copy_skill">Copy Coach Skill</string>
-    <string name="skill_copied">Skill copied. Paste it into the instructions of a Gem in the Gemini app.</string>
+    <string name="skill_copied">Instructions copied. Paste them into the Gemini app.</string>
     <string name="meals_share_label">Log meal in ForgeQuest</string>
     <string name="meals_inbox_title">From Gemini (%d)</string>
     <string name="meals_inbox_hint">Tap a meal to check it and log it.</string>
@@ -1313,23 +1290,18 @@
     </plurals>
     <string name="target_nudge_make">Make it %1$d</string>
     <string name="target_nudge_keep">Keep %1$d</string>
-    <string name="ai_key_needed_coach">A free Gemini key turns the coach on.</string>
-    <string name="ai_toggle_title">Advanced: meal photo AI (bring your own key)</string>
+    <string name="ai_toggle_title">Meal photo AI</string>
     <string name="ai_toggle_body">Off: the app works fully without AI.</string>
-    <string name="coach_today_recovery_title">Recovery</string>
-    <string name="coach_fresh">Ready: %1$s</string>
-    <string name="coach_recovering">Recovering: %1$s</string>
     <string name="coach_stalled_title">Stalled lifts</string>
     <string name="stalled_peak">%1$s · %2$s</string>
     <string name="peak_est_max">estimated max %1$s</string>
     <string name="peak_best">best %1$s</string>
     <string name="stalled_switch">Switch to %1$s</string>
     <string name="coach_deload_hint">Tiredness is building up. A lighter week would help.</string>
-    <string name="coach_week_line">This week · workout days: %1$d · sets: %2$d</string>
     <string name="coach_turn_on_ai">Turn on AI coach</string>
     <string name="summary_ai_off">AI off</string>
-    <string name="ai_key_needed_food">A free Gemini key turns the meal scanner on.</string>
-    <string name="ai_key_needed_button">Add a free key</string>
+    <string name="ai_key_needed_food">Connect Gemini to turn the meal scanner on.</string>
+    <string name="ai_key_needed_button">Connect Gemini</string>
 
     <!-- Crash report prompt on Home -->
     <string name="crash_prompt">ForgeQuest closed unexpectedly last time. Send a crash report?</string>
@@ -1375,15 +1347,15 @@
     <string name="pb_title">Build my plan</string>
     <string name="pb_goal">Goal</string>
     <string name="pb_goal_strength">Strength</string>
-    <string name="pb_goal_strength_desc">Heavy lifts · 4–6 reps · 2.5m rest</string>
+    <string name="pb_goal_strength_desc">Heavy weights · 3–6 reps · 150 s rest</string>
     <string name="pb_goal_muscle">Build muscle</string>
-    <string name="pb_goal_muscle_desc">Build muscle · 8–12 reps · 90s rest</string>
+    <string name="pb_goal_muscle_desc">Moderate weights · 8–12 reps · 90 s rest</string>
     <string name="pb_goal_fat">Lose fat</string>
-    <string name="pb_goal_fat_desc">Fast circuits · 12–15 reps · 45s rest</string>
+    <string name="pb_goal_fat_desc">Fast circuits · 12–15 reps · 60 s rest</string>
     <string name="pb_goal_endurance">Endurance</string>
-    <string name="pb_goal_endurance_desc">Stamina · 15–20 reps · 30s rest</string>
+    <string name="pb_goal_endurance_desc">Lighter weights · 15–20 reps · 60 s rest</string>
     <string name="pb_goal_general">General fitness</string>
-    <string name="pb_goal_general_desc">All-around · 8–12 reps · 75s rest</string>
+    <string name="pb_goal_general_desc">Balanced weights · 8–12 reps · 75 s rest</string>
     <string name="pb_days">Days per week</string>
     <string name="pb_minutes">Minutes per workout</string>
     <string name="pb_equipment">Where do you train?</string>
@@ -1680,8 +1652,8 @@
     <string name="tab_progress">Progress</string>
     <string name="settings_ai_gemini_title">Use the Gemini app (recommended)</string>
     <string name="settings_ai_gemini_body">Free, and it gives the best results. Copy a prompt, ask Gemini in its own app, then paste its reply here.</string>
-    <string name="settings_ai_key_title">API key (basic)</string>
-    <string name="settings_ai_key_body">The free API is basic. It handles quick meal estimates from a photo, but the Gemini app does more.</string>
+    <string name="settings_ai_key_title">Connect Gemini</string>
+    <string name="settings_ai_key_body">Basic connection for quick meal estimates from a photo. The Gemini app does more.</string>
     <string name="progress_insights_title">Worth noticing</string>
     <string name="today_rest_week">This week: %1$d of %2$d workouts done. Next: %3$s, %4$s.</string>
     <string name="insight_biggest_session_1">Your biggest workout so far: %1$s lifted in one session.</string>
@@ -1890,8 +1862,6 @@
     <string name="v42_gs_workout">Start your first workout</string>
     <string name="v42_gs_food">Log a meal</string>
     <string name="v42_gs_weight">Add your body weight</string>
-    <string name="v42_gs_measure">Add a body measurement</string>
-    <string name="v42_gs_friend">Add a friend</string>
     <string name="v42_gs_all_done">All set. You know the basics.</string>
     <string name="v42_gs_hide">Hide getting started</string>
     <string name="v42_gs_item_done">Done</string>

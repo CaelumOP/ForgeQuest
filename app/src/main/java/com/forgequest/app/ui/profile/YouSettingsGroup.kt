@@ -493,7 +493,6 @@ internal fun HealthSettingsGroup(
     s: ProgressSnapshot,
     toggleGroup: (String) -> Unit,
     probe: com.forgequest.app.data.health.HealthProbe,
-    startHealthCheck: () -> Unit,
     healthAccess: androidx.activity.compose.ManagedActivityResultLauncher<Set<String>, Set<String>>,
 ) {
     val c = Fit.colors
@@ -517,9 +516,6 @@ internal fun HealthSettingsGroup(
                     probe.status() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE -> context.toast(context.getString(R.string.hc_unavailable))
                     else -> { vm.setHealth(true); healthAccess.launch(vm.app.health.requestPermissions()) }
                 }
-            }
-            if (connected) {
-                TextButton(onClick = startHealthCheck) { Text(stringResource(R.string.hc_test_title), color = c.teal) }
             }
             // Switched on here but access was taken back in Health Connect: say so rather than look switched off.
             if (settings.healthEnabled && health == HealthState.NeedsAccess) {

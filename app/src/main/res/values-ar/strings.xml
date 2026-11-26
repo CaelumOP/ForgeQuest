@@ -42,20 +42,10 @@
     <string name="home_good_afternoon">مساء الخير</string>
     <string name="home_good_evening">مساء الخير</string>
     <string name="home_greeting_name">%1$s يا %2$s</string>
-    <string name="home_status_in_progress">جلستك ما زالت مفتوحة</string>
-    <string name="home_status_train">%1$s اليوم</string>
-    <string name="home_status_done">أنهيت جلسة اليوم</string>
-    <string name="home_status_excused">راحة اليوم</string>
-    <string name="home_status_rest">يوم راحة</string>
-    <string name="home_status_no_plan">لا خطة بعد</string>
-    <string name="home_status_protein_left">بقي %1$d غ من البروتين</string>
-    <string name="home_status_protein_met">بلغت هدف البروتين</string>
     <string name="home_date_pattern">EEEE، d MMMM</string>
     <string name="home_legend_protein">البروتين (غ)</string>
     <string name="home_legend_calories">السعرات</string>
     <string name="home_protein_left_value">%1$d غ</string>
-    <string name="home_protein_left">البروتين المتبقي</string>
-    <string name="home_protein_goal">هدف البروتين</string>
     <string name="home_cal_left">السعرات المتبقية</string>
     <string name="home_cal_surplus">سعرات زائدة</string>
     <string name="home_weight_unit">الوزن (%1$s)</string>
@@ -567,9 +557,6 @@
     <string name="backup_restore_failed">تعذّر استرجاع هذه النسخة.</string>
     <string name="backup_share_subject">نسخة احتياطية من ForgeQuest</string>
     <string name="backup_share_title">حفظ نسختك الاحتياطية</string>
-    <string name="profile_setup_title">تفعيل تحليل صور الوجبات</string>
-    <string name="profile_setup_body">الصق مفتاح Gemini مجانيًا؛ يستغرق ذلك دقيقة تقريبًا.</string>
-    <string name="profile_add_key">إضافة المفتاح</string>
     <string name="profile_default_name">الرياضي</string>
     <string name="profile_rank_line">الرتبة %1$s · %2$s · المستوى %3$d</string>
     <string name="profile_xp_line">%1$d من %2$d نقطة خبرة للمستوى %3$d</string>
@@ -581,8 +568,8 @@
     <string name="action_see_all">عرض الكل</string>
     <string name="profile_daily_protein">البروتين اليومي</string>
     <string name="profile_daily_calories">السعرات اليومية</string>
-    <string name="profile_ai_key">مفتاح Gemini</string>
-    <string name="profile_key_not_set">غير مضاف · المدرب وتصوير الوجبات والخطط متوقفة</string>
+    <string name="profile_ai_key">ربط Gemini</string>
+    <string name="profile_key_not_set">غير مرتبط · المدرب وتصوير الوجبات والخطط متوقفة</string>
     <string name="profile_key_connected">متصل · يشغّل المدرب وتصوير الوجبات والخطط</string>
     <string name="profile_appearance">المظهر</string>
     <string name="profile_theme">السمة</string>
@@ -624,7 +611,7 @@
     <string name="profile_credits">شكر وتقدير</string>
     <string name="profile_credits_body">الخطة الأساسي من Hemo Calisthenics، ورسوم التشريح من react-native-body-highlighter (MIT).</string>
     <string name="profile_hemo_youtube">Hemo Calisthenics على يوتيوب</string>
-    <string name="key_dialog_title">مفتاح Gemini</string>
+    <string name="key_dialog_title">ربط Gemini</string>
     <string name="key_dialog_body">احصل على مفتاح مجاني من Google AI Studio والصقه هنا، ويبقى مشفّرًا على هذا الهاتف.</string>
     <string name="key_dialog_privacy">تُرسل صور الوجبات وبيانات تمرينك إلى Google Gemini بهذا المفتاح، وتتيح المفاتيح المجانية لـ Google استخدامها.</string>
     <string name="key_dialog_open_studio">فتح Google AI Studio</string>
@@ -816,7 +803,7 @@
     <string name="detail_link_body">الصق رابط يوتيوب لهذا التمرين، أو اتركه فارغًا للبحث في يوتيوب.</string>
     <string name="plan_switched_to">تحوّلت الخطة إلى %1$s</string>
     <string name="plan_reading">جارٍ قراءة خطتك…</string>
-    <string name="plan_paste_unreadable">تعذّر العثور على خطة في هذا النص. انسخ إجابة الـ Gem كاملة، ثم الصقها مرة أخرى.</string>
+    <string name="plan_paste_unreadable">تعذّر العثور على خطة في هذا النص. انسخ إجابة Gemini كاملة، ثم الصقها مرة أخرى.</string>
     <string name="plan_workout">تمرين</string>
     <string name="plan_switched">تحوّلت إلى %1$s</string>
     <string name="plan_days_swapped">تبادل %1$s و%2$s مكانيهما</string>
@@ -917,14 +904,12 @@
     <string name="food_list_loading">جارٍ تحميل قائمة الأطعمة…</string>
     <!-- Progress -->
     <string name="progress_title">التقدّم</string>
-    <string name="progress_subtitle">كل رقم مع اتجاهه</string>
     <string name="progress_range_1m">شهر</string>
     <string name="progress_range_3m">3 أشهر</string>
     <string name="progress_range_6m">6 أشهر</string>
     <string name="progress_range_1y">سنة</string>
     <string name="progress_range_all">الكل</string>
-    <string name="progress_load">حِمل التدريب</string>
-    <string name="progress_load_hint">هذا الأسبوع مقارنةً بمتوسط آخر 12 أسبوعًا</string>
+    <string name="progress_vs_usual">هذا الأسبوع مقارنةً بمعدلك: &#x200E;%1$s٪</string>
     <plurals name="progress_sets_this_week"><item quantity="zero">لا مجموعات هذا الأسبوع</item><item quantity="one">مجموعة واحدة هذا الأسبوع</item><item quantity="two">مجموعتان هذا الأسبوع</item><item quantity="few">%d مجموعات هذا الأسبوع</item><item quantity="many">%d مجموعةً هذا الأسبوع</item><item quantity="other">%d مجموعة هذا الأسبوع</item></plurals>
     <string name="progress_vs_last_week">%1$s عن الأسبوع الماضي</string>
     <string name="progress_first_week">أسبوعك الأول</string>
@@ -946,9 +931,6 @@
     <string name="progress_legend_rest">راحة</string>
     <string name="progress_legend_workout">تمرين</string>
     <string name="progress_legend_record">يوم رقم قياسي</string>
-    <string name="progress_then_now">قبل والآن</string>
-    <string name="progress_then_now_hint">بداية هذه الفترة ← اليوم</string>
-    <string name="progress_per_week">%1$d / أسبوع</string>
     <string name="progress_all_time">منذ البداية</string>
     <plurals name="progress_total_workouts">
         <item quantity="zero">أيام تمرين</item>
@@ -992,8 +974,6 @@
     <string name="profile_backup_file">ملف النسخة الاحتياطية</string>
     <string name="unit_g_per_kg">غ/كغ</string>
     <string name="profile_fat_share">حصة الدهون من السعرات</string>
-    <string name="hc_test_title">فحص Health Connect</string>
-    <string name="hc_failed">تعذّر فحص Health Connect: %1$s</string>
     <string name="hc_unavailable">Health Connect غير متوفر على هذا الهاتف</string>
     <string name="dur_hm">%1$d س %2$d د</string>
     <string name="band_light">خفيف</string>
@@ -1006,12 +986,10 @@
     <string name="profile_body_not_set">لم تُحدَّد بعد. اضغط + لتحديد قيمك.</string>
     <string name="profile_version">الإصدار %1$s</string>
     <string name="bridge_sync">المزامنة الآن</string>
-    <string name="bridge_prompt_copied">نُسخ النص؛ الصقه في الـGem الخاص بك في تطبيق Gemini.</string>
+    <string name="bridge_prompt_copied">نُسخ النص؛ الصقه في تطبيق Gemini.</string>
     <string name="bridge_week_title">**التحليل الأسبوعي من Gemini**</string>
     <string name="bridge_plan_card">يقترح Gemini أسبوعًا جديدًا؛ استعرضه وطبّقه إن رأيته مناسبًا.</string>
     <string name="drive_signin_cancelled">لم يكتمل تسجيل الدخول بحساب Google، فلم يُربط شيء. حاول مجددًا متى شئت.</string>
-    <string name="hc_check_ok">يعمل Health Connect: %1$d من %2$d أنواع بيانات فيها قراءات (%3$s).</string>
-    <string name="hc_check_empty">يعمل Health Connect، لكن لم يُسجَّل شيء في آخر 14 يومًا. تأكّد أن Google Health يشارك البيانات مع Health Connect.</string>
     <string name="zone_1">حركة خفيفة</string>
     <string name="zone_2">متوسط</string>
     <string name="zone_3">شديد</string>
@@ -1285,7 +1263,6 @@
         <item quantity="many">%1$d رقمًا قياسيًا</item>
         <item quantity="other">%1$d رقم قياسي</item>
     </plurals>
-    <string name="debrief_open">ملخص التمرين</string>
     <!-- الملف الشخصي: فئات الإعدادات القابلة للطي -->
     <string name="settings_section_settings">الإعدادات</string>
     <string name="settings_group_coach">Gemini</string>
@@ -1300,7 +1277,7 @@
     <string name="summary_reminder_off">دون تذكير</string>
     <string name="summary_equipment_unset">لم تُحدَّد المعدات</string>
     <string name="summary_gemini_on">Gemini متصل</string>
-    <string name="summary_gemini_off">مفتاح Gemini غير مضاف</string>
+    <string name="summary_gemini_off">Gemini غير مرتبط</string>
     <string name="summary_drive_off">Google Drive غير متصل</string>
     <string name="summary_drive_last">Drive · آخر نسخة %1$s</string>
     <string name="summary_drive_none">Drive متصل · لا توجد نسخة بعد</string>
@@ -1337,19 +1314,19 @@
     <string name="goals_fitbit_burn">تقدير المعادلة: %1$s سعرة يوميًا · متوسط الساعة لأربعة عشر يومًا: %2$s سعرة</string>
     <!-- وجبات من Gemini -->
     <string name="meals_title">وجبات من Gemini</string>
-    <string name="meals_hint">في Gemini، شارك رد Gem «ForgeQuest Food» إلى ForgeQuest. تنتظر الوجبات الجديدة تأكيدك في تبويب الطعام.</string>
-    <string name="meals_copy_gem">نسخ تعليمات الـ Gem</string>
+    <string name="meals_hint">في Gemini، شارك رد مساعد «ForgeQuest Food» إلى ForgeQuest. تنتظر الوجبات الجديدة تأكيدك في تبويب الطعام.</string>
+    <string name="meals_copy_gem">نسخ تعليمات الوجبات</string>
     <string name="meals_syncing">جارٍ البحث عن وجبات…</string>
     <string name="meals_synced">وجبات جديدة من Gemini في تبويب الطعام: %d</string>
     <string name="meals_none_new">لا توجد وجبات جديدة من Gemini</string>
     <string name="meals_paste">لصق من Gemini</string>
-    <string name="meals_paste_wrong">انسخ إجابة الـ Gem كاملة أولًا، ثم اضغط على «لصق».</string>
+    <string name="meals_paste_wrong">انسخ إجابة Gemini كاملة أولًا، ثم اضغط على «لصق».</string>
     <string name="meals_share_wrong">لا يبدو هذا وجبة بتنسيق ForgeQuest.</string>
     <string name="meals_already_logged">هذه الوجبة مسجَّلة من قبل.</string>
     <string name="food_paste_meal">لصق ردّ الوجبة</string>
     <string name="food_copy_skill">نسخ مهارة الطعام للذكاء الاصطناعي</string>
     <string name="coach_copy_skill">نسخ مهارة المدرب</string>
-    <string name="skill_copied">نُسخت المهارة. الصقها في تعليمات Gem داخل تطبيق Gemini.</string>
+    <string name="skill_copied">نُسخت التعليمات. الصقها في تطبيق Gemini.</string>
     <string name="meals_share_label">تسجيل الوجبة في ForgeQuest</string>
     <string name="meals_inbox_title">من Gemini (%d)</string>
     <string name="meals_inbox_hint">اضغط على وجبة لمراجعتها وتسجيلها.</string>
@@ -1504,23 +1481,18 @@
     </plurals>
     <string name="target_nudge_make">اجعله %1$d</string>
     <string name="target_nudge_keep">أبقِ على %1$d</string>
-    <string name="ai_key_needed_coach">مفتاح Gemini المجاني يشغّل مدربك الذكي.</string>
-    <string name="ai_toggle_title">متقدم: تحليل صور الوجبات بالذكاء الاصطناعي (بمفتاحك الخاص)</string>
+    <string name="ai_toggle_title">تحليل صور الوجبات بالذكاء الاصطناعي</string>
     <string name="ai_toggle_body">عند الإيقاف يعمل التطبيق كاملًا دون ذكاء اصطناعي.</string>
-    <string name="coach_today_recovery_title">التعافي</string>
-    <string name="coach_fresh">جاهز: %1$s</string>
-    <string name="coach_recovering">قيد التعافي: %1$s</string>
     <string name="coach_stalled_title">تمارين متوقفة عن التقدم</string>
     <string name="stalled_peak">%1$s · %2$s</string>
     <string name="peak_est_max">الحد الأقصى التقديري %1$s</string>
     <string name="peak_best">أفضل رقم %1$s</string>
     <string name="stalled_switch">التبديل إلى %1$s</string>
     <string name="coach_deload_hint">التعب يتراكم. أسبوع أخف سيفيدك.</string>
-    <string name="coach_week_line">هذا الأسبوع · أيام التمرين: %1$d · المجموعات: %2$d</string>
     <string name="coach_turn_on_ai">تشغيل المدرب الذكي</string>
     <string name="summary_ai_off">الذكاء الاصطناعي متوقف</string>
-    <string name="ai_key_needed_food">مفتاح Gemini المجاني يشغّل ماسح الوجبات.</string>
-    <string name="ai_key_needed_button">أضف مفتاحًا مجانيًا</string>
+    <string name="ai_key_needed_food">اربط Gemini لتشغيل ماسح الوجبات.</string>
+    <string name="ai_key_needed_button">ربط Gemini</string>
 
     <!-- Crash report prompt on Home -->
     <string name="crash_prompt">أُغلق ForgeQuest على نحوٍ غير متوقع في المرة السابقة. أتودّ إرسال تقرير بالعطل؟</string>
@@ -1566,15 +1538,15 @@
     <string name="pb_title">ابنِ خطتي</string>
     <string name="pb_goal">الهدف</string>
     <string name="pb_goal_strength">القوة</string>
-    <string name="pb_goal_strength_desc">أوزان ثقيلة · 4–6 تكرار · راحة 2.5 د</string>
+    <string name="pb_goal_strength_desc">أوزان ثقيلة · 3–6 تكرار · راحة 150 ث</string>
     <string name="pb_goal_muscle">بناء العضلات</string>
-    <string name="pb_goal_muscle_desc">بناء العضل · 8–12 تكرار · راحة 90 ث</string>
+    <string name="pb_goal_muscle_desc">أوزان متوسطة · 8–12 تكرار · راحة 90 ث</string>
     <string name="pb_goal_fat">خسارة الدهون</string>
-    <string name="pb_goal_fat_desc">تمارين دائرية · 12–15 تكرار · راحة 45 ث</string>
+    <string name="pb_goal_fat_desc">تمارين دائرية · 12–15 تكرار · راحة 60 ث</string>
     <string name="pb_goal_endurance">التحمّل</string>
-    <string name="pb_goal_endurance_desc">لياقة عالية · 15–20 تكرار · راحة 30 ث</string>
+    <string name="pb_goal_endurance_desc">أوزان خفيفة · 15–20 تكرار · راحة 60 ث</string>
     <string name="pb_goal_general">اللياقة العامة</string>
-    <string name="pb_goal_general_desc">توازن شامل · 8–12 تكرار · راحة 75 ث</string>
+    <string name="pb_goal_general_desc">أوزان متوازنة · 8–12 تكرار · راحة 75 ث</string>
     <string name="pb_days">أيام التمرين في الأسبوع</string>
     <string name="pb_minutes">دقائق كل جلسة</string>
     <string name="pb_equipment">أين تتدرّب؟</string>
@@ -1999,8 +1971,8 @@
     <string name="tab_progress">التقدّم</string>
     <string name="settings_ai_gemini_title">استخدم تطبيق Gemini (الأفضل)</string>
     <string name="settings_ai_gemini_body">مجاني ويعطي أفضل النتائج. انسخ الطلب، واسأل Gemini في تطبيقه، ثم الصق ردّه هنا.</string>
-    <string name="settings_ai_key_title">مفتاح الواجهة البرمجية (أساسي)</string>
-    <string name="settings_ai_key_body">الواجهة المجانية أساسية: تكفي لتقدير الوجبات من صورها سريعًا، لكن تطبيق Gemini يقدّم أكثر.</string>
+    <string name="settings_ai_key_title">ربط Gemini</string>
+    <string name="settings_ai_key_body">ربط أساسي لتقدير الوجبات من صورها سريعًا، لكن تطبيق Gemini يقدّم أكثر.</string>
     <string name="progress_insights_title">ما يستحق الانتباه</string>
     <string name="today_rest_week">هذا الأسبوع: %1$d من %2$d من التمارين. التالي: %3$s، %4$s.</string>
     <string name="insight_biggest_session_1">أكبر تمرين لك حتى الآن: رفعت %1$s في جلسة واحدة.</string>
@@ -2232,8 +2204,6 @@
     <string name="v42_gs_workout">ابدأ أول تمرين</string>
     <string name="v42_gs_food">سجّل وجبة</string>
     <string name="v42_gs_weight">أضف وزن جسمك</string>
-    <string name="v42_gs_measure">أضف قياسًا للجسم</string>
-    <string name="v42_gs_friend">أضف صديقًا</string>
     <string name="v42_gs_all_done">اكتمل كل شيء، وأصبحت تعرف الأساسيات.</string>
     <string name="v42_gs_hide">إخفاء خطواتك الأولى</string>
     <string name="v42_gs_item_done">تم</string>

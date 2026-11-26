@@ -18,13 +18,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +46,6 @@ import com.forgequest.app.ui.sharedProfileViewModel
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.MiniRing
-import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.ProgressLine
 import com.forgequest.app.ui.localDescription
 import com.forgequest.app.ui.localTitle
@@ -65,8 +61,6 @@ fun ProfileScreen(nav: NavHostController) {
     val vm = sharedProfileViewModel(nav)
     val updates = com.forgequest.app.ui.appViewModel { SettingsViewModel(it, vm.snapshot) }
     val snap by vm.snapshot.collectAsState()
-    val apiKey by vm.apiKey.collectAsState()
-    val aiOn by vm.aiOn.collectAsState()
     val c = Fit.colors
     val isArabic = Locale.getDefault().language == "ar"
     var showXpHow by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
@@ -83,22 +77,6 @@ fun ProfileScreen(nav: NavHostController) {
         Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = c.textPrimary) }
             Text(stringResource(R.string.tab_profile), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
-            IconButton(onClick = { nav.navigate(com.forgequest.app.ui.Routes.SETTINGS) }) { Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.home41_settings_cd), tint = c.teal) }
-        }
-
-        if (aiOn && apiKey.isBlank()) {
-            FitCard(onClick = { nav.navigate(com.forgequest.app.ui.Routes.settingsGroup("coach")) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconCircle(Icons.Rounded.Key, c.teal, c.tealTrack)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.profile_setup_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
-                        Text(stringResource(R.string.profile_setup_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    }
-                    PillButton(stringResource(R.string.profile_add_key), onClick = { nav.navigate(com.forgequest.app.ui.Routes.settingsGroup("coach")) })
-                }
-            }
-            Spacer(Modifier.height(12.dp))
         }
 
         // Rank ("Just log" mode: the name and workout count only; XP keeps adding up out of sight)

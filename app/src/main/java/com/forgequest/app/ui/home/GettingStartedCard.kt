@@ -45,24 +45,20 @@ data class GettingStartedInput(
     val hasWorkout: Boolean,
     val hasMeal: Boolean,
     val hasWeight: Boolean,
-    val hasMeasurement: Boolean,
-    val friendDone: Boolean,
 )
 
 data class GettingStartedState(
     val workoutDone: Boolean,
     val foodDone: Boolean,
     val weightDone: Boolean,
-    val measureDone: Boolean,
-    val friendDone: Boolean,
 ) {
     val doneCount: Int
-        get() = listOf(workoutDone, foodDone, weightDone, measureDone, friendDone).count { it }
+        get() = listOf(workoutDone, foodDone, weightDone).count { it }
     val total: Int get() = TOTAL_ITEMS
     val allDone: Boolean get() = doneCount == total
 
     companion object {
-        const val TOTAL_ITEMS = 5
+        const val TOTAL_ITEMS = 3
     }
 }
 
@@ -70,8 +66,6 @@ fun computeGettingStarted(input: GettingStartedInput): GettingStartedState = Get
     workoutDone = input.hasWorkout,
     foodDone = input.hasMeal,
     weightDone = input.hasWeight,
-    measureDone = input.hasMeasurement,
-    friendDone = input.friendDone,
 )
 
 fun isGettingStartedVisible(
@@ -88,8 +82,6 @@ fun GettingStartedCard(
     onWorkout: () -> Unit,
     onFood: () -> Unit,
     onWeight: () -> Unit,
-    onMeasure: () -> Unit,
-    onFriend: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val c = Fit.colors
@@ -142,8 +134,6 @@ fun GettingStartedCard(
                 Triple(R.string.v42_gs_workout, state.workoutDone, onWorkout),
                 Triple(R.string.v42_gs_food, state.foodDone, onFood),
                 Triple(R.string.v42_gs_weight, state.weightDone, onWeight),
-                Triple(R.string.v42_gs_measure, state.measureDone, onMeasure),
-                Triple(R.string.v42_gs_friend, state.friendDone, onFriend),
             )
             rows.forEach { (labelRes, done, onClick) ->
                 GettingStartedRow(

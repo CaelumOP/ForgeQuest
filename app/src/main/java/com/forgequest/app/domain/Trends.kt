@@ -68,6 +68,17 @@ object Trends {
     }
 
     /**
+     * Difference in percent between this week's working sets and the usual (12-week) average: +12 means 12% above
+     * usual, -36 means 36% below. Returns 0 when there are no prior active weeks yet.
+     */
+    fun trainingLoadDelta(weeklySets: List<Int>): Int {
+        if (weeklySets.isEmpty()) return 0
+        val previous = weeklySets.dropLast(1).filter { it > 0 }
+        if (previous.isEmpty()) return 0
+        return trainingLoad(weeklySets) - 100
+    }
+
+    /**
      * Best set per training day for one exercise, oldest first, over the whole history. A point is a record when it
      * beats everything before it (the first day never is). Filter by range afterwards so records stay truthful.
      */

@@ -71,14 +71,11 @@ import com.forgequest.app.ui.components.EmptyState
 import com.forgequest.app.ui.components.FitCard
 import com.forgequest.app.ui.components.Heatmap
 import com.forgequest.app.ui.components.LegendDot
-import com.forgequest.app.ui.components.MiniRing
 import com.forgequest.app.ui.components.SegmentedTabs
 import com.forgequest.app.ui.components.Sparkline
 import com.forgequest.app.ui.components.TrendChart
 import com.forgequest.app.ui.components.rememberReveal
-import com.forgequest.app.ui.localLabel
 import com.forgequest.app.ui.theme.Fit
-import com.forgequest.app.ui.theme.Manrope
 import com.forgequest.app.ui.theme.NumberFont
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -118,7 +115,7 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
     val weeksInRange = (range.days?.let { (it + 6) / 7 } ?: ((today - firstDay).toInt() / 7 + 1)).coerceIn(4, 52)
     val weeklySets = Trends.weeklySets(s.doneSets, sessionDay, 12, today)
     val weeklyWorkouts = Trends.weeklyCounts(workoutDays, weeksInRange, today)
-    val load = Trends.trainingLoad(weeklySets)
+    val loadDelta = Trends.trainingLoadDelta(weeklySets)
     val topIds = Trends.topExercises(s.doneSets.filter { com.forgequest.app.domain.countsForScore(it) }, 6)
     val series: Map<String, List<TrendPoint>> = topIds.associateWith { id ->
         val kind = s.exercises[id]?.kind ?: ExerciseKind.REPS
@@ -137,11 +134,6 @@ private class Derived(s: ProgressSnapshot, val range: TrendRange, val unit: Weig
     fun inRange(points: List<TrendPoint>) = points.filter { it.epochDay >= from }
 }
 
-/** One-shot request from Home's Getting Started card to open the measurement logger when Progress opens. */
-object ProgressMeasureLink {
-    var openAdd by mutableStateOf(false)
-}
-
 @Composable
 fun ProgressScreen(nav: NavHostController) {
     val vm = appViewModel { ProgressViewModel(it) }
@@ -158,16 +150,12 @@ fun ProgressScreen(nav: NavHostController) {
     val datePattern = stringResource(R.string.progress_date_pattern)
     val dateFmt = remember(datePattern) { DateTimeFormatter.ofPattern(datePattern) }
     val dateLabel: (Long) -> String = { LocalDate.ofEpochDay(it).format(dateFmt) }
-    val openMeasureAdd = ProgressMeasureLink.openAdd
 
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
 
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary)
-                Text(stringResource(R.string.progress_subtitle), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-            }
+            Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.headlineMedium, color = c.textPrimary, modifier = Modifier.weight(1f))
         }
         if (s.sessions.isEmpty()) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = ForgeSpace.Gutter)) {
@@ -177,9 +165,7 @@ fun ProgressScreen(nav: NavHostController) {
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement, openMeasureAdd) {
-                    ProgressMeasureLink.openAdd = false
-                }
+                MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
                 Spacer(Modifier.height(12.dp))
                 MoreToolsSection(s, unit)
                 Spacer(Modifier.height(32.dp))
@@ -209,9 +195,7 @@ fun ProgressScreen(nav: NavHostController) {
             MoreToolsSection(s, unit)
             Spacer(Modifier.height(12.dp))
 
-            MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement, openMeasureAdd) {
-                ProgressMeasureLink.openAdd = false
-            }
+            MeasurementsCard(measurements, range, reveal, dateLabel, vm::logMeasurement, vm::deleteMeasurement)
             Spacer(Modifier.height(12.dp))
 
             if (d.weightPoints.size >= 2) {
@@ -243,9 +227,6 @@ fun ProgressScreen(nav: NavHostController) {
             }
             Spacer(Modifier.height(12.dp))
 
-            ThenNowCard(s, d, unit)
-            Spacer(Modifier.height(12.dp))
-
             FitCard {
                 Text(stringResource(R.string.progress_all_time), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
                 Spacer(Modifier.height(12.dp))
@@ -271,28 +252,25 @@ private fun LoadCard(d: Derived, reveal: Float) {
     val thisWeek = d.weeklySets.last()
     val lastWeek = d.weeklySets.getOrNull(d.weeklySets.lastIndex - 1) ?: 0
     val change = Trends.percentChange(lastWeek.toFloat(), thisWeek.toFloat())
+    val signedDelta = when {
+        d.loadDelta > 0 -> "+${d.loadDelta}"
+        d.loadDelta < 0 -> "-${-d.loadDelta}"
+        else -> "0"
+    }
     FitCard {
+        Text(
+            stringResource(R.string.progress_vs_usual, signedDelta),
+            style = MaterialTheme.typography.titleSmall.tabular(),
+            color = c.textPrimary,
+        )
+        Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MiniRing((d.load / 100f).coerceIn(0f, 1f) * reveal, c.chartStrength, c.chartGainTrack, size = 84.dp, stroke = 8.dp, description = stringResource(R.string.a11y_load_ring, d.load)) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${(d.load * reveal).roundToInt()}", fontFamily = Manrope, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge.tabular(), color = c.textPrimary)
-                    Text("%", style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.progress_load), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
-                Text(stringResource(R.string.progress_load_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(pluralStringResource(R.plurals.progress_sets_this_week, thisWeek, thisWeek), style = MaterialTheme.typography.labelLarge, color = c.textPrimary, modifier = Modifier.weight(1f, fill = false))
-                    Spacer(Modifier.width(8.dp))
-                    when {
-                        change == null && thisWeek > 0 -> DeltaChip(stringResource(R.string.progress_first_week), positive = true)
-                        change != null && change > 0 -> DeltaChip(stringResource(R.string.progress_vs_last_week, "+$change%"), positive = true)
-                        change != null -> DeltaChip(stringResource(R.string.progress_vs_last_week, "$change%"), positive = false)
-                    }
-                }
+            Text(pluralStringResource(R.plurals.progress_sets_this_week, thisWeek, thisWeek), style = MaterialTheme.typography.labelLarge, color = c.textPrimary, modifier = Modifier.weight(1f, fill = false))
+            Spacer(Modifier.width(8.dp))
+            when {
+                change == null && thisWeek > 0 -> DeltaChip(stringResource(R.string.progress_first_week), positive = true)
+                change != null && change > 0 -> DeltaChip(stringResource(R.string.progress_vs_last_week, "+$change%"), positive = true)
+                change != null -> DeltaChip(stringResource(R.string.progress_vs_last_week, "$change%"), positive = false)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -406,41 +384,6 @@ private fun StrengthCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit, reve
 }
 
 @Composable
-private fun ThenNowCard(s: ProgressSnapshot, d: Derived, unit: WeightUnit) {
-    val c = Fit.colors
-    data class Pair3(val then: String, val now: String, val label: String, val up: Boolean)
-    val rows = mutableListOf<Pair3>()
-    val sUnit = stringResource(R.string.unit_s)
-    d.topIds.take(3).forEach { id ->
-        val ex = s.exercises[id] ?: return@forEach
-        val (then, now) = Trends.thenNow(d.series[id].orEmpty(), d.from) ?: return@forEach
-        rows += Pair3(formatValue(then, ex.kind, unit, sUnit), formatValue(now, ex.kind, unit, sUnit), ex.name, now > then)
-    }
-    if (d.weeklyWorkouts.size >= 2) {
-        val then = d.weeklyWorkouts.first(); val now = d.weeklyWorkouts.last()
-        rows += Pair3(stringResource(R.string.progress_per_week, then), stringResource(R.string.progress_per_week, now), stringResource(R.string.progress_tile_workouts).substringBefore(" ·"), now > then)
-    }
-    Trends.thenNow(d.weightAvg, d.from)?.let { (then, now) -> rows += Pair3(unit.format(then), unit.format(now), stringResource(R.string.weight_body), false) }
-    if (rows.isEmpty()) return
-    FitCard {
-        Text(stringResource(R.string.progress_then_now), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-        Text(stringResource(R.string.progress_then_now_hint), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-        Spacer(Modifier.height(8.dp))
-        rows.forEach { r ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(r.then, fontFamily = NumberFont, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = c.textSecondary, modifier = Modifier.weight(1f))
-                Text(if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) "←" else "→", fontWeight = FontWeight.Bold, color = if (r.up) c.chartGain else c.textSecondary)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1.4f)) {
-                    Text(r.now, fontFamily = NumberFont, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = if (r.up) c.chartGain else c.textPrimary)
-                    Text(r.label, style = MaterialTheme.typography.labelSmall, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun Total(value: String, label: String, modifier: Modifier) {
     val c = Fit.colors
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -466,7 +409,7 @@ private fun formatDelta(diff: Float, kind: ExerciseKind, unit: WeightUnit, sUnit
 }
 
 /**
- * Read-only comments from the insight engine (no cooldown is started here; the finish screen does that), then recovery,
+ * Read-only comments from the insight engine (no cooldown is started here; the finish screen does that), then
  * stalled lifts and the deload hint, all worked out from stored data.
  */
 @Composable
@@ -487,26 +430,12 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
             ).map { com.forgequest.app.ui.workouts.insightText(it, res, s.exercises.mapValues { e -> e.value.name }, s.settings.weightUnit) }
         }.getOrDefault(emptyList())
     }
-    val (fresh, recovering) = com.forgequest.app.domain.recoverySplit(s.recovery)
-    val sep = stringResource(R.string.list_separator)
-    val freshText = fresh.map { it.localLabel() }.joinToString(sep)
-    val recoveringText = recovering.map { it.localLabel() }.joinToString(sep)
     val today = Dates.today()
-    val weekWorkouts = Trends.weeklyCounts(s.sessions.map { it.epochDay }.distinct(), 1, today).lastOrNull() ?: 0
-    val weekSets = Trends.weeklySets(s.doneSets, s.sessions.associate { it.id to it.epochDay }, 1, today).lastOrNull() ?: 0
     val stalled = report?.stalledLifts.orEmpty().take(3)
     if (insights.isNotEmpty()) {
         FitCard {
             Text(stringResource(R.string.progress_insights_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
             insights.forEach { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp)) }
-        }
-        Spacer(Modifier.height(12.dp))
-    }
-    if (fresh.isNotEmpty() || recovering.isNotEmpty()) {
-        FitCard {
-            Text(stringResource(R.string.coach_today_recovery_title), style = MaterialTheme.typography.titleMedium, color = c.textPrimary)
-            if (fresh.isNotEmpty()) Text(stringResource(R.string.coach_fresh, freshText), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
-            if (recovering.isNotEmpty()) Text(stringResource(R.string.coach_recovering, recoveringText), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.padding(top = 6.dp))
         }
         Spacer(Modifier.height(12.dp))
     }
@@ -540,10 +469,6 @@ private fun TodayCards(s: ProgressSnapshot, report: com.forgequest.app.domain.Fa
     }
     if (report?.needsDeload == true) {
         FitCard { Text(stringResource(R.string.coach_deload_hint), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary) }
-        Spacer(Modifier.height(12.dp))
-    }
-    if (weekWorkouts > 0 || weekSets > 0) {
-        FitCard { Text(stringResource(R.string.coach_week_line, weekWorkouts, weekSets), style = MaterialTheme.typography.bodyMedium, color = c.textPrimary) }
         Spacer(Modifier.height(12.dp))
     }
 }

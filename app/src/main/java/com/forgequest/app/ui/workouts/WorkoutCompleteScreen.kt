@@ -100,7 +100,7 @@ internal fun WorkoutCompleteScreen(
     val type = sum.dayType
     val big = type == DayType.PR || type == DayType.MILESTONE
     val milestone = if (type == DayType.MILESTONE) sum.insights.firstOrNull { it.kind in MILESTONE_KINDS } else null
-    val insights = sum.insights.filter { it !== milestone }.take(2)
+    val insights = sum.insights.filter { it !== milestone }.take(1)
     BackHandler(onBack = onDone)
     Column(Modifier.fillMaxSize().background(c.background).statusBarsPadding()) {
         Column(

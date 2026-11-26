@@ -37,7 +37,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +57,6 @@ import com.forgequest.app.ui.localSummary
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.ForgeSpace
-import kotlinx.coroutines.launch
 
 /** Group ids in list order, with the title each page shows. */
 private val groupTitles = listOf(
@@ -100,18 +98,7 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
     }
     LaunchedEffect(consent) { consent?.let { consentLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) } }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::previewImport) }
-    // Health Connect check: reads in the background and answers in one line; no files, no extra screens.
     val probe = remember { com.forgequest.app.data.health.HealthProbe(context) }
-    val hcScope = rememberCoroutineScope()
-    fun runHealthCheck() = hcScope.launch {
-        context.toast(com.forgequest.app.data.suspendRunCatching { probe.check() }.getOrElse { context.getString(R.string.hc_failed, it.message ?: it.javaClass.simpleName) })
-    }
-    val hcPerms = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) { runHealthCheck() }
-    fun startHealthCheck() = hcScope.launch {
-        // Only show the permission screen when something is still missing.
-        val granted = runCatching { probe.granted() }.getOrDefault(emptySet())
-        if (granted.containsAll(probe.permissions)) runHealthCheck() else hcPerms.launch(probe.permissions)
-    }
     LaunchedEffect(Unit) { vm.app.health.refresh() }
     val healthAccess = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) { vm.refreshHealth() }
     val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTo) }
@@ -146,14 +133,14 @@ fun SettingsScreen(nav: NavHostController, groupId: String?) {
                 // Language and theme are what people look for first, so "App and appearance" leads the list.
                 if (id == null || id == "app") AppSettingsGroup(vm, s, onGroup)
                 if (id == null || id == "you") YouSettingsGroup(vm, s, onGroup) { nav.navigate(Routes.baseline()) }
-                if (id == null || id == "health") HealthSettingsGroup(vm, s, onGroup, probe, { startHealthCheck() }, healthAccess)
+                if (id == null || id == "health") HealthSettingsGroup(vm, s, onGroup, probe, healthAccess)
                 if (id == null || id == "friends") FriendsSettingsGroup(vm, onGroup)
                 if (id == null || id == "backup") BackupSettingsGroup(vm, s, onGroup, saveLauncher, importLauncher) { nav.navigate(Routes.CSV_IMPORT) }
                 if (id == null || id == "coach") CoachSettingsGroup(
                     vm, nav, s, apiKey, aiOn, onGroup,
                     onOpenKeyDialog = { keyDialog = true },
                 )
-                if (id == null || id == "about") AboutSettingsGroup(vm, onGroup) { nav.navigate(Routes.GUIDE) }
+                if (id == null || id == "about") AboutSettingsGroup(vm, onGroup)
             }
             Spacer(Modifier.height(20.dp))
         }
