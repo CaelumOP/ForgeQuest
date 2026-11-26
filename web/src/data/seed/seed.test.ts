@@ -23,6 +23,7 @@ import { EXERCISE_LEVELS } from './exercise-levels'
 import { EXERCISE_MEDIA_KEYS } from './exercise-media'
 import { EXERCISE_NAMES_AR } from './exercise-names-ar'
 import { filterExercisesBySearch, matchesExerciseSearch, normalizeExerciseSearch } from './search'
+import { auditCue, DANGLING_AR_ENDINGS, DANGLING_EN_ENDINGS } from '../../../../tools/catalog/audit-cues.mjs'
 import { localizePlan, STARTER_PLANS, STARTER_PLANS_AR } from './starter-plans'
 
 function extractKotlinMap(src: string, marker: string): Record<string, string> {
@@ -73,6 +74,33 @@ describe('seed data mirrors the Android catalog', () => {
     }
     const addedCueMatches = exerciseCuesKt.match(/^\s+"([^"]+)"\s+to\s+Triple\(/gm) ?? []
     expect(addedCueMatches.length).toBeGreaterThanOrEqual(190)
+  })
+
+  it('no EN or AR cue is truncated, broken, or ends with a dangling word from audit-cues', () => {
+    expect(DANGLING_EN_ENDINGS.length).toBeGreaterThan(30)
+    expect(DANGLING_AR_ENDINGS.length).toBeGreaterThan(30)
+    const enStrings = enJson as Record<string, unknown>
+    const arStrings = arJson as Record<string, unknown>
+    const failures: string[] = []
+    for (const ex of EXERCISE_CATALOG) {
+      for (const k of EXERCISE_CUE_KEYS[ex.id]) {
+        const enText = enStrings[k]
+        const arText = arStrings[k]
+        if (typeof enText !== 'string') {
+          failures.push(`${k}:en missing`)
+        } else {
+          const issues = auditCue(k, enText, 'en')
+          if (issues.length) failures.push(`${k}:en (${issues.join(', ')}): ${enText}`)
+        }
+        if (typeof arText !== 'string') {
+          failures.push(`${k}:ar missing`)
+        } else {
+          const issues = auditCue(k, arText, 'ar')
+          if (issues.length) failures.push(`${k}:ar (${issues.join(', ')}): ${arText}`)
+        }
+      }
+    }
+    expect(failures).toEqual([])
   })
 
   it('mediaKeys match ExerciseMedia.kt and every mapped exercise has both _0.webp and _1.webp on Android and Web', () => {

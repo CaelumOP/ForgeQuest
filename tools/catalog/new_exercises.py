@@ -746,7 +746,7 @@ NEW_EXERCISES = [
         "equipment": "CABLE_MACHINE",
         "pattern": "VERTICAL_PUSH",
         "aliases": ["low pulley front raise", "رفرفة أمامي كيبل", "كتف أمامي"],
-        "cues_en": ("Face away from the pulley with cable between legs or beside.", "Raise to shoulder level with minimal body sway.", "Leaning back to finish the lift."),
+        "cues_en": ("Face away from the pulley with cable between legs or at your side.", "Raise to shoulder level with minimal body sway.", "Leaning back to finish the lift."),
         "cues_ar": ("أعطِ ظهرك للبكرة مع شدّ الجذع.", "ارفع لمستوى الكتف دون تمايل الجسم.", "الميل للخلف لإكمال الرفعة."),
         "fedb": "Front_Cable_Raise",
     },

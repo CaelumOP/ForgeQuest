@@ -55,7 +55,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on your back, with one leg extended straight out.",
-      "With the other leg, bend the hip and knee to 90 degrees. You may brace your leg with your hands if necessary. This will be your starting.",
+      "With the other leg, bend the hip and knee to 90 degrees. You may brace your leg with your hands if necessary. This will be your starting position.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -152,7 +152,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Clean and press a kettlebell overhead with one arm.",
-      "Keeping the kettlebell locked out at all times, push your butt out in the direction of the locked out kettlebell. Keep the non-working.",
+      "Keeping the kettlebell locked out at all times, push your butt out in the direction of the locked out kettlebell.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -221,7 +221,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Assume a comfortable stance with one foot slightly in front of the other.",
-      "Begin by pushing off with the front leg, driving the opposite knee forward and as high as possible before landing. Attempt to cover as.",
+      "Begin by pushing off with the front leg, driving the opposite knee forward and as high as possible before landing.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -319,7 +319,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place two kettlebells between your feet. To get in the starting position, push your butt back and look straight ahead.",
-      "Clean one kettlebell to your shoulder and hold on to the other kettlebell in a hanging position. Clean the kettlebell to your shoulder.",
+      "Clean one kettlebell to your shoulder and hold on to the other kettlebell in a hanging position.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -351,7 +351,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Use a sturdy object like a squat rack to hold yourself.",
-      "Lift the right leg in the air (just around 2 inches from the floor) and perform a circular motion with the big toe. Pretend that you are.",
+      "Lift the right leg in the air (just around 2 inches from the floor) and perform a circular motion with the big toe.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -383,7 +383,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Begin seated on the ground with your legs bent and your feet on the floor.",
-      "Using a Muscle Roller or a rolling pin, apply pressure to the muscles on the outside of your shins. Work from just below the knee to.",
+      "Using a Muscle Roller or a rolling pin, apply pressure to the muscles on the outside of your shins.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -416,7 +416,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place a bar on the ground behind the head of an incline bench.",
-      "Lay on the bench face down. With a pronated grip, pick the barbell up from the floor. Flex the elbows, performing a reverse curl to.",
+      "Lay on the bench face down. With a pronated grip, pick the barbell up from the floor.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -449,7 +449,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Stand up and extend your arms straight out by the sides. The arms should be parallel to the floor and perpendicular (90-degree angle) to.",
+      "Stand up and extend your arms straight out by the sides. The arms should be parallel to the floor and perpendicular (90-degree angle) to your torso.",
       "Slowly start to make circles of about 1 foot in diameter with each outstretched arm. Breathe normally as you perform the movement.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -480,8 +480,8 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Lay down on a flat bench holding a dumbbell in each hand with the palms of the hands facing towards the ceiling. Tip: Your arms should.",
-      "Now move the dumbbells by creating a semi-circle as you displace them from the initial position to over the head. All of the movement.",
+      "Lay down on a flat bench holding a dumbbell in each hand with the palms of the hands facing towards the ceiling.",
+      "Now move the dumbbells by creating a semi-circle as you displace them from the initial position to over the head.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -640,8 +640,8 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "Loop the band around a post. Standing a little ways away, loop the opposite end around the neck. Your hands can help hold the band in.",
-      "Begin by bending at the hips, getting your butt back as far as possible. Keep your back flat and bend forward to about 90 degrees. Your.",
+      "Loop the band around a post. Standing a little ways away, loop the opposite end around the neck. Your hands can help hold the band in position.",
+      "Begin by bending at the hips, getting your butt back as far as possible. Keep your back flat and bend forward to about 90 degrees.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -670,7 +670,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie against an incline bench, with your arms holding a barbell and hanging down in a horizontal line. This will be your starting position.",
-      "While keeping the upper arms stationary, curl the weight up as high as you can while squeezing the biceps. Breathe out as you perform.",
+      "While keeping the upper arms stationary, curl the weight up as high as you can while squeezing the biceps.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -701,7 +701,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Using a medium width grip (a grip that creates a 90-degree angle in the middle of the movement between the forearms and the upper arms),.",
+      "Using a medium width grip (a grip that creates a 90-degree angle in the middle of the movement between the forearms and the upper arms), lift the bar from the rack and hold it straight over your neck with your arms locked.",
       "As you breathe in, bring the bar down slowly until it is about 1 inch from your neck.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -732,7 +732,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Lie back on an Incline Bench. Using a medium width grip (a grip that is slightly wider than shoulder width), lift the bar from the rack.",
+      "Lie back on an Incline Bench.",
       "While keeping the arms straight, lift the bar by protracting your shoulder blades, raising the shoulders from the bench as you breathe out.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -765,7 +765,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand up straight while holding a barbell using a wide (higher than shoulder width) and overhand (palms facing your body) grip.",
-      "Bend knees slightly and bend over as you keep the natural arch of your back. Let the arms hang in front of you as they hold the bar..",
+      "Bend knees slightly and bend over as you keep the natural arch of your back. Let the arms hang in front of you as they hold the bar.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -798,8 +798,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Place a loaded barbell on the ground, near the end of a bench. Kneel with both legs on the bench, and take a medium to narrow grip on.",
-      "To begin, extend through the hips to slowly roll the bar forward. As you roll out, flex the shoulder to roll the bar above your head..",
+      "Place a loaded barbell on the ground, near the end of a bench. Kneel with both legs on the bench, and take a medium to narrow grip on the barbell.",
+      "To begin, extend through the hips to slowly roll the bar forward. As you roll out, flex the shoulder to roll the bar above your head.",
       "Letting the lower back sag toward the floor."
     ],
     "cues_ar": [
@@ -859,8 +859,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Sit on a bench with back support in a squat rack. Position a barbell at a height that is just above your head. Grab the barbell with a.",
-      "Once you pick up the barbell with the correct grip width, lift the bar up over your head by locking your arms. Hold at about shoulder.",
+      "Sit on a bench with back support in a squat rack. Position a barbell at a height that is just above your head.",
+      "Once you pick up the barbell with the correct grip width, lift the bar up over your head by locking your arms.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -892,8 +892,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Stand up straight while holding a barbell placed on the back of your shoulders (slightly below the neck). Your feet should be placed.",
-      "Lower your body towards the side of your angled foot by bending the knee and hip of your lead leg and while keeping the opposite leg.",
+      "Stand up straight while holding a barbell placed on the back of your shoulders (slightly below the neck).",
+      "Lower your body towards the side of your angled foot by bending the knee and hip of your lead leg and while keeping the opposite leg only slightly bent.",
       "Letting the front knee collapse inward."
     ],
     "cues_ar": [
@@ -926,8 +926,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "This exercise is best performed inside a squat rack for safety purposes. To begin, first place a flat bench or a box behind you. The.",
-      "Then, set the bar on a rack that best matches your height. Once the correct height is chosen and the bar is loaded, step under the bar.",
+      "This exercise is best performed inside a squat rack for safety purposes. To begin, first place a flat bench or a box behind you.",
+      "Then, set the bar on a rack that best matches your height.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -961,7 +961,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Sit upright on the floor with your partner behind you.",
-      "Place your hands behind your hand, and push your elbows back as far as you can. Your partner should hold your elbows. This will be your.",
+      "Place your hands behind your hand, and push your elbows back as far as you can. Your partner should hold your elbows. This will be your starting position.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -1029,8 +1029,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Adjust the leader chain, shortening it to the desired length.Place the chains on the sleeves of the bar.",
-      "Lying on the bench, get your head beyond the bar if possible. Tuck your feet underneath you and arch your back. Using the bar to help.",
+      "Adjust the leader chain, shortening it to the desired length. Place the chains on the sleeves of the bar.",
+      "Lying on the bench, get your head beyond the bar if possible. Tuck your feet underneath you and arch your back.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -1124,7 +1124,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand up straight while holding a dumbbell in each hand and with an incline bench in front of you.",
-      "While keeping your back straight and maintaining the natural arch of your back, lean forward until your forehead touches the bench in.",
+      "While keeping your back straight and maintaining the natural arch of your back, lean forward until your forehead touches the bench in front of you.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -1154,7 +1154,7 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Put weight on one of the ends of an Olympic barbell. Make sure that you either place the other end of the barbell in the corner of two.",
+      "Put weight on one of the ends of an Olympic barbell.",
       "Bend forward until your torso is as close to parallel with the floor as you can and keep your knees slightly bent.",
       "Rounding the upper back or jerking the weight."
     ],
@@ -1185,8 +1185,8 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "With a dumbbell in each hand (palms facing each other), bend your knees slightly and bring your torso forward, by bending at the waist,.",
-      "While keeping the torso stationary, lift the dumbbells to your side as you breathe out, squeezing your shoulder blades together. On the.",
+      "With a dumbbell in each hand (palms facing each other), bend your knees slightly and bring your torso forward, by bending at the waist, while keeping the back straight until it is almost parallel to the floor.",
+      "While keeping the torso stationary, lift the dumbbells to your side as you breathe out, squeezing your shoulder blades together.",
       "Rounding the upper back or jerking the weight."
     ],
     "cues_ar": [
@@ -1221,8 +1221,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Clean a kettlebell to your shoulder. Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the.",
-      "Begin my leaning to the side opposite the kettlebell, continuing until you are able to touch the ground with your free hand, keeping.",
+      "Clean a kettlebell to your shoulder.",
+      "Begin my leaning to the side opposite the kettlebell, continuing until you are able to touch the ground with your free hand, keeping your eyes on the kettlebell.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -1294,7 +1294,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "To begin, seat yourself on the bike and adjust the seat to your height.",
-      "Select the desired option from the menu. You may have to start pedaling to turn it on. You can use the manual setting, or you can select.",
+      "Select the desired option from the menu. You may have to start pedaling to turn it on. You can use the manual setting, or you can select a program to use.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -1327,8 +1327,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Begin by lying on the bench, getting your head beyond the bar if possible. One to five boards, made out of 2x6's, can be screwed.",
-      "Tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off the bench and.",
+      "Begin by lying on the bench, getting your head beyond the bar if possible.",
+      "Tuck your feet underneath you and arch your back.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -1359,8 +1359,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Assume a plank position on the ground. You should be supporting your bodyweight on your toes and forearms, keeping your torso straight..",
-      "Pressing your palms firmly into the ground, extend through the elbows to raise your body from the ground. Keep your torso rigid as you.",
+      "Assume a plank position on the ground. You should be supporting your bodyweight on your toes and forearms, keeping your torso straight.",
+      "Pressing your palms firmly into the ground, extend through the elbows to raise your body from the ground. Keep your torso rigid as you perform the movement.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -1389,7 +1389,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Position a bar in a rack at chest height.",
-      "Standing, take a shoulder width grip on the bar and step a yard or two back, feet together and arms extended so that you are leaning on.",
+      "Standing, take a shoulder width grip on the bar and step a yard or two back, feet together and arms extended so that you are leaning on the bar.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -1483,7 +1483,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Initiate the exercise by standing upright with a kettlebell in one hand.",
-      "Swing the kettlebell back forcefully and then reverse the motion forcefully. Crush the kettlebell handle as hard as possible and raise.",
+      "Swing the kettlebell back forcefully and then reverse the motion forcefully.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -1512,7 +1512,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Begin by lying on your back on the ground. Your legs should be straight and your arms at your side. This will be your starting position.",
-      "To perform the movement, tuck the knees toward your chest by flexing the hips and knees. Following this, extend your legs directly above.",
+      "To perform the movement, tuck the knees toward your chest by flexing the hips and knees.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -1548,7 +1548,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Assume a relaxed stance facing the box or platform approximately an arm's length away. Arms should be down at the sides and legs.",
+      "Assume a relaxed stance facing the box or platform approximately an arm's length away. Arms should be down at the sides and legs slightly bent.",
       "Using the arms to aid in the initial burst, jump upward and forward, landing with feet simultaneously on top of the box or platform.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -1620,8 +1620,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Begin in a power rack with a box at the appropriate height behind you. Set up the bands on the sleeves, secured to either band pegs, the.",
-      "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your.",
+      "Begin in a power rack with a box at the appropriate height behind you.",
+      "Begin by stepping under the bar and placing it across the back of the shoulders.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -1655,8 +1655,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Begin in a power rack with a box at the appropriate height behind you. Typically, you would aim for a box height that brings you to a.",
-      "To set up the chains, begin by looping the leader chain over the sleeves of the bar. The heavy chain should be attached using a snap.",
+      "Begin in a power rack with a box at the appropriate height behind you.",
+      "To set up the chains, begin by looping the leader chain over the sleeves of the bar. The heavy chain should be attached using a snap hook.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -1687,7 +1687,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lie on your side, with your upper arm against the foam roller. The upper arm should be more or less aligned with your body, with the.",
+      "Lie on your side, with your upper arm against the foam roller.",
       "Raise your hips off of the floor, supporting your weight on your arm and on your feet. Hold for 10-30 seconds, and then switch sides.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -1718,7 +1718,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Sit on a Military Press Bench with a bar at shoulder level with a pronated grip (palms facing forward). Tip: Your grip should be wider.",
+      "Sit on a Military Press Bench with a bar at shoulder level with a pronated grip (palms facing forward).",
       "Once you pick up the barbell with the correct grip, lift the bar up over your head by locking your arms.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -1811,7 +1811,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on incline an bench facing away from a high pulley machine that has a straight bar attachment on it.",
-      "Grasp the straight bar attachment overhead with a pronated (overhand; palms down) shoulder width grip and extend your arms in front of.",
+      "Grasp the straight bar attachment overhead with a pronated (overhand; palms down) shoulder width grip and extend your arms in front of you.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -1840,7 +1840,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on incline an bench facing away from a high pulley machine that has a straight bar attachment on it.",
-      "Grasp the straight bar attachment overhead with a pronated (overhand; palms down) narrow grip (less than shoulder width) and keep your.",
+      "Grasp the straight bar attachment overhead with a pronated (overhand; palms down) narrow grip (less than shoulder width) and keep your elbows tucked in to your sides.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -1868,8 +1868,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Sit next to a low pulley sideways (with legs stretched in front of you or crossed) and grasp the single hand cable attachment with the.",
-      "Position the elbow against your side with the elbow bent at 90° and the arm pointing towards the pulley. This will be your starting.",
+      "Sit next to a low pulley sideways (with legs stretched in front of you or crossed) and grasp the single hand cable attachment with the arm nearest to the cable.",
+      "Position the elbow against your side with the elbow bent at 90° and the arm pointing towards the pulley. This will be your starting position.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -1898,7 +1898,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Begin by moving the pulleys to the high position, select the resistance to be used, and take a handle in each hand.",
-      "Stand directly between both pulleys with your arms extended out to your sides. Your head and chest should be up while your arms form a.",
+      "Stand directly between both pulleys with your arms extended out to your sides. Your head and chest should be up while your arms form a \"T\".",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -1926,7 +1926,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Connect a rope attachment to a tower, and move the cable to the lowest pulley position. Stand with your side to the cable with a wide.",
+      "Connect a rope attachment to a tower, and move the cable to the lowest pulley position.",
       "Twist your body away from the pulley as you bring the rope over your shoulder like you're performing a judo flip.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -1956,7 +1956,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Connect a standard handle attachment, and position the cable to a middle pulley position.",
-      "Lie on a stability ball perpendicular to the cable and grab the handle with one hand. You should be approximately arm's length away from.",
+      "Lie on a stability ball perpendicular to the cable and grab the handle with one hand.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -1985,7 +1985,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Start out by placing a flat bench in front of a low pulley cable that has a straight bar attachment.",
-      "Use your arms to grab the cable bar with a narrow to shoulder width supinated grip (palms up) and bring them up so that your forearms.",
+      "Use your arms to grab the cable bar with a narrow to shoulder width supinated grip (palms up) and bring them up so that your forearms are resting against the top of your thighs.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -2013,7 +2013,7 @@ WP1C_EXERCISES = [
       "الترابيس"
     ],
     "cues_en": [
-      "Position yourself on the calf machine so that the shoulder pads are above your shoulders. Your torso should be straight with the arms.",
+      "Position yourself on the calf machine so that the shoulder pads are above your shoulders.",
       "Raise your shoulders up towards your ears as you exhale and hold the contraction for a full second.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
@@ -2071,7 +2071,7 @@ WP1C_EXERCISES = [
       "البطات"
     ],
     "cues_en": [
-      "Hang on to a sturdy object for balance and stand on a dumbbell handle, preferably one with round plates so that it rolls as in this.",
+      "Hang on to a sturdy object for balance and stand on a dumbbell handle, preferably one with round plates so that it rolls as in this manner you have to work harder to stabilize yourself; thus increasing the effectiveness of the exercise.",
       "Now roll your foot slightly forward so that you can get a nice stretch of the calf. This will be your starting position.",
       "Bouncing quickly through the bottom without a pause."
     ],
@@ -2135,8 +2135,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Begin seated on the floor. Place a foam roller underneath your lower leg. Your other leg can either be crossed over the opposite or be.",
-      "Place your hands to your side or just behind you, and press down to raise your hips off of the floor, placing much of your weight.",
+      "Begin seated on the floor. Place a foam roller underneath your lower leg.",
+      "Place your hands to your side or just behind you, and press down to raise your hips off of the floor, placing much of your weight against your calf muscle.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -2166,8 +2166,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "While standing upright, hold a barbell plate in both hands at the 3 and 9 o'clock positions. Your palms should be facing each other and.",
-      "Initiate the movement by rotating the plate as far to one side as possible. Use the same type of movement you would use to turn a.",
+      "While standing upright, hold a barbell plate in both hands at the 3 and 9 o'clock positions.",
+      "Initiate the movement by rotating the plate as far to one side as possible. Use the same type of movement you would use to turn a steering wheel to one side.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -2304,7 +2304,7 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "You will need two cable handle attachments and a flat bench, as well as chains, for this exercise. Clip the middle of the chains to the.",
+      "You will need two cable handle attachments and a flat bench, as well as chains, for this exercise.",
       "Begin by extending through the elbow, keeping your upper arm still, with your wrists pronated.",
       "Letting elbows flare or drift during the press."
     ],
@@ -2336,7 +2336,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Begin by connecting the chains to the cable handle attachments. Position yourself on the flat bench in the same position as for a.",
+      "Begin by connecting the chains to the cable handle attachments. Position yourself on the flat bench in the same position as for a dumbbell press.",
       "Lower the chains by flexing the elbows, unloading some of the chain onto the floor.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -2437,7 +2437,7 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "To begin, first set the bar to a position that best matches your height. Once the bar is loaded, step under it and position it across.",
+      "To begin, first set the bar to a position that best matches your height.",
       "Take the bar with your hands facing forward, unlock it and lift it off the rack by extending your legs.",
       "Letting knees cave inward or heels lift off the floor."
     ],
@@ -2508,7 +2508,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Begin in a three point stance, squatted down with your back flat and one hand on the ground. Place the medicine ball directly in front.",
+      "Begin in a three point stance, squatted down with your back flat and one hand on the ground. Place the medicine ball directly in front of you.",
       "To begin, take your first step as you pull the ball to your chest, positioning both hands to prepare for the throw.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -2616,7 +2616,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Begin in an athletic stance with the knees bent, hips back, and back flat. Hold the medicine ball near your legs. This will be your.",
+      "Begin in an athletic stance with the knees bent, hips back, and back flat. Hold the medicine ball near your legs. This will be your starting position.",
       "While taking your first step draw the medicine ball into your chest.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -2681,7 +2681,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Get into a seated position on the floor.",
-      "Place both hands at the rear of your head, fingers interlocked, thumbs pointing down and elbows pointing straight ahead. Slowly pull.",
+      "Place both hands at the rear of your head, fingers interlocked, thumbs pointing down and elbows pointing straight ahead.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -2719,8 +2719,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Assume a shoulder-width stance, with knees inside the arms. Now while keeping the back flat, bend at the knees and hips so that you can.",
-      "Begin to pull the bar by extending the knees. Move your hips forward and raise the shoulders at the same rate while keeping the angle of.",
+      "Assume a shoulder-width stance, with knees inside the arms.",
+      "Begin to pull the bar by extending the knees.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -2752,7 +2752,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Move into a prone position on the floor, supporting your weight on your hands and toes.",
-      "Your arms should be fully extended with the hands around shoulder width. Keep your body straight throughout the movement. This will be.",
+      "Your arms should be fully extended with the hands around shoulder width. Keep your body straight throughout the movement. This will be your starting position.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -2784,7 +2784,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place a dumbbell standing up on a flat bench.",
-      "Ensuring that the dumbbell stays securely placed at the top of the bench, lie perpendicular to the bench with only your shoulders lying.",
+      "Ensuring that the dumbbell stays securely placed at the top of the bench, lie perpendicular to the bench with only your shoulders lying on the surface.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -2814,7 +2814,7 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Attach a band to each end of the bar. Take the bar, placing a foot on the middle of the band. Stand upright with a narrow, supinated.",
+      "Attach a band to each end of the bar. Take the bar, placing a foot on the middle of the band. Stand upright with a narrow, supinated grip on the EZ bar.",
       "While keeping the upper arms in place, flex the elbows to execute the curl. Exhale as the weight is lifted.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -2847,7 +2847,7 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Lie on the floor and place your hands on an upright dumbbell. Supporting your weight on your toes and hands, keep your torso rigid and.",
+      "Lie on the floor and place your hands on an upright dumbbell.",
       "Lower your body, allowing the elbows to flex while you inhale. Keep your body straight, not allowing your hips to rise or sag.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -2876,8 +2876,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Begin by lying on your back on the ground. Your legs should be straight and your arms extended behind your head. This will be your.",
-      "To perform the movement, tuck the knees toward your chest, rotating your pelvis to lift your glutes from the floor. As you do so, flex.",
+      "Begin by lying on your back on the ground. Your legs should be straight and your arms extended behind your head. This will be your starting position.",
+      "To perform the movement, tuck the knees toward your chest, rotating your pelvis to lift your glutes from the floor.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -2907,8 +2907,8 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Sit down on a flat bench with one dumbbell in front of you between your legs. Your legs should be spread with your knees bent and feet.",
-      "Use your right arm to pick the dumbbell up. Place the back of your right upper arm on the top of your inner right thigh. Rotate the palm.",
+      "Sit down on a flat bench with one dumbbell in front of you between your legs. Your legs should be spread with your knees bent and feet on the floor.",
+      "Use your right arm to pick the dumbbell up. Place the back of your right upper arm on the top of your inner right thigh.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -3028,8 +3028,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Take a dumbbell in each hand with a pronated grip in a standing position. Raise your upper arms so that they are parallel to the floor,.",
-      "To initiate the movement, externally rotate the shoulders to move the upper arm 180 degrees. Keep the upper arms in place, rotating the.",
+      "Take a dumbbell in each hand with a pronated grip in a standing position.",
+      "To initiate the movement, externally rotate the shoulders to move the upper arm 180 degrees.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -3098,8 +3098,8 @@ WP1C_EXERCISES = [
       "أسفل الظهر"
     ],
     "cues_en": [
-      "To deadlift with short bands, simply loop them over the bar before you start, and step into them to set up. For long bands, they will.",
-      "With your feet, and your grip set, take a big breath and then lower your hips and bend the knees until your shins contact the bar. Look.",
+      "To deadlift with short bands, simply loop them over the bar before you start, and step into them to set up.",
+      "With your feet, and your grip set, take a big breath and then lower your hips and bend the knees until your shins contact the bar.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -3134,8 +3134,8 @@ WP1C_EXERCISES = [
       "أسفل الظهر"
     ],
     "cues_en": [
-      "You can attach the chains to the sleeves of the bar, or just drape the middle over the bar so there is a greater weight increase as you.",
-      "Approach the bar so that it is centered over your feet. You feet should be about hip width apart. Bend at the hip to grip the bar at.",
+      "You can attach the chains to the sleeves of the bar, or just drape the middle over the bar so there is a greater weight increase as you lift.",
+      "Approach the bar so that it is centered over your feet. You feet should be about hip width apart.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -3167,7 +3167,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Secure your legs at the end of the decline bench and slowly lay down on the bench.",
-      "Using a close grip (a grip that is slightly less than shoulder width), lift the bar from the rack and hold it straight over you with.",
+      "Using a close grip (a grip that is slightly less than shoulder width), lift the bar from the rack and hold it straight over you with your arms locked and elbows in.",
       "Shrugging shoulders up toward your ears."
     ],
     "cues_ar": [
@@ -3196,7 +3196,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Secure your legs at the end of the decline bench and slowly lay down on the bench.",
-      "Using a close grip (a grip that is slightly less than shoulder width), lift the EZ bar from the rack and hold it straight over you with.",
+      "Using a close grip (a grip that is slightly less than shoulder width), lift the EZ bar from the rack and hold it straight over you with your arms locked and elbows in.",
       "Shrugging shoulders up toward your ears."
     ],
     "cues_ar": [
@@ -3225,7 +3225,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on your back on a decline bench and hold on to the top of the bench with both hands. Don't let your body slip down from this position.",
-      "Hold your legs parallel to the floor using your abs to hold them there while keeping your knees and feet together. Tip: Your legs should.",
+      "Hold your legs parallel to the floor using your abs to hold them there while keeping your knees and feet together.",
       "Shrugging shoulders up toward your ears."
     ],
     "cues_ar": [
@@ -3262,7 +3262,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "For this drill you will need two boxes or benches, one 12 to 16 inches high and the other 22 to 26 inches high.",
-      "Stand on one of the two boxes with arms at the sides; feet should be together and slightly off the edge as in the depth jump. Place the.",
+      "Stand on one of the two boxes with arms at the sides; feet should be together and slightly off the edge as in the depth jump.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -3294,7 +3294,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "To get into the starting position, hold your body at arm's length with your arms nearly locked above the bars.",
-      "Now, inhale and slowly lower yourself downward. Your torso should remain upright and your elbows should stay close to your body. This.",
+      "Now, inhale and slowly lower yourself downward. Your torso should remain upright and your elbows should stay close to your body.",
       "Shrugging shoulders up toward your ears."
     ],
     "cues_ar": [
@@ -3364,7 +3364,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Hold a kettlebell by the handle in each hand.",
-      "Clean the kettlebells to your shoulders by extending through the legs and hips as you pull the kettlebells towards your shoulders..",
+      "Clean the kettlebells to your shoulders by extending through the legs and hips as you pull the kettlebells towards your shoulders.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -3463,8 +3463,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Place a kettlebell in front of your front foot and clean and press a kettlebell overhead with your opposite arm. Clean the kettlebell to.",
-      "Keeping the kettlebell locked out at all times, push your butt out in the direction of the locked out kettlebell. Turn your feet out at.",
+      "Place a kettlebell in front of your front foot and clean and press a kettlebell overhead with your opposite arm.",
+      "Keeping the kettlebell locked out at all times, push your butt out in the direction of the locked out kettlebell.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -3605,7 +3605,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Begin standing with a dumbbell in each hand with your feet shoulder width apart.",
-      "Lower the weights to the floor by flexing at the hips and knees, pushing your hips back until the dumbbells reach the floor. This will.",
+      "Lower the weights to the floor by flexing at the hips and knees, pushing your hips back until the dumbbells reach the floor.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -3636,7 +3636,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Sit on an Incline Bench while holding a dumbbell on each hand on top of your thighs.",
-      "Lift your legs up to kick the weights to your shoulders and lean back. Position the dumbbells above your shoulders with your arms.",
+      "Lift your legs up to kick the weights to your shoulders and lean back. Position the dumbbells above your shoulders with your arms extended.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -3664,7 +3664,7 @@ WP1C_EXERCISES = [
       "السواعد"
     ],
     "cues_en": [
-      "Lie on a flat bench face down with one arm holding a dumbbell and the other hand on top of the bench folded so that you can rest your.",
+      "Lie on a flat bench face down with one arm holding a dumbbell and the other hand on top of the bench folded so that you can rest your head on it.",
       "Bend the elbows of the arm holding the dumbbell so that it creates a 90-degree angle between the upper arm and the forearm.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -3693,8 +3693,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "While holding a dumbbell in each hand, lay with your chest down on a slightly inclined (around 15 degrees when measured from the floor).",
-      "Position the palms of the hands in a neutral manner (palms facing your torso) as you keep the arms extended with the elbows slightly.",
+      "While holding a dumbbell in each hand, lay with your chest down on a slightly inclined (around 15 degrees when measured from the floor) adjustable bench.",
+      "Position the palms of the hands in a neutral manner (palms facing your torso) as you keep the arms extended with the elbows slightly bent.",
       "Swinging the torso to lift with momentum."
     ],
     "cues_ar": [
@@ -3722,7 +3722,7 @@ WP1C_EXERCISES = [
       "السواعد"
     ],
     "cues_en": [
-      "Lie sideways on a flat bench with one arm holding a dumbbell and the other hand on top of the bench folded so that you can rest your.",
+      "Lie sideways on a flat bench with one arm holding a dumbbell and the other hand on top of the bench folded so that you can rest your head on it.",
       "Bend the elbows of the arm holding the dumbbell so that it creates a 90-degree angle between the upper arm and the forearm.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -3754,7 +3754,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Grab a dumbbell and stand up straight with your arm extended in front of you with a slight bend at the elbows and your back straight..",
+      "Grab a dumbbell and stand up straight with your arm extended in front of you with a slight bend at the elbows and your back straight.",
       "Keep the other hand can be kept fully extended to the side, by the waist or grabbing a fixed surface. This will be your starting position.",
       "Rounding the upper back or jerking the weight."
     ],
@@ -3783,7 +3783,7 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Grab a dumbbell on each hand and lie face down on an incline bench with your shoulders near top of the incline. Your knees can rest on.",
+      "Grab a dumbbell on each hand and lie face down on an incline bench with your shoulders near top of the incline.",
       "Let your arms extend and hang naturally in front of you so that they are perpendicular to the floor.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -3814,8 +3814,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Grab a dumbbell in each arm and stand up straight with your arms extended by your sides with a slight bend at the elbows and your back.",
-      "Use your side shoulders to lift the dumbbells as you exhale. The dumbbells should be to the side of the body as you move them up..",
+      "Grab a dumbbell in each arm and stand up straight with your arms extended by your sides with a slight bend at the elbows and your back straight.",
+      "Use your side shoulders to lift the dumbbells as you exhale. The dumbbells should be to the side of the body as you move them up.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -3845,8 +3845,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "This corrective exercise strengthens the muscles that stabilize your shoulder blade. Hold a light weight in each hand, hanging at your.",
-      "Begin the movement raising your arms out in front of you, about 30 degrees off center. Your arms should be fully extended as you perform.",
+      "This corrective exercise strengthens the muscles that stabilize your shoulder blade. Hold a light weight in each hand, hanging at your sides.",
+      "Begin the movement raising your arms out in front of you, about 30 degrees off center. Your arms should be fully extended as you perform the movement.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -3881,7 +3881,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Position a box a couple feet to the side of a bench. Hold a dumbbell to your chest with both hands and seat yourself on the bench facing.",
+      "Position a box a couple feet to the side of a bench. Hold a dumbbell to your chest with both hands and seat yourself on the bench facing the box.",
       "Plant your feet firmly on the ground as you lean forward, extending through the hips and knees to jump up and forward.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -3916,7 +3916,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand up straight with a flat bench behind you while holding a dumbbell on each hand (palms facing the side of your legs).",
-      "Position your legs using a shoulder width medium stance with the toes slightly pointed out. Keep your head up at all times as looking.",
+      "Position your legs using a shoulder width medium stance with the toes slightly pointed out.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -3944,7 +3944,7 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Lie down on a flat bench holding two dumbbells directly above your shoulders. Your arms should be fully extended and form a 90 degree.",
+      "Lie down on a flat bench holding two dumbbells directly above your shoulders.",
       "The palms of your hands should be facing forward, and your elbows should be tucked in. This will be your starting position.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -3977,7 +3977,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand with your feet shoulder width apart. This will be your starting position.",
-      "Keeping your arms straight, swing them straight up in front of you 5-10 times, increasing the range of motion each time until your arms.",
+      "Keeping your arms straight, swing them straight up in front of you 5-10 times, increasing the range of motion each time until your arms are above your head.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -4011,7 +4011,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand with your hands together, arms extended directly in front of you. This will be your starting position.",
-      "Keeping your arms straight, quickly move your arms back as far as possible and back in again, similar to an exaggerated clapping motion..",
+      "Keeping your arms straight, quickly move your arms back as far as possible and back in again, similar to an exaggerated clapping motion.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -4073,7 +4073,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Lie on the floor, crossing your right leg across your bent left knee. Clasp your hands behind your head, beginning with your shoulder.",
+      "Lie on the floor, crossing your right leg across your bent left knee. Clasp your hands behind your head, beginning with your shoulder blades on the ground.",
       "Perform the motion by flexing the spine and rotating your torso to bring the left elbow to the right knee.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -4140,7 +4140,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Position a bar onto a rack at shoulder height loaded to an appropriate weight. Place a short, raised platform behind you.",
-      "Rack the bar onto your upper back, keeping your back arched and tight. Step onto your raised platform with both feet. This will be your.",
+      "Rack the bar onto your upper back, keeping your back arched and tight. Step onto your raised platform with both feet. This will be your starting position.",
       "Letting the front knee collapse inward."
     ],
     "cues_ar": [
@@ -4206,7 +4206,7 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "To begin, step onto the elliptical and select the desired option from the menu. Most ellipticals have a manual setting, or you can.",
+      "To begin, step onto the elliptical and select the desired option from the menu. Most ellipticals have a manual setting, or you can select a program to run.",
       "The handles can be used to monitor your heart rate to help you stay at an appropriate intensity.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -4236,7 +4236,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place an exercise ball nearby and lay on the floor in front of it with your hands on the floor shoulder width apart in a push-up position.",
-      "Now place your lower shins on top of an exercise ball. Tip: At this point your legs should be fully extended with the shins on top of.",
+      "Now place your lower shins on top of an exercise ball.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -4267,7 +4267,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Lie on the floor and position a kettlebell for one arm to press. The kettlebell should be held by the handle. The leg on the same side.",
+      "Lie on the floor and position a kettlebell for one arm to press. The kettlebell should be held by the handle.",
       "Press the kettlebell by extending the elbow and adducting the arm, pressing it above your body. Return to the starting position.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -4363,7 +4363,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on an exercise mat or a flat bench with your legs off the end.",
-      "Place your hands either under your glutes with your palms down or by the sides holding on to the bench (or with palms down by the side.",
+      "Place your hands either under your glutes with your palms down or by the sides holding on to the bench (or with palms down by the side on an exercise mat).",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -4391,7 +4391,7 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Hold the dumbbell towards the side farther from you so that you have more weight on the side closest to you. (This can be done for a.",
+      "Hold the dumbbell towards the side farther from you so that you have more weight on the side closest to you.",
       "Sit on an incline bench that is angled at 45-degrees while holding a dumbbell on each hand.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -4424,7 +4424,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "You can use a partner for this exercise or brace your feet under something stable.",
-      "Begin on your knees with your upper legs and torso upright. If using a partner, they will firmly hold your feet to keep you in position..",
+      "Begin on your knees with your upper legs and torso upright. If using a partner, they will firmly hold your feet to keep you in position.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -4455,8 +4455,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Adjust the j-hooks so they are at the appropriate height to rack the bar. For this exercise, drape the chains directly over the end of.",
-      "Begin lying on the floor with your head near the end of a power rack. Keeping your shoulder blades pulled together, pull the bar off of.",
+      "Adjust the j-hooks so they are at the appropriate height to rack the bar.",
+      "Begin lying on the floor with your head near the end of a power rack. Keeping your shoulder blades pulled together, pull the bar off of the hooks.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -4487,7 +4487,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "This exercise stretches the fascia of the muscles in the feet. Start off seated with your shoes removed. Using a foot roller or a.",
+      "This exercise stretches the fascia of the muscles in the feet. Start off seated with your shoes removed.",
       "Press down firmly, rolling across the arch of your foot. Hold for 10-30 seconds, and then switch feet.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -4524,7 +4524,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand with your hands behind your head, and squat down keeping your torso upright and your head up. This will be your starting position.",
-      "Jump forward several feet, avoiding jumping unnecessarily high. As your feet contact the ground, absorb the impact through your legs,.",
+      "Jump forward several feet, avoiding jumping unnecessarily high. As your feet contact the ground, absorb the impact through your legs, and jump again.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -4585,7 +4585,7 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set a flat bench behind you and set the bar on.",
+      "This exercise is best performed inside a squat rack for safety purposes.",
       "Lift the bar off the rack by first pushing with your legs and at the same time straightening your torso.",
       "Letting knees cave inward or heels lift off the floor."
     ],
@@ -4655,7 +4655,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand next to a chair or other support, holding on with one hand.",
-      "Swing your leg forward, keeping the leg straight. Continue with a downward swing, bringing the leg as far back as your flexibility.",
+      "Swing your leg forward, keeping the leg straight. Continue with a downward swing, bringing the leg as far back as your flexibility allows.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -4688,7 +4688,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on a flat bench while holding a barbell using a palms down grip that is about 15 inches apart.",
-      "Place the bar on your upper thighs, extend your arms and lock them while keeping a slight bend on the elbows. This will be your starting.",
+      "Place the bar on your upper thighs, extend your arms and lock them while keeping a slight bend on the elbows. This will be your starting position.",
       "Pulling with momentum or stopping short of full range."
     ],
     "cues_ar": [
@@ -4720,8 +4720,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "To begin, first set the bar in a rack slightly below shoulder level. Rest the bar on top of the deltoids, pushing into the clavicles,.",
-      "Lift the bar off the rack by first pushing with your legs and at the same time straightening your torso. Step away from the rack and.",
+      "To begin, first set the bar in a rack slightly below shoulder level.",
+      "Lift the bar off the rack by first pushing with your legs and at the same time straightening your torso.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -4749,8 +4749,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Pick a couple of dumbbells and stand with a straight torso and the dumbbells on front of your thighs at arms length with the palms of.",
-      "While maintaining the torso stationary (no swinging), lift the dumbbells to the front with a slight bend on the elbow and the palms of.",
+      "Pick a couple of dumbbells and stand with a straight torso and the dumbbells on front of your thighs at arms length with the palms of the hand facing your thighs.",
+      "While maintaining the torso stationary (no swinging), lift the dumbbells to the front with a slight bend on the elbow and the palms of the hands always facing down.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -4781,7 +4781,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Grasp the pull-up bar with a shoulder width underhand grip.",
-      "Now hang with your arms fully extended and stick your chest out and lean back. Tip: You will be leaning back throughout the entire.",
+      "Now hang with your arms fully extended and stick your chest out and lean back. Tip: You will be leaning back throughout the entire movement.",
       "Rounding the upper back or jerking the weight."
     ],
     "cues_ar": [
@@ -4811,8 +4811,8 @@ WP1C_EXERCISES = [
       "الأرداف"
     ],
     "cues_en": [
-      "Kneel on the floor or an exercise mat and bend at the waist with your arms extended in front of you (perpendicular to the torso) in.",
-      "As you exhale, lift up your right leg until the hamstrings are in line with the back while maintaining the 90-degree angle bend..",
+      "Kneel on the floor or an exercise mat and bend at the waist with your arms extended in front of you (perpendicular to the torso) in order to get into a kneeling push-up position but with the arms spaced at shoulder width.",
+      "As you exhale, lift up your right leg until the hamstrings are in line with the back while maintaining the 90-degree angle bend.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -4844,8 +4844,8 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "Begin with a bar on a rack at about the same height as your stomach. Bend over underneath the bar and rack the bar across the rear of.",
-      "Begin the motion by extending through the hips with your glutes and hamstrings, and you are standing with the weight. Slowly lower the.",
+      "Begin with a bar on a rack at about the same height as your stomach.",
+      "Begin the motion by extending through the hips with your glutes and hamstrings, and you are standing with the weight.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -4877,7 +4877,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Hang from a chin-up bar using an underhand grip (palms facing you) that is slightly wider than shoulder width.",
-      "Now bend your knees at a 90 degree angle so that the calves are parallel to the floor while the thighs remain perpendicular to it. This.",
+      "Now bend your knees at a 90 degree angle so that the calves are parallel to the floor while the thighs remain perpendicular to it.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -5004,8 +5004,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "In a seated position, extend your legs over a foam roll so that it is position on the back of the upper legs. Place your hands to the.",
-      "Using your hands, lift your hips off of the floor and shift your weight on the foam roll to one leg. Relax the hamstrings of the leg you.",
+      "In a seated position, extend your legs over a foam roll so that it is position on the back of the upper legs.",
+      "Using your hands, lift your hips off of the floor and shift your weight on the foam roll to one leg. Relax the hamstrings of the leg you are stretching.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -5038,7 +5038,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Begin with a bar on a rack at about the same height as your stomach. Suspend the bar using chains or suspension straps.",
-      "Bend over underneath the bar and rack the bar across the rear of your shoulders as you would a power squat, not on top of your traps. At.",
+      "Bend over underneath the bar and rack the bar across the rear of your shoulders as you would a power squat, not on top of your traps.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -5066,8 +5066,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Hang from a chin-up bar with your legs and feet together using an overhand grip (palms facing away from you) that is slightly wider than.",
-      "Now bend your knees at a 90 degree angle and bring the upper legs forward so that the calves are perpendicular to the floor while the.",
+      "Hang from a chin-up bar with your legs and feet together using an overhand grip (palms facing away from you) that is slightly wider than shoulder width.",
+      "Now bend your knees at a 90 degree angle and bring the upper legs forward so that the calves are perpendicular to the floor while the thighs remain parallel to it.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -5102,7 +5102,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Utilize a heavy bag for this exercise. Assume an upright stance next to the bag, with your feet staggered, fairly wide apart. Place your.",
+      "Utilize a heavy bag for this exercise. Assume an upright stance next to the bag, with your feet staggered, fairly wide apart.",
       "Begin by twisting at the waist, pushing the bag forward as hard as possible. Perform this move quickly, pushing the bag away from your body.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -5136,7 +5136,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Position yourself on your hands and knees on the ground. Maintaining good posture, raise one bent knee off of the ground. This will be.",
+      "Position yourself on your hands and knees on the ground. Maintaining good posture, raise one bent knee off of the ground. This will be your starting position.",
       "Keeping the knee in a bent position, rotate the femur in an arc, attempting to make a big circle with your knee.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -5228,8 +5228,8 @@ WP1C_EXERCISES = [
       "الأرداف"
     ],
     "cues_en": [
-      "After choosing a suitable band, lay down in the middle of the rack, after securing the band on either side of you. If your rack doesn't.",
-      "Adjust your position so that the band is directly over your hips. Bend your knees and place your feet flat on the floor. Your hands can.",
+      "After choosing a suitable band, lay down in the middle of the rack, after securing the band on either side of you.",
+      "Adjust your position so that the band is directly over your hips. Bend your knees and place your feet flat on the floor.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -5365,8 +5365,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Loop a belt, rope, or band around one of your feet, and swing that leg across your body to the opposite side, keeping the leg extended.",
-      "Keeping your foot off of the floor, pull on the belt, using the tension to pull the toes up. Hold for 10-20 seconds, and repeat on the.",
+      "Loop a belt, rope, or band around one of your feet, and swing that leg across your body to the opposite side, keeping the leg extended as you lay on the ground.",
+      "Keeping your foot off of the floor, pull on the belt, using the tension to pull the toes up. Hold for 10-20 seconds, and repeat on the other side.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -5398,7 +5398,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lay on your side, with the bottom leg placed onto a foam roller between the hip and the knee. The other leg can be crossed in front of you.",
-      "Place as much of your weight as is tolerable onto your bottom leg; there is no need to keep your bottom leg in contact with the ground..",
+      "Place as much of your weight as is tolerable onto your bottom leg; there is no need to keep your bottom leg in contact with the ground.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -5429,8 +5429,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Stand with your feet close together. Keeping your legs straight, stretch down and put your hands on the floor directly in front of you..",
-      "Begin by walking your hands forward slowly, alternating your left and your right. As you do so, bend only at the hip, keeping your legs.",
+      "Stand with your feet close together. Keeping your legs straight, stretch down and put your hands on the floor directly in front of you.",
+      "Begin by walking your hands forward slowly, alternating your left and your right. As you do so, bend only at the hip, keeping your legs straight.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -5588,7 +5588,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "For this drill you will need a box about 12 inches high, and two thick mats or aerobics steps.",
-      "Place the steps just outside of your shoulders, and place your feet on top of the box so that you are in an incline pushup position,.",
+      "Place the steps just outside of your shoulders, and place your feet on top of the box so that you are in an incline pushup position, your hands just inside the steps.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -5685,7 +5685,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lie on your back with your legs extended. Loop a belt, rope, or band around one of your feet, and swing that leg as far to the side as.",
+      "Lie on your back with your legs extended. Loop a belt, rope, or band around one of your feet, and swing that leg as far to the side as you can.",
       "Pull gently on the belt to create tension in your groin and hamstring muscles. Hold for 10-20 seconds, and repeat on the other side.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -5718,7 +5718,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie face down on the floor, with a rope, belt, or band looped around one foot.",
-      "Flex the knee and extend the hip of the leg to be stretched, using both hands to pull on the belt. Your knee and your hip should come.",
+      "Flex the knee and extend the hip of the leg to be stretched, using both hands to pull on the belt.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -5746,8 +5746,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Choke the band around a post. The band should be at the same height as your elbow. Stand with your right side to the band a couple of.",
-      "Grasp the end of the band with your right hand, and keep your elbow pressed firmly to your side. We recommend you hold a pad or foam.",
+      "Choke the band around a post. The band should be at the same height as your elbow. Stand with your right side to the band a couple of feet away.",
+      "Grasp the end of the band with your right hand, and keep your elbow pressed firmly to your side.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -5777,7 +5777,7 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Hang a rope or suspension straps from a rack or other stable object. Grasp the ends and position yourself in a supine position hanging.",
+      "Hang a rope or suspension straps from a rack or other stable object. Grasp the ends and position yourself in a supine position hanging from the ropes.",
       "Begin by flexing the elbow, pulling your chest to your hands. Retract your shoulder blades as you perform the movement.",
       "Rounding the upper back or jerking the weight."
     ],
@@ -5880,8 +5880,8 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "While either seating or standing, bend your arms at a 90-degree angle and place the palms of your hands together in front of your chest..",
-      "Push both hands against each other as you contract your chest. Start with slow tension and increase slowly. Keep breathing normally as.",
+      "While either seating or standing, bend your arms at a 90-degree angle and place the palms of your hands together in front of your chest.",
+      "Push both hands against each other as you contract your chest. Start with slow tension and increase slowly.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -5909,8 +5909,8 @@ WP1C_EXERCISES = [
       "الترابيس"
     ],
     "cues_en": [
-      "With your head and neck in a neutral position (normal position with head erect facing forward), place both of your hands on the front.",
-      "Now gently push forward as you contract the neck muscles but resisting any movement of your head. Start with slow tension and increase.",
+      "With your head and neck in a neutral position (normal position with head erect facing forward), place both of your hands on the front side of your head.",
+      "Now gently push forward as you contract the neck muscles but resisting any movement of your head. Start with slow tension and increase slowly.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -5938,8 +5938,8 @@ WP1C_EXERCISES = [
       "الترابيس"
     ],
     "cues_en": [
-      "With your head and neck in a neutral position (normal position with head erect facing forward), place your left hand on the left side of.",
-      "Now gently push towards the left as you contract the left neck muscles but resisting any movement of your head. Start with slow tension.",
+      "With your head and neck in a neutral position (normal position with head erect facing forward), place your left hand on the left side of your head.",
+      "Now gently push towards the left as you contract the left neck muscles but resisting any movement of your head. Start with slow tension and increase slowly.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -5971,7 +5971,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Assume a push-up position, supporting your weight on your hands and toes while keeping your body straight. Your hands should be just.",
+      "Assume a push-up position, supporting your weight on your hands and toes while keeping your body straight. Your hands should be just outside of shoulder width.",
       "Begin by shifting your body weight as far to one side as possible, allowing the elbow on that side to flex as you lower your body.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -6000,8 +6000,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Position your body on the floor in the basic sit-up position; knees to a ninety degree angle with feet flat on the floor and arms either.",
-      "As you strongly tighten your glutes and hamstrings, fill your lungs with air and in a slow (three to six second count) ascent, slowly.",
+      "Position your body on the floor in the basic sit-up position; knees to a ninety degree angle with feet flat on the floor and arms either crossed over your chest or to the sides.",
+      "As you strongly tighten your glutes and hamstrings, fill your lungs with air and in a slow (three to six second count) ascent, slowly exhale.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -6070,8 +6070,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "To begin, step onto the treadmill and select the desired option from the menu. Most treadmills have a manual setting, or you can select.",
-      "Treadmills offer convenience, cardiovascular benefits, and usually have less impact than jogging outside. A 150 lb person will burn.",
+      "To begin, step onto the treadmill and select the desired option from the menu. Most treadmills have a manual setting, or you can select a program to run.",
+      "Treadmills offer convenience, cardiovascular benefits, and usually have less impact than jogging outside.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -6106,7 +6106,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place kettlebell between your feet. To get in the starting position, push your butt back and look straight ahead.",
-      "Clean the kettlebell to your shoulder. Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the.",
+      "Clean the kettlebell to your shoulder.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -6139,7 +6139,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Stand tall with your feet hip-width apart. Hold a kettlebell upside down by the horns, with the bell above your hands and close to your.",
+      "Stand tall with your feet hip-width apart. Hold a kettlebell upside down by the horns, with the bell above your hands and close to your chest.",
       "Keeping your elbows close to your head, move the kettlebell up past one ear and around behind your head.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -6173,7 +6173,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Stand tall with your feet hip-width apart. Hold a kettlebell upside down by the horns, with the bell above your hands and close to your.",
+      "Stand tall with your feet hip-width apart. Hold a kettlebell upside down by the horns, with the bell above your hands and close to your chest.",
       "Keeping your elbows close to your head, move the kettlebell up past one ear and around until it sits behind your head. Pause here.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -6209,7 +6209,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place kettlebell between your feet. To get in the starting position, push your butt back and look straight ahead.",
-      "Clean kettlebell to your shoulder. Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the.",
+      "Clean kettlebell to your shoulder.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -6240,7 +6240,7 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Stand with your feet hip-width apart, holding a kettlebell by the horns with both hands. Press it overhead until your arms are extended,.",
+      "Stand with your feet hip-width apart, holding a kettlebell by the horns with both hands.",
       "Brace your abdominals and keep your upper arms vertical and close to your head. This is your starting position.",
       "Letting elbows flare or drift during the press."
     ],
@@ -6304,7 +6304,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "With a wide stance, hold a kettlebell with both hands. Allow it to hang at waist level with your arms extended. This will be your.",
+      "With a wide stance, hold a kettlebell with both hands. Allow it to hang at waist level with your arms extended. This will be your starting position.",
       "Initiate the movement by turning to one side, swinging the kettlebell to head height. Briefly pause at the top of the motion.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -6369,8 +6369,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Lie on your back on the floor and press a kettlebell to the top position by extending the elbow. Bend the knee on the same side as the.",
-      "Keeping the kettlebell locked out at all times, pivot to the opposite side and use your non- working arm to assist you in driving.",
+      "Lie on your back on the floor and press a kettlebell to the top position by extending the elbow. Bend the knee on the same side as the kettlebell.",
+      "Keeping the kettlebell locked out at all times, pivot to the opposite side and use your non- working arm to assist you in driving forward to the lunge position.",
       "Letting the front knee collapse inward."
     ],
     "cues_ar": [
@@ -6439,8 +6439,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lie down on the floor with your right leg straight. Bend your left leg and lower it across your body, holding the knee down toward the.",
-      "Place your left arm comfortably beside you and turn your head to the left. Imagine you have a weight tied to your tailbone. let your.",
+      "Lie down on the floor with your right leg straight.",
+      "Place your left arm comfortably beside you and turn your head to the left. Imagine you have a weight tied to your tailbone.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -6511,8 +6511,8 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Begin in a comfortable standing position with your knees slightly bent. Hold your hands in front of you, palms down with your fingertips.",
-      "Rapidly dip down into a quarter squat and immediately explode upward. Drive the knees towards the chest, attempting to touch them to the.",
+      "Begin in a comfortable standing position with your knees slightly bent.",
+      "Rapidly dip down into a quarter squat and immediately explode upward. Drive the knees towards the chest, attempting to touch them to the palms of the hands.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -6545,8 +6545,8 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "This drill helps increase arm efficiency during the run. Begin kneeling, left foot in front, right knee down. Apply pressure through the.",
-      "Begin by blocking the arms in long, pendulum like swings. Close the arm angle, blocking with the arms as you would when jogging,.",
+      "This drill helps increase arm efficiency during the run. Begin kneeling, left foot in front, right knee down.",
+      "Begin by blocking the arms in long, pendulum like swings.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -6636,7 +6636,7 @@ WP1C_EXERCISES = [
       "الأرداف"
     ],
     "cues_en": [
-      "Set the bar to the proper height in a power rack. Kneel behind the bar; it may be beneficial to put a mat down to pad your knees. Slide.",
+      "Set the bar to the proper height in a power rack. Kneel behind the bar; it may be beneficial to put a mat down to pad your knees.",
       "With your head looking forward, sit back with your butt until you touch your calves.",
       "Letting knees cave inward or heels lift off the floor."
     ],
@@ -6672,7 +6672,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Position a bar into landmine or, lacking one, securely anchor it in a corner. Load the bar to an appropriate weight and position the.",
+      "Position a bar into landmine or, lacking one, securely anchor it in a corner.",
       "Raise the bar from the floor, taking the handles to your shoulders. This will be your starting position.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -6816,7 +6816,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "While lying on the floor, place a foam roll under your back and to one side, just behind your arm pit. This will be your starting position.",
-      "Keep the arm of the side being stretched behind and to the side of you as you shift your weight onto your lats, keeping your upper body.",
+      "Keep the arm of the side being stretched behind and to the side of you as you shift your weight onto your lats, keeping your upper body off of the ground.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -6847,7 +6847,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Lie on the floor with one kettlebell in place on your chest, holding it by the handle. Extend leg on working side over leg on.",
+      "Lie on the floor with one kettlebell in place on your chest, holding it by the handle. Extend leg on working side over leg on non-working side.",
       "Press the kettlebll into a locked out position.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -6880,7 +6880,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie flat on your back, bend one knee, and put that foot flat on the floor to stabilize your spine.",
-      "Extend the other leg in the air. If you're tight, you wont be able to straighten it. That's okay. Extend the knee so that the sole of.",
+      "Extend the other leg in the air. If you're tight, you wont be able to straighten it. That's okay.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -6910,8 +6910,8 @@ WP1C_EXERCISES = [
       "الأرداف"
     ],
     "cues_en": [
-      "While standing up straight with both feet next to each other at around shoulder width, grab a sturdy surface such as the sides of a.",
-      "With or without an ankle weight, lift one leg behind you as if performing a leg curl but standing up while keeping the other leg.",
+      "While standing up straight with both feet next to each other at around shoulder width, grab a sturdy surface such as the sides of a squat rack or the top of a chair to brace yourself and keep balance.",
+      "With or without an ankle weight, lift one leg behind you as if performing a leg curl but standing up while keeping the other leg straight.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -6939,8 +6939,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Lie on an exercise mat with your legs extended and your hands either palms facing down next to you or under your glutes. Tip: My.",
-      "Bend your knees and pull your upper thighs into your midsection as you breathe out. Continue the motion until your knees are around.",
+      "Lie on an exercise mat with your legs extended and your hands either palms facing down next to you or under your glutes.",
+      "Bend your knees and pull your upper thighs into your midsection as you breathe out. Continue the motion until your knees are around chest level.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -6971,7 +6971,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Load an appropriate weight onto the pins and adjust the seat for your height. The handles should be near the bottom or middle of the.",
+      "Load an appropriate weight onto the pins and adjust the seat for your height.",
       "Your chest and head should be up and your shoulder blades retracted. This will be your starting position.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -7003,7 +7003,7 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Load the pins to an appropriate weight. Position yourself directly between the handles. Grasp the bottom handles with a comfortable.",
+      "Load the pins to an appropriate weight. Position yourself directly between the handles.",
       "Return the weight to the starting position.",
       "Rounding the lower back under load."
     ],
@@ -7035,7 +7035,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Load the pins to an appropriate weight. Position yourself directly between the handles.",
-      "Grasp the top handles with a comfortable grip, and then lower your hips as you take a breath. Look forward with your head and keep your.",
+      "Grasp the top handles with a comfortable grip, and then lower your hips as you take a breath. Look forward with your head and keep your chest up.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -7069,7 +7069,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "This drill helps you accelerate as quickly as possible into a sprint from a dead stop. It helps to use a line to start from. Begin with.",
+      "This drill helps you accelerate as quickly as possible into a sprint from a dead stop. It helps to use a line to start from. Begin with two feet on the line.",
       "Place your right hand onto the line, and thing bring your nose close to your left knee.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -7173,7 +7173,7 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Attach a climbing rope to a high beam or cross member. Below it, ensure that the smith machine bar is locked in place with the safeties.",
+      "Attach a climbing rope to a high beam or cross member. Below it, ensure that the smith machine bar is locked in place with the safeties and cannot move.",
       "Stand on the bar, using the rope to balance yourself. This will be your starting position.",
       "Letting the lower back sag toward the floor."
     ],
@@ -7239,7 +7239,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Sit on a low pulley row machine with a rope attachment.",
-      "Grab the ends of the rope using a palms-down grip and sit with your back straight and your knees slightly bent. Tip: Keep your back.",
+      "Grab the ends of the rope using a palms-down grip and sit with your back straight and your knees slightly bent.",
       "Rounding the upper back or jerking the weight."
     ],
     "cues_ar": [
@@ -7270,8 +7270,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "In a seated position, place a foam roll under your lower back. Cross your arms in front of you and protract your shoulders. This will be.",
-      "Raise your hips off of the floor and lean back, keeping your weight on your lower back. Now shift your weight slightly to one side,.",
+      "In a seated position, place a foam roll under your lower back. Cross your arms in front of you and protract your shoulders. This will be your starting position.",
+      "Raise your hips off of the floor and lean back, keeping your weight on your lower back.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -7303,7 +7303,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on your stomach with your arms out to your sides. This will be your starting position.",
-      "Using your lower back muscles, extend your spine lifting your chest off of the ground. Do not use your arms to push yourself up. Keep.",
+      "Using your lower back muscles, extend your spine lifting your chest off of the ground. Do not use your arms to push yourself up.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -7336,7 +7336,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand with your torso upright holding a kettlebell in your right hand. This will be your starting position.",
-      "Step forward with your left foot and lower your upper body down by flexing the hip and the knee, keeping the torso upright. Lower your.",
+      "Step forward with your left foot and lower your upper body down by flexing the hip and the knee, keeping the torso upright.",
       "Letting the front knee collapse inward."
     ],
     "cues_ar": [
@@ -7368,7 +7368,7 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Adjust a bar in a Smith machine to an appropriate height. Position yourself under the bar, racking it across the back of your shoulders..",
+      "Adjust a bar in a Smith machine to an appropriate height. Position yourself under the bar, racking it across the back of your shoulders.",
       "Lower your back knee nearly to the ground, flexing the knees and lowering your hips as you do so.",
       "Letting the front knee collapse inward."
     ],
@@ -7400,7 +7400,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lie on your back with your knees bent and the soles of the feet pressed together. Have your partner hold your knees. This will be your.",
+      "Lie on your back with your knees bent and the soles of the feet pressed together. Have your partner hold your knees. This will be your starting position.",
       "Attempt to squeeze your knees together, while your partner prevents any movement from occurring.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -7429,8 +7429,8 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Grab a straight bar or E-Z bar attachment that is attached to the low pulley with both hands, using an underhand (palms facing up).",
-      "Lie flat on your back on top of an exercise mat in front of the weight stack with your feet flat against the frame of the pulley machine.",
+      "Grab a straight bar or E-Z bar attachment that is attached to the low pulley with both hands, using an underhand (palms facing up) shoulder-width grip.",
+      "Lie flat on your back on top of an exercise mat in front of the weight stack with your feet flat against the frame of the pulley machine and your legs straight.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -7487,8 +7487,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "While holding a barbell or EZ Curl bar with a pronated grip (palms facing forward), lie on your back on a flat bench with your head off.",
-      "Extend your arms in front of you as you hold the barbell over your chest. The arms should be perpendicular to your torso (90-degree.",
+      "While holding a barbell or EZ Curl bar with a pronated grip (palms facing forward), lie on your back on a flat bench with your head off the end of the bench.",
+      "Extend your arms in front of you as you hold the barbell over your chest. The arms should be perpendicular to your torso (90-degree angle).",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -7520,7 +7520,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on your back with your legs extended.",
-      "Cross one leg over your body with the knee bent, attempting to touch the knee to the ground. Your partner should kneel beside you,.",
+      "Cross one leg over your body with the knee bent, attempting to touch the knee to the ground.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -7551,7 +7551,7 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Lie on a flat bench while holding two dumbbells directly in front of you. Your arms should be fully extended at a 90-degree angle from.",
+      "Lie on a flat bench while holding two dumbbells directly in front of you. Your arms should be fully extended at a 90-degree angle from your torso and the floor.",
       "As you breathe in and you keep the upper arms stationary with the elbows in, slowly lower the weight until the dumbbells are near your ears.",
       "Letting elbows flare or drift during the press."
     ],
@@ -7580,7 +7580,7 @@ WP1C_EXERCISES = [
       "الترابيس"
     ],
     "cues_en": [
-      "Lie face down with your whole body straight on a flat bench while holding a weight plate behind your head. Tip: You will need to.",
+      "Lie face down with your whole body straight on a flat bench while holding a weight plate behind your head.",
       "While keeping the plate secure on the back of your head slowly lower your head (as in saying \"yes\") as you breathe in.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
@@ -7609,7 +7609,7 @@ WP1C_EXERCISES = [
       "الترابيس"
     ],
     "cues_en": [
-      "Lie face up with your whole body straight on a flat bench while holding a weight plate on top of your forehead. Tip: You will need to.",
+      "Lie face up with your whole body straight on a flat bench while holding a weight plate on top of your forehead.",
       "While keeping the plate secure on your forehead slowly lower your head back in a semi-circular motion as you breathe in.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
@@ -7642,7 +7642,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on your back with your partner kneeling beside you.",
-      "Flex the hip of one leg, raising it off of the floor. Rotate the leg so the foot is over the opposite hip, the lower leg perpendicular.",
+      "Flex the hip of one leg, raising it off of the floor. Rotate the leg so the foot is over the opposite hip, the lower leg perpendicular to your body.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -7675,7 +7675,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lie on your back with your legs extended. Your partner should be kneeling beside you. Raise one leg up towards the ceiling and have your.",
+      "Lie on your back with your legs extended. Your partner should be kneeling beside you. Raise one leg up towards the ceiling and have your partner hold the ankle.",
       "With your partner holding your leg in place, attempt to flex the knee, contracting the hamstrings for 10-20 seconds.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -7704,8 +7704,8 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Lie face forward on a tall flat bench while holding a barbell with a supinated grip (palms facing up). Tip: If you are holding a barbell.",
-      "While keeping the elbows in and the upper arms stationary, curl the weight up in a semi-circular motion as you contract the biceps and.",
+      "Lie face forward on a tall flat bench while holding a barbell with a supinated grip (palms facing up).",
+      "While keeping the elbows in and the upper arms stationary, curl the weight up in a semi-circular motion as you contract the biceps and exhale.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -7738,7 +7738,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Adjust the leg machine to a height that will allow you to get inside it with your knees bent and the thighs slightly below parallel.",
-      "Once you select the weight, position yourself inside the machine face up with the knees bent and thighs slightly below parallel to the.",
+      "Once you select the weight, position yourself inside the machine face up with the knees bent and thighs slightly below parallel to the platform.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -7766,8 +7766,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "While holding a dumbbell in one hand, lay with your chest down on a flat bench. The other hand can be used to hold to the leg of the.",
-      "Position the palm of the hand that is holding the dumbbell in a neutral manner (palms facing your torso) as you keep the arm extended.",
+      "While holding a dumbbell in one hand, lay with your chest down on a flat bench. The other hand can be used to hold to the leg of the bench for stability.",
+      "Position the palm of the hand that is holding the dumbbell in a neutral manner (palms facing your torso) as you keep the arm extended with the elbow slightly bent.",
       "Swinging the torso to lift with momentum."
     ],
     "cues_ar": [
@@ -7798,7 +7798,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lay face down on the floor with your partner kneeling beside you. Flex one knee and raise that leg off the ground, attempting to touch.",
+      "Lay face down on the floor with your partner kneeling beside you.",
       "Attempt to extend your knee while your partner prevents any actual movement.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -7828,7 +7828,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "While holding a dumbbell in each hand, lay with your chest down on a flat bench.",
-      "Position the palms of the hands in a neutral manner (palms facing your torso) as you keep the arms extended with the elbows slightly.",
+      "Position the palms of the hands in a neutral manner (palms facing your torso) as you keep the arms extended with the elbows slightly bent.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -7885,8 +7885,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Lie on a flat bench with either an e-z bar (my preference) or a straight bar placed on the floor behind your head and your feet on the.",
-      "Grab the bar behind you, using a medium overhand (pronated) grip, and raise the bar in front of you at arms length. Tip: The arms should.",
+      "Lie on a flat bench with either an e-z bar (my preference) or a straight bar placed on the floor behind your head and your feet on the floor.",
+      "Grab the bar behind you, using a medium overhand (pronated) grip, and raise the bar in front of you at arms length.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -7954,7 +7954,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "For this exercise you will need a medicine ball and a partner. Stand back to back with your partner, spaced 2-3 feet apart. This will be.",
+      "For this exercise you will need a medicine ball and a partner. Stand back to back with your partner, spaced 2-3 feet apart. This will be your starting position.",
       "Hold the ball in front of the trunk. Open the hips and turn the shoulders at the same time as your partner.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -8019,8 +8019,8 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Lie facedown on an incline bench while holding a dumbbell in each hand. Your arms should be fully extended hanging down and pointing.",
-      "As you exhale, squeeze your shoulder blades together and hold the contraction for a full second. Tip: This movement is just like the.",
+      "Lie facedown on an incline bench while holding a dumbbell in each hand. Your arms should be fully extended hanging down and pointing towards the floor.",
+      "As you exhale, squeeze your shoulder blades together and hold the contraction for a full second.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -8083,7 +8083,7 @@ WP1C_EXERCISES = [
       "الأرداف"
     ],
     "cues_en": [
-      "Place a band around both ankles and another around both knees. There should be enough tension that they are tight when your feet are.",
+      "Place a band around both ankles and another around both knees. There should be enough tension that they are tight when your feet are shoulder width apart.",
       "To begin, take short steps forward alternating your left and right foot.",
       "Rounding the lower back under load."
     ],
@@ -8118,7 +8118,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "This move helps prepare your running form to help you excel at sprinting. As you run, be sure to flex the knee, aiming to kick your.",
+      "This move helps prepare your running form to help you excel at sprinting. As you run, be sure to flex the knee, aiming to kick your glutes as the hip extends.",
       "Reload the quad as the leg moves back forward, attacking the ground on the next step.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -8152,7 +8152,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place the back of your torso against the back pad of the machine and hook your shoulders under the shoulder pads provided.",
-      "Position your legs in the platform using a less than shoulder width narrow stance with the toes slightly pointed out. Your feet should.",
+      "Position your legs in the platform using a less than shoulder width narrow stance with the toes slightly pointed out.",
       "Rounding the upper back or jerking the weight."
     ],
     "cues_ar": [
@@ -8183,7 +8183,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Using a muscle roller or a rolling pin, place the roller behind your head and against your neck. Make sure that you do not place the.",
+      "Using a muscle roller or a rolling pin, place the roller behind your head and against your neck.",
       "Starting at the top of your neck, slowly roll down the muscles of your neck, pausing at points of tension for 10-30 seconds.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -8215,7 +8215,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Lie back on a flat bench. Using a medium-width grip (a grip that creates a 90-degree angle in the middle of the movement between the.",
+      "Lie back on a flat bench.",
       "As you breathe in, come down slowly until you feel the bar on your neck.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -8244,7 +8244,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Lie flat on the floor with your lower back pressed to the ground. For this exercise, you will need to put one hand beside your head and.",
+      "Lie flat on the floor with your lower back pressed to the ground.",
       "Make sure your feet are elevated and resting on a flat surface.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -8337,8 +8337,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Start off by lying on your right side, with your right knee bent at a 90-degree angle resting on the floor in front of you (this.",
-      "Bend your left knee behind you and hold your left foot with your left hand. To stretch your hip flexor, press your left hip forward as.",
+      "Start off by lying on your right side, with your right knee bent at a 90-degree angle resting on the floor in front of you (this stabilizes the torso).",
+      "Bend your left knee behind you and hold your left foot with your left hand.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -8366,8 +8366,8 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Lie down on a flat bench with a dumbbell in one hand resting on top of your thigh. The palm of your hand with the dumbbell in it should.",
-      "By using your thighs to help you get the dumbbell up, clean the dumbbell so that you can hold it in front of you with your lifting arm.",
+      "Lie down on a flat bench with a dumbbell in one hand resting on top of your thigh. The palm of your hand with the dumbbell in it should be at a neutral grip.",
+      "By using your thighs to help you get the dumbbell up, clean the dumbbell so that you can hold it in front of you with your lifting arm being fully extended.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -8395,7 +8395,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Lie down sideways on an incline bench press with a dumbbell in the hand. Make sure the shoulder is pressing against the incline bench.",
+      "Lie down sideways on an incline bench press with a dumbbell in the hand.",
       "Hold a dumbbell in your uppermost arm while keeping it extended in front of you parallel to the floor. This is your starting position.",
       "Swinging the torso to lift with momentum."
     ],
@@ -8425,7 +8425,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Hold a kettlebell by the handle.",
-      "Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate.",
+      "Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -8455,7 +8455,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Clean a kettlebell to your shoulder. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the.",
+      "Clean a kettlebell to your shoulder.",
       "Hold the kettlebell with the elbow out to the side, and press it up and out until it is locked out overhead.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -8488,7 +8488,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Hold a kettlebell by the handle. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell.",
+      "Hold a kettlebell by the handle. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder.",
       "Dip your body by bending the knees, keeping your torso upright.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -8522,7 +8522,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Hold a kettlebell by the handle. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell.",
+      "Hold a kettlebell by the handle. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder.",
       "Dip your body by bending the knees, keeping your torso upright.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -8617,8 +8617,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Start in a standing position with a staggered, athletic stance. Hold a medicine ball in one hand, on the same side as your back leg..",
-      "Begin by winding the arm, raising the medicine ball above your head. As you do so, extend through the hips, knees, and ankles to load up.",
+      "Start in a standing position with a staggered, athletic stance. Hold a medicine ball in one hand, on the same side as your back leg.",
+      "Begin by winding the arm, raising the medicine ball above your head. As you do so, extend through the hips, knees, and ankles to load up for the slam.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -8651,8 +8651,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Clean and press a kettlebell with one arm. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the.",
-      "Looking straight ahead and keeping a kettlebell locked out above you, flex the knees and hips and lower your torso between your legs,.",
+      "Clean and press a kettlebell with one arm.",
+      "Looking straight ahead and keeping a kettlebell locked out above you, flex the knees and hips and lower your torso between your legs, keeping your head and chest up.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -8688,7 +8688,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand to the side of a barbell next to its center. Bend your knees and lower your body until you are able to reach the barbell.",
-      "Grasp the bar as if you were grabbing a briefcase (palms facing you since the bar is sideways). You may need a wrist wrap if you are.",
+      "Grasp the bar as if you were grabbing a briefcase (palms facing you since the bar is sideways).",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -8752,7 +8752,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie down on a flat surface with your back pressing against the floor or an exercise mat. Make sure your knees are bent.",
-      "Have a partner hand you the bar on one hand. When starting, your arm should be just about fully extended, similar to the starting.",
+      "Have a partner hand you the bar on one hand.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -8821,7 +8821,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Grab onto a chinup bar with one hand, using a pronated grip. Keep your feet on the floor or a step. Allow the majority of your weight to.",
+      "Grab onto a chinup bar with one hand, using a pronated grip. Keep your feet on the floor or a step.",
       "Move through a controlled full range of motion.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -8889,8 +8889,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Start by standing about 2 to 3 feet in front of a flat bench with your back facing the bench. Have a barbell in front of you on the.",
-      "Bend the knees and use a pronated grip with your hands being wider than shoulder width apart from each other to lift the barbell up.",
+      "Start by standing about 2 to 3 feet in front of a flat bench with your back facing the bench. Have a barbell in front of you on the floor.",
+      "Bend the knees and use a pronated grip with your hands being wider than shoulder width apart from each other to lift the barbell up until you can rest it on your chest.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -8923,7 +8923,7 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "Place one kettlebell between your feet. Clean the kettlebell by extending through the legs and hips as you raise the kettlebell towards.",
+      "Place one kettlebell between your feet. Clean the kettlebell by extending through the legs and hips as you raise the kettlebell towards your shoulders.",
       "Release the kettlebell as it comes up, and let it flip so that the ball of the kettlebell lands in the palms of your hands.",
       "Rounding the lower back under load."
     ],
@@ -8956,7 +8956,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Secure your feet and lay back on the floor. Your knees should be bent. Hold a weight with both hands to your chest. This will be your.",
+      "Secure your feet and lay back on the floor. Your knees should be bent. Hold a weight with both hands to your chest. This will be your starting position.",
       "Initiate the movement by flexing the hips and spine to raise your torso up from the ground.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -8985,7 +8985,7 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "To begin, set a weight that is comfortable on each side of the pulley machine. Note: Make sure that the amount of weight selected is the.",
+      "To begin, set a weight that is comfortable on each side of the pulley machine. Note: Make sure that the amount of weight selected is the same on each side.",
       "Now adjust the height of the pulleys on each side and make sure that they are positioned at a height higher than that of your shoulders.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -9019,7 +9019,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Sit upright on the floor with your partner behind you. Raise one arm straight up, and flex the elbow, attempting to touch your hand to.",
+      "Sit upright on the floor with your partner behind you. Raise one arm straight up, and flex the elbow, attempting to touch your hand to your back.",
       "Attempt to pull your upper arm to your side as your partner prevents you from doing actually doing so.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -9089,7 +9089,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Standing straight up, lace your fingers together and open your palms to the ceiling. Keep your shoulders down as you extend your arms up.",
-      "To create a full torso stretch, pull your tailbone down and stabilize your torso as you do this. Stretch the muscles on both the front.",
+      "To create a full torso stretch, pull your tailbone down and stabilize your torso as you do this.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -9122,7 +9122,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Sit upright on the floor with your partner behind you. Raise one arm straight up, and flex the elbow, attempting to touch your hand to.",
+      "Sit upright on the floor with your partner behind you. Raise one arm straight up, and flex the elbow, attempting to touch your hand to your back.",
       "Attempt to extend the arm straight into the air as your partner prevents you from doing actually doing so.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -9156,7 +9156,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Connect a standard handle to a tower, and position the cable to shoulder height.",
-      "With your side to the cable, grab the handle with one hand and step away from the tower. You should be approximately arm's length away.",
+      "With your side to the cable, grab the handle with one hand and step away from the tower.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -9306,8 +9306,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lay on your side, supporting your weight on your forearm and on a foam roller placed on the outside of your lower leg. Your upper leg.",
-      "Raise your hips off of the ground and begin to roll from below the knee to above the ankle on the side of your leg, pausing at points of.",
+      "Lay on your side, supporting your weight on your forearm and on a foam roller placed on the outside of your lower leg.",
+      "Raise your hips off of the ground and begin to roll from below the knee to above the ankle on the side of your leg, pausing at points of tension for 10-30 seconds.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -9339,7 +9339,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "In a seated position, loop a belt, rope, or band around one foot. This will be your starting position.",
-      "With the leg extended and the heel off of the ground, pull on the belt so that the foot is inverted, with the inside of the foot being.",
+      "With the leg extended and the heel off of the ground, pull on the belt so that the foot is inverted, with the inside of the foot being pulled towards you.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -9369,7 +9369,7 @@ WP1C_EXERCISES = [
       "الأرداف"
     ],
     "cues_en": [
-      "Lay on a ball so that your upper back is on the ball with your hips unsupported. Both feet should be flat on the floor, hip width apart.",
+      "Lay on a ball so that your upper back is on the ball with your hips unsupported. Both feet should be flat on the floor, hip width apart or wider.",
       "Begin by extending the hips using your glutes and hamstrings, raising your hips upward as you bridge.",
       "Letting the lower back sag toward the floor."
     ],
@@ -9403,8 +9403,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Pin presses remove the eccentric phase of the bench press, developing starting strength. They also allow you to train a desired range of.",
-      "The bench should be set up in a power rack. Set the pins to the desired point in your range of motion, whether it just be lockout or an.",
+      "Pin presses remove the eccentric phase of the bench press, developing starting strength. They also allow you to train a desired range of motion.",
+      "The bench should be set up in a power rack. Set the pins to the desired point in your range of motion, whether it just be lockout or an inch off of your chest.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -9435,8 +9435,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Sit with your buttocks on top of a foam roll. Bend your knees, and then cross one leg so that the ankle is over the knee. This will be.",
-      "Shift your weight to the side of the crossed leg, rolling over the buttocks until you feel tension in your upper glute. You may assist.",
+      "Sit with your buttocks on top of a foam roll. Bend your knees, and then cross one leg so that the ankle is over the knee. This will be your starting position.",
+      "Shift your weight to the side of the crossed leg, rolling over the buttocks until you feel tension in your upper glute.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -9464,8 +9464,8 @@ WP1C_EXERCISES = [
       "السواعد"
     ],
     "cues_en": [
-      "Grab two wide-rimmed plates and put them together with the smooth sides facing outward",
-      "Use your fingers to grip the outside part of the plate and your thumb for the other side thus holding both plates together. This is the.",
+      "Grab two wide-rimmed plates and put them together with the smooth sides facing outward.",
+      "Use your fingers to grip the outside part of the plate and your thumb for the other side thus holding both plates together. This is the starting position.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -9493,8 +9493,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Lie down on the floor or an exercise mat with your legs fully extended and your upper body upright. Grab the plate by its sides with.",
-      "Slowly cross your legs near your ankles and lift them up off the ground. Your knees should also be bent slightly. Note: Move your upper.",
+      "Lie down on the floor or an exercise mat with your legs fully extended and your upper body upright.",
+      "Slowly cross your legs near your ankles and lift them up off the ground. Your knees should also be bent slightly.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -9524,7 +9524,7 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "For this movement a wooden floor or similar is needed. Lay on your back with your legs extended. Place a gym towel or a light weight.",
+      "For this movement a wooden floor or similar is needed. Lay on your back with your legs extended. Place a gym towel or a light weight underneath your heel.",
       "Begin the movement by flexing the knee, keeping your other leg straight.",
       "Rounding the lower back under load."
     ],
@@ -9556,7 +9556,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Place a kettlebell on the floor. Place yourself in a pushup position, on your toes with one hand on the ground and one hand holding the.",
+      "Place a kettlebell on the floor.",
       "Begin by lowering yourself as low as you can, keeping your back straight.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -9589,7 +9589,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "In a seated position, loop a belt, rope, or band around one foot. This will be your starting position.",
-      "With the leg extended and the heel off of the ground, pull on the belt so that the foot is everted, with the outside of the foot being.",
+      "With the leg extended and the heel off of the ground, pull on the belt so that the foot is everted, with the outside of the foot being pulled towards you.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -9650,8 +9650,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "To begin, lie down on a bench with a barbell resting on your chest. Position your legs so they are secure on the extension of the.",
-      "While inhaling, tighten your abdominals and glutes. Simultaneously curl your torso as you do when performing a sit-up and press the.",
+      "To begin, lie down on a bench with a barbell resting on your chest. Position your legs so they are secure on the extension of the abdominal bench.",
+      "While inhaling, tighten your abdominals and glutes.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -9680,7 +9680,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "You will need a partner for this exercise. Lay face down with your legs straight. Your assistant will place their hand on your heel.",
-      "To begin, flex the knee to curl your leg up. Your partner should provide resistance, starting light and increasing the pressure as the.",
+      "To begin, flex the knee to curl your leg up. Your partner should provide resistance, starting light and increasing the pressure as the movement is completed.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -9717,8 +9717,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "Place your sled on an appropriate surface, loaded to a suitable weight. The sled should provide enough resistance to require effort, but.",
-      "You may use the upright or the low handles for this exercise. Place your hands on the handles with your arms extended, leaning into the.",
+      "Place your sled on an appropriate surface, loaded to a suitable weight.",
+      "You may use the upright or the low handles for this exercise. Place your hands on the handles with your arms extended, leaning into the implement.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -9750,7 +9750,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Lie on the floor face down and place your hands about 36 inches apart from each other holding your torso up at arms length.",
-      "Place your toes on top of a flat bench. This will allow your body to be elevated. Note: The higher the elevation of the flat bench, the.",
+      "Place your toes on top of a flat bench. This will allow your body to be elevated.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -9846,7 +9846,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Lie on the floor face down and body straight with your toes on the floor and the hands wider than shoulder width for a wide hand.",
+      "Lie on the floor face down and body straight with your toes on the floor and the hands wider than shoulder width for a wide hand position and closer than shoulder width for a close hand position.",
       "Lower yourself until your chest almost touches the floor as you inhale.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
@@ -9881,7 +9881,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Start off by rolling your torso forward onto the ball so your hips rest on top of the ball and become the highest point of your body.",
-      "Rest your hands and feet on the floor. Your arms and legs can be slightly bent or straight, depending on the size of the ball, your.",
+      "Rest your hands and feet on the floor.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -9912,8 +9912,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lay facedown on the floor with your weight supported by your hands or forearms. Place a foam roll underneath one leg on the quadriceps,.",
-      "Shifting as much weight onto the leg to be stretched as is tolerable, roll over the foam from above the knee to below the hip, holding.",
+      "Lay facedown on the floor with your weight supported by your hands or forearms.",
+      "Shifting as much weight onto the leg to be stretched as is tolerable, roll over the foam from above the knee to below the hip, holding points of tension for 10-30 seconds.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -9982,8 +9982,8 @@ WP1C_EXERCISES = [
       "أسفل الظهر"
     ],
     "cues_en": [
-      "Set up in a power rack with the bar on the pins. The pins should be set to the desired point; just below the knees, just above, or in.",
-      "Position yourself against the bar in proper deadlifting position. Your feet should be under your hips, your grip shoulder width, back.",
+      "Set up in a power rack with the bar on the pins. The pins should be set to the desired point; just below the knees, just above, or in the mid thigh position.",
+      "Position yourself against the bar in proper deadlifting position.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -10014,7 +10014,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Place yourself on your hands knees on an exercise mat. Your head should be looking forward and the bend of the knees should create a.",
+      "Place yourself on your hands knees on an exercise mat.",
       "Extend one leg up and behind you. The knee and hip should both extend. Repeat for 5-10 repetitions, and then switch sides.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -10051,7 +10051,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "To begin, seat yourself on the bike and adjust the seat to your height.",
-      "Select the desired option from the menu. You may have to start pedaling to turn it on. You can use the manual setting, or you can select.",
+      "Select the desired option from the menu. You may have to start pedaling to turn it on. You can use the manual setting, or you can select a program to use.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -10119,8 +10119,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Position a bench inside a power rack, with the bar set to the correct height. Begin by anchoring bands either to band pegs or to the top.",
-      "Lie on the bench, tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off.",
+      "Position a bench inside a power rack, with the bar set to the correct height. Begin by anchoring bands either to band pegs or to the top of the rack.",
+      "Lie on the bench, tuck your feet underneath you and arch your back.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -10155,8 +10155,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Begin in a power rack with a box at the appropriate height behind you. Set up the bands either on band pegs or attached to the top of.",
-      "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your.",
+      "Begin in a power rack with a box at the appropriate height behind you.",
+      "Begin by stepping under the bar and placing it across the back of the shoulders.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -10190,8 +10190,8 @@ WP1C_EXERCISES = [
       "أسفل الظهر"
     ],
     "cues_en": [
-      "Set the bar up in a power rack. Attach bands to the top of the rack, using either bands pegs or the frame itself. Attach the other end.",
-      "Approach the bar so that it is centered over your feet. You feet should be about hip width apart. Bend at the hip to grip the bar at.",
+      "Set the bar up in a power rack. Attach bands to the top of the rack, using either bands pegs or the frame itself. Attach the other end of the bands to the bar.",
+      "Approach the bar so that it is centered over your feet. You feet should be about hip width apart.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -10225,8 +10225,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Begin in a power rack with the pins and bar set at the appropriate height. After loading the bar, attach bands to the top of the rack,.",
-      "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your.",
+      "Begin in a power rack with the pins and bar set at the appropriate height.",
+      "Begin by stepping under the bar and placing it across the back of the shoulders.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -10262,8 +10262,8 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "Begin with a bar loaded on the floor inside of a power rack. Attach bands to the top of the rack, using either pegs or the frame itself..",
-      "Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips.",
+      "Begin with a bar loaded on the floor inside of a power rack. Attach bands to the top of the rack, using either pegs or the frame itself.",
+      "Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips to grip the bar.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -10324,8 +10324,8 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Stand up with your torso upright while holding a bar attachment that is attached to a low pulley using a pronated (palms down) and.",
-      "While holding the upper arms stationary, curl the weights while contracting the biceps as you breathe out. Only the forearms should.",
+      "Stand up with your torso upright while holding a bar attachment that is attached to a low pulley using a pronated (palms down) and shoulder width grip.",
+      "While holding the upper arms stationary, curl the weights while contracting the biceps as you breathe out. Only the forearms should move.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -10354,7 +10354,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "To begin, lie down on an incline bench set at a 30-degree angle with the chest and stomach pressing against the incline.",
-      "Have the dumbbells in each hand with the palms facing down to the floor. Your arms should be in front of you so that they are.",
+      "Have the dumbbells in each hand with the palms facing down to the floor.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -10384,8 +10384,8 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Start by standing straight with a weighted plate held by both hands and arms fully extended. Use a pronated grip (palms facing down) and.",
-      "Your feet should be shoulder width apart from each other and the weighted plate should be near the groin area. This is the starting.",
+      "Start by standing straight with a weighted plate held by both hands and arms fully extended.",
+      "Your feet should be shoulder width apart from each other and the weighted plate should be near the groin area. This is the starting position.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -10416,8 +10416,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Lie back on a flat bench. Using a close, supinated grip (around shoulder width), lift the bar from the rack and hold it straight over.",
-      "As you breathe in, come down slowly until you feel the bar on your middle chest. Tip: Make sure that as opposed to a regular bench.",
+      "Lie back on a flat bench.",
+      "As you breathe in, come down slowly until you feel the bar on your middle chest.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -10450,8 +10450,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Lay down with your back on the floor. Place a foam roll underneath your upper back, and cross your arms in front of you, protracting.",
-      "Raise your hips off of the ground, placing your weight onto the foam roll. Shift your weight to one side at a time, rolling over your.",
+      "Lay down with your back on the floor. Place a foam roll underneath your upper back, and cross your arms in front of you, protracting your shoulders.",
+      "Raise your hips off of the ground, placing your weight onto the foam roll. Shift your weight to one side at a time, rolling over your middle and upper back.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -10514,8 +10514,8 @@ WP1C_EXERCISES = [
       "البطات"
     ],
     "cues_en": [
-      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack that best matches your.",
-      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time.",
+      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack that best matches your height.",
+      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time straightening your torso.",
       "Bouncing quickly through the bottom without a pause."
     ],
     "cues_ar": [
@@ -10547,7 +10547,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Grab the pull-up bar with the palms facing forward using a wide grip.",
-      "As you have both arms extended in front of you holding the bar at the chosen grip width, bring your torso back around 30 degrees or so.",
+      "As you have both arms extended in front of you holding the bar at the chosen grip width, bring your torso back around 30 degrees or so while creating a curvature on your lower back and sticking your chest out.",
       "Pulling with momentum or stopping short of full range."
     ],
     "cues_ar": [
@@ -10653,8 +10653,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "To begin, seat yourself on the rower. Make sure that your heels are resting comfortably against the base of the foot pedals and that the.",
-      "There are three phases of movement when using a rower. The first phase is when you come forward on the rower. Your knees are bent and.",
+      "To begin, seat yourself on the rower. Make sure that your heels are resting comfortably against the base of the foot pedals and that the straps are secured.",
+      "There are three phases of movement when using a rower. The first phase is when you come forward on the rower. Your knees are bent and against your chest.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -10723,8 +10723,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "To begin, step onto the treadmill and select the desired option from the menu. Most treadmills have a manual setting, or you can select.",
-      "Treadmills offer convenience, cardiovascular benefits, and usually have less impact than running outside. A 150 lb person will burn over.",
+      "To begin, step onto the treadmill and select the desired option from the menu. Most treadmills have a manual setting, or you can select a program to run.",
+      "Treadmills offer convenience, cardiovascular benefits, and usually have less impact than running outside.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -10755,7 +10755,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "To begin, lie down with your back pressed against the floor or on an exercise mat (optional). Your arms should be fully extended to the.",
+      "To begin, lie down with your back pressed against the floor or on an exercise mat (optional).",
       "With a slight bend at the knees, lift your legs up so that your heels are about 6 inches off the ground. This is the starting position.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -10791,7 +10791,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Assume a lunge stance position with one foot forward with the knee bent, and the rear knee nearly touching the ground.",
-      "Ensure that the front knee is over the midline of the foot. Extending through both legs, jump as high as possible, swinging your arms to.",
+      "Ensure that the front knee is over the midline of the foot. Extending through both legs, jump as high as possible, swinging your arms to gain lift.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -10819,8 +10819,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Start out by sitting at the end of a flat bench with a barbell placed on top of your thighs. Your feet should be shoulder width apart.",
-      "Grip the bar with your palms facing down and make sure your hands are wider than shoulder width apart from each other. Begin to lift the.",
+      "Start out by sitting at the end of a flat bench with a barbell placed on top of your thighs. Your feet should be shoulder width apart from each other.",
+      "Grip the bar with your palms facing down and make sure your hands are wider than shoulder width apart from each other.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -10849,7 +10849,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Sit down at the end of a flat bench with a dumbbell in both arms using a neutral grip (palms of the hand facing you).",
-      "Bend your knees slightly and bring your torso forward, by bending at the waist, while keeping the back straight until it is almost.",
+      "Bend your knees slightly and bring your torso forward, by bending at the waist, while keeping the back straight until it is almost parallel to the floor.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -10883,7 +10883,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Sit on the floor with your knees bent and your partner standing behind you. Extend your arms straight behind you with your palms facing.",
+      "Sit on the floor with your knees bent and your partner standing behind you. Extend your arms straight behind you with your palms facing each other.",
       "Attempt to flex your elbows, while your partner prevents any actual movement.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -10947,8 +10947,8 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Sit down on a flat bench with a barbell or E-Z Bar in front of you in between your legs. Your legs should be spread with the knees bent.",
-      "Use your arms to pick the barbell up and place the back of your upper arms on top of your inner thighs (around three and a half inches.",
+      "Sit down on a flat bench with a barbell or E-Z Bar in front of you in between your legs.",
+      "Use your arms to pick the barbell up and place the back of your upper arms on top of your inner thighs (around three and a half inches away from the front of the knee).",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -11063,7 +11063,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Sit on a bench with the legs stretched out in front of you slightly below parallel and your arms holding on to the sides of the bench..",
+      "Sit on a bench with the legs stretched out in front of you slightly below parallel and your arms holding on to the sides of the bench.",
       "Bring the knees in toward you as you move your torso closer to them at the same time. Breathe out as you perform this movement.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -11098,7 +11098,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Sit on a mat with your right leg extended in front of you and your left leg bent with your foot against your right inner thigh.",
-      "Lean forward from your hips and reach for your ankle until you feel a stretch in your hamstring. Hold for 15 seconds, then repeat for.",
+      "Lean forward from your hips and reach for your ankle until you feel a stretch in your hamstring. Hold for 15 seconds, then repeat for your other side.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -11131,8 +11131,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Sit upright on the floor with your legs bent, your partner standing behind you. Stick your arms straight out to your sides, with your.",
-      "Keeping your elbows straight, attempt to move your arms to the front, with your partner gently restraining you to prevent any actual.",
+      "Sit upright on the floor with your legs bent, your partner standing behind you. Stick your arms straight out to your sides, with your palms facing the ground.",
+      "Keeping your elbows straight, attempt to move your arms to the front, with your partner gently restraining you to prevent any actual movement for 10-20 seconds.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -11165,7 +11165,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "In a seated position with your knees bent, cross one ankle over the opposite knee. Your partner will stand behind you. Now, lean forward.",
+      "In a seated position with your knees bent, cross one ankle over the opposite knee. Your partner will stand behind you.",
       "Attempt to push your torso back for 10-20 seconds, as your partner prevents any actual movement of your torso.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -11196,8 +11196,8 @@ WP1C_EXERCISES = [
       "أسفل الظهر"
     ],
     "cues_en": [
-      "Set up a box in a power rack. The pins should be set at an appropriate height. Begin by stepping under the bar and placing it across the.",
-      "Remove the bar from the rack, creating a tight arch in your lower back. Keep your head facing forward. With your back, shoulders, and.",
+      "Set up a box in a power rack. The pins should be set at an appropriate height.",
+      "Remove the bar from the rack, creating a tight arch in your lower back. Keep your head facing forward.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -11230,7 +11230,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "In a seated position with your legs extended, have your partner stand behind you. Now, lean forward as your partner braces your.",
+      "In a seated position with your legs extended, have your partner stand behind you. Now, lean forward as your partner braces your shoulders with their hands.",
       "Attempt to push your torso back for 10-20 seconds, as your partner prevents any actual movement of your torso.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -11265,7 +11265,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Loop a belt, rope, or band around one foot. Sit down with both legs extended . This will be your starting position.",
-      "Leaning forward slightly, pull on the belt to draw the toes of your foot back. Hold this position for 10-20 seconds and then repeat with.",
+      "Leaning forward slightly, pull on the belt to draw the toes of your foot back. Hold this position for 10-20 seconds and then repeat with the other leg.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -11293,8 +11293,8 @@ WP1C_EXERCISES = [
       "الترابيس"
     ],
     "cues_en": [
-      "Place a neck strap on the floor at the end of a flat bench. Once you have selected the weights, sit at the end of the flat bench with.",
-      "Slowly move your torso forward until it is almost parallel with the floor. Using both hands, securely position the neck strap around.",
+      "Place a neck strap on the floor at the end of a flat bench.",
+      "Slowly move your torso forward until it is almost parallel with the floor. Using both hands, securely position the neck strap around your head.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -11322,7 +11322,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Sit on a bench with the legs stretched out in front of you slightly below parallel and your arms holding on to the sides of the bench..",
+      "Sit on a bench with the legs stretched out in front of you slightly below parallel and your arms holding on to the sides of the bench.",
       "Bring the knees in toward you as you move your torso closer to them at the same time. Breathe out as you perform this movement.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -11412,8 +11412,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Sit down on a bench with back support and grasp a dumbbell with both hands and hold it overhead at arm's length. Tip: a better way is to.",
-      "Keeping your upper arms close to your head (elbows in) and perpendicular to the floor, lower the resistance in a semi-circular motion.",
+      "Sit down on a bench with back support and grasp a dumbbell with both hands and hold it overhead at arm's length.",
+      "Keeping your upper arms close to your head (elbows in) and perpendicular to the floor, lower the resistance in a semi-circular motion behind your head until your forearms touch your biceps.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -11442,7 +11442,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Put a bench in front of a low pulley machine that has a barbell or EZ Curl attachment on it.",
-      "Move the bench far enough away so that when you bring the handle to the top of your thighs tension is created on the cable due to the.",
+      "Move the bench far enough away so that when you bring the handle to the top of your thighs tension is created on the cable due to the weight stack being moved up.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -11474,7 +11474,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Grab a dumbbell with each hand and stand up erect.",
-      "Clean (lift) the dumbbells to the chest/shoulder level and then rotate your wrists so that your palms are facing towards you as if you.",
+      "Clean (lift) the dumbbells to the chest/shoulder level and then rotate your wrists so that your palms are facing towards you as if you were getting ready to perform an Arnold Press.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -11507,7 +11507,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "With shoulders relaxed and arms resting loosely at your sides (or in your lap if you're seated), gently roll your shoulders forward, up,.",
+      "With shoulders relaxed and arms resting loosely at your sides (or in your lap if you're seated), gently roll your shoulders forward, up, back, and down.",
       "Reverse direction. You can do this exercise alternating shoulders or both at the same time.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -11573,8 +11573,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "First lie on your left side, bending your left knee in front of you to stabilize your torso (use your abdominal muscles as well to hold.",
-      "Straighten your right leg and rest the right foot on the floor behind your left. Straighten your right arm over your head and gently.",
+      "First lie on your left side, bending your left knee in front of you to stabilize your torso (use your abdominal muscles as well to hold you upright).",
+      "Straighten your right leg and rest the right foot on the floor behind your left.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -11772,8 +11772,8 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Begin standing with your feet hip width apart in an athletic stance. Your head and chest should be up, knees and hips slightly bent..",
-      "Leaning to your right, extend through your hips, knees, and ankles to jump into the air. Block with the arms to lead the movement,.",
+      "Begin standing with your feet hip width apart in an athletic stance. Your head and chest should be up, knees and hips slightly bent.",
+      "Leaning to your right, extend through your hips, knees, and ankles to jump into the air.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -11806,7 +11806,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Grab the pull-up bar with the palms facing forward using a wide grip.",
-      "As you have both arms extended in front of you holding the bar at a wide grip, bring your torso back around 30 degrees or so while.",
+      "As you have both arms extended in front of you holding the bar at a wide grip, bring your torso back around 30 degrees or so while creating a curvature on your lower back and sticking your chest out.",
       "Rounding the upper back or jerking the weight."
     ],
     "cues_ar": [
@@ -11840,8 +11840,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "This stretch works best standing. Cross your left arm over the midline of your body and hold the left wrist in your right hand down at.",
-      "Slowly straighten, pull, and lift it up to shoulder height, as pictured. Feel this stretch originate in your back, not your shoulders,.",
+      "This stretch works best standing. Cross your left arm over the midline of your body and hold the left wrist in your right hand down at the level of your hips.",
+      "Slowly straighten, pull, and lift it up to shoulder height, as pictured.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -11878,7 +11878,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand to one side of the box with your left foot resting on the middle of it.",
-      "To begin, jump up and over to the other side of the box, landing with your right foot on top of the box and your left foot on the floor..",
+      "To begin, jump up and over to the other side of the box, landing with your right foot on top of the box and your left foot on the floor.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -11946,7 +11946,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Position a box in a rack. Secure a band or rope in place above the box.",
-      "Standing in front of it, step onto the box to a full standing position, letting your other leg remain unsupported. Hold onto the band.",
+      "Standing in front of it, step onto the box to a full standing position, letting your other leg remain unsupported. Hold onto the band for balance.",
       "Letting the front knee collapse inward."
     ],
     "cues_ar": [
@@ -11982,7 +11982,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Arrange a line of cones in front of you. Assume a relaxed standing position, balanced on one leg. Raise the knee of your opposite leg..",
+      "Arrange a line of cones in front of you. Assume a relaxed standing position, balanced on one leg. Raise the knee of your opposite leg.",
       "Hop forward, jumping and landing with the same leg over the cone.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -12057,7 +12057,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand to the side of a box with your inside foot on top of it, close to the edge.",
-      "Begin by swinging the arms upward as you push through the top leg, jumping upward as high as possible. Attempt to drive the opposite.",
+      "Begin by swinging the arms upward as you push through the top leg, jumping upward as high as possible. Attempt to drive the opposite knee upward.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -12088,8 +12088,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "With a wide stance, hold a dumbell with both hands, grasping the head of the dumbbell instead of the handle. Your arms should be.",
-      "Raise the weight until it is above shoulder level, keeping your arms extended. Your torso and hips should remain stationary throughout.",
+      "With a wide stance, hold a dumbell with both hands, grasping the head of the dumbbell instead of the handle.",
+      "Raise the weight until it is above shoulder level, keeping your arms extended. Your torso and hips should remain stationary throughout the movement.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -12187,7 +12187,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Lie down on the floor placing your feet either under something that will not move or by having a partner hold them. Your legs should be.",
+      "Lie down on the floor placing your feet either under something that will not move or by having a partner hold them. Your legs should be bent at the knees.",
       "Place your hands behind your head and lock them together by clasping your fingers. This is the starting position.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -12259,8 +12259,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "Roller skating is a fun activity which can be effective in improving cardiorespiratory fitness and muscular endurance. It requires.",
-      "You can skate at a comfortable pace for 30 minutes straight. If you want a cardio challenge, do interval skating — speed skate two.",
+      "Roller skating is a fun activity which can be effective in improving cardiorespiratory fitness and muscular endurance.",
+      "You can skate at a comfortable pace for 30 minutes straight.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -12293,7 +12293,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Attach dual handles to a sled connected by a rope or chain. Load the sled to a light weight.",
-      "Face the sled, backing up until there is some tension in the line. Hold your hands directly above your head with your elbows extended..",
+      "Face the sled, backing up until there is some tension in the line. Hold your hands directly above your head with your elbows extended.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -12322,7 +12322,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Attach dual handles to a sled using a chain or rope. Load the sled to an appropriate load.",
-      "Facing away from the sled, step away until there is tension in the line. Raise your hands above your head, keeping them together, palms.",
+      "Facing away from the sled, step away until there is tension in the line. Raise your hands above your head, keeping them together, palms facing each other.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -12351,7 +12351,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Attach dual handles to a sled connected by a rope or chain. Load the sled to a light weight.",
-      "Face the sled, backing up until there is some tension in the line. Take both handles at arms length at about waist level. Bend the knees.",
+      "Face the sled, backing up until there is some tension in the line. Take both handles at arms length at about waist level.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -12381,7 +12381,7 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Attach dual handles to a sled connected by a rope or chain. Load the sled to an appropriate weight. Face the sled, backing up until.",
+      "Attach dual handles to a sled connected by a rope or chain. Load the sled to an appropriate weight.",
       "With a handle in each hand, bend the knees slightly, keep your head and chest up, and begin with your arms extended.",
       "Rounding the upper back or jerking the weight."
     ],
@@ -12418,7 +12418,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "You will need a tire and a sledgehammer for this exercise. Stand in front of the tire about two feet away from it with a staggered.",
+      "You will need a tire and a sledgehammer for this exercise. Stand in front of the tire about two feet away from it with a staggered stance.",
       "If you are right handed, your left hand should be at the bottom of the handle, and your right hand should be choking up closer to the head.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -12449,8 +12449,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Place an incline bench underneath the smith machine. Place the barbell at a height that you can reach when lying down and your arms are.",
-      "Using a shoulder width pronated (palms forward) grip, lift the bar from the rack and hold it straight over you with a slight bend at the.",
+      "Place an incline bench underneath the smith machine. Place the barbell at a height that you can reach when lying down and your arms are almost fully extended.",
+      "Using a shoulder width pronated (palms forward) grip, lift the bar from the rack and hold it straight over you with a slight bend at the elbows.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -12481,7 +12481,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "With the bar at thigh level, load an appropriate weight.",
-      "Stand with the bar behind you, taking a shoulder-width, pronated grip on the bar and unhook the weight. You should be standing up.",
+      "Stand with the bar behind you, taking a shoulder-width, pronated grip on the bar and unhook the weight.",
       "Using heavy momentum instead of squeezing the upper back."
     ],
     "cues_ar": [
@@ -12516,7 +12516,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Position the bar at knee height and load it to an appropriate weight.",
-      "Take a pronated grip on the bar outside of shoulder width and unhook the bar from the machine. Your arms should be fully extended with.",
+      "Take a pronated grip on the bar outside of shoulder width and unhook the bar from the machine. Your arms should be fully extended with your head and chest up.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -12544,8 +12544,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Position a bench in the rack and load the bar to an appropriate weight. Lie down on the bench, placing the bottom of your feet against.",
-      "Initiate the movement by rotating your pelvis, flexing your spine to raise your hips off of the bench. Maintain a slight bend in the.",
+      "Position a bench in the rack and load the bar to an appropriate weight. Lie down on the bench, placing the bottom of your feet against the bar.",
+      "Initiate the movement by rotating your pelvis, flexing your spine to raise your hips off of the bench.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -12577,8 +12577,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "To begin, first set the bar to a position that best matches your height. Step under it and position the bar across the back of your.",
-      "Take the bar with your hands facing forward, unlock it and lift it off the rack by extending your legs. 3",
+      "To begin, first set the bar to a position that best matches your height. Step under it and position the bar across the back of your shoulders.",
+      "Take the bar with your hands facing forward, unlock it and lift it off the rack by extending your legs.",
       "Letting the front knee collapse inward."
     ],
     "cues_ar": [
@@ -12607,7 +12607,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Adjust the barbell on the smith machine to fit your height and align a raised platform right under the bar.",
-      "Stand on the platform with the heels of your feet secured on top of it with the balls of your feet extending off it. Position your toes.",
+      "Stand on the platform with the heels of your feet secured on top of it with the balls of your feet extending off it.",
       "Bouncing quickly through the bottom without a pause."
     ],
     "cues_ar": [
@@ -12641,8 +12641,8 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "With a barbell on the floor close to the shins, take a wide snatch grip. Lower your hips with the weight focused on the heels, back.",
-      "Begin the first pull by driving through the heels, extending your knees. Your back angle should stay the same, and your arms should.",
+      "With a barbell on the floor close to the shins, take a wide snatch grip.",
+      "Begin the first pull by driving through the heels, extending your knees. Your back angle should stay the same, and your arms should remain straight.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -12675,7 +12675,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Attach bands to the bar that are securely anchored near the ground. You may need to choke the bands to get adequate tension.",
-      "Use a box of an appropriate height for this exercise. Load the bar to a weight that still requires effort, but isn't so heavy that speed.",
+      "Use a box of an appropriate height for this exercise. Load the bar to a weight that still requires effort, but isn't so heavy that speed is compromised.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -12708,8 +12708,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack that best matches your.",
-      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time.",
+      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack that best matches your height.",
+      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time straightening your torso.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -12740,7 +12740,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Hold a dumbbell in each hand with a pronated grip. Your feet should be wide with your hips and knees extended. This will be your.",
+      "Hold a dumbbell in each hand with a pronated grip. Your feet should be wide with your hips and knees extended. This will be your starting position.",
       "Begin the movement by pulling both of the dumbbells to one side next to your hip, rotating your torso.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -12773,8 +12773,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Begin in a prone position on the floor. Support your weight on your hands and toes, with your feet together and your body straight. Your.",
-      "Initiate the movement by raising one foot off of the ground. Externally rotate the leg and bring the knee toward your elbow, as far.",
+      "Begin in a prone position on the floor. Support your weight on your hands and toes, with your feet together and your body straight.",
+      "Initiate the movement by raising one foot off of the ground. Externally rotate the leg and bring the knee toward your elbow, as far forward as possible.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -12845,8 +12845,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Being in a standing position. Jump into a split leg position, with one leg forward and one leg back, flexing the knees and lowering your.",
-      "As you descend, immediately reverse direction, standing back up and jumping, reversing the position of your legs. Repeat 5-10 times on.",
+      "Being in a standing position.",
+      "As you descend, immediately reverse direction, standing back up and jumping, reversing the position of your legs. Repeat 5-10 times on each leg.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -12880,8 +12880,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Standing with the weight racked on the front of the shoulders, begin with the dip. With your feet directly under your hips, flex the.",
-      "At this moment as the feet leave the floor, the feet must be placed into the receiving position as quickly as possible. In the brief.",
+      "Standing with the weight racked on the front of the shoulders, begin with the dip.",
+      "At this moment as the feet leave the floor, the feet must be placed into the receiving position as quickly as possible.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -12916,7 +12916,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Set up the bands on the sleeves, secured to either band pegs, the rack, or dumbbells so that there is appropriate tension.",
-      "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your.",
+      "Begin by stepping under the bar and placing it across the back of the shoulders.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -12950,8 +12950,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "To set up the chains, begin by looping the leader chain over the sleeves of the bar. The heavy chain should be attached using a snap.",
-      "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your.",
+      "To set up the chains, begin by looping the leader chain over the sleeves of the bar. The heavy chain should be attached using a snap hook.",
+      "Begin by stepping under the bar and placing it across the back of the shoulders.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -12984,7 +12984,7 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "To begin, first set the bar on a rack to just below shoulder level. Position a weight plate on the ground a couple feet back from the.",
+      "To begin, first set the bar on a rack to just below shoulder level. Position a weight plate on the ground a couple feet back from the rack.",
       "Hold on to the bar with both hands and lift it off the rack by first pushing with your legs and at the same time straighten your torso.",
       "Letting knees cave inward or heels lift off the floor."
     ],
@@ -13020,8 +13020,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "To begin, step onto the stairmaster and select the desired option from the menu. You can choose a manual setting, or you can select a.",
-      "Pump your legs up and down in an established rhythm, driving the pedals down but not all the way to the floor. It is recommended that.",
+      "To begin, step onto the stairmaster and select the desired option from the menu. You can choose a manual setting, or you can select a program to run.",
+      "Pump your legs up and down in an established rhythm, driving the pedals down but not all the way to the floor.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -13051,8 +13051,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "This exercise is best performed inside a squat rack for easier pick up of the bar. To begin, first set the bar on a rack that best.",
-      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time.",
+      "This exercise is best performed inside a squat rack for easier pick up of the bar. To begin, first set the bar on a rack that best matches your height.",
+      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time straightening your torso.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -13080,8 +13080,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "With a dumbbell in each hand and the palms facing your torso, bend your knees slightly and bring your torso forward, by bending at the.",
-      "Keeping the upper arms stationary, use the triceps to lift the weights as you exhale until the forearms are parallel to the floor and.",
+      "With a dumbbell in each hand and the palms facing your torso, bend your knees slightly and bring your torso forward, by bending at the waist, while keeping the back straight until it is almost parallel to the floor.",
+      "Keeping the upper arms stationary, use the triceps to lift the weights as you exhale until the forearms are parallel to the floor and the whole arms are extended.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -13111,7 +13111,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Place a loaded bar at shoulder level in a rack. With a pronated grip at shoulder width, begin with the bar racked across the front of.",
+      "Place a loaded bar at shoulder level in a rack. With a pronated grip at shoulder width, begin with the bar racked across the front of your shoulders.",
       "Initiate the lift by extending the elbows to press the bar overhead. Avoid locking out the elbow as you move the weight behind your head.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -13143,7 +13143,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Connect a standard handle on a tower, and move the cable to the lowest pulley position.",
-      "With your side to the cable, grab the handle with one hand and step away from the tower. You should be approximately arm's length away.",
+      "With your side to the cable, grab the handle with one hand and step away from the tower.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -13173,8 +13173,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Standing with your feet shoulder width apart, take a dumbbell in each hand. Raise the dumbbells to head height, the elbows out and about.",
-      "Maintaining strict technique with no leg drive or leaning back, extend through the elbow to raise the weights together directly above.",
+      "Standing with your feet shoulder width apart, take a dumbbell in each hand. Raise the dumbbells to head height, the elbows out and about 90 degrees.",
+      "Maintaining strict technique with no leg drive or leaning back, extend through the elbow to raise the weights together directly above your head.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -13231,7 +13231,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "To begin, stand straight with a barbell in your hands. You should grip the bar with palms facing down and a closer than shoulder width.",
+      "To begin, stand straight with a barbell in your hands.",
       "Your feet should be shoulder width apart from each other. Your elbows should be slightly bent. This is the starting position.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -13265,7 +13265,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Place your right heel on a step with your knee extended and lean forward to grab your right toe with your right hand. Your left knee.",
+      "Place your right heel on a step with your knee extended and lean forward to grab your right toe with your right hand.",
       "Support your weight on your left leg and place your left hand on your left thigh.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -13364,7 +13364,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand up straight with the spine vertical, the left foot slightly in front of the right.",
-      "Bend both knees and lift the back heel off the floor as you press the right hip forward. You can't get a thorough, deep stretch in this.",
+      "Bend both knees and lift the back heel off the floor as you press the right hip forward.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -13392,7 +13392,7 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Stand up with a dumbbell in each hand being held at arms length. The elbows should be close to the torso. Your legs should be at about.",
+      "Stand up with a dumbbell in each hand being held at arms length. The elbows should be close to the torso.",
       "Rotate the palms of the hands so that they are facing inward in a neutral position. This will be your starting position.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -13460,7 +13460,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "This drill is best done in sand or other soft landing surface. Ensure that you are able to measure distance. Stand in a partial squat.",
+      "This drill is best done in sand or other soft landing surface. Ensure that you are able to measure distance.",
       "Utilizing a big arm swing and a countermovement of the legs, jump forward as far as you can.",
       "Losing posture or landing stiffly with locked knees."
     ],
@@ -13491,7 +13491,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Start by standing to the right side of a low pulley row. Use your left hand to come across the body and grab a single handle attached to.",
+      "Start by standing to the right side of a low pulley row.",
       "Make sure that your back is erect and your feet are shoulder width apart from each other. This is the starting position.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -13523,8 +13523,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "Grab a single handle with your left arm next to the low pulley machine. Turn away from the machine keeping the handle to the side of.",
-      "Keeping your upper arms close to your head (elbows in) and perpendicular to the floor, lower the resistance in a semicircular motion.",
+      "Grab a single handle with your left arm next to the low pulley machine.",
+      "Keeping your upper arms close to your head (elbows in) and perpendicular to the floor, lower the resistance in a semicircular motion behind your head until your forearms touch your biceps.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -13554,7 +13554,7 @@ WP1C_EXERCISES = [
       "السواعد"
     ],
     "cues_en": [
-      "To begin, stand straight while holding a weight plate by the ridge at arm's length in each hand using a neutral grip (palms facing in)..",
+      "To begin, stand straight while holding a weight plate by the ridge at arm's length in each hand using a neutral grip (palms facing in).",
       "Lower the plates until the fingers are nearly extended but can still hold weights. Inhale as you lower the plates.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -13583,8 +13583,8 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Stand on the back side of an incline bench as if you were going to be a spotter for someone. Have a dumbbell in one hand and rest it.",
-      "Position your non lifting hand at the corner or side of the incline bench. The chest should be pressed against the top part of the.",
+      "Stand on the back side of an incline bench as if you were going to be a spotter for someone.",
+      "Position your non lifting hand at the corner or side of the incline bench.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -13615,7 +13615,7 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "To begin, stand up with a dumbbell held in one hand. Your feet should be about shoulder width apart from each other. Now fully extend.",
+      "To begin, stand up with a dumbbell held in one hand. Your feet should be about shoulder width apart from each other.",
       "This will be your starting position.",
       "Letting elbows flare or drift during the press."
     ],
@@ -13646,7 +13646,7 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "To begin, stand up holding a barbell or e-z bar using a pronated grip (palms facing forward) with your hands closer than shoulder width.",
+      "To begin, stand up holding a barbell or e-z bar using a pronated grip (palms facing forward) with your hands closer than shoulder width apart from each other.",
       "Now elevate the barbell above your head until your arms are fully extended. Keep your elbows in. This will be your starting position.",
       "Letting elbows flare or drift during the press."
     ],
@@ -13677,8 +13677,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Start by having a dumbbell in one hand with your arm fully extended to the side using a neutral grip. Use your other arm to hold on to.",
-      "Your feet should be shoulder width apart from each other. Now slowly lift the dumbbell up until you create a 90 degree angle with your.",
+      "Start by having a dumbbell in one hand with your arm fully extended to the side using a neutral grip.",
+      "Your feet should be shoulder width apart from each other. Now slowly lift the dumbbell up until you create a 90 degree angle with your arm.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -13708,7 +13708,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Start by having a dumbbell in each hand with your arm fully extended to the side using a neutral grip. Your feet should be shoulder.",
+      "Start by having a dumbbell in each hand with your arm fully extended to the side using a neutral grip. Your feet should be shoulder width apart from each other.",
       "Continue to maintain a neutral grip throughout the entire exercise. Slowly lift the dumbbells up until your arms are fully extended.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -13737,7 +13737,7 @@ WP1C_EXERCISES = [
       "السواعد"
     ],
     "cues_en": [
-      "Start by standing straight and holding a barbell behind your glutes at arm's length while using a pronated grip (palms will be facing.",
+      "Start by standing straight and holding a barbell behind your glutes at arm's length while using a pronated grip (palms will be facing back away from the glutes) and having your hands shoulder width apart from each other.",
       "You should be looking straight forward while your feet are shoulder width apart from each other. This is the starting position.",
       "Swinging the elbows forward to heave the weight."
     ],
@@ -13838,7 +13838,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand with some space in front and behind you.",
-      "Bend at the waist, keeping your legs straight, until you can relax and let your upper body hang down in front of you. Let your arms and.",
+      "Bend at the waist, keeping your legs straight, until you can relax and let your upper body hang down in front of you.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -13866,8 +13866,8 @@ WP1C_EXERCISES = [
       "الترايسبس"
     ],
     "cues_en": [
-      "To begin, stand up with both arms fully extended above the head holding one end of a towel with both hands. Your elbows should be in and.",
-      "Now communicate with your partner so that he/she can grip the other side of the towel to apply resistance. Keeping your upper arms close.",
+      "To begin, stand up with both arms fully extended above the head holding one end of a towel with both hands.",
+      "Now communicate with your partner so that he/she can grip the other side of the towel to apply resistance.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -13901,7 +13901,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "Stand with your feet shoulder width apart holding a medicine ball in both hands. To begin, reach the medicine ball deep behind your head.",
+      "Stand with your feet shoulder width apart holding a medicine ball in both hands.",
       "Violently throw the ball forward, flexing at the hip and using your whole body to complete the movement.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -13939,7 +13939,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Begin in a relaxed stance with your feet shoulder width apart and hold your arms close to the body.",
-      "To initiate the move, squat down halfway and explode back up as high as possible. Fully extend your entire body, spreading your legs and.",
+      "To initiate the move, squat down halfway and explode back up as high as possible.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -13974,8 +13974,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "To begin, step onto the stepmill and select the desired option from the menu. You can choose a manual setting, or you can select a.",
-      "Stepmills offer convenience, cardiovascular benefits, and usually have less impact than running outside while offering a similar rate of.",
+      "To begin, step onto the stepmill and select the desired option from the menu. You can choose a manual setting, or you can select a program to run.",
+      "Stepmills offer convenience, cardiovascular benefits, and usually have less impact than running outside while offering a similar rate of calories burned.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -14006,8 +14006,8 @@ WP1C_EXERCISES = [
       "أسفل الظهر"
     ],
     "cues_en": [
-      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack that best matches your.",
-      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time.",
+      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack that best matches your height.",
+      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time straightening your torso.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -14039,7 +14039,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "To begin, stand straight with your feet shoulder width apart from each other. Place your hands on your hips. This is the starting position.",
-      "Now slowly inhale as much air as possible and then start to exhale as much as possible while bringing your stomach in as much as.",
+      "Now slowly inhale as much air as possible and then start to exhale as much as possible while bringing your stomach in as much as possible and hold this position.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -14072,7 +14072,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place a dumbbell standing up on a flat bench.",
-      "Ensuring that the dumbbell stays securely placed at the top of the bench, lie perpendicular to the bench (torso across it as in forming.",
+      "Ensuring that the dumbbell stays securely placed at the top of the bench, lie perpendicular to the bench (torso across it as in forming a cross) with only your shoulders lying on the surface.",
       "Pulling with momentum or stopping short of full range."
     ],
     "cues_ar": [
@@ -14102,7 +14102,7 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Place a loaded barbell on the end of a bench. Standing on the bench behind the bar, take a medium, pronated grip. Stand with your hips.",
+      "Place a loaded barbell on the end of a bench. Standing on the bench behind the bar, take a medium, pronated grip.",
       "Row the bar to your torso by retracting the shoulder blades and flexing the elbows. Use a controlled movement with no jerking.",
       "Rounding the upper back or jerking the weight."
     ],
@@ -14134,7 +14134,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Place a bar on the ground behind the head of an incline bench.",
-      "Lay on the bench face down. With a pronated grip, pick the barbell up from the floor, keeping your arms straight. Allow the bar to hang.",
+      "Lay on the bench face down. With a pronated grip, pick the barbell up from the floor, keeping your arms straight. Allow the bar to hang straight down.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -14171,7 +14171,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Stand to the side of a box with your inside foot on top of it, close to the edge.",
-      "Begin by swinging the arms upward as you push through the top leg, jumping upward as high as possible. Attempt to drive the opposite.",
+      "Begin by swinging the arms upward as you push through the top leg, jumping upward as high as possible. Attempt to drive the opposite knee upward.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -14207,8 +14207,8 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "To deadlift with short bands, simply loop them over the bar before you start, and step into them to set up. Ensure that they under the.",
-      "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very.",
+      "To deadlift with short bands, simply loop them over the bar before you start, and step into them to set up.",
+      "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -14244,8 +14244,8 @@ WP1C_EXERCISES = [
       "الخلفيات"
     ],
     "cues_en": [
-      "You can attach the chains to the sleeves of the bar, or just drape the middle over the bar so there is a greater weight increase as you.",
-      "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very.",
+      "You can attach the chains to the sleeves of the bar, or just drape the middle over the bar so there is a greater weight increase as you lift.",
+      "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars.",
       "Rounding the lower back under load."
     ],
     "cues_ar": [
@@ -14279,7 +14279,7 @@ WP1C_EXERCISES = [
       "قفز"
     ],
     "cues_en": [
-      "This drill is great for chest passes when you lack a partner or a wall of sufficient strength. Lay on the ground on your back with your.",
+      "This drill is great for chest passes when you lack a partner or a wall of sufficient strength. Lay on the ground on your back with your knees bent.",
       "Begin with the ball on your chest, held with both hands on the bottom.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -14381,7 +14381,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Anchor your suspension straps securely to the top of a rack or other object.",
-      "Leaning into the straps, take a handle in each hand and move into a push-up plank position. You should be as close to parallel to the.",
+      "Leaning into the straps, take a handle in each hand and move into a push-up plank position.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -14409,7 +14409,7 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Secure a set of suspension straps with the handles hanging about a foot off of the ground. Move yourself into a pushup plank position.",
+      "Secure a set of suspension straps with the handles hanging about a foot off of the ground. Move yourself into a pushup plank position facing away from the rack.",
       "Place your feet into the handles. You should maintain a straight posture, not allowing the hips to sag. This will be your starting position.",
       "Pulling on the neck or using hip momentum."
     ],
@@ -14440,7 +14440,7 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Suspend your straps at around chest height. Take a handle in each hand and lean back. Keep your body erect and your head and chest up..",
+      "Suspend your straps at around chest height. Take a handle in each hand and lean back. Keep your body erect and your head and chest up.",
       "Begin by flexing the elbow to initiate the movement. Protract your shoulder blades as you do so.",
       "Rounding the upper back or jerking the weight."
     ],
@@ -14474,7 +14474,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Begin in a standing position.",
-      "Press two lightweight plates together with your hands. Hold the plates together close to your chest to create an isometric contraction.",
+      "Press two lightweight plates together with your hands. Hold the plates together close to your chest to create an isometric contraction in your chest muscles.",
       "Flaring elbows too wide or bouncing at the bottom."
     ],
     "cues_ar": [
@@ -14540,8 +14540,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "To begin, lie down on the floor or an exercise mat with your back pressed against the floor. Your arms should be lying across your sides.",
-      "Your legs should be touching each other. Slowly elevate your legs up in the air until they are almost perpendicular to the floor with a.",
+      "To begin, lie down on the floor or an exercise mat with your back pressed against the floor.",
+      "Your legs should be touching each other.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -14572,8 +14572,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Stand upright holding an exercise ball with both hands. Extend your arms so the ball is straight out in front of you. This will be your.",
-      "Rotate your torso to one side, keeping your eyes on the ball as you move. Now, rotate back to the opposite direction. Repeat for 10-20.",
+      "Stand upright holding an exercise ball with both hands. Extend your arms so the ball is straight out in front of you. This will be your starting position.",
+      "Rotate your torso to one side, keeping your eyes on the ball as you move. Now, rotate back to the opposite direction. Repeat for 10-20 repetitions.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -14608,8 +14608,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "Running or hiking on trails will get the blood pumping and heart beating almost immediately. Make sure you have good shoes. While you.",
-      "A 150 lb person can burn over 200 calories for 30 minutes walking uphill, compared to 175 on a flat surface. If running the trail, a 150.",
+      "Running or hiking on trails will get the blood pumping and heart beating almost immediately. Make sure you have good shoes.",
+      "A 150 lb person can burn over 200 calories for 30 minutes walking uphill, compared to 175 on a flat surface.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -14642,7 +14642,7 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Bring right arm across your body and over your left shoulder, holding your elbow with your left hand, until you feel a stretch in your.",
+      "Bring right arm across your body and over your left shoulder, holding your elbow with your left hand, until you feel a stretch in your tricep.",
       "Move through a controlled full range of motion.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
@@ -14672,7 +14672,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Attach a rope to a low pulley. After selecting an appropriate weight, grasp the rope with both hands and face away from the cable.",
-      "Position your hands behind your head with your elbows point straight up. Your elbows should start out flexed, and you can stagger your.",
+      "Position your hands behind your head with your elbows point straight up.",
       "Letting elbows flare or drift during the press."
     ],
     "cues_ar": [
@@ -14700,8 +14700,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "To begin, lie down on the floor or an exercise mat with your back pressed against the floor. Your arms should be lying across your sides.",
-      "Your legs should be crossed by wrapping one ankle around the other. Slowly elevate your legs up in the air until your thighs are.",
+      "To begin, lie down on the floor or an exercise mat with your back pressed against the floor.",
+      "Your legs should be crossed by wrapping one ankle around the other.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -14733,7 +14733,7 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you swing the.",
+      "Clean two kettlebells to your shoulders.",
       "Move through a controlled full range of motion.",
       "Arching the lower back excessively instead of bracing."
     ],
@@ -14764,8 +14764,8 @@ WP1C_EXERCISES = [
       "الأكتاف"
     ],
     "cues_en": [
-      "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you swing the.",
-      "Press the kettlebells up and out. As the kettlebells pass your head, lean into the weights so that the kettlebells are racked behind.",
+      "Clean two kettlebells to your shoulders.",
+      "Press the kettlebells up and out. As the kettlebells pass your head, lean into the weights so that the kettlebells are racked behind your head.",
       "Arching the lower back excessively instead of bracing."
     ],
     "cues_ar": [
@@ -14800,7 +14800,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "While seated, bend forward to hug your thighs from underneath with both arms.",
-      "Keep your knees together and your legs extended out as you bring your chest down to your knees. You can also stretch your middle back by.",
+      "Keep your knees together and your legs extended out as you bring your chest down to your knees.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -14938,8 +14938,8 @@ WP1C_EXERCISES = [
       "لياقة"
     ],
     "cues_en": [
-      "To begin, step onto the treadmill and select the desired option from the menu. Most treadmills have a manual setting, or you can select.",
-      "Treadmills offer convenience, cardiovascular benefits, and usually have less impact than walking outside. When walking, you should move.",
+      "To begin, step onto the treadmill and select the desired option from the menu. Most treadmills have a manual setting, or you can select a program to run.",
+      "Treadmills offer convenience, cardiovascular benefits, and usually have less impact than walking outside.",
       "Losing posture or landing stiffly with locked knees."
     ],
     "cues_ar": [
@@ -14971,7 +14971,7 @@ WP1C_EXERCISES = [
       "أسفل الظهر"
     ],
     "cues_en": [
-      "To begin, lie down on an exercise ball with your torso pressing against the ball and parallel to the floor. The ball of your feet should.",
+      "To begin, lie down on an exercise ball with your torso pressing against the ball and parallel to the floor.",
       "Slowly raise your torso up by bending at the waist and lower back. Remember to exhale during this movement.",
       "Rounding the lower back under load."
     ],
@@ -15001,7 +15001,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "To begin, lie down on an exercise ball with your left side of the torso (waist, hips and shoulder) pressed against the ball.",
-      "Your feet should be on the floor while your legs are crossed and hanging from the ball. Hold a weighted plate with your right hand.",
+      "Your feet should be on the floor while your legs are crossed and hanging from the ball.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -15063,8 +15063,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Position a lightly loaded barbell across the back of your shoulders. You could also use a weighted vest, sandbag, or other type of.",
-      "The weight should be light enough that it doesn't slow you down significantly. Your feet should be just outside of shoulder width with.",
+      "Position a lightly loaded barbell across the back of your shoulders. You could also use a weighted vest, sandbag, or other type of resistance for this exercise.",
+      "The weight should be light enough that it doesn't slow you down significantly. Your feet should be just outside of shoulder width with your head and chest up.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -15096,8 +15096,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Standing upright, with feet at shoulder width and toes raised, use one hand to hold onto the beams of a squat rack and the opposite arm.",
-      "As you use one arm to hold yourself, bend at the knees and slowly lower your torso toward the ground by bringing your pelvis and knees.",
+      "Standing upright, with feet at shoulder width and toes raised, use one hand to hold onto the beams of a squat rack and the opposite arm to hold a plate on top of your chest.",
+      "As you use one arm to hold yourself, bend at the knees and slowly lower your torso toward the ground by bringing your pelvis and knees forward.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -15125,8 +15125,8 @@ WP1C_EXERCISES = [
       "البطن"
     ],
     "cues_en": [
-      "Start out by strapping the bands around the base of the decline bench. Place the handles towards the inside of the decline bench so that.",
-      "Position your legs through the decline machine until they are secured. Now reach for the exercise bands with both hands. Use a pronated.",
+      "Start out by strapping the bands around the base of the decline bench.",
+      "Position your legs through the decline machine until they are secured. Now reach for the exercise bands with both hands.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -15158,8 +15158,8 @@ WP1C_EXERCISES = [
       "الأماميات"
     ],
     "cues_en": [
-      "Start by positioning two flat benches shoulder width apart from each other. Stand on top of them and wrap the weighted belt around your.",
-      "Once you are standing straight up with the weight hanging in between your legs, position your arms so that they are fully extended to.",
+      "Start by positioning two flat benches shoulder width apart from each other.",
+      "Once you are standing straight up with the weight hanging in between your legs, position your arms so that they are fully extended to the side of your body.",
       "Letting knees cave inward or heels lift off the floor."
     ],
     "cues_ar": [
@@ -15190,7 +15190,7 @@ WP1C_EXERCISES = [
       "الصدر"
     ],
     "cues_en": [
-      "Lie down on a decline bench with both legs securely locked in position. Reach for the barbell behind the head using a pronated grip.",
+      "Lie down on a decline bench with both legs securely locked in position. Reach for the barbell behind the head using a pronated grip (palms facing out).",
       "When positioned properly, your arms should be fully extended and perpendicular to the floor. This is the starting position.",
       "Pulling with momentum or stopping short of full range."
     ],
@@ -15222,8 +15222,8 @@ WP1C_EXERCISES = [
       "الظهر"
     ],
     "cues_en": [
-      "Sit down on a pull-down machine with a wide bar attached to the top pulley. Make sure that you adjust the knee pad of the machine to fit.",
-      "Grab the bar with the palms facing forward using the prescribed grip. Note on grips: For a wide grip, your hands need to be spaced out.",
+      "Sit down on a pull-down machine with a wide bar attached to the top pulley. Make sure that you adjust the knee pad of the machine to fit your height.",
+      "Grab the bar with the palms facing forward using the prescribed grip.",
       "Pulling with momentum or stopping short of full range."
     ],
     "cues_ar": [
@@ -15252,7 +15252,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Hang from a pull-up bar using a pronated grip. Your arms and legs should be extended. This will be your starting position.",
-      "Begin by quickly raising one knee as high as you can. Do not swing your body or your legs. 3",
+      "Begin by quickly raising one knee as high as you can. Do not swing your body or your legs.",
       "Pulling on the neck or using hip momentum."
     ],
     "cues_ar": [
@@ -15322,8 +15322,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "This is a three-part stretch. Begin by lunging forward, with your front foot flat on the ground and on the toes of your back foot. With.",
-      "Now, place the arm on the same side as your front leg on the ground, with the elbow next to the foot. Your other hand should be placed.",
+      "This is a three-part stretch. Begin by lunging forward, with your front foot flat on the ground and on the toes of your back foot.",
+      "Now, place the arm on the same side as your front leg on the ground, with the elbow next to the foot.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -15354,8 +15354,8 @@ WP1C_EXERCISES = [
       "إطالة"
     ],
     "cues_en": [
-      "Start by standing straight with your feet being shoulder width apart from each other. Elevate your arms to the side of you until they.",
-      "Keeping your entire body stationary except for the wrists, begin to rotate both wrists forward in a circular motion. Tip: Pretend that.",
+      "Start by standing straight with your feet being shoulder width apart from each other.",
+      "Keeping your entire body stationary except for the wrists, begin to rotate both wrists forward in a circular motion.",
       "Forcing the stretch into sharp pain or bouncing."
     ],
     "cues_ar": [
@@ -15384,7 +15384,7 @@ WP1C_EXERCISES = [
     ],
     "cues_en": [
       "Hold a barbell with both hands and your palms facing down; hands spaced about shoulder width. This will be your starting position.",
-      "Alternating between each of your hands, perform the movement by extending the wrist as though you were rolling up a newspaper. Continue.",
+      "Alternating between each of your hands, perform the movement by extending the wrist as though you were rolling up a newspaper.",
       "Swinging the elbows forward to heave the weight."
     ],
     "cues_ar": [
@@ -15414,7 +15414,7 @@ WP1C_EXERCISES = [
       "البايسبس"
     ],
     "cues_en": [
-      "Grab a dumbbell in each hand and place your upper arms on top of the preacher bench or the incline bench. The dumbbells should be held.",
+      "Grab a dumbbell in each hand and place your upper arms on top of the preacher bench or the incline bench.",
       "As you breathe in, slowly lower the dumbbells keeping the palms down until your upper arm is extended and your biceps are fully stretched.",
       "Swinging the elbows forward to heave the weight."
     ],

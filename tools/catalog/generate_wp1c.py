@@ -444,15 +444,33 @@ def build_arabic_name(entry: dict, prim: list[str]) -> str:
     return f"{core} {' '.join(mods)}"
 
 
+def clean_cue_sentence(raw: str, fallback: str) -> str:
+    s = raw.strip()
+    if not s:
+        return fallback
+    # Normalize known upstream free-exercise-db punctuation artifacts
+    s = re.sub(r"\s+3$", "", s)
+    s = s.replace('form the letter "T:', 'form the letter "T".')
+    s = re.sub(r"\.([A-Z])", r". \1", s)
+    s = re.sub(r"\.\s+(let|this)\b", lambda m: ". " + m.group(1).capitalize(), s)
+    sents = [x.strip() for x in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"(\[])", s) if x.strip()]
+    if not sents:
+        return fallback
+    out = sents[0]
+    for nxt in sents[1:]:
+        if len(out) + 1 + len(nxt) <= 160:
+            out = out + " " + nxt
+        else:
+            break
+    if not re.search(r'[.!?")]$', out):
+        out += "."
+    return out
+
+
 def build_cues(entry: dict, pattern: str, cat: str) -> tuple[tuple[str, str, str], tuple[str, str, str]]:
     inst = [s.strip() for s in (entry.get("instructions") or []) if s and s.strip()]
-    c1 = inst[0] if len(inst) >= 1 else "Set your posture and brace your core before starting."
-    c2 = inst[1] if len(inst) >= 2 else "Move through a controlled full range of motion."
-    # Keep cues concise (max ~140 chars)
-    if len(c1) > 140:
-        c1 = c1[:137].rsplit(" ", 1)[0] + "."
-    if len(c2) > 140:
-        c2 = c2[:137].rsplit(" ", 1)[0] + "."
+    c1 = clean_cue_sentence(inst[0], "Set your posture and brace your core before starting.") if len(inst) >= 1 else "Set your posture and brace your core before starting."
+    c2 = clean_cue_sentence(inst[1], "Move through a controlled full range of motion.") if len(inst) >= 2 else "Move through a controlled full range of motion."
 
     mistake_en_by_pat = {
         "MOBILITY": "Forcing the stretch into sharp pain or bouncing.",
