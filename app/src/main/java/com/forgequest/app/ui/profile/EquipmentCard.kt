@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,8 +22,6 @@ import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.RadioButtonChecked
-import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,7 +40,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
@@ -56,6 +51,7 @@ import com.forgequest.app.domain.TrainingPlace
 import com.forgequest.app.domain.expandLegacyEquipment
 import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.PillButton
+import com.forgequest.app.ui.components.SlidingSegmentedPills
 import com.forgequest.app.ui.components.rememberFullSheetState
 import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeShape
@@ -68,7 +64,6 @@ internal fun EquipmentPreset.shortLabel(): String =
     (if (Locale.getDefault().language == "ar") labelAr else labelEn).substringBefore(" (")
 
 internal fun TrainingPlace.localName(): String = if (Locale.getDefault().language == "ar") labelAr else labelEn
-internal fun TrainingPlace.localDesc(): String = if (Locale.getDefault().language == "ar") descAr else descEn
 internal fun EquipmentGroup.localName(): String = if (Locale.getDefault().language == "ar") labelAr else labelEn
 
 internal fun encodeEquipmentSet(equipment: Set<Equipment>): String {
@@ -111,55 +106,17 @@ internal fun TrainingPlaceSelector(
     equipment: Set<Equipment>,
     onSelectPlace: (TrainingPlace) -> Unit,
 ) {
-    val c = Fit.colors
     val haptics = LocalContext.current.container.haptics
     val matched = TrainingPlace.match(equipment)
-    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TrainingPlace.entries.forEach { place ->
-            val selected = matched == place
-            Surface(
-                shape = ForgeShape.Sm,
-                color = if (selected) c.tealTrack else c.cardHigh,
-                border = BorderStroke(1.dp, if (selected) c.teal else c.divider),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 52.dp)
-                    .selectable(selected = selected, role = Role.RadioButton) {
-                        haptics.lightTick()
-                        onSelectPlace(place)
-                    },
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = if (selected) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
-                        contentDescription = null,
-                        tint = if (selected) c.teal else c.textSecondary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            place.localName(),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = c.textPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            place.localDesc(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = c.textSecondary,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
-    }
+    val places = TrainingPlace.entries
+    SlidingSegmentedPills(
+        options = places.map { it.localName() },
+        selected = matched?.ordinal ?: -1,
+        onSelect = { i ->
+            haptics.lightTick()
+            onSelectPlace(places[i])
+        },
+    )
 }
 
 /**

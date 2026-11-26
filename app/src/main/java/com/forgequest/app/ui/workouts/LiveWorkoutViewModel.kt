@@ -70,6 +70,26 @@ private val nextRestId = java.util.concurrent.atomic.AtomicLong(1L)
 /** Outlives the screen, so leaving a workout mid-rest and resuming it keeps the countdown. */
 private val runningRest = MutableStateFlow<RestTimer?>(null)
 
+/** Rebuilds a [RestTimer] from a saved future alarm snapshot when no timer is currently active in memory. */
+internal fun rebuildRestFromSaved(
+    saved: com.forgequest.app.data.notify.RestAlert.SavedRest?,
+    sessionId: Long,
+    currentRest: RestTimer?,
+    instanceIdProvider: () -> Long = { nextRestId.getAndIncrement() },
+): RestTimer? {
+    if (saved == null || currentRest != null) return null
+    if (saved.sessionId != null && saved.sessionId != sessionId) return null
+    return RestTimer(
+        totalSeconds = saved.totalSeconds,
+        endsAt = saved.endsAtMillis,
+        nextExercise = saved.nextExercise,
+        isRestPause = saved.isRestPause,
+        setId = saved.setId,
+        isShortTransition = false,
+        instanceId = instanceIdProvider(),
+    )
+}
+
 /** A bodyweight move that has become easy: [next] is the harder version, or null to suggest a slower tempo. */
 data class HarderHint(val next: ExerciseEntity?)
 
@@ -309,6 +329,23 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     init {
         viewModelScope.launch { checkWelcomeBack() }
         viewModelScope.launch { deloadWeek.value = repo.isDeloadWeekNow() }
+        viewModelScope.launch {
+            val session = repo.openSession.first { it != null } ?: return@launch
+            if (rest.value != null) return@launch
+            val nowMs = System.currentTimeMillis()
+            val saved = app.restAlert.pending(nowMs)
+            val rebuilt = rebuildRestFromSaved(saved, session.id, rest.value) ?: return@launch
+            rest.value = rebuilt
+            now.value = nowMs
+            val setId = rebuilt.setId
+            if (setId != null && effortSetId.value == null) {
+                val row = sets.value.firstOrNull { it.id == setId }
+                    ?: app.db.sessions().sets(session.id).firstOrNull { it.id == setId }
+                if (row != null && row.done && row.effort == null) {
+                    effortSetId.value = setId
+                }
+            }
+        }
         viewModelScope.launch {
             sets.collect { list ->
                 val missing = list.map { it.exerciseId }.distinct().filter { it !in previous.value }
@@ -649,7 +686,14 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
         val endsAt = System.currentTimeMillis() + seconds * 1000L
         rest.value = RestTimer(seconds, endsAt, nextExercise, isRestPause, setId, isShortTransition, instanceId)
         app.notifier.showRest(endsAt, nextExercise)
-        app.restAlert.start(endsAt, nextExercise)
+        app.restAlert.start(
+            endsAtMillis = endsAt,
+            nextExercise = nextExercise,
+            totalSeconds = seconds,
+            isRestPause = isRestPause,
+            setId = setId,
+            sessionId = currentSession?.id,
+        )
         if (app.restAlarms.shouldOfferExact()) offerExactAlarm.value = true
     }
 
@@ -668,8 +712,22 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
     }
 
     fun addRest(seconds: Int) {
-        rest.value = rest.value?.let { it.copy(totalSeconds = (it.totalSeconds + seconds).coerceAtLeast(15), endsAt = it.endsAt + seconds * 1000L) }
-        rest.value?.let { app.notifier.showRest(it.endsAt, it.nextExercise); app.restAlert.start(it.endsAt, it.nextExercise) }
+        val updated = rest.value?.let {
+            it.copy(
+                totalSeconds = (it.totalSeconds + seconds).coerceAtLeast(15),
+                endsAt = it.endsAt + seconds * 1000L,
+            )
+        } ?: return
+        rest.value = updated
+        app.notifier.showRest(updated.endsAt, updated.nextExercise)
+        app.restAlert.start(
+            endsAtMillis = updated.endsAt,
+            nextExercise = updated.nextExercise,
+            totalSeconds = updated.totalSeconds,
+            isRestPause = updated.isRestPause,
+            setId = updated.setId,
+            sessionId = currentSession?.id,
+        )
         app.haptics.tick()
     }
 

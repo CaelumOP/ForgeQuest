@@ -81,6 +81,56 @@ class RestAlertTest {
         assertTrue(alerts.isEmpty())
     }
 
+    @Test fun pending_returns_saved_rest_when_ends_at_is_in_the_future() {
+        val alert = newAlert()
+        alert.start(
+            endsAtMillis = 120_000L,
+            nextExercise = "Bench Press",
+            totalSeconds = 90,
+            isRestPause = true,
+            setId = 42L,
+            sessionId = 7L,
+        )
+        val saved = alert.pending(nowMillis = 60_000L)!!
+        assertEquals(120_000L, saved.endsAtMillis)
+        assertEquals(90, saved.totalSeconds)
+        assertEquals("Bench Press", saved.nextExercise)
+        assertTrue(saved.isRestPause)
+        assertEquals(42L, saved.setId)
+        assertEquals(7L, saved.sessionId)
+    }
+
+    @Test fun pending_falls_back_to_remaining_seconds_when_total_not_saved() {
+        val alert = newAlert()
+        alert.start(endsAtMillis = 90_500L, nextExercise = "Squat")
+        val saved = alert.pending(nowMillis = 50_000L)!!
+        assertEquals(41, saved.totalSeconds)
+        assertEquals("Squat", saved.nextExercise)
+    }
+
+    @Test fun pending_returns_null_when_expired_cancelled_or_fired() {
+        val alert = newAlert()
+        alert.start(endsAtMillis = 90_000L, nextExercise = "Squat", totalSeconds = 90)
+        assertNull(alert.pending(nowMillis = 90_000L))
+        assertNull(alert.pending(nowMillis = 95_000L))
+
+        alert.cancel()
+        assertNull(alert.pending(nowMillis = 10_000L))
+
+        alert.start(endsAtMillis = 90_000L, nextExercise = "Squat", totalSeconds = 90)
+        assertTrue(alert.fire("Squat"))
+        assertNull(alert.pending(nowMillis = 10_000L))
+    }
+
+    @Test fun cancel_preserves_exact_alarm_offered_preference() {
+        val alarms = RestAlarms(context, store)
+        alarms.offerAnswered()
+        val alert = newAlert()
+        alert.start(endsAtMillis = 90_000L, nextExercise = "Squat", totalSeconds = 90)
+        alert.cancel()
+        assertFalse(alarms.shouldOfferExact())
+    }
+
     // ------------------------------------------------------------ The real AlarmManager
 
     private val alarmManager = context.getSystemService(AlarmManager::class.java)

@@ -114,6 +114,7 @@ import com.forgequest.app.ui.components.IconCircle
 import com.forgequest.app.ui.components.NumberStepper
 import com.forgequest.app.ui.components.PillButton
 import com.forgequest.app.ui.components.SegmentedTabs
+import com.forgequest.app.ui.components.SlidingSegmentedPills
 import com.forgequest.app.ui.components.TonalPill
 import com.forgequest.app.ui.components.toast
 import com.forgequest.app.ui.localLabel
@@ -421,18 +422,16 @@ private fun QuickCard(a: PlanAnswers, change: ((PlanAnswers) -> PlanAnswers) -> 
                 change { it.copy(goal = g) }
             }
             Label(stringResource(R.string.pb_days))
-            SegmentedTabs(
+            SlidingSegmentedPills(
                 options = (2..6).map { it.toString() },
                 selected = (a.days.size - 2).takeIf { it in 0..4 } ?: -1,
                 onSelect = { i -> change { it.copy(days = PlanBuilder.spreadDays(i + 2), minutesByDay = emptyMap()) } },
-                modifier = Modifier.heightIn(min = 48.dp),
             )
             Label(stringResource(R.string.pb_minutes))
-            SegmentedTabs(
+            SlidingSegmentedPills(
                 options = minuteOptions.map { it.toString() },
                 selected = minuteOptions.indexOf(a.minutes),
                 onSelect = { i -> change { it.copy(minutes = minuteOptions[i], minutesByDay = emptyMap()) } },
-                modifier = Modifier.heightIn(min = 48.dp),
             )
             var gearOpen by remember { mutableStateOf(false) }
             Label(stringResource(R.string.pb_equipment))

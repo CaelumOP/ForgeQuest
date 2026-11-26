@@ -490,6 +490,7 @@ fun LiveWorkoutScreen(nav: NavHostController) {
                     RestBar(
                         secondsLeft = left.toInt(),
                         total = r.totalSeconds,
+                        endsAt = r.endsAt,
                         next = nextLabel,
                         isRestPause = r.isRestPause,
                         canCopyLastSet = nextSet != null && copySource != null,

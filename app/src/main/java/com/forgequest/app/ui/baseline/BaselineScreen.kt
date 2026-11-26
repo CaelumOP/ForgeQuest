@@ -255,9 +255,11 @@ fun BaselineScreen(
                 }
             }
             if (restEndsAt != null && activeMove == null) {
-                Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp)) {
-                    val left = (((restEndsAt ?: now) - now) / 1000L).coerceAtLeast(0L).toInt()
-                    BaselineRestBar(secondsLeft = left, onSkip = vm::skipRest)
+                restEndsAt?.let { end ->
+                    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = ForgeSpace.Gutter, vertical = 12.dp)) {
+                        val left = ((end - now) / 1000L).coerceAtLeast(0L).toInt()
+                        BaselineRestBar(secondsLeft = left, restEndsAt = end, onSkip = vm::skipRest)
+                    }
                 }
             }
         }
@@ -752,7 +754,7 @@ private fun BaselineResultStep(
 
         if (restEndsAt != null) {
             val left = ((restEndsAt - now) / 1000L).coerceAtLeast(0L).toInt()
-            BaselineRestBar(secondsLeft = left, onSkip = onSkipRest)
+            BaselineRestBar(secondsLeft = left, restEndsAt = restEndsAt, onSkip = onSkipRest)
         }
 
         if (openedSingleMove) {
@@ -780,6 +782,7 @@ private fun BaselineResultStep(
 @Composable
 internal fun BaselineRestBar(
     secondsLeft: Int,
+    restEndsAt: Long,
     onSkip: () -> Unit,
 ) {
     val c = Fit.colors
@@ -829,7 +832,7 @@ internal fun BaselineRestBar(
             }
         }
         Spacer(Modifier.height(8.dp))
-        RestWave(secondsLeft / BASELINE_REST_SECONDS.toFloat())
+        RestWave(endsAt = restEndsAt, totalSeconds = BASELINE_REST_SECONDS)
     }
 }
 

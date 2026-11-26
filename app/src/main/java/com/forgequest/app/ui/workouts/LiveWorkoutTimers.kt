@@ -2,10 +2,7 @@ package com.forgequest.app.ui.workouts
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +20,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
@@ -32,11 +31,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -45,6 +52,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.forgequest.app.R
 import com.forgequest.app.ui.components.PillButton
@@ -53,6 +61,9 @@ import com.forgequest.app.ui.theme.Fit
 import com.forgequest.app.ui.theme.ForgeShape
 import com.forgequest.app.ui.theme.LocalReducedMotion
 import com.forgequest.app.ui.theme.tabular
+import kotlinx.coroutines.isActive
+import kotlin.math.PI
+import kotlin.math.sin
 
 /** Full-screen clock for a timed hold: 3-2-1, the countdown to the target, then extra time counting up. */
 @Composable
@@ -110,6 +121,7 @@ private val REST_PRESETS = listOf(60, 90, 120, 180)
 internal fun RestBar(
     secondsLeft: Int,
     total: Int,
+    endsAt: Long,
     next: String?,
     isRestPause: Boolean,
     canCopyLastSet: Boolean,
@@ -198,30 +210,114 @@ internal fun RestBar(
         }
 
         Spacer(Modifier.height(8.dp))
-        RestWave(if (total == 0) 0f else secondsLeft / total.toFloat())
+        RestWave(endsAt = endsAt, totalSeconds = total)
     }
 }
 
-/** The rest countdown as an Expressive wavy bar; with reduced motion it is a flat, still bar. */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+private val WAVE_STROKE = 3.5.dp
+private val WAVE_LENGTH = 32.dp
+private val WAVE_AMPLITUDE = 3.5.dp
+private const val WAVE_CYCLES_PER_SEC = 0.5f
+private const val TRACK_CONTRAST_ALPHA = 0.16f
+
+/** Normalized remaining progress (0f..1f) for the rest timer wave at [nowMillis]. */
+internal fun restWaveProgress(endsAtMillis: Long, totalSeconds: Int, nowMillis: Long): Float {
+    if (totalSeconds <= 0) return 0f
+    val remaining = (endsAtMillis - nowMillis).coerceAtLeast(0L)
+    return (remaining / (totalSeconds * 1000f)).coerceIn(0f, 1f)
+}
+
+/**
+ * Calmer 60 FPS wavy rest countdown driven directly from [endsAt] on the frame clock,
+ * over a visible flat track. With reduced motion, renders a still flat line whose progress still updates.
+ */
 @Composable
-internal fun RestWave(progress: Float) {
+internal fun RestWave(endsAt: Long, totalSeconds: Int, modifier: Modifier = Modifier) {
     val c = Fit.colors
     val reduced = LocalReducedMotion.current
-    val shown by animateFloatAsState(
-        progress.coerceIn(0f, 1f),
-        if (reduced) snap() else androidx.compose.material3.WavyProgressIndicatorDefaults.ProgressAnimationSpec,
-        label = "rest",
-    )
-    val stroke = with(androidx.compose.ui.platform.LocalDensity.current) { Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round) }
-    androidx.compose.material3.LinearWavyProgressIndicator(
-        progress = { shown },
-        modifier = Modifier.fillMaxWidth(),
-        color = c.blue,
-        trackColor = c.blueTrack,
-        stroke = stroke,
-        trackStroke = stroke,
-        amplitude = { if (reduced) 0f else 1f },
-        waveSpeed = if (reduced) 0.dp else androidx.compose.material3.WavyProgressIndicatorDefaults.LinearDeterminateWavelength,
-    )
+    var progress by remember(endsAt, totalSeconds) {
+        mutableFloatStateOf(restWaveProgress(endsAt, totalSeconds, System.currentTimeMillis()))
+    }
+    var phaseRad by remember { mutableFloatStateOf(0f) }
+    val wavePath = remember { Path() }
+
+    LaunchedEffect(endsAt, totalSeconds, reduced) {
+        var lastFrameMs = -1L
+        while (isActive) {
+            withFrameMillis { frameMs ->
+                val nextProgress = restWaveProgress(endsAt, totalSeconds, System.currentTimeMillis())
+                progress = nextProgress
+                if (!reduced && nextProgress > 0f && lastFrameMs >= 0L) {
+                    val dtSec = (frameMs - lastFrameMs).coerceIn(0L, 100L) / 1000f
+                    val twoPi = (2.0 * PI).toFloat()
+                    phaseRad = (phaseRad + dtSec * WAVE_CYCLES_PER_SEC * twoPi) % twoPi
+                }
+                lastFrameMs = frameMs
+            }
+            if (progress <= 0f) break
+        }
+    }
+
+    Canvas(modifier.fillMaxWidth().height(12.dp)) {
+        val strokePx = WAVE_STROKE.toPx()
+        val pad = strokePx / 2f
+        val usableW = (size.width - strokePx).coerceAtLeast(0f)
+        val centerY = size.height / 2f
+        val trackColor = c.blue.copy(alpha = TRACK_CONTRAST_ALPHA)
+
+        drawLine(
+            color = trackColor,
+            start = Offset(pad, centerY),
+            end = Offset(size.width - pad, centerY),
+            strokeWidth = strokePx,
+            cap = StrokeCap.Round,
+        )
+
+        val activeW = usableW * progress
+        if (activeW <= 0.5f) return@Canvas
+
+        val rtl = layoutDirection == LayoutDirection.Rtl
+        val startX = if (rtl) size.width - pad else pad
+        val dir = if (rtl) -1f else 1f
+
+        if (reduced) {
+            drawLine(
+                color = c.blue,
+                start = Offset(startX, centerY),
+                end = Offset(startX + dir * activeW, centerY),
+                strokeWidth = strokePx,
+                cap = StrokeCap.Round,
+            )
+            return@Canvas
+        }
+
+        val wavelengthPx = WAVE_LENGTH.toPx().coerceAtLeast(1f)
+        val amplitudePx = WAVE_AMPLITUDE.toPx().coerceAtMost(((size.height - strokePx) / 2f).coerceAtLeast(0f))
+        val twoPi = (2.0 * PI).toFloat()
+        val stepPx = 2.5f
+
+        wavePath.reset()
+        var d = 0f
+        var first = true
+        while (d < activeW) {
+            val x = startX + dir * d
+            val y = centerY + amplitudePx * sin((d / wavelengthPx) * twoPi - phaseRad)
+            if (first) {
+                wavePath.moveTo(x, y)
+                first = false
+            } else {
+                wavePath.lineTo(x, y)
+            }
+            d += stepPx
+        }
+        val endX = startX + dir * activeW
+        val endY = centerY + amplitudePx * sin((activeW / wavelengthPx) * twoPi - phaseRad)
+        if (first) wavePath.moveTo(endX, endY) else wavePath.lineTo(endX, endY)
+
+        drawPath(
+            path = wavePath,
+            color = c.blue,
+            style = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
+    }
 }
