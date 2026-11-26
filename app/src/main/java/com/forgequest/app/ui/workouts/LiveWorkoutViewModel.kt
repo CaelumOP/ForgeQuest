@@ -203,6 +203,43 @@ internal fun resolveBaselineStatus(
     }
 }
 
+/**
+ * Returns updated [SetEntity] rows for [exercise] when a WEIGHTED [baselineTest] applies
+ * (no working-set history, no explicit positive plan weight, and a usable [BaselineTargets.weightedTarget]).
+ * Never creates sets; only updates existing undone sets whose weight is <= 0.
+ */
+internal fun fillBlankSetsFromWeightedBaseline(
+    exercise: ExerciseEntity?,
+    item: PlanItemEntity?,
+    sessionSets: List<SetEntity>,
+    recentFinished: List<SetEntity>,
+    unit: WeightUnit,
+    baselineTest: BaselineTestEntity?,
+): List<SetEntity> {
+    if (exercise == null || exercise.kind != ExerciseKind.WEIGHTED) return emptyList()
+    if (baselineTest == null || baselineTest.kind != ExerciseKind.WEIGHTED.name) return emptyList()
+    if (recentFinished.any { countsForProgression(it) }) return emptyList()
+    if ((item?.weightKg ?: 0f) > 0f) return emptyList()
+    val wKg = baselineTest.weightKg ?: 0f
+    val r = baselineTest.reps ?: 0
+    if (wKg <= 0f || r <= 0) return emptyList()
+    val target = BaselineTargets.weightedTarget(
+        weightKg = unit.fromKg(wKg).toDouble(),
+        reps = r,
+        repsMin = item?.repsMin ?: 8,
+        loadStep = unit.loadStep.toDouble(),
+    ) as? WeightedResult.Target ?: return emptyList()
+    val targetKg = unit.toKg(target.weightKg.toFloat())
+    if (targetKg <= 0f) return emptyList()
+    return sessionSets.mapNotNull { set ->
+        if (set.exerciseId == exercise.id && !set.done && (set.weightKg ?: 0f) <= 0f) {
+            set.copy(weightKg = targetKg)
+        } else {
+            null
+        }
+    }
+}
+
 data class WorkoutSummary(
     val title: String,
     val doneSets: Int,
@@ -341,25 +378,40 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
             if (setId != null && effortSetId.value == null) {
                 val row = sets.value.firstOrNull { it.id == setId }
                     ?: app.db.sessions().sets(session.id).firstOrNull { it.id == setId }
-                if (row != null && row.done && row.effort == null) {
+                if (row != null && row.done && row.effort.isBlank()) {
                     effortSetId.value = setId
                 }
             }
         }
+        val recentByExercise = mutableMapOf<String, List<SetEntity>>()
+        var cachedAllHistory: Map<String, List<SetEntity>>? = null
+        val filledBaselines = mutableMapOf<Pair<Long, String>, Pair<Long, Long>>()
         viewModelScope.launch {
-            sets.collect { list ->
-                val missing = list.map { it.exerciseId }.distinct().filter { it !in previous.value }
-                if (missing.isEmpty()) return@collect
-                val recentById = missing.associateWith { id -> app.db.sessions().recentDoneSets(id).filter { it.sessionId != currentSession?.id } }
-                val loaded = recentById.mapValues { (_, recent) ->
-                    recent.filter { it.sessionId == recent.firstOrNull()?.sessionId }.sortedBy { it.setIndex }
+            combine(sets, app.baselines.observeLatest(), exercises, settings) { list, baselineById, libById, _ ->
+                Triple(list, baselineById, libById)
+            }.collect { (list, baselineById, libById) ->
+                val distinctIds = list.map { it.exerciseId }.distinct()
+                if (distinctIds.isEmpty()) {
+                    _baselineStatus.value = emptyMap()
+                    return@collect
                 }
-                previous.value = previous.value + loaded
-                harder.value = harder.value + harderHints(recentById, list)
-                val session = currentSession
-                val libById = repo.library.first().associateBy { it.id }
+                if (libById.isEmpty()) return@collect
+                val session = currentSession ?: repo.openSessionNow()
+                val sessionId = list.firstOrNull()?.sessionId ?: session?.id ?: 0L
+                val missing = distinctIds.filter { it !in recentByExercise }
+                if (missing.isNotEmpty()) {
+                    val missingRecent = missing.associateWith { id ->
+                        app.db.sessions().recentDoneSets(id).filter { it.sessionId != session?.id }
+                    }
+                    recentByExercise.putAll(missingRecent)
+                    val loaded = missingRecent.mapValues { (_, recent) ->
+                        recent.filter { it.sessionId == recent.firstOrNull()?.sessionId }.sortedBy { it.setIndex }
+                    }
+                    previous.value = previous.value + loaded
+                    harder.value = harder.value + harderHints(missingRecent, list)
+                }
                 val currentSettings = app.settings.current()
-                val itemsByExercise = recentById.keys.associateWith { id ->
+                val itemsByExercise = distinctIds.associateWith { id ->
                     val first = list.firstOrNull { it.exerciseId == id }
                     if (first != null && session != null) {
                         repo.planItemAt(session, first.itemPosition)?.takeIf { it.exerciseId == id }
@@ -367,31 +419,65 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                         null
                     }
                 }
-                val baselineById = app.baselines.latestAll().associateBy { it.exerciseId }
-                val needsColdStartCheck = recentById.any { (id, recent) ->
+                val appliedUpdatesBySetId = mutableMapOf<Long, SetEntity>()
+                for (id in distinctIds) {
+                    val baseline = baselineById[id] ?: continue
+                    if (baseline.kind != ExerciseKind.WEIGHTED.name) continue
+                    val key = sessionId to id
+                    val sig = baseline.id to baseline.createdAt
+                    if (filledBaselines[key] == sig) continue
+                    filledBaselines[key] = sig
+                    val ex = libById[id] ?: continue
+                    val item = itemsByExercise[id]
+                    val recent = recentByExercise[id].orEmpty()
+                    val exUnit = currentSettings.weightUnitFor(ex.unitOverride)
+                    if (list.any { it.exerciseId == id && !it.done && (it.weightKg ?: 0f) <= 0f }) {
+                        liveMutex.withLock {
+                            val freshExSets = freshSets().filter { it.exerciseId == id }
+                            fillBlankSetsFromWeightedBaseline(
+                                exercise = ex,
+                                item = item,
+                                sessionSets = freshExSets,
+                                recentFinished = recent,
+                                unit = exUnit,
+                                baselineTest = baseline,
+                            ).forEach { updated ->
+                                repo.updateSet(updated)
+                                appliedUpdatesBySetId[updated.id] = updated
+                            }
+                        }
+                    }
+                }
+                val effectiveList = if (appliedUpdatesBySetId.isEmpty()) list else list.map { appliedUpdatesBySetId[it.id] ?: it }
+                val needsColdStartCheck = distinctIds.any { id ->
                     val ex = libById[id]
                     val item = itemsByExercise[id]
+                    val recent = recentByExercise[id].orEmpty()
                     val exUnit = currentSettings.weightUnitFor(ex?.unitOverride.orEmpty())
                     recent.none { countsForProgression(it) } &&
                         !hasUsableBaselineTarget(ex, item, exUnit, baselineById[id]) &&
                         ex?.kind == ExerciseKind.WEIGHTED &&
                         (item?.weightKg ?: 0f) <= 0f &&
-                        list.any { it.exerciseId == id && countsForProgression(it) && (it.weightKg ?: 0f) > 0f }
+                        effectiveList.any { it.exerciseId == id && countsForProgression(it) && (it.weightKg ?: 0f) > 0f }
                 }
                 val allHistory = if (needsColdStartCheck) {
-                    app.db.sessions().allRecentDoneSets()
+                    cachedAllHistory ?: app.db.sessions().allRecentDoneSets()
                         .filter { it.sessionId != session?.id }
                         .groupBy { it.exerciseId }
+                        .also { cachedAllHistory = it }
                 } else {
                     emptyMap()
                 }
                 val found = mutableMapOf<String, Progression.Reason>()
                 val statuses = mutableMapOf<String, BaselineStatus>()
-                for ((id, recent) in recentById) {
+                for (id in distinctIds) {
                     val ex = libById[id]
                     val item = itemsByExercise[id]
-                    repo.progressionFor(item, ex, recent).reason?.let { found[id] = it }
-                    val exSets = list.filter { it.exerciseId == id }
+                    val recent = recentByExercise[id].orEmpty()
+                    if (id in missing) {
+                        repo.progressionFor(item, ex, recent).reason?.let { found[id] = it }
+                    }
+                    val exSets = effectiveList.filter { it.exerciseId == id }
                     val exUnit = currentSettings.weightUnitFor(ex?.unitOverride.orEmpty())
                     statuses[id] = resolveBaselineStatus(
                         exercise = ex,
@@ -404,8 +490,8 @@ class LiveWorkoutViewModel(val app: AppContainer) : ViewModel() {
                         baselineTest = baselineById[id],
                     )
                 }
-                reasons.value = reasons.value + found
-                _baselineStatus.value = _baselineStatus.value + statuses
+                if (found.isNotEmpty()) reasons.value = reasons.value + found
+                _baselineStatus.value = statuses
             }
         }
         viewModelScope.launch {

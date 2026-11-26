@@ -308,7 +308,7 @@ internal fun SetRowContent(
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 if (set.targetLabel.isNotBlank() && sublabel != null) {
-                    Text(set.targetLabel, style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
+                    Text(localizeTargetLabel(set.targetLabel, stringResource(R.string.rx_reps_only)), style = MaterialTheme.typography.labelSmall, color = c.textSecondary)
                 }
                 if (showPrPill(set, pr)) {
                     PrTag()
