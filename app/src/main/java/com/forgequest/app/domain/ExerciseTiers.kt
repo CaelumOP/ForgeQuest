@@ -85,18 +85,17 @@ object ExerciseTiers {
         "l_sit" to "hollow_hold",
     )
 
-    /** Ordered harder candidates tried first by [harderVersion]: the first that exists, has the same kind and fits the gear wins. */
+    /** Ordered harder candidates tried first by [harderStep] (either kind): the first that is in scope and fits the gear wins. */
     private val HARDER_IN_LINE = mapOf(
         "push_up" to listOf("diamond_push_up", "decline_push_up"),
         "knee_push_up" to listOf("push_up"),
+        // Diamond is catalogued as elbow extension, which has no harder move without gear: keep the push-up line climbing.
+        "diamond_push_up" to listOf("archer_push_up"),
+        "negative_pull_up" to listOf("pull_up"),
         "pull_up" to listOf("archer_pull_up", "l_sit_pull_up"),
         "chin_up" to listOf("archer_pull_up"),
         "australian_pull_up" to listOf("pull_up", "chin_up"),
         "squat" to listOf("jump_squat"),
-    )
-
-    /** Ordered harder candidates for holds, tried first by [harderHoldVersion]. */
-    private val HARDER_HOLD_IN_LINE = mapOf(
         "plank" to listOf("hollow_hold"),
         "hollow_hold" to listOf("l_sit"),
         "side_plank" to listOf("copenhagen_plank_short"),
@@ -123,57 +122,107 @@ object ExerciseTiers {
         }
     }
 
-    /**
-     * The next step up from [ex] that fits [equipment] (empty = not set, so anything): a bodyweight rep move one tier up
-     * in the same movement, else the related movement at the same tier (squat → lunge, rows → negative pull-up), else
-     * the related movement one tier up.
-     * Null when there is none: the screen then suggests a slower tempo instead.
-     */
-    fun harderVersion(ex: ExerciseEntity, library: List<ExerciseEntity>, equipment: Set<Equipment>): ExerciseEntity? {
-        if (ex.kind != ExerciseKind.REPS) return null
-        val tier = of(ex) ?: return null
-        val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
-        val byId = library.associateBy { it.id }
-        HARDER_IN_LINE[ex.id]?.forEach { id ->
-            byId[id]?.takeIf { it.kind == ex.kind && ExerciseSwapEngine.profileFor(it).fits(allowed) }?.let { return it }
-        }
-        NEXT_IN_TIER[ex.id]?.let { id -> byId[id]?.takeIf { ExerciseSwapEngine.profileFor(it).fits(allowed) }?.let { return it } }
-        if (tier == Tier.ADVANCED) return null
-        val up = Tier.entries[tier.ordinal + 1]
-        val pattern = ExerciseSwapEngine.profileFor(ex).pattern
-        val fits = library.filter { it.id != ex.id && it.kind == ExerciseKind.REPS && ExerciseSwapEngine.profileFor(it).fits(allowed) }
-        fun pick(p: MovementPattern?, t: Tier) = p?.let { pat ->
-            fits.filter { of(it) == t && ExerciseSwapEngine.profileFor(it).pattern == pat }
-                // Closest muscles first, so a chest push-up steps up to a chest move, not a shoulder one.
-                .maxWithOrNull(compareBy<ExerciseEntity> { c -> c.primary.count { it in ex.primary } }.thenBy { c -> -c.name.length })
-        }
-        return pick(pattern, up) ?: pick(RELATED[pattern], tier) ?: pick(RELATED[pattern], up)
+    /** True for a move the starting-point ladder reasons about: reps or hold, built-in, not a stretch, not mobility or conditioning. */
+    fun isProgressionMove(ex: ExerciseEntity): Boolean {
+        if (ex.kind != ExerciseKind.REPS && ex.kind != ExerciseKind.HOLD) return false
+        if (ex.custom || ex.id in ExerciseCatalog.STRETCH_IDS) return false
+        val p = ExerciseSwapEngine.profileFor(ex).pattern
+        return p != MovementPattern.MOBILITY && p != MovementPattern.CARRY_CONDITIONING
+    }
+
+    /** The two core patterns share one family; every other pattern is its own. */
+    fun patternFamily(p: MovementPattern): String =
+        if (p == MovementPattern.CORE_ANTI_EXTENSION || p == MovementPattern.CORE_FLEXION_ROTATION) "core" else p.name
+
+    internal fun allowedEquipment(equipment: Set<Equipment>): Set<Equipment> =
+        expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
+
+    /** Deterministic pick: same pattern, most primary muscles shared with the source, same kind, shorter name, id. */
+    internal fun pickCandidate(src: ExerciseEntity, cands: List<ExerciseEntity>): ExerciseEntity? {
+        val pattern = ExerciseSwapEngine.profileFor(src).pattern
+        return cands.minWithOrNull(
+            compareBy<ExerciseEntity> { c -> if (ExerciseSwapEngine.profileFor(c).pattern == pattern) 0 else 1 }
+                .thenBy { c -> -c.primary.count { it in src.primary } }
+                .thenBy { c -> if (c.kind == src.kind) 0 else 1 }
+                .thenBy { c -> c.name.length }
+                .thenBy { c -> c.id },
+        )
     }
 
     /**
-     * The next step up from a HOLD [ex] that fits [equipment]: a named harder hold first, else a hold of the same
-     * movement pattern exactly one tier up (closest primary muscles, then id). Null when there is none.
+     * The next step up from a reps or hold move that fits [equipment] (empty = not set, so anything), either kind:
+     * the named line, the next in tier, the same family one tier up, the related pattern (same tier, then one up), the
+     * same family two tiers up. Advanced moves only use the named steps. Null at the true top for the gear.
      */
-    fun harderHoldVersion(ex: ExerciseEntity, library: List<ExerciseEntity>, equipment: Set<Equipment>): ExerciseEntity? {
-        if (ex.kind != ExerciseKind.HOLD) return null
-        val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
+    fun harderStep(ex: ExerciseEntity, library: List<ExerciseEntity>, equipment: Set<Equipment>): ExerciseEntity? {
+        if (!isProgressionMove(ex)) return null
+        val tier = of(ex) ?: return null
+        val allowed = allowedEquipment(equipment)
+        fun ok(c: ExerciseEntity) = c.id != ex.id && isProgressionMove(c) && ExerciseSwapEngine.profileFor(c).fits(allowed)
         val byId = library.associateBy { it.id }
-        HARDER_HOLD_IN_LINE[ex.id]?.forEach { id ->
-            byId[id]?.takeIf { it.kind == ExerciseKind.HOLD && ExerciseSwapEngine.profileFor(it).fits(allowed) }?.let { return it }
+        HARDER_IN_LINE[ex.id]?.forEach { id -> byId[id]?.takeIf { ok(it) }?.let { return it } }
+        NEXT_IN_TIER[ex.id]?.let { id -> byId[id]?.takeIf { ok(it) }?.let { return it } }
+        if (tier == Tier.ADVANCED) return null
+        val fits = library.filter { ok(it) }
+        val pattern = ExerciseSwapEngine.profileFor(ex).pattern
+        val family = patternFamily(pattern)
+        fun inFamily(t: Int) = fits.filter { c ->
+            patternFamily(ExerciseSwapEngine.profileFor(c).pattern) == family && of(c) == Tier.entries[t]
+        }
+        fun inPattern(p: MovementPattern, t: Int) = fits.filter { c ->
+            ExerciseSwapEngine.profileFor(c).pattern == p && of(c) == Tier.entries[t]
+        }
+        val idx = tier.ordinal
+        pickCandidate(ex, inFamily(idx + 1))?.let { return it }
+        RELATED[pattern]?.let { related ->
+            pickCandidate(ex, inPattern(related, idx))?.let { return it }
+            pickCandidate(ex, inPattern(related, idx + 1))?.let { return it }
+        }
+        return if (idx + 2 < Tier.entries.size) pickCandidate(ex, inFamily(idx + 2)) else null
+    }
+
+    /**
+     * The next step up from a REPS [ex] that is itself a reps move (live workout hint and debrief); null when the step
+     * is a hold or there is none: the screen then suggests a slower tempo instead.
+     */
+    fun harderVersion(ex: ExerciseEntity, library: List<ExerciseEntity>, equipment: Set<Equipment>): ExerciseEntity? {
+        if (ex.kind != ExerciseKind.REPS) return null
+        return harderStep(ex, library, equipment)?.takeIf { it.kind == ExerciseKind.REPS }
+    }
+
+    /**
+     * The next step down from a reps or hold move (a weighted move stays with weighted moves): the named line first,
+     * walking down until one fits, else the same family one tier lower, then two lower. Foundation moves with no named
+     * step are the true bottom: null.
+     */
+    fun easierStep(ex: ExerciseEntity, library: List<ExerciseEntity>, equipment: Set<Equipment>): ExerciseEntity? {
+        if (ex.id in ExerciseCatalog.STRETCH_IDS) return null
+        val allowed = allowedEquipment(equipment)
+        val weighted = ex.kind == ExerciseKind.WEIGHTED
+        fun ok(c: ExerciseEntity): Boolean {
+            if (c.id == ex.id || c.custom || c.id in ExerciseCatalog.STRETCH_IDS || !ExerciseSwapEngine.profileFor(c).fits(allowed)) return false
+            if (weighted) {
+                val p = ExerciseSwapEngine.profileFor(c).pattern
+                return c.kind == ExerciseKind.WEIGHTED && p != MovementPattern.MOBILITY && p != MovementPattern.CARRY_CONDITIONING
+            }
+            return isProgressionMove(c)
+        }
+        val byId = library.associateBy { it.id }
+        var curId: String? = ex.id
+        val visited = HashSet<String>()
+        while (curId != null && visited.add(curId)) {
+            val prevId = prevInLineId(curId) ?: break
+            byId[prevId]?.takeIf { ok(it) }?.let { return it }
+            curId = prevId
         }
         val tier = of(ex) ?: return null
-        if (tier == Tier.ADVANCED) return null
-        val up = Tier.entries[tier.ordinal + 1]
-        val pattern = ExerciseSwapEngine.profileFor(ex).pattern
-        if (pattern == MovementPattern.MOBILITY || pattern == MovementPattern.CARRY_CONDITIONING) return null
-        return library
-            .filter { c ->
-                c.id != ex.id && c.kind == ExerciseKind.HOLD && c.id !in ExerciseCatalog.STRETCH_IDS &&
-                    ExerciseSwapEngine.profileFor(c).pattern == pattern &&
-                    ExerciseSwapEngine.profileFor(c).fits(allowed) && of(c) == up
-            }
-            .minWithOrNull(
-                compareBy<ExerciseEntity> { c -> -c.primary.count { it in ex.primary } }.thenBy { it.id },
-            )
+        if (tier == Tier.FOUNDATION) return null
+        val family = patternFamily(ExerciseSwapEngine.profileFor(ex).pattern)
+        val fits = library.filter { ok(it) }
+        fun inFamily(t: Int) = fits.filter { c ->
+            patternFamily(ExerciseSwapEngine.profileFor(c).pattern) == family && of(c) == Tier.entries[t]
+        }
+        val idx = tier.ordinal
+        return pickCandidate(ex, inFamily(idx - 1)) ?: if (idx - 2 >= 0) pickCandidate(ex, inFamily(idx - 2)) else null
     }
 }

@@ -1,7 +1,6 @@
 package com.forgequest.app.domain
 
 import com.forgequest.app.data.db.ExerciseEntity
-import com.forgequest.app.data.seed.ExerciseCatalog
 import kotlin.math.floor
 import kotlin.math.max
 
@@ -62,14 +61,13 @@ object BaselineTargets {
         return if (s < 60) "$s $unitSuffix" else "${s / 60}:${(s % 60).toString().padStart(2, '0')}"
     }
 
-    /** The next step up that fits [equipment]: reps moves via [ExerciseTiers.harderVersion], holds via [ExerciseTiers.harderHoldVersion], weighted never. */
+    /** The next step up that fits [equipment] (reps or hold, either kind of move): [ExerciseTiers.harderStep]. Weighted never. */
     fun harderVariation(
         exercise: ExerciseEntity,
         library: List<ExerciseEntity>,
         equipment: Set<Equipment> = emptySet(),
     ): ExerciseEntity? = when (exercise.kind) {
-        ExerciseKind.REPS -> ExerciseTiers.harderVersion(exercise, library, equipment)
-        ExerciseKind.HOLD -> ExerciseTiers.harderHoldVersion(exercise, library, equipment)
+        ExerciseKind.REPS, ExerciseKind.HOLD -> ExerciseTiers.harderStep(exercise, library, equipment)
         ExerciseKind.WEIGHTED -> null
     }
 
@@ -97,47 +95,10 @@ object BaselineTargets {
         return if (snapped < loadStep) WeightedResult.NoTarget else WeightedResult.Target(snapped)
     }
 
-    /**
-     * Walks easier along the same progression line in [ExerciseTiers] until one fits [equipment],
-     * else the easiest same-movement-pattern exercise that [equipment] allows (ties by id), else null.
-     */
+    /** The next step down: the named line, else the same family one tier lower (see [ExerciseTiers.easierStep]). Null is the bottom for the gear. */
     fun easierVariation(
         exercise: ExerciseEntity,
         library: List<ExerciseEntity>,
         equipment: Set<Equipment> = emptySet(),
-    ): ExerciseEntity? {
-        if (exercise.id in ExerciseCatalog.STRETCH_IDS) return null
-        val allowed = expandLegacyEquipment(equipment).ifEmpty { Equipment.allActive } + Equipment.BODYWEIGHT
-        val byId = library.associateBy { it.id }
-
-        var curId: String? = exercise.id
-        val visited = HashSet<String>()
-        while (curId != null && visited.add(curId)) {
-            val prevId = ExerciseTiers.prevInLineId(curId) ?: break
-            val candidate = byId[prevId]
-            if (candidate != null &&
-                candidate.id !in ExerciseCatalog.STRETCH_IDS &&
-                candidate.kind == exercise.kind &&
-                ExerciseSwapEngine.profileFor(candidate).fits(allowed)
-            ) {
-                return candidate
-            }
-            curId = prevId
-        }
-
-        val srcTier = ExerciseTiers.of(exercise)
-        if (srcTier == Tier.FOUNDATION) return null
-        val pattern = ExerciseSwapEngine.profileFor(exercise).pattern
-        val candidates = library.mapNotNull { c ->
-            if (c.id == exercise.id || c.id in ExerciseCatalog.STRETCH_IDS || c.kind != exercise.kind) return@mapNotNull null
-            val profile = ExerciseSwapEngine.profileFor(c)
-            if (profile.pattern != pattern || !profile.fits(allowed)) return@mapNotNull null
-            val candTier = ExerciseTiers.of(c) ?: return@mapNotNull null
-            if (srcTier != null && candTier.ordinal >= srcTier.ordinal) return@mapNotNull null
-            c to candTier
-        }
-        return candidates
-            .minWithOrNull(compareBy<Pair<ExerciseEntity, Tier>> { it.second.ordinal }.thenBy { it.first.id })
-            ?.first
-    }
+    ): ExerciseEntity? = ExerciseTiers.easierStep(exercise, library, equipment)
 }

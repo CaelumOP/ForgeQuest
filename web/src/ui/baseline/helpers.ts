@@ -29,9 +29,12 @@ export const BASELINE_REST_SECONDS = 90
 export const BASELINE_REST_KEY = 'fq.baseline.restEndsAt'
 export const BASELINE_DISMISSED_KEY = 'baseline_card_dismissed'
 
+/** How the logged value reads against the move: fine, outgrown (too easy) or too hard to start with. */
+export type BaselineLevel = 'NORMAL' | 'OUTGROWN' | 'TOO_HARD'
+
 export type BaselineTargetDisplay =
-  | { kind: 'REPS'; reps: number; harderExercise?: ExerciseRow | null; easierExercise?: ExerciseRow | null }
-  | { kind: 'HOLD'; seconds: number; harderExercise?: ExerciseRow | null; easierExercise?: ExerciseRow | null }
+  | { kind: 'REPS'; reps: number; level: BaselineLevel; harderExercise?: ExerciseRow | null; easierExercise?: ExerciseRow | null }
+  | { kind: 'HOLD'; seconds: number; level: BaselineLevel; harderExercise?: ExerciseRow | null; easierExercise?: ExerciseRow | null }
   | { kind: 'WEIGHT'; weightKg: number; unit: WeightUnit }
   | { kind: 'EASIER_VARIATION'; easierExercise: ExerciseRow | null }
   | { kind: 'TOO_LIGHT' }
@@ -63,6 +66,12 @@ export function shouldShowBaselineEntry(
   return !hasFinishedWorkout && !hasBaseline && !dismissed
 }
 
+export function baselineLevel(kind: ExerciseKind, value: number): BaselineLevel {
+  if (isOutgrown(kind, value)) return 'OUTGROWN'
+  if (isTooHard(kind, value)) return 'TOO_HARD'
+  return 'NORMAL'
+}
+
 export function computeTargetDisplay(
   exercise: ExerciseRow,
   test: Pick<BaselineTestRow, 'reps' | 'seconds' | 'weightKg'>,
@@ -82,7 +91,7 @@ export function computeTargetDisplay(
         const easier = isTooHard(exercise.kind, reps)
           ? (easierVariation(exercise, library, equipment) as ExerciseRow | null)
           : null
-        return { kind: 'REPS', reps: target, harderExercise: harder, easierExercise: easier }
+        return { kind: 'REPS', reps: target, level: baselineLevel('REPS', reps), harderExercise: harder, easierExercise: easier }
       }
       const easier = easierVariation(exercise, library, equipment) as ExerciseRow | null
       return { kind: 'EASIER_VARIATION', easierExercise: easier }
@@ -99,7 +108,7 @@ export function computeTargetDisplay(
       const easier = isTooHard(exercise.kind, seconds)
         ? (easierVariation(exercise, library, equipment) as ExerciseRow | null)
         : null
-      return { kind: 'HOLD', seconds: target, harderExercise: harder, easierExercise: easier }
+      return { kind: 'HOLD', seconds: target, level: baselineLevel('HOLD', seconds), harderExercise: harder, easierExercise: easier }
     }
     case 'WEIGHTED': {
       const wKg = test.weightKg ?? 0
@@ -213,17 +222,60 @@ export function formatLastResult(
   }
 }
 
-/** Subtle second line on a summary row: too easy (outgrown) or hard start (too low), else null. */
-export function baselineRowFlag(
-  kind: ExerciseKind,
-  test: Pick<BaselineTestRow, 'reps' | 'seconds'> | null,
-): 'baseline_row_too_easy' | 'baseline_row_too_hard' | null {
-  if (!test) return null
-  const value = kind === 'REPS' ? test.reps : kind === 'HOLD' ? test.seconds : null
-  if (value == null) return null
-  if (isOutgrown(kind, value)) return 'baseline_row_too_easy'
-  if (isTooHard(kind, value)) return 'baseline_row_too_hard'
-  return null
+/** What to tell the person about a result: a move to try, or an honest top / bottom for their gear. */
+export type BaselineNudge =
+  | { kind: 'TRY_HARDER'; exercise: ExerciseRow }
+  | { kind: 'TOP_LEVEL' }
+  | { kind: 'TRY_EASIER'; exercise: ExerciseRow }
+  | { kind: 'BOTTOM_LEVEL' }
+  | { kind: 'NONE' }
+
+/** The only source of the try-harder / try-easier copy: the summary row and the result screen both render from this. */
+export function baselineNudge(target: BaselineTargetDisplay | null): BaselineNudge {
+  if (!target) return { kind: 'NONE' }
+  let level: BaselineLevel = 'NORMAL'
+  let harder: ExerciseRow | null | undefined
+  let easier: ExerciseRow | null | undefined
+  switch (target.kind) {
+    case 'REPS':
+    case 'HOLD':
+      level = target.level
+      harder = target.harderExercise
+      easier = target.easierExercise
+      break
+    case 'EASIER_VARIATION':
+    case 'HOLD_TOO_SHORT':
+      level = 'TOO_HARD'
+      easier = target.easierExercise
+      break
+    default:
+      return { kind: 'NONE' }
+  }
+  if (level === 'OUTGROWN') return harder ? { kind: 'TRY_HARDER', exercise: harder } : { kind: 'TOP_LEVEL' }
+  if (level === 'TOO_HARD') return easier ? { kind: 'TRY_EASIER', exercise: easier } : { kind: 'BOTTOM_LEVEL' }
+  return { kind: 'NONE' }
+}
+
+/** String key (and move name argument) for the summary row's second line; null for none. */
+export function baselineNudgeRow(nudge: BaselineNudge): { key: 'baseline_row_too_easy' | 'baseline_row_too_hard' | 'baseline_row_top_level' | 'baseline_row_bottom_level'; name?: string } | null {
+  switch (nudge.kind) {
+    case 'TRY_HARDER': return { key: 'baseline_row_too_easy', name: nudge.exercise.name }
+    case 'TRY_EASIER': return { key: 'baseline_row_too_hard', name: nudge.exercise.name }
+    case 'TOP_LEVEL': return { key: 'baseline_row_top_level' }
+    case 'BOTTOM_LEVEL': return { key: 'baseline_row_bottom_level' }
+    case 'NONE': return null
+  }
+}
+
+/** String key (and move name argument) for the result screen message; null for none. */
+export function baselineNudgeResult(nudge: BaselineNudge): { key: 'baseline_outgrown_try_harder' | 'baseline_try_easier' | 'baseline_maxed_for_gear' | 'baseline_easiest_for_gear'; name?: string } | null {
+  switch (nudge.kind) {
+    case 'TRY_HARDER': return { key: 'baseline_outgrown_try_harder', name: nudge.exercise.name }
+    case 'TRY_EASIER': return { key: 'baseline_try_easier', name: nudge.exercise.name }
+    case 'TOP_LEVEL': return { key: 'baseline_maxed_for_gear' }
+    case 'BOTTOM_LEVEL': return { key: 'baseline_easiest_for_gear' }
+    case 'NONE': return null
+  }
 }
 
 export function formatTargetText(target: BaselineTargetDisplay | null, lang: Lang): string | null {
@@ -234,9 +286,7 @@ export function formatTargetText(target: BaselineTargetDisplay | null, lang: Lan
     case 'HOLD': return t('baseline_start_seconds', formatHoldSeconds(target.seconds, t('unit_s')))
     case 'WEIGHT': return t('baseline_start_weight', formatWeight(target.unit, target.weightKg, arabic))
     case 'EASIER_VARIATION':
-      return target.easierExercise
-        ? t('baseline_try_easier', target.easierExercise.name)
-        : t('baseline_try_easier_generic')
+      return null
     case 'TOO_HEAVY':
       return t('baseline_too_heavy')
     case 'TOO_LIGHT':

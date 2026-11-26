@@ -56,7 +56,7 @@ describe('PlanBuilderTest', () => {
     }
     // Hands-elevated push-ups need only a wall or counter: the owner's expected scaling for a max of 1.
     expect(sawIncline).toBe(true)
-  })
+  }, 30_000) // ~1.5 s alone; heavy plan-matrix runs alongside it in the full suite
 
   it('baseline squat, hinge and plank results cap their movement patterns at Foundation', () => {
     const cases: [Partial<PlanInput>, MovementPattern[]][] = [

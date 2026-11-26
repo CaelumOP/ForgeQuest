@@ -32,7 +32,9 @@ import {
   DEFAULT_WEIGHTED_REPS_MIN,
   formatLastResult,
   formatTargetText,
-  baselineRowFlag,
+  baselineNudge,
+  baselineNudgeResult,
+  baselineNudgeRow,
   loadBaselineRest,
   saveBaselineRest,
   type BaselineMoveItem,
@@ -363,7 +365,7 @@ export function BaselineScreen({ param }: { param?: string }) {
 function BaselineMoveRow({ move, lang, onClick }: { move: BaselineMoveItem; lang: Lang; onClick: () => void }) {
   const lastText = formatLastResult(move.latest, move.exercise.kind, move.unit, lang)
   const targetText = lastText ? formatTargetText(move.target, lang) : null
-  const flagKey = lastText ? baselineRowFlag(move.exercise.kind, move.latest) : null
+  const flag = lastText ? baselineNudgeRow(baselineNudge(move.target)) : null
   const muscles = musclesLabel(move.exercise)
   return (
     <Card onClick={onClick}>
@@ -375,7 +377,7 @@ function BaselineMoveRow({ move, lang, onClick }: { move: BaselineMoveItem; lang
             <>
               <span class="bl-move-sub">{lastText}</span>
               {targetText && <span class="bl-move-target">{targetText}</span>}
-              {flagKey && <span class="bl-move-flag">{t(flagKey)}</span>}
+              {flag && <span class="bl-move-flag">{flag.name != null ? t(flag.key, flag.name) : t(flag.key)}</span>}
             </>
           ) : (
             <span class="bl-move-sub">{muscles || t('baseline_not_tested')}</span>
@@ -608,6 +610,8 @@ function BaselineResultStep({
   const recorded = formatLastResult(result.test, result.exercise.kind, result.unit, lang)
   const targetText = formatTargetText(result.target, lang)
   const tgt = result.target
+  const nudge = baselineNudge(tgt)
+  const nudgeMsg = baselineNudgeResult(nudge)
 
   return (
     <>
@@ -618,35 +622,11 @@ function BaselineResultStep({
           {(tgt.kind === 'REPS' || tgt.kind === 'HOLD' || tgt.kind === 'WEIGHT') && targetText && (
             <div class="bl-target-box">{targetText}</div>
           )}
-          {(tgt.kind === 'REPS' || tgt.kind === 'HOLD') && tgt.harderExercise && (
-            <>
-              <p class="bl-result-msg">{t('baseline_outgrown_try_harder', tgt.harderExercise.name)}</p>
-              <Button block onClick={() => onTestEasier(tgt.harderExercise!.id)}>
-                {t('baseline_test_move_named', tgt.harderExercise.name)}
-              </Button>
-            </>
-          )}
-          {(tgt.kind === 'REPS' || tgt.kind === 'HOLD' || tgt.kind === 'HOLD_TOO_SHORT') && tgt.easierExercise && (
-            <>
-              <p class="bl-result-msg">{t('baseline_try_easier', tgt.easierExercise.name)}</p>
-              <Button block onClick={() => onTestEasier(tgt.easierExercise!.id)}>
-                {t('baseline_test_move_named', tgt.easierExercise.name)}
-              </Button>
-            </>
-          )}
-          {tgt.kind === 'EASIER_VARIATION' && (
-            <>
-              <p class="bl-result-msg">
-                {tgt.easierExercise
-                  ? t('baseline_try_easier', tgt.easierExercise.name)
-                  : t('baseline_try_easier_generic')}
-              </p>
-              {tgt.easierExercise && (
-                <Button block onClick={() => onTestEasier(tgt.easierExercise!.id)}>
-                  {t('baseline_test_move_named', tgt.easierExercise.name)}
-                </Button>
-              )}
-            </>
+          {nudgeMsg && <p class="bl-result-msg">{nudgeMsg.name != null ? t(nudgeMsg.key, nudgeMsg.name) : t(nudgeMsg.key)}</p>}
+          {(nudge.kind === 'TRY_HARDER' || nudge.kind === 'TRY_EASIER') && (
+            <Button block onClick={() => onTestEasier(nudge.exercise.id)}>
+              {t('baseline_test_move_named', nudge.exercise.name)}
+            </Button>
           )}
           {(tgt.kind === 'TOO_LIGHT' || tgt.kind === 'TOO_HEAVY' || tgt.kind === 'WEIGHT_NO_TARGET' || tgt.kind === 'HOLD_TOO_SHORT') && (
             <>

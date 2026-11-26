@@ -1,11 +1,7 @@
 // Pure working-target calculations and easier-variation lookup for 3B baseline tests.
-import { STRETCH_IDS } from '../data/seed/exercise-catalog'
 import type { ExerciseEntity } from './entities'
-import {
-  ALL_ACTIVE_EQUIPMENT, expandLegacyEquipment, profileFits, profileFor,
-  type Equipment,
-} from './exercise-swap-engine'
-import { harderHoldVersion, harderVersion, prevInLineId, tierOf, TIERS } from './exercise-tiers'
+import type { Equipment } from './exercise-swap-engine'
+import { easierStep, harderStep } from './exercise-tiers'
 import { fromKg, loadStep, toKg, type WeightUnit } from './units'
 
 export type WeightedTarget =
@@ -58,15 +54,14 @@ export function formatHoldSeconds(seconds: number, unitSuffix: string): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
-/** The next step up that fits `equipment`: reps via harderVersion, holds via harderHoldVersion, weighted never. */
+/** The next step up that fits `equipment` (reps or hold, either kind of move): harderStep. Weighted never. */
 export function harderVariation(
   exercise: ExerciseEntity,
   catalog: readonly ExerciseEntity[],
   equipment: ReadonlySet<Equipment> = new Set(),
 ): ExerciseEntity | null {
-  if (exercise.kind === 'REPS') return harderVersion(exercise, catalog as ExerciseEntity[], equipment as Set<Equipment>)
-  if (exercise.kind === 'HOLD') return harderHoldVersion(exercise, catalog as ExerciseEntity[], equipment as Set<Equipment>)
-  return null
+  if (exercise.kind === 'WEIGHTED') return null
+  return harderStep(exercise, catalog, equipment)
 }
 
 /** Working hold target (seconds): null when <= 0, else min(max(5, floor(0.7 * s / 5) * 5), s, MAX_HOLD_TARGET). */
@@ -112,56 +107,11 @@ export function weightedTargetInUnit(
   return { kind: 'TARGET', kg: toKg(unit, res.kg) }
 }
 
-/**
- * Walks easier along the same progression line in `exercise-tiers` until one fits `equipment`,
- * else the easiest same-movement-pattern exercise that `equipment` allows (ties by id), else null.
- */
+/** The next step down: the named line, else the same family one tier lower (see easierStep). Null is the bottom for the gear. */
 export function easierVariation(
   exercise: ExerciseEntity,
   catalog: readonly ExerciseEntity[],
   equipment: ReadonlySet<Equipment> = new Set(),
 ): ExerciseEntity | null {
-  if (STRETCH_IDS.has(exercise.id)) return null
-  const exp = expandLegacyEquipment(equipment)
-  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : [...ALL_ACTIVE_EQUIPMENT, 'BODYWEIGHT'])
-  const byId = new Map<string, ExerciseEntity>(catalog.map((e) => [e.id, e]))
-
-  let curId: string | undefined = exercise.id
-  const visited = new Set<string>()
-  while (curId != null && !visited.has(curId)) {
-    visited.add(curId)
-    const prevId = prevInLineId(curId)
-    if (!prevId) break
-    const candidate = byId.get(prevId)
-    if (
-      candidate &&
-      !STRETCH_IDS.has(candidate.id) &&
-      candidate.kind === exercise.kind &&
-      profileFits(profileFor(candidate), allowed)
-    ) {
-      return candidate
-    }
-    curId = prevId
-  }
-
-  const srcTier = tierOf(exercise)
-  if (srcTier === 'FOUNDATION') return null
-  const srcOrd = srcTier ? TIERS.indexOf(srcTier) : null
-  const pattern = profileFor(exercise).pattern
-  let best: ExerciseEntity | null = null
-  let bestOrd = Infinity
-  for (const c of catalog) {
-    if (c.id === exercise.id || STRETCH_IDS.has(c.id) || c.kind !== exercise.kind) continue
-    const profile = profileFor(c)
-    if (profile.pattern !== pattern || !profileFits(profile, allowed)) continue
-    const candTier = tierOf(c)
-    if (!candTier) continue
-    const candOrd = TIERS.indexOf(candTier)
-    if (srcOrd != null && candOrd >= srcOrd) continue
-    if (!best || candOrd < bestOrd || (candOrd === bestOrd && c.id < best.id)) {
-      best = c
-      bestOrd = candOrd
-    }
-  }
-  return best
+  return easierStep(exercise, catalog, equipment)
 }

@@ -83,18 +83,17 @@ export const EASIER_IN_LINE: Record<string, string> = {
   l_sit: 'hollow_hold',
 }
 
-/** Ordered harder candidates tried first by harderVersion: the first that exists, has the same kind and fits the gear wins. */
+/** Ordered harder candidates tried first by harderStep (either kind): the first that is in scope and fits the gear wins. */
 export const HARDER_IN_LINE: Record<string, string[]> = {
   push_up: ['diamond_push_up', 'decline_push_up'],
   knee_push_up: ['push_up'],
+  // Diamond is catalogued as elbow extension, which has no harder move without gear: keep the push-up line climbing.
+  diamond_push_up: ['archer_push_up'],
+  negative_pull_up: ['pull_up'],
   pull_up: ['archer_pull_up', 'l_sit_pull_up'],
   chin_up: ['archer_pull_up'],
   australian_pull_up: ['pull_up', 'chin_up'],
   squat: ['jump_squat'],
-}
-
-/** Ordered harder candidates for holds, tried first by harderHoldVersion. */
-export const HARDER_HOLD_IN_LINE: Record<string, string[]> = {
   plank: ['hollow_hold'],
   hollow_hold: ['l_sit'],
   side_plank: ['copenhagen_plank_short'],
@@ -122,73 +121,128 @@ export const readyForHarder = (last: PastSet[], previous: PastSet[], topReps: nu
   )
 }
 
-/**
- * The next step up from `ex` that fits `equipment` (empty = not set, so anything): a bodyweight rep move one tier up
- * in the same movement, else the related movement at the same tier (squat → lunge, rows → negative pull-up), else the
- * related movement one tier up. Null when there is none: the screen then suggests a slower tempo instead.
- */
-export function harderVersion(ex: ExerciseEntity, library: ExerciseEntity[], equipment: Set<Equipment>): ExerciseEntity | null {
-  if (ex.kind !== 'REPS') return null
-  const tier = tierOf(ex)
-  if (!tier) return null
-  const exp = expandLegacyEquipment(equipment)
-  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : ALL_ACTIVE_EQUIPMENT)
-  for (const id of HARDER_IN_LINE[ex.id] ?? []) {
-    const cand = library.find((e) => e.id === id)
-    if (cand && cand.kind === ex.kind && profileFits(profileFor(cand), allowed)) return cand
-  }
-  const nextId = NEXT_IN_TIER[ex.id]
-  const named = nextId ? library.find((e) => e.id === nextId) : undefined
-  if (named && profileFits(profileFor(named), allowed)) return named
-  if (tier === 'ADVANCED') return null
-  const up = TIERS[TIERS.indexOf(tier) + 1]
-  const pattern = profileFor(ex).pattern
-  const fits = library.filter((e) => e.id !== ex.id && e.kind === 'REPS' && profileFits(profileFor(e), allowed))
-  const pick = (p: MovementPattern | undefined, t: Tier): ExerciseEntity | null => {
-    if (!p) return null
-    // Closest muscles first, so a chest push-up steps up to a chest move, then the shorter (simpler) name.
-    const score = (c: ExerciseEntity) => [c.primary.filter((m) => ex.primary.includes(m)).length, -c.name.length]
-    let best: ExerciseEntity | null = null
-    for (const c of fits) {
-      if (tierOf(c) !== t || profileFor(c).pattern !== p) continue
-      if (!best) { best = c; continue }
-      const [a1, a2] = score(c)
-      const [b1, b2] = score(best)
-      if (a1 > b1 || (a1 === b1 && a2 > b2)) best = c
+/** True for a move the starting-point ladder reasons about: reps or hold, built-in, not a stretch, not mobility or conditioning. */
+export function isProgressionMove(ex: ExerciseEntity): boolean {
+  if (ex.kind !== 'REPS' && ex.kind !== 'HOLD') return false
+  if (ex.custom || STRETCH_IDS.has(ex.id)) return false
+  const p = profileFor(ex).pattern
+  return p !== 'MOBILITY' && p !== 'CARRY_CONDITIONING'
+}
+
+/** The two core patterns share one family; every other pattern is its own. */
+export const patternFamily = (p: MovementPattern): string =>
+  p === 'CORE_ANTI_EXTENSION' || p === 'CORE_FLEXION_ROTATION' ? 'core' : p
+
+export const allowedEquipment = (equipment: ReadonlySet<Equipment>): Set<Equipment> => {
+  const exp = expandLegacyEquipment(equipment as Set<Equipment>)
+  return new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : [...ALL_ACTIVE_EQUIPMENT, 'BODYWEIGHT'])
+}
+
+/** Deterministic pick: same pattern, most primary muscles shared with the source, same kind, shorter name, id. */
+export function pickCandidate(src: ExerciseEntity, cands: ExerciseEntity[]): ExerciseEntity | null {
+  const pattern = profileFor(src).pattern
+  const key = (c: ExerciseEntity) => [
+    profileFor(c).pattern === pattern ? 0 : 1,
+    -c.primary.filter((m) => src.primary.includes(m)).length,
+    c.kind === src.kind ? 0 : 1,
+    c.name.length,
+  ]
+  let best: ExerciseEntity | null = null
+  let bestKey: number[] = []
+  for (const c of cands) {
+    const k = key(c)
+    let better = best == null
+    if (!better) {
+      better = c.id < best!.id
+      for (let i = 0; i < k.length; i++) {
+        if (k[i] !== bestKey[i]) { better = k[i] < bestKey[i]; break }
+      }
     }
-    return best
+    if (better) { best = c; bestKey = k }
   }
-  return pick(pattern, up) ?? pick(RELATED[pattern], tier) ?? pick(RELATED[pattern], up)
+  return best
 }
 
 /**
- * The next step up from a HOLD `ex` that fits `equipment`: a named harder hold first, else a hold of the same movement
- * pattern exactly one tier up (closest primary muscles, then id). Null when there is none.
+ * The next step up from a reps or hold move that fits `equipment` (empty = not set, so anything), either kind:
+ * the named line, the next in tier, the same family one tier up, the related pattern (same tier, then one up), the
+ * same family two tiers up. Advanced moves only use the named steps. Null at the true top for the gear.
  */
-export function harderHoldVersion(ex: ExerciseEntity, library: ExerciseEntity[], equipment: Set<Equipment>): ExerciseEntity | null {
-  if (ex.kind !== 'HOLD') return null
-  const exp = expandLegacyEquipment(equipment)
-  const allowed = new Set<Equipment>(exp.size ? [...exp, 'BODYWEIGHT'] : [...ALL_ACTIVE_EQUIPMENT, 'BODYWEIGHT'])
-  for (const id of HARDER_HOLD_IN_LINE[ex.id] ?? []) {
-    const cand = library.find((e) => e.id === id)
-    if (cand && cand.kind === 'HOLD' && profileFits(profileFor(cand), allowed)) return cand
+export function harderStep(ex: ExerciseEntity, library: readonly ExerciseEntity[], equipment: ReadonlySet<Equipment>): ExerciseEntity | null {
+  if (!isProgressionMove(ex)) return null
+  const tier = tierOf(ex)
+  if (!tier) return null
+  const allowed = allowedEquipment(equipment)
+  const ok = (c: ExerciseEntity) => c.id !== ex.id && isProgressionMove(c) && profileFits(profileFor(c), allowed)
+  for (const id of HARDER_IN_LINE[ex.id] ?? []) {
+    const c = library.find((e) => e.id === id)
+    if (c && ok(c)) return c
+  }
+  const nextId = NEXT_IN_TIER[ex.id]
+  const named = nextId ? library.find((e) => e.id === nextId) : undefined
+  if (named && ok(named)) return named
+  if (tier === 'ADVANCED') return null
+  const fits = library.filter(ok)
+  const pattern = profileFor(ex).pattern
+  const family = patternFamily(pattern)
+  const tierIdx = TIERS.indexOf(tier)
+  const inFamily = (t: number) => fits.filter((c) => patternFamily(profileFor(c).pattern) === family && tierOf(c) === TIERS[t])
+  const inPattern = (p: MovementPattern, t: number) => fits.filter((c) => profileFor(c).pattern === p && tierOf(c) === TIERS[t])
+  const up = pickCandidate(ex, inFamily(tierIdx + 1))
+  if (up) return up
+  const related = RELATED[pattern]
+  if (related) {
+    const same = pickCandidate(ex, inPattern(related, tierIdx))
+    if (same) return same
+    const relUp = pickCandidate(ex, inPattern(related, tierIdx + 1))
+    if (relUp) return relUp
+  }
+  return tierIdx + 2 < TIERS.length ? pickCandidate(ex, inFamily(tierIdx + 2)) : null
+}
+
+/**
+ * The next step up from a REPS `ex` that is itself a reps move (live workout hint and debrief); null when the step
+ * is a hold or there is none: the screen then suggests a slower tempo instead.
+ */
+export function harderVersion(ex: ExerciseEntity, library: readonly ExerciseEntity[], equipment: ReadonlySet<Equipment>): ExerciseEntity | null {
+  if (ex.kind !== 'REPS') return null
+  const step = harderStep(ex, library, equipment)
+  return step && step.kind === 'REPS' ? step : null
+}
+
+/**
+ * The next step down from a reps or hold move (a weighted move stays with weighted moves): the named line first,
+ * walking down until one fits, else the same family one tier lower, then two lower. Foundation moves with no named
+ * step are the true bottom: null.
+ */
+export function easierStep(ex: ExerciseEntity, library: readonly ExerciseEntity[], equipment: ReadonlySet<Equipment>): ExerciseEntity | null {
+  if (STRETCH_IDS.has(ex.id)) return null
+  const allowed = allowedEquipment(equipment)
+  const weighted = ex.kind === 'WEIGHTED'
+  const ok = (c: ExerciseEntity) => {
+    if (c.id === ex.id || c.custom || STRETCH_IDS.has(c.id) || !profileFits(profileFor(c), allowed)) return false
+    if (weighted) {
+      const p = profileFor(c).pattern
+      return c.kind === 'WEIGHTED' && p !== 'MOBILITY' && p !== 'CARRY_CONDITIONING'
+    }
+    return isProgressionMove(c)
+  }
+  const byId = new Map(library.map((e) => [e.id, e]))
+  let curId: string | undefined = ex.id
+  const visited = new Set<string>()
+  while (curId != null && !visited.has(curId)) {
+    visited.add(curId)
+    const prevId = prevInLineId(curId)
+    if (!prevId) break
+    const c = byId.get(prevId)
+    if (c && ok(c)) return c
+    curId = prevId
   }
   const tier = tierOf(ex)
-  if (!tier || tier === 'ADVANCED') return null
-  const up = TIERS[TIERS.indexOf(tier) + 1]
-  const pattern = profileFor(ex).pattern
-  if (pattern === 'MOBILITY' || pattern === 'CARRY_CONDITIONING') return null
-  let best: ExerciseEntity | null = null
-  let bestScore = -1
-  for (const c of library) {
-    if (c.id === ex.id || c.kind !== 'HOLD' || STRETCH_IDS.has(c.id)) continue
-    const prof = profileFor(c)
-    if (prof.pattern !== pattern || !profileFits(prof, allowed) || tierOf(c) !== up) continue
-    const score = c.primary.filter((m) => ex.primary.includes(m)).length
-    if (!best || score > bestScore || (score === bestScore && c.id < best.id)) {
-      best = c
-      bestScore = score
-    }
-  }
-  return best
+  if (!tier || tier === 'FOUNDATION') return null
+  const family = patternFamily(profileFor(ex).pattern)
+  const tierIdx = TIERS.indexOf(tier)
+  const fits = library.filter(ok)
+  const inFamily = (t: number) => fits.filter((c) => patternFamily(profileFor(c).pattern) === family && tierOf(c) === TIERS[t])
+  return pickCandidate(ex, inFamily(tierIdx - 1)) ?? (tierIdx - 2 >= 0 ? pickCandidate(ex, inFamily(tierIdx - 2)) : null)
 }

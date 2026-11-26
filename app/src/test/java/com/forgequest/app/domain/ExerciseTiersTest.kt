@@ -49,11 +49,11 @@ class ExerciseTiersTest {
     }
 
     @Test fun holdLadderHasHarderAndEasierRungs() {
-        fun nextHold(id: String, eq: Set<Equipment> = gym) = ExerciseTiers.harderHoldVersion(ex(id), all, eq)?.id
+        fun nextHold(id: String, eq: Set<Equipment> = gym) = ExerciseTiers.harderStep(ex(id), all, eq)?.id
         assertEquals("hollow_hold", nextHold("plank", bodyweight))
         assertEquals("l_sit", nextHold("hollow_hold"))
         assertEquals("copenhagen_plank_short", nextHold("side_plank"))
-        assertNull(nextHold("push_up")) // reps moves use harderVersion
+        assertNull(nextHold("hollow_hold", bodyweight)) // true top without gear
         assertEquals("incline_hollow_plank", BaselineTargets.easierVariation(ex("plank"), all, bodyweight)?.id)
         assertEquals("plank", BaselineTargets.easierVariation(ex("hollow_hold"), all, bodyweight)?.id)
         assertEquals("hollow_hold", BaselineTargets.easierVariation(ex("l_sit"), all, bodyweight)?.id)

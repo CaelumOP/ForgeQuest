@@ -338,10 +338,10 @@ private fun BaselineMoveRow(
                             color = c.teal,
                         )
                     }
-                    val flag = rowFlagRes(move)
+                    val flag = nudgeRowText(baselineNudge(move.target))
                     if (flag != null) {
                         Text(
-                            text = stringResource(flag),
+                            text = flag,
                             style = MaterialTheme.typography.bodySmall,
                             color = c.textSecondary,
                         )
@@ -700,7 +700,8 @@ private fun BaselineResultStep(
                     )
                 }
                 val targetText = formatTargetText(result.target)
-                when (val t = result.target) {
+                val t = result.target
+                when (t) {
                     is BaselineTargetDisplay.Reps,
                     is BaselineTargetDisplay.Hold,
                     is BaselineTargetDisplay.Weight -> {
@@ -719,62 +720,6 @@ private fun BaselineResultStep(
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
-                            val harder = when (t) {
-                                is BaselineTargetDisplay.Reps -> t.harderExercise
-                                is BaselineTargetDisplay.Hold -> t.harderExercise
-                                else -> null
-                            }
-                            val easierSuggestion = when (t) {
-                                is BaselineTargetDisplay.Reps -> t.easierExercise
-                                is BaselineTargetDisplay.Hold -> t.easierExercise
-                                else -> null
-                            }
-                            if (harder != null) {
-                                Text(
-                                    text = stringResource(R.string.baseline_outgrown_try_harder, harder.name),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = c.textPrimary,
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                PillButton(
-                                    text = stringResource(R.string.baseline_test_move_named, harder.name),
-                                    onClick = { onTestEasier(harder.id) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                            if (easierSuggestion != null) {
-                                Text(
-                                    text = stringResource(R.string.baseline_try_easier, easierSuggestion.name),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = c.textPrimary,
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                PillButton(
-                                    text = stringResource(R.string.baseline_test_move_named, easierSuggestion.name),
-                                    onClick = { onTestEasier(easierSuggestion.id) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                    }
-                    is BaselineTargetDisplay.EasierVariation -> {
-                        val easier = t.easierExercise
-                        Text(
-                            text = if (easier != null) {
-                                stringResource(R.string.baseline_try_easier, easier.name)
-                            } else {
-                                stringResource(R.string.baseline_try_easier_generic)
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = c.textPrimary,
-                        )
-                        if (easier != null) {
-                            Spacer(Modifier.height(4.dp))
-                            PillButton(
-                                text = stringResource(R.string.baseline_test_move_named, easier.name),
-                                onClick = { onTestEasier(easier.id) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
                         }
                     }
                     BaselineTargetDisplay.TooLight,
@@ -788,28 +733,50 @@ private fun BaselineResultStep(
                                 color = c.textSecondary,
                             )
                         }
-                        val holdEasier = (t as? BaselineTargetDisplay.HoldTooShort)?.easierExercise
-                        if (holdEasier != null) {
-                            Text(
-                                text = stringResource(R.string.baseline_try_easier, holdEasier.name),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = c.textPrimary,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            PillButton(
-                                text = stringResource(R.string.baseline_test_move_named, holdEasier.name),
-                                onClick = { onTestEasier(holdEasier.id) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        TonalPill(
-                            text = stringResource(R.string.baseline_retest),
-                            onClick = onRetest,
-                            tint = c.teal,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
                     }
+                    is BaselineTargetDisplay.EasierVariation -> Unit
+                }
+                // Every try-harder / try-easier line comes from baselineNudge, never from the raw value.
+                val nudge = baselineNudge(t)
+                val nudgeMove = when (nudge) {
+                    is BaselineNudge.TryHarder -> nudge.exercise
+                    is BaselineNudge.TryEasier -> nudge.exercise
+                    else -> null
+                }
+                val nudgeText: String? = when (nudge) {
+                    is BaselineNudge.TryHarder -> stringResource(R.string.baseline_outgrown_try_harder, nudge.exercise.name)
+                    BaselineNudge.TopLevel -> stringResource(R.string.baseline_maxed_for_gear)
+                    is BaselineNudge.TryEasier -> stringResource(R.string.baseline_try_easier, nudge.exercise.name)
+                    BaselineNudge.BottomLevel -> stringResource(R.string.baseline_easiest_for_gear)
+                    BaselineNudge.None -> null
+                }
+                if (nudgeText != null) {
+                    Text(
+                        text = nudgeText,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = c.textPrimary,
+                    )
+                }
+                if (nudgeMove != null) {
+                    Spacer(Modifier.height(4.dp))
+                    PillButton(
+                        text = stringResource(R.string.baseline_test_move_named, nudgeMove.name),
+                        onClick = { onTestEasier(nudgeMove.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (t == BaselineTargetDisplay.TooLight ||
+                    t == BaselineTargetDisplay.TooHeavy ||
+                    t == BaselineTargetDisplay.WeightNoTarget ||
+                    t is BaselineTargetDisplay.HoldTooShort
+                ) {
+                    Spacer(Modifier.height(4.dp))
+                    TonalPill(
+                        text = stringResource(R.string.baseline_retest),
+                        onClick = onRetest,
+                        tint = c.teal,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
@@ -931,28 +898,19 @@ private fun formatTargetText(target: BaselineTargetDisplay?): String? = when (ta
         BaselineTargets.formatHoldSeconds(target.seconds, stringResource(R.string.unit_s)),
     )
     is BaselineTargetDisplay.Weight -> stringResource(R.string.baseline_start_weight, target.unit.format(target.weightKg))
-    is BaselineTargetDisplay.EasierVariation -> {
-        val easier = target.easierExercise
-        if (easier != null) stringResource(R.string.baseline_try_easier, easier.name)
-        else stringResource(R.string.baseline_try_easier_generic)
-    }
+    is BaselineTargetDisplay.EasierVariation -> null
     BaselineTargetDisplay.TooLight,
     BaselineTargetDisplay.WeightNoTarget -> stringResource(R.string.baseline_too_light)
     BaselineTargetDisplay.TooHeavy -> stringResource(R.string.baseline_too_heavy)
     is BaselineTargetDisplay.HoldTooShort -> stringResource(R.string.baseline_hold_zero_hint)
 }
 
-/** Subtle second line on a summary row: too easy (outgrown) or hard start (too low), null otherwise. */
-private fun rowFlagRes(move: BaselineMoveItem): Int? {
-    val latest = move.latest ?: return null
-    val value = when (move.exercise.kind) {
-        ExerciseKind.REPS -> latest.reps
-        ExerciseKind.HOLD -> latest.seconds
-        ExerciseKind.WEIGHTED -> null
-    } ?: return null
-    return when {
-        BaselineTargets.isOutgrown(move.exercise.kind, value) -> R.string.baseline_row_too_easy
-        BaselineTargets.isTooHard(move.exercise.kind, value) -> R.string.baseline_row_too_hard
-        else -> null
-    }
+/** Subtle second line on a summary row, from the same nudge as the result screen: a move to try, or the top / bottom for the gear. */
+@Composable
+private fun nudgeRowText(nudge: BaselineNudge): String? = when (nudge) {
+    is BaselineNudge.TryHarder -> stringResource(R.string.baseline_row_too_easy, nudge.exercise.name)
+    BaselineNudge.TopLevel -> stringResource(R.string.baseline_row_top_level)
+    is BaselineNudge.TryEasier -> stringResource(R.string.baseline_row_too_hard, nudge.exercise.name)
+    BaselineNudge.BottomLevel -> stringResource(R.string.baseline_row_bottom_level)
+    BaselineNudge.None -> null
 }

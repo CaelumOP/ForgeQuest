@@ -40,17 +40,56 @@ data class BaselineMoveItem(
     val isSuggested: Boolean,
 )
 
+/** How the logged value reads against the move: fine, outgrown (too easy) or too hard to start with. */
+enum class BaselineLevel { NORMAL, OUTGROWN, TOO_HARD }
+
+/** What to tell the person about a result: a move to try, or an honest top / bottom for their gear. */
+sealed interface BaselineNudge {
+    data class TryHarder(val exercise: ExerciseEntity) : BaselineNudge
+    data object TopLevel : BaselineNudge
+    data class TryEasier(val exercise: ExerciseEntity) : BaselineNudge
+    data object BottomLevel : BaselineNudge
+    data object None : BaselineNudge
+}
+
+/** The only source of the try-harder / try-easier copy: the summary row and the result screen both render from this. */
+fun baselineNudge(display: BaselineTargetDisplay?): BaselineNudge {
+    val level: BaselineLevel
+    val harder: ExerciseEntity?
+    val easier: ExerciseEntity?
+    when (display) {
+        is BaselineTargetDisplay.Reps -> { level = display.level; harder = display.harderExercise; easier = display.easierExercise }
+        is BaselineTargetDisplay.Hold -> { level = display.level; harder = display.harderExercise; easier = display.easierExercise }
+        is BaselineTargetDisplay.EasierVariation -> { level = BaselineLevel.TOO_HARD; harder = null; easier = display.easierExercise }
+        is BaselineTargetDisplay.HoldTooShort -> { level = BaselineLevel.TOO_HARD; harder = null; easier = display.easierExercise }
+        else -> return BaselineNudge.None
+    }
+    return when (level) {
+        BaselineLevel.OUTGROWN -> if (harder != null) BaselineNudge.TryHarder(harder) else BaselineNudge.TopLevel
+        BaselineLevel.TOO_HARD -> if (easier != null) BaselineNudge.TryEasier(easier) else BaselineNudge.BottomLevel
+        BaselineLevel.NORMAL -> BaselineNudge.None
+    }
+}
+
+internal fun baselineLevel(kind: ExerciseKind, value: Int): BaselineLevel = when {
+    BaselineTargets.isOutgrown(kind, value) -> BaselineLevel.OUTGROWN
+    BaselineTargets.isTooHard(kind, value) -> BaselineLevel.TOO_HARD
+    else -> BaselineLevel.NORMAL
+}
+
 /** Computed starting target or guidance displayed after saving (and on each move row). */
 sealed interface BaselineTargetDisplay {
     data class Reps(
         val reps: Int,
         val harderExercise: ExerciseEntity? = null,
         val easierExercise: ExerciseEntity? = null,
+        val level: BaselineLevel = BaselineLevel.NORMAL,
     ) : BaselineTargetDisplay
     data class Hold(
         val seconds: Int,
         val harderExercise: ExerciseEntity? = null,
         val easierExercise: ExerciseEntity? = null,
+        val level: BaselineLevel = BaselineLevel.NORMAL,
     ) : BaselineTargetDisplay
     data class Weight(val weightKg: Float, val unit: WeightUnit) : BaselineTargetDisplay
     data class EasierVariation(val easierExercise: ExerciseEntity?) : BaselineTargetDisplay
@@ -186,7 +225,7 @@ internal fun computeTargetDisplay(
             } else {
                 null
             }
-            BaselineTargetDisplay.Reps(target, harder, easier)
+            BaselineTargetDisplay.Reps(target, harder, easier, baselineLevel(exercise.kind, reps))
         } else {
             BaselineTargetDisplay.EasierVariation(
                 BaselineTargets.easierVariation(exercise, library, equipment),
@@ -209,7 +248,7 @@ internal fun computeTargetDisplay(
             } else {
                 null
             }
-            BaselineTargetDisplay.Hold(target, harder, easier)
+            BaselineTargetDisplay.Hold(target, harder, easier, baselineLevel(exercise.kind, seconds))
         }
     }
     ExerciseKind.WEIGHTED -> {

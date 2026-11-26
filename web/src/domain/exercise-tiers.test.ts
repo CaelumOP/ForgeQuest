@@ -4,7 +4,7 @@ import { EXERCISE_CATALOG } from '../data/seed/exercise-catalog'
 import type { SetEffort } from './effort'
 import { EQUIPMENT, presetEquipment, type Equipment } from './exercise-swap-engine'
 import { easierVariation } from './baseline-targets'
-import { harderHoldVersion, harderVersion, readyForHarder, tierOf } from './exercise-tiers'
+import { harderStep, harderVersion, readyForHarder, tierOf } from './exercise-tiers'
 import { listSize, muscleExercises, replaceOrder } from './muscle-exercises'
 import type { PastSet } from './progression'
 
@@ -47,11 +47,11 @@ describe('exercise tiers', () => {
   })
 
   it('hold ladder has harder and easier rungs', () => {
-    const nextHold = (id: string, eq: Set<Equipment> = gym) => harderHoldVersion(ex(id), all, eq)?.id ?? null
+    const nextHold = (id: string, eq: Set<Equipment> = gym) => harderStep(ex(id), all, eq)?.id ?? null
     expect(nextHold('plank', bodyweight)).toBe('hollow_hold')
     expect(nextHold('hollow_hold')).toBe('l_sit')
     expect(nextHold('side_plank')).toBe('copenhagen_plank_short')
-    expect(nextHold('push_up')).toBeNull()
+    expect(nextHold('hollow_hold', bodyweight)).toBeNull()
     expect(easierVariation(ex('plank'), all, bodyweight)?.id).toBe('incline_hollow_plank')
     expect(easierVariation(ex('hollow_hold'), all, bodyweight)?.id).toBe('plank')
     expect(easierVariation(ex('l_sit'), all, bodyweight)?.id).toBe('hollow_hold')

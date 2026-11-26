@@ -210,15 +210,15 @@ describe('baseline helpers', () => {
   it('formats last results and target labels in EN and AR', () => {
     setLang('en')
     expect(formatLastResult({ reps: 12, seconds: null, weightKg: null }, 'REPS', 'KG', 'en')).toBe('Last: 12 reps')
-    expect(formatTargetText({ kind: 'REPS', reps: 8 }, 'en')).toBe('Start with 8 reps')
-    expect(formatTargetText({ kind: 'HOLD', seconds: 30 }, 'en')).toBe('Start with 30 s')
+    expect(formatTargetText({ kind: 'REPS', reps: 8, level: 'NORMAL' }, 'en')).toBe('Start with 8 reps')
+    expect(formatTargetText({ kind: 'HOLD', seconds: 30, level: 'NORMAL' }, 'en')).toBe('Start with 30 s')
     expect(formatTargetText({ kind: 'WEIGHT', weightKg: 22.5, unit: 'KG' }, 'en')).toBe(
       `Start with ${formatWeight('KG', 22.5, false)}`,
     )
     expect(formatTargetText({ kind: 'TOO_LIGHT' }, 'en')).toBe('Too light to judge: try a heavier weight')
 
     setLang('ar')
-    expect(formatTargetText({ kind: 'HOLD', seconds: 30 }, 'ar')).toBe('ابدأ بـ 30 ث')
+    expect(formatTargetText({ kind: 'HOLD', seconds: 30, level: 'NORMAL' }, 'ar')).toBe('ابدأ بـ 30 ث')
     expect(formatTargetText({ kind: 'TOO_LIGHT' }, 'ar')).toBe('الوزن خفيف جدًا للحكم: جرّب وزنًا أثقل')
   })
 
