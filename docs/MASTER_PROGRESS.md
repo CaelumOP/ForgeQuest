@@ -12,9 +12,9 @@ Spec: `docs/MASTER_SPEC.md` (written after the owner answers the Question Gate).
   - [x] 2.4 UX rent-check, web 390x844 EN + AR, Android Compose
 - [x] Question Gate: owner answered 2026-11-26, locked in docs/MASTER_SPEC.md (defaults + 4 overrides)
 - [x] 3A grader + supersets/zero-rest (scorecards docs/master/grader-before.md / grader-after.md; overall 81.65 -> 87.85, min 41.88 -> 68.57, 3x20 coverage 17.8-18.6 -> 22.2-23.8, fat loss 6d balance 3.0-16 -> 15.1-17.6; Android grader port + floors, golden parity)
-- [ ] 3B Input & Test Baseline (data + domain d790fe3, Android UI fac12be; web UI next: brief 3b4)
+- [x] 3B Input & Test Baseline (data d790fe3, Android UI fac12be, web UI 5b0cde8; web 794/794 tests)
 - [ ] 3C wavy timer, sliding pills, approved cuts
 - [ ] Stage 4 verification, smoke, Gate 3, report
 
 ## Next step
-Quotas: Gemini (all models) exhausted until ~04:25, Codex until 04:45 (2026-11-26). Then: web baseline UI (brief text = docs/master/briefs/3b4-web-ui.md), then 3C in order 3c1 android A -> 3c2 android B -> 3c3 android D, web 3c4/3c5/3c6 after each Android counterpart, 3c7 catalog last; then Stage 4. Briefs saved in docs/master/briefs/ (temp copies in mu-tmp/). Gradle: copy .claude/scratch/gw.sh, point cd at this worktree, log to mu-tmp/.
+3C running: 3c1 android A built (uncommitted, Gradle check pending), then 3c4 web A, 3c2 android B, 3c5 web B, 3c3 android D, 3c6 web D, 3c7 catalog; then Stage 4. Briefs in docs/master/briefs/. Gradle: copy .claude/scratch/gw.sh, point cd at this worktree, log to mu-tmp/; wrap with python ~/.claude/hooks/quiet.py.
