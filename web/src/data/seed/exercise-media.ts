@@ -4,7 +4,7 @@ export const EXERCISE_MEDIA_KEYS: Record<string, string> = {
   'crunch': 'crunch',
   'superman_hold': 'superman_hold',
   'bent_leg_bench_dip': 'bent_leg_bench_dip',
-  'australian_pull_up': 'australian_pull_up',
+  'australian_pull_up': 'inverted_row',
   'push_up': 'push_up',
   'diamond_push_up': 'diamond_push_up',
   'pull_up': 'pull_up',

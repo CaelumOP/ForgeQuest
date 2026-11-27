@@ -21,6 +21,14 @@
     "mediaKey": "inverted_row",
     "note": "Australian row, underhand grip"
   },
+  "australian_pull_up": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "inverted_row",
+    "licence": "same as the re-used move",
+    "mediaKey": "inverted_row",
+    "note": "Australian row, overhand grip; replaces the old free-exercise-db photo, which showed an inverted hang. Old australian_pull_up_* files are kept for installs that stored that key."
+  },
   "back_lever_tuck": {
     "bucket": "oea",
     "source": "https://github.com/alexmollard/Open-Exercise-Art",

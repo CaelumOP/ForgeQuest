@@ -7,7 +7,7 @@ object ExerciseMedia {
         "crunch" to "crunch",
         "superman_hold" to "superman_hold",
         "bent_leg_bench_dip" to "bent_leg_bench_dip",
-        "australian_pull_up" to "australian_pull_up",
+        "australian_pull_up" to "inverted_row",
         "push_up" to "push_up",
         "diamond_push_up" to "diamond_push_up",
         "pull_up" to "pull_up",

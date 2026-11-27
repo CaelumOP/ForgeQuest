@@ -182,7 +182,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'LOW_BAR',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'السحب الأسترالي, inverted row, bodyweight row, ظهر',
-    mediaKey: 'australian_pull_up',
+    mediaKey: 'inverted_row',
   },
   {
     id: 'reverse_grip_bench_dip',
