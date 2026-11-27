@@ -13,7 +13,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CARRY_CONDITIONING',
     aliases: 'القفز مع فتح الذراعين, jumping jack, نط حبل, كارديو, تسخين',
-    mediaKey: '',
+    mediaKey: 'jumping_jacks',
   },
   {
     id: 'plank_shoulder_taps',
@@ -26,7 +26,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CORE_ANTI_EXTENSION',
     aliases: 'البلانك مع لمس الكتفين, shoulder tap plank, لمس الكتف, بطن, جذع',
-    mediaKey: '',
+    mediaKey: 'plank_shoulder_taps',
   },
   {
     id: 'burpee',
@@ -39,7 +39,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CARRY_CONDITIONING',
     aliases: 'البيربي, burpees, كارديو, لياقة',
-    mediaKey: '',
+    mediaKey: 'burpee',
   },
   {
     id: 'incline_hollow_plank',
@@ -52,7 +52,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CORE_ANTI_EXTENSION',
     aliases: 'البلانك المجوّف المائل, hollow plank, بطن',
-    mediaKey: '',
+    mediaKey: 'plank',
   },
   {
     id: 'incline_reverse_plank',
@@ -65,7 +65,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HIP_HINGE',
     aliases: 'البلانك العكسي المائل, reverse plank, أسفل الظهر',
-    mediaKey: '',
+    mediaKey: 'incline_reverse_plank',
   },
   {
     id: 'hip_bridge',
@@ -117,7 +117,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PUSH',
     aliases: 'scapular pushup, بوش أب',
-    mediaKey: '',
+    mediaKey: 'knee_push_up',
   },
   {
     id: 'scapular_australian_pull_up',
@@ -130,7 +130,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'LOW_BAR',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'australian pullup, ظهر',
-    mediaKey: '',
+    mediaKey: 'inverted_row',
   },
   {
     id: 'bent_leg_bench_dip',
@@ -156,7 +156,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'LOW_BAR',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'australian chinup',
-    mediaKey: '',
+    mediaKey: 'inverted_row',
   },
   {
     id: 'knee_push_up',
@@ -169,7 +169,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PUSH',
     aliases: 'knee pushup, بوش أب, صدر',
-    mediaKey: '',
+    mediaKey: 'knee_push_up',
   },
   {
     id: 'australian_pull_up',
@@ -195,7 +195,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'FLAT_BENCH',
     pattern: 'DIP_PUSH',
     aliases: 'متوازي على المقعد بقبضة عكسية, تراي, ديبس',
-    mediaKey: '',
+    mediaKey: 'reverse_grip_bench_dip',
   },
   {
     id: 'australian_chin_up',
@@ -208,7 +208,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'LOW_BAR',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'السحب الأسترالي بقبضة عكسية, underhand inverted row',
-    mediaKey: '',
+    mediaKey: 'inverted_row',
   },
   {
     id: 'wide_knee_push_up',
@@ -221,7 +221,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PUSH',
     aliases: 'wide knee pushup, صدر',
-    mediaKey: '',
+    mediaKey: 'knee_push_up',
   },
   {
     id: 'dead_hang',
@@ -234,7 +234,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'VERTICAL_PULL',
     aliases: 'التعلّق الحر, bar hang, تعلق, سواعد',
-    mediaKey: '',
+    mediaKey: 'dead_hang',
   },
   {
     id: 'incline_diamond_knee_push_up',
@@ -247,7 +247,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'ELBOW_EXTENSION',
     aliases: 'diamond knee pushup, تراي',
-    mediaKey: '',
+    mediaKey: 'knee_push_up',
   },
   {
     id: 'half_squat',
@@ -260,7 +260,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'SQUAT_BILATERAL',
     aliases: 'سكوات, أرجل',
-    mediaKey: '',
+    mediaKey: 'squat',
   },
   {
     id: 'half_wide_squat',
@@ -273,7 +273,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'SQUAT_BILATERAL',
     aliases: 'سكوات واسع, ضامة',
-    mediaKey: '',
+    mediaKey: 'squat',
   },
   {
     id: 'half_narrow_squat',
@@ -286,7 +286,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'SQUAT_BILATERAL',
     aliases: 'سكوات ضيق, أماميات',
-    mediaKey: '',
+    mediaKey: 'squat',
   },
   {
     id: 'calf_raise_turned_out',
@@ -299,7 +299,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'ANKLE_FLEXION',
     aliases: 'رفع السمانة بقدمين متباعدتي الأطراف, سمانة, بطات',
-    mediaKey: '',
+    mediaKey: 'calf_raise',
   },
   {
     id: 'calf_raise',
@@ -312,7 +312,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'ANKLE_FLEXION',
     aliases: 'رفع السمانة, calf raises, calves, سمانة, بطات',
-    mediaKey: '',
+    mediaKey: 'calf_raise',
   },
   {
     id: 'push_up',
@@ -351,7 +351,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'VERTICAL_PUSH',
     aliases: 'ضغط الحربة, pike pushup, كتف, أكتاف',
-    mediaKey: '',
+    mediaKey: 'pike_push_up',
   },
   {
     id: 'pull_up',
@@ -390,7 +390,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'VERTICAL_PULL',
     aliases: 'العقلة السلبية, eccentric pullup, عقلة',
-    mediaKey: '',
+    mediaKey: 'negative_pull_up',
   },
   {
     id: 'dip',
@@ -429,7 +429,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'SQUAT_UNILATERAL',
     aliases: 'الطعن, lunges, forward lunge, طعن, لانجز, أرجل',
-    mediaKey: '',
+    mediaKey: 'lunge',
   },
   {
     id: 'bulgarian_split_squat',
@@ -455,7 +455,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'SQUAT_UNILATERAL',
     aliases: 'سكوات بستل, سكوات البستل, single leg squat, بستل',
-    mediaKey: '',
+    mediaKey: 'kb_pistol_squat',
   },
   {
     id: 'nordic_curl',
@@ -494,7 +494,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CORE_ANTI_EXTENSION',
     aliases: 'hollow body, بطن',
-    mediaKey: '',
+    mediaKey: 'hollow_hold',
   },
   {
     id: 'hanging_knee_raise',
@@ -507,7 +507,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'CORE_FLEXION_ROTATION',
     aliases: 'knee raise, بطن, سفلي',
-    mediaKey: '',
+    mediaKey: 'hanging_knee_raise',
   },
   {
     id: 'hanging_leg_raise',
@@ -546,7 +546,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'DIP_STATION',
     pattern: 'CORE_ANTI_EXTENSION',
     aliases: 'جلسة L, lsit, بطن',
-    mediaKey: '',
+    mediaKey: 'l_sit',
   },
   {
     id: 'handstand_hold',
@@ -559,7 +559,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'VERTICAL_PUSH',
     aliases: 'الثبات على اليدين, handstand, كتف',
-    mediaKey: '',
+    mediaKey: 'handstand_hold',
   },
   {
     id: 'handstand_push_up',
@@ -585,7 +585,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PUSH',
     aliases: 'البلانش المضموم, planche',
-    mediaKey: '',
+    mediaKey: 'tuck_planche',
   },
   {
     id: 'pseudo_planche_push_up',
@@ -598,7 +598,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PUSH',
     aliases: 'ضغط البلانش التمهيدي, PPPU',
-    mediaKey: '',
+    mediaKey: 'pseudo_planche_push_up',
   },
   {
     id: 'tuck_front_lever',
@@ -611,7 +611,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'الفرونت ليفر المضموم, front lever',
-    mediaKey: '',
+    mediaKey: 'tuck_front_lever',
   },
   {
     id: 'front_lever_row',
@@ -624,7 +624,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'سحب الفرونت ليفر المضموم',
-    mediaKey: '',
+    mediaKey: 'front_lever_row',
   },
   {
     id: 'back_lever_tuck',
@@ -637,7 +637,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'UPPER_BACK_PULL',
     aliases: 'الباك ليفر المضموم, back lever',
-    mediaKey: '',
+    mediaKey: 'back_lever_tuck',
   },
   {
     id: 'weighted_pull_up',
@@ -663,7 +663,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'VERTICAL_PULL',
     aliases: 'العقلة العكسية بوزن إضافي, weighted chinup, باي',
-    mediaKey: '',
+    mediaKey: 'weighted_pull_up',
   },
   {
     id: 'weighted_dip',
@@ -676,7 +676,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'DIP_STATION',
     pattern: 'DIP_PUSH',
     aliases: 'المتوازي بوزن إضافي, weighted dips, ديبس, تراي',
-    mediaKey: '',
+    mediaKey: 'weighted_dip',
   },
   {
     id: 'weighted_push_up',
@@ -689,7 +689,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PUSH',
     aliases: 'الضغط بوزن إضافي, weighted pushup, صدر',
-    mediaKey: '',
+    mediaKey: 'weighted_push_up',
   },
   {
     id: 'bench_press',
@@ -988,7 +988,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'ANKLE_FLEXION',
     aliases: 'رفع مقدمة القدم, tib bar, قصبة الساق',
-    mediaKey: '',
+    mediaKey: 'tibialis_raise',
   },
   {
     id: 'heel_walk',
@@ -1001,7 +1001,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'ANKLE_FLEXION',
     aliases: 'مقدمة الساق, قصبة الساق',
-    mediaKey: '',
+    mediaKey: 'muscle_tibialis_anterior',
   },
   {
     id: 'band_dorsiflexion',
@@ -1014,7 +1014,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BAND',
     pattern: 'ANKLE_FLEXION',
     aliases: 'ثني القدم للأعلى بالحزام المطاطي, باند',
-    mediaKey: '',
+    mediaKey: 'muscle_tibialis_anterior',
   },
   {
     id: 'copenhagen_plank_short',
@@ -1027,7 +1027,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'FLAT_BENCH',
     pattern: 'HIP_ADDUCTION',
     aliases: 'بلانك كوبنهاغن بذراع قصيرة, العضلة الضامة, ضامة',
-    mediaKey: '',
+    mediaKey: 'copenhagen_plank_short',
   },
   {
     id: 'copenhagen_plank_long',
@@ -1040,7 +1040,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'FLAT_BENCH',
     pattern: 'HIP_ADDUCTION',
     aliases: 'بلانك كوبنهاغن بذراع طويلة, العضلة الضامة, ضامة',
-    mediaKey: '',
+    mediaKey: 'copenhagen_plank_short',
   },
   {
     id: 'side_lying_hip_adduction',
@@ -1053,7 +1053,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HIP_ADDUCTION',
     aliases: 'ضمّ الورك مستلقيًا على الجانب, ضامة',
-    mediaKey: '',
+    mediaKey: 'side_lying_hip_adduction',
   },
   {
     id: 'cossack_squat',
@@ -1066,7 +1066,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'SQUAT_UNILATERAL',
     aliases: 'سكوات قوزاقي, كوزاك, ضامة',
-    mediaKey: '',
+    mediaKey: 'cossack_squat',
   },
   {
     id: 'band_hip_adduction',
@@ -1105,7 +1105,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CORE_FLEXION_ROTATION',
     aliases: 'بطن, خواصر',
-    mediaKey: '',
+    mediaKey: 'bicycle_crunch',
   },
   {
     id: 'wrist_curl',
@@ -1157,7 +1157,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'KETTLEBELL',
     pattern: 'HIP_HINGE',
     aliases: 'الرفعة الميتة بالكيتل بيل, KB DL',
-    mediaKey: '',
+    mediaKey: 'kb_deadlift',
   },
   {
     id: 'kb_clean',
@@ -1443,7 +1443,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BAND',
     pattern: 'ELBOW_FLEXION',
     aliases: 'ثني الذراع بالحزام المطاطي, باي, باند',
-    mediaKey: '',
+    mediaKey: 'band_curl',
   },
   {
     id: 'seated_calf_raise',
@@ -1469,7 +1469,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'ANKLE_FLEXION',
     aliases: 'رفع السمانة بساق واحدة, سمانة, بطات',
-    mediaKey: '',
+    mediaKey: 'single_leg_calf_raise',
   },
   {
     id: 'db_calf_raise',
@@ -1508,7 +1508,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'CORE_ANTI_EXTENSION',
     aliases: 'الكلب والطائر, أسفل الظهر',
-    mediaKey: '',
+    mediaKey: 'bird_dog',
   },
   {
     id: 'cable_pull_through',
@@ -1703,7 +1703,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BAND',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'التجديف بالحزام المطاطي, باند, ظهر',
-    mediaKey: '',
+    mediaKey: 'band_row',
   },
   {
     id: 'band_chest_press',
@@ -1729,7 +1729,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'KETTLEBELL',
     pattern: 'HIP_HINGE',
     aliases: 'الرفعة الميتة سومو بالكيتل بيل, سومو',
-    mediaKey: '',
+    mediaKey: 'sumo_deadlift',
   },
   {
     id: 'kb_halo',
@@ -1742,7 +1742,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'KETTLEBELL',
     pattern: 'VERTICAL_PUSH',
     aliases: 'هالة الكتف بالكيتل بيل, كتف',
-    mediaKey: '',
+    mediaKey: 'kb_halo',
   },
   {
     id: 'kb_windmill',
@@ -1859,7 +1859,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'VERTICAL_PULL',
     aliases: 'التعلّق بذراعين مثنيتين, عقلة',
-    mediaKey: '',
+    mediaKey: 'flexed_arm_hang',
   },
   {
     id: 'band_assisted_pull_up',
@@ -1911,7 +1911,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'VERTICAL_PULL',
     aliases: 'عقلة الرامي, عقلة',
-    mediaKey: '',
+    mediaKey: 'archer_pull_up',
   },
   {
     id: 'l_sit_pull_up',
@@ -1924,7 +1924,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'PULL_UP_BAR',
     pattern: 'VERTICAL_PULL',
     aliases: 'عقلة بوضعية L, عقلة',
-    mediaKey: '',
+    mediaKey: 'l_sit_pull_up',
   },
   {
     id: 'incline_push_up',
@@ -1963,7 +1963,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PUSH',
     aliases: 'ضغط الرامي, بوش اب',
-    mediaKey: '',
+    mediaKey: 'archer_push_up',
   },
   {
     id: 'single_arm_cable_row',
@@ -2223,7 +2223,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'MOBILITY',
     aliases: 'تمدد وضع الحمامة, إطالة',
-    mediaKey: '',
+    mediaKey: 'pigeon_stretch',
   },
   {
     id: 'figure_four_stretch',
@@ -2340,7 +2340,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'MOBILITY',
     aliases: 'تمدد تمرير الإبرة, إطالة',
-    mediaKey: '',
+    mediaKey: 'thread_the_needle',
   },
   {
     id: 'butterfly_stretch',
@@ -2353,7 +2353,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'MOBILITY',
     aliases: 'تمدد الفراشة, العضلة الضامة, إطالة',
-    mediaKey: '',
+    mediaKey: 'butterfly_stretch',
   },
   {
     id: 'frog_stretch',
@@ -2366,7 +2366,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'MOBILITY',
     aliases: 'تمدد الضفدع, العضلة الضامة, إطالة',
-    mediaKey: '',
+    mediaKey: 'frog_stretch',
   },
   {
     id: 'wrist_flexor_stretch',
@@ -2418,7 +2418,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'MOBILITY',
     aliases: 'تمدد قصبة الساق من وضع الركوع, إطالة',
-    mediaKey: '',
+    mediaKey: 'muscle_tibialis_anterior',
   },
   {
     id: 'decline_bench_press',
@@ -5031,7 +5031,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'door row, doorway row, تجديف على الباب, سحب بإطار الباب, ظهر',
-    mediaKey: '',
+    mediaKey: 'doorframe_row',
   },
   {
     id: 'table_inverted_row',
@@ -5044,7 +5044,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'HORIZONTAL_PULL',
     aliases: 'table row, under table row, inverted row under table, تجديف تحت الطاولة, سحب تحت الطاولة, ظهر',
-    mediaKey: '',
+    mediaKey: 'inverted_row',
   },
   {
     id: 'prone_ytw_raise',
@@ -5057,7 +5057,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'UPPER_BACK_PULL',
     aliases: 'YTW raise, prone Y T W, floor YTW, رفع واي تي دبليو, رفع الذراعين منبطحًا, ظهر',
-    mediaKey: '',
+    mediaKey: 'prone_ytw_raise',
   },
   {
     id: 'reverse_snow_angel',
@@ -5070,7 +5070,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'UPPER_BACK_PULL',
     aliases: 'prone snow angel, floor snow angel, ملاك الثلج, تمرين الملاك للظهر, ظهر',
-    mediaKey: '',
+    mediaKey: 'reverse_snow_angel',
   },
   {
     id: 'towel_floor_pull',
@@ -5083,7 +5083,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'BODYWEIGHT',
     pattern: 'VERTICAL_PULL',
     aliases: 'towel pull, floor lat pulldown, towel lat pull, سحب المنشفة, سحب على الأرض, ظهر',
-    mediaKey: '',
+    mediaKey: 'muscle_rhomboids',
   },
   {
     id: '3_4_sit_up',
@@ -7553,7 +7553,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'KETTLEBELL',
     pattern: 'VERTICAL_PUSH',
     aliases: 'الأكتاف',
-    mediaKey: '',
+    mediaKey: 'kb_halo',
   },
   {
     id: 'kettlebell_halo_with_overhead_extension',
@@ -7566,7 +7566,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'KETTLEBELL',
     pattern: 'VERTICAL_PUSH',
     aliases: 'الأكتاف',
-    mediaKey: '',
+    mediaKey: 'kb_halo',
   },
   {
     id: 'kettlebell_hang_clean',
@@ -7592,7 +7592,7 @@ export const EXERCISE_CATALOG: ExerciseEntity[] = [
     equipment: 'KETTLEBELL',
     pattern: 'ELBOW_EXTENSION',
     aliases: 'الترايسبس',
-    mediaKey: '',
+    mediaKey: 'kettlebell_overhead_triceps_extension',
   },
   {
     id: 'kettlebell_pass_between_the_legs',

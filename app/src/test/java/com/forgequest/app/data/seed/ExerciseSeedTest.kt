@@ -63,8 +63,14 @@ class ExerciseSeedTest {
             assertTrue("Unknown exercise $id in ExerciseLevels", ExerciseCatalog.byId.containsKey(id))
             assertTrue("Invalid level $level for $id", level in valid)
         }
+        // Hand-authored rows whose picture comes from tools/catalog/build_media_extra.py carry no imported level
+        // (their tier is set in ExerciseTiers).
+        val handAuthored = Regex("""^  "([a-z0-9_]+)": \{""", RegexOption.MULTILINE)
+            .findAll(File("../tools/catalog/media_sources.json").readText())
+            .map { it.groupValues[1] }
+            .toSet()
         for (ex in ExerciseCatalog.all) {
-            if (ex.mediaKey.isNotEmpty()) {
+            if (ex.mediaKey.isNotEmpty() && ex.id !in handAuthored) {
                 assertTrue("Missing level for mapped ${ex.id}", ExerciseLevels.levelFor(ex.id) in valid)
             }
             // Neck strength holds sit in MOBILITY only so the plan builder skips them (plan audit); they are not stretches.

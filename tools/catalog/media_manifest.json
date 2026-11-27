@@ -15988,5 +15988,999 @@
         }
       ]
     }
-  ]
+  ],
+  "extra": {
+    "note": "Built by tools/catalog/build_media_extra.py; per-move sources in media_sources.json",
+    "keys": 47,
+    "totalBytesPerPlatform": 461564,
+    "items": [
+      {
+        "mediaKey": "archer_pull_up",
+        "bucket": "fedb",
+        "upstream": "Side_To_Side_Chins",
+        "frames": [
+          {
+            "file": "archer_pull_up_0.webp",
+            "bytes": 6036,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          },
+          {
+            "file": "archer_pull_up_1.webp",
+            "bytes": 5680,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          }
+        ]
+      },
+      {
+        "mediaKey": "archer_push_up",
+        "bucket": "repdb",
+        "upstream": "archer-push-ups",
+        "frames": [
+          {
+            "file": "archer_push_up_0.webp",
+            "bytes": 3712,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "archer_push_up_1.webp",
+            "bytes": 3008,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "back_lever_tuck",
+        "bucket": "oea",
+        "upstream": "tuck-back-lever",
+        "frames": [
+          {
+            "file": "back_lever_tuck_0.webp",
+            "bytes": 4226,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "back_lever_tuck_1.webp",
+            "bytes": 4226,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "band_curl",
+        "bucket": "oea",
+        "upstream": "banded-alternating-curl",
+        "frames": [
+          {
+            "file": "band_curl_0.webp",
+            "bytes": 6116,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "band_curl_1.webp",
+            "bytes": 6116,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "band_row",
+        "bucket": "repdb",
+        "upstream": "banded-standing-row",
+        "frames": [
+          {
+            "file": "band_row_0.webp",
+            "bytes": 4166,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "band_row_1.webp",
+            "bytes": 4736,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "bicycle_crunch",
+        "bucket": "fedb",
+        "upstream": "Air_Bike",
+        "frames": [
+          {
+            "file": "bicycle_crunch_0.webp",
+            "bytes": 5252,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          },
+          {
+            "file": "bicycle_crunch_1.webp",
+            "bytes": 5546,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          }
+        ]
+      },
+      {
+        "mediaKey": "bird_dog",
+        "bucket": "repdb",
+        "upstream": "bird-dog",
+        "frames": [
+          {
+            "file": "bird_dog_0.webp",
+            "bytes": 3138,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "bird_dog_1.webp",
+            "bytes": 3820,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "burpee",
+        "bucket": "workout-guide",
+        "upstream": "burpee",
+        "frames": [
+          {
+            "file": "burpee_0.webp",
+            "bytes": 5466,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "burpee_1.webp",
+            "bytes": 6894,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "butterfly_stretch",
+        "bucket": "repdb",
+        "upstream": "butterfly-stretch",
+        "frames": [
+          {
+            "file": "butterfly_stretch_0.webp",
+            "bytes": 5728,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "butterfly_stretch_1.webp",
+            "bytes": 5728,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "calf_raise",
+        "bucket": "fedb",
+        "upstream": "Standing_Calf_Raises",
+        "frames": [
+          {
+            "file": "calf_raise_0.webp",
+            "bytes": 6816,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          },
+          {
+            "file": "calf_raise_1.webp",
+            "bytes": 6826,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          }
+        ]
+      },
+      {
+        "mediaKey": "copenhagen_plank_short",
+        "bucket": "repdb",
+        "upstream": "copenhagen-plank",
+        "frames": [
+          {
+            "file": "copenhagen_plank_short_0.webp",
+            "bytes": 4376,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "copenhagen_plank_short_1.webp",
+            "bytes": 4376,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "cossack_squat",
+        "bucket": "repdb",
+        "upstream": "cossack-squat",
+        "frames": [
+          {
+            "file": "cossack_squat_0.webp",
+            "bytes": 5036,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "cossack_squat_1.webp",
+            "bytes": 4536,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "dead_hang",
+        "bucket": "repdb",
+        "upstream": "dead-hang",
+        "frames": [
+          {
+            "file": "dead_hang_0.webp",
+            "bytes": 4206,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "dead_hang_1.webp",
+            "bytes": 4206,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "doorframe_row",
+        "bucket": "workout-guide",
+        "upstream": "doorway-row",
+        "frames": [
+          {
+            "file": "doorframe_row_0.webp",
+            "bytes": 5332,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "doorframe_row_1.webp",
+            "bytes": 5408,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "flexed_arm_hang",
+        "bucket": "repdb",
+        "upstream": "flexed-arm-hang",
+        "frames": [
+          {
+            "file": "flexed_arm_hang_0.webp",
+            "bytes": 5338,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "flexed_arm_hang_1.webp",
+            "bytes": 5338,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "frog_stretch",
+        "bucket": "repdb",
+        "upstream": "frog-stretch",
+        "frames": [
+          {
+            "file": "frog_stretch_0.webp",
+            "bytes": 6420,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "frog_stretch_1.webp",
+            "bytes": 6420,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "front_lever_row",
+        "bucket": "oea",
+        "upstream": "front-lever-row",
+        "frames": [
+          {
+            "file": "front_lever_row_0.webp",
+            "bytes": 3452,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "front_lever_row_1.webp",
+            "bytes": 3452,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "handstand_hold",
+        "bucket": "repdb",
+        "upstream": "handstand-hold",
+        "frames": [
+          {
+            "file": "handstand_hold_0.webp",
+            "bytes": 2978,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "handstand_hold_1.webp",
+            "bytes": 2978,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "hanging_knee_raise",
+        "bucket": "repdb",
+        "upstream": "hanging-knee-raise",
+        "frames": [
+          {
+            "file": "hanging_knee_raise_0.webp",
+            "bytes": 4456,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "hanging_knee_raise_1.webp",
+            "bytes": 4700,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "hollow_hold",
+        "bucket": "repdb",
+        "upstream": "hollow-body-hold",
+        "frames": [
+          {
+            "file": "hollow_hold_0.webp",
+            "bytes": 5036,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "hollow_hold_1.webp",
+            "bytes": 5036,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "incline_reverse_plank",
+        "bucket": "repdb",
+        "upstream": "reverse-plank",
+        "frames": [
+          {
+            "file": "incline_reverse_plank_0.webp",
+            "bytes": 5824,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "incline_reverse_plank_1.webp",
+            "bytes": 5824,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "jumping_jacks",
+        "bucket": "repdb",
+        "upstream": "jumping-jacks",
+        "frames": [
+          {
+            "file": "jumping_jacks_0.webp",
+            "bytes": 4280,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "jumping_jacks_1.webp",
+            "bytes": 4586,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "kb_deadlift",
+        "bucket": "repdb",
+        "upstream": "kettlebell-deadlift",
+        "frames": [
+          {
+            "file": "kb_deadlift_0.webp",
+            "bytes": 4352,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "kb_deadlift_1.webp",
+            "bytes": 4066,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "kb_halo",
+        "bucket": "repdb",
+        "upstream": "kettlebell-halo",
+        "frames": [
+          {
+            "file": "kb_halo_0.webp",
+            "bytes": 3796,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "kb_halo_1.webp",
+            "bytes": 3844,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "kettlebell_overhead_triceps_extension",
+        "bucket": "repdb",
+        "upstream": "kettlebell-overhead-tricep-extension",
+        "frames": [
+          {
+            "file": "kettlebell_overhead_triceps_extension_0.webp",
+            "bytes": 4020,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "kettlebell_overhead_triceps_extension_1.webp",
+            "bytes": 3894,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "knee_push_up",
+        "bucket": "repdb",
+        "upstream": "knee-push-ups",
+        "frames": [
+          {
+            "file": "knee_push_up_0.webp",
+            "bytes": 5440,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "knee_push_up_1.webp",
+            "bytes": 4652,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "l_sit",
+        "bucket": "repdb",
+        "upstream": "l-sit",
+        "frames": [
+          {
+            "file": "l_sit_0.webp",
+            "bytes": 4252,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "l_sit_1.webp",
+            "bytes": 4252,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "l_sit_pull_up",
+        "bucket": "oea",
+        "upstream": "l-sit-pull-up",
+        "frames": [
+          {
+            "file": "l_sit_pull_up_0.webp",
+            "bytes": 7066,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "l_sit_pull_up_1.webp",
+            "bytes": 7066,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "lunge",
+        "bucket": "fedb",
+        "upstream": "Bodyweight_Walking_Lunge",
+        "frames": [
+          {
+            "file": "lunge_0.webp",
+            "bytes": 10396,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          },
+          {
+            "file": "lunge_1.webp",
+            "bytes": 10532,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          }
+        ]
+      },
+      {
+        "mediaKey": "muscle_rhomboids",
+        "bucket": "muscle",
+        "upstream": "rhomboids",
+        "frames": [
+          {
+            "file": "muscle_rhomboids_0.webp",
+            "bytes": 1778,
+            "quality": 60,
+            "width": 128,
+            "height": 128
+          },
+          {
+            "file": "muscle_rhomboids_1.webp",
+            "bytes": 1778,
+            "quality": 60,
+            "width": 128,
+            "height": 128
+          }
+        ]
+      },
+      {
+        "mediaKey": "muscle_tibialis_anterior",
+        "bucket": "muscle",
+        "upstream": "tibialis-anterior",
+        "frames": [
+          {
+            "file": "muscle_tibialis_anterior_0.webp",
+            "bytes": 1262,
+            "quality": 60,
+            "width": 128,
+            "height": 128
+          },
+          {
+            "file": "muscle_tibialis_anterior_1.webp",
+            "bytes": 1262,
+            "quality": 60,
+            "width": 128,
+            "height": 128
+          }
+        ]
+      },
+      {
+        "mediaKey": "negative_pull_up",
+        "bucket": "repdb",
+        "upstream": "negative-pull-ups",
+        "frames": [
+          {
+            "file": "negative_pull_up_0.webp",
+            "bytes": 4388,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "negative_pull_up_1.webp",
+            "bytes": 3612,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "pigeon_stretch",
+        "bucket": "repdb",
+        "upstream": "pigeon-stretch",
+        "frames": [
+          {
+            "file": "pigeon_stretch_0.webp",
+            "bytes": 4282,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "pigeon_stretch_1.webp",
+            "bytes": 4282,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "pike_push_up",
+        "bucket": "repdb",
+        "upstream": "pike-push-ups",
+        "frames": [
+          {
+            "file": "pike_push_up_0.webp",
+            "bytes": 7582,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "pike_push_up_1.webp",
+            "bytes": 7872,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "plank_shoulder_taps",
+        "bucket": "oea",
+        "upstream": "plank-shoulder-tap",
+        "frames": [
+          {
+            "file": "plank_shoulder_taps_0.webp",
+            "bytes": 5742,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "plank_shoulder_taps_1.webp",
+            "bytes": 5742,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "prone_ytw_raise",
+        "bucket": "oea",
+        "upstream": "prone-y-raise+prone-t-raise",
+        "frames": [
+          {
+            "file": "prone_ytw_raise_0.webp",
+            "bytes": 5934,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "prone_ytw_raise_1.webp",
+            "bytes": 4746,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "pseudo_planche_push_up",
+        "bucket": "repdb",
+        "upstream": "pseudo-planche-push-ups",
+        "frames": [
+          {
+            "file": "pseudo_planche_push_up_0.webp",
+            "bytes": 4244,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "pseudo_planche_push_up_1.webp",
+            "bytes": 3480,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "reverse_grip_bench_dip",
+        "bucket": "fedb",
+        "upstream": "Bench_Dips",
+        "frames": [
+          {
+            "file": "reverse_grip_bench_dip_0.webp",
+            "bytes": 7130,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          },
+          {
+            "file": "reverse_grip_bench_dip_1.webp",
+            "bytes": 7218,
+            "quality": 60,
+            "width": 360,
+            "height": 240
+          }
+        ]
+      },
+      {
+        "mediaKey": "reverse_snow_angel",
+        "bucket": "oea",
+        "upstream": "reverse-snow-angel",
+        "frames": [
+          {
+            "file": "reverse_snow_angel_0.webp",
+            "bytes": 4252,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "reverse_snow_angel_1.webp",
+            "bytes": 4252,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "side_lying_hip_adduction",
+        "bucket": "repdb",
+        "upstream": "side-lying-hip-adduction",
+        "frames": [
+          {
+            "file": "side_lying_hip_adduction_0.webp",
+            "bytes": 5044,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "side_lying_hip_adduction_1.webp",
+            "bytes": 5314,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "single_leg_calf_raise",
+        "bucket": "repdb",
+        "upstream": "single-leg-calf-raise",
+        "frames": [
+          {
+            "file": "single_leg_calf_raise_0.webp",
+            "bytes": 4116,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "single_leg_calf_raise_1.webp",
+            "bytes": 4290,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "thread_the_needle",
+        "bucket": "repdb",
+        "upstream": "thread-the-needle",
+        "frames": [
+          {
+            "file": "thread_the_needle_0.webp",
+            "bytes": 3948,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "thread_the_needle_1.webp",
+            "bytes": 3948,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "tibialis_raise",
+        "bucket": "oea",
+        "upstream": "tib-raise",
+        "frames": [
+          {
+            "file": "tibialis_raise_0.webp",
+            "bytes": 3518,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "tibialis_raise_1.webp",
+            "bytes": 3518,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "tuck_front_lever",
+        "bucket": "oea",
+        "upstream": "tuck-front-lever",
+        "frames": [
+          {
+            "file": "tuck_front_lever_0.webp",
+            "bytes": 5774,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "tuck_front_lever_1.webp",
+            "bytes": 5774,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "tuck_planche",
+        "bucket": "oea",
+        "upstream": "tuck-planche",
+        "frames": [
+          {
+            "file": "tuck_planche_0.webp",
+            "bytes": 5868,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "tuck_planche_1.webp",
+            "bytes": 5868,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "weighted_dip",
+        "bucket": "repdb",
+        "upstream": "weighted-dips",
+        "frames": [
+          {
+            "file": "weighted_dip_0.webp",
+            "bytes": 4920,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "weighted_dip_1.webp",
+            "bytes": 4736,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      },
+      {
+        "mediaKey": "weighted_push_up",
+        "bucket": "oea",
+        "upstream": "weighted-push-up",
+        "frames": [
+          {
+            "file": "weighted_push_up_0.webp",
+            "bytes": 4816,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          },
+          {
+            "file": "weighted_push_up_1.webp",
+            "bytes": 4816,
+            "quality": 60,
+            "width": 360,
+            "height": 360
+          }
+        ]
+      }
+    ]
+  }
 }

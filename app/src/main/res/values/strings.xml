@@ -1343,6 +1343,7 @@
     <string name="barcode_err_label">The numbers on that label weren\'t clear. Try again with the nutrition table filling the frame.</string>
     <string name="barcode_unnamed">Product %1$s</string>
     <string name="profile_credits_data">Food data: Open Food Facts (ODbL), Saudi Food and Drug Authority, USDA.</string>
+    <string name="profile_credits_media">Exercise images: free-exercise-db (public domain), Exercise data by RepDB (repdb.co), Open Exercise Art / Alex Mollard and Bryl Lim\'s Workout Guide (CC BY-SA 4.0).</string>
     <string name="pb_title">Build my plan</string>
     <string name="pb_goal">Goal</string>
     <string name="pb_goal_strength">Strength</string>

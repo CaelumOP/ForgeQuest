@@ -175,6 +175,9 @@ Signing, Google Drive and Friends server setup are in the [setup guide](docs/SET
 
 - Foundation routine: [Hemo Calisthenics](https://www.youtube.com/@HemoCalisthenics); his exercises link to the moment they're shown in his videos.
 - Exercise data and photos: [free-exercise-db](https://github.com/yuhonas/free-exercise-db), released into the public domain (Unlicense).
+- Exercise data by RepDB (repdb.co), https://repdb.co, used in the app under its free-tier licence ([terms](tools/catalog/licenses/RepDB-LICENSE-DATA.md)).
+- Exercise illustrations by Open Exercise Art / Alex Mollard (CC BY-SA 4.0): [project](https://github.com/AlexMollard/Open-Exercise-Art), [licence](https://creativecommons.org/licenses/by-sa/4.0/).
+- Exercise illustrations by Bryl Lim (based on Everkinetic, CC) (CC BY-SA 4.0): [Workout Guide](https://github.com/bryllim/workout-guide), [Everkinetic](https://github.com/everkinetic/data), [licence](https://creativecommons.org/licenses/by-sa/4.0/). Our resized, recoloured-background WebP adaptations are also CC BY-SA 4.0 ([notice](tools/catalog/licenses/CC-BY-SA-4.0-NOTICE.md)).
 - Anatomy art: [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter) 3.2.0, MIT License © 2022 ELABBASSI Hicham.
 - Food data: [Open Food Facts](https://world.openfoodfacts.org/) (ODbL).
 - Web barcode reading: [barcode-detector](https://github.com/Sec-ant/barcode-detector) (ZXing).

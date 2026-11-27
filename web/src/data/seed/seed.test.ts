@@ -140,8 +140,11 @@ describe('seed data mirrors the Android catalog', () => {
       expect(valid.has(lvl), `${id}:${lvl}`).toBe(true)
       expect(EXERCISE_LEVELS[id], id).toBe(lvl)
     }
+    // Moves whose picture comes from tools/catalog/build_media_extra.py are hand-authored rows: their tier is set in
+    // exercise-tiers.ts, they carry no imported level.
+    const handAuthored = new Set(Object.keys(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../tools/catalog/media_sources.json'), 'utf8'))))
     for (const ex of EXERCISE_CATALOG) {
-      if (ex.mediaKey) expect(EXERCISE_LEVELS[ex.id], ex.id).toBeTruthy()
+      if (ex.mediaKey && !handAuthored.has(ex.id)) expect(EXERCISE_LEVELS[ex.id], ex.id).toBeTruthy()
     }
   })
 

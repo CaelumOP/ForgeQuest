@@ -516,6 +516,7 @@ internal fun AboutSettingsGroup(
                     Text(stringResource(R.string.profile_credits), style = MaterialTheme.typography.titleMedium, color = c.textPrimary, modifier = Modifier.semantics { heading() })
                     Text(stringResource(R.string.profile_credits_body), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     Text(stringResource(R.string.profile_credits_data), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text(stringResource(R.string.profile_credits_media), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(12.dp))

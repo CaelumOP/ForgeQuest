@@ -117,25 +117,38 @@ def main() -> int:
             "frames": frame_records,
         })
 
+    # Keys made by build_media_extra.py (listed in media_sources.json) are not stale.
+    base_frames = len(expected_files)
+    sources_path = MANIFEST_PATH.parent / "media_sources.json"
+    if sources_path.exists():
+        for rec in json.loads(sources_path.read_text(encoding="utf-8")).values():
+            expected_files.update({f"{rec['mediaKey']}_0.webp", f"{rec['mediaKey']}_1.webp"})
+    old_extra = None
+    if MANIFEST_PATH.exists():
+        old_extra = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")).get("extra")
+
     # Clean stale files
     for folder in (ANDROID_MEDIA_DIR, WEB_MEDIA_DIR):
         for p in folder.iterdir():
             if p.is_file() and p.name not in expected_files:
                 p.unlink()
 
-    MANIFEST_PATH.write_text(json.dumps({
+    out_manifest = {
         "source": "https://github.com/yuhonas/free-exercise-db",
         "license": "The Unlicense (Public Domain)",
         "exercisesMapped": len(manifest),
-        "totalFrames": len(expected_files),
+        "totalFrames": base_frames,
         "totalBytesPerPlatform": total_bytes,
         "totalMBPerPlatform": round(total_bytes / (1024 * 1024), 2),
         "maxFrameBytes": max_frame_bytes,
         "reencodedBelow60": reencoded_count,
         "items": manifest,
-    }, indent=2) + "\n", encoding="utf-8")
+    }
+    if old_extra:
+        out_manifest["extra"] = old_extra  # re-made by build_media_extra.py
+    MANIFEST_PATH.write_text(json.dumps(out_manifest, indent=2) + "\n", encoding="utf-8")
 
-    print(f"Generated {len(expected_files)} WebP frames for {len(manifest)} exercises.")
+    print(f"Generated {base_frames} WebP frames for {len(manifest)} exercises.")
     print(f"Per-platform size: {total_bytes:,} bytes ({total_bytes / (1024 * 1024):.2f} MB), max frame: {max_frame_bytes:,} bytes, re-encoded lower: {reencoded_count}")
     if total_bytes > HARD_CAP_TOTAL_BYTES:
         print(f"ERROR: Total media size {total_bytes:,} exceeds 18 MB cap ({HARD_CAP_TOTAL_BYTES:,})", file=sys.stderr)

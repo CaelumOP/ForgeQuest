@@ -1,0 +1,489 @@
+{
+  "archer_pull_up": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "Side_To_Side_Chins",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "archer_pull_up"
+  },
+  "archer_push_up": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "archer-push-ups",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "archer_push_up"
+  },
+  "australian_chin_up": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "inverted_row",
+    "licence": "same as the re-used move",
+    "mediaKey": "inverted_row",
+    "note": "Australian row, underhand grip"
+  },
+  "back_lever_tuck": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "tuck-back-lever",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "back_lever_tuck"
+  },
+  "band_curl": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "banded-alternating-curl",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "band_curl"
+  },
+  "band_dorsiflexion": {
+    "bucket": "muscle",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier, images/muscles)",
+    "upstream": "tibialis-anterior",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "muscle_tibialis_anterior"
+  },
+  "band_row": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "banded-standing-row",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "band_row"
+  },
+  "bicycle_crunch": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "Air_Bike",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "bicycle_crunch"
+  },
+  "bird_dog": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "bird-dog",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "bird_dog"
+  },
+  "burpee": {
+    "bucket": "workout-guide",
+    "source": "https://github.com/bryllim/workout-guide (upstream Everkinetic)",
+    "upstream": "burpee",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "burpee"
+  },
+  "butterfly_stretch": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "butterfly-stretch",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "butterfly_stretch"
+  },
+  "calf_raise": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "Standing_Calf_Raises",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "calf_raise"
+  },
+  "calf_raise_turned_out": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "calf_raise",
+    "licence": "same as the re-used move",
+    "mediaKey": "calf_raise",
+    "note": "same calf raise, feet turned out"
+  },
+  "copenhagen_plank_long": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "copenhagen_plank_short",
+    "licence": "same as the re-used move",
+    "mediaKey": "copenhagen_plank_short",
+    "note": "same Copenhagen plank, longer lever"
+  },
+  "copenhagen_plank_short": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "copenhagen-plank",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "copenhagen_plank_short"
+  },
+  "cossack_squat": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "cossack-squat",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "cossack_squat"
+  },
+  "dead_hang": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "dead-hang",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "dead_hang"
+  },
+  "doorframe_row": {
+    "bucket": "workout-guide",
+    "source": "https://github.com/bryllim/workout-guide (upstream Everkinetic)",
+    "upstream": "doorway-row",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "doorframe_row"
+  },
+  "flexed_arm_hang": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "flexed-arm-hang",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "flexed_arm_hang"
+  },
+  "frog_stretch": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "frog-stretch",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "frog_stretch"
+  },
+  "front_lever_row": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "front-lever-row",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "front_lever_row"
+  },
+  "half_narrow_squat": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "squat",
+    "licence": "same as the re-used move",
+    "mediaKey": "squat",
+    "note": "same squat, partial range, narrower stance"
+  },
+  "half_squat": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "squat",
+    "licence": "same as the re-used move",
+    "mediaKey": "squat",
+    "note": "same squat, partial range"
+  },
+  "half_wide_squat": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "squat",
+    "licence": "same as the re-used move",
+    "mediaKey": "squat",
+    "note": "same squat, partial range, wider stance"
+  },
+  "handstand_hold": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "handstand-hold",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "handstand_hold"
+  },
+  "hanging_knee_raise": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "hanging-knee-raise",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "hanging_knee_raise"
+  },
+  "heel_walk": {
+    "bucket": "muscle",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier, images/muscles)",
+    "upstream": "tibialis-anterior",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "muscle_tibialis_anterior"
+  },
+  "hollow_hold": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "hollow-body-hold",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "hollow_hold"
+  },
+  "incline_diamond_knee_push_up": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "knee_push_up",
+    "licence": "same as the re-used move",
+    "mediaKey": "knee_push_up",
+    "note": "knee push-up family"
+  },
+  "incline_hollow_plank": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "plank",
+    "licence": "same as the re-used move",
+    "mediaKey": "plank",
+    "note": "plank position, hollow-body posture"
+  },
+  "incline_reverse_plank": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "reverse-plank",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "incline_reverse_plank"
+  },
+  "jumping_jacks": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "jumping-jacks",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "jumping_jacks"
+  },
+  "kb_deadlift": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "kettlebell-deadlift",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "kb_deadlift"
+  },
+  "kb_halo": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "kettlebell-halo",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "kb_halo"
+  },
+  "kb_sumo_deadlift": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "sumo_deadlift",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "sumo_deadlift",
+    "note": "same picture as sumo_deadlift"
+  },
+  "kettlebell_halo": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "kb_halo",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "kb_halo",
+    "note": "same exercise as kb_halo (RepDB picture)"
+  },
+  "kettlebell_halo_with_overhead_extension": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "kb_halo",
+    "licence": "same as the re-used move",
+    "mediaKey": "kb_halo",
+    "note": "halo is the base movement"
+  },
+  "kettlebell_overhead_triceps_extension": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "kettlebell-overhead-tricep-extension",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "kettlebell_overhead_triceps_extension"
+  },
+  "knee_push_up": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "knee-push-ups",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "knee_push_up"
+  },
+  "knee_scapular_push_up": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "knee_push_up",
+    "licence": "same as the re-used move",
+    "mediaKey": "knee_push_up",
+    "note": "knee push-up position, scapular range"
+  },
+  "l_sit": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "l-sit",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "l_sit"
+  },
+  "l_sit_pull_up": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "l-sit-pull-up",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "l_sit_pull_up"
+  },
+  "lunge": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "Bodyweight_Walking_Lunge",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "lunge"
+  },
+  "negative_pull_up": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "negative-pull-ups",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "negative_pull_up"
+  },
+  "pigeon_stretch": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "pigeon-stretch",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "pigeon_stretch"
+  },
+  "pike_push_up": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "pike-push-ups",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "pike_push_up"
+  },
+  "pistol_squat": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "kb_pistol_squat",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "kb_pistol_squat",
+    "note": "same picture as kb_pistol_squat"
+  },
+  "plank_shoulder_taps": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "plank-shoulder-tap",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "plank_shoulder_taps"
+  },
+  "prone_ytw_raise": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "prone-y-raise+prone-t-raise",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "prone_ytw_raise"
+  },
+  "pseudo_planche_push_up": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "pseudo-planche-push-ups",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "pseudo_planche_push_up"
+  },
+  "reverse_grip_bench_dip": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "Bench_Dips",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "reverse_grip_bench_dip"
+  },
+  "reverse_snow_angel": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "reverse-snow-angel",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "reverse_snow_angel"
+  },
+  "scapular_australian_chin_up": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "inverted_row",
+    "licence": "same as the re-used move",
+    "mediaKey": "inverted_row",
+    "note": "Australian row start position"
+  },
+  "scapular_australian_pull_up": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "inverted_row",
+    "licence": "same as the re-used move",
+    "mediaKey": "inverted_row",
+    "note": "Australian pull-up start position"
+  },
+  "shin_stretch": {
+    "bucket": "muscle",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier, images/muscles)",
+    "upstream": "tibialis-anterior",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "muscle_tibialis_anterior"
+  },
+  "side_lying_hip_adduction": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "side-lying-hip-adduction",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "side_lying_hip_adduction"
+  },
+  "single_leg_calf_raise": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "single-leg-calf-raise",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "single_leg_calf_raise"
+  },
+  "table_inverted_row": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "inverted_row",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "inverted_row",
+    "note": "same picture as inverted_row"
+  },
+  "thread_the_needle": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "thread-the-needle",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "thread_the_needle"
+  },
+  "tibialis_raise": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "tib-raise",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "tibialis_raise"
+  },
+  "towel_floor_pull": {
+    "bucket": "muscle",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier, images/muscles)",
+    "upstream": "rhomboids",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "muscle_rhomboids"
+  },
+  "tuck_front_lever": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "tuck-front-lever",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "tuck_front_lever"
+  },
+  "tuck_planche": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "tuck-planche",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "tuck_planche"
+  },
+  "weighted_chin_up": {
+    "bucket": "fedb",
+    "source": "https://github.com/yuhonas/free-exercise-db",
+    "upstream": "weighted_pull_up",
+    "licence": "The Unlicense (Public Domain)",
+    "mediaKey": "weighted_pull_up",
+    "note": "same picture as weighted_pull_up"
+  },
+  "weighted_dip": {
+    "bucket": "repdb",
+    "source": "https://repdb.co (RepDB Exercise Dataset, free tier)",
+    "upstream": "weighted-dips",
+    "licence": "RepDB free-tier licence (LICENSE-DATA.md): in-app use with attribution",
+    "mediaKey": "weighted_dip"
+  },
+  "weighted_push_up": {
+    "bucket": "oea",
+    "source": "https://github.com/alexmollard/Open-Exercise-Art",
+    "upstream": "weighted-push-up",
+    "licence": "CC BY-SA 4.0",
+    "mediaKey": "weighted_push_up"
+  },
+  "wide_knee_push_up": {
+    "bucket": "parent",
+    "source": "n/a (re-uses another move's files)",
+    "upstream": "knee_push_up",
+    "licence": "same as the re-used move",
+    "mediaKey": "knee_push_up",
+    "note": "same push-up, wider hands"
+  }
+}

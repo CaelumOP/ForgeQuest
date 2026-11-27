@@ -1534,6 +1534,7 @@
     <string name="barcode_err_label">لم تكن الأرقام على الملصق واضحة. أعد المحاولة مع ملء جدول القيم الغذائية للإطار.</string>
     <string name="barcode_unnamed">منتج %1$s</string>
     <string name="profile_credits_data">بيانات الأطعمة: Open Food Facts (ODbL)، والهيئة العامة للغذاء والدواء، وUSDA.</string>
+    <string name="profile_credits_media">صور التمارين: free-exercise-db (ملكية عامة)، وبيانات التمارين من RepDB (repdb.co)، وOpen Exercise Art / أليكس مولارد ودليل التمارين لبريل ليم (CC BY-SA 4.0).</string>
     <string name="pb_title">ابنِ خطتي</string>
     <string name="pb_goal">الهدف</string>
     <string name="pb_goal_strength">القوة</string>

@@ -5,6 +5,7 @@ export function AboutScreen() {
     <div class="content">
       <p>{t('about_body')}</p>
       <p class="muted">{t('profile_credits_body')}</p>
+      <p class="muted">{t('profile_credits_media')}</p>
     </div>
   )
 }
