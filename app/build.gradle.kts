@@ -100,6 +100,8 @@ dependencies {
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
+    // @Preview annotations live in main source; ui-tooling below is debug-only, so release needs this.
+    implementation("androidx.compose.ui:ui-tooling-preview")
     // Pinned past the BOM: the Expressive components (LoadingIndicator, wavy progress) ship only in 1.5.
     implementation("androidx.compose.material3:material3:1.5.0-beta02")
     implementation("androidx.compose.material:material-icons-extended")
