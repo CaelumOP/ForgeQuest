@@ -32,7 +32,7 @@ Paths are under `app/src/main/java/com/forgequest/app/`. Open these first; grep 
 | AI client & Gem prompts | `data/ai/GeminiClient.kt`, `ui/components/SkillPrompts.kt` (the copyable Gem skills, `res/raw` + `res/raw-ar`) |
 | Home, Health Connect & readiness | `ui/home/HomeScreen.kt`, `ui/home/HomeViewModel.kt`, `ui/home/ReadinessCard.kt`, `ui/home/ReadinessDetailScreen.kt`, `data/health/HealthRepository.kt`, `domain/Readiness.kt`, `domain/ReadinessText.kt` (which sentence, which wording) |
 | Backup & Drive sync | `data/backup/BackupRepository.kt`, `data/drive/DriveSync.kt`, `data/drive/DriveSyncWorker.kt` |
-| Database | `data/db/AppDatabase.kt` (schema version 10; never bump without a migration), `data/db/Entities.kt`, `data/db/Daos.kt` |
+| Database | `data/db/AppDatabase.kt` (schema version 13; never bump without a migration), `data/db/Entities.kt`, `data/db/Daos.kt` |
 | Settings & profile | `ui/profile/ProfileScreen.kt` (screen, dialogs), `SettingsScreen.kt`, `YouSettingsGroup.kt` (you + goals + health), `SettingsGroups.kt` (app, coach/Gemini, backup, about), `ProfileViewModel.kt` (shared by Profile, Settings and Badges), `SettingsViewModel.kt` (settings actions, Drive, backup, updates), `SettingsComponents.kt` (settings rows, badge chip, update row), `EquipmentCard.kt` (`GearSheet`, `TrainingPlaceSelector`) |
 
 Files over 400 lines: read with `offset`/`limit` after a `grep -n "fun \|class "` skeleton.

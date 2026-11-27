@@ -178,6 +178,7 @@ Signing, Google Drive and Friends server setup are in the [setup guide](docs/SET
 - Exercise data by RepDB (repdb.co), https://repdb.co, used in the app under its free-tier licence ([terms](tools/catalog/licenses/RepDB-LICENSE-DATA.md)).
 - Exercise illustrations by Open Exercise Art / Alex Mollard (CC BY-SA 4.0): [project](https://github.com/AlexMollard/Open-Exercise-Art), [licence](https://creativecommons.org/licenses/by-sa/4.0/).
 - Exercise illustrations by Bryl Lim (based on Everkinetic, CC) (CC BY-SA 4.0): [Workout Guide](https://github.com/bryllim/workout-guide), [Everkinetic](https://github.com/everkinetic/data), [licence](https://creativecommons.org/licenses/by-sa/4.0/). Our resized, recoloured-background WebP adaptations are also CC BY-SA 4.0 ([notice](tools/catalog/licenses/CC-BY-SA-4.0-NOTICE.md)).
+- Third-party exercise images listed in [`tools/catalog/media_sources.json`](tools/catalog/media_sources.json) stay under their own licences ([`tools/catalog/licenses/`](tools/catalog/licenses/)), not this project's licence.
 - Anatomy art: [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter) 3.2.0, MIT License © 2022 ELABBASSI Hicham.
 - Food data: [Open Food Facts](https://world.openfoodfacts.org/) (ODbL).
 - Web barcode reading: [barcode-detector](https://github.com/Sec-ant/barcode-detector) (ZXing).
